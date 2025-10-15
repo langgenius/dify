@@ -115,7 +115,7 @@ class OAuthServerUserAuthorizeApi(Resource):
     @account_initialization_required
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         account = current_user
         user_account_id = account.id
 

@@ -36,7 +36,7 @@ class DailyMessageStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account, current_tenant_id = current_account_with_tenant()
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -108,7 +108,7 @@ class DailyConversationStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account, current_tenant_id = current_account_with_tenant()
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -174,7 +174,7 @@ class DailyTerminalsStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account, current_tenant_id = current_account_with_tenant()
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -246,7 +246,7 @@ class DailyTokenCostStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account, current_tenant_id = current_account_with_tenant()
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -321,7 +321,7 @@ class AverageSessionInteractionStatistic(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     def get(self, app_model):
-        account, current_tenant_id = current_account_with_tenant()
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -412,7 +412,7 @@ class UserSatisfactionRateStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account, current_tenant_id = current_account_with_tenant()
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -493,7 +493,7 @@ class AverageResponseTimeStatistic(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     def get(self, app_model):
-        account, current_tenant_id = current_account_with_tenant()
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -565,7 +565,7 @@ class TokensPerSecondStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account, current_tenant_id = current_account_with_tenant()
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")

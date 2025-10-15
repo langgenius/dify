@@ -36,7 +36,7 @@ class ExternalApiTemplateListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         search = request.args.get("keyword", default=None, type=str)
@@ -256,7 +256,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, dataset_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:

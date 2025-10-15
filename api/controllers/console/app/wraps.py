@@ -12,7 +12,7 @@ R = TypeVar("R")
 
 
 def _load_app_model(app_id: str) -> App | None:
-    current_user, current_tenant_id = current_account_with_tenant()
+    _, current_tenant_id = current_account_with_tenant()
     app_model = (
         db.session.query(App)
         .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")

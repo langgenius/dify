@@ -129,7 +129,7 @@ class TenantApi(Resource):
         if request.path == "/info":
             logger.warning("Deprecated URL /info was used.")
 
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         tenant = current_user.current_tenant
         if not tenant:
             raise ValueError("No current tenant")
@@ -153,7 +153,7 @@ class SwitchWorkspaceApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("tenant_id", type=str, required=True, location="json")
         args = parser.parse_args()
@@ -178,7 +178,7 @@ class CustomConfigWorkspaceApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
     def post(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("remove_webapp_brand", type=bool, location="json")
         parser.add_argument("replace_webapp_logo", type=str, location="json")
@@ -205,7 +205,7 @@ class WebappLogoWorkspaceApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
     def post(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -245,7 +245,7 @@ class WorkspaceInfoApi(Resource):
     @account_initialization_required
     # Change workspace name
     def post(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()

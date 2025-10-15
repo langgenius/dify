@@ -73,7 +73,7 @@ class DraftWorkflowApi(Resource):
         """
         Get draft workflow
         """
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -114,7 +114,7 @@ class DraftWorkflowApi(Resource):
         Sync draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -149,7 +149,7 @@ class DraftWorkflowApi(Resource):
         else:
             abort(415)
 
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
 
         workflow_service = WorkflowService()
 
@@ -209,7 +209,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         Run draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -270,7 +270,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
         """
         Run draft workflow iteration node
         """
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -322,7 +322,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
         Run draft workflow iteration node
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -373,7 +373,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
 
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -425,7 +425,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
 
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -476,7 +476,7 @@ class DraftWorkflowRunApi(Resource):
         Run draft workflow
         """
 
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -521,7 +521,7 @@ class WorkflowTaskStopApi(Resource):
         Stop workflow task
         """
 
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -562,7 +562,7 @@ class DraftWorkflowNodeRunApi(Resource):
         Run draft workflow node
         """
 
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -615,7 +615,7 @@ class PublishedWorkflowApi(Resource):
         Get published workflow
         """
 
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -635,7 +635,7 @@ class PublishedWorkflowApi(Resource):
         """
         Publish workflow
         """
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -693,7 +693,7 @@ class DefaultBlockConfigsApi(Resource):
         Get default block config
         """
 
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -718,7 +718,7 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -759,7 +759,7 @@ class ConvertToWorkflowApi(Resource):
         Convert expert mode of chatbot app to workflow mode
         Convert Completion App to Workflow App
         """
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -800,7 +800,7 @@ class PublishedAllWorkflowApi(Resource):
         Get published workflows
         """
 
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -865,7 +865,7 @@ class WorkflowByIdApi(Resource):
         """
         Update workflow attributes
         """
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # Check permission
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -919,7 +919,7 @@ class WorkflowByIdApi(Resource):
         """
         Delete workflow
         """
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # Check permission
         if not current_user.has_edit_permission:
             raise Forbidden()

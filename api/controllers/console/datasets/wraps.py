@@ -16,7 +16,7 @@ def get_rag_pipeline(
             if not kwargs.get("pipeline_id"):
                 raise ValueError("missing pipeline_id in path parameters")
 
-            current_user, current_tenant_id = current_account_with_tenant()
+            _, current_tenant_id = current_account_with_tenant()
 
             pipeline_id = kwargs.get("pipeline_id")
             pipeline_id = str(pipeline_id)

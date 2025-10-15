@@ -84,7 +84,7 @@ class DocumentResource(Resource):
         return document
 
     def get_batch_documents(self, dataset_id: str, batch: str) -> Sequence[Document]:
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound("Dataset not found.")
@@ -112,7 +112,7 @@ class GetProcessRuleApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         req_data = request.args
 
         document_id = req_data.get("document_id")
@@ -275,7 +275,7 @@ class DatasetDocumentListApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         dataset_id = str(dataset_id)
 
         dataset = DatasetService.get_dataset(dataset_id)
@@ -451,7 +451,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
     @login_required
     @account_initialization_required
     def get(self, dataset_id, document_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         dataset_id = str(dataset_id)
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
@@ -516,7 +516,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
     @login_required
     @account_initialization_required
     def get(self, dataset_id, batch):
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         dataset_id = str(dataset_id)
         batch = str(batch)
         documents = self.get_batch_documents(dataset_id, batch)

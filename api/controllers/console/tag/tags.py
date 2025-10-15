@@ -23,7 +23,7 @@ class TagListApi(Resource):
     @account_initialization_required
     @marshal_with(dataset_tag_fields)
     def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         tag_type = request.args.get("type", type=str, default="")
         keyword = request.args.get("keyword", default=None, type=str)
         tags = TagService.get_tags(tag_type, current_tenant_id, keyword)
@@ -34,7 +34,7 @@ class TagListApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
@@ -60,7 +60,7 @@ class TagUpdateDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def patch(self, tag_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         tag_id = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -83,7 +83,7 @@ class TagUpdateDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, tag_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         tag_id = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
@@ -100,7 +100,7 @@ class TagBindingCreateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
@@ -127,7 +127,7 @@ class TagBindingDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()

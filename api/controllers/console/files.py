@@ -51,7 +51,7 @@ class FileApi(Resource):
     @marshal_with(file_fields)
     @cloud_edition_billing_resource_check("documents")
     def post(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         source_str = request.form.get("source")
         source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
 

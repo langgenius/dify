@@ -24,7 +24,7 @@ class RagPipelineImportApi(Resource):
     @marshal_with(pipeline_import_fields)
     def post(self):
         # Check user role first
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -71,7 +71,7 @@ class RagPipelineImportConfirmApi(Resource):
     @account_initialization_required
     @marshal_with(pipeline_import_fields)
     def post(self, import_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         # Check user role first
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -98,7 +98,7 @@ class RagPipelineImportCheckDependenciesApi(Resource):
     @account_initialization_required
     @marshal_with(pipeline_import_check_dependencies_fields)
     def get(self, pipeline: Pipeline):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -116,7 +116,7 @@ class RagPipelineExportApi(Resource):
     @get_rag_pipeline
     @account_initialization_required
     def get(self, pipeline: Pipeline):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 

@@ -29,7 +29,7 @@ class WorkflowDailyRunsStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account, current_tenant_id = current_account_with_tenant()
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -44,7 +44,6 @@ FROM
 WHERE
     app_id = :app_id
     AND triggered_from = :triggered_from"""
-        assert isinstance(account, Account)
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
@@ -98,6 +97,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
+        current_user, _ = current_account_with_tenant()
         account = current_user
 
         parser = reqparse.RequestParser()
@@ -167,7 +167,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account, current_tenant_id = current_account_with_tenant()
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -240,7 +240,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
     def get(self, app_model):
-        account, current_tenant_id = current_account_with_tenant()
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")

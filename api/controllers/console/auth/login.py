@@ -94,7 +94,7 @@ class LoginApi(Resource):
 class LogoutApi(Resource):
     @setup_required
     def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         account = current_user
         if isinstance(account, flask_login.AnonymousUserMixin):
             return {"result": "success"}
