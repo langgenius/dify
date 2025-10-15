@@ -132,6 +132,9 @@ export type ModelConfig = {
   provider: string // LLM Provider: for example "OPENAI"
   model_id: string
   mode: ModelModeType
+  prompt_type: PromptMode
+  chat_prompt_config: ChatPromptConfig | null
+  completion_prompt_config: CompletionPromptConfig | null
   configs: PromptConfig
   opening_statement: string | null
   more_like_this: MoreLikeThisConfig | null
