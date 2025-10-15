@@ -166,9 +166,12 @@ class DatasourceNode(Node):
                     )
                 case DatasourceProviderType.LOCAL_FILE:
                     related_id = datasource_info.get("related_id")
-                    if not related_id:
+                    real_file_id = datasource_info.get("real_file_id")
+                    if not related_id and not real_file_id:
                         raise DatasourceNodeError("File is not exist")
-                    upload_file = db.session.query(UploadFile).where(UploadFile.id == related_id).first()
+                    upload_file = (
+                        db.session.query(UploadFile).filter(UploadFile.id.in_([related_id, real_file_id])).first()
+                    )
                     if not upload_file:
                         raise ValueError("Invalid upload file Info")
 
