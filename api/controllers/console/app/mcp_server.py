@@ -2,7 +2,7 @@ import json
 from enum import StrEnum
 
 from flask_restx import Resource, fields, marshal_with, reqparse
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model

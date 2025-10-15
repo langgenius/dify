@@ -7,6 +7,7 @@ from tasks.clean_dataset_task import clean_dataset_task
 def handle(sender: Dataset, **kwargs):
     dataset = sender
     assert dataset.doc_form
+    assert dataset.indexing_technique
     clean_dataset_task.delay(
         dataset.id,
         dataset.tenant_id,
