@@ -44,7 +44,7 @@ const ConfigAudio: FC = () => {
     setFeatures(newFeatures)
   }, [featuresStore])
 
-  if (!isShowAudioConfig)
+  if (!isShowAudioConfig || (readonly && !isAudioEnabled))
     return null
 
   return (

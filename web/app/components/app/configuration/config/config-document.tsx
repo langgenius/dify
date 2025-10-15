@@ -44,7 +44,7 @@ const ConfigDocument: FC = () => {
     setFeatures(newFeatures)
   }, [featuresStore])
 
-  if (!isShowDocumentConfig)
+  if (!isShowDocumentConfig || (readonly && !isDocumentEnabled))
     return null
 
   return (
