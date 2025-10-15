@@ -77,7 +77,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
       }
     }
   }, [providers, isShowInstallModal, hideInstallFromMarketplace])
-  console.log('isLoading', isLoading)
+
   if (isLoading) {
     return (
       <div className='my-2 flex min-h-[72px] items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-third-party-model-bg-default shadow-xs'>
@@ -119,7 +119,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
                   className={cn('relative h-6 w-6', !isAvailable && 'cursor-pointer hover:opacity-80')}
                   onClick={() => handleIconClick(key, isAvailable)}
                 >
-                  <Icon className='h-6 w-6' />
+                  <Icon className='h-6 w-6 rounded-lg' />
                   {!isAvailable && (
                     <div className='absolute inset-0 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge opacity-30' />
                   )}
