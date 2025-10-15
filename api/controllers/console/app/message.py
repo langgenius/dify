@@ -3,7 +3,7 @@ import logging
 from flask_restx import Resource, fields, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy import exists, select
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.console import api, console_ns
 from controllers.console.app.error import (
@@ -17,6 +17,7 @@ from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDi
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
+    edit_permission_required,
     setup_required,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -55,16 +56,13 @@ class ChatMessageListApi(Resource):
     )
     @api.response(200, "Success", message_infinite_scroll_pagination_fields)
     @api.response(404, "Conversation not found")
-    @setup_required
-    @login_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    @account_initialization_required
     @marshal_with(message_infinite_scroll_pagination_fields)
+    @setup_required
+    @account_initialization_required
+    @login_required
+    @edit_permission_required
     def get(self, app_model):
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("conversation_id", required=True, type=uuid_value, location="args")
         parser.add_argument("first_id", type=uuid_value, location="args")
@@ -210,17 +208,14 @@ class MessageAnnotationApi(Resource):
     )
     @api.response(200, "Annotation created successfully", annotation_fields)
     @api.response(403, "Insufficient permissions")
+    @marshal_with(annotation_fields)
+    @get_app_model
     @setup_required
     @login_required
-    @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
-    @get_app_model
-    @marshal_with(annotation_fields)
+    @account_initialization_required
+    @edit_permission_required
     def post(self, app_model):
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("message_id", required=False, type=uuid_value, location="json")
         parser.add_argument("question", required=True, type=str, location="json")

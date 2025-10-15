@@ -246,9 +246,9 @@ def email_password_login_enabled(view: Callable[P, R]):
     return decorated
 
 
-def email_register_enabled(view):
+def email_register_enabled(view: Callable[P, R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()
         if features.is_allow_register:
             return view(*args, **kwargs)
