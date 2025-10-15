@@ -65,7 +65,7 @@ const WorkflowAppWithAdditionalContext = () => {
       return
     fetchRunDetail(runUrl).then((res) => {
       const { setInputs, setShowInputsPanel, setShowDebugAndPreviewPanel } = workflowStore.getState()
-      if (typeof res.inputs === 'object') {
+      if (res.inputs && typeof res.inputs === 'object') {
         const userInputs = Object.fromEntries(
           Object.entries(res.inputs as Record<string, any>).filter(([key]) => !key.startsWith('sys.')),
         )
