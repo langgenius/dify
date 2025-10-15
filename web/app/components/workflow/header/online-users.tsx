@@ -114,7 +114,7 @@ const OnlineUsers = () => {
                 key={`${user.sid}-${index}`}
                 popupContent={renderDisplayName(
                   user,
-                  'system-xs-medium text-text-tertiary',
+                  'system-xs-medium text-text-secondary',
                   'text-text-quaternary',
                 )}
                 position="bottom"
