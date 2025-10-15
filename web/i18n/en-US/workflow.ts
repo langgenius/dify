@@ -340,6 +340,7 @@ const translation = {
     optional: '(optional)',
     maximize: 'Maximize Canvas',
     minimize: 'Exit Full Screen',
+    optional_and_hidden: '(optional & hidden)',
   },
   nodes: {
     common: {
