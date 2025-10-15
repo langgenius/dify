@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
-import { v4 as uuid4 } from 'uuid'
 import { ReactSortable } from 'react-sortablejs'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
@@ -223,9 +222,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   }
 
   const promptVariablesWithIds = useMemo(() => promptVariables.map((item) => {
-    const id = uuid4()
     return {
-      id,
+      id: item.key,
       variable: { ...item },
     }
   }), [promptVariables])
@@ -262,25 +260,28 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           <ReactSortable
             className='space-y-1'
             list={promptVariablesWithIds}
-            setList={(list) => { onPromptVariablesChange(list.map(item => item.variable)) }}
+            setList={(list) => { onPromptVariablesChange?.(list.map(item => item.variable)) }}
             handle='.handle'
             ghostClass='opacity-50'
             animation={150}
           >
-            {promptVariables.map(({ key, name, type, required, config, icon, icon_background }, index) => (
-              <VarItem
-                className={cn(canDrag && 'handle')}
-                key={index}
-                readonly={readonly}
-                name={key}
-                label={name}
-                required={!!required}
-                type={type}
-                onEdit={() => handleConfig({ type, key, index, name, config, icon, icon_background })}
-                onRemove={() => handleRemoveVar(index)}
-                canDrag={canDrag}
-              />
-            ))}
+            {promptVariablesWithIds.map((item, index) => {
+              const { key, name, type, required, config, icon, icon_background } = item.variable
+              return (
+                <VarItem
+                  className={cn(canDrag && 'handle')}
+                  key={key}
+                  readonly={readonly}
+                  name={key}
+                  label={name}
+                  required={!!required}
+                  type={type}
+                  onEdit={() => handleConfig({ type, key, index, name, config, icon, icon_background })}
+                  onRemove={() => handleRemoveVar(index)}
+                  canDrag={canDrag}
+                />
+              )
+            })}
           </ReactSortable>
         </div>
       )}

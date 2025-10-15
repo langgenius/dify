@@ -5,7 +5,6 @@ import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import VarItem from './var-item'
 import { ChangeType, type InputVar, type MoreInfo } from '@/app/components/workflow/types'
-import { v4 as uuid4 } from 'uuid'
 import { ReactSortable } from 'react-sortablejs'
 import { RiDraggable } from '@remixicon/react'
 import cn from '@/utils/classnames'
@@ -71,9 +70,8 @@ const VarList: FC<Props> = ({
   }, [list, onChange])
 
   const listWithIds = useMemo(() => list.map((item) => {
-    const id = uuid4()
     return {
-      id,
+      id: item.variable,
       variable: { ...item },
     }
   }), [list])
@@ -99,12 +97,12 @@ const VarList: FC<Props> = ({
       ghostClass='opacity-50'
       animation={150}
     >
-      {list.map((item, index) => (
-        <div key={index} className='group relative'>
+      {listWithIds.map((itemWithId, index) => (
+        <div key={itemWithId.id} className='group relative'>
           <VarItem
             className={cn(canDrag && 'handle')}
             readonly={readonly}
-            payload={item}
+            payload={itemWithId.variable}
             onChange={handleVarChange(index)}
             onRemove={handleVarRemove(index)}
             varKeys={list.map(item => item.variable)}
