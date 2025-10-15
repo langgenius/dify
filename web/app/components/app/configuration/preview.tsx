@@ -25,6 +25,7 @@ import { useGetTryAppDataSets, useGetTryAppInfo } from '@/service/use-try-app'
 import { noop } from 'lodash'
 import { correctModelProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../header/account-setting/model-provider-page/hooks'
 
 type Props = {
   appId: string
@@ -172,12 +173,14 @@ const Configuration: FC<Props> = ({
   const query = ''
   const completionParams = useState<FormValue>({})
 
-  // todo
-  const currModel: {
-    features: ModelFeatureEnum[]
-  } = {
-    features: [],
-  }
+  const {
+    currentModel: currModel,
+  } = useTextGenerationCurrentProviderAndModelAndModelList(
+    {
+      provider: modelConfig.provider,
+      model: modelConfig.model_id,
+    },
+  )
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
   const isShowDocumentConfig = !!currModel?.features?.includes(ModelFeatureEnum.document)
