@@ -360,6 +360,7 @@ export enum WorkflowVersion {
 export enum NodeRunningStatus {
   NotStart = 'not-start',
   Waiting = 'waiting',
+  Listening = 'listening',
   Running = 'running',
   Succeeded = 'succeeded',
   Failed = 'failed',

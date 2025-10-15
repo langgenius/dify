@@ -238,6 +238,7 @@ const BasePanel: FC<BasePanelProps> = ({
     singleRunParams,
     nodeInfo,
     setRunInputData,
+    handleStop,
     handleSingleRun,
     handleRunWithParams,
     getExistVarValuesInForms,
@@ -438,18 +439,10 @@ const BasePanel: FC<BasePanelProps> = ({
                     <div
                       className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
                       onClick={() => {
-                        if (isSingleRunning) {
-                          handleNodeDataUpdate({
-                            id,
-                            data: {
-                              _isSingleRun: false,
-                              _singleRunningStatus: undefined,
-                            },
-                          })
-                        }
-                        else {
+                        if (isSingleRunning)
+                          handleStop()
+                        else
                           handleSingleRun()
-                        }
                       }}
                     >
                       {
