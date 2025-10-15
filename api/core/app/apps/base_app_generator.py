@@ -161,13 +161,13 @@ class BaseAppGenerator:
     def _sanitize_value(self, value: Any):
         """
         Sanitize user input to prevent XSS and other injection attacks.
-        
+
         Args:
             value: The value to sanitize (can be any type)
-            
+
         Returns:
             Sanitized value with HTML entities escaped and control characters removed
-            
+
         Security:
             - Escapes HTML special characters to prevent XSS attacks
             - Removes null bytes and other control characters
@@ -176,15 +176,15 @@ class BaseAppGenerator:
         if isinstance(value, str):
             import html
             import re
-            
+
             # Remove null bytes and other control characters (except newlines and tabs)
             # Keep \n (0x0A) and \t (0x09) for legitimate formatting
-            value = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]', '', value)
-            
+            value = re.sub(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]", "", value)
+
             # Escape HTML special characters to prevent XSS
             # This converts <, >, &, ", ' to their HTML entity equivalents
             value = html.escape(value, quote=True)
-            
+
             return value
         return value
 
