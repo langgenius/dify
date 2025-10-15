@@ -97,8 +97,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        current_user, _ = current_account_with_tenant()
-        account = current_user
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
