@@ -2,7 +2,7 @@
   "name": "dify-web",
   "version": "1.9.1",
   "private": true,
-  "packageManager": "pnpm@10.18.2",
+  "packageManager": "pnpm@10.18.3+sha512.bbd16e6d7286fd7e01f6b3c0b3c932cda2965c06a908328f74663f10a9aea51f1129eea615134bf992831b009eabe167ecb7008b597f40ff9bc75946aadfb08d",
   "engines": {
     "node": ">=v22.11.0"
   },
@@ -23,10 +23,10 @@
     "build": "next build",
     "build:docker": "next build && node scripts/optimize-standalone.js",
     "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
-    "lint": "eslint --concurrency=auto --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
-    "lint:fix": "eslint --concurrency=auto --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
-    "lint:quiet": "eslint --concurrency=auto --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
-    "lint:complexity": "eslint --concurrency=auto --cache --cache-location node_modules/.cache/eslint/.eslint-cache --rule 'complexity: [error, {max: 15}]' --quiet",
+    "lint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
+    "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
+    "lint:quiet": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
+    "lint:complexity": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --rule 'complexity: [error, {max: 15}]' --quiet",
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",
     "gen-icons": "node ./app/components/base/icons/script.mjs",
     "uglify-embed": "node ./bin/uglify-embed",
@@ -55,7 +55,7 @@
     "@lexical/react": "^0.36.2",
     "@lexical/selection": "^0.36.2",
     "@lexical/text": "^0.36.2",
-    "@lexical/utils": "^0.36.2",
+    "@lexical/utils": "^0.37.0",
     "@monaco-editor/react": "^4.6.0",
     "@octokit/core": "^6.1.2",
     "@octokit/request-error": "^6.1.5",
@@ -190,7 +190,7 @@
     "globals": "^15.11.0",
     "husky": "^9.1.6",
     "jest": "^29.7.0",
-    "knip": "^5.64.1",
+    "knip": "^5.64.3",
     "lint-staged": "^15.2.10",
     "lodash": "^4.17.21",
     "magicast": "^0.3.4",
@@ -208,10 +208,10 @@
   },
   "lint-staged": {
     "**/*.js?(x)": [
-      "eslint --concurrency=auto --fix"
+      "eslint --fix"
     ],
     "**/*.ts?(x)": [
-      "eslint --concurrency=auto --fix"
+      "eslint --fix"
     ]
   },
   "pnpm": {
