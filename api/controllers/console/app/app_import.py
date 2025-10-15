@@ -1,5 +1,3 @@
-from typing import cast
-
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
@@ -12,8 +10,6 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.app_fields import app_import_check_dependencies_fields, app_import_fields
-from libs.login import current_user, login_required
-from models import Account
 from libs.login import current_account_with_tenant, login_required
 from models.model import App
 from services.app_dsl_service import AppDslService, ImportStatus
