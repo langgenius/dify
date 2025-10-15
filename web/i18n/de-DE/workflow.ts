@@ -363,6 +363,7 @@ const translation = {
     changeBlock: 'Knoten ändern',
     maximize: 'Maximiere die Leinwand',
     minimize: 'Vollbildmodus beenden',
+    optional_and_hidden: '(optional & hidden)',
   },
   nodes: {
     common: {
