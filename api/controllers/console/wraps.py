@@ -299,3 +299,16 @@ def knowledge_pipeline_publish_enabled(view: Callable[P, R]):
         abort(403)
 
     return decorated
+
+
+def edit_permission_required(f: Callable[P, R]):
+    @wraps(f)
+    def decorated_function(*args: P.args, **kwargs: P.kwargs):
+        from werkzeug.exceptions import Forbidden
+
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
+            raise Forbidden()
+        return f(*args, **kwargs)
+
+    return decorated_function

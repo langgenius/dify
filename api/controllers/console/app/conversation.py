@@ -10,7 +10,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
@@ -56,10 +56,9 @@ class CompletionConversationApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_pagination_fields)
+    @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("keyword", type=str, location="args")
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -138,10 +137,8 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_message_detail_fields)
+    @edit_permission_required
     def get(self, app_model, conversation_id):
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_model, conversation_id)

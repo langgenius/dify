@@ -10,6 +10,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
+    edit_permission_required,
     enterprise_license_required,
     setup_required,
 )
@@ -128,6 +129,7 @@ class AppListApi(Resource):
     @account_initialization_required
     @marshal_with(app_detail_fields)
     @cloud_edition_billing_resource_check("apps")
+    @edit_permission_required
     def post(self):
         """Create app"""
         current_user, current_tenant_id = current_account_with_tenant()
@@ -139,10 +141,6 @@ class AppListApi(Resource):
         parser.add_argument("icon", type=str, location="json")
         parser.add_argument("icon_background", type=str, location="json")
         args = parser.parse_args()
-
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
         if "mode" not in args or args["mode"] is None:
             raise BadRequest("mode is required")
@@ -201,14 +199,10 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model
+    @edit_permission_required
     @marshal_with(app_detail_fields_with_site)
     def put(self, app_model):
         """Update app"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         parser.add_argument("description", type=validate_description_length, location="json")
@@ -245,13 +239,9 @@ class AppApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def delete(self, app_model):
         """Delete app"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         app_service = AppService()
         app_service.delete_app(app_model)
 
@@ -281,13 +271,12 @@ class AppCopyApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model
+    @edit_permission_required
     @marshal_with(app_detail_fields_with_site)
     def post(self, app_model):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, location="json")
@@ -338,13 +327,9 @@ class AppExportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def get(self, app_model):
         """Export app"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         # Add include_secret params
         parser = reqparse.RequestParser()
         parser.add_argument("include_secret", type=inputs.boolean, default=False, location="args")
@@ -370,12 +355,8 @@ class AppNameApi(Resource):
     @account_initialization_required
     @get_app_model
     @marshal_with(app_detail_fields)
+    @edit_permission_required
     def post(self, app_model):
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
@@ -408,12 +389,8 @@ class AppIconApi(Resource):
     @account_initialization_required
     @get_app_model
     @marshal_with(app_detail_fields)
+    @edit_permission_required
     def post(self, app_model):
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("icon", type=str, location="json")
         parser.add_argument("icon_background", type=str, location="json")
@@ -442,12 +419,8 @@ class AppSiteStatus(Resource):
     @account_initialization_required
     @get_app_model
     @marshal_with(app_detail_fields)
+    @edit_permission_required
     def post(self, app_model):
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("enable_site", type=bool, required=True, location="json")
         args = parser.parse_args()
@@ -523,11 +496,9 @@ class AppTraceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def post(self, app_id):
         # add app trace
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("enabled", type=bool, required=True, location="json")
         parser.add_argument("tracing_provider", type=str, required=True, location="json")
