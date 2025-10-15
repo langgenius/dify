@@ -1,4 +1,4 @@
-x-shared-env: &shared-api-worker-env {}
+x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
