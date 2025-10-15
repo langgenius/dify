@@ -167,6 +167,8 @@ export type EnvironmentVariable = {
 }
 
 export type MemoryVariable = {
+  id: string
+  name: string
   template?: string
   instruction?: string
   schedule_mode?: string
@@ -176,6 +178,7 @@ export type MemoryVariable = {
   scope?: string
   term?: string
   end_user_editable?: boolean
+  value_type: ChatVarType
 }
 
 export type ConversationVariable = {
@@ -184,7 +187,7 @@ export type ConversationVariable = {
   value_type: ChatVarType
   value: any
   description?: string
-} & MemoryVariable
+}
 
 export type GlobalVariable = {
   name: string

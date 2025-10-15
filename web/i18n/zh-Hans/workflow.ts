@@ -377,6 +377,7 @@ const translation = {
         block: {
           title: '记忆块',
           desc: 'AI 会记住你定义的特定信息',
+          empty: '请在提示词中添加记忆变量以启用记忆块',
         },
       },
       memories: {

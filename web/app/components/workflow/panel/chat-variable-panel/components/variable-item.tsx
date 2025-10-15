@@ -1,14 +1,18 @@
 import { memo, useState } from 'react'
 import { capitalize } from 'lodash-es'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
-import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
-import type { ConversationVariable } from '@/app/components/workflow/types'
+import {
+  BubbleX,
+  Memory,
+} from '@/app/components/base/icons/src/vender/line/others'
+import type { ConversationVariable, MemoryVariable } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
+import { ChatVarType } from '../type'
 
 type VariableItemProps = {
-  item: ConversationVariable
-  onEdit: (item: ConversationVariable) => void
-  onDelete: (item: ConversationVariable) => void
+  item: ConversationVariable | MemoryVariable
+  onEdit: (item: ConversationVariable | MemoryVariable) => void
+  onDelete: (item: ConversationVariable | MemoryVariable) => void
 }
 
 const VariableItem = ({
@@ -24,7 +28,16 @@ const VariableItem = ({
     )}>
       <div className='flex items-center justify-between'>
         <div className='flex grow items-center gap-1'>
-          <BubbleX className='h-4 w-4 text-util-colors-teal-teal-700' />
+          {
+            item.value_type === ChatVarType.Memory && (
+              <Memory className='h-4 w-4 text-util-colors-teal-teal-700' />
+            )
+          }
+          {
+            item.value_type !== ChatVarType.Memory && (
+              <BubbleX className='h-4 w-4 text-util-colors-teal-teal-700' />
+            )
+          }
           <div className='system-sm-medium text-text-primary'>{item.name}</div>
           <div className='system-xs-medium text-text-tertiary'>{capitalize(item.value_type)}</div>
         </div>
@@ -41,7 +54,11 @@ const VariableItem = ({
           </div>
         </div>
       </div>
-      <div className='system-xs-regular truncate text-text-tertiary'>{item.description}</div>
+      {
+        'description' in item && item.description && (
+          <div className='system-xs-regular truncate text-text-tertiary'>{item.description}</div>
+        )
+      }
     </div>
   )
 }

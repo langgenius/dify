@@ -33,6 +33,7 @@ export const useNodesSyncDraft = () => {
     const {
       appId,
       conversationVariables,
+      memoryVariables,
       environmentVariables,
       syncWorkflowDraftHash,
     } = workflowStore.getState()
@@ -84,6 +85,7 @@ export const useNodesSyncDraft = () => {
           },
           environment_variables: environmentVariables,
           conversation_variables: conversationVariables,
+          memory_blocks: memoryVariables,
           hash: syncWorkflowDraftHash,
         },
       }

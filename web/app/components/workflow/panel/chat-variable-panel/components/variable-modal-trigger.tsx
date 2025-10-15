@@ -9,15 +9,15 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { ConversationVariable } from '@/app/components/workflow/types'
+import type { ConversationVariable, MemoryVariable } from '@/app/components/workflow/types'
 
 type Props = {
   open: boolean
   setOpen: (value: React.SetStateAction<boolean>) => void
   showTip: boolean
-  chatVar?: ConversationVariable
+  chatVar?: ConversationVariable | MemoryVariable
   onClose: () => void
-  onSave: (env: ConversationVariable) => void
+  onSave: (env: ConversationVariable | MemoryVariable) => void
 }
 
 const VariableModalTrigger = ({

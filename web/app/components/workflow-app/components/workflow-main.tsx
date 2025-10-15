@@ -34,6 +34,7 @@ const WorkflowMain = ({
       features,
       conversation_variables,
       environment_variables,
+      memory_blocks,
     } = payload
     if (features && featuresStore) {
       const { setFeatures } = featuresStore.getState()
@@ -47,6 +48,10 @@ const WorkflowMain = ({
     if (environment_variables) {
       const { setEnvironmentVariables } = workflowStore.getState()
       setEnvironmentVariables(environment_variables)
+    }
+    if (memory_blocks) {
+      const { setMemoryVariables } = workflowStore.getState()
+      setMemoryVariables(memory_blocks)
     }
   }, [featuresStore, workflowStore])
 

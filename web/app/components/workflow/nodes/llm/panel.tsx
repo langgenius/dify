@@ -22,7 +22,7 @@ import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import Toast from '@/app/components/base/toast'
 import MemorySystem from './components/memory-system'
-import { useMemory } from './components/memory-system/hooks'
+import { useMemory } from './components/memory-system/hooks/use-memory'
 import { MemoryMode } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.llm'

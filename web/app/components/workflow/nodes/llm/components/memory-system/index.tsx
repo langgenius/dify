@@ -13,9 +13,10 @@ import MemorySelector from './memory-selector'
 import LinearMemory from './linear-memory'
 import type { Memory } from '@/app/components/workflow/types'
 import type { LLMNodeType } from '../../types'
-import { useMemory } from './hooks'
+import { useMemory } from './hooks/use-memory'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { MemoryMode } from '@/app/components/workflow/types'
+import BlockMemory from './block-memory'
 
 type MemoryProps = Pick<Node, 'id' | 'data'> & {
   readonly?: boolean
@@ -87,6 +88,11 @@ const MemorySystem = ({
                   readonly={readonly}
                   canSetRoleName={canSetRoleName}
                 />
+              )
+            }
+            {
+              memoryType === MemoryMode.block && !collapsed && (
+                <BlockMemory payload={memory as Memory} />
               )
             }
           </>

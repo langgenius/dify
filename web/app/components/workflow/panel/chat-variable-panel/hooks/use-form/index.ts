@@ -8,9 +8,9 @@ import {
   useMemoryDefaultValues,
   useMemorySchema,
 } from './use-memory-schema'
-import type { ConversationVariable } from '@/app/components/workflow/types'
+import type { ConversationVariable, MemoryVariable } from '@/app/components/workflow/types'
 
-export const useForm = (chatVar?: ConversationVariable) => {
+export const useForm = (chatVar?: ConversationVariable | MemoryVariable) => {
   const { t } = useTranslation()
 
   const typeSchema = useTypeSchema()

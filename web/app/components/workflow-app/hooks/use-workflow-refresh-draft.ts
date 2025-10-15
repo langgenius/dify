@@ -16,6 +16,7 @@ export const useWorkflowRefreshDraft = () => {
       setEnvironmentVariables,
       setEnvSecrets,
       setConversationVariables,
+      setMemoryVariables,
     } = workflowStore.getState()
     setIsSyncingWorkflowDraft(true)
     fetchWorkflowDraft(`/apps/${appId}/workflows/draft`).then((response) => {
@@ -27,6 +28,7 @@ export const useWorkflowRefreshDraft = () => {
       }, {} as Record<string, string>))
       setEnvironmentVariables(response.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [])
       setConversationVariables(response.conversation_variables || [])
+      setMemoryVariables(response.memory_blocks || [])
     }).finally(() => setIsSyncingWorkflowDraft(false))
   }, [handleUpdateWorkflowCanvas, workflowStore])
 

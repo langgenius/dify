@@ -8,7 +8,10 @@ import {
 } from 'reactflow'
 import { RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/store'
+import {
+  useStore,
+  useWorkflowStore,
+} from '@/app/components/workflow/store'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { BubbleX, LongArrowLeft, LongArrowRight } from '@/app/components/base/icons/src/vender/line/others'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -17,6 +20,7 @@ import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/co
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import type {
   ConversationVariable,
+  MemoryVariable,
 } from '@/app/components/workflow/types'
 import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
@@ -24,34 +28,39 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import cn from '@/utils/classnames'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { ChatVarType } from './type'
 
 const ChatVariablePanel = () => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const store = useStoreApi()
+  const workflowStore = useWorkflowStore()
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
+  const memoryVariables = useStore(s => s.memoryVariables) as MemoryVariable[]
   const updateChatVarList = useStore(s => s.setConversationVariables)
+  const setMemoryVariables = useStore(s => s.setMemoryVariables)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
-  const handleVarChanged = useCallback(() => {
+  const handleVarChanged = useCallback((updateMemoryVariables?: boolean) => {
     doSyncWorkflowDraft(false, {
       onSuccess() {
-        invalidateConversationVarValues()
+        if (!updateMemoryVariables)
+          invalidateConversationVarValues()
       },
     })
   }, [doSyncWorkflowDraft, invalidateConversationVarValues])
 
   const [showTip, setShowTip] = useState(true)
   const [showVariableModal, setShowVariableModal] = useState(false)
-  const [currentVar, setCurrentVar] = useState<ConversationVariable>()
+  const [currentVar, setCurrentVar] = useState<ConversationVariable | MemoryVariable>()
 
   const [showRemoveVarConfirm, setShowRemoveConfirm] = useState(false)
-  const [cacheForDelete, setCacheForDelete] = useState<ConversationVariable>()
+  const [cacheForDelete, setCacheForDelete] = useState<ConversationVariable | MemoryVariable>()
 
-  const getEffectedNodes = useCallback((chatVar: ConversationVariable) => {
+  const getEffectedNodes = useCallback((chatVar: ConversationVariable | MemoryVariable) => {
     const { getNodes } = store.getState()
     const allNodes = getNodes()
     return findUsedVarNodes(
@@ -60,7 +69,7 @@ const ChatVariablePanel = () => {
     )
   }, [store])
 
-  const removeUsedVarInNodes = useCallback((chatVar: ConversationVariable) => {
+  const removeUsedVarInNodes = useCallback((chatVar: ConversationVariable | MemoryVariable) => {
     const { getNodes, setNodes } = store.getState()
     const effectedNodes = getEffectedNodes(chatVar)
     const newNodes = getNodes().map((node) => {
@@ -72,20 +81,21 @@ const ChatVariablePanel = () => {
     setNodes(newNodes)
   }, [getEffectedNodes, store])
 
-  const handleEdit = (chatVar: ConversationVariable) => {
+  const handleEdit = (chatVar: ConversationVariable | MemoryVariable) => {
     setCurrentVar(chatVar)
     setShowVariableModal(true)
   }
 
-  const handleDelete = useCallback((chatVar: ConversationVariable) => {
+  const handleDelete = useCallback((chatVar: ConversationVariable | MemoryVariable) => {
     removeUsedVarInNodes(chatVar)
+    const varList = workflowStore.getState().conversationVariables
     updateChatVarList(varList.filter(v => v.id !== chatVar.id))
     setCacheForDelete(undefined)
     setShowRemoveConfirm(false)
-    handleVarChanged()
-  }, [handleVarChanged, removeUsedVarInNodes, updateChatVarList, varList])
+    handleVarChanged(chatVar.value_type === ChatVarType.Memory)
+  }, [handleVarChanged, removeUsedVarInNodes, updateChatVarList])
 
-  const deleteCheck = useCallback((chatVar: ConversationVariable) => {
+  const deleteCheck = useCallback((chatVar: ConversationVariable | MemoryVariable) => {
     const effectedNodes = getEffectedNodes(chatVar)
     if (effectedNodes.length > 0) {
       setCacheForDelete(chatVar)
@@ -96,17 +106,24 @@ const ChatVariablePanel = () => {
     }
   }, [getEffectedNodes, handleDelete])
 
-  const handleSave = useCallback(async (chatVar: ConversationVariable) => {
+  const handleSave = useCallback(async (chatVar: ConversationVariable | MemoryVariable) => {
+    if (chatVar.value_type === ChatVarType.Memory) {
+      const memoryVarList = workflowStore.getState().memoryVariables
+      setMemoryVariables([chatVar, ...memoryVarList])
+      handleVarChanged(true)
+      return
+    }
+    const varList = workflowStore.getState().conversationVariables
     // add chatVar
     if (!currentVar) {
-      const newList = [chatVar, ...varList]
+      const newList = [chatVar, ...varList] as ConversationVariable[]
       updateChatVarList(newList)
       handleVarChanged()
       return
     }
     // edit chatVar
     const newList = varList.map(v => v.id === currentVar.id ? chatVar : v)
-    updateChatVarList(newList)
+    updateChatVarList(newList as ConversationVariable[])
     // side effects of rename env
     if (currentVar.name !== chatVar.name) {
       const { getNodes, setNodes } = store.getState()
@@ -120,7 +137,7 @@ const ChatVariablePanel = () => {
       setNodes(newNodes)
     }
     handleVarChanged()
-  }, [currentVar, getEffectedNodes, handleVarChanged, store, updateChatVarList, varList])
+  }, [currentVar, getEffectedNodes, handleVarChanged, store, updateChatVarList])
 
   return (
     <div
@@ -196,6 +213,16 @@ const ChatVariablePanel = () => {
         />
       </div>
       <div className='grow overflow-y-auto rounded-b-2xl px-4'>
+        {
+          memoryVariables.map(memoryVariable => (
+            <VariableItem
+              key={memoryVariable.id}
+              item={memoryVariable}
+              onEdit={handleEdit}
+              onDelete={deleteCheck}
+            />
+          ))
+        }
         {varList.map(chatVar => (
           <VariableItem
             key={chatVar.id}

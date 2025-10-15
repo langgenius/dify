@@ -8,6 +8,8 @@ import {
 import { createStore } from 'zustand/vanilla'
 import type { ChatVariableSliceShape } from './chat-variable-slice'
 import { createChatVariableSlice } from './chat-variable-slice'
+import type { MemoryVariableSliceShape } from './memory-variable-slice'
+import { createMemoryVariableSlice } from './memory-variable-slice'
 import type { EnvVariableSliceShape } from './env-variable-slice'
 import { createEnvVariableSlice } from './env-variable-slice'
 import type { FormSliceShape } from './form-slice'
@@ -43,6 +45,7 @@ export type SliceFromInjection
 
 export type Shape
   = ChatVariableSliceShape
+  & MemoryVariableSliceShape
   & EnvVariableSliceShape
   & FormSliceShape
   & HelpLineSliceShape
@@ -68,6 +71,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
 
   return createStore<Shape>((...args) => ({
     ...createChatVariableSlice(...args),
+    ...createMemoryVariableSlice(...args),
     ...createEnvVariableSlice(...args),
     ...createFormSlice(...args),
     ...createHelpLineSlice(...args),

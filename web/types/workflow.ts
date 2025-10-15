@@ -1,5 +1,5 @@
 import type { Viewport } from 'reactflow'
-import type { BlockEnum, CommonNodeType, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, ValueSelector, VarType, Variable } from '@/app/components/workflow/types'
+import type { BlockEnum, CommonNodeType, ConversationVariable, Edge, EnvironmentVariable, InputVar, MemoryVariable, Node, ValueSelector, VarType, Variable } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { RAGPipelineVariables } from '@/models/pipeline'
@@ -130,6 +130,7 @@ export type FetchWorkflowDraftResponse = {
   tool_published: boolean
   environment_variables?: EnvironmentVariable[]
   conversation_variables?: ConversationVariable[]
+  memory_blocks?: MemoryVariable[]
   rag_pipeline_variables?: RAGPipelineVariables
   version: string
   marked_name: string

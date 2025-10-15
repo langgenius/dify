@@ -10,7 +10,7 @@ import { RiCloseLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import { ToastContext } from '@/app/components/base/toast'
 import { useStore } from '@/app/components/workflow/store'
-import type { ConversationVariable } from '@/app/components/workflow/types'
+import type { ConversationVariable, MemoryVariable } from '@/app/components/workflow/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import cn from '@/utils/classnames'
 import { checkKeys } from '@/utils/var'
@@ -19,9 +19,9 @@ import VariableForm from '@/app/components/base/form/form-scenarios/variable'
 import { useForm } from '../hooks'
 
 export type ModalPropsType = {
-  chatVar?: ConversationVariable
+  chatVar?: ConversationVariable | MemoryVariable
   onClose: () => void
-  onSave: (chatVar: ConversationVariable) => void
+  onSave: (chatVar: ConversationVariable | MemoryVariable) => void
 }
 
 const ChatVariableModal = ({

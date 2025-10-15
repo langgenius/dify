@@ -3,11 +3,11 @@ import {
   useMemo,
   useState,
 } from 'react'
-import type { LLMNodeType } from '../../types'
+import type { LLMNodeType } from '../../../types'
 import { useNodeUpdate } from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   MEMORY_DEFAULT,
-} from './linear-memory'
+} from '../linear-memory'
 import type { Memory } from '@/app/components/workflow/types'
 import { MemoryMode } from '@/app/components/workflow/types'
 

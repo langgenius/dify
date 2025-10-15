@@ -377,6 +377,7 @@ const translation = {
         block: {
           title: 'Memory Block',
           desc: 'AI remembers specific information you define using custom templates',
+          empty: 'Please add a memory variable in the Prompt',
         },
       },
       memories: {
