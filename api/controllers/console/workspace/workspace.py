@@ -23,8 +23,8 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from libs.helper import TimestampField
-from libs.login import current_account_with_tenant, current_user, login_required
-from models.account import Account, Tenant, TenantStatus
+from libs.login import current_account_with_tenant, login_required
+from models.account import Tenant, TenantStatus
 from services.account_service import TenantService
 from services.feature_service import FeatureService
 from services.file_service import FileService
@@ -129,8 +129,7 @@ class TenantApi(Resource):
         if request.path == "/info":
             logger.warning("Deprecated URL /info was used.")
 
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, current_tenant_id = current_account_with_tenant()
         tenant = current_user.current_tenant
         if not tenant:
             raise ValueError("No current tenant")
@@ -154,8 +153,7 @@ class SwitchWorkspaceApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, current_tenant_id = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("tenant_id", type=str, required=True, location="json")
         args = parser.parse_args()
@@ -207,8 +205,7 @@ class WebappLogoWorkspaceApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
     def post(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, current_tenant_id = current_account_with_tenant()
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
