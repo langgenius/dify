@@ -1012,7 +1012,7 @@ class ToolMCPAuthApi(Resource):
                 except MCPRefreshTokenError as e:
                     with session.begin():
                         service.clear_provider_credentials(provider=db_provider)
-                    raise ValueError(f"Failed to refresh token: {e}") from e
+                    raise ValueError(f"Failed to refresh token, please try to authorize again: {e}") from e
             except MCPError as e:
                 with session.begin():
                     service.clear_provider_credentials(provider=db_provider)

@@ -305,7 +305,7 @@ class MCPToolManageService:
             if not authed:
                 provider.tools = EMPTY_TOOLS_JSON
 
-        self._session.flush()
+        self._session.commit()
 
     def save_oauth_data(self, provider_id: str, tenant_id: str, data: dict[str, Any], data_type: str = "mixed") -> None:
         """
@@ -360,7 +360,7 @@ class MCPToolManageService:
             return json.dumps({"content": icon, "background": icon_background})
         return icon
 
-    def _encrypt_dict_fields(self, data: dict[str, Any], secret_fields: list[str], tenant_id: str) -> str:
+    def _encrypt_dict_fields(self, data: dict[str, Any], secret_fields: list[str], tenant_id: str) -> dict[str, str]:
         """Encrypt specified fields in a dictionary.
 
         Args:
@@ -386,12 +386,12 @@ class MCPToolManageService:
         )
 
         encrypted_data = encrypter_instance.encrypt(data)
-        return json.dumps(encrypted_data)
+        return encrypted_data
 
     def _prepare_encrypted_dict(self, headers: dict[str, str], tenant_id: str) -> str:
         """Encrypt headers and prepare for storage."""
         # All headers are treated as secret
-        return self._encrypt_dict_fields(headers, list(headers.keys()), tenant_id)
+        return json.dumps(self._encrypt_dict_fields(headers, list(headers.keys()), tenant_id))
 
     def _prepare_auth_headers(self, provider_entity: MCPProviderEntity) -> dict[str, str]:
         """Prepare headers with OAuth token if available."""
@@ -530,11 +530,12 @@ class MCPToolManageService:
         # Create a flat structure with all credential data
         credentials_data = {
             "client_id": client_id,
-            "client_secret": client_secret,
+            "encrypted_client_secret": client_secret,
             "client_name": CLIENT_NAME,
             "is_dynamic_registration": False,
         }
 
         # Only client_id and client_secret need encryption
-        secret_fields = ["client_id", "client_secret"] if client_secret else ["client_id"]
-        return self._encrypt_dict_fields(credentials_data, secret_fields, tenant_id)
+        secret_fields = ["encrypted_client_secret"] if client_secret else []
+        client_info = self._encrypt_dict_fields(credentials_data, secret_fields, tenant_id)
+        return json.dumps({"client_information": client_info})
