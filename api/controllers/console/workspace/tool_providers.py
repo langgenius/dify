@@ -919,6 +919,7 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
         parser.add_argument("configuration", type=dict, required=False, nullable=True, location="json")
         parser.add_argument("authentication", type=dict, required=False, nullable=True, location="json")
+        parser.add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
 
         args = parser.parse_args()
         if not is_valid_url(args["server_url"]):
