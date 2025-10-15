@@ -9,7 +9,8 @@ from models import App, AppMode
 
 P = ParamSpec("P")
 R = TypeVar("R")
-
+P1 = ParamSpec("P1")
+R1 = TypeVar("R1")
 
 def _load_app_model(app_id: str) -> App | None:
     _, current_tenant_id = current_account_with_tenant()
@@ -22,9 +23,9 @@ def _load_app_model(app_id: str) -> App | None:
 
 
 def get_app_model(view: Callable[P, R] | None = None, *, mode: Union[AppMode, list[AppMode], None] = None):
-    def decorator(view_func: Callable[P, R]):
+    def decorator(view_func: Callable[P1, R1]):
         @wraps(view_func)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs):
+        def decorated_view(*args: P1.args, **kwargs: P1.kwargs):
             if not kwargs.get("app_id"):
                 raise ValueError("missing app_id in path parameters")
 

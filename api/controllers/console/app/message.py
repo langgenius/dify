@@ -298,12 +298,12 @@ class MessageApi(Resource):
     @api.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
     @api.response(200, "Message retrieved successfully", message_detail_fields)
     @api.response(404, "Message not found")
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     @marshal_with(message_detail_fields)
-    def get(self, app_model, message_id):
+    def get(self, app_model, message_id: str):
         message_id = str(message_id)
 
         message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()
