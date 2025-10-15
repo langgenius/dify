@@ -218,6 +218,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
   defaultValue: {
     plugin_id: '',
     event_name: '',
+    event_parameters: {},
     // event_type: '',
     config: {},
   },
