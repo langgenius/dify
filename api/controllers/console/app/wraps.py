@@ -12,6 +12,7 @@ R = TypeVar("R")
 P1 = ParamSpec("P1")
 R1 = TypeVar("R1")
 
+
 def _load_app_model(app_id: str) -> App | None:
     _, current_tenant_id = current_account_with_tenant()
     app_model = (
