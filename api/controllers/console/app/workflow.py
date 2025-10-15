@@ -148,9 +148,6 @@ class DraftWorkflowApi(Resource):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
-
-        current_user, _ = current_account_with_tenant()
-
         workflow_service = WorkflowService()
 
         try:
