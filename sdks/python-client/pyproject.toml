@@ -1,0 +1,43 @@
+[project]
+name = "dify-client"
+version = "0.1.12"
+description = "A package for interacting with the Dify Service-API"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.27.0",
+    "aiofiles>=23.0.0",
+]
+authors = [
+    {name = "Dify", email = "hello@dify.ai"}
+]
+license = {text = "MIT"}
+keywords = ["dify", "nlp", "ai", "language-processing"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/langgenius/dify"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["dify_client"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"

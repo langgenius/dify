@@ -94,6 +94,8 @@ const translation = {
     documents: '{{count,number}} Documents de connaissance',
     documentsRequestQuotaTooltip: 'Spécifie le nombre total d\'actions qu\'un espace de travail peut effectuer par minute dans la base de connaissances, y compris la création, la suppression, les mises à jour de jeux de données, le téléchargement de documents, les modifications, l\'archivage et les requêtes de la base de connaissances. Ce paramètre est utilisé pour évaluer les performances des requêtes de la base de connaissances. Par exemple, si un utilisateur de Sandbox effectue 10 tests de validité consécutifs en une minute, son espace de travail sera temporairement restreint dans l\'exécution des actions suivantes pendant la minute suivante : création, suppression, mises à jour de jeux de données, et téléchargements ou modifications de documents.',
     startBuilding: 'Commencez à construire',
+    taxTip: 'Tous les prix des abonnements (mensuels/annuels) s\'entendent hors taxes applicables (par exemple, TVA, taxe de vente).',
+    taxTipSecond: 'Si votre région n\'a pas de exigences fiscales applicables, aucune taxe n\'apparaîtra lors de votre paiement et vous ne serez pas facturé de frais supplémentaires pendant toute la durée de l\'abonnement.',
   },
   plans: {
     sandbox: {

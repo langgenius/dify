@@ -61,9 +61,6 @@ class AppRunner:
         if model_context_tokens is None:
             return -1
 
-        if max_tokens is None:
-            max_tokens = 0
-
         prompt_tokens = model_instance.get_llm_num_tokens(prompt_messages)
 
         if prompt_tokens + max_tokens > model_context_tokens:
