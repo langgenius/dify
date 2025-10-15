@@ -6,6 +6,8 @@ from zoneinfo import ZoneInfo
 from celery import shared_task
 from sqlalchemy.orm import sessionmaker
 
+from core.trigger.debug.event_bus import TriggerDebugEventBus
+from core.trigger.debug.events import ScheduleDebugEvent
 from core.workflow.nodes.trigger_schedule.exc import (
     ScheduleExecutionError,
     ScheduleNotFoundError,
@@ -16,7 +18,6 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowSchedulePlan
 from services.async_workflow_service import AsyncWorkflowService
 from services.trigger.schedule_service import ScheduleService
-from services.trigger.trigger_debug_service import ScheduleDebugEvent, TriggerDebugService
 from services.workflow.entities import TriggerData
 
 logger = logging.getLogger(__name__)
@@ -78,7 +79,7 @@ def run_schedule_trigger(schedule_id: str) -> None:
                     app_id=schedule.app_id,
                     node_id=schedule.node_id,
                 )
-                dispatched_count = TriggerDebugService.dispatch(
+                dispatched_count = TriggerDebugEventBus.dispatch(
                     tenant_id=schedule.tenant_id,
                     event=event,
                     pool_key=pool_key,

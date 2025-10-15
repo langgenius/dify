@@ -10,6 +10,8 @@ import logging
 from celery import shared_task
 from sqlalchemy.orm import Session
 
+from core.trigger.debug.event_bus import TriggerDebugEventBus
+from core.trigger.debug.events import PluginTriggerDebugEvent
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import (
@@ -20,7 +22,6 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
-from services.trigger.trigger_debug_service import PluginTriggerDebugEvent, TriggerDebugService
 from services.trigger.trigger_service import TriggerService
 from services.workflow.entities import PluginTriggerDispatchData
 
@@ -152,7 +153,7 @@ def dispatch_triggered_workflows_async(
                         timestamp=timestamp,
                         name=event_name,
                     )
-                    debug_dispatched += TriggerDebugService.dispatch(
+                    debug_dispatched += TriggerDebugEventBus.dispatch(
                         tenant_id=subscription.tenant_id,
                         event=event,
                         pool_key=pool_key,

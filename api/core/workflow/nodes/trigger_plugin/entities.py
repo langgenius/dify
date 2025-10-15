@@ -6,7 +6,7 @@ from core.workflow.enums import ErrorStrategy
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 
 
-class PluginTriggerData(BaseNodeData):
+class PluginTriggerNodeData(BaseNodeData):
     """Plugin trigger node data"""
 
     title: str

@@ -17,6 +17,7 @@ from core.trigger.entities.entities import (
     Subscription,
     SubscriptionBuilder,
     SubscriptionBuilderUpdater,
+    SubscriptionConstructor,
 )
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
@@ -183,7 +184,7 @@ class TriggerSubscriptionBuilderService:
         if not provider_controller:
             raise ValueError(f"Provider {provider_id} not found")
 
-        subscription_constructor = provider_controller.get_subscription_constructor()
+        subscription_constructor: SubscriptionConstructor | None = provider_controller.get_subscription_constructor()
         subscription_id = str(uuid.uuid4())
         subscription_builder = SubscriptionBuilder(
             id=subscription_id,

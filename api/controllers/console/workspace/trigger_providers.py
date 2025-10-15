@@ -19,8 +19,8 @@ from models.account import Account
 from models.provider_ids import TriggerProviderID
 from services.plugin.oauth_service import OAuthProxyService
 from services.trigger.trigger_provider_service import TriggerProviderService
+from services.trigger.trigger_service import TriggerService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
-from services.trigger.workflow_plugin_trigger_service import WorkflowPluginTriggerService
 
 logger = logging.getLogger(__name__)
 
@@ -279,7 +279,7 @@ class TriggerSubscriptionDeleteApi(Resource):
                     subscription_id=subscription_id,
                 )
                 # Delete plugin triggers
-                WorkflowPluginTriggerService.delete_plugin_trigger_by_subscription(
+                TriggerService.delete_plugin_trigger_by_subscription(
                     session=session,
                     tenant_id=user.current_tenant_id,
                     subscription_id=subscription_id,

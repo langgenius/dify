@@ -264,7 +264,7 @@ const useOneStepRun = <T>({
   }, [])
 
   const runWebhookSingleRun = useCallback(async (): Promise<any | null> => {
-    const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/debug/webhook/run`
+    const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
     const urlWithPrefix = `${API_PREFIX}${urlPath.startsWith('/') ? urlPath : `/${urlPath}`}`
 
     webhookSingleRunActiveRef.current = true
@@ -364,7 +364,7 @@ const useOneStepRun = <T>({
   }, [flowId, id, data, handleNodeDataUpdate, cancelWebhookSingleRun])
 
   const runPluginSingleRun = useCallback(async (): Promise<any | null> => {
-    const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger`
+    const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
     const urlWithPrefix = `${API_PREFIX}${urlPath.startsWith('/') ? urlPath : `/${urlPath}`}`
 
     webhookSingleRunActiveRef.current = true

@@ -170,21 +170,7 @@ export const useWorkflowRun = () => {
     const isInWorkflowDebug = appDetail?.mode === 'workflow'
 
     let url = ''
-    if (runMode === 'schedule') {
-      if (!appDetail?.id) {
-        console.error('handleRun: missing app id for schedule trigger run')
-        return
-      }
-      url = `/apps/${appDetail.id}/workflows/draft/trigger/schedule/run`
-    }
-    else if (runMode === 'webhook') {
-      if (!appDetail?.id) {
-        console.error('handleRun: missing app id for webhook trigger run')
-        return
-      }
-      url = `/apps/${appDetail.id}/workflows/draft/trigger/webhook/run`
-    }
-    else if (runMode === 'plugin') {
+    if (runMode === 'plugin' || runMode === 'webhook' || runMode === 'schedule') {
       if (!appDetail?.id) {
         console.error('handleRun: missing app id for trigger plugin run')
         return

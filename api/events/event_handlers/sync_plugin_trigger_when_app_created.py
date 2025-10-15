@@ -3,7 +3,7 @@ import logging
 from events.app_event import app_draft_workflow_was_synced
 from models.model import App, AppMode
 from models.workflow import Workflow
-from services.trigger.workflow_plugin_trigger_service import WorkflowPluginTriggerService
+from services.trigger.trigger_service import TriggerService
 
 logger = logging.getLogger(__name__)
 
@@ -19,4 +19,4 @@ def handle(sender, synced_draft_workflow: Workflow, **kwargs):
         # only handle workflow app, chatflow is not supported yet
         return
 
-    WorkflowPluginTriggerService.sync_plugin_trigger_relationships(app, synced_draft_workflow)
+    TriggerService.sync_plugin_trigger_relationships(app, synced_draft_workflow)

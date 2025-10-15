@@ -8,19 +8,19 @@ from threading import Lock
 from typing import Any
 
 from flask import Request
-from yarl import URL
 
 import contexts
 from configs import dify_config
-from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonError, PluginTriggerProviderEntity
+from core.plugin.entities.plugin_daemon import CredentialType, PluginTriggerProviderEntity
 from core.plugin.entities.request import TriggerInvokeEventResponse
-from core.plugin.impl.exc import PluginInvokeError
+from core.plugin.impl.exc import PluginDaemonError, PluginInvokeError
 from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.entities import (
     EventEntity,
     Subscription,
     Unsubscription,
 )
+from core.trigger.errors import TriggerPluginInvokeError
 from core.trigger.provider import PluginTriggerProviderController
 from models.provider_ids import TriggerProviderID
 
@@ -41,16 +41,9 @@ class TriggerManager:
         provider: PluginTriggerProviderEntity = manager.fetch_trigger_provider(
             tenant_id=tenant_id, provider_id=TriggerProviderID(provider_id)
         )
-        return str(
-            URL(dify_config.CONSOLE_API_URL or "/")
-            / "console"
-            / "api"
-            / "workspaces"
-            / "current"
-            / "plugin"
-            / "icon"
-            % {"tenant_id": tenant_id, "filename": provider.declaration.identity.icon}
-        )
+        filename = provider.declaration.identity.icon
+        base_url = f"{dify_config.CONSOLE_API_URL}/console/api/workspaces/current/plugin/icon"
+        return f"{base_url}?tenant_id={tenant_id}&filename={filename}"
 
     @classmethod
     def list_plugin_trigger_providers(cls, tenant_id: str) -> list[PluginTriggerProviderController]:
@@ -194,9 +187,8 @@ class TriggerManager:
         except PluginInvokeError as e:
             if e.get_error_type() == "TriggerIgnoreEventError":
                 return TriggerInvokeEventResponse(variables={}, cancelled=True)
-            else:
-                logger.exception("Failed to invoke trigger event")
-            raise
+            logger.exception("Failed to invoke trigger event")
+            raise TriggerPluginInvokeError(description=e.get_error_message()) from e
 
     @classmethod
     def subscribe_trigger(

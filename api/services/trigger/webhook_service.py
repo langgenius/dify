@@ -13,7 +13,6 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
 from core.file.models import FileTransferMethod
-from core.helper.trace_id_helper import get_external_trace_id
 from core.tools.tool_file_manager import ToolFileManager
 from core.variables.types import SegmentType
 from core.workflow.enums import NodeType
@@ -25,7 +24,6 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.model import App
 from models.workflow import AppTrigger, AppTriggerStatus, AppTriggerType, Workflow, WorkflowWebhookTrigger
 from services.async_workflow_service import AsyncWorkflowService
-from services.trigger.trigger_debug_service import TriggerDebugService, WebhookDebugEvent
 from services.workflow.entities import TriggerData
 
 logger = logging.getLogger(__name__)
@@ -36,53 +34,6 @@ class WebhookService:
 
     __WEBHOOK_NODE_CACHE_KEY__ = "webhook_nodes"
     MAX_WEBHOOK_NODES_PER_WORKFLOW = 5  # Maximum allowed webhook nodes per workflow
-
-    @classmethod
-    def build_workflow_args(cls, event: WebhookDebugEvent) -> Mapping[str, Any]:
-        """Build workflow args from webhook debug event."""
-        payload = event.payload or {}
-        workflow_inputs = payload.get("inputs")
-        if workflow_inputs is None:
-            webhook_data = payload.get("webhook_data", {})
-            workflow_inputs = WebhookService.build_workflow_inputs(webhook_data)
-
-        workflow_args = {
-            "inputs": workflow_inputs or {},
-            "query": "",
-            "files": [],
-        }
-
-        external_trace_id = get_external_trace_id(request)
-        if external_trace_id:
-            workflow_args["external_trace_id"] = external_trace_id
-
-        return workflow_args
-
-    @classmethod
-    def poll_debug_event(cls, app_model: App, user_id: str, node_id: str) -> WebhookDebugEvent | None:
-        """Poll webhook debug event for a given node ID.
-
-        Args:
-            app_model: The app model
-            user_id: The user ID
-            node_id: The node ID to poll for
-
-        Returns:
-            WebhookDebugEvent | None: The webhook debug event if available, None otherwise
-        """
-        pool_key = WebhookDebugEvent.build_pool_key(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            node_id=node_id,
-        )
-        return TriggerDebugService.poll(
-            event_type=WebhookDebugEvent,
-            pool_key=pool_key,
-            tenant_id=app_model.tenant_id,
-            user_id=user_id,
-            app_id=app_model.id,
-            node_id=node_id,
-        )
 
     @classmethod
     def get_webhook_trigger_and_workflow(

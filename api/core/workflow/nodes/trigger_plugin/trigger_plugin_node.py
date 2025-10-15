@@ -7,17 +7,17 @@ from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 
-from .entities import PluginTriggerData
+from .entities import PluginTriggerNodeData
 
 
 class TriggerPluginNode(Node):
     node_type = NodeType.TRIGGER_PLUGIN
     execution_type = NodeExecutionType.ROOT
 
-    _node_data: PluginTriggerData
+    _node_data: PluginTriggerNodeData
 
     def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self._node_data = PluginTriggerData.model_validate(data)
+        self._node_data = PluginTriggerNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> Optional[ErrorStrategy]:
         return self._node_data.error_strategy

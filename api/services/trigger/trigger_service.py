@@ -4,21 +4,24 @@ import uuid
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from flask import Request, Response, request
+from flask import Request, Response
+from pydantic import BaseModel
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from core.helper.trace_id_helper import get_external_trace_id
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse, TriggerInvokeEventResponse
 from core.plugin.utils.http_parser import deserialize_request, serialize_request
+from core.trigger.debug.events import PluginTriggerDebugEvent
 from core.trigger.entities.entities import EventEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import create_trigger_provider_encrypter_for_subscription
 from core.workflow.enums import NodeType
+from core.workflow.nodes.trigger_plugin.entities import PluginTriggerNodeData
 from core.workflow.nodes.trigger_schedule.exc import TenantOwnerNotFoundError
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
@@ -27,10 +30,8 @@ from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
 from models.workflow import AppTrigger, AppTriggerStatus, Workflow, WorkflowPluginTrigger
 from services.async_workflow_service import AsyncWorkflowService
-from services.trigger.trigger_debug_service import PluginTriggerDebugEvent, TriggerDebugService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.workflow.entities import PluginTriggerData, PluginTriggerDispatchData
-from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,8 @@ class TriggerService:
     __TEMPORARY_ENDPOINT_EXPIRE_MS__ = 5 * 60 * 1000
     __ENDPOINT_REQUEST_CACHE_COUNT__ = 10
     __ENDPOINT_REQUEST_CACHE_EXPIRE_MS__ = 5 * 60 * 1000
+    __PLUGIN_TRIGGER_NODE_CACHE_KEY__ = "plugin_trigger_nodes"
+    MAX_PLUGIN_TRIGGER_NODES_PER_WORKFLOW = 5  # Maximum allowed plugin trigger nodes per workflow
 
     @classmethod
     def invoke_trigger_event(
@@ -51,9 +54,7 @@ class TriggerService:
         )
         if not subscription:
             raise ValueError("Subscription not found")
-        node_data = node_config.get("data")
-        if not node_data:
-            raise ValueError("Node data not found")
+        node_data: PluginTriggerNodeData = PluginTriggerNodeData.model_validate(node_config.get("data", {}))
         request = deserialize_request(storage.load_once(f"triggers/{event.request_id}"))
         if not request:
             raise ValueError("Request not found")
@@ -63,62 +64,11 @@ class TriggerService:
             user_id=user_id,
             provider_id=TriggerProviderID(event.provider_id),
             event_name=event.name,
-            parameters=node_data.get("parameters", {}),
+            parameters=node_data.parameters,
             credentials=subscription.credentials,
             credential_type=CredentialType.of(subscription.credential_type),
             subscription=subscription.to_entity(),
             request=request,
-        )
-
-    @classmethod
-    def build_workflow_args(cls, event: PluginTriggerDebugEvent) -> Mapping[str, Any]:
-        """Build workflow args from plugin trigger debug event."""
-        workflow_args = {
-            "inputs": event.model_dump(),
-            "query": "",
-            "files": [],
-        }
-        external_trace_id = get_external_trace_id(request)
-        if external_trace_id:
-            workflow_args["external_trace_id"] = external_trace_id
-
-        return workflow_args
-
-    @classmethod
-    def poll_debug_event(cls, app_model: App, user_id: str, node_id: str) -> PluginTriggerDebugEvent | None:
-        """Poll webhook debug event for a given node ID."""
-        workflow_service = WorkflowService()
-        workflow: Workflow | None = workflow_service.get_draft_workflow(
-            app_model=app_model,
-            workflow_id=None,
-        )
-
-        if not workflow:
-            raise ValueError("Workflow not found")
-
-        node_data = workflow.get_node_config_by_id(node_id=node_id).get("data")
-        if not node_data:
-            raise ValueError("Node config not found")
-
-        event_name = node_data.get("event_name")
-        subscription_id = node_data.get("subscription_id")
-        if not subscription_id:
-            raise ValueError("Subscription ID not found")
-
-        provider_id = TriggerProviderID(node_data.get("provider_id"))
-        pool_key: str = PluginTriggerDebugEvent.build_pool_key(
-            name=event_name,
-            provider_id=provider_id,
-            tenant_id=app_model.tenant_id,
-            subscription_id=subscription_id,
-        )
-        return TriggerDebugService.poll(
-            event_type=PluginTriggerDebugEvent,
-            pool_key=pool_key,
-            tenant_id=app_model.tenant_id,
-            user_id=user_id,
-            app_id=app_model.id,
-            node_id=node_id,
         )
 
     @classmethod
@@ -208,12 +158,13 @@ class TriggerService:
                     continue
 
                 # invoke triger
+                node_data: PluginTriggerNodeData = PluginTriggerNodeData.model_validate(event_node.get("data", {}))
                 invoke_response: TriggerInvokeEventResponse = TriggerManager.invoke_trigger_event(
                     tenant_id=subscription.tenant_id,
                     user_id=subscription.user_id,
                     provider_id=TriggerProviderID(subscription.provider_id),
                     event_name=event.identity.name,
-                    parameters=event_node.get("config", {}).get("parameters", {}),
+                    parameters=node_data.parameters,
                     credentials=subscription.credentials,
                     credential_type=CredentialType.of(subscription.credential_type),
                     subscription=subscription.to_entity(),
@@ -348,3 +299,191 @@ class TriggerService:
                 )
             ).all()
             return list(subscribers)
+
+    @classmethod
+    def delete_plugin_trigger_by_subscription(
+        cls,
+        session: Session,
+        tenant_id: str,
+        subscription_id: str,
+    ) -> None:
+        """Delete a plugin trigger by tenant_id and subscription_id within an existing session
+
+        Args:
+            session: Database session
+            tenant_id: The tenant ID
+            subscription_id: The subscription ID
+
+        Raises:
+            NotFound: If plugin trigger not found
+        """
+        # Find plugin trigger using indexed columns
+        plugin_trigger = session.scalar(
+            select(WorkflowPluginTrigger).where(
+                WorkflowPluginTrigger.tenant_id == tenant_id,
+                WorkflowPluginTrigger.subscription_id == subscription_id,
+            )
+        )
+
+        if not plugin_trigger:
+            return
+
+        session.delete(plugin_trigger)
+
+    @classmethod
+    def sync_plugin_trigger_relationships(cls, app: App, workflow: Workflow):
+        """
+        Sync plugin trigger relationships in DB.
+
+        1. Check if the workflow has any plugin trigger nodes
+        2. Fetch the nodes from DB, see if there were any plugin trigger records already
+        3. Diff the nodes and the plugin trigger records, create/update/delete the records as needed
+
+        Approach:
+        Frequent DB operations may cause performance issues, using Redis to cache it instead.
+        If any record exists, cache it.
+
+        Limits:
+        - Maximum 5 plugin trigger nodes per workflow
+        """
+
+        class Cache(BaseModel):
+            """
+            Cache model for plugin trigger nodes
+            """
+
+            record_id: str
+            node_id: str
+            provider_id: str
+            event_name: str
+            subscription_id: str
+
+        # Walk nodes to find plugin triggers
+        nodes_in_graph = []
+        for node_id, node_config in workflow.walk_nodes(NodeType.TRIGGER_PLUGIN):
+            # Extract plugin trigger configuration from node
+            plugin_id = node_config.get("plugin_id", "")
+            provider_id = node_config.get("provider_id", "")
+            event_name = node_config.get("event_name", "")
+            subscription_id = node_config.get("subscription_id", "")
+
+            if not subscription_id:
+                continue
+
+            nodes_in_graph.append(
+                {
+                    "node_id": node_id,
+                    "plugin_id": plugin_id,
+                    "provider_id": provider_id,
+                    "event_name": event_name,
+                    "subscription_id": subscription_id,
+                }
+            )
+
+        # Check plugin trigger node limit
+        if len(nodes_in_graph) > cls.MAX_PLUGIN_TRIGGER_NODES_PER_WORKFLOW:
+            raise ValueError(
+                f"Workflow exceeds maximum plugin trigger node limit. "
+                f"Found {len(nodes_in_graph)} plugin trigger nodes, "
+                f"maximum allowed is {cls.MAX_PLUGIN_TRIGGER_NODES_PER_WORKFLOW}"
+            )
+
+        not_found_in_cache: list[dict] = []
+        for node_info in nodes_in_graph:
+            node_id = node_info["node_id"]
+            # firstly check if the node exists in cache
+            if not redis_client.get(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{node_id}"):
+                not_found_in_cache.append(node_info)
+                continue
+
+        with Session(db.engine) as session:
+            try:
+                # lock the concurrent plugin trigger creation
+                redis_client.lock(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:apps:{app.id}:lock", timeout=10)
+                # fetch the non-cached nodes from DB
+                all_records = session.scalars(
+                    select(WorkflowPluginTrigger).where(
+                        WorkflowPluginTrigger.app_id == app.id,
+                        WorkflowPluginTrigger.tenant_id == app.tenant_id,
+                    )
+                ).all()
+
+                nodes_id_in_db = {node.node_id: node for node in all_records}
+                nodes_id_in_graph = {node["node_id"] for node in nodes_in_graph}
+
+                # get the nodes not found both in cache and DB
+                nodes_not_found = [
+                    node_info for node_info in not_found_in_cache if node_info["node_id"] not in nodes_id_in_db
+                ]
+
+                # create new plugin trigger records
+                for node_info in nodes_not_found:
+                    plugin_trigger = WorkflowPluginTrigger(
+                        app_id=app.id,
+                        tenant_id=app.tenant_id,
+                        node_id=node_info["node_id"],
+                        provider_id=node_info["provider_id"],
+                        event_name=node_info["event_name"],
+                        subscription_id=node_info["subscription_id"],
+                    )
+                    session.add(plugin_trigger)
+                    session.flush()  # Get the ID for caching
+
+                    cache = Cache(
+                        record_id=plugin_trigger.id,
+                        node_id=node_info["node_id"],
+                        provider_id=node_info["provider_id"],
+                        event_name=node_info["event_name"],
+                        subscription_id=node_info["subscription_id"],
+                    )
+                    redis_client.set(
+                        f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{node_info['node_id']}",
+                        cache.model_dump_json(),
+                        ex=60 * 60,
+                    )
+                session.commit()
+
+                # Update existing records if subscription_id changed
+                for node_info in nodes_in_graph:
+                    node_id = node_info["node_id"]
+                    if node_id in nodes_id_in_db:
+                        existing_record = nodes_id_in_db[node_id]
+                        if (
+                            existing_record.subscription_id != node_info["subscription_id"]
+                            or existing_record.provider_id != node_info["provider_id"]
+                            or existing_record.event_name != node_info["event_name"]
+                        ):
+                            existing_record.subscription_id = node_info["subscription_id"]
+                            existing_record.provider_id = node_info["provider_id"]
+                            existing_record.event_name = node_info["event_name"]
+                            session.add(existing_record)
+
+                            # Update cache
+                            cache = Cache(
+                                record_id=existing_record.id,
+                                node_id=node_id,
+                                provider_id=node_info["provider_id"],
+                                event_name=node_info["event_name"],
+                                subscription_id=node_info["subscription_id"],
+                            )
+                            redis_client.set(
+                                f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{node_id}",
+                                cache.model_dump_json(),
+                                ex=60 * 60,
+                            )
+                session.commit()
+
+                # delete the nodes not found in the graph
+                for node_id in nodes_id_in_db:
+                    if node_id not in nodes_id_in_graph:
+                        session.delete(nodes_id_in_db[node_id])
+                        redis_client.delete(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{node_id}")
+                session.commit()
+            except Exception:
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.exception("Failed to sync plugin trigger relationships for app %s", app.id)
+                raise
+            finally:
+                redis_client.delete(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:apps:{app.id}:lock")

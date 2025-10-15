@@ -5,7 +5,8 @@ from flask import jsonify
 from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 
 from controllers.trigger import bp
-from services.trigger.trigger_debug_service import TriggerDebugService, WebhookDebugEvent
+from core.trigger.debug.event_bus import TriggerDebugEventBus
+from core.trigger.debug.events import WebhookDebugEvent
 from services.trigger.webhook_service import WebhookService
 
 logger = logging.getLogger(__name__)
@@ -87,7 +88,7 @@ def handle_webhook_debug(webhook_id: str):
                 "method": webhook_data.get("method"),
             },
         )
-        TriggerDebugService.dispatch(
+        TriggerDebugEventBus.dispatch(
             tenant_id=webhook_trigger.tenant_id,
             event=event,
             pool_key=pool_key,

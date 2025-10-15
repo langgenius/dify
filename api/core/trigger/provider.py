@@ -146,7 +146,7 @@ class PluginTriggerProviderController:
         """
         return {prop.name: prop.default for prop in self.entity.subscription_schema if prop.default}
 
-    def get_subscription_constructor(self) -> SubscriptionConstructor:
+    def get_subscription_constructor(self) -> SubscriptionConstructor | None:
         """
         Get subscription constructor for this provider
 
@@ -162,7 +162,10 @@ class PluginTriggerProviderController:
         :return: Validation response
         """
         # First validate against schema
-        for config in self.entity.subscription_constructor.credentials_schema or []:
+        subscription_constructor: SubscriptionConstructor | None = self.entity.subscription_constructor
+        if not subscription_constructor:
+            raise ValueError("Subscription constructor not found")
+        for config in subscription_constructor.credentials_schema or []:
             if config.required and config.name not in credentials:
                 raise TriggerProviderCredentialValidationError(f"Missing required credential field: {config.name}")
 
@@ -202,6 +205,8 @@ class PluginTriggerProviderController:
         :return: List of provider config schemas
         """
         subscription_constructor = self.entity.subscription_constructor
+        if not subscription_constructor:
+            raise ValueError("Subscription constructor not found")
         credential_type = CredentialType.of(credential_type) if isinstance(credential_type, str) else credential_type
         if credential_type == CredentialType.OAUTH2:
             return (
