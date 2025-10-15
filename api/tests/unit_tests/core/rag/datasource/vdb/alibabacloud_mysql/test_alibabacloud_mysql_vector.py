@@ -122,7 +122,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
                 database="test",
                 max_connection=5,
             )
-        
+
         # Test invalid port
         with pytest.raises(ValueError):
             AlibabaCloudMySQLVectorConfig(
@@ -133,7 +133,7 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
                 database="test",
                 max_connection=5,
             )
-        
+
         # Test invalid max_connection
         with pytest.raises(ValueError):
             AlibabaCloudMySQLVectorConfig(
