@@ -87,15 +87,24 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   }
 
   return (
-    <div className={cn('my-2 min-w-[72px] shrink-0 rounded-xl border-[0.5px] pb-2.5 pl-4 pr-2.5 pt-3 shadow-xs', credits <= 0 ? 'border-state-destructive-border hover:bg-state-destructive-hover' : 'border-components-panel-border bg-third-party-model-bg-default')}>
-      <div className='system-xs-medium-uppercase mb-2 flex h-4 items-center text-text-tertiary'>
+    <div
+      className={cn('my-2 min-w-[72px] shrink-0 rounded-xl border-[0.5px] pb-2.5 pl-4 pr-2.5 pt-3 shadow-xs', credits <= 0 ? 'border-state-destructive-border bg-state-destructive-hover' : 'border-components-panel-border bg-third-party-model-bg-default')}
+      style={{
+        backgroundImage: 'url(\'/images/grid-xs.svg\')',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'repeat',
+      }}
+    >
+
+      <div className='system-xs-medium-uppercase mb-0.5 flex h-4 items-center text-text-tertiary'>
         {t('common.modelProvider.quota')}
         <Tooltip popupContent={t('common.modelProvider.card.tip')}
         />
       </div>
       <div className='flex items-center justify-between'>
-        <div className='flex items-center gap-1 text-xs text-text-tertiary'>
-          <span className='system-md-semibold-uppercase mr-0.5 text-text-secondary'>{formatNumber(credits)}</span>
+        <div className='system-xs-regular flex items-center gap-1 text-text-tertiary'>
+          <span className='system-xl-semibold mr-0.5 text-text-secondary'>{formatNumber(credits)}</span>
           <span>{t('common.modelProvider.credits')}</span>
           {currentWorkspace.next_credit_reset_date ? (
             <>
@@ -138,6 +147,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
         />
       )}
     </div>
+
   )
 }
 
