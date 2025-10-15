@@ -199,13 +199,13 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
           onMouseLeave={handleMouseLeave}
         >
           <div
-            className={'relative h-10 overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full'}
+            className={'relative h-10 rounded-br-full rounded-tl-full rounded-tr-full'}
             style={{ width: dynamicWidth }}
           >
-            <div className={`absolute inset-[6px] overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full border ${
+            <div className={`absolute inset-[6px] overflow-hidden rounded-br-full rounded-tl-full rounded-tr-full border bg-components-panel-bg transition-shadow ${
               isActive
-                ? 'border-2 border-primary-500 bg-components-panel-bg'
-                : 'border-components-panel-border bg-components-panel-bg'
+                ? 'border-primary-500 ring-1 ring-primary-500'
+                : 'border-components-panel-border'
             }`}>
               <div className="flex h-full w-full items-center justify-center px-1">
                 <UserAvatarList
