@@ -115,8 +115,7 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay }) => {
         <img
           src={banner.content['img-src']}
           alt={banner.content.title}
-          className="h-full rounded-xl object-cover"
-          style={{ aspectRatio: '4/3' }}
+          className="aspect-[4/3] h-full rounded-xl object-cover"
         />
       </div>
     </div>
