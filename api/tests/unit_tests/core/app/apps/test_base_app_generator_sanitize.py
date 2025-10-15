@@ -52,7 +52,7 @@ class TestSanitizeValue:
         result = self.generator._sanitize_value(input_with_null)
         
         assert "\x00" not in result
-        assert "HelloWorld" in result or "Hello" in result
+        assert result == "HelloWorld"
 
     def test_sanitize_control_characters(self):
         """Test that control characters are removed (except newline and tab)"""
