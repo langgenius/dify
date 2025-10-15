@@ -248,8 +248,8 @@ class TestRedisChannel:
         fetch_pipe.lrange.assert_called_with("test:key", 0, -1)
         fetch_pipe.delete.assert_called_with("test:key")
 
-    def test_fetch_commands_with_legacy_pending(self):
-        """Ensure we still fetch commands if pending flag is missing but list has data."""
+    def test_fetch_commands_without_pending_marker_returns_empty(self):
+        """Ensure we avoid unnecessary list reads when pending flag is missing."""
         mock_redis = MagicMock()
         pending_pipe = MagicMock()
         fetch_pipe = MagicMock()
@@ -263,14 +263,9 @@ class TestRedisChannel:
 
         # Pending flag absent
         pending_pipe.execute.return_value = [None, 0]
-        mock_redis.llen.return_value = 1
-
-        command = AbortCommand()
-        command_json = json.dumps(command.model_dump())
-        fetch_pipe.execute.return_value = [[command_json.encode()], 1]
-
         channel = RedisChannel(mock_redis, "test:key")
         commands = channel.fetch_commands()
 
-        assert len(commands) == 1
-        mock_redis.llen.assert_called_once_with("test:key")
+        assert commands == []
+        mock_redis.llen.assert_not_called()
+        assert mock_redis.pipeline.call_count == 1

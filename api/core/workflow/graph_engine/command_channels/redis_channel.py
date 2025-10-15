@@ -130,8 +130,4 @@ class RedisChannel:
             pipe.delete(self._pending_key)
             pending_value, _ = pipe.execute()
 
-        if pending_value is not None:
-            return True
-
-        # Fallback check for legacy data without a pending marker
-        return bool(self._redis.llen(self._key))
+        return pending_value is not None
