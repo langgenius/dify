@@ -67,11 +67,10 @@ const OnlineUsers = () => {
     const isCurrentUser = user.user_id === currentUserId
 
     return (
-      <span className={baseClassName}>
-        {baseName}
+      <span className={cn('inline-flex items-center gap-1', baseClassName)}>
+        <span>{baseName}</span>
         {isCurrentUser && (
           <span className={suffixClassName}>
-            {' '}
             (You)
           </span>
         )}
@@ -122,6 +121,8 @@ const OnlineUsers = () => {
                 triggerMethod="hover"
                 needsDelay={false}
                 asChild
+                popupClassName="flex h-[28px] w-[85px] items-center justify-center gap-1 rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-3 py-[6px] shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]"
+                noDecoration
               >
                 <div
                   className={cn(
@@ -147,18 +148,21 @@ const OnlineUsers = () => {
               open={dropdownOpen}
               onOpenChange={setDropdownOpen}
               placement="bottom-start"
+              offset={{
+                mainAxis: 8,
+                crossAxis: -48,
+              }}
             >
               <PortalToFollowElemTrigger
-                onMouseEnter={() => setDropdownOpen(true)}
-                onMouseLeave={() => setDropdownOpen(false)}
+                onClick={() => setDropdownOpen(prev => !prev)}
                 asChild
               >
                 <div className="flex items-center">
                   <div
                     className={cn(
                       'flex h-7 w-7 items-center justify-center',
-                      'cursor-pointer rounded-full bg-gray-300',
-                      'text-xs font-medium text-gray-700',
+                      'cursor-pointer rounded-full bg-gray-200',
+                      'system-xs-medium text-gray-700',
                       'ring-2 ring-components-panel-bg',
                     )}
                   >
@@ -168,11 +172,9 @@ const OnlineUsers = () => {
                 </div>
               </PortalToFollowElemTrigger>
               <PortalToFollowElemContent
-                onMouseEnter={() => setDropdownOpen(true)}
-                onMouseLeave={() => setDropdownOpen(false)}
                 className="z-[9999]"
               >
-                <div className="mt-2 min-w-[200px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
+                <div className="mt-1.5 flex max-h-[200px] w-[240px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]">
                   {onlineUsers.map((user) => {
                     const isCurrentUser = user.user_id === currentUserId
                     const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
@@ -180,10 +182,15 @@ const OnlineUsers = () => {
                       <div
                         key={user.sid}
                         className={cn(
-                          'flex items-center gap-2 rounded-lg px-3 py-2',
+                          'flex items-center gap-2 rounded-lg px-3 py-1.5',
                           !isCurrentUser && 'cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover',
                         )}
-                        onClick={() => !isCurrentUser && jumpToUserCursor(user.user_id)}
+                        onClick={() => {
+                          if (!isCurrentUser) {
+                            jumpToUserCursor(user.user_id)
+                            setDropdownOpen(false)
+                          }
+                        }}
                       >
                         <div className="relative">
                           <Avatar
