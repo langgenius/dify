@@ -24,11 +24,11 @@ class AppMCPServerController(Resource):
     @api.doc(description="Get MCP server configuration for an application")
     @api.doc(params={"app_id": "Application ID"})
     @api.response(200, "MCP server configuration retrieved successfully", app_server_fields)
-    @get_app_model
-    @setup_required
-    @marshal_with(app_server_fields)
     @login_required
     @account_initialization_required
+    @setup_required
+    @get_app_model
+    @marshal_with(app_server_fields)
     def get(self, app_model):
         server = db.session.query(AppMCPServer).where(AppMCPServer.app_id == app_model.id).first()
         return server

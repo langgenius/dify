@@ -56,11 +56,11 @@ class ChatMessageListApi(Resource):
     )
     @api.response(200, "Success", message_infinite_scroll_pagination_fields)
     @api.response(404, "Conversation not found")
+    @login_required
+    @account_initialization_required
+    @setup_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(message_infinite_scroll_pagination_fields)
-    @setup_required
-    @account_initialization_required
-    @login_required
     @edit_permission_required
     def get(self, app_model):
         parser = reqparse.RequestParser()
