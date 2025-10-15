@@ -2,11 +2,10 @@ import inspect
 import json
 import logging
 from collections.abc import Callable, Generator
-from typing import TypeVar
+from typing import Any, TypeVar, cast
 
-import requests
+import httpx
 from pydantic import BaseModel
-from requests.exceptions import HTTPError
 from yarl import URL
 
 from configs import dify_config
@@ -32,6 +31,17 @@ from core.plugin.impl.exc import (
 )
 
 plugin_daemon_inner_api_baseurl = URL(str(dify_config.PLUGIN_DAEMON_URL))
+_plugin_daemon_timeout_config = cast(
+    float | httpx.Timeout | None,
+    getattr(dify_config, "PLUGIN_DAEMON_TIMEOUT", 300.0),
+)
+plugin_daemon_request_timeout: httpx.Timeout | None
+if _plugin_daemon_timeout_config is None:
+    plugin_daemon_request_timeout = None
+elif isinstance(_plugin_daemon_timeout_config, httpx.Timeout):
+    plugin_daemon_request_timeout = _plugin_daemon_timeout_config
+else:
+    plugin_daemon_request_timeout = httpx.Timeout(_plugin_daemon_timeout_config)
 
 T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
 
@@ -47,28 +57,56 @@ class BasePluginClient:
         data: bytes | dict | str | None = None,
         params: dict | None = None,
         files: dict | None = None,
-        stream: bool = False,
-    ) -> requests.Response:
+    ) -> httpx.Response:
         """
         Make a request to the plugin daemon inner API.
         """
-        url = plugin_daemon_inner_api_baseurl / path
-        headers = headers or {}
-        headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
-        headers["Accept-Encoding"] = "gzip, deflate, br"
+        url, headers, prepared_data, params, files = self._prepare_request(path, headers, data, params, files)
 
-        if headers.get("Content-Type") == "application/json" and isinstance(data, dict):
-            data = json.dumps(data)
+        request_kwargs: dict[str, Any] = {
+            "method": method,
+            "url": url,
+            "headers": headers,
+            "params": params,
+            "files": files,
+            "timeout": plugin_daemon_request_timeout,
+        }
+        if isinstance(prepared_data, dict):
+            request_kwargs["data"] = prepared_data
+        elif prepared_data is not None:
+            request_kwargs["content"] = prepared_data
 
         try:
-            response = requests.request(
-                method=method, url=str(url), headers=headers, data=data, params=params, stream=stream, files=files
-            )
-        except requests.ConnectionError:
+            response = httpx.request(**request_kwargs)
+        except httpx.RequestError:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
 
         return response
+
+    def _prepare_request(
+        self,
+        path: str,
+        headers: dict | None,
+        data: bytes | dict | str | None,
+        params: dict | None,
+        files: dict | None,
+    ) -> tuple[str, dict, bytes | dict | str | None, dict | None, dict | None]:
+        url = plugin_daemon_inner_api_baseurl / path
+        prepared_headers = dict(headers or {})
+        prepared_headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
+        prepared_headers.setdefault("Accept-Encoding", "gzip, deflate, br")
+
+        prepared_data: bytes | dict | str | None = (
+            data if isinstance(data, (bytes, str, dict)) or data is None else None
+        )
+        if isinstance(data, dict):
+            if prepared_headers.get("Content-Type") == "application/json":
+                prepared_data = json.dumps(data)
+            else:
+                prepared_data = data
+
+        return str(url), prepared_headers, prepared_data, params, files
 
     def _stream_request(
         self,
@@ -78,17 +116,39 @@ class BasePluginClient:
         headers: dict | None = None,
         data: bytes | dict | None = None,
         files: dict | None = None,
-    ) -> Generator[bytes, None, None]:
+    ) -> Generator[str, None, None]:
         """
         Make a stream request to the plugin daemon inner API
         """
-        response = self._request(method, path, headers, data, params, files, stream=True)
-        for line in response.iter_lines(chunk_size=1024 * 8):
-            line = line.decode("utf-8").strip()
-            if line.startswith("data:"):
-                line = line[5:].strip()
-            if line:
-                yield line
+        url, headers, prepared_data, params, files = self._prepare_request(path, headers, data, params, files)
+
+        stream_kwargs: dict[str, Any] = {
+            "method": method,
+            "url": url,
+            "headers": headers,
+            "params": params,
+            "files": files,
+            "timeout": plugin_daemon_request_timeout,
+        }
+        if isinstance(prepared_data, dict):
+            stream_kwargs["data"] = prepared_data
+        elif prepared_data is not None:
+            stream_kwargs["content"] = prepared_data
+
+        try:
+            with httpx.stream(**stream_kwargs) as response:
+                for raw_line in response.iter_lines():
+                    if raw_line is None:
+                        continue
+                    line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
+                    line = line.strip()
+                    if line.startswith("data:"):
+                        line = line[5:].strip()
+                    if line:
+                        yield line
+        except httpx.RequestError:
+            logger.exception("Stream request to Plugin Daemon Service failed")
+            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
 
     def _stream_request_with_model(
         self,
@@ -139,7 +199,7 @@ class BasePluginClient:
         try:
             response = self._request(method, path, headers, data, params, files)
             response.raise_for_status()
-        except HTTPError as e:
+        except httpx.HTTPStatusError as e:
             logger.exception("Failed to request plugin daemon, status: %s, url: %s", e.response.status_code, path)
             raise e
         except Exception as e:
@@ -208,7 +268,7 @@ class BasePluginClient:
                     except Exception:
                         raise PluginDaemonInnerError(code=rep.code, message=rep.message)
 
-                    logger.error("Error in stream reponse for plugin %s", rep.__dict__)
+                    logger.error("Error in stream response for plugin %s", rep.__dict__)
                     self._handle_plugin_daemon_error(error.error_type, error.message)
                 raise ValueError(f"plugin daemon: {rep.message}, code: {rep.code}")
             if rep.data is None:

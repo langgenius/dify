@@ -15,7 +15,6 @@ import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import cn from '@/utils/classnames'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
@@ -82,9 +81,9 @@ const RunOnce: FC<IRunOnceProps> = ({
       else if (item.type === 'checkbox')
         newInputs[item.key] = item.default || false
       else if (item.type === 'file')
-        newInputs[item.key] = item.default
+        newInputs[item.key] = undefined
       else if (item.type === 'file-list')
-        newInputs[item.key] = item.default || []
+        newInputs[item.key] = []
       else
         newInputs[item.key] = undefined
     })
@@ -148,8 +147,8 @@ const RunOnce: FC<IRunOnceProps> = ({
                   )}
                   {item.type === 'file' && (
                     <FileUploaderInAttachmentWrapper
-                      value={inputs[item.key] ? [inputs[item.key]] : []}
-                      onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files)[0] }) }}
+                      value={(inputs[item.key] && typeof inputs[item.key] === 'object') ? [inputs[item.key]] : []}
+                      onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files[0] }) }}
                       fileConfig={{
                         ...item.config,
                         fileUploadConfig: (visionConfig as any).fileUploadConfig,
@@ -158,8 +157,8 @@ const RunOnce: FC<IRunOnceProps> = ({
                   )}
                   {item.type === 'file-list' && (
                     <FileUploaderInAttachmentWrapper
-                      value={inputs[item.key]}
-                      onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: getProcessedFiles(files) }) }}
+                      value={Array.isArray(inputs[item.key]) ? inputs[item.key] : []}
+                      onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files }) }}
                       fileConfig={{
                         ...item.config,
                         fileUploadConfig: (visionConfig as any).fileUploadConfig,
