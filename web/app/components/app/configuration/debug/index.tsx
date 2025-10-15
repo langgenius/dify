@@ -70,6 +70,7 @@ const Debug: FC<IDebug> = ({
 }) => {
   const { t } = useTranslation()
   const {
+    readonly,
     appId,
     mode,
     modelModeType,
@@ -413,19 +414,23 @@ const Debug: FC<IDebug> = ({
             }
             {mode !== AppType.completion && (
               <>
-                <TooltipPlus
-                  popupContent={t('common.operation.refresh')}
-                >
-                  <ActionButton onClick={clearConversation}>
-                    <RefreshCcw01 className='h-4 w-4' />
-                  </ActionButton>
-                </TooltipPlus>
+                {!readonly && (
+                  <TooltipPlus
+                    popupContent={t('common.operation.refresh')}
+                  >
+                    <ActionButton onClick={clearConversation}>
+                      <RefreshCcw01 className='h-4 w-4' />
+                    </ActionButton>
+
+                  </TooltipPlus>
+                )}
+
                 {varList.length > 0 && (
                   <div className='relative ml-1 mr-2'>
                     <TooltipPlus
                       popupContent={t('workflow.panel.userInputField')}
                     >
-                      <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
+                      <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => !readonly && setExpanded(!expanded)}>
                         <RiEqualizer2Line className='h-4 w-4' />
                       </ActionButton>
                     </TooltipPlus>
@@ -553,7 +558,7 @@ const Debug: FC<IDebug> = ({
           onCancel={handleCancel}
         />
       )}
-      {!isAPIKeySet && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
+      {!isAPIKeySet && !readonly && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
     </>
   )
 }

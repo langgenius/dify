@@ -29,6 +29,7 @@ const Item: FC<ItemProps> = ({
   config,
   onSave,
   onRemove,
+  readonly = false,
   editable = true,
 }) => {
   const media = useBreakpoints()
@@ -55,6 +56,7 @@ const Item: FC<ItemProps> = ({
     <div className={cn(
       'group relative mb-1 flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover',
       isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover',
+      readonly && 'cursor-not-allowed',
     )}>
       <div className='flex w-0 grow items-center space-x-1.5'>
         <AppIcon
@@ -68,7 +70,7 @@ const Item: FC<ItemProps> = ({
       </div>
       <div className='ml-2 hidden shrink-0 items-center space-x-1 group-hover:flex'>
         {
-          editable && <ActionButton
+          editable && !readonly && <ActionButton
             onClick={(e) => {
               e.stopPropagation()
               setShowSettingsModal(true)
@@ -77,14 +79,18 @@ const Item: FC<ItemProps> = ({
             <RiEditLine className='h-4 w-4 shrink-0 text-text-tertiary' />
           </ActionButton>
         }
-        <ActionButton
-          onClick={() => onRemove(config.id)}
-          state={isDeleting ? ActionButtonState.Destructive : ActionButtonState.Default}
-          onMouseEnter={() => setIsDeleting(true)}
-          onMouseLeave={() => setIsDeleting(false)}
-        >
-          <RiDeleteBinLine className={cn('h-4 w-4 shrink-0 text-text-tertiary', isDeleting && 'text-text-destructive')} />
-        </ActionButton>
+        {
+          !readonly && (
+            <ActionButton
+              onClick={() => onRemove(config.id)}
+              state={isDeleting ? ActionButtonState.Destructive : ActionButtonState.Default}
+              onMouseEnter={() => setIsDeleting(true)}
+              onMouseLeave={() => setIsDeleting(false)}
+            >
+              <RiDeleteBinLine className={cn('h-4 w-4 shrink-0 text-text-tertiary', isDeleting && 'text-text-destructive')} />
+            </ActionButton>
+          )
+        }
       </div>
       {
         config.indexing_technique && <Badge
