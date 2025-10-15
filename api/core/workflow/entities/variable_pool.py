@@ -8,13 +8,13 @@ from pydantic import BaseModel, Field
 from core.file import File, FileAttribute, file_manager
 from core.variables import Segment, SegmentGroup, Variable
 from core.variables.consts import SELECTORS_LENGTH
-from core.variables.segments import FileSegment, ObjectSegment
-from core.variables.variables import RAGPipelineVariableInput, VariableUnion
+from core.variables.segments import FileSegment, ObjectSegment, VersionedMemoryValue
+from core.variables.variables import RAGPipelineVariableInput, VariableUnion, VersionedMemoryVariable
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
     RAG_PIPELINE_VARIABLE_NODE_ID,
-    SYSTEM_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID, MEMORY_BLOCK_VARIABLE_NODE_ID,
 )
 from core.workflow.system_variable import SystemVariable
 from factories import variable_factory
@@ -81,7 +81,16 @@ class VariablePool(BaseModel):
                 self.add((RAG_PIPELINE_VARIABLE_NODE_ID, key), value)
         # Add memory blocks to the variable pool
         for memory_id, memory_value in self.memory_blocks.items():
-            self.add([CONVERSATION_VARIABLE_NODE_ID, memory_id], memory_value)
+            self.add(
+                [MEMORY_BLOCK_VARIABLE_NODE_ID, memory_id],
+                VersionedMemoryVariable(
+                    value=VersionedMemoryValue(
+                        current_value=memory_value,
+                        versions={"1": memory_value},
+                    ),
+                    name=memory_id,
+                )
+            )
 
     def add(self, selector: Sequence[str], value: Any, /):
         """
