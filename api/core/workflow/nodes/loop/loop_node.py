@@ -175,11 +175,20 @@ class LoopNode(Node):
                     break
 
                 if break_conditions:
-                    _, _, reach_break_condition = condition_processor.process_conditions(
-                        variable_pool=self.graph_runtime_state.variable_pool,
-                        conditions=break_conditions,
-                        operator=logical_operator,
-                    )
+                    try:
+                        _, _, reach_break_condition = condition_processor.process_conditions(
+                            variable_pool=self.graph_runtime_state.variable_pool,
+                            conditions=break_conditions,
+                            operator=logical_operator,
+                        )
+                    except ValueError as e:
+                        logger.warning(
+                            "Loop %s break condition evaluation failed at iteration %s: %s",
+                            self._node_id,
+                            i,
+                            e,
+                        )
+                        reach_break_condition = False
                 if reach_break_condition:
                     break
 
