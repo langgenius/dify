@@ -103,7 +103,7 @@ class AppMCPServerController(Resource):
     def put(self, app_model):
         current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
-            raise NotFound()
+            raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("id", type=str, required=True, location="json")
         parser.add_argument("description", type=str, required=False, location="json")
