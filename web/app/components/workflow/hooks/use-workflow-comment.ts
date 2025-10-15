@@ -13,7 +13,6 @@ export const useWorkflowComment = () => {
   const appId = params.appId as string
   const reactflow = useReactFlow()
   const controlMode = useStore(s => s.controlMode)
-  const setControlMode = useStore(s => s.setControlMode)
   const pendingComment = useStore(s => s.pendingComment)
   const setPendingComment = useStore(s => s.setPendingComment)
   const setActiveCommentId = useStore(s => s.setActiveCommentId)
@@ -32,6 +31,8 @@ export const useWorkflowComment = () => {
   const setReplyUpdating = useStore(s => s.setReplyUpdating)
   const commentDetailCache = useStore(s => s.commentDetailCache)
   const setCommentDetailCache = useStore(s => s.setCommentDetailCache)
+  const rightPanelWidth = useStore(s => s.rightPanelWidth)
+  const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const { userProfile } = useAppContext()
   const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
   const activeCommentIdRef = useRef<string | null>(null)
@@ -191,9 +192,16 @@ export const useWorkflowComment = () => {
     const cachedDetail = commentDetailCacheRef.current[comment.id]
     setActiveComment(cachedDetail || comment)
 
-    let horizontalOffsetPx = 220
+    const hasSelectedNode = reactflow.getNodes().some(node => node.data?.selected)
+    const commentPanelWidth = controlMode === ControlMode.Comment ? 420 : 0
+    const fallbackPanelWidth = (hasSelectedNode ? nodePanelWidth : 0) + commentPanelWidth
+    const effectivePanelWidth = Math.max(rightPanelWidth ?? 0, fallbackPanelWidth)
+
+    const baseHorizontalOffsetPx = 220
+    const panelCompensationPx = effectivePanelWidth / 2
+    const desiredHorizontalOffsetPx = baseHorizontalOffsetPx + panelCompensationPx
     const maxOffset = Math.max(0, (window.innerWidth / 2) - 60)
-    horizontalOffsetPx = Math.min(horizontalOffsetPx, maxOffset)
+    const horizontalOffsetPx = Math.min(desiredHorizontalOffsetPx, maxOffset)
 
     reactflow.setCenter(
       comment.position_x + horizontalOffsetPx,
@@ -224,7 +232,18 @@ export const useWorkflowComment = () => {
     finally {
       setActiveCommentLoading(false)
     }
-  }, [appId, reactflow, setActiveComment, setActiveCommentId, setActiveCommentLoading, setCommentDetailCache, setControlMode, setPendingComment])
+  }, [
+    appId,
+    controlMode,
+    nodePanelWidth,
+    reactflow,
+    rightPanelWidth,
+    setActiveComment,
+    setActiveCommentId,
+    setActiveCommentLoading,
+    setCommentDetailCache,
+    setPendingComment,
+  ])
 
   const handleCommentResolve = useCallback(async (commentId: string) => {
     if (!appId) return
