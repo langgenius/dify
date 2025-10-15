@@ -106,6 +106,7 @@ class DraftWorkflowApi(Resource):
                 "hash": fields.String(description="Workflow hash for validation"),
                 "environment_variables": fields.List(fields.Raw, required=True, description="Environment variables"),
                 "conversation_variables": fields.List(fields.Raw, description="Conversation variables"),
+                "memory_blocks": fields.List(fields.Raw, description="Memory blocks"),
             },
         )
     )
@@ -131,6 +132,7 @@ class DraftWorkflowApi(Resource):
             parser.add_argument("environment_variables", type=list, required=True, location="json")
             parser.add_argument("conversation_variables", type=list, required=False, location="json")
             parser.add_argument("force_upload", type=bool, required=False, default=False, location="json")
+            parser.add_argument("memory_blocks", type=list, required=False, location="json")
             args = parser.parse_args()
         elif "text/plain" in content_type:
             try:
@@ -147,6 +149,7 @@ class DraftWorkflowApi(Resource):
                     "hash": data.get("hash"),
                     "environment_variables": data.get("environment_variables"),
                     "conversation_variables": data.get("conversation_variables"),
+                    "memory_blocks": data.get("memory_blocks"),
                     "force_upload": data.get("force_upload", False),
                 }
             except json.JSONDecodeError:
@@ -168,6 +171,11 @@ class DraftWorkflowApi(Resource):
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
+            memory_blocks_list = args.get("memory_blocks") or []
+            from core.memory.entities import MemoryBlockSpec
+            memory_blocks = [
+                MemoryBlockSpec.model_validate(obj) for obj in memory_blocks_list
+            ]
             workflow = workflow_service.sync_draft_workflow(
                 app_model=app_model,
                 graph=args["graph"],
@@ -177,6 +185,7 @@ class DraftWorkflowApi(Resource):
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
                 force_upload=args.get("force_upload", False),
+                memory_blocks=memory_blocks,
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()

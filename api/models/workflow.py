@@ -156,6 +156,9 @@ class Workflow(Base):
     _rag_pipeline_variables: Mapped[str] = mapped_column(
         "rag_pipeline_variables", db.Text, nullable=False, server_default="{}"
     )
+    _memory_blocks: Mapped[str] = mapped_column(
+        "memory_blocks", sa.Text, nullable=False, server_default="[]"
+    )
 
     VERSION_DRAFT = "draft"
 
@@ -173,6 +176,7 @@ class Workflow(Base):
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
         rag_pipeline_variables: list[dict],
+        memory_blocks: Sequence[MemoryBlockSpec] | None = None,
         marked_name: str = "",
         marked_comment: str = "",
     ) -> "Workflow":
@@ -188,6 +192,7 @@ class Workflow(Base):
         workflow.environment_variables = environment_variables or []
         workflow.conversation_variables = conversation_variables or []
         workflow.rag_pipeline_variables = rag_pipeline_variables or []
+        workflow.memory_blocks = memory_blocks or []
         workflow.marked_name = marked_name
         workflow.marked_comment = marked_comment
         workflow.created_at = naive_utc_now()
@@ -447,6 +452,7 @@ class Workflow(Base):
             "features": self.features_dict,
             "environment_variables": [var.model_dump(mode="json") for var in environment_variables],
             "conversation_variables": [var.model_dump(mode="json") for var in self.conversation_variables],
+            "memory_blocks": [block.model_dump(mode="json") for block in self.memory_blocks],
         }
         return result
 
@@ -486,14 +492,24 @@ class Workflow(Base):
 
     @property
     def memory_blocks(self) -> Sequence[MemoryBlockSpec]:
-        """Memory blocks configuration from graph"""
+        """Memory blocks configuration stored in database"""
+        if self._memory_blocks is None or self._memory_blocks == "":
+            self._memory_blocks = "[]"
 
-        if not self.graph_dict:
-            return []
-
-        memory_blocks_config = self.graph_dict.get('memory_blocks', [])
-        results = [MemoryBlockSpec.model_validate(config) for config in memory_blocks_config]
+        memory_blocks_list: list[dict[str, Any]] = json.loads(self._memory_blocks)
+        results = [MemoryBlockSpec.model_validate(config) for config in memory_blocks_list]
         return results
+
+    @memory_blocks.setter
+    def memory_blocks(self, value: Sequence[MemoryBlockSpec]):
+        if not value:
+            self._memory_blocks = "[]"
+            return
+
+        self._memory_blocks = json.dumps(
+            [block.model_dump() for block in value],
+            ensure_ascii=False,
+        )
 
     @staticmethod
     def version_from_datetime(d: datetime) -> str:
