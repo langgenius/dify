@@ -27,7 +27,6 @@ from core.trigger.debug.event_selectors import (
     create_event_poller,
     select_trigger_debug_events,
 )
-from core.trigger.errors import TriggerPluginInvokeError
 from core.workflow.enums import NodeType
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
@@ -1068,22 +1067,13 @@ class DraftWorkflowTriggerRunApi(Resource):
             )
         except InvokeRateLimitError as ex:
             raise InvokeRateLimitHttpError(ex.description)
-        except TriggerPluginInvokeError as e:
-            logger.exception("Error invoking trigger event")
-            return jsonable_encoder(
-                {
-                    "status": "error",
-                    "error": e.get_error_message(),
-                    "error_type": e.get_error_type(),
-                }
-            ), 500
-        except Exception:
-            logger.exception("Error running draft workflow trigger run")
-            return jsonable_encoder(
-                {
-                    "status": "error",
-                }
-            ), 500
+        except ValueError as e:
+            raise e
+        except PluginInvokeError as e:
+            raise e
+        except Exception as e:
+            logger.exception("Error polling trigger debug event")
+            raise e
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/trigger/run")
@@ -1128,15 +1118,23 @@ class DraftWorkflowTriggerNodeApi(Resource):
             )
         # for other trigger types, poll for the event
         else:
-            poller: TriggerDebugEventPoller = create_event_poller(
-                draft_workflow=draft_workflow,
-                tenant_id=app_model.tenant_id,
-                user_id=current_user.id,
-                app_id=app_model.id,
-                node_id=node_id,
-            )
-            event = poller.poll()
-
+            try:
+                poller: TriggerDebugEventPoller = create_event_poller(
+                    draft_workflow=draft_workflow,
+                    tenant_id=app_model.tenant_id,
+                    user_id=current_user.id,
+                    app_id=app_model.id,
+                    node_id=node_id,
+                )
+                event = poller.poll()
+            except ValueError as e:
+                logger.exception("Error polling trigger debug event")
+                raise e
+            except PluginInvokeError as e:
+                raise e
+            except Exception as e:
+                logger.exception("Error polling trigger debug event")
+                raise e
         if not event:
             return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
         try:
@@ -1205,23 +1203,13 @@ class DraftWorkflowTriggerRunAllApi(Resource):
             trigger_debug_event: TriggerDebugEvent | None = select_trigger_debug_events(
                 draft_workflow=draft_workflow, app_model=app_model, user_id=current_user.id, node_ids=node_ids
             )
+        except ValueError as e:
+            raise e
         except PluginInvokeError as e:
-            logger.exception("Error selecting trigger debug event")
-            return jsonable_encoder(
-                {
-                    "status": "error",
-                    "error": e.get_error_message(),
-                    "error_type": e.get_error_type(),
-                }
-            ), 500
+            raise e
         except Exception as e:
             logger.exception("Error polling trigger debug event")
-            return jsonable_encoder(
-                {
-                    "status": "error",
-                }
-            ), 500
-
+            raise e
         if trigger_debug_event is None:
             return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
 

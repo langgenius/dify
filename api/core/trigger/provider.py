@@ -19,6 +19,7 @@ from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.api_entities import EventApiEntity, TriggerProviderApiEntity
 from core.trigger.entities.entities import (
     EventEntity,
+    EventParameter,
     ProviderConfig,
     Subscription,
     SubscriptionConstructor,
@@ -254,6 +255,12 @@ class PluginTriggerProviderController:
             if self.entity.subscription_schema
             else []
         )
+
+    def get_event_parameters(self, event_name: str) -> Mapping[str, EventParameter]:
+        """
+        Get event parameters for this provider
+        """
+        return {parameter.name: parameter for parameter in self.get_event(event_name).parameters}
 
     def dispatch(
         self,

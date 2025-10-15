@@ -59,12 +59,17 @@ class TriggerService:
         if not request:
             raise ValueError("Request not found")
         # invoke triger
+        provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+            tenant_id, TriggerProviderID(subscription.provider_id)
+        )
         return TriggerManager.invoke_trigger_event(
             tenant_id=tenant_id,
             user_id=user_id,
             provider_id=TriggerProviderID(event.provider_id),
             event_name=event.name,
-            parameters=node_data.parameters,
+            parameters=node_data.resolve_parameters(
+                parameter_schemas=provider_controller.get_event_parameters(event_name=event.name)
+            ),
             credentials=subscription.credentials,
             credential_type=CredentialType.of(subscription.credential_type),
             subscription=subscription.to_entity(),
@@ -133,6 +138,9 @@ class TriggerService:
             return 0
 
         dispatched_count = 0
+        provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+            tenant_id=subscription.tenant_id, provider_id=TriggerProviderID(subscription.provider_id)
+        )
         with Session(db.engine) as session:
             tenant_owner = cls._get_tenant_owner(session, subscription.tenant_id)
             workflows = cls._get_latest_workflows_by_app_ids(session, subscribers)
@@ -164,7 +172,9 @@ class TriggerService:
                     user_id=subscription.user_id,
                     provider_id=TriggerProviderID(subscription.provider_id),
                     event_name=event.identity.name,
-                    parameters=node_data.parameters,
+                    parameters=node_data.resolve_parameters(
+                        parameter_schemas=provider_controller.get_event_parameters(event_name=event.identity.name)
+                    ),
                     credentials=subscription.credentials,
                     credential_type=CredentialType.of(subscription.credential_type),
                     subscription=subscription.to_entity(),
