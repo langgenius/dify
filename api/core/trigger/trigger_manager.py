@@ -185,7 +185,7 @@ class TriggerManager:
                 request=request,
             )
         except PluginInvokeError as e:
-            if e.get_error_type() == "TriggerIgnoreEventError":
+            if e.get_error_type() == "EventIgnoreError":
                 return TriggerInvokeEventResponse(variables={}, cancelled=True)
             logger.exception("Failed to invoke trigger event")
             raise TriggerPluginInvokeError(description=e.get_error_message()) from e
