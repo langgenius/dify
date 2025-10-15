@@ -103,9 +103,17 @@ const OnlineUsers = () => {
   }
 
   return (
-    <div className="flex items-center rounded-full border border-components-panel-border bg-components-panel-bg px-1 py-1">
-      <div className="flex items-center">
-        <div className="flex items-center -space-x-2">
+    <div
+      className={cn(
+        'flex items-center',
+        'h-8 min-w-[87px]',
+        'gap-px rounded-full border-[0.5px] border-components-panel-border',
+        'bg-components-panel-bg py-1 pl-1 pr-1.5',
+        'shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]',
+      )}
+    >
+      <div className="flex h-6 items-center">
+        <div className="flex items-center">
           {visibleUsers.map((user, index) => {
             const isCurrentUser = user.user_id === currentUserId
             const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
@@ -126,7 +134,8 @@ const OnlineUsers = () => {
               >
                 <div
                   className={cn(
-                    'relative',
+                    'relative flex size-6 items-center justify-center',
+                    index > 0 && '-ml-1.5',
                     !isCurrentUser && 'cursor-pointer transition-transform hover:scale-110',
                   )}
                   style={{ zIndex: visibleUsers.length - index }}
@@ -135,8 +144,8 @@ const OnlineUsers = () => {
                   <Avatar
                     name={user.username || 'User'}
                     avatar={getAvatarUrl(user)}
-                    size={28}
-                    className="ring-2 ring-components-panel-bg"
+                    size={24}
+                    className="ring-1 ring-components-panel-bg"
                     backgroundColor={userColor}
                   />
                 </div>
@@ -157,24 +166,34 @@ const OnlineUsers = () => {
                 onClick={() => setDropdownOpen(prev => !prev)}
                 asChild
               >
-                <div className="flex items-center">
+                <div className="flex items-center gap-1">
                   <div
                     className={cn(
-                      'flex h-7 w-7 items-center justify-center',
-                      'cursor-pointer rounded-full bg-gray-200',
-                      'system-xs-medium text-gray-700',
-                      'ring-2 ring-components-panel-bg',
+                      'flex size-6 items-center justify-center text-xs font-medium text-white',
+                      'cursor-pointer rounded-full bg-components-icon-bg-midnight-solid',
+                      'ring-1 ring-components-panel-bg',
+                      visibleUsers.length > 0 && '-ml-1',
                     )}
                   >
                     +{remainingCount}
                   </div>
-                  <ChevronDownIcon className="ml-1 h-3 w-3 text-gray-500" />
+                  <ChevronDownIcon className="h-3 w-3 text-gray-500" />
                 </div>
               </PortalToFollowElemTrigger>
               <PortalToFollowElemContent
                 className="z-[9999]"
               >
-                <div className="mt-1.5 flex max-h-[200px] w-[240px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]">
+                <div
+                  className={cn(
+                    'mt-1.5',
+                    'flex flex-col',
+                    'max-h-[200px] w-[240px] overflow-y-auto',
+                    'rounded-xl border-[0.5px] border-components-panel-border',
+                    'bg-components-panel-bg-blur p-1',
+                    'shadow-lg shadow-shadow-shadow-5',
+                    'backdrop-blur-[10px]',
+                  )}
+                >
                   {onlineUsers.map((user) => {
                     const isCurrentUser = user.user_id === currentUserId
                     const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
