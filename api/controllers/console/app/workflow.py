@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from configs import dify_config
 from controllers.console import api, console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
@@ -20,11 +19,13 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.helper.trace_id_helper import get_external_trace_id
+from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
+from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models import App
@@ -513,7 +514,7 @@ class DraftWorkflowRunApi(Resource):
             raise InvokeRateLimitHttpError(ex.description)
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(Resource):
     @api.doc("stop_workflow_task")
     @api.doc(description="Stop running workflow task")
@@ -536,7 +537,12 @@ class WorkflowTaskStopApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+        # Stop using both mechanisms for backward compatibility
+        # Legacy stop flag mechanism (without user check)
+        AppQueueManager.set_stop_flag_no_user_check(task_id)
+
+        # New graph engine command channel mechanism
+        GraphEngineManager.send_stop_command(task_id)
 
         return {"result": "success"}
 
@@ -669,8 +675,12 @@ class PublishedWorkflowApi(Resource):
                 marked_comment=args.marked_comment or "",
             )
 
-            app_model.workflow_id = workflow.id
-            db.session.commit()  # NOTE: this is necessary for update app_model.workflow_id
+            # Update app_model within the same session to ensure atomicity
+            app_model_in_session = session.get(App, app_model.id)
+            if app_model_in_session:
+                app_model_in_session.workflow_id = workflow.id
+                app_model_in_session.updated_by = current_user.id
+                app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
 
@@ -682,7 +692,7 @@ class PublishedWorkflowApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/default-block-configs")
+@console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 class DefaultBlockConfigsApi(Resource):
     @api.doc("get_default_block_configs")
     @api.doc(description="Get default block configurations for workflow")
@@ -708,7 +718,7 @@ class DefaultBlockConfigsApi(Resource):
         return workflow_service.get_default_block_configs()
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/default-block-configs/<string:block_type>")
+@console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>")
 class DefaultBlockConfigApi(Resource):
     @api.doc("get_default_block_config")
     @api.doc(description="Get default block configuration by type")
@@ -791,25 +801,7 @@ class ConvertToWorkflowApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/config")
-class WorkflowConfigApi(Resource):
-    """Resource for workflow configuration."""
-
-    @api.doc("get_workflow_config")
-    @api.doc(description="Get workflow configuration")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Workflow configuration retrieved successfully")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
-        return {
-            "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
-        }
-
-
-@console_ns.route("/apps/<uuid:app_id>/workflows/published")
+@console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
     @api.doc("get_all_published_workflows")
     @api.doc(description="Get all published workflows for an application")
@@ -865,7 +857,7 @@ class PublishedAllWorkflowApi(Resource):
             }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/<uuid:workflow_id>")
+@console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>")
 class WorkflowByIdApi(Resource):
     @api.doc("update_workflow_by_id")
     @api.doc(description="Update workflow by ID")

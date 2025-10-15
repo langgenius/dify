@@ -47,6 +47,11 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     themeBuilder?.buildTheme(site?.chat_color_theme, site?.chat_color_theme_inverted)
   }, [site, customConfig, themeBuilder])
 
+  useEffect(() => {
+    if (!isSidebarCollapsed)
+      setShowSidePanel(false)
+  }, [isSidebarCollapsed])
+
   useDocumentTitle(site?.title || 'Chat')
 
   return (
@@ -76,7 +81,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
             onMouseEnter={() => setShowSidePanel(true)}
             onMouseLeave={() => setShowSidePanel(false)}
           >
-            <Sidebar isPanel />
+            <Sidebar isPanel panelVisible={showSidePanel} />
           </div>
         )}
         <div className={cn('flex h-full flex-col overflow-hidden border-[0,5px] border-components-panel-border-subtle bg-chatbot-bg', isMobile ? 'rounded-t-2xl' : 'rounded-2xl')}>

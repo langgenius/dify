@@ -105,6 +105,14 @@ class DifyAgentCallbackHandler(BaseModel):
 
         self.current_loop += 1
 
+    def on_datasource_start(self, datasource_name: str, datasource_inputs: Mapping[str, Any]) -> None:
+        """Run on datasource start."""
+        if dify_config.DEBUG:
+            print_text(
+                "\n[on_datasource_start] DatasourceCall:" + datasource_name + "\n" + str(datasource_inputs) + "\n",
+                color=self.color,
+            )
+
     @property
     def ignore_agent(self) -> bool:
         """Whether to ignore agent callbacks."""

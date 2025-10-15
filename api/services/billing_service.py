@@ -5,6 +5,7 @@ import httpx
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 
@@ -173,3 +174,7 @@ class BillingService:
         res = cls._send_request("POST", "/compliance/download", json=json)
         cls.compliance_download_rate_limiter.increment_rate_limit(limiter_key)
         return res
+
+    @classmethod
+    def clean_billing_info_cache(cls, tenant_id: str):
+        redis_client.delete(f"tenant:{tenant_id}:billing_info")

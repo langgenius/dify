@@ -6,6 +6,7 @@ const translation = {
     tools: 'Công cụ',
     agents: 'Chiến lược đại lý',
     models: 'Mô hình',
+    datasources: 'Nguồn dữ liệu',
   },
   categorySingle: {
     agent: 'Chiến lược đại lý',
@@ -13,6 +14,7 @@ const translation = {
     extension: 'Phần mở rộng',
     model: 'Mẫu',
     bundle: 'Bó',
+    datasource: 'Nguồn dữ liệu',
   },
   list: {
     source: {
@@ -250,6 +252,8 @@ const translation = {
     customCredentialUnavailable: 'Thông tin đăng nhập tùy chỉnh hiện không khả dụng',
     credentialUnavailable: 'Thông tin đăng nhập hiện không khả dụng. Vui lòng liên hệ với quản trị viên.',
     credentialUnavailableInButton: 'Thông tin xác thực không khả dụng',
+    emptyAuth: 'Vui lòng định cấu hình xác thực',
+    connectedWorkspace: 'Không gian làm việc được kết nối',
   },
   deprecated: 'Đã bị ngưng sử dụng',
   autoUpdate: {

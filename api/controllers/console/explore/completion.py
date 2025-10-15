@@ -33,10 +33,16 @@ from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
 
+from .. import console_ns
+
 logger = logging.getLogger(__name__)
 
 
 # define completion api for user
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/completion-messages",
+    endpoint="installed_app_completion",
+)
 class CompletionApi(InstalledAppResource):
     def post(self, installed_app):
         app_model = installed_app.app
@@ -87,6 +93,10 @@ class CompletionApi(InstalledAppResource):
             raise InternalServerError()
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/completion-messages/<string:task_id>/stop",
+    endpoint="installed_app_stop_completion",
+)
 class CompletionStopApi(InstalledAppResource):
     def post(self, installed_app, task_id):
         app_model = installed_app.app
@@ -100,6 +110,10 @@ class CompletionStopApi(InstalledAppResource):
         return {"result": "success"}, 200
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/chat-messages",
+    endpoint="installed_app_chat_completion",
+)
 class ChatApi(InstalledAppResource):
     def post(self, installed_app):
         app_model = installed_app.app
@@ -153,6 +167,10 @@ class ChatApi(InstalledAppResource):
             raise InternalServerError()
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/chat-messages/<string:task_id>/stop",
+    endpoint="installed_app_stop_chat_completion",
+)
 class ChatStopApi(InstalledAppResource):
     def post(self, installed_app, task_id):
         app_model = installed_app.app

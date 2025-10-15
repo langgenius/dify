@@ -22,7 +22,6 @@ from core.model_runtime.entities.model_entities import (
     PriceType,
 )
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.plugin.impl.model import PluginModelClient
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +141,8 @@ class LargeLanguageModel(AIModel):
         result: Union[LLMResult, Generator[LLMResultChunk, None, None]]
 
         try:
+            from core.plugin.impl.model import PluginModelClient
+
             plugin_model_manager = PluginModelClient()
             result = plugin_model_manager.invoke_llm(
                 tenant_id=self.tenant_id,
@@ -340,6 +341,8 @@ class LargeLanguageModel(AIModel):
         :return:
         """
         if dify_config.PLUGIN_BASED_TOKEN_COUNTING_ENABLED:
+            from core.plugin.impl.model import PluginModelClient
+
             plugin_model_manager = PluginModelClient()
             return plugin_model_manager.get_llm_num_tokens(
                 tenant_id=self.tenant_id,

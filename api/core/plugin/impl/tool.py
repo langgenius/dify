@@ -3,11 +3,15 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
-from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, PluginToolProviderEntity
+from core.plugin.entities.plugin_daemon import (
+    PluginBasicBooleanResponse,
+    PluginToolProviderEntity,
+)
 from core.plugin.impl.base import BasePluginClient
 from core.plugin.utils.chunk_merger import merge_blob_chunks
+from core.schemas.resolver import resolve_dify_schema_refs
 from core.tools.entities.tool_entities import CredentialType, ToolInvokeMessage, ToolParameter
+from models.provider_ids import GenericProviderID, ToolProviderID
 
 
 class PluginToolManager(BasePluginClient):
@@ -22,6 +26,9 @@ class PluginToolManager(BasePluginClient):
                 provider_name = declaration.get("identity", {}).get("name")
                 for tool in declaration.get("tools", []):
                     tool["identity"]["provider"] = provider_name
+                    # resolve refs
+                    if tool.get("output_schema"):
+                        tool["output_schema"] = resolve_dify_schema_refs(tool["output_schema"])
 
             return json_response
 
@@ -53,6 +60,9 @@ class PluginToolManager(BasePluginClient):
             if data:
                 for tool in data.get("declaration", {}).get("tools", []):
                     tool["identity"]["provider"] = tool_provider_id.provider_name
+                    # resolve refs
+                    if tool.get("output_schema"):
+                        tool["output_schema"] = resolve_dify_schema_refs(tool["output_schema"])
 
             return json_response
 
@@ -127,6 +137,36 @@ class PluginToolManager(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/tool/validate_credentials",
+            PluginBasicBooleanResponse,
+            data={
+                "user_id": user_id,
+                "data": {
+                    "provider": tool_provider_id.provider_name,
+                    "credentials": credentials,
+                },
+            },
+            headers={
+                "X-Plugin-ID": tool_provider_id.plugin_id,
+                "Content-Type": "application/json",
+            },
+        )
+
+        for resp in response:
+            return resp.result
+
+        return False
+
+    def validate_datasource_credentials(
+        self, tenant_id: str, user_id: str, provider: str, credentials: dict[str, Any]
+    ) -> bool:
+        """
+        validate the credentials of the datasource
+        """
+        tool_provider_id = GenericProviderID(provider)
+
+        response = self._request_with_plugin_daemon_response_stream(
+            "POST",
+            f"plugin/{tenant_id}/dispatch/datasource/validate_credentials",
             PluginBasicBooleanResponse,
             data={
                 "user_id": user_id,

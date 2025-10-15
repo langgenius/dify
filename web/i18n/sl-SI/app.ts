@@ -88,6 +88,7 @@ const translation = {
     chooseAppType: 'Izberite vrsto aplikacije',
     learnMore: 'Izvedi več',
     dropDSLToCreateApp: 'Spustite DSL datoteko sem, da ustvarite aplikacijo',
+    import: 'Uvoz',
   },
   editApp: 'Uredi informacije',
   editAppTitle: 'Uredi informacije o aplikaciji',
@@ -174,6 +175,10 @@ const translation = {
     aliyun: {
       title: 'Oblačni nadzor',
       description: 'Popolnoma upravljana in brez vzdrževanja platforma za opazovanje, ki jo zagotavlja Alibaba Cloud, omogoča takojšnje spremljanje, sledenje in ocenjevanje aplikacij Dify.',
+    },
+    tencent: {
+      description: 'Tencent Application Performance Monitoring zagotavlja celovito sledenje in večdimenzionalno analizo za aplikacije LLM.',
+      title: 'Tencent APM',
     },
   },
   mermaid: {

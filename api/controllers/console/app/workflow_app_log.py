@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
+from core.workflow.enums import WorkflowExecutionStatus
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs.login import login_required

@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import (
@@ -112,6 +113,21 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default=10.0,
     )
 
+    CODE_EXECUTION_POOL_MAX_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of concurrent connections for the code execution HTTP client",
+        default=100,
+    )
+
+    CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of persistent keep-alive connections for the code execution HTTP client",
+        default=20,
+    )
+
+    CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY: PositiveFloat | None = Field(
+        description="Keep-alive expiry in seconds for idle connections (set to None to disable)",
+        default=5.0,
+    )
+
     CODE_MAX_NUMBER: PositiveInt = Field(
         description="Maximum allowed numeric value in code execution",
         default=9223372036854775807,
@@ -134,7 +150,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
 
     CODE_MAX_STRING_LENGTH: PositiveInt = Field(
         description="Maximum allowed length for strings in code execution",
-        default=80000,
+        default=400_000,
     )
 
     CODE_MAX_STRING_ARRAY_LENGTH: PositiveInt = Field(
@@ -152,6 +168,11 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default=1000,
     )
 
+    CODE_EXECUTION_SSL_VERIFY: bool = Field(
+        description="Enable or disable SSL verification for code execution requests",
+        default=True,
+    )
+
 
 class PluginConfig(BaseSettings):
     """
@@ -166,6 +187,11 @@ class PluginConfig(BaseSettings):
     PLUGIN_DAEMON_KEY: str = Field(
         description="Plugin API key",
         default="plugin-api-key",
+    )
+
+    PLUGIN_DAEMON_TIMEOUT: PositiveFloat | None = Field(
+        description="Timeout in seconds for requests to the plugin daemon (set to None to disable)",
+        default=300.0,
     )
 
     INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
@@ -341,11 +367,11 @@ class HttpConfig(BaseSettings):
     )
 
     HTTP_REQUEST_MAX_READ_TIMEOUT: int = Field(
-        ge=1, description="Maximum read timeout in seconds for HTTP requests", default=60
+        ge=1, description="Maximum read timeout in seconds for HTTP requests", default=600
     )
 
     HTTP_REQUEST_MAX_WRITE_TIMEOUT: int = Field(
-        ge=1, description="Maximum write timeout in seconds for HTTP requests", default=20
+        ge=1, description="Maximum write timeout in seconds for HTTP requests", default=600
     )
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
@@ -401,6 +427,21 @@ class HttpConfig(BaseSettings):
     SSRF_DEFAULT_WRITE_TIME_OUT: PositiveFloat = Field(
         description="The default write timeout period used for network requests (SSRF)",
         default=5,
+    )
+
+    SSRF_POOL_MAX_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of concurrent connections for the SSRF HTTP client",
+        default=100,
+    )
+
+    SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of persistent keep-alive connections for the SSRF HTTP client",
+        default=20,
+    )
+
+    SSRF_POOL_KEEPALIVE_EXPIRY: PositiveFloat | None = Field(
+        description="Keep-alive expiry in seconds for idle SSRF connections (set to None to disable)",
+        default=5.0,
     )
 
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
@@ -505,6 +546,22 @@ class UpdateConfig(BaseSettings):
     )
 
 
+class WorkflowVariableTruncationConfig(BaseSettings):
+    WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE: PositiveInt = Field(
+        # 100KB
+        1024_000,
+        description="Maximum size for variable to trigger final truncation.",
+    )
+    WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH: PositiveInt = Field(
+        100000,
+        description="maximum length for string to trigger tuncation, measure in number of characters",
+    )
+    WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH: PositiveInt = Field(
+        1000,
+        description="maximum length for array to trigger truncation.",
+    )
+
+
 class WorkflowConfig(BaseSettings):
     """
     Configuration for workflow execution
@@ -525,14 +582,36 @@ class WorkflowConfig(BaseSettings):
         default=5,
     )
 
-    WORKFLOW_PARALLEL_DEPTH_LIMIT: PositiveInt = Field(
-        description="Maximum allowed depth for nested parallel executions",
-        default=3,
-    )
-
     MAX_VARIABLE_SIZE: PositiveInt = Field(
         description="Maximum size in bytes for a single variable in workflows. Default to 200 KB.",
         default=200 * 1024,
+    )
+
+    TEMPLATE_TRANSFORM_MAX_LENGTH: PositiveInt = Field(
+        description="Maximum number of characters allowed in Template Transform node output",
+        default=400_000,
+    )
+
+    # GraphEngine Worker Pool Configuration
+    GRAPH_ENGINE_MIN_WORKERS: PositiveInt = Field(
+        description="Minimum number of workers per GraphEngine instance",
+        default=1,
+    )
+
+    GRAPH_ENGINE_MAX_WORKERS: PositiveInt = Field(
+        description="Maximum number of workers per GraphEngine instance",
+        default=10,
+    )
+
+    GRAPH_ENGINE_SCALE_UP_THRESHOLD: PositiveInt = Field(
+        description="Queue depth threshold that triggers worker scale up",
+        default=3,
+    )
+
+    GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME: float = Field(
+        description="Seconds of idle time before scaling down workers",
+        default=5.0,
+        ge=0.1,
     )
 
 
@@ -673,10 +752,34 @@ class ToolConfig(BaseSettings):
     )
 
 
+class TemplateMode(StrEnum):
+    # unsafe mode allows flexible operations in templates, but may cause security vulnerabilities
+    UNSAFE = "unsafe"
+
+    # sandbox mode restricts some unsafe operations like accessing __class__.
+    # however, it is still not 100% safe, for example, cpu exploitation can happen.
+    SANDBOX = "sandbox"
+
+    # templating is disabled
+    DISABLED = "disabled"
+
+
 class MailConfig(BaseSettings):
     """
     Configuration for email services
     """
+
+    MAIL_TEMPLATING_MODE: TemplateMode = Field(
+        description="Template mode for email services",
+        default=TemplateMode.SANDBOX,
+    )
+
+    MAIL_TEMPLATING_TIMEOUT: int = Field(
+        description="""
+        Timeout for email templating in seconds. Used to prevent infinite loops in malicious templates.
+        Only available in sandbox mode.""",
+        default=3,
+    )
 
     MAIL_TYPE: str | None = Field(
         description="Email service provider type ('smtp' or 'resend' or 'sendGrid), default to None.",
@@ -1041,5 +1144,6 @@ class FeatureConfig(
     CeleryBeatConfig,
     CeleryScheduleTasksConfig,
     WorkflowLogConfig,
+    WorkflowVariableTruncationConfig,
 ):
     pass

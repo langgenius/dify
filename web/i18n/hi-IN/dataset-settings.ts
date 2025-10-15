@@ -42,6 +42,14 @@ const translation = {
     helpText: 'एक अच्छा डेटासेट विवरण लिखना सीखें।',
     upgradeHighQualityTip: 'एक बार उच्च गुणवत्ता मोड में अपग्रेड करने के बाद, किफायती मोड में वापस जाना उपलब्ध नहीं है',
     searchModel: 'मॉडल खोजें',
+    chunkStructure: {
+      learnMore: 'और अधिक सीखें',
+      title: 'खंड संरचना',
+      description: 'चंक संरचना के बारे में।',
+    },
+    nameAndIcon: 'नाम और आइकन',
+    numberOfKeywords: 'कीवर्ड की संख्या',
+    onSearchResults: 'कोई सदस्य आपकी खोज क्वेरी से मेल नहीं खाता। अपनी खोज को फिर से प्रयास करें।',
   },
 }
 

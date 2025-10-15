@@ -80,6 +80,7 @@ const translation = {
     chatbotUserDescription: 'Cree rápidamente un chatbot basado en LLM con una configuración sencilla. Puedes cambiar a Chatflow más tarde.',
     completionUserDescription: 'Cree rápidamente un asistente de IA para tareas de generación de texto con una configuración sencilla.',
     dropDSLToCreateApp: 'Suelta el archivo DSL aquí para crear la aplicación',
+    import: 'Importación',
   },
   editApp: 'Editar información',
   editAppTitle: 'Editar información de la app',
@@ -161,6 +162,10 @@ const translation = {
     aliyun: {
       title: 'Monitor de Nubes',
       description: 'La plataforma de observabilidad totalmente gestionada y sin mantenimiento proporcionada por Alibaba Cloud, permite la monitorización, trazado y evaluación de aplicaciones Dify de manera inmediata.',
+    },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring proporciona rastreo integral y análisis multidimensional para aplicaciones LLM.',
     },
   },
   answerIcon: {

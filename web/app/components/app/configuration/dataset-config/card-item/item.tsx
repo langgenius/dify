@@ -8,16 +8,13 @@ import {
 import { useTranslation } from 'react-i18next'
 import SettingsModal from '../settings-modal'
 import type { DataSet } from '@/models/datasets'
-import { DataSourceType } from '@/models/datasets'
-import FileIcon from '@/app/components/base/file-icon'
-import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
-import { Globe06 } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Drawer from '@/app/components/base/drawer'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import cn from '@/utils/classnames'
+import AppIcon from '@/app/components/base/app-icon'
 
 type ItemProps = {
   className?: string
@@ -47,33 +44,26 @@ const Item: FC<ItemProps> = ({
 
   const [isDeleting, setIsDeleting] = useState(false)
 
+  const iconInfo = config.icon_info || {
+    icon: '📙',
+    icon_type: 'emoji',
+    icon_background: '#FFF4ED',
+    icon_url: '',
+  }
+
   return (
     <div className={cn(
       'group relative mb-1 flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover',
       isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover',
     )}>
       <div className='flex w-0 grow items-center space-x-1.5'>
-        {
-          config.data_source_type === DataSourceType.FILE && (
-            <div className='mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#E0EAFF] bg-[#F5F8FF]'>
-              <Folder className='h-4 w-4 text-[#444CE7]' />
-            </div>
-          )
-        }
-        {
-          config.data_source_type === DataSourceType.NOTION && (
-            <div className='mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#EAECF5]'>
-              <FileIcon type='notion' className='h-4 w-4' />
-            </div>
-          )
-        }
-        {
-          config.data_source_type === DataSourceType.WEB && (
-            <div className='mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-blue-100 bg-[#F5FAFF]'>
-              <Globe06 className='h-4 w-4 text-blue-600' />
-            </div>
-          )
-        }
+        <AppIcon
+          size='tiny'
+          iconType={iconInfo.icon_type}
+          icon={iconInfo.icon}
+          background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
+          imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
+        />
         <div className='system-sm-medium w-0 grow truncate text-text-secondary' title={config.name}>{config.name}</div>
       </div>
       <div className='ml-2 hidden shrink-0 items-center space-x-1 group-hover:flex'>

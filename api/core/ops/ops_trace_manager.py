@@ -6,7 +6,7 @@ import queue
 import threading
 import time
 from datetime import timedelta
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
@@ -31,12 +31,14 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import get_message_data
-from core.workflow.entities.workflow_execution import WorkflowExecution
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
+
+if TYPE_CHECKING:
+    from core.workflow.entities import WorkflowExecution
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +120,17 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
                     "trace_instance": AliyunDataTrace,
                 }
 
+            case TracingProviderEnum.TENCENT:
+                from core.ops.entities.config_entity import TencentConfig
+                from core.ops.tencent_trace.tencent_trace import TencentDataTrace
+
+                return {
+                    "config_class": TencentConfig,
+                    "secret_keys": ["token"],
+                    "other_keys": ["endpoint", "service_name"],
+                    "trace_instance": TencentDataTrace,
+                }
+
             case _:
                 raise KeyError(f"Unsupported tracing provider: {provider}")
 
@@ -153,7 +166,10 @@ class OpsTraceManager:
             if key in tracing_config:
                 if "*" in tracing_config[key]:
                     # If the key contains '*', retain the original value from the current config
-                    new_config[key] = current_trace_config.get(key, tracing_config[key])
+                    if current_trace_config:
+                        new_config[key] = current_trace_config.get(key, tracing_config[key])
+                    else:
+                        new_config[key] = tracing_config[key]
                 else:
                     # Otherwise, encrypt the key
                     new_config[key] = encrypt_token(tenant_id, tracing_config[key])
@@ -407,7 +423,7 @@ class TraceTask:
         self,
         trace_type: Any,
         message_id: str | None = None,
-        workflow_execution: WorkflowExecution | None = None,
+        workflow_execution: Optional["WorkflowExecution"] = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
         timer: Any | None = None,
@@ -718,6 +734,7 @@ class TraceTask:
             end_time=timer.get("end"),
             metadata=metadata,
             message_data=message_data.to_dict(),
+            error=kwargs.get("error"),
         )
 
         return dataset_retrieval_trace_info
@@ -884,6 +901,7 @@ class TraceQueueManager:
                     continue
                 file_id = uuid4().hex
                 trace_info = task.execute()
+
                 task_data = TaskData(
                     app_id=task.app_id,
                     trace_info_type=type(trace_info).__name__,

@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.entities.parameter_entities import CommonParameterType
 from core.tools.entities.common_entities import I18nObject
-from core.workflow.nodes.base.entities import NumberType
 
 
 class PluginParameterOption(BaseModel):
@@ -153,7 +152,7 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     raise ValueError("The tools selector must be a list.")
                 return value
             case PluginParameterType.ANY:
-                if value and not isinstance(value, str | dict | list | NumberType):
+                if value and not isinstance(value, str | dict | list | int | float):
                     raise ValueError("The var selector must be a string, dictionary, list or number.")
                 return value
             case PluginParameterType.ARRAY:

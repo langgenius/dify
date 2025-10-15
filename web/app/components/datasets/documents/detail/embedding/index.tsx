@@ -7,7 +7,7 @@ import { omit } from 'lodash-es'
 import { RiLoader2Line, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
 import Image from 'next/image'
 import { FieldInfo } from '../metadata'
-import { useDocumentContext } from '../index'
+import { useDocumentContext } from '../context'
 import { IndexingType } from '../../../create/step-two'
 import { indexMethodIcon, retrievalIcon } from '../../../create/icons'
 import EmbeddingSkeleton from './skeleton'
@@ -131,7 +131,7 @@ const RuleDetail: FC<IRuleDetailProps> = React.memo(({
     />
     <FieldInfo
       label={t('datasetSettings.form.retrievalSetting.title')}
-      displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'invertedIndex' : retrievalMethod}.title`) as string}
+      displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title`) as string}
       valueIcon={
         <Image
           className='size-4'

@@ -57,7 +57,7 @@ export const fetchDatasetDetail: Fetcher<DataSet, string> = (datasetId: string) 
 export const updateDatasetSetting: Fetcher<DataSet, {
   datasetId: string
   body: Partial<Pick<DataSet,
-    'name' | 'description' | 'permission' | 'partial_member_list' | 'indexing_technique' | 'retrieval_model' | 'embedding_model' | 'embedding_model_provider'
+    'name' | 'description' | 'permission' | 'partial_member_list' | 'indexing_technique' | 'retrieval_model' | 'embedding_model' | 'embedding_model_provider' | 'icon_info' | 'doc_form'
   >>
 }> = ({ datasetId, body }) => {
   return patch<DataSet>(`/datasets/${datasetId}`, { body })
@@ -183,8 +183,12 @@ export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, In
   return post<FileIndexingEstimateResponse>('/datasets/indexing-estimate', { body })
 }
 
-export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string; pageType: string }> = ({ workspaceID, pageID, pageType }) => {
-  return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`)
+export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string; pageType: string; credentialID: string; }> = ({ workspaceID, pageID, pageType, credentialID }) => {
+  return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`, {
+    params: {
+      credential_id: credentialID,
+    },
+  })
 }
 
 export const fetchApiKeysList: Fetcher<ApiKeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
@@ -197,10 +201,6 @@ export const delApikey: Fetcher<CommonResponse, { url: string; params: Record<st
 
 export const createApikey: Fetcher<CreateApiKeyResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post<CreateApiKeyResponse>(url, body)
-}
-
-export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> = (url) => {
-  return get<{ api_base_url: string }>(url)
 }
 
 export const fetchDataSources = () => {
@@ -272,7 +272,7 @@ export const checkWatercrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId
   })
 }
 
-type FileTypesRes = {
+export type FileTypesRes = {
   allowed_extensions: string[]
 }
 

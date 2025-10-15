@@ -18,6 +18,7 @@ from .storage.opendal_storage_config import OpenDALStorageConfig
 from .storage.supabase_storage_config import SupabaseStorageConfig
 from .storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
 from .storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
+from .vdb.alibabacloud_mysql_config import AlibabaCloudMySQLConfig
 from .vdb.analyticdb_config import AnalyticdbConfig
 from .vdb.baidu_vector_config import BaiduVectorDBConfig
 from .vdb.chroma_config import ChromaConfig
@@ -187,6 +188,11 @@ class DatabaseConfig(BaseSettings):
         default=False,
     )
 
+    SQLALCHEMY_POOL_TIMEOUT: NonNegativeInt = Field(
+        description="Number of seconds to wait for a connection from the pool before raising a timeout error.",
+        default=30,
+    )
+
     RETRIEVAL_SERVICE_EXECUTORS: NonNegativeInt = Field(
         description="Number of processes for the retrieval service, default to CPU cores.",
         default=os.cpu_count() or 1,
@@ -216,6 +222,7 @@ class DatabaseConfig(BaseSettings):
             "connect_args": connect_args,
             "pool_use_lifo": self.SQLALCHEMY_POOL_USE_LIFO,
             "pool_reset_on_return": None,
+            "pool_timeout": self.SQLALCHEMY_POOL_TIMEOUT,
         }
 
 
@@ -324,6 +331,7 @@ class MiddlewareConfig(
     ClickzettaConfig,
     HuaweiCloudConfig,
     MilvusConfig,
+    AlibabaCloudMySQLConfig,
     MyScaleConfig,
     OpenSearchConfig,
     OracleConfig,

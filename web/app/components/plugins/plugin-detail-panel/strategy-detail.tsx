@@ -43,7 +43,7 @@ const StrategyDetail: FC<Props> = ({
 
   const outputSchema = useMemo(() => {
     const res: any[] = []
-    if (!detail.output_schema)
+    if (!detail.output_schema || !detail.output_schema.properties)
       return []
     Object.keys(detail.output_schema.properties).forEach((outputKey) => {
       const output = detail.output_schema.properties[outputKey]

@@ -77,6 +77,7 @@ const translation = {
     agentUserDescription: 'Ein intelligenter Agent, der in der Lage ist, iteratives Denken zu führen und autonome Werkzeuge zu verwenden, um Aufgabenziele zu erreichen.',
     agentShortDescription: 'Intelligenter Agent mit logischem Denken und autonomer Werkzeugnutzung',
     dropDSLToCreateApp: 'Ziehen Sie die DSL-Datei hierher, um die App zu erstellen',
+    import: 'Importieren',
   },
   editApp: 'App bearbeiten',
   editAppTitle: 'App-Informationen bearbeiten',
@@ -158,6 +159,10 @@ const translation = {
     aliyun: {
       title: 'Cloud-Monitor',
       description: 'Die vollständig verwaltete und wartungsfreie Observability-Plattform von Alibaba Cloud ermöglicht eine sofortige Überwachung, Verfolgung und Bewertung von Dify-Anwendungen.',
+    },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring bietet umfassendes Tracing und multidimensionale Analyse für LLM-Anwendungen.',
     },
   },
   answerIcon: {

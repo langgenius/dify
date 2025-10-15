@@ -84,6 +84,7 @@ const translation = {
     chooseAppType: 'เลือกประเภทแอป',
     advancedShortDescription: 'โฟลว์ที่เสริมประสิทธิภาพสำหรับการสนทนาหลายรอบ',
     dropDSLToCreateApp: 'ลากไฟล์ DSL มาที่นี่เพื่สร้างแอป',
+    import: 'นําเข้า',
   },
   editApp: 'แก้ไขข้อมูล',
   editAppTitle: 'แก้ไขข้อมูลโปรเจกต์',
@@ -170,6 +171,10 @@ const translation = {
     aliyun: {
       title: 'การตรวจสอบคลาวด์',
       description: 'แพลตฟอร์มการสังเกตการณ์ที่จัดการโดย Alibaba Cloud ซึ่งไม่ต้องดูแลและบำรุงรักษา ช่วยให้สามารถติดตาม ตรวจสอบ และประเมินแอปพลิเคชัน Dify ได้ทันที',
+    },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'การติดตามประสิทธิภาพแอปพลิเคชันของ Tencent มอบการตรวจสอบแบบครบวงจรและการวิเคราะห์หลายมิติสำหรับแอป LLM',
     },
   },
   mermaid: {

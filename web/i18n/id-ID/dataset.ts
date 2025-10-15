@@ -2,6 +2,8 @@ const translation = {
   chunkingMode: {
     general: 'Umum',
     parentChild: 'Orang tua-anak',
+    graph: 'Grafik',
+    qa: 'Tanya Jawab',
   },
   parentMode: {
     fullDoc: 'Dokumen lengkap',
@@ -81,6 +83,10 @@ const translation = {
     },
     change: 'Ubah',
     changeRetrievalMethod: 'Ubah metode pengambilan',
+    keyword_search: {
+      description: 'Indeks Terbalik adalah struktur yang digunakan untuk pengambilan yang efisien. Diatur berdasarkan istilah, setiap istilah menunjuk ke dokumen atau halaman web yang berisinya.',
+      title: 'Indeks Terbalik',
+    },
   },
   indexingTechnique: {
     economy: 'EKO',
@@ -210,6 +216,9 @@ const translation = {
   allKnowledgeDescription: 'Pilih untuk menampilkan semua pengetahuan di ruang kerja ini. Hanya Pemilik Ruang Kerja yang dapat mengelola semua pengetahuan.',
   defaultRetrievalTip: 'Pengambilan multi-jalur digunakan secara default. Pengetahuan diambil dari beberapa basis pengetahuan dan kemudian diberi peringkat ulang.',
   unavailable: 'Tidak tersedia',
+  updated: 'Diperbarui',
+  createFromPipeline: 'Membuat dari Knowledge Pipeline',
+  externalKnowledgeBase: 'Basis Pengetahuan Eksternal',
 }
 
 export default translation

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import languages
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
     EmailCodeError,
@@ -25,6 +25,7 @@ from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
 
 
+@console_ns.route("/email-register/send-email")
 class EmailRegisterSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
@@ -52,6 +53,7 @@ class EmailRegisterSendEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
+@console_ns.route("/email-register/validity")
 class EmailRegisterCheckApi(Resource):
     @setup_required
     @email_password_login_enabled
@@ -92,6 +94,7 @@ class EmailRegisterCheckApi(Resource):
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
+@console_ns.route("/email-register")
 class EmailRegisterResetApi(Resource):
     @setup_required
     @email_password_login_enabled
@@ -148,8 +151,3 @@ class EmailRegisterResetApi(Resource):
             raise AccountInFreezeError()
 
         return account
-
-
-api.add_resource(EmailRegisterSendEmailApi, "/email-register/send-email")
-api.add_resource(EmailRegisterCheckApi, "/email-register/validity")
-api.add_resource(EmailRegisterResetApi, "/email-register")

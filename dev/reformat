@@ -5,6 +5,9 @@ set -x
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 cd "$SCRIPT_DIR/.."
 
+# Import linter
+uv run --directory api --dev lint-imports
+
 # run ruff linter
 uv run --directory api --dev ruff check --fix ./
 

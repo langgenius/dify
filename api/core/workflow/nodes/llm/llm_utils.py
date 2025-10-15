@@ -13,16 +13,16 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.plugin.entities.plugin import ModelProviderID
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.llm.entities import ModelConfig
+from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models import db
 from models.model import Conversation
 from models.provider import Provider, ProviderType
+from models.provider_ids import ModelProviderID
 
 from .exc import InvalidVariableTypeError, LLMModeRequiredError, ModelNotExistError
 
@@ -92,7 +92,7 @@ def fetch_memory(
         return None
 
     # get conversation id
-    conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID.value])
+    conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
     if not isinstance(conversation_id_variable, StringSegment):
         return None
     conversation_id = conversation_id_variable.value
@@ -143,7 +143,7 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
                     Provider.tenant_id == tenant_id,
                     # TODO: Use provider name with prefix after the data migration.
                     Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
-                    Provider.provider_type == ProviderType.SYSTEM.value,
+                    Provider.provider_type == ProviderType.SYSTEM,
                     Provider.quota_type == system_configuration.current_quota_type.value,
                     Provider.quota_limit > Provider.quota_used,
                 )

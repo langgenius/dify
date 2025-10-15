@@ -49,7 +49,7 @@ class PluginManagerService:
         if not ret.get("result", False):
             raise CredentialPolicyViolationError("Credentials not available: Please use ENTERPRISE global credentials")
 
-        logger.debug(
+        logging.debug(
             "Credential policy compliance checked for %s with credential %s, result: %s",
             body.provider,
             body.dify_credential_id,

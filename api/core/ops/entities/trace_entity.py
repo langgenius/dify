@@ -90,6 +90,7 @@ class SuggestedQuestionTraceInfo(BaseTraceInfo):
 
 class DatasetRetrievalTraceInfo(BaseTraceInfo):
     documents: Any = None
+    error: str | None = None
 
 
 class ToolTraceInfo(BaseTraceInfo):
@@ -136,3 +137,4 @@ class TraceTaskName(StrEnum):
     DATASET_RETRIEVAL_TRACE = "dataset_retrieval"
     TOOL_TRACE = "tool"
     GENERATE_NAME_TRACE = "generate_conversation_name"
+    DATASOURCE_TRACE = "datasource"

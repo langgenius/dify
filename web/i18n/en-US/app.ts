@@ -79,6 +79,7 @@ const translation = {
     Create: 'Create',
     Cancel: 'Cancel',
     Confirm: 'Confirm',
+    import: 'Import',
     nameNotEmpty: 'Name cannot be empty',
     appTemplateNotSelected: 'Please select a template',
     appTypeRequired: 'Please select an app type',
@@ -181,6 +182,10 @@ const translation = {
     aliyun: {
       title: 'Cloud Monitor',
       description: 'The fully-managed and maintenance-free observability platform provided by Alibaba Cloud, enables out-of-the-box monitoring, tracing, and evaluation of Dify applications.',
+    },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring provides comprehensive tracing and multi-dimensional analysis for LLM applications.',
     },
     inUse: 'In use',
     configProvider: {

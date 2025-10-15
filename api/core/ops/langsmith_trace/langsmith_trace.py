@@ -28,8 +28,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
 )
 from core.ops.utils import filter_none_values, generate_dotted_order
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -82,7 +81,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         if trace_info.message_id:
             message_run = LangSmithRunModel(
                 id=trace_info.message_id,
-                name=TraceTaskName.MESSAGE_TRACE.value,
+                name=TraceTaskName.MESSAGE_TRACE,
                 inputs=dict(trace_info.workflow_run_inputs),
                 outputs=dict(trace_info.workflow_run_outputs),
                 run_type=LangSmithRunType.chain,
@@ -111,7 +110,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             file_list=trace_info.file_list,
             total_tokens=trace_info.total_tokens,
             id=trace_info.workflow_run_id,
-            name=TraceTaskName.WORKFLOW_TRACE.value,
+            name=TraceTaskName.WORKFLOW_TRACE,
             inputs=dict(trace_info.workflow_run_inputs),
             run_type=LangSmithRunType.tool,
             start_time=trace_info.workflow_data.created_at,
@@ -272,7 +271,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             output_tokens=trace_info.answer_tokens,
             total_tokens=trace_info.total_tokens,
             id=message_id,
-            name=TraceTaskName.MESSAGE_TRACE.value,
+            name=TraceTaskName.MESSAGE_TRACE,
             inputs=trace_info.inputs,
             run_type=LangSmithRunType.chain,
             start_time=trace_info.start_time,
@@ -328,7 +327,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         if trace_info.message_data is None:
             return
         langsmith_run = LangSmithRunModel(
-            name=TraceTaskName.MODERATION_TRACE.value,
+            name=TraceTaskName.MODERATION_TRACE,
             inputs=trace_info.inputs,
             outputs={
                 "action": trace_info.action,
@@ -363,7 +362,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         if message_data is None:
             return
         suggested_question_run = LangSmithRunModel(
-            name=TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
+            name=TraceTaskName.SUGGESTED_QUESTION_TRACE,
             inputs=trace_info.inputs,
             outputs=trace_info.suggested_question,
             run_type=LangSmithRunType.tool,
@@ -392,7 +391,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         if trace_info.message_data is None:
             return
         dataset_retrieval_run = LangSmithRunModel(
-            name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
+            name=TraceTaskName.DATASET_RETRIEVAL_TRACE,
             inputs=trace_info.inputs,
             outputs={"documents": trace_info.documents},
             run_type=LangSmithRunType.retriever,
@@ -448,7 +447,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
         name_run = LangSmithRunModel(
-            name=TraceTaskName.GENERATE_NAME_TRACE.value,
+            name=TraceTaskName.GENERATE_NAME_TRACE,
             inputs=trace_info.inputs,
             outputs=trace_info.outputs,
             run_type=LangSmithRunType.tool,
