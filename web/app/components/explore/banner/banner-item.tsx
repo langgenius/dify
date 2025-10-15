@@ -27,10 +27,15 @@ type BannerItemProps = {
 
 const RESPONSIVE_BREAKPOINT = 1280
 const MAX_RESPONSIVE_WIDTH = 600
+const INDICATOR_WIDTH = 20
+const INDICATOR_GAP = 8
+const MIN_VIEW_MORE_WIDTH = 480
 
 export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPaused = false }) => {
   const { t } = useTranslation()
   const { api, selectedIndex } = useCarousel()
+  const { category, title, description, 'img-src': imgSrc } = banner.content
+
   const [resetKey, setResetKey] = useState(0)
   const textAreaRef = useRef<HTMLDivElement>(null)
   const [maxWidth, setMaxWidth] = useState<number | undefined>(undefined)
@@ -42,6 +47,21 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
     return { slides, totalSlides, nextIndex }
   }, [api, selectedIndex])
 
+  const indicatorsWidth = useMemo(() => {
+    const count = slideInfo.totalSlides
+    if (count === 0) return 0
+    // Calculate: indicator buttons + gaps + extra spacing (3 * 20px for divider and padding)
+    return (count + 2) * INDICATOR_WIDTH + (count - 1) * INDICATOR_GAP
+  }, [slideInfo.totalSlides])
+
+  const viewMoreStyle = useMemo(() => {
+    if (!maxWidth) return undefined
+    return {
+      maxWidth: `${maxWidth}px`,
+      minWidth: indicatorsWidth ? `${Math.min(maxWidth - indicatorsWidth, MIN_VIEW_MORE_WIDTH)}px` : undefined,
+    }
+  }, [maxWidth, indicatorsWidth])
+
   const responsiveStyle = useMemo(
     () => (maxWidth !== undefined ? { maxWidth: `${maxWidth}px` } : undefined),
     [maxWidth],
@@ -49,7 +69,6 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
 
   const incrementResetKey = useCallback(() => setResetKey(prev => prev + 1), [])
 
-  // Update max width based on text area width when screen < 1280px
   useEffect(() => {
     const updateMaxWidth = () => {
       if (window.innerWidth < RESPONSIVE_BREAKPOINT && textAreaRef.current) {
@@ -75,12 +94,11 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
     }
   }, [])
 
-  // Reset progress when slide changes
   useEffect(() => {
     incrementResetKey()
   }, [selectedIndex, incrementResetKey])
 
-  const handleClick = useCallback(() => {
+  const handleBannerClick = useCallback(() => {
     incrementResetKey()
     if (banner.link)
       window.open(banner.link, '_blank', 'noopener,noreferrer')
@@ -93,10 +111,8 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
 
   return (
     <div
-      className={cn(
-        'relative flex w-full min-w-[784px] cursor-pointer overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg pr-[288px] transition-shadow hover:shadow-md',
-      )}
-      onClick={handleClick}
+      className="relative flex w-full min-w-[784px] cursor-pointer overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg pr-[288px] transition-shadow hover:shadow-md"
+      onClick={handleBannerClick}
     >
       {/* Left content area */}
       <div className="min-w-0 flex-1">
@@ -110,10 +126,10 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
               style={responsiveStyle}
             >
               <p className="title-4xl-semi-bold line-clamp-1 text-dify-logo-dify-logo-blue">
-                {banner.content.category}
+                {category}
               </p>
               <p className="title-4xl-semi-bold line-clamp-2 text-dify-logo-dify-logo-black">
-                {banner.content.title}
+                {title}
               </p>
             </div>
             {/* Description area */}
@@ -122,17 +138,17 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
               style={responsiveStyle}
             >
               <p className="body-sm-regular line-clamp-4 overflow-hidden text-text-tertiary">
-                {banner.content.description}
+                {description}
               </p>
             </div>
           </div>
 
           {/* Actions section */}
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="flex items-center gap-1">
             {/* View more button */}
             <div
-              className="flex min-w-[480px] max-w-[680px] flex-[1_0_0] items-center gap-[6px] py-1"
-              style={responsiveStyle}
+              className="flex min-w-[480px] max-w-[680px] flex-[1_0_0] items-center gap-[6px] py-1 pr-8"
+              style={viewMoreStyle}
             >
               <div className="flex h-4 w-4 items-center justify-center rounded-full bg-text-accent p-[2px]">
                 <RiArrowRightLine className="h-3 w-3 text-text-primary-on-surface" />
@@ -142,23 +158,26 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
               </span>
             </div>
 
-            {/* Slide navigation indicators */}
             <div
-              className="flex min-w-60 max-w-[600px] flex-[1_0_0] items-center gap-2 py-1 pr-10"
+              className={cn('flex max-w-[600px] flex-[1_0_0] items-center gap-2 py-1 pr-10', maxWidth ? '' : 'min-w-60')}
               style={responsiveStyle}
             >
-              {slideInfo.slides.map((_: unknown, index: number) => (
-                <IndicatorButton
-                  key={index}
-                  index={index}
-                  selectedIndex={selectedIndex}
-                  isNextSlide={index === slideInfo.nextIndex}
-                  autoplayDelay={autoplayDelay}
-                  resetKey={resetKey}
-                  isPaused={isPaused}
-                  onClick={() => handleIndicatorClick(index)}
-                />
-              ))}
+              {/* Slide navigation indicators */}
+              <div className="flex items-center gap-2">
+                {slideInfo.slides.map((_: unknown, index: number) => (
+                  <IndicatorButton
+                    key={index}
+                    index={index}
+                    selectedIndex={selectedIndex}
+                    isNextSlide={index === slideInfo.nextIndex}
+                    autoplayDelay={autoplayDelay}
+                    resetKey={resetKey}
+                    isPaused={isPaused}
+                    onClick={() => handleIndicatorClick(index)}
+                  />
+                ))}
+              </div>
+              <div className="hidden h-[1px] flex-1 bg-divider-regular 2xl:block" />
             </div>
           </div>
         </div>
@@ -167,8 +186,8 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
       {/* Right image area */}
       <div className="absolute right-0 top-0 flex h-full items-center p-2">
         <img
-          src={banner.content['img-src']}
-          alt={banner.content.title}
+          src={imgSrc}
+          alt={title}
           className="aspect-[4/3] h-full max-w-[296px] rounded-xl"
         />
       </div>
