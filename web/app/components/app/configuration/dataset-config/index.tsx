@@ -37,7 +37,10 @@ import {
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
-const DatasetConfig: FC = () => {
+type Props = {
+  readonly?: boolean
+}
+const DatasetConfig: FC<Props> = ({ readonly }) => {
   const { t } = useTranslation()
   const userProfile = useAppContextSelector(s => s.userProfile)
   const {
@@ -254,10 +257,10 @@ const DatasetConfig: FC = () => {
       className='mt-2'
       title={t('appDebug.feature.dataSet.title')}
       headerRight={
-        <div className='flex items-center gap-1'>
+        !readonly && (<div className='flex items-center gap-1'>
           {!isAgent && <ParamsConfig disabled={!hasData} selectedDatasets={dataSet} />}
           <OperationBtn type="add" onClick={showSelectDataSet} />
-        </div>
+        </div>)
       }
       hasHeaderBottomBorder={!hasData}
       noBodySpacing
@@ -271,7 +274,8 @@ const DatasetConfig: FC = () => {
                 config={item}
                 onRemove={onRemove}
                 onSave={handleSave}
-                editable={item.editable}
+                editable={item.editable && !readonly}
+                readonly={readonly}
               />
             ))}
           </div>

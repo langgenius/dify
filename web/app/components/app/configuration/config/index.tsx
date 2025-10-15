@@ -79,7 +79,7 @@ const Config: FC = () => {
 
         {/* Dataset */}
         <DatasetConfig
-          // readonly={readonly}
+          readonly={readonly}
         />
 
         {/* Tools */}
