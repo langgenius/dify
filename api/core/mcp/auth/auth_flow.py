@@ -284,8 +284,10 @@ def refresh_authorization(
 
     if client_information.client_secret:
         params["client_secret"] = client_information.client_secret
-
-    response = ssrf_proxy.post(token_url, data=params)
+    try:
+        response = ssrf_proxy.post(token_url, data=params)
+    except ssrf_proxy.MaxRetriesExceededError as e:
+        raise MCPRefreshTokenError(e) from e
     if not response.is_success:
         raise MCPRefreshTokenError(response.text)
     return OAuthTokens.model_validate(response.json())
