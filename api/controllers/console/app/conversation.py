@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime
 
 import pytz  # pip install pytz
@@ -202,7 +201,9 @@ class CompletionConversationApi(Resource):
                 except Exception:
                     pass
                 try:
-                    db.session.query(MessageAgentThought).where(MessageAgentThought.message_id.in_(all_message_ids)).delete(synchronize_session=False)
+                    db.session.query(MessageAgentThought).where(
+                        MessageAgentThought.message_id.in_(all_message_ids)
+                    ).delete(synchronize_session=False)
                 except Exception:
                     pass
 
@@ -211,11 +212,15 @@ class CompletionConversationApi(Resource):
                 db.session.query(Message).where(Message.conversation_id == conversation.id).delete()
                 db.session.query(MessageAnnotation).where(MessageAnnotation.conversation_id == conversation.id).delete()
                 try:
-                    db.session.query(ConversationVariable).where(ConversationVariable.conversation_id == conversation.id).delete()
+                    db.session.query(ConversationVariable).where(
+                        ConversationVariable.conversation_id == conversation.id
+                    ).delete()
                 except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
-                    db.session.query(ToolConversationVariables).where(ToolConversationVariables.conversation_id == conversation.id).delete()
+                    db.session.query(ToolConversationVariables).where(
+                        ToolConversationVariables.conversation_id == conversation.id
+                    ).delete()
                 except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
@@ -223,15 +228,15 @@ class CompletionConversationApi(Resource):
                 except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
-                    db.session.query(PinnedConversation).where(PinnedConversation.conversation_id == conversation.id).delete()
+                    db.session.query(PinnedConversation).where(
+                        PinnedConversation.conversation_id == conversation.id
+                    ).delete()
                 except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
 
             # Delete upload file records
             if upload_file_ids:
-                db.session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).delete(
-                    synchronize_session=False
-                )
+                db.session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).delete(synchronize_session=False)
 
             # Delete conversations
             if args["conversation_ids"]:
@@ -546,7 +551,9 @@ class ChatConversationApi(Resource):
                 except Exception:
                     pass
                 try:
-                    db.session.query(MessageAgentThought).where(MessageAgentThought.message_id.in_(all_message_ids)).delete(synchronize_session=False)
+                    db.session.query(MessageAgentThought).where(
+                        MessageAgentThought.message_id.in_(all_message_ids)
+                    ).delete(synchronize_session=False)
                 except Exception:
                     pass
 
@@ -555,11 +562,15 @@ class ChatConversationApi(Resource):
                 db.session.query(Message).where(Message.conversation_id == conversation.id).delete()
                 db.session.query(MessageAnnotation).where(MessageAnnotation.conversation_id == conversation.id).delete()
                 try:
-                    db.session.query(ConversationVariable).where(ConversationVariable.conversation_id == conversation.id).delete()
+                    db.session.query(ConversationVariable).where(
+                        ConversationVariable.conversation_id == conversation.id
+                    ).delete()
                 except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
-                    db.session.query(ToolConversationVariables).where(ToolConversationVariables.conversation_id == conversation.id).delete()
+                    db.session.query(ToolConversationVariables).where(
+                        ToolConversationVariables.conversation_id == conversation.id
+                    ).delete()
                 except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
@@ -567,15 +578,15 @@ class ChatConversationApi(Resource):
                 except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
                 try:
-                    db.session.query(PinnedConversation).where(PinnedConversation.conversation_id == conversation.id).delete()
+                    db.session.query(PinnedConversation).where(
+                        PinnedConversation.conversation_id == conversation.id
+                    ).delete()
                 except (OperationalError, ProgrammingError):
                     pass  # Table might not exist in this version
 
             # Delete upload file records
             if upload_file_ids:
-                db.session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).delete(
-                    synchronize_session=False
-                )
+                db.session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).delete(synchronize_session=False)
 
             # Delete conversations
             if args["conversation_ids"]:

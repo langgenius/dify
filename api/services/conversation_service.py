@@ -220,7 +220,7 @@ class ConversationService:
 
     @classmethod
     def clear_conversations(
-        cls, app_model: App, user: Optional[Union[Account, EndUser]], conversation_ids: Optional[list[str]] = None
+        cls, app_model: App, user: Union[Account, EndUser] | None, conversation_ids: list[str] | None = None
     ) -> dict[str, Any]:
         """
         Clear conversations and related data, optionally for specific conversation IDs.

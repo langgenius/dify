@@ -30,9 +30,9 @@ def clear_conversations_task(
     self,
     app_id: str,
     conversation_mode: str,
-    conversation_ids: Optional[list[str]] = None,
-    user_id: Optional[str] = None,
-    user_type: Optional[str] = None,
+    conversation_ids: list[str] | None = None,
+    user_id: str | None = None,
+    user_type: str | None = None,
 ):
     """
     Celery task to clear conversations and related data.
@@ -101,7 +101,8 @@ def clear_conversations_task(
                 # Get all message IDs for this batch
                 message_ids = [
                     row[0]
-                    for row in session.query(Message.id).where(Message.conversation_id.in_(conversation_batch_ids))
+                    for row in session.query(Message.id)
+                    .where(Message.conversation_id.in_(conversation_batch_ids))
                     .all()
                 ]
 
