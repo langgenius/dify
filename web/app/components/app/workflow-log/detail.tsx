@@ -27,17 +27,20 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose }) => {
       <span className='absolute right-3 top-4 z-20 cursor-pointer p-1' onClick={onClose}>
         <RiCloseLine className='h-4 w-4 text-text-tertiary' />
       </span>
-      <div className='flex flex-row bg-components-panel-bg'>
+      <div className='flex items-center bg-components-panel-bg'>
         <h1 className='system-xl-semibold shrink-0 px-4 py-1 text-text-primary'>{t('appLog.runDetail.workflowTitle')}</h1>
         <TooltipPlus
           popupContent={t('appLog.runDetail.testWithParams')}
+          popupClassName='rounded-xl'
         >
-          <div
-            className='mr-1 flex w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
+          <button
+            type='button'
+            className='mr-1 flex h-6 w-6 items-center justify-center rounded-md hover:bg-state-base-hover'
+            aria-label={t('appLog.runDetail.testWithParams')}
             onClick={handleReplay}
           >
             <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
-          </div>
+          </button>
         </TooltipPlus>
       </div>
       <Run
