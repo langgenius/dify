@@ -24,9 +24,11 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 
 import { useGetTryAppDataSets, useGetTryAppInfo } from '@/service/use-try-app'
 import { noop } from 'lodash'
-import { correctModelProvider } from '@/utils'
+import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../header/account-setting/model-provider-page/hooks'
+import { useAllToolProviders } from '@/service/use-tools'
+import { basePath } from '@/utils/var'
 
 type Props = {
   appId: string
@@ -60,6 +62,13 @@ const Configuration: FC<Props> = ({
   const isMobile = media === MediaType.mobile
 
   const { data: appDetail, isLoading: isLoadingAppDetail } = useGetTryAppInfo(appId)
+  const { data: collectionListFromServer, isLoading: isLoadingToolProviders } = useAllToolProviders()
+  const collectionList = collectionListFromServer?.map((item) => {
+    return {
+      ...item,
+      icon: basePath && typeof item.icon == 'string' && !item.icon.includes(basePath) ? `${basePath}${item.icon}` : item.icon,
+    }
+  })
   const datasetIds = (() => {
     if(isLoadingAppDetail)
       return []
@@ -81,7 +90,7 @@ const Configuration: FC<Props> = ({
   })()
   const { data: dataSetData, isLoading: isLoadingDatasets } = useGetTryAppDataSets(appId, datasetIds)
   const dataSets = dataSetData?.data || []
-  const isLoading = isLoadingAppDetail || isLoadingDatasets
+  const isLoading = isLoadingAppDetail || isLoadingDatasets || isLoadingToolProviders
 
   const modelConfig: ModelConfig = ((modelConfig?: BackendModelConfig) => {
     if(isLoading || !modelConfig)
@@ -137,7 +146,20 @@ const Configuration: FC<Props> = ({
         ...modelConfig.agent_mode,
                       // remove dataset
         enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true
-        tools: [],
+        tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
+          return !tool.dataset
+        }).map((tool: any) => {
+          const toolInCollectionList = collectionList?.find(c => tool.provider_id === c.id)
+          return {
+            ...tool,
+            isDeleted: appDetail?.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
+            notAuthor: toolInCollectionList?.is_team_authorization === false,
+            ...(tool.provider_type === 'builtin' ? {
+              provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
+              provider_name: correctToolProvider(tool.provider_name, !!toolInCollectionList),
+            } : {}),
+          }
+        }),
       } : DEFAULT_AGENT_SETTING,
     }
     return (newModelConfig as any)

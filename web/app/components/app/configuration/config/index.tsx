@@ -29,6 +29,7 @@ const Config: FC = () => {
     modelConfig,
     setModelConfig,
     setPrevPromptConfig,
+    dataSets,
   } = useContext(ConfigContext)
   const isChatApp = ['advanced-chat', 'agent-chat', 'chat'].includes(mode)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
@@ -71,20 +72,24 @@ const Config: FC = () => {
         />
 
         {/* Variables */}
-        <ConfigVar
-          promptVariables={promptVariables}
-          onPromptVariablesChange={handlePromptVariablesNameChange}
-          readonly={readonly}
-        />
+        {!(readonly && promptVariables.length === 0) && (
+          <ConfigVar
+            promptVariables={promptVariables}
+            onPromptVariablesChange={handlePromptVariablesNameChange}
+            readonly={readonly}
+          />
+        )}
 
         {/* Dataset */}
-        <DatasetConfig
-          readonly={readonly}
-          hideMetadataFilter={readonly}
-        />
-
+        {!(readonly && dataSets.length === 0) && (
+          <DatasetConfig
+            readonly={readonly}
+            hideMetadataFilter={readonly}
+          />
+        )
+        }
         {/* Tools */}
-        {isAgent && (
+        {isAgent && !(readonly && modelConfig.agentConfig.tools.length === 0) && (
           <AgentTools />
         )}
 

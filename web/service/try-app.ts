@@ -14,6 +14,7 @@ type TryAppInfo = {
   mode: AppMode
   site: SiteInfo
   model_config: ModelConfig
+  deleted_tools: any[]
 }
 
 export const fetchTryAppInfo = async (appId: string) => {
