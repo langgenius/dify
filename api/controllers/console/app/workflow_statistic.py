@@ -12,7 +12,6 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from extensions.ext_database import db
 from libs.helper import DatetimeString
 from libs.login import current_account_with_tenant, login_required
-from models import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 
