@@ -42,6 +42,7 @@ type Props = {
   onManageInputField?: () => void
   extraParams?: Record<string, any>
   providerType?: string
+  disableVariableInsertion?: boolean
 }
 
 const FormInputItem: FC<Props> = ({
@@ -57,6 +58,7 @@ const FormInputItem: FC<Props> = ({
   onManageInputField,
   extraParams,
   providerType,
+  disableVariableInsertion = false,
 }) => {
   const language = useLanguage()
   const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
@@ -286,6 +288,7 @@ const FormInputItem: FC<Props> = ({
           availableNodes={availableNodesWithParent}
           showManageInputField={showManageInputField}
           onManageInputField={onManageInputField}
+          disableVariableInsertion={disableVariableInsertion}
         />
       )}
       {isNumber && isConstant && (

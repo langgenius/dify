@@ -25,6 +25,7 @@ type Props = {
   currentTrigger?: Event
   currentProvider?: TriggerWithProvider
   extraParams?: Record<string, any>
+  disableVariableInsertion?: boolean
 }
 
 const TriggerFormItem: FC<Props> = ({
@@ -37,6 +38,7 @@ const TriggerFormItem: FC<Props> = ({
   currentTrigger,
   currentProvider,
   extraParams,
+  disableVariableInsertion = false,
 }) => {
   const language = useLanguage()
   const { name, label, type, required, tooltip, input_schema } = schema
@@ -93,6 +95,7 @@ const TriggerFormItem: FC<Props> = ({
         currentProvider={currentProvider}
         providerType='trigger'
         extraParams={extraParams}
+        disableVariableInsertion={disableVariableInsertion}
       />
 
       {isShowSchema && (

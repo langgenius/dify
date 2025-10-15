@@ -8,6 +8,7 @@ import useConfig from './use-config'
 import TriggerForm from './components/trigger-form'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { Type } from '../llm/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
   id,
@@ -24,6 +25,7 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
     currentProvider,
     currentTrigger,
   } = useConfig(id, data)
+  const disableVariableInsertion = data.type === BlockEnum.TriggerPlugin
 
   // Convert output schema to VarItem format
   const outputVars = Object.entries(outputSchema.properties || {}).map(([name, schema]: [string, any]) => ({
@@ -46,6 +48,7 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
               onChange={setTriggerParameterValue}
               currentProvider={currentProvider}
               currentTrigger={currentTrigger}
+              disableVariableInsertion={disableVariableInsertion}
             />
           </div>
           <Split />

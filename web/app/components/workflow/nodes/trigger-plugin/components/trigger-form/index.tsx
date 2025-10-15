@@ -17,6 +17,7 @@ type Props = {
   currentTrigger?: Event
   currentProvider?: TriggerWithProvider
   extraParams?: Record<string, any>
+  disableVariableInsertion?: boolean
 }
 
 const TriggerForm: FC<Props> = ({
@@ -29,6 +30,7 @@ const TriggerForm: FC<Props> = ({
   currentTrigger,
   currentProvider,
   extraParams,
+  disableVariableInsertion = false,
 }) => {
   return (
     <div className='space-y-1'>
@@ -45,6 +47,7 @@ const TriggerForm: FC<Props> = ({
             currentTrigger={currentTrigger}
             currentProvider={currentProvider}
             extraParams={extraParams}
+            disableVariableInsertion={disableVariableInsertion}
           />
         ))
       }
