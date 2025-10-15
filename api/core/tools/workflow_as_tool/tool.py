@@ -161,13 +161,13 @@ class WorkflowTool(Tool):
         Resolve user from database (worker/Celery context).
         """
 
-        stmt = select(Account).where(Account.id == user_id)
-        user = db.session.scalar(stmt)
+        user_stmt = select(Account).where(Account.id == user_id)
+        user = db.session.scalar(user_stmt)
         if not user:
             return None
 
-        stmt = select(Tenant).where(Tenant.id == self.runtime.tenant_id)
-        tenant = db.session.scalar(stmt)
+        tenant_stmt = select(Tenant).where(Tenant.id == self.runtime.tenant_id)
+        tenant = db.session.scalar(tenant_stmt)
         if not tenant:
             return None
 
