@@ -2,11 +2,11 @@ import json
 from enum import StrEnum
 
 from flask_restx import Resource, fields, marshal_with, reqparse
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
 from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from extensions.ext_database import db
 from fields.app_fields import app_server_fields
 from libs.login import current_account_with_tenant, login_required
@@ -24,11 +24,11 @@ class AppMCPServerController(Resource):
     @api.doc(description="Get MCP server configuration for an application")
     @api.doc(params={"app_id": "Application ID"})
     @api.response(200, "MCP server configuration retrieved successfully", app_server_fields)
+    @get_app_model
     @setup_required
+    @marshal_with(app_server_fields)
     @login_required
     @account_initialization_required
-    @get_app_model
-    @marshal_with(app_server_fields)
     def get(self, app_model):
         server = db.session.query(AppMCPServer).where(AppMCPServer.app_id == app_model.id).first()
         return server
@@ -47,15 +47,14 @@ class AppMCPServerController(Resource):
     )
     @api.response(201, "MCP server configuration created successfully", app_server_fields)
     @api.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
     @account_initialization_required
     @get_app_model
+    @login_required
+    @setup_required
     @marshal_with(app_server_fields)
+    @edit_permission_required
     def post(self, app_model):
-        current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        _, current_tenant_id = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("description", type=str, required=False, location="json")
         parser.add_argument("parameters", type=dict, required=True, location="json")
@@ -95,15 +94,13 @@ class AppMCPServerController(Resource):
     @api.response(200, "MCP server configuration updated successfully", app_server_fields)
     @api.response(403, "Insufficient permissions")
     @api.response(404, "Server not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
     @get_app_model
+    @login_required
+    @setup_required
+    @account_initialization_required
     @marshal_with(app_server_fields)
+    @edit_permission_required
     def put(self, app_model):
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("id", type=str, required=True, location="json")
         parser.add_argument("description", type=str, required=False, location="json")
@@ -143,10 +140,9 @@ class AppMCPServerRefreshController(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(app_server_fields)
+    @edit_permission_required
     def get(self, server_id):
-        current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        _, current_tenant_id = current_account_with_tenant()
         server = (
             db.session.query(AppMCPServer)
             .where(AppMCPServer.id == server_id)

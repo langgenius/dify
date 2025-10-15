@@ -6,7 +6,7 @@ from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
 from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
@@ -153,10 +153,9 @@ class CompletionConversationDetailApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
+    @edit_permission_required
     def delete(self, app_model, conversation_id):
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
         conversation_id = str(conversation_id)
 
         try:
@@ -204,10 +203,9 @@ class ChatConversationApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(conversation_with_summary_pagination_fields)
+    @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("keyword", type=str, location="args")
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -341,10 +339,8 @@ class ChatConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(conversation_detail_fields)
+    @edit_permission_required
     def get(self, app_model, conversation_id):
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_model, conversation_id)
@@ -359,10 +355,9 @@ class ChatConversationDetailApi(Resource):
     @login_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @account_initialization_required
+    @edit_permission_required
     def delete(self, app_model, conversation_id):
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
         conversation_id = str(conversation_id)
 
         try:

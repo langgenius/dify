@@ -30,10 +30,7 @@ def account_initialization_required(view: Callable[P, R]):
     def decorated(*args: P.args, **kwargs: P.kwargs):
         # check account initialization
         current_user, _ = current_account_with_tenant()
-
-        account = current_user
-
-        if account.status == AccountStatus.UNINITIALIZED:
+        if current_user.status == AccountStatus.UNINITIALIZED:
             raise AccountNotInitializedError()
 
         return view(*args, **kwargs)
