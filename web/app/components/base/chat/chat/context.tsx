@@ -17,10 +17,13 @@ export type ChatContextValue = Pick<ChatProps, 'config'
   | 'onAnnotationRemoved'
   | 'disableFeedback'
   | 'onFeedback'
->
+> & {
+  readonly?: boolean
+}
 
 const ChatContext = createContext<ChatContextValue>({
   chatList: [],
+  readonly: false,
 })
 
 type ChatContextProviderProps = {
@@ -29,6 +32,7 @@ type ChatContextProviderProps = {
 
 export const ChatContextProvider = ({
   children,
+  readonly = false,
   config,
   isResponding,
   chatList,
@@ -46,6 +50,7 @@ export const ChatContextProvider = ({
   return (
     <ChatContext.Provider value={{
       config,
+      readonly,
       isResponding,
       chatList: chatList || [],
       showPromptLog,

@@ -36,6 +36,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import type { AppData } from '@/models/share'
 
 export type ChatProps = {
+  readonly?: boolean
   appData?: AppData
   chatList: ChatItem[]
   config?: ChatConfig
@@ -77,6 +78,7 @@ export type ChatProps = {
 }
 
 const Chat: FC<ChatProps> = ({
+  readonly = false,
   appData,
   config,
   onSend,
@@ -221,6 +223,7 @@ const Chat: FC<ChatProps> = ({
 
   return (
     <ChatContextProvider
+      readonly={readonly}
       config={config}
       chatList={chatList}
       isResponding={isResponding}
@@ -324,6 +327,7 @@ const Chat: FC<ChatProps> = ({
                   inputsForm={inputsForm}
                   theme={themeBuilder?.theme}
                   isResponding={isResponding}
+                  readonly={readonly}
                 />
               )
             }

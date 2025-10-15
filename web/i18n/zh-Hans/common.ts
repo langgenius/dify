@@ -657,6 +657,7 @@ const translation = {
       hitScore: '召回得分：',
     },
     inputPlaceholder: '和 {{botName}} 聊天',
+    inputDisabledPlaceholder: '仅供试用',
     thinking: '深度思考中...',
     thought: '已深度思考',
     resend: '重新发送',

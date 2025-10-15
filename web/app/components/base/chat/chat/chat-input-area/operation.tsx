@@ -12,8 +12,10 @@ import ActionButton from '@/app/components/base/action-button'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
 import type { FileUpload } from '@/app/components/base/features/types'
 import cn from '@/utils/classnames'
+import { noop } from 'lodash'
 
 type OperationProps = {
+  readonly?: boolean
   fileConfig?: FileUpload
   speechToTextConfig?: EnableType
   onShowVoiceInput?: () => void
@@ -22,6 +24,7 @@ type OperationProps = {
 }
 const Operation = (
   {
+    readonly,
     ref,
     fileConfig,
     speechToTextConfig,
@@ -43,12 +46,13 @@ const Operation = (
         ref={ref}
       >
         <div className='flex items-center space-x-1'>
-          {fileConfig?.enabled && <FileUploaderInChatInput fileConfig={fileConfig} />}
+          {fileConfig?.enabled && <FileUploaderInChatInput readonly={readonly} fileConfig={fileConfig} />}
           {
             speechToTextConfig?.enabled && (
               <ActionButton
                 size='l'
-                onClick={onShowVoiceInput}
+                disabled={readonly}
+                onClick={readonly ? noop : onShowVoiceInput}
               >
                 <RiMicLine className='h-5 w-5' />
               </ActionButton>
@@ -58,7 +62,8 @@ const Operation = (
         <Button
           className='ml-3 w-8 px-0'
           variant='primary'
-          onClick={onSend}
+          onClick={readonly ? noop : onSend}
+          disabled={readonly}
           style={
             theme
               ? {

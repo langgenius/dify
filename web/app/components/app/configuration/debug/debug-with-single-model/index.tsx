@@ -39,6 +39,7 @@ const DebugWithSingleModel = (
 ) => {
   const { userProfile } = useAppContext()
   const {
+    readonly,
     modelConfig,
     appId,
     inputs,
@@ -154,6 +155,7 @@ const DebugWithSingleModel = (
 
   return (
     <Chat
+      readonly={readonly}
       config={config}
       chatList={chatList}
       isResponding={isResponding}
