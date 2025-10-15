@@ -23,7 +23,7 @@ def installed_app_required(view: Callable[Concatenate[InstalledApp, P], R] | Non
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app_id: str, *args: P.args, **kwargs: P.kwargs):
-            current_user, current_tenant_id = current_account_with_tenant()
+            _, current_tenant_id = current_account_with_tenant()
             installed_app = (
                 db.session.query(InstalledApp)
                 .where(InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_tenant_id)

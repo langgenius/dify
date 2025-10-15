@@ -34,7 +34,7 @@ class SavedMessageListApi(InstalledAppResource):
 
     @marshal_with(saved_message_infinite_scroll_pagination_fields)
     def get(self, installed_app):
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()

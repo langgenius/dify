@@ -6,6 +6,7 @@ from tasks.clean_dataset_task import clean_dataset_task
 @dataset_was_deleted.connect
 def handle(sender: Dataset, **kwargs):
     dataset = sender
+    assert dataset.doc_form
     clean_dataset_task.delay(
         dataset.id,
         dataset.tenant_id,
