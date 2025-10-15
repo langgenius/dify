@@ -11,7 +11,7 @@ from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
-from core.memory.entities import MemoryCreatedBy, MemoryScope
+from core.memory.entities import MemoryBlockSpec, MemoryCreatedBy, MemoryScope
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
@@ -197,6 +197,7 @@ class WorkflowService:
         account: Account,
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
+        memory_blocks: Sequence[MemoryBlockSpec] | None = None,
         force_upload: bool = False,
     ) -> Workflow:
         """
@@ -226,6 +227,7 @@ class WorkflowService:
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
             )
+            workflow.memory_blocks = memory_blocks or []
             db.session.add(workflow)
         # update draft workflow if found
         else:
@@ -235,6 +237,7 @@ class WorkflowService:
             workflow.updated_at = naive_utc_now()
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
+            workflow.memory_blocks = memory_blocks or []
 
         # commit db session changes
         db.session.commit()
@@ -354,6 +357,7 @@ class WorkflowService:
             marked_name=marked_name,
             marked_comment=marked_comment,
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
+            memory_blocks=draft_workflow.memory_blocks,
             features=draft_workflow.features,
         )
 
