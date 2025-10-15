@@ -99,7 +99,7 @@ class MCPToolManageService:
         # Encrypt sensitive data
         encrypted_server_url = encrypter.encrypt_token(tenant_id, server_url)
         encrypted_headers = self._prepare_encrypted_dict(headers, tenant_id) if headers else None
-        if authentication is not None:
+        if authentication is not None and authentication.client_id and authentication.client_secret:
             # Build the full credentials structure with encrypted client_id and client_secret
             encrypted_credentials = self._build_and_encrypt_credentials(
                 authentication.client_id, authentication.client_secret, tenant_id
@@ -194,7 +194,7 @@ class MCPToolManageService:
                     mcp_provider.encrypted_headers = None
 
             # Update credentials if provided
-            if authentication is not None:
+            if authentication is not None and authentication.client_id and authentication.client_secret:
                 # Merge with existing credentials to handle masked values
                 (
                     final_client_id,
