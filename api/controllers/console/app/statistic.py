@@ -585,7 +585,7 @@ WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
-        assert account.timezone
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
