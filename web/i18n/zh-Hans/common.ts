@@ -20,7 +20,7 @@ const translation = {
     save: '保存',
     yes: '是',
     no: '否',
-    deleteConfirmTitle: '删除?',
+    deleteConfirmTitle: '删除？',
     confirmAction: '请确认您的操作。',
     saveAndEnable: '保存并启用',
     edit: '编辑',

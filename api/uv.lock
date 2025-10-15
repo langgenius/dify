@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11, <3.13"
 resolution-markers = [
     "python_full_version >= '3.12.4' and platform_python_implementation != 'PyPy' and sys_platform == 'linux'",
@@ -1383,7 +1383,6 @@ dependencies = [
     { name = "transformers" },
     { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
     { name = "weave" },
-    { name = "weaviate-client" },
     { name = "webvtt-py" },
     { name = "yarl" },
 ]
@@ -1575,7 +1574,6 @@ requires-dist = [
     { name = "transformers", specifier = "~=4.56.1" },
     { name = "unstructured", extras = ["docx", "epub", "md", "ppt", "pptx"], specifier = "~=0.16.1" },
     { name = "weave", specifier = "~=0.51.0" },
-    { name = "weaviate-client", specifier = "==4.17.0" },
     { name = "webvtt-py", specifier = "~=0.5.1" },
     { name = "yarl", specifier = "~=1.18.3" },
 ]
