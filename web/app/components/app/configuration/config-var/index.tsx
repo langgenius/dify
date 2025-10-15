@@ -22,6 +22,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import type { InputVar } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
+import cn from '@/utils/classnames'
 
 export const ADD_EXTERNAL_DATA_TOOL = 'ADD_EXTERNAL_DATA_TOOL'
 
@@ -244,7 +245,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         </div>
       )}
       {hasVar && (
-        <div className='mt-1 px-3 pb-3'>
+        <div className={cn('grid-col-1 mt-1 grid px-3 pb-3', readonly && 'grid-cols-2 gap-1')}>
           {promptVariables.map(({ key, name, type, required, config, icon, icon_background }, index) => (
             <VarItem
               key={index}

@@ -37,7 +37,7 @@ type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } 
 const AgentTools: FC = () => {
   const { t } = useTranslation()
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
-  const { modelConfig, setModelConfig } = useContext(ConfigContext)
+  const { readonly, modelConfig, setModelConfig } = useContext(ConfigContext)
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -177,7 +177,7 @@ const AgentTools: FC = () => {
           </div>
         }
       >
-        <div className='grid grid-cols-1 flex-wrap items-center justify-between gap-1 2xl:grid-cols-2'>
+        <div className={cn('grid grid-cols-1 flex-wrap items-center justify-between gap-1 2xl:grid-cols-2', readonly && 'grid-cols-2')}>
           {tools.map((item: AgentTool & { icon: any; collection?: Collection }, index) => (
             <div key={index}
               className={cn(

@@ -36,6 +36,7 @@ import {
   LogicalOperator,
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import cn from '@/utils/classnames'
 
 type Props = {
   readonly?: boolean
@@ -268,7 +269,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
     >
       {hasData
         ? (
-          <div className='mt-1 flex flex-wrap justify-between px-3 pb-3'>
+          <div className={cn('mt-1 grid grid-cols-1 px-3 pb-3', readonly && 'grid-cols-2 gap-1')}>
             {formattedDataset.map(item => (
               <CardItem
                 key={item.id}
