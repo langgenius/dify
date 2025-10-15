@@ -1669,7 +1669,7 @@ vdb = [
     { name = "tidb-vector", specifier = "==0.0.9" },
     { name = "upstash-vector", specifier = "==0.6.0" },
     { name = "volcengine-compat", specifier = "~=1.0.0" },
-    { name = "weaviate-client", specifier = ">=4.0.0,<5.0.0" },
+    { name = "weaviate-client", specifier = "==4.17.0" },
     { name = "xinference-client", specifier = "~=1.2.2" },
 ]
 
