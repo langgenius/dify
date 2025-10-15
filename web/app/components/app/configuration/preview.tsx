@@ -11,6 +11,7 @@ import Config from '@/app/components/app/configuration/config'
 import Debug from '@/app/components/app/configuration/debug'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import type { ModelConfig } from '@/models/debug'
 import { PromptMode } from '@/models/debug'
 import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -25,6 +26,7 @@ import { useGetTryAppDataSets, useGetTryAppInfo } from '@/service/use-try-app'
 import { noop } from 'lodash'
 import { correctModelProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../header/account-setting/model-provider-page/hooks'
 
 type Props = {
   appId: string
@@ -81,7 +83,7 @@ const Configuration: FC<Props> = ({
   const dataSets = dataSetData?.data || []
   const isLoading = isLoadingAppDetail || isLoadingDatasets
 
-  const modelConfig = ((modelConfig?: BackendModelConfig) => {
+  const modelConfig: ModelConfig = ((modelConfig?: BackendModelConfig) => {
     if(isLoading || !modelConfig)
       return defaultModelConfig
 
@@ -138,7 +140,7 @@ const Configuration: FC<Props> = ({
         tools: [],
       } : DEFAULT_AGENT_SETTING,
     }
-    return newModelConfig
+    return (newModelConfig as any)
   })(appDetail?.model_config)
   const mode = appDetail?.mode
   // const isChatApp = ['chat', 'advanced-chat', 'agent-chat'].includes(mode!)
@@ -172,12 +174,14 @@ const Configuration: FC<Props> = ({
   const query = ''
   const completionParams = useState<FormValue>({})
 
-  // todo
-  const currModel: {
-    features: ModelFeatureEnum[]
-  } = {
-    features: [],
-  }
+  const {
+    currentModel: currModel,
+  } = useTextGenerationCurrentProviderAndModelAndModelList(
+    {
+      provider: modelConfig.provider,
+      model: modelConfig.model_id,
+    },
+  )
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
   const isShowDocumentConfig = !!currModel?.features?.includes(ModelFeatureEnum.document)
@@ -208,7 +212,7 @@ const Configuration: FC<Props> = ({
           number_limits: modelConfig.file_upload?.image?.number_limits || 3,
           transfer_methods: modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
         },
-        enabled: true,
+        enabled: !!(modelConfig.file_upload?.enabled || modelConfig.file_upload?.image?.enabled),
         allowed_file_types: modelConfig.file_upload?.allowed_file_types || [],
         allowed_file_extensions: modelConfig.file_upload?.allowed_file_extensions || [...FILE_EXTS[SupportUploadFileTypes.image], ...FILE_EXTS[SupportUploadFileTypes.video]].map(ext => `.${ext}`),
         allowed_file_upload_methods: modelConfig.file_upload?.allowed_file_upload_methods || modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
