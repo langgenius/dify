@@ -14,9 +14,7 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
 
     def get_pipeline_templates(self, language: str) -> dict:
         _, current_tenant_id = current_account_with_tenant()
-        result = self.fetch_pipeline_templates_from_customized(
-            tenant_id=current_tenant_id, language=language
-        )
+        result = self.fetch_pipeline_templates_from_customized(tenant_id=current_tenant_id, language=language)
         return result
 
     def get_pipeline_template_detail(self, template_id: str):
