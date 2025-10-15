@@ -5,7 +5,7 @@ import Avatar from '@/app/components/base/avatar'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
 import { useStore } from '../store'
 import cn from '@/utils/classnames'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/solid/arrows'
+import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { getUserColor } from '../collaboration/utils/user-color'
 import Tooltip from '@/app/components/base/tooltip'
 import {
@@ -58,6 +58,27 @@ const OnlineUsers = () => {
 
   const currentUserId = userProfile?.id
 
+  const renderDisplayName = (
+    user: any,
+    baseClassName: string,
+    suffixClassName: string,
+  ) => {
+    const baseName = user.username || 'User'
+    const isCurrentUser = user.user_id === currentUserId
+
+    return (
+      <span className={baseClassName}>
+        {baseName}
+        {isCurrentUser && (
+          <span className={suffixClassName}>
+            {' '}
+            (You)
+          </span>
+        )}
+      </span>
+    )
+  }
+
   // Function to jump to user's cursor position
   const jumpToUserCursor = (userId: string) => {
     const cursor = cursors[userId]
@@ -89,14 +110,14 @@ const OnlineUsers = () => {
           {visibleUsers.map((user, index) => {
             const isCurrentUser = user.user_id === currentUserId
             const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
-            const displayName = isCurrentUser
-              ? `${user.username || 'User'} (You)`
-              : (user.username || 'User')
-
             return (
               <Tooltip
                 key={`${user.sid}-${index}`}
-                popupContent={displayName}
+                popupContent={renderDisplayName(
+                  user,
+                  'system-xs-medium text-text-tertiary',
+                  'text-text-quaternary',
+                )}
                 position="bottom"
                 triggerMethod="hover"
                 needsDelay={false}
@@ -143,7 +164,7 @@ const OnlineUsers = () => {
                   >
                     +{remainingCount}
                   </div>
-                  <ChevronDown className="ml-1 h-3 w-3 text-gray-500" />
+                  <ChevronDownIcon className="ml-1 h-3 w-3 text-gray-500" />
                 </div>
               </PortalToFollowElemTrigger>
               <PortalToFollowElemContent
@@ -155,10 +176,6 @@ const OnlineUsers = () => {
                   {onlineUsers.map((user) => {
                     const isCurrentUser = user.user_id === currentUserId
                     const userColor = isCurrentUser ? undefined : getUserColor(user.user_id)
-                    const displayName = isCurrentUser
-                      ? `${user.username || 'User'} (You)`
-                      : (user.username || 'User')
-
                     return (
                       <div
                         key={user.sid}
@@ -176,9 +193,11 @@ const OnlineUsers = () => {
                             backgroundColor={userColor}
                           />
                         </div>
-                        <span className="text-sm text-text-secondary">
-                          {displayName}
-                        </span>
+                        {renderDisplayName(
+                          user,
+                          'system-xs-medium text-text-secondary',
+                          'text-text-tertiary',
+                        )}
                       </div>
                     )
                   })}
