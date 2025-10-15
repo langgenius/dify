@@ -67,6 +67,10 @@ const translation = {
     sure: 'Saya yakin',
     imageCopied: 'Gambar yang disalin',
     config: 'Konfigurasi',
+    deleteConfirmTitle: 'Hapus?',
+    confirmAction: 'Silakan konfirmasi tindakan Anda.',
+    yes: 'Ya',
+    no: 'Tidak',
   },
   errorMsg: {
     urlError: 'URL harus dimulai dengan http:// atau https://',
@@ -501,6 +505,7 @@ const translation = {
     callTimes: 'Waktu panggilan',
     getFreeTokens: 'Dapatkan Token gratis',
     parametersInvalidRemoved: 'Beberapa parameter tidak valid dan telah dihapus',
+    installDataSourceProvider: 'Pasang penyedia sumber data',
   },
   dataSource: {
     notion: {

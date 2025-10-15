@@ -14,12 +14,12 @@ from core.ops.aliyun_trace.data_exporter.traceclient import (
 from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData, TraceMetadata
 from core.ops.aliyun_trace.entities.semconv import (
     GEN_AI_COMPLETION,
-    GEN_AI_MODEL_NAME,
+    GEN_AI_INPUT_MESSAGE,
+    GEN_AI_OUTPUT_MESSAGE,
     GEN_AI_PROMPT,
-    GEN_AI_PROMPT_TEMPLATE_TEMPLATE,
-    GEN_AI_PROMPT_TEMPLATE_VARIABLE,
+    GEN_AI_PROVIDER_NAME,
+    GEN_AI_REQUEST_MODEL,
     GEN_AI_RESPONSE_FINISH_REASON,
-    GEN_AI_SYSTEM,
     GEN_AI_USAGE_INPUT_TOKENS,
     GEN_AI_USAGE_OUTPUT_TOKENS,
     GEN_AI_USAGE_TOTAL_TOKENS,
@@ -35,6 +35,9 @@ from core.ops.aliyun_trace.utils import (
     create_links_from_trace_id,
     create_status_from_error,
     extract_retrieval_documents,
+    format_input_messages,
+    format_output_messages,
+    format_retrieval_documents,
     get_user_id_from_message_data,
     get_workflow_node_status,
     serialize_json_data,
@@ -151,10 +154,6 @@ class AliyunDataTrace(BaseTraceInstance):
         )
         self.trace_client.add_span(message_span)
 
-        app_model_config = getattr(message_data, "app_model_config", {})
-        pre_prompt = getattr(app_model_config, "pre_prompt", "")
-        inputs_data = getattr(message_data, "inputs", {})
-
         llm_span = SpanData(
             trace_id=trace_metadata.trace_id,
             parent_span_id=message_span_id,
@@ -170,13 +169,11 @@ class AliyunDataTrace(BaseTraceInstance):
                     inputs=inputs_json,
                     outputs=outputs_str,
                 ),
-                GEN_AI_MODEL_NAME: trace_info.metadata.get("ls_model_name") or "",
-                GEN_AI_SYSTEM: trace_info.metadata.get("ls_provider") or "",
+                GEN_AI_REQUEST_MODEL: trace_info.metadata.get("ls_model_name") or "",
+                GEN_AI_PROVIDER_NAME: trace_info.metadata.get("ls_provider") or "",
                 GEN_AI_USAGE_INPUT_TOKENS: str(trace_info.message_tokens),
                 GEN_AI_USAGE_OUTPUT_TOKENS: str(trace_info.answer_tokens),
                 GEN_AI_USAGE_TOTAL_TOKENS: str(trace_info.total_tokens),
-                GEN_AI_PROMPT_TEMPLATE_VARIABLE: serialize_json_data(inputs_data),
-                GEN_AI_PROMPT_TEMPLATE_TEMPLATE: pre_prompt,
                 GEN_AI_PROMPT: inputs_json,
                 GEN_AI_COMPLETION: outputs_str,
             },
@@ -364,6 +361,10 @@ class AliyunDataTrace(BaseTraceInstance):
         input_value = str(node_execution.inputs.get("query", "")) if node_execution.inputs else ""
         output_value = serialize_json_data(node_execution.outputs.get("result", [])) if node_execution.outputs else ""
 
+        retrieval_documents = node_execution.outputs.get("result", []) if node_execution.outputs else []
+        semantic_retrieval_documents = format_retrieval_documents(retrieval_documents)
+        semantic_retrieval_documents_json = serialize_json_data(semantic_retrieval_documents)
+
         return SpanData(
             trace_id=trace_metadata.trace_id,
             parent_span_id=trace_metadata.workflow_span_id,
@@ -380,7 +381,7 @@ class AliyunDataTrace(BaseTraceInstance):
                     outputs=output_value,
                 ),
                 RETRIEVAL_QUERY: input_value,
-                RETRIEVAL_DOCUMENT: output_value,
+                RETRIEVAL_DOCUMENT: semantic_retrieval_documents_json,
             },
             status=get_workflow_node_status(node_execution),
             links=trace_metadata.links,
@@ -395,6 +396,9 @@ class AliyunDataTrace(BaseTraceInstance):
 
         prompts_json = serialize_json_data(process_data.get("prompts", []))
         text_output = str(outputs.get("text", ""))
+
+        gen_ai_input_message = format_input_messages(process_data)
+        gen_ai_output_message = format_output_messages(outputs)
 
         return SpanData(
             trace_id=trace_metadata.trace_id,
@@ -411,14 +415,16 @@ class AliyunDataTrace(BaseTraceInstance):
                     inputs=prompts_json,
                     outputs=text_output,
                 ),
-                GEN_AI_MODEL_NAME: process_data.get("model_name") or "",
-                GEN_AI_SYSTEM: process_data.get("model_provider") or "",
+                GEN_AI_REQUEST_MODEL: process_data.get("model_name") or "",
+                GEN_AI_PROVIDER_NAME: process_data.get("model_provider") or "",
                 GEN_AI_USAGE_INPUT_TOKENS: str(usage_data.get("prompt_tokens", 0)),
                 GEN_AI_USAGE_OUTPUT_TOKENS: str(usage_data.get("completion_tokens", 0)),
                 GEN_AI_USAGE_TOTAL_TOKENS: str(usage_data.get("total_tokens", 0)),
                 GEN_AI_PROMPT: prompts_json,
                 GEN_AI_COMPLETION: text_output,
                 GEN_AI_RESPONSE_FINISH_REASON: outputs.get("finish_reason") or "",
+                GEN_AI_INPUT_MESSAGE: gen_ai_input_message,
+                GEN_AI_OUTPUT_MESSAGE: gen_ai_output_message,
             },
             status=get_workflow_node_status(node_execution),
             links=trace_metadata.links,
@@ -502,8 +508,8 @@ class AliyunDataTrace(BaseTraceInstance):
                     inputs=inputs_json,
                     outputs=suggested_question_json,
                 ),
-                GEN_AI_MODEL_NAME: trace_info.metadata.get("ls_model_name") or "",
-                GEN_AI_SYSTEM: trace_info.metadata.get("ls_provider") or "",
+                GEN_AI_REQUEST_MODEL: trace_info.metadata.get("ls_model_name") or "",
+                GEN_AI_PROVIDER_NAME: trace_info.metadata.get("ls_provider") or "",
                 GEN_AI_PROMPT: inputs_json,
                 GEN_AI_COMPLETION: suggested_question_json,
             },

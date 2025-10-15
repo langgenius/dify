@@ -41,7 +41,7 @@ class ListOperatorNode(Node):
     _node_data: ListOperatorNodeData
 
     def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = ListOperatorNodeData(**data)
+        self._node_data = ListOperatorNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
@@ -161,6 +161,8 @@ class ListOperatorNode(Node):
             elif isinstance(variable, ArrayFileSegment):
                 if isinstance(condition.value, str):
                     value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
+                elif isinstance(condition.value, bool):
+                    raise ValueError(f"File filter expects a string value, got {type(condition.value)}")
                 else:
                     value = condition.value
                 filter_func = _get_file_filter_func(

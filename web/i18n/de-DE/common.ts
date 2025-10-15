@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'Alles auswählen',
     deSelectAll: 'Alle abwählen',
     config: 'Konfiguration',
+    yes: 'Ja',
+    deleteConfirmTitle: 'Löschen?',
+    no: 'Nein',
+    confirmAction: 'Bitte bestätigen Sie Ihre Aktion.',
   },
   placeholder: {
     input: 'Bitte eingeben',
@@ -501,6 +505,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'Anmeldeinformationen werden verwendet und können nicht gelöscht werden',
     },
     parametersInvalidRemoved: 'Einige Parameter sind ungültig und wurden entfernt.',
+    installDataSourceProvider: 'Datenquellenanbieter installieren',
   },
   dataSource: {
     add: 'Eine Datenquelle hinzufügen',

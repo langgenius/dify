@@ -26,7 +26,7 @@ def batch_fetch_plugin_manifests(plugin_ids: list[str]) -> Sequence[MarketplaceP
     response = httpx.post(url, json={"plugin_ids": plugin_ids}, headers={"X-Dify-Version": dify_config.project.version})
     response.raise_for_status()
 
-    return [MarketplacePluginDeclaration(**plugin) for plugin in response.json()["data"]["plugins"]]
+    return [MarketplacePluginDeclaration.model_validate(plugin) for plugin in response.json()["data"]["plugins"]]
 
 
 def batch_fetch_plugin_manifests_ignore_deserialization_error(
@@ -41,7 +41,7 @@ def batch_fetch_plugin_manifests_ignore_deserialization_error(
     result: list[MarketplacePluginDeclaration] = []
     for plugin in response.json()["data"]["plugins"]:
         try:
-            result.append(MarketplacePluginDeclaration(**plugin))
+            result.append(MarketplacePluginDeclaration.model_validate(plugin))
         except Exception:
             pass
 

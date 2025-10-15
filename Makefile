@@ -26,7 +26,6 @@ prepare-web:
 	@echo "🌐 Setting up web environment..."
 	@cp -n web/.env.example web/.env 2>/dev/null || echo "Web .env already exists"
 	@cd web && pnpm install
-	@cd web && pnpm build
 	@echo "✅ Web environment prepared (not started)"
 
 # Step 3: Prepare API environment

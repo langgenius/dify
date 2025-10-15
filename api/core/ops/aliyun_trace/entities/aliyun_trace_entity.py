@@ -3,7 +3,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from opentelemetry import trace as trace_api
-from opentelemetry.sdk.trace import Event, Status, StatusCode
+from opentelemetry.sdk.trace import Event
+from opentelemetry.trace import Status, StatusCode
 from pydantic import BaseModel, Field
 
 

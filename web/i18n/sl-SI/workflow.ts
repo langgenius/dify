@@ -442,6 +442,7 @@ const translation = {
       },
       outputVars: {
         output: 'Ustvari vsebino',
+        reasoning_content: 'Vsebina razmišljanja',
         usage: 'Informacije o uporabi modela',
       },
       singleRun: {
@@ -951,6 +952,9 @@ const translation = {
       aboutRetrieval: 'o metodi iskanja.',
       chunksInput: 'Kosi',
       chunksInputTip: 'Vhodna spremenljivka vozlišča podatkovne baze je Chunks. Tip spremenljivke je objekt s specifično JSON shemo, ki mora biti skladna z izbrano strukturo kosov.',
+      chunksVariableIsRequired: 'Spremenljivka Chunks je obvezna',
+      embeddingModelIsRequired: 'Zahteva se vgrajevalni model',
+      rerankingModelIsRequired: 'Potreben je model za ponovno razvrščanje',
     },
   },
   tracing: {
