@@ -125,7 +125,7 @@ class TestSanitizeValue:
         
         # While this isn't SQL injection protection per se, 
         # escaping HTML entities helps prevent display-based attacks
-        assert "&#x27;" in result or "'" in result  # Quote should be escaped or present
+        assert result == "&#x27;; DROP TABLE users; --"
 
     def test_sanitize_complex_xss_payload(self):
         """Test a complex XSS payload"""
