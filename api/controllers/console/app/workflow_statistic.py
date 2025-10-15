@@ -112,7 +112,6 @@ FROM
 WHERE
     app_id = :app_id
     AND triggered_from = :triggered_from"""
-        assert isinstance(account, Account)
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
