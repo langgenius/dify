@@ -95,7 +95,7 @@ const Config: FC = () => {
         <ConfigAudio />
 
         {/* Chat History */}
-        {isAdvancedMode && isChatApp && modelModeType === ModelModeType.completion && (
+        {!readonly && isAdvancedMode && isChatApp && modelModeType === ModelModeType.completion && (
           <HistoryPanel
             showWarning={!hasSetBlockStatus.history}
             onShowEditModal={showHistoryModal}

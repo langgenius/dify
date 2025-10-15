@@ -60,12 +60,12 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
 
     if (isAdvancedMode) {
       if (modelModeType === ModelModeType.chat)
-        return chatPromptConfig.prompt.every(({ text }) => !text)
+        return chatPromptConfig?.prompt.every(({ text }) => !text)
       return !completionPromptConfig.prompt?.text
     }
 
     else { return !modelConfig.configs.prompt_template }
-  }, [chatPromptConfig.prompt, completionPromptConfig.prompt?.text, isAdvancedMode, mode, modelConfig.configs.prompt_template, modelModeType])
+  }, [chatPromptConfig?.prompt, completionPromptConfig.prompt?.text, isAdvancedMode, mode, modelConfig.configs.prompt_template, modelModeType])
 
   const handleInputValueChange = (key: string, value: string | boolean) => {
     if (!(key in promptVariableObj))
