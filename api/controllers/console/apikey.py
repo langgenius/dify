@@ -1,5 +1,4 @@
 import flask_restx
-from flask import Response
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
 from sqlalchemy import select
@@ -156,11 +155,6 @@ class AppApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for an app"""
         return super().post(resource_id)
 
-    def after_request(self, resp: Response):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
-
     resource_type = "app"
     resource_model = App
     resource_id_field = "app_id"
@@ -176,11 +170,6 @@ class AppApiKeyResource(BaseApiKeyResource):
     def delete(self, resource_id, api_key_id):
         """Delete an API key for an app"""
         return super().delete(resource_id, api_key_id)
-
-    def after_request(self, resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
 
     resource_type = "app"
     resource_model = App
@@ -206,11 +195,6 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for a dataset"""
         return super().post(resource_id)
 
-    def after_request(self, resp: Response):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
-
     resource_type = "dataset"
     resource_model = Dataset
     resource_id_field = "dataset_id"
@@ -226,11 +210,6 @@ class DatasetApiKeyResource(BaseApiKeyResource):
     def delete(self, resource_id, api_key_id):
         """Delete an API key for a dataset"""
         return super().delete(resource_id, api_key_id)
-
-    def after_request(self, resp: Response):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
 
     resource_type = "dataset"
     resource_model = Dataset
