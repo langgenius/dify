@@ -123,9 +123,9 @@ class Node:
             start_event.provider_id = f"{plugin_id}/{provider_name}"
             start_event.provider_type = getattr(self.get_base_node_data(), "provider_type", "")
 
-        from core.workflow.nodes.trigger_plugin.trigger_plugin_node import TriggerPluginNode
+        from core.workflow.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
 
-        if isinstance(self, TriggerPluginNode):
+        if isinstance(self, TriggerEventNode):
             start_event.provider_id = getattr(self.get_base_node_data(), "provider_id", "")
             start_event.provider_type = getattr(self.get_base_node_data(), "provider_type", "")
 

@@ -11,7 +11,7 @@ from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import PluginTriggerDebugEvent, ScheduleDebugEvent, WebhookDebugEvent
 from core.workflow.enums import NodeType
-from core.workflow.nodes.trigger_plugin.entities import PluginTriggerNodeData
+from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from models.model import App
 from models.provider_ids import TriggerProviderID
 from models.workflow import Workflow
@@ -47,7 +47,7 @@ class TriggerDebugEventPoller(ABC):
 
 class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
     def poll(self) -> TriggerDebugEvent | None:
-        plugin_trigger_data = PluginTriggerNodeData.model_validate(self.node_config.get("data", {}))
+        plugin_trigger_data = TriggerEventNodeData.model_validate(self.node_config.get("data", {}))
         provider_id = TriggerProviderID(plugin_trigger_data.provider_id)
         pool_key: str = PluginTriggerDebugEvent.build_pool_key(
             name=plugin_trigger_data.event_name,

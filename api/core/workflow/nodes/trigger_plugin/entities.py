@@ -9,7 +9,7 @@ from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.trigger_plugin.exc import TriggerEventParameterError
 
 
-class PluginTriggerNodeData(BaseNodeData):
+class TriggerEventNodeData(BaseNodeData):
     """Plugin trigger node data"""
 
     class PluginTriggerInput(BaseModel):
@@ -44,7 +44,7 @@ class PluginTriggerNodeData(BaseNodeData):
     event_name: str = Field(..., description="Event name")
     subscription_id: str = Field(..., description="Subscription ID")
     plugin_unique_identifier: str = Field(..., description="Plugin unique identifier")
-    parameters: Mapping[str, PluginTriggerInput] = Field(default_factory=dict, description="Trigger parameters")
+    event_parameters: Mapping[str, PluginTriggerInput] = Field(default_factory=dict, description="Trigger parameters")
 
     # Error handling
     error_strategy: Optional[ErrorStrategy] = Field(
@@ -68,12 +68,12 @@ class PluginTriggerNodeData(BaseNodeData):
 
         """
         result: Mapping[str, Any] = {}
-        for parameter_name in self.parameters:
+        for parameter_name in self.event_parameters:
             parameter: EventParameter | None = parameter_schemas.get(parameter_name)
             if not parameter:
                 result[parameter_name] = None
                 continue
-            event_input = self.parameters[parameter_name]
+            event_input = self.event_parameters[parameter_name]
 
             # trigger node only supports constant input
             if event_input.type != "constant":

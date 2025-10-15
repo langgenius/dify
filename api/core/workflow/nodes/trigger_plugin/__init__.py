@@ -1,3 +1,3 @@
-from .trigger_plugin_node import TriggerPluginNode
+from .trigger_event_node import TriggerEventNode
 
-__all__ = ["TriggerPluginNode"]
+__all__ = ["TriggerEventNode"]

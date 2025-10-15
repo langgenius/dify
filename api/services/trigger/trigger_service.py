@@ -18,7 +18,7 @@ from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import create_trigger_provider_encrypter_for_subscription
 from core.workflow.enums import NodeType
-from core.workflow.nodes.trigger_plugin.entities import PluginTriggerNodeData
+from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from core.workflow.nodes.trigger_schedule.exc import TenantOwnerNotFoundError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -54,7 +54,7 @@ class TriggerService:
         )
         if not subscription:
             raise ValueError("Subscription not found")
-        node_data: PluginTriggerNodeData = PluginTriggerNodeData.model_validate(node_config.get("data", {}))
+        node_data: TriggerEventNodeData = TriggerEventNodeData.model_validate(node_config.get("data", {}))
         request = deserialize_request(storage.load_once(f"triggers/{event.request_id}"))
         if not request:
             raise ValueError("Request not found")
@@ -166,7 +166,7 @@ class TriggerService:
                     continue
 
                 # invoke triger
-                node_data: PluginTriggerNodeData = PluginTriggerNodeData.model_validate(event_node.get("data", {}))
+                node_data: TriggerEventNodeData = TriggerEventNodeData.model_validate(event_node)
                 invoke_response: TriggerInvokeEventResponse = TriggerManager.invoke_trigger_event(
                     tenant_id=subscription.tenant_id,
                     user_id=subscription.user_id,
