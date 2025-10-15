@@ -1,3 +1,31 @@
+import { useStore as useAppStore } from '@/app/components/app/store'
+import Tooltip from '@/app/components/base/tooltip'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import {
+  WorkflowHistoryEvent,
+  useAvailableBlocks,
+  useNodeDataUpdate,
+  useNodesInteractions,
+  useNodesMetaData,
+  useNodesReadOnly,
+  useToolIcon,
+  useWorkflowHistory,
+} from '@/app/components/workflow/hooks'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { useStore } from '@/app/components/workflow/store'
+import { BlockEnum, type Node, NodeRunningStatus } from '@/app/components/workflow/types'
+import {
+  canRunBySingle,
+  hasErrorHandleNode,
+  hasRetryNode,
+  isSupportCustomRunForm,
+} from '@/app/components/workflow/utils'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
+import cn from '@/utils/classnames'
+import {
+  RiCloseLine,
+  RiPlayLargeLine,
+} from '@remixicon/react'
 import type {
   FC,
   ReactNode,
@@ -11,71 +39,44 @@ import React, {
   useRef,
   useState,
 } from 'react'
-import {
-  RiCloseLine,
-  RiPlayLargeLine,
-} from '@remixicon/react'
-import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
+import { useShallow } from 'zustand/react/shallow'
+import { useResizePanel } from '../../hooks/use-resize-panel'
+import ErrorHandleOnPanel from '../error-handle/error-handle-on-panel'
+import HelpLink from '../help-link'
 import NextStep from '../next-step'
 import PanelOperator from '../panel-operator'
-import HelpLink from '../help-link'
+import RetryOnPanel from '../retry/retry-on-panel'
 import {
   DescriptionInput,
   TitleInput,
 } from '../title-description-input'
-import ErrorHandleOnPanel from '../error-handle/error-handle-on-panel'
-import RetryOnPanel from '../retry/retry-on-panel'
-import { useResizePanel } from '../../hooks/use-resize-panel'
-import cn from '@/utils/classnames'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import {
-  WorkflowHistoryEvent,
-  useAvailableBlocks,
-  useNodeDataUpdate,
-  useNodesInteractions,
-  useNodesMetaData,
-  useNodesReadOnly,
-  useToolIcon,
-  useWorkflowHistory,
-} from '@/app/components/workflow/hooks'
-import {
-  canRunBySingle,
-  hasErrorHandleNode,
-  hasRetryNode,
-  isSupportCustomRunForm,
-} from '@/app/components/workflow/utils'
-import Tooltip from '@/app/components/base/tooltip'
-import { BlockEnum, type Node, NodeRunningStatus } from '@/app/components/workflow/types'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useStore } from '@/app/components/workflow/store'
 import Tab, { TabType } from './tab'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
 // import AuthMethodSelector from '@/app/components/workflow/nodes/trigger-plugin/components/auth-method-selector'
-import LastRun from './last-run'
-import useLastRun from './last-run/use-last-run'
-import BeforeRunForm from '../before-run-form'
-import { debounce } from 'lodash-es'
-import { useLogs } from '@/app/components/workflow/run/hooks'
-import PanelWrap from '../before-run-form/panel-wrap'
-import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { FlowType } from '@/types/common'
 import {
+  AuthCategory,
   AuthorizedInDataSourceNode,
   AuthorizedInNode,
   PluginAuth,
   PluginAuthInDataSourceNode,
 } from '@/app/components/plugins/plugin-auth'
-import { AuthCategory } from '@/app/components/plugins/plugin-auth'
-import { canFindTool } from '@/utils'
+import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
 import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
 import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
+import { useLogs } from '@/app/components/workflow/run/hooks'
+import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { useModalContext } from '@/context/modal-context'
-import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { FlowType } from '@/types/common'
+import { canFindTool } from '@/utils'
+import { debounce } from 'lodash-es'
+import BeforeRunForm from '../before-run-form'
+import PanelWrap from '../before-run-form/panel-wrap'
+import LastRun from './last-run'
+import useLastRun from './last-run/use-last-run'
 import { TriggerSubscription } from './trigger-subscription'
 
 const getCustomRunForm = (params: CustomRunFormProps): React.JSX.Element => {
@@ -311,13 +312,14 @@ const BasePanel: FC<BasePanelProps> = ({
     appendNodeInspectVars,
   } = useInspectVarsCrud()
 
-  const handleSubscriptionChange = useCallback((subscription_id: string) => {
-    handleNodeDataUpdateWithSyncDraft({
-      id,
-      data: {
-        subscription_id,
+  const handleSubscriptionChange = useCallback((v: SimpleSubscription, callback?: () => void) => {
+    handleNodeDataUpdateWithSyncDraft(
+      { id, data: { subscription_id: v.id } },
+      {
+        sync: true,
+        callback: { onSettled: callback },
       },
-    })
+    )
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
   if (logParams.showSpecialResultPanel) {
@@ -497,11 +499,6 @@ const BasePanel: FC<BasePanelProps> = ({
                     onAuthorizationItemClick={handleAuthorizationItemClick}
                     credentialId={data.credential_id}
                   />
-                  {/* <NodeAuth
-                    data={data}
-                    onAuthorizationChange={handleAuthorizationItemClick}
-                    onSubscriptionChange={handleSubscriptionChange}
-                  /> */}
                 </div>
               </PluginAuth>
             )

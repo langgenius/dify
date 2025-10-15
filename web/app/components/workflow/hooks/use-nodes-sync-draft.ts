@@ -7,6 +7,12 @@ import {
 } from './use-workflow'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 
+export type SyncCallback = {
+  onSuccess?: () => void
+  onError?: () => void
+  onSettled?: () => void
+}
+
 export const useNodesSyncDraft = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const debouncedSyncWorkflowDraft = useStore(s => s.debouncedSyncWorkflowDraft)
@@ -16,11 +22,7 @@ export const useNodesSyncDraft = () => {
   const handleSyncWorkflowDraft = useCallback((
     sync?: boolean,
     notRefreshWhenSyncError?: boolean,
-    callback?: {
-      onSuccess?: () => void
-      onError?: () => void
-      onSettled?: () => void
-    },
+    callback?: SyncCallback,
   ) => {
     if (getNodesReadOnly())
       return

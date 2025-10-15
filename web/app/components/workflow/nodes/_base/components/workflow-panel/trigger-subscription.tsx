@@ -1,4 +1,5 @@
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import { CreateButtonType, CreateSubscriptionButton } from '@/app/components/plugins/plugin-detail-panel/subscription-list/create'
 import { SubscriptionSelectorEntry } from '@/app/components/plugins/plugin-detail-panel/subscription-list/selector-entry'
 import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/subscription-list/store'
@@ -11,7 +12,7 @@ import { useEffect } from 'react'
 
 type NodeAuthProps = {
   data: Node['data']
-  onSubscriptionChange?: (id: string, name: string) => void
+  onSubscriptionChange: (v: SimpleSubscription, callback?: () => void) => void
   children: React.ReactNode
 }
 
@@ -46,7 +47,7 @@ export const TriggerSubscription: FC<NodeAuthProps> = ({ data, onSubscriptionCha
     {children}
     {subscriptionCount > 0 && <SubscriptionSelectorEntry
       selectedId={data.subscription_id}
-      onSelect={({ id, name }) => onSubscriptionChange?.(id, name)}
+      onSelect={onSubscriptionChange}
     />}
   </div>
 }

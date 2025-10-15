@@ -1,22 +1,21 @@
 'use client'
 import Tooltip from '@/app/components/base/tooltip'
-import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import cn from '@/utils/classnames'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreateButtonType, CreateSubscriptionButton } from './create'
 import SubscriptionCard from './subscription-card'
+import { useSubscriptionList } from './use-subscription-list'
 
 type SubscriptionListViewProps = {
-  subscriptions?: TriggerSubscription[]
   showTopBorder?: boolean
 }
 
 export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
-  subscriptions,
   showTopBorder = false,
 }) => {
   const { t } = useTranslation()
+  const { subscriptions } = useSubscriptionList()
 
   const subscriptionCount = subscriptions?.length || 0
 

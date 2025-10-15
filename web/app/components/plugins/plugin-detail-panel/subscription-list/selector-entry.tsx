@@ -4,6 +4,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import { SubscriptionList, SubscriptionListMode } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import cn from '@/utils/classnames'
 import { RiArrowDownSLine, RiWebhookLine } from '@remixicon/react'
@@ -74,7 +75,7 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
 
 export const SubscriptionSelectorEntry = ({ selectedId, onSelect }: {
   selectedId?: string,
-  onSelect: ({ id, name }: { id: string, name: string }) => void
+  onSelect: (v: SimpleSubscription, callback?: () => void) => void
 }) => {
   const [isOpen, setIsOpen] = useState(false)
 

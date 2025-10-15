@@ -9,10 +9,15 @@ export enum SubscriptionListMode {
   SELECTOR = 'selector',
 }
 
+export type SimpleSubscription = {
+  id: string,
+  name: string
+}
+
 type SubscriptionListProps = {
   mode?: SubscriptionListMode
   selectedId?: string
-  onSelect?: ({ id, name }: { id: string, name: string }) => void
+  onSelect?: (v: SimpleSubscription, callback?: () => void) => void
 }
 
 export { SubscriptionSelectorEntry } from './selector-entry'
@@ -22,7 +27,7 @@ export const SubscriptionList = withErrorBoundary(({
   selectedId,
   onSelect,
 }: SubscriptionListProps) => {
-  const { subscriptions, isLoading } = useSubscriptionList()
+  const { isLoading, refetch } = useSubscriptionList()
   if (isLoading) {
     return (
       <div className='flex items-center justify-center py-4'>
@@ -34,16 +39,13 @@ export const SubscriptionList = withErrorBoundary(({
   if (mode === SubscriptionListMode.SELECTOR) {
     return (
       <SubscriptionSelectorView
-        subscriptions={subscriptions}
         selectedId={selectedId}
-        onSelect={onSelect}
+        onSelect={(v) => {
+          onSelect?.(v, refetch)
+        }}
       />
     )
   }
 
-  return (
-    <SubscriptionListView
-      subscriptions={subscriptions}
-    />
-  )
+  return <SubscriptionListView />
 })
