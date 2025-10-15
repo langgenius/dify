@@ -146,7 +146,7 @@ class AppMCPServerRefreshController(Resource):
     def get(self, server_id):
         current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.has_edit_permission:
-            raise NotFound()
+            raise Forbidden()
         server = (
             db.session.query(AppMCPServer)
             .where(AppMCPServer.id == server_id)
