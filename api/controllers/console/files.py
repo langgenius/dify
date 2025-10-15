@@ -107,4 +107,4 @@ class FileSupportTypeApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        return {"allowed_extensions": DOCUMENT_EXTENSIONS}
+        return {"allowed_extensions": list(DOCUMENT_EXTENSIONS)}

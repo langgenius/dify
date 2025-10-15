@@ -14,6 +14,7 @@ from extensions.ext_database import db
 from fields.app_fields import app_import_check_dependencies_fields, app_import_fields
 from libs.login import current_user, login_required
 from models import Account
+from libs.login import current_account_with_tenant, login_required
 from models.model import App
 from services.app_dsl_service import AppDslService, ImportStatus
 from services.enterprise.enterprise_service import EnterpriseService
@@ -31,7 +32,7 @@ class AppImportApi(Resource):
     @cloud_edition_billing_resource_check("apps")
     def post(self):
         # Check user role first
-        assert isinstance(current_user, Account)
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -51,7 +52,7 @@ class AppImportApi(Resource):
         with Session(db.engine) as session:
             import_service = AppDslService(session)
             # Import app
-            account = cast(Account, current_user)
+            account = current_user
             result = import_service.import_app(
                 account=account,
                 import_mode=args["mode"],
@@ -85,7 +86,7 @@ class AppImportConfirmApi(Resource):
     @marshal_with(app_import_fields)
     def post(self, import_id):
         # Check user role first
-        assert isinstance(current_user, Account)
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -93,7 +94,7 @@ class AppImportConfirmApi(Resource):
         with Session(db.engine) as session:
             import_service = AppDslService(session)
             # Confirm import
-            account = cast(Account, current_user)
+            account = current_user
             result = import_service.confirm_import(import_id=import_id, account=account)
             session.commit()
 
@@ -111,7 +112,7 @@ class AppImportCheckDependenciesApi(Resource):
     @account_initialization_required
     @marshal_with(app_import_check_dependencies_fields)
     def get(self, app_model: App):
-        assert isinstance(current_user, Account)
+        current_user, _ = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 

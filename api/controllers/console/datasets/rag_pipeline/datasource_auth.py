@@ -1,5 +1,4 @@
 from flask import make_response, redirect, request
-from flask_login import current_user
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -13,7 +12,7 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.oauth import OAuthHandler
 from libs.helper import StrLen
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
@@ -25,9 +24,10 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider_id: str):
-        user = current_user
-        tenant_id = user.current_tenant_id
-        if not current_user.is_editor:
+        current_user, current_tenant_id = current_account_with_tenant()
+
+        tenant_id = current_tenant_id
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         credential_id = request.args.get("credential_id")
@@ -52,7 +52,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
         authorization_url_response = oauth_handler.get_authorization_url(
             tenant_id=tenant_id,
-            user_id=user.id,
+            user_id=current_user.id,
             plugin_id=plugin_id,
             provider=provider_name,
             redirect_uri=redirect_uri,
@@ -131,7 +131,9 @@ class DatasourceAuth(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider_id: str):
-        if not current_user.is_editor:
+        current_user, current_tenant_id = current_account_with_tenant()
+
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -145,7 +147,7 @@ class DatasourceAuth(Resource):
 
         try:
             datasource_provider_service.add_datasource_api_key_provider(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_tenant_id,
                 provider_id=datasource_provider_id,
                 credentials=args["credentials"],
                 name=args["name"],
@@ -160,8 +162,10 @@ class DatasourceAuth(Resource):
     def get(self, provider_id: str):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
+        _, current_tenant_id = current_account_with_tenant()
+
         datasources = datasource_provider_service.list_datasource_credentials(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             provider=datasource_provider_id.provider_name,
             plugin_id=datasource_provider_id.plugin_id,
         )
@@ -174,17 +178,19 @@ class DatasourceAuthDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider_id: str):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         datasource_provider_id = DatasourceProviderID(provider_id)
         plugin_id = datasource_provider_id.plugin_id
         provider_name = datasource_provider_id.provider_name
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.remove_datasource_credentials(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             auth_id=args["credential_id"],
             provider=provider_name,
             plugin_id=plugin_id,
@@ -198,17 +204,19 @@ class DatasourceAuthUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider_id: str):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         datasource_provider_id = DatasourceProviderID(provider_id)
         parser = reqparse.RequestParser()
         parser.add_argument("credentials", type=dict, required=False, nullable=True, location="json")
         parser.add_argument("name", type=StrLen(max_length=100), required=False, nullable=True, location="json")
         parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.update_datasource_credentials(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             auth_id=args["credential_id"],
             provider=datasource_provider_id.provider_name,
             plugin_id=datasource_provider_id.plugin_id,
@@ -224,10 +232,10 @@ class DatasourceAuthListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        _, current_tenant_id = current_account_with_tenant()
+
         datasource_provider_service = DatasourceProviderService()
-        datasources = datasource_provider_service.get_all_datasource_credentials(
-            tenant_id=current_user.current_tenant_id
-        )
+        datasources = datasource_provider_service.get_all_datasource_credentials(tenant_id=current_tenant_id)
         return {"result": jsonable_encoder(datasources)}, 200
 
 
@@ -237,10 +245,10 @@ class DatasourceHardCodeAuthListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        _, current_tenant_id = current_account_with_tenant()
+
         datasource_provider_service = DatasourceProviderService()
-        datasources = datasource_provider_service.get_hard_code_datasource_credentials(
-            tenant_id=current_user.current_tenant_id
-        )
+        datasources = datasource_provider_service.get_hard_code_datasource_credentials(tenant_id=current_tenant_id)
         return {"result": jsonable_encoder(datasources)}, 200
 
 
@@ -250,7 +258,9 @@ class DatasourceAuthOauthCustomClient(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider_id: str):
-        if not current_user.is_editor:
+        current_user, current_tenant_id = current_account_with_tenant()
+
+        if not current_user.has_edit_permission:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("client_params", type=dict, required=False, nullable=True, location="json")
@@ -259,7 +269,7 @@ class DatasourceAuthOauthCustomClient(Resource):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.setup_oauth_custom_client_params(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
             client_params=args.get("client_params", {}),
             enabled=args.get("enable_oauth_custom_client", False),
@@ -270,10 +280,12 @@ class DatasourceAuthOauthCustomClient(Resource):
     @login_required
     @account_initialization_required
     def delete(self, provider_id: str):
+        _, current_tenant_id = current_account_with_tenant()
+
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.remove_oauth_custom_client_params(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
         )
         return {"result": "success"}, 200
@@ -285,7 +297,9 @@ class DatasourceAuthDefaultApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider_id: str):
-        if not current_user.is_editor:
+        current_user, current_tenant_id = current_account_with_tenant()
+
+        if not current_user.has_edit_permission:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("id", type=str, required=True, nullable=False, location="json")
@@ -293,7 +307,7 @@ class DatasourceAuthDefaultApi(Resource):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.set_default_datasource_provider(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
             credential_id=args["id"],
         )
@@ -306,7 +320,9 @@ class DatasourceUpdateProviderNameApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider_id: str):
-        if not current_user.is_editor:
+        current_user, current_tenant_id = current_account_with_tenant()
+
+        if not current_user.has_edit_permission:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=StrLen(max_length=100), required=True, nullable=False, location="json")
@@ -315,7 +331,7 @@ class DatasourceUpdateProviderNameApi(Resource):
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.update_datasource_provider_name(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             datasource_provider_id=datasource_provider_id,
             name=args["name"],
             credential_id=args["credential_id"],
