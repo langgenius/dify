@@ -21,7 +21,7 @@ export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
 
   return (
     <div className={cn('border-divider-subtle px-4 py-2', showTopBorder && 'border-t')}>
-      <div className='relative mb-3 flex items-center justify-between'>
+      <div className='relative flex items-center justify-between'>
         {subscriptionCount > 0 && (
           <div className='flex h-8 shrink-0 items-center gap-1'>
             <span className='system-sm-semibold-uppercase text-text-secondary'>

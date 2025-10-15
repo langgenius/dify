@@ -265,34 +265,30 @@ const BasePanel: FC<BasePanelProps> = ({
   })()
 
   const buildInTools = useStore(s => s.buildInTools)
-  const currCollection = useMemo(() => {
-    return buildInTools.find(item => canFindTool(item.id, data.plugin_id))
-  }, [buildInTools, data.plugin_id])
+  const currToolCollection = useMemo(() => {
+    return buildInTools.find(item => canFindTool(item.id, data.provider_id))
+  }, [buildInTools, data.provider_id])
+  const needsToolAuth = useMemo(() => {
+    return (data.type === BlockEnum.Tool && currToolCollection?.allow_delete)
+  }, [data.type, currToolCollection?.allow_delete])
 
-  // For trigger plugins, get basic provider info
   const { data: triggerProviders = [] } = useAllTriggerPlugins()
   const currentTriggerProvider = useMemo(() => {
-    if (!data.plugin_id || !data.provider_name)
+    if (!data.provider_id || !data.provider_name)
       return undefined
-    return triggerProviders.find(p => p.plugin_id === data.plugin_id && p.name === data.provider_name)
-  }, [data.type, data.plugin_id, data.provider_name, triggerProviders])
+    return triggerProviders.find(p => p.name === data.provider_id) // todo: confirm
+  }, [data.type, data.provider_id, data.provider_name, triggerProviders])
 
-  // Simplified: Always show tab for trigger plugins
-  const shouldShowTriggerTab = useMemo(() => {
+  const showTriggerConfig = useMemo(() => {
     return data.type === BlockEnum.TriggerPlugin && currentTriggerProvider
   }, [data.type, currentTriggerProvider])
-
-  // Unified check for tool authentication UI
-  const needsToolAuth = useMemo(() => {
-    return (data.type === BlockEnum.Tool && currCollection?.allow_delete)
-  }, [data.type, currCollection?.allow_delete])
 
   const dataSourceList = useStore(s => s.dataSourceList)
 
   const currentDataSource = useMemo(() => {
     if (data.type === BlockEnum.DataSource && data.provider_type !== DataSourceClassification.localFile)
-      return dataSourceList?.find(item => item.plugin_id === data.plugin_id)
-  }, [dataSourceList, data.plugin_id, data.type, data.provider_type])
+      return dataSourceList?.find(item => item.plugin_id === data.provider_id)
+  }, [dataSourceList, data.provider_id, data.type, data.provider_type])
 
   const handleAuthorizationItemClick = useCallback((credential_id: string) => {
     handleNodeDataUpdateWithSyncDraft({
@@ -475,7 +471,7 @@ const BasePanel: FC<BasePanelProps> = ({
               <PluginAuth
                 className='px-4 pb-2'
                 pluginPayload={{
-                  provider: currCollection?.name || '',
+                  provider: currToolCollection?.name || '',
                   category: AuthCategory.tool,
                 }}
               >
@@ -486,7 +482,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   />
                   <AuthorizedInNode
                     pluginPayload={{
-                      provider: currCollection?.name || '',
+                      provider: currToolCollection?.name || '',
                       category: AuthCategory.tool,
                     }}
                     onAuthorizationItemClick={handleAuthorizationItemClick}
@@ -516,7 +512,7 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            shouldShowTriggerTab && (
+            showTriggerConfig && (
               <TriggerSubscription
                 data={data}
                 onSubscriptionChange={handleSubscriptionChange}
@@ -529,7 +525,7 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            !needsToolAuth && !currentDataSource && data.type !== BlockEnum.TriggerPlugin && (
+            !needsToolAuth && !currentDataSource && !showTriggerConfig && (
               <div className='flex items-center justify-between pl-4 pr-3'>
                 <Tab
                   value={tabType}

@@ -94,7 +94,7 @@ const translation = {
     },
     oauthRedirectInfo: '由于未找到此工具提供方的系统客户端密钥，需要手动设置，对于 redirect_uri，请使用',
     apiKey: {
-      title: '通过API密钥创建',
+      title: '通过 API 密钥创建',
       verify: {
         title: '验证凭据',
         description: '请提供您的 API 凭据以验证访问权限',
