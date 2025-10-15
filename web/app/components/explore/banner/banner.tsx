@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Carousel } from '@/app/components/base/carousel'
 import { useGetBanners } from '@/service/use-explore'
 import Loading from '../../base/loading'
@@ -8,27 +8,55 @@ import { useI18N } from '@/context/i18n'
 
 const AUTOPLAY_DELAY = 5000
 const MIN_LOADING_HEIGHT = 168
+const RESIZE_DEBOUNCE_DELAY = 50
+
+const LoadingState: FC = () => (
+  <div
+    className="flex items-center justify-center rounded-2xl bg-components-panel-on-panel-item-bg shadow-md"
+    style={{ minHeight: MIN_LOADING_HEIGHT }}
+  >
+    <Loading />
+  </div>
+)
 
 const Banner: FC = () => {
   const { locale } = useI18N()
   const { data: banners, isLoading, isError } = useGetBanners(locale)
   const [isHovered, setIsHovered] = useState(false)
+  const [isResizing, setIsResizing] = useState(false)
+  const resizeTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const enabledBanners = useMemo(
     () => banners?.filter((banner: BannerData) => banner.status === 'enabled') ?? [],
     [banners],
   )
 
-  if (isLoading) {
-    return (
-      <div
-        className="flex items-center justify-center rounded-2xl bg-components-panel-on-panel-item-bg shadow-md"
-        style={{ minHeight: MIN_LOADING_HEIGHT }}
-      >
-        <Loading />
-      </div>
-    )
-  }
+  const isPaused = isHovered || isResizing
+
+  // Handle window resize to pause animation
+  useEffect(() => {
+    const handleResize = () => {
+      setIsResizing(true)
+
+      if (resizeTimerRef.current)
+        clearTimeout(resizeTimerRef.current)
+
+      resizeTimerRef.current = setTimeout(() => {
+        setIsResizing(false)
+      }, RESIZE_DEBOUNCE_DELAY)
+    }
+
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      if (resizeTimerRef.current)
+        clearTimeout(resizeTimerRef.current)
+    }
+  }, [])
+
+  if (isLoading)
+    return <LoadingState />
 
   if (isError || enabledBanners.length === 0)
     return null
@@ -50,7 +78,11 @@ const Banner: FC = () => {
       <Carousel.Content>
         {enabledBanners.map((banner: BannerData) => (
           <Carousel.Item key={banner.id}>
-            <BannerItem banner={banner} autoplayDelay={AUTOPLAY_DELAY} isPaused={isHovered} />
+            <BannerItem
+              banner={banner}
+              autoplayDelay={AUTOPLAY_DELAY}
+              isPaused={isPaused}
+            />
           </Carousel.Item>
         ))}
       </Carousel.Content>

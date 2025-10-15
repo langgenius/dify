@@ -25,40 +25,26 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
   onClick,
 }) => {
   const [progress, setProgress] = useState(0)
-  const [isPageVisible, setIsPageVisible] = useState(true)
   const frameIdRef = useRef<number | undefined>(undefined)
   const startTimeRef = useRef(0)
 
-  // Listen to page visibility changes
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      setIsPageVisible(!document.hidden)
-    }
-    setIsPageVisible(!document.hidden)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [])
+  const isActive = index === selectedIndex
+  const shouldAnimate = !document.hidden && !isPaused
 
   useEffect(() => {
     if (!isNextSlide) {
       setProgress(0)
       if (frameIdRef.current)
         cancelAnimationFrame(frameIdRef.current)
-
       return
     }
 
-    // reset and start new animation
     setProgress(0)
     startTimeRef.current = Date.now()
 
     const animate = () => {
-      // Only continue animation when page is visible and not paused
       if (!document.hidden && !isPaused) {
-        const now = Date.now()
-        const elapsed = now - startTimeRef.current
+        const elapsed = Date.now() - startTimeRef.current
         const newProgress = Math.min((elapsed / autoplayDelay) * PROGRESS_MAX, PROGRESS_MAX)
         setProgress(newProgress)
 
@@ -69,21 +55,22 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
         frameIdRef.current = requestAnimationFrame(animate)
       }
     }
-    if (!document.hidden && !isPaused)
+
+    if (shouldAnimate)
       frameIdRef.current = requestAnimationFrame(animate)
 
     return () => {
       if (frameIdRef.current)
         cancelAnimationFrame(frameIdRef.current)
     }
-  }, [isNextSlide, autoplayDelay, resetKey, isPageVisible, isPaused])
-
-  const isActive = index === selectedIndex
+  }, [isNextSlide, autoplayDelay, resetKey, isPaused])
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     onClick()
   }, [onClick])
+
+  const progressDegrees = progress * DEGREES_PER_PERCENT
 
   return (
     <button
@@ -103,8 +90,8 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
           style={{
             background: `conic-gradient(
               from 0deg,
-              var(--color-text-primary) ${progress * DEGREES_PER_PERCENT}deg,
-              transparent ${progress * DEGREES_PER_PERCENT}deg
+              var(--color-text-primary) ${progressDegrees}deg,
+              transparent ${progressDegrees}deg
             )`,
             WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
             WebkitMaskComposite: 'xor',
