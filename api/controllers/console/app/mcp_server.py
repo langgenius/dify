@@ -55,7 +55,7 @@ class AppMCPServerController(Resource):
     def post(self, app_model):
         current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.has_edit_permission:
-            raise NotFound()
+            raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("description", type=str, required=False, location="json")
         parser.add_argument("parameters", type=dict, required=True, location="json")
