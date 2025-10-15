@@ -8,7 +8,7 @@ from werkzeug.exceptions import NotFound
 from controllers.console.explore.error import AppAccessDeniedError
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
-from libs.login import current_user, login_required
+from libs.login import current_account_with_tenant, current_user, login_required
 from models import InstalledApp
 from models.account import Account
 from services.app_service import AppService
@@ -24,13 +24,10 @@ def installed_app_required(view: Callable[Concatenate[InstalledApp, P], R] | Non
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app_id: str, *args: P.args, **kwargs: P.kwargs):
-            assert isinstance(current_user, Account)
-            assert current_user.current_tenant_id is not None
+            current_user, current_tenant_id = current_account_with_tenant()
             installed_app = (
                 db.session.query(InstalledApp)
-                .where(
-                    InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_user.current_tenant_id
-                )
+                .where(InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_tenant_id)
                 .first()
             )
 

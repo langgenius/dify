@@ -1,8 +1,7 @@
 from datetime import datetime
 
-import pytz  # pip install pytz
+import pytz
 import sqlalchemy as sa
-from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy import func, or_
@@ -22,8 +21,8 @@ from fields.conversation_fields import (
 )
 from libs.datetime_utils import naive_utc_now
 from libs.helper import DatetimeString
-from libs.login import login_required
-from models import Account, Conversation, EndUser, Message, MessageAnnotation
+from libs.login import current_account_with_tenant, login_required
+from models import Conversation, EndUser, Message, MessageAnnotation
 from models.model import AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
@@ -58,7 +57,8 @@ class CompletionConversationApi(Resource):
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_pagination_fields)
     def get(self, app_model):
-        if not current_user.is_editor:
+        current_user, current_tenant_id = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("keyword", type=str, location="args")
@@ -138,7 +138,8 @@ class CompletionConversationDetailApi(Resource):
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_message_detail_fields)
     def get(self, app_model, conversation_id):
-        if not current_user.is_editor:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
         conversation_id = str(conversation_id)
 
@@ -155,13 +156,12 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     def delete(self, app_model, conversation_id):
-        if not current_user.is_editor:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
         conversation_id = str(conversation_id)
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -207,7 +207,8 @@ class ChatConversationApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(conversation_with_summary_pagination_fields)
     def get(self, app_model):
-        if not current_user.is_editor:
+        current_user, current_tenant_id = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("keyword", type=str, location="args")
@@ -342,7 +343,8 @@ class ChatConversationDetailApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(conversation_detail_fields)
     def get(self, app_model, conversation_id):
-        if not current_user.is_editor:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
         conversation_id = str(conversation_id)
 
@@ -359,13 +361,12 @@ class ChatConversationDetailApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @account_initialization_required
     def delete(self, app_model, conversation_id):
-        if not current_user.is_editor:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
         conversation_id = str(conversation_id)
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -374,6 +375,7 @@ class ChatConversationDetailApi(Resource):
 
 
 def _get_conversation(app_model, conversation_id):
+    current_user, _ = current_account_with_tenant()
     conversation = (
         db.session.query(Conversation)
         .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)

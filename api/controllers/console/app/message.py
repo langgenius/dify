@@ -26,8 +26,7 @@ from extensions.ext_database import db
 from fields.conversation_fields import annotation_fields, message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from libs.login import current_user, login_required
-from models import Account
+from libs.login import current_account_with_tenant, login_required
 from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
@@ -62,7 +61,8 @@ class ChatMessageListApi(Resource):
     @account_initialization_required
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model):
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, current_tenant_id = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -154,8 +154,7 @@ class MessageFeedbackApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, app_model):
-        if current_user is None:
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("message_id", required=True, type=uuid_value, location="json")
@@ -218,8 +217,7 @@ class MessageAnnotationApi(Resource):
     @get_app_model
     @marshal_with(annotation_fields)
     def post(self, app_model):
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -270,6 +268,7 @@ class MessageSuggestedQuestionApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     def get(self, app_model, message_id):
+        current_user, current_tenant_id = current_account_with_tenant()
         message_id = str(message_id)
 
         try:

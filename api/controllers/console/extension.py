@@ -4,8 +4,7 @@ from constants import HIDDEN_VALUE
 from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.api_based_extension_fields import api_based_extension_fields
-from libs.login import current_account_with_tenant, current_user, login_required
-from models.account import Account
+from libs.login import current_account_with_tenant, login_required
 from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
 from services.code_based_extension_service import CodeBasedExtensionService
@@ -68,8 +67,7 @@ class APIBasedExtensionAPI(Resource):
     @account_initialization_required
     @marshal_with(api_based_extension_fields)
     def post(self):
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
+        current_user, current_tenant_id = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, location="json")
         parser.add_argument("api_endpoint", type=str, required=True, location="json")
@@ -98,8 +96,6 @@ class APIBasedExtensionDetailAPI(Resource):
     @account_initialization_required
     @marshal_with(api_based_extension_fields)
     def get(self, id):
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
         api_based_extension_id = str(id)
         _, tenant_id = current_account_with_tenant()
 
@@ -124,8 +120,6 @@ class APIBasedExtensionDetailAPI(Resource):
     @account_initialization_required
     @marshal_with(api_based_extension_fields)
     def post(self, id):
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
         api_based_extension_id = str(id)
         _, current_tenant_id = current_account_with_tenant()
 
@@ -153,8 +147,6 @@ class APIBasedExtensionDetailAPI(Resource):
     @login_required
     @account_initialization_required
     def delete(self, id):
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
         api_based_extension_id = str(id)
         _, current_tenant_id = current_account_with_tenant()
 

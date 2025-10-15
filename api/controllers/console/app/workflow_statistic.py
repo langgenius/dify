@@ -11,7 +11,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from libs.helper import DatetimeString
-from libs.login import current_user, login_required
+from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
@@ -29,7 +29,7 @@ class WorkflowDailyRunsStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account = current_user
+        account, current_tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -167,7 +167,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account = current_user
+        account, current_tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -182,7 +182,6 @@ FROM
 WHERE
     app_id = :app_id
     AND triggered_from = :triggered_from"""
-        assert isinstance(account, Account)
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
@@ -241,7 +240,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
     def get(self, app_model):
-        account = current_user
+        account, current_tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -269,7 +268,6 @@ FROM
     ) sub
 GROUP BY
     sub.date"""
-        assert isinstance(account, Account)
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,

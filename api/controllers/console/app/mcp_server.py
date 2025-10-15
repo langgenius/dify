@@ -1,7 +1,6 @@
 import json
 from enum import StrEnum
 
-from flask_login import current_user
 from flask_restx import Resource, fields, marshal_with, reqparse
 from werkzeug.exceptions import NotFound
 
@@ -10,7 +9,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from fields.app_fields import app_server_fields
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.model import AppMCPServer
 
 
@@ -54,7 +53,8 @@ class AppMCPServerController(Resource):
     @get_app_model
     @marshal_with(app_server_fields)
     def post(self, app_model):
-        if not current_user.is_editor:
+        current_user, current_tenant_id = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise NotFound()
         parser = reqparse.RequestParser()
         parser.add_argument("description", type=str, required=False, location="json")
@@ -71,7 +71,7 @@ class AppMCPServerController(Resource):
             parameters=json.dumps(args["parameters"], ensure_ascii=False),
             status=AppMCPServerStatus.ACTIVE,
             app_id=app_model.id,
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             server_code=AppMCPServer.generate_server_code(16),
         )
         db.session.add(server)
@@ -101,7 +101,8 @@ class AppMCPServerController(Resource):
     @get_app_model
     @marshal_with(app_server_fields)
     def put(self, app_model):
-        if not current_user.is_editor:
+        current_user, current_tenant_id = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise NotFound()
         parser = reqparse.RequestParser()
         parser.add_argument("id", type=str, required=True, location="json")
@@ -143,12 +144,13 @@ class AppMCPServerRefreshController(Resource):
     @account_initialization_required
     @marshal_with(app_server_fields)
     def get(self, server_id):
-        if not current_user.is_editor:
+        current_user, current_tenant_id = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise NotFound()
         server = (
             db.session.query(AppMCPServer)
             .where(AppMCPServer.id == server_id)
-            .where(AppMCPServer.tenant_id == current_user.current_tenant_id)
+            .where(AppMCPServer.tenant_id == current_tenant_id)
             .first()
         )
         if not server:

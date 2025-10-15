@@ -27,8 +27,8 @@ from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, uuid_value
-from libs.login import current_user, login_required
-from models import Account, App
+from libs.login import current_account_with_tenant, login_required
+from models import App
 from models.model import AppMode
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
@@ -73,8 +73,8 @@ class DraftWorkflowApi(Resource):
         """
         Get draft workflow
         """
+        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
-        assert isinstance(current_user, Account)
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -114,7 +114,7 @@ class DraftWorkflowApi(Resource):
         Sync draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        assert isinstance(current_user, Account)
+        current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -149,8 +149,7 @@ class DraftWorkflowApi(Resource):
         else:
             abort(415)
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         workflow_service = WorkflowService()
 
@@ -210,11 +209,8 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         Run draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        assert isinstance(current_user, Account)
+        current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.has_edit_permission:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -274,8 +270,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
         """
         Run draft workflow iteration node
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -327,8 +322,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
         Run draft workflow iteration node
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -379,8 +373,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -432,8 +425,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -484,8 +476,7 @@ class DraftWorkflowRunApi(Resource):
         Run draft workflow
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -530,8 +521,7 @@ class WorkflowTaskStopApi(Resource):
         Stop workflow task
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -572,8 +562,7 @@ class DraftWorkflowNodeRunApi(Resource):
         Run draft workflow node
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -626,8 +615,7 @@ class PublishedWorkflowApi(Resource):
         Get published workflow
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -647,8 +635,7 @@ class PublishedWorkflowApi(Resource):
         """
         Publish workflow
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -706,8 +693,7 @@ class DefaultBlockConfigsApi(Resource):
         Get default block config
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -732,8 +718,7 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -774,8 +759,7 @@ class ConvertToWorkflowApi(Resource):
         Convert expert mode of chatbot app to workflow mode
         Convert Completion App to Workflow App
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -816,8 +800,7 @@ class PublishedAllWorkflowApi(Resource):
         Get published workflows
         """
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.has_edit_permission:
             raise Forbidden()
 
@@ -882,8 +865,7 @@ class WorkflowByIdApi(Resource):
         """
         Update workflow attributes
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         # Check permission
         if not current_user.has_edit_permission:
             raise Forbidden()
@@ -937,8 +919,7 @@ class WorkflowByIdApi(Resource):
         """
         Delete workflow
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
         # Check permission
         if not current_user.has_edit_permission:
             raise Forbidden()

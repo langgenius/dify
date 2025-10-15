@@ -1,5 +1,3 @@
-from typing import cast
-
 import flask_login
 from flask import request
 from flask_restx import Resource, reqparse
@@ -26,7 +24,7 @@ from controllers.console.error import (
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
-from models import Account
+from libs.login import current_account_with_tenant
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError
@@ -96,7 +94,8 @@ class LoginApi(Resource):
 class LogoutApi(Resource):
     @setup_required
     def get(self):
-        account = cast(Account, flask_login.current_user)
+        current_user, current_tenant_id = current_account_with_tenant()
+        account = current_user
         if isinstance(account, flask_login.AnonymousUserMixin):
             return {"result": "success"}
         AccountService.logout(account=account)

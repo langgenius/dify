@@ -4,18 +4,18 @@ from typing import ParamSpec, TypeVar, Union
 
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
-from libs.login import current_user
-from models import Account, App, AppMode
+from libs.login import current_account_with_tenant
+from models import App, AppMode
 
 P = ParamSpec("P")
 R = TypeVar("R")
 
 
 def _load_app_model(app_id: str) -> App | None:
-    assert isinstance(current_user, Account)
+    current_user, current_tenant_id = current_account_with_tenant()
     app_model = (
         db.session.query(App)
-        .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+        .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
         .first()
     )
     return app_model
