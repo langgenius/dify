@@ -175,7 +175,7 @@ export const useWorkflowRun = () => {
         console.error('handleRun: missing app id for trigger plugin run')
         return
       }
-      url = `/apps/${appDetail.id}/workflows/draft/trigger/plugin/run`
+      url = `/apps/${appDetail.id}/workflows/draft/trigger/run`
     }
     else if (appDetail?.mode === 'advanced-chat') {
       url = `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
