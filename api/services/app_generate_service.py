@@ -141,7 +141,7 @@ class AppGenerateService:
         Returns:
             The maximum number of active requests allowed
         """
-        app_limit = app.max_active_requests or 0
+        app_limit = app.max_active_requests or dify_config.APP_DEFAULT_ACTIVE_REQUESTS
         config_limit = dify_config.APP_MAX_ACTIVE_REQUESTS
 
         # Filter out infinite (0) values and return the minimum, or 0 if both are infinite

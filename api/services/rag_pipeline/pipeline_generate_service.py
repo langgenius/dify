@@ -55,7 +55,7 @@ class PipelineGenerateService:
     def _get_max_active_requests(app_model: App) -> int:
         max_active_requests = app_model.max_active_requests
         if max_active_requests is None:
-            max_active_requests = int(dify_config.APP_MAX_ACTIVE_REQUESTS)
+            max_active_requests = int(dify_config.APP_DEFAULT_ACTIVE_REQUESTS)
         return max_active_requests
 
     @classmethod
