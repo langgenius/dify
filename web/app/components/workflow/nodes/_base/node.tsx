@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next'
 import type { NodeProps } from '../../types'
 import {
   BlockEnum,
+  ControlMode,
   NodeRunningStatus,
 } from '../../types'
 import {
@@ -72,6 +73,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { userProfile } = useAppContext()
   const appId = useStore(s => s.appId)
   const { nodePanelPresence } = useCollaboration(appId as string)
+  const controlMode = useStore(s => s.controlMode)
 
   const currentUserPresence = useMemo(() => {
     const userId = userProfile?.id || ''
@@ -196,6 +198,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         className={cn(
           'group relative pb-1 shadow-xs',
           'rounded-[15px] border border-transparent',
+          (controlMode === ControlMode.Comment) && 'hover:cursor-none',
           (data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop) && 'w-[240px] bg-workflow-block-bg',
           (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && 'flex h-full w-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
           !data._runningStatus && 'hover:shadow-lg',

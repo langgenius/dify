@@ -6,13 +6,13 @@ import { ControlMode } from '../types'
 import type { WorkflowCommentDetail, WorkflowCommentList } from '@/service/workflow-comment'
 import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, deleteWorkflowCommentReply, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment, updateWorkflowComment, updateWorkflowCommentReply } from '@/service/workflow-comment'
 import { collaborationManager } from '@/app/components/workflow/collaboration'
+import { useAppContext } from '@/context/app-context'
 
 export const useWorkflowComment = () => {
   const params = useParams()
   const appId = params.appId as string
   const reactflow = useReactFlow()
   const controlMode = useStore(s => s.controlMode)
-  const setControlMode = useStore(s => s.setControlMode)
   const pendingComment = useStore(s => s.pendingComment)
   const setPendingComment = useStore(s => s.setPendingComment)
   const setActiveCommentId = useStore(s => s.setActiveCommentId)
@@ -31,6 +31,9 @@ export const useWorkflowComment = () => {
   const setReplyUpdating = useStore(s => s.setReplyUpdating)
   const commentDetailCache = useStore(s => s.commentDetailCache)
   const setCommentDetailCache = useStore(s => s.setCommentDetailCache)
+  const rightPanelWidth = useStore(s => s.rightPanelWidth)
+  const nodePanelWidth = useStore(s => s.nodePanelWidth)
+  const { userProfile } = useAppContext()
   const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
   const activeCommentIdRef = useRef<string | null>(null)
 
@@ -113,16 +116,63 @@ export const useWorkflowComment = () => {
 
       console.log('Comment created successfully:', newComment)
 
+      const createdAt = (newComment as any)?.created_at
+      const createdByAccount = {
+        id: userProfile?.id ?? '',
+        name: userProfile?.name ?? '',
+        email: userProfile?.email ?? '',
+        avatar_url: userProfile?.avatar_url || userProfile?.avatar || undefined,
+      }
+
+      const composedComment: WorkflowCommentList = {
+        id: newComment.id,
+        position_x: flowPosition.x,
+        position_y: flowPosition.y,
+        content,
+        created_by: createdByAccount.id,
+        created_by_account: createdByAccount,
+        created_at: createdAt,
+        updated_at: createdAt,
+        resolved: false,
+        mention_count: mentionedUserIds.length,
+        reply_count: 0,
+        participants: createdByAccount.id ? [createdByAccount] : [],
+      }
+
+      const composedDetail: WorkflowCommentDetail = {
+        id: newComment.id,
+        position_x: flowPosition.x,
+        position_y: flowPosition.y,
+        content,
+        created_by: createdByAccount.id,
+        created_by_account: createdByAccount,
+        created_at: createdAt,
+        updated_at: createdAt,
+        resolved: false,
+        replies: [],
+        mentions: mentionedUserIds.map(mentionedId => ({
+          mentioned_user_id: mentionedId,
+          mentioned_user_account: null,
+          reply_id: null,
+        })),
+      }
+
+      setComments([...comments, composedComment])
+      commentDetailCacheRef.current = {
+        ...commentDetailCacheRef.current,
+        [newComment.id]: composedDetail,
+      }
+      setCommentDetailCache(commentDetailCacheRef.current)
+
       collaborationManager.emitCommentsUpdate(appId)
 
-      await loadComments()
       setPendingComment(null)
     }
     catch (error) {
       console.error('Failed to create comment:', error)
       setPendingComment(null)
     }
-  }, [appId, pendingComment, setPendingComment, loadComments, reactflow])
+  }, [appId, pendingComment, setPendingComment, reactflow, comments, setComments, userProfile, setCommentDetailCache])
 
   const handleCommentCancel = useCallback(() => {
     setPendingComment(null)
@@ -142,9 +192,16 @@ export const useWorkflowComment = () => {
     const cachedDetail = commentDetailCacheRef.current[comment.id]
     setActiveComment(cachedDetail || comment)
 
-    let horizontalOffsetPx = 220
+    const hasSelectedNode = reactflow.getNodes().some(node => node.data?.selected)
+    const commentPanelWidth = controlMode === ControlMode.Comment ? 420 : 0
+    const fallbackPanelWidth = (hasSelectedNode ? nodePanelWidth : 0) + commentPanelWidth
+    const effectivePanelWidth = Math.max(rightPanelWidth ?? 0, fallbackPanelWidth)
+
+    const baseHorizontalOffsetPx = 220
+    const panelCompensationPx = effectivePanelWidth / 2
+    const desiredHorizontalOffsetPx = baseHorizontalOffsetPx + panelCompensationPx
     const maxOffset = Math.max(0, (window.innerWidth / 2) - 60)
-    horizontalOffsetPx = Math.min(horizontalOffsetPx, maxOffset)
+    const horizontalOffsetPx = Math.min(desiredHorizontalOffsetPx, maxOffset)
 
     reactflow.setCenter(
       comment.position_x + horizontalOffsetPx,
@@ -175,7 +232,18 @@ export const useWorkflowComment = () => {
     finally {
       setActiveCommentLoading(false)
     }
-  }, [appId, reactflow, setActiveComment, setActiveCommentId, setActiveCommentLoading, setCommentDetailCache, setControlMode, setPendingComment])
+  }, [
+    appId,
+    controlMode,
+    nodePanelWidth,
+    reactflow,
+    rightPanelWidth,
+    setActiveComment,
+    setActiveCommentId,
+    setActiveCommentLoading,
+    setCommentDetailCache,
+    setPendingComment,
+  ])
 
   const handleCommentResolve = useCallback(async (commentId: string) => {
     if (!appId) return

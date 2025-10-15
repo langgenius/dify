@@ -422,7 +422,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <CandidateNode />
       <CommentManager />
       <div
-        className='pointer-events-none absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2'
+        className='pointer-events-none absolute left-0 top-0 z-[70] flex w-12 items-center justify-center p-1 pl-2'
         style={{ height: controlHeight }}
       >
         <Control />
@@ -528,7 +528,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
         deleteKeyCode={null}
-        nodesDraggable={!nodesReadOnly}
+        nodesDraggable={!nodesReadOnly && controlMode !== ControlMode.Comment}
         nodesConnectable={!nodesReadOnly}
         nodesFocusable={!nodesReadOnly}
         edgesFocusable={!nodesReadOnly}
