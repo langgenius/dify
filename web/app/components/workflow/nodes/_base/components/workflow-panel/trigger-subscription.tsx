@@ -10,13 +10,13 @@ import cn from '@/utils/classnames'
 import type { FC } from 'react'
 import { useEffect } from 'react'
 
-type NodeAuthProps = {
+type TriggerSubscriptionProps = {
   data: Node['data']
   onSubscriptionChange: (v: SimpleSubscription, callback?: () => void) => void
   children: React.ReactNode
 }
 
-export const TriggerSubscription: FC<NodeAuthProps> = ({ data, onSubscriptionChange, children }) => {
+export const TriggerSubscription: FC<TriggerSubscriptionProps> = ({ data, onSubscriptionChange, children }) => {
   // @ts-expect-error TODO: fix this
   const { currentProvider } = useConfig(data.id as string, data)
   const { setDetail } = usePluginStore()

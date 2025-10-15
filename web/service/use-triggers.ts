@@ -173,14 +173,17 @@ export const useVerifyTriggerSubscriptionBuilder = () => {
   })
 }
 
+export type BuildTriggerSubscriptionPayload = {
+  provider: string
+  subscriptionBuilderId: string
+  name: string
+  parameters?: Record<string, any>
+}
+
 export const useBuildTriggerSubscription = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'build-subscription'],
-    mutationFn: (payload: {
-      provider: string
-      subscriptionBuilderId: string
-      [key: string]: any
-    }) => {
+    mutationFn: (payload: BuildTriggerSubscriptionPayload) => {
       const { provider, subscriptionBuilderId, ...body } = payload
       return post(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/builder/build/${subscriptionBuilderId}`,

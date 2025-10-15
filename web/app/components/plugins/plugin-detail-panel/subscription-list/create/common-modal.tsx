@@ -9,6 +9,7 @@ import Toast from '@/app/components/base/toast'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import type { BuildTriggerSubscriptionPayload } from '@/service/use-triggers'
 import {
   useBuildTriggerSubscription,
   useCreateTriggerSubscriptionBuilder,
@@ -40,6 +41,8 @@ enum ApiKeyStep {
   Verify = 'verify',
   Configuration = 'configuration',
 }
+
+const defaultFormValues = { values: {}, isCheckValidated: false }
 
 // Check if URL is a private/local network address
 const isPrivateOrLocalAddress = (url: string): boolean => {
@@ -202,7 +205,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
     if (!subscriptionBuilder || !detail?.provider)
       return
 
-    const formValues = manualPropertiesFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
+    const formValues = manualPropertiesFormRef.current?.getFormValues({ needCheckValidatedValues: false }) || { values: {}, isCheckValidated: true }
 
     debouncedUpdate(detail.provider, subscriptionBuilder.id, formValues.values)
   }, [subscriptionBuilder, detail?.provider, debouncedUpdate])
@@ -214,7 +217,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   }, [debouncedUpdate])
 
   const handleVerify = () => {
-    const apiKeyCredentialsFormValues = apiKeyCredentialsFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
+    const apiKeyCredentialsFormValues = apiKeyCredentialsFormRef.current?.getFormValues({}) || defaultFormValues
     const credentials = apiKeyCredentialsFormValues.values
 
     if (!Object.keys(credentials).length) {
@@ -256,18 +259,6 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   }
 
   const handleCreate = () => {
-    const autoCommonParametersFormValues = autoCommonParametersFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
-    const subscriptionFormValues = subscriptionFormRef.current?.getFormValues({}) || { values: {}, isCheckValidated: false }
-    // console.log('parameterForm', parameterForm)
-
-    if (!subscriptionFormValues?.isCheckValidated || (createType !== SupportedCreationMethods.MANUAL && !autoCommonParametersFormValues?.isCheckValidated)) {
-      // Toast.notify({
-      //   type: 'error',
-      //   message: 'Please fill in all required fields',
-      // })
-      return
-    }
-
     if (!subscriptionBuilder) {
       Toast.notify({
         type: 'error',
@@ -276,15 +267,32 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
       return
     }
 
-    const subscriptionNameValue = subscriptionFormValues?.values.subscription_name as string
+    const subscriptionFormValues = subscriptionFormRef.current?.getFormValues({})
+    if (!subscriptionFormValues?.isCheckValidated)
+      return
+
+    const subscriptionNameValue = subscriptionFormValues?.values?.subscription_name as string
+
+    const params: BuildTriggerSubscriptionPayload = {
+      provider: detail?.provider || '',
+      subscriptionBuilderId: subscriptionBuilder.id,
+      name: subscriptionNameValue,
+    }
+
+    if (createType !== SupportedCreationMethods.MANUAL) {
+      const autoCommonParametersFormValues = autoCommonParametersFormRef.current?.getFormValues({}) || defaultFormValues
+      if (!autoCommonParametersFormValues?.isCheckValidated)
+        return
+      params.parameters = autoCommonParametersFormValues.values
+    }
+    else {
+      const manualFormValues = manualPropertiesFormRef.current?.getFormValues({}) || defaultFormValues
+      if (!manualFormValues?.isCheckValidated)
+        return
+    }
 
     buildSubscription(
-      {
-        provider: detail?.provider || '',
-        subscriptionBuilderId: subscriptionBuilder.id,
-        name: subscriptionNameValue,
-        parameters: autoCommonParametersFormValues.values,
-      },
+      params,
       {
         onSuccess: () => {
           Toast.notify({
