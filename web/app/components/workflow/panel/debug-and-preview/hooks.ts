@@ -63,8 +63,8 @@ export const useChat = (
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
-  const conversationVariables = useStore(s => s.conversationVariables)
-  const setConversationVariables = useStore(s => s.setConversationVariables)
+  const memoryVariables = useStore(s => s.memoryVariables)
+  const setMemoryVariables = useStore(s => s.setMemoryVariables)
   const {
     setIterTimes,
     setLoopTimes,
@@ -502,8 +502,8 @@ export const useChat = (
           }
         },
         onMemoryUpdate: ({ data }) => {
-          const currentMemoryIndex = conversationVariables.findIndex(item => item.id === data.memory_id)
-          const newList = produce(conversationVariables, (draft) => {
+          const currentMemoryIndex = memoryVariables.findIndex(item => item.id === data.memory_id)
+          const newList = produce(memoryVariables, (draft) => {
             if (currentMemoryIndex > -1) {
               draft[currentMemoryIndex] = {
                 ...draft[currentMemoryIndex],
@@ -511,7 +511,7 @@ export const useChat = (
               }
             }
           })
-          setConversationVariables(newList)
+          setMemoryVariables(newList)
         },
       },
     )

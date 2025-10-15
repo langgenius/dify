@@ -90,10 +90,12 @@ const ChatVariablePanel = () => {
     removeUsedVarInNodes(chatVar)
     const varList = workflowStore.getState().conversationVariables
     updateChatVarList(varList.filter(v => v.id !== chatVar.id))
+    const memoryList = workflowStore.getState().memoryVariables
+    setMemoryVariables(memoryList.filter(v => v.id !== chatVar.id))
     setCacheForDelete(undefined)
     setShowRemoveConfirm(false)
     handleVarChanged(chatVar.value_type === ChatVarType.Memory)
-  }, [handleVarChanged, removeUsedVarInNodes, updateChatVarList])
+  }, [handleVarChanged, removeUsedVarInNodes, updateChatVarList, setMemoryVariables])
 
   const deleteCheck = useCallback((chatVar: ConversationVariable | MemoryVariable) => {
     const effectedNodes = getEffectedNodes(chatVar)

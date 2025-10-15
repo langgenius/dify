@@ -8,7 +8,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import ActionButton from '@/app/components/base/action-button'
-import type { ConversationVariable } from '@/app/components/workflow/types'
+import type { MemoryVariable } from '@/app/components/workflow/types'
 import { useStore } from '@/app/components/workflow/store'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
@@ -30,8 +30,8 @@ const MemoryCreateButton = ({
 }: Props) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const [open, setOpen] = useState(false)
-  const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
-  const updateChatVarList = useStore(s => s.setConversationVariables)
+  const varList = useStore(s => s.memoryVariables) as MemoryVariable[]
+  const updateMemoryVarList = useStore(s => s.setMemoryVariables)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     invalidateConversationVarValues,
@@ -45,14 +45,14 @@ const MemoryCreateButton = ({
     })
   }, [doSyncWorkflowDraft, invalidateConversationVarValues])
 
-  const handleSave = useCallback(async (newChatVar: ConversationVariable) => {
-    const newList = [newChatVar, ...varList]
-    updateChatVarList(newList)
+  const handleSave = useCallback((newMemoryVar: MemoryVariable) => {
+    const newList = [newMemoryVar, ...varList]
+    updateMemoryVarList(newList)
     handleVarChanged()
     setOpen(false)
     if (instanceId)
-      eventEmitter?.emit({ type: MEMORY_VAR_CREATED_BY_MODAL_BY_EVENT_EMITTER, instanceId, variable: ['conversation', newChatVar.name] } as any)
-  }, [varList, updateChatVarList, handleVarChanged, setOpen, eventEmitter, instanceId])
+      eventEmitter?.emit({ type: MEMORY_VAR_CREATED_BY_MODAL_BY_EVENT_EMITTER, instanceId, variable: ['memory', newMemoryVar.name] } as any)
+  }, [varList, updateMemoryVarList, handleVarChanged, setOpen, eventEmitter, instanceId])
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === MEMORY_VAR_MODAL_SHOW_BY_EVENT_EMITTER && v.instanceId === instanceId)
