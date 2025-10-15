@@ -93,6 +93,7 @@ class AppAnnotationSettingUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def post(self, app_id, annotation_setting_id):
         app_id = str(app_id)
         annotation_setting_id = str(annotation_setting_id)
