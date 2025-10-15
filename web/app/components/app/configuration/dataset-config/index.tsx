@@ -39,8 +39,9 @@ import {
 
 type Props = {
   readonly?: boolean
+  hideMetadataFilter?: boolean
 }
-const DatasetConfig: FC<Props> = ({ readonly }) => {
+const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
   const { t } = useTranslation()
   const userProfile = useAppContextSelector(s => s.userProfile)
   const {
@@ -286,25 +287,27 @@ const DatasetConfig: FC<Props> = ({ readonly }) => {
           </div>
         )}
 
-      <div className='border-t border-t-divider-subtle py-2'>
-        <MetadataFilter
-          metadataList={metadataList}
-          selectedDatasetsLoaded
-          metadataFilterMode={datasetConfigs.metadata_filtering_mode}
-          metadataFilteringConditions={datasetConfigs.metadata_filtering_conditions}
-          handleAddCondition={handleAddCondition}
-          handleMetadataFilterModeChange={handleMetadataFilterModeChange}
-          handleRemoveCondition={handleRemoveCondition}
-          handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
-          handleUpdateCondition={handleUpdateCondition}
-          metadataModelConfig={datasetConfigs.metadata_model_config}
-          handleMetadataModelChange={handleMetadataModelChange}
-          handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
-          isCommonVariable
-          availableCommonStringVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.string || item.type === MetadataFilteringVariableType.select)}
-          availableCommonNumberVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.number)}
-        />
-      </div>
+      {!hideMetadataFilter && (
+        <div className='border-t border-t-divider-subtle py-2'>
+          <MetadataFilter
+            metadataList={metadataList}
+            selectedDatasetsLoaded
+            metadataFilterMode={datasetConfigs.metadata_filtering_mode}
+            metadataFilteringConditions={datasetConfigs.metadata_filtering_conditions}
+            handleAddCondition={handleAddCondition}
+            handleMetadataFilterModeChange={handleMetadataFilterModeChange}
+            handleRemoveCondition={handleRemoveCondition}
+            handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
+            handleUpdateCondition={handleUpdateCondition}
+            metadataModelConfig={datasetConfigs.metadata_model_config}
+            handleMetadataModelChange={handleMetadataModelChange}
+            handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
+            isCommonVariable
+            availableCommonStringVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.string || item.type === MetadataFilteringVariableType.select)}
+            availableCommonNumberVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.number)}
+          />
+        </div>
+      )}
 
       {mode === AppType.completion && dataSet.length > 0 && (
         <ContextVar
