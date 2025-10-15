@@ -226,6 +226,17 @@ const translation = {
   createFromPipeline: 'Ustvarjanje iz cevovoda znanja',
   updated: 'Posodobljene',
   externalKnowledgeBase: 'Zunanja baza znanja',
+  serviceApi: {
+    card: {
+      apiKey: 'API ključ',
+      endpoint: 'Vhodna točka API storitve',
+      title: 'API storitev za zaledje',
+      apiReference: 'API Referenca',
+    },
+    title: 'Storitveni API',
+    disabled: 'Onemogočeno',
+    enabled: 'V storitvi',
+  },
 }
 
 export default translation
