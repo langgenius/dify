@@ -189,34 +189,16 @@ class MCPProviderEntity(BaseModel):
             return None
 
         # Check if we have nested client_information structure
-        if "client_information" in credentials:
-            # Handle nested structure (Authorization Code flow)
-            client_info_data = credentials["client_information"]
-            if isinstance(client_info_data, dict):
-                return OAuthClientInformation.model_validate(client_info_data)
+        if "client_information" not in credentials:
             return None
-
-        # Handle flat structure (Client Credentials flow)
-        if "client_id" not in credentials:
-            return None
-
-        # Build client information from flat structure
-        client_info = {
-            "client_id": credentials.get("client_id", ""),
-            "client_secret": credentials.get("client_secret", ""),
-            "client_name": credentials.get("client_name", CLIENT_NAME),
-        }
-
-        # Parse JSON fields if they exist
-        json_fields = ["redirect_uris", "grant_types", "response_types"]
-        for field in json_fields:
-            if field in credentials:
-                client_info[field] = json.loads(credentials[field])
-
-        if "scope" in credentials:
-            client_info["scope"] = credentials["scope"]
-
-        return OAuthClientInformation.model_validate(client_info)
+        client_info_data = credentials["client_information"]
+        if isinstance(client_info_data, dict):
+            if "encrypted_client_secret" in client_info_data:
+                client_info_data["client_secret"] = encrypter.decrypt_token(
+                    self.tenant_id, client_info_data["encrypted_client_secret"]
+                )
+            return OAuthClientInformation.model_validate(client_info_data)
+        return None
 
     def retrieve_tokens(self) -> OAuthTokens | None:
         """OAuth tokens if available"""
@@ -257,26 +239,18 @@ class MCPProviderEntity(BaseModel):
 
         masked = {}
 
-        # Check if we have nested client_information structure
-        if "client_information" in credentials and isinstance(credentials["client_information"], dict):
-            client_info = credentials["client_information"]
-            # Mask sensitive fields from nested structure
-            if client_info.get("client_id"):
-                masked["client_id"] = self._mask_value(client_info["client_id"])
-            if client_info.get("client_secret"):
-                masked["client_secret"] = self._mask_value(client_info["client_secret"])
-        else:
-            # Handle flat structure
-            # Mask sensitive fields
-            sensitive_fields = ["client_id", "client_secret"]
-            for field in sensitive_fields:
-                if credentials.get(field):
-                    masked[field] = self._mask_value(credentials[field])
-
-        # Include non-sensitive fields (check both flat and nested structures)
-        if "grant_type" in credentials:
-            masked["grant_type"] = credentials["grant_type"]
-
+        if "client_information" not in credentials or not isinstance(credentials["client_information"], dict):
+            return {}
+        client_info = credentials["client_information"]
+        # Mask sensitive fields from nested structure
+        if client_info.get("client_id"):
+            masked["client_id"] = self._mask_value(client_info["client_id"])
+        if client_info.get("encrypted_client_secret"):
+            masked["client_secret"] = self._mask_value(
+                encrypter.decrypt_token(self.tenant_id, client_info["encrypted_client_secret"])
+            )
+        if client_info.get("client_secret"):
+            masked["client_secret"] = self._mask_value(client_info["client_secret"])
         return masked
 
     def decrypt_server_url(self) -> str:

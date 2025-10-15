@@ -12,6 +12,7 @@ from pydantic import BaseModel, ValidationError
 
 from core.entities.mcp_provider import MCPProviderEntity, MCPSupportGrantType
 from core.helper import ssrf_proxy
+from core.mcp.error import MCPRefreshTokenError
 from core.mcp.types import (
     LATEST_PROTOCOL_VERSION,
     OAuthClientInformation,
@@ -283,10 +284,12 @@ def refresh_authorization(
 
     if client_information.client_secret:
         params["client_secret"] = client_information.client_secret
-
-    response = ssrf_proxy.post(token_url, data=params)
+    try:
+        response = ssrf_proxy.post(token_url, data=params)
+    except ssrf_proxy.MaxRetriesExceededError as e:
+        raise MCPRefreshTokenError(e) from e
     if not response.is_success:
-        raise ValueError(f"Token refresh failed: HTTP {response.status_code}")
+        raise MCPRefreshTokenError(response.text)
     return OAuthTokens.model_validate(response.json())
 
 
