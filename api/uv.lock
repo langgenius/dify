@@ -587,16 +587,16 @@ wheels = [
 
 [[package]]
 name = "boto3-stubs"
-version = "1.40.50"
+version = "1.40.51"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore-stubs" },
     { name = "types-s3transfer" },
     { name = "typing-extensions", marker = "python_full_version < '3.12'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/35/c8/06584145c4ccc80e3297a97874bfaa43e6b2fb9f8a69bcc38e29a1457bf5/boto3_stubs-1.40.50.tar.gz", hash = "sha256:29828adfcb8629b5e285468eb89610f1fc71f964ad0913de3049a0a9d5de0be1", size = 100836, upload-time = "2025-10-10T20:32:34.867Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/4d/b07f9ee0fe432fa8ec6dc368ee7a0409e2b6d9df2c5a2a88265c9b6fd878/boto3_stubs-1.40.51.tar.gz", hash = "sha256:0281e820813a310954e15fb7c1d470c24c34c1cccc7b1ddad977fa293a1080a9", size = 100890, upload-time = "2025-10-13T19:25:36.126Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7b/69/f18c7135dc8a2b74e21b4a2375fa455e4d9e7e47f7838bc175d52005054a/boto3_stubs-1.40.50-py3-none-any.whl", hash = "sha256:01b9c67df62f26371a4a7473c616eece988a5305e7f7cb3fbc014d178685ac4e", size = 69689, upload-time = "2025-10-10T20:32:25.77Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/2e/4476431f11fc3bf7a7e0f4f5c275f17607aa127da7c0d8685a4dc6bf6291/boto3_stubs-1.40.51-py3-none-any.whl", hash = "sha256:896d0ffaa298ce1749eea1a54946320a0f4e07c6912f8e1f8c0744a708ee25a4", size = 69709, upload-time = "2025-10-13T19:25:23.116Z" },
 ]
 
 [package.optional-dependencies]
@@ -620,14 +620,14 @@ wheels = [
 
 [[package]]
 name = "botocore-stubs"
-version = "1.40.50"
+version = "1.40.51"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "types-awscrt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/20/4b/86ad2d24ea36eed159c8e1f85a2645bfeedae34ccb8c77ea8c99abbd66d1/botocore_stubs-1.40.50.tar.gz", hash = "sha256:d772b2d3aea6b4e464963fe45b2d504eee7bc3842f047cebbae5492b3993e0fd", size = 42250, upload-time = "2025-10-11T23:08:59.925Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/55/ca/429fadb6e037cb7b300d508a0b24b59a71961db12539e21749cbec7e7422/botocore_stubs-1.40.51.tar.gz", hash = "sha256:8ddbeb1f68e39382533bb53f3b968d29e640406016af00ad8bbd6e1a2bd59536", size = 42249, upload-time = "2025-10-13T20:26:57.777Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/c1/4a736155b2d5dd7fdd09af8fba9ed59693c565d6e2bc1b5adc769da36cb5/botocore_stubs-1.40.50-py3-none-any.whl", hash = "sha256:7cb8d636e061e600929cd03339c3bbc162c21435b4bfeb6413cf7b0b612e7de0", size = 66541, upload-time = "2025-10-11T23:08:57.678Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/b9/5f1296bc46f293f284a1a6259f3c1f21f4161088dc6f70428698841b56a7/botocore_stubs-1.40.51-py3-none-any.whl", hash = "sha256:9a028104979205c9be0b68bb59ba679e4fe452e017eec3d40f6c2b41c590a73c", size = 66541, upload-time = "2025-10-13T20:26:55.559Z" },
 ]
 
 [[package]]
@@ -1667,7 +1667,7 @@ vdb = [
     { name = "tidb-vector", specifier = "==0.0.9" },
     { name = "upstash-vector", specifier = "==0.6.0" },
     { name = "volcengine-compat", specifier = "~=1.0.0" },
-    { name = "weaviate-client", specifier = "~=3.24.0" },
+    { name = "weaviate-client", specifier = ">=4.0.0,<5.0.0" },
     { name = "xinference-client", specifier = "~=1.2.2" },
 ]
 
@@ -6901,16 +6901,20 @@ wheels = [
 
 [[package]]
 name = "weaviate-client"
-version = "3.24.2"
+version = "4.17.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
-    { name = "requests" },
+    { name = "deprecation" },
+    { name = "grpcio" },
+    { name = "httpx" },
+    { name = "protobuf" },
+    { name = "pydantic" },
     { name = "validators" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1f/c1/3285a21d8885f2b09aabb65edb9a8e062a35c2d7175e1bb024fa096582ab/weaviate-client-3.24.2.tar.gz", hash = "sha256:6914c48c9a7e5ad0be9399271f9cb85d6f59ab77476c6d4e56a3925bf149edaa", size = 199332, upload-time = "2023-10-04T08:37:54.26Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bd/0e/e4582b007427187a9fde55fa575db4b766c81929d2b43a3dd8becce50567/weaviate_client-4.17.0.tar.gz", hash = "sha256:731d58d84b0989df4db399b686357ed285fb95971a492ccca8dec90bb2343c51", size = 769019, upload-time = "2025-09-26T11:20:27.381Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ab/98/3136d05f93e30cf29e1db280eaadf766df18d812dfe7994bcced653b2340/weaviate_client-3.24.2-py3-none-any.whl", hash = "sha256:bc50ca5fcebcd48de0d00f66700b0cf7c31a97c4cd3d29b4036d77c5d1d9479b", size = 107968, upload-time = "2023-10-04T08:37:52.511Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/c5/2da3a45866da7a935dab8ad07be05dcaee48b3ad4955144583b651929be7/weaviate_client-4.17.0-py3-none-any.whl", hash = "sha256:60e4a355b90537ee1e942ab0b76a94750897a13d9cf13c5a6decbd166d0ca8b5", size = 582763, upload-time = "2025-09-26T11:20:25.864Z" },
 ]
 
 [[package]]
