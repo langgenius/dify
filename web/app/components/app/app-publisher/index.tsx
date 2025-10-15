@@ -64,6 +64,7 @@ export type AppPublisherProps = {
   toolPublished?: boolean
   inputs?: InputVar[]
   onRefreshData?: () => void
+  workflowToolAvailable?: boolean
 }
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
@@ -82,6 +83,7 @@ const AppPublisher = ({
   toolPublished,
   inputs,
   onRefreshData,
+  workflowToolAvailable = true,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
   const [published, setPublished] = useState(false)
@@ -177,6 +179,10 @@ const AppPublisher = ({
       return
     handlePublish()
   }, { exactMatch: true, useCapture: true })
+
+  const hasPublishedVersion = !!publishedAt
+  const workflowToolDisabled = !hasPublishedVersion || !workflowToolAvailable
+  const workflowToolMessage = workflowToolDisabled ? t('workflow.common.workflowAsToolDisabledHint') : undefined
 
   return (
     <>
@@ -366,7 +372,7 @@ const AppPublisher = ({
                   </SuggestedAction>
                   {appDetail?.mode === 'workflow' && (
                     <WorkflowToolConfigureButton
-                      disabled={!publishedAt}
+                      disabled={workflowToolDisabled}
                       published={!!toolPublished}
                       detailNeedUpdate={!!toolPublished && published}
                       workflowAppId={appDetail?.id}
@@ -379,6 +385,7 @@ const AppPublisher = ({
                       inputs={inputs}
                       handlePublish={handlePublish}
                       onRefreshData={onRefreshData}
+                      disabledReason={workflowToolMessage}
                     />
                   )}
                 </div>

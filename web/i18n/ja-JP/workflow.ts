@@ -83,6 +83,7 @@ const translation = {
     configure: '設定',
     manageInTools: 'ツールページで管理',
     workflowAsToolTip: 'ワークフロー更新後はツールの再設定が必要です',
+    workflowAsToolDisabledHint: '最新のワークフローを公開し、接続済みの User Input ノードを用意してからツールとして設定してください。',
     viewDetailInTracingPanel: '詳細を表示',
     syncingData: 'データ同期中。。。',
     importDSL: 'DSL をインポート',

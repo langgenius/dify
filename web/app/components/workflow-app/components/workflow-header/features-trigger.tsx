@@ -50,9 +50,12 @@ const FeaturesTrigger = () => {
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const toolPublished = useStore(s => s.toolPublished)
+  const lastPublishedHasUserInput = useStore(s => s.lastPublishedHasUserInput)
   const startVariables = useReactflowStore(
     s => s.getNodes().find(node => node.data.type === BlockEnum.Start)?.data.variables,
   )
+  const nodes = useNodes<CommonNodeType>()
+  const edges = useEdges<CommonEdgeType>()
   const fileSettings = useFeatures(s => s.features.file)
   const variables = useMemo(() => {
     const data = startVariables || []
@@ -74,6 +77,15 @@ const FeaturesTrigger = () => {
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { notify } = useToastContext()
+  const startNodeIds = useMemo(
+    () => nodes.filter(node => node.data.type === BlockEnum.Start).map(node => node.id),
+    [nodes],
+  )
+  const hasUserInputNode = useMemo(() => {
+    if (!startNodeIds.length)
+      return false
+    return edges.some(edge => startNodeIds.includes(edge.source))
+  }, [edges, startNodeIds])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const invalidateAppTriggers = useInvalidateAppTriggers()
@@ -101,8 +113,6 @@ const FeaturesTrigger = () => {
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
-  const nodes = useNodes<CommonNodeType>()
-  const edges = useEdges<CommonEdgeType>()
   const needWarningNodes = useChecklist(nodes, edges)
 
   const updatePublishedWorkflow = useInvalidateAppWorkflow()
@@ -130,6 +140,7 @@ const FeaturesTrigger = () => {
         updateAppDetail()
         invalidateAppTriggers(appID!)
         workflowStore.getState().setPublishedAt(res.created_at)
+        workflowStore.getState().setLastPublishedHasUserInput(hasUserInputNode)
         resetWorkflowVersionHistory()
       }
     }
@@ -172,6 +183,7 @@ const FeaturesTrigger = () => {
           onRefreshData: handleToolConfigureUpdate,
           onPublish,
           onToggle: onPublisherToggle,
+          workflowToolAvailable: lastPublishedHasUserInput,
           crossAxisOffset: 4,
         }}
       />

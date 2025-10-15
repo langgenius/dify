@@ -88,6 +88,7 @@ const translation = {
     configure: 'Configure',
     manageInTools: 'Manage in Tools',
     workflowAsToolTip: 'Tool reconfiguration is required after the workflow update.',
+    workflowAsToolDisabledHint: 'Publish the latest workflow and ensure a connected User Input node before configuring it as a tool.',
     viewDetailInTracingPanel: 'View details',
     syncingData: 'Syncing data, just a few seconds.',
     importDSL: 'Import DSL',

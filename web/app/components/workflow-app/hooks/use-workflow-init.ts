@@ -18,7 +18,18 @@ import {
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import type { FileUploadConfigResponse } from '@/models/common'
+import { BlockEnum } from '@/app/components/workflow/types'
 
+const hasConnectedUserInput = (nodes: any[] = [], edges: any[] = []) => {
+  const startNodeIds = nodes
+    .filter(node => node?.data?.type === BlockEnum.Start)
+    .map((node: any) => node.id)
+
+  if (!startNodeIds.length)
+    return false
+
+  return edges?.some((edge: any) => startNodeIds.includes(edge.source))
+}
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
   const {
@@ -110,9 +121,14 @@ export const useWorkflowInit = () => {
         }, {} as Record<string, any>),
       })
       workflowStore.getState().setPublishedAt(publishedWorkflow?.created_at)
+      const graph = publishedWorkflow?.graph
+      workflowStore.getState().setLastPublishedHasUserInput(
+        hasConnectedUserInput(graph?.nodes, graph?.edges),
+      )
     }
     catch (e) {
       console.error(e)
+      workflowStore.getState().setLastPublishedHasUserInput(false)
     }
   }, [workflowStore, appDetail])
 

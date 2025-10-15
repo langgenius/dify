@@ -86,6 +86,7 @@ const translation = {
     configure: '配置',
     manageInTools: '访问工具页',
     workflowAsToolTip: '工作流更新后需要重新配置工具参数',
+    workflowAsToolDisabledHint: '请先发布最新的工作流，并确保已连接的 User Input 节点后再配置为工具。',
     viewDetailInTracingPanel: '查看详细信息',
     syncingData: '同步数据中，只需几秒钟。',
     importDSL: '导入 DSL',

@@ -14,6 +14,8 @@ export type ToolSliceShape = {
   setMcpTools: (tools: ToolWithProvider[]) => void
   toolPublished: boolean
   setToolPublished: (toolPublished: boolean) => void
+  lastPublishedHasUserInput: boolean
+  setLastPublishedHasUserInput: (hasUserInput: boolean) => void
 }
 
 export const createToolSlice: StateCreator<ToolSliceShape> = set => ({
@@ -27,4 +29,6 @@ export const createToolSlice: StateCreator<ToolSliceShape> = set => ({
   setMcpTools: mcpTools => set(() => ({ mcpTools })),
   toolPublished: false,
   setToolPublished: toolPublished => set(() => ({ toolPublished })),
+  lastPublishedHasUserInput: false,
+  setLastPublishedHasUserInput: hasUserInput => set(() => ({ lastPublishedHasUserInput: hasUserInput })),
 })
