@@ -9,6 +9,7 @@ import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
 import { TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { sendGAEvent } from '@/utils/gtag'
 
 dayjs.extend(quarterOfYear)
 
@@ -56,6 +57,10 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
               className='mt-0 !w-40'
               notClearable={true}
               onSelect={(item) => {
+                sendGAEvent(isWorkflow ? 'filter_workflow_overview_period' : 'filter_chat_conversation_overview_period', {
+                  period: item.value,
+                  period_name: item.name,
+                })
                 const id = item.value
                 const value = TIME_PERIOD_MAPPING[id]?.value ?? '-1'
                 const name = item.name || t('appLog.filter.period.allTime')
