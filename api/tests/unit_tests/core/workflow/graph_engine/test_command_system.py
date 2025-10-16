@@ -39,7 +39,7 @@ def test_abort_command():
     mock_start_node.id = "start"
     mock_start_node.node_type = NodeType.START
     mock_start_node.graph_runtime_state = shared_runtime_state  # Use shared instance
-    
+
     # Make mock node.run() return proper events to allow GraphEngine to complete
     def mock_run():
         exec_id = str(uuid4())
@@ -57,8 +57,9 @@ def test_abort_command():
             start_at=datetime.now(),
             node_run_result=NodeRunResult(outputs={}),
         )
+
     mock_start_node.run = mock_run
-    
+
     mock_graph.nodes["start"] = mock_start_node
 
     # Mock graph methods
