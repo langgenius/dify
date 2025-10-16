@@ -108,13 +108,14 @@ class Worker(threading.Thread):
             except Exception as e:
                 error_event = NodeRunFailedEvent(
                     id=str(uuid4()),
-                    node_id="unknown",
-                    node_type=NodeType.CODE,
-                    in_iteration_id=None,
+                    node_id=node_id,
+                    node_type=node.node_type,
+                    in_iteration_id=node.iteration_id,
                     error=str(e),
                     start_at=datetime.now(),
                 )
                 self._event_queue.put(error_event)
+                self._ready_queue.task_done()
 
     def _execute_node(self, node: Node) -> None:
         """
