@@ -108,7 +108,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             execution_data = execution.model_dump()
 
             # Queue the save operation as a Celery task (fire and forget)
-            save_workflow_execution_task.delay(
+            save_workflow_execution_task.delay(  # type: ignore
                 execution_data=execution_data,
                 tenant_id=self._tenant_id,
                 app_id=self._app_id or "",
