@@ -23,8 +23,7 @@ from core.model_runtime.errors.invoke import InvokeError
 from fields.message_fields import message_infinite_scroll_pagination_fields
 from libs import helper
 from libs.helper import uuid_value
-from libs.login import current_user
-from models import Account
+from libs.login import current_account_with_tenant
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
@@ -48,6 +47,7 @@ logger = logging.getLogger(__name__)
 class MessageListApi(InstalledAppResource):
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, installed_app):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
         app_mode = AppMode.value_of(app_model.mode)
@@ -61,8 +61,6 @@ class MessageListApi(InstalledAppResource):
         args = parser.parse_args()
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             return MessageService.pagination_by_first_id(
                 app_model, current_user, args["conversation_id"], args["first_id"], args["limit"]
             )
@@ -78,6 +76,7 @@ class MessageListApi(InstalledAppResource):
 )
 class MessageFeedbackApi(InstalledAppResource):
     def post(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
         message_id = str(message_id)
@@ -88,8 +87,6 @@ class MessageFeedbackApi(InstalledAppResource):
         args = parser.parse_args()
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             MessageService.create_feedback(
                 app_model=app_model,
                 message_id=message_id,
@@ -109,6 +106,7 @@ class MessageFeedbackApi(InstalledAppResource):
 )
 class MessageMoreLikeThisApi(InstalledAppResource):
     def get(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -124,8 +122,6 @@ class MessageMoreLikeThisApi(InstalledAppResource):
         streaming = args["response_mode"] == "streaming"
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             response = AppGenerateService.generate_more_like_this(
                 app_model=app_model,
                 user=current_user,
@@ -159,6 +155,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
 )
 class MessageSuggestedQuestionApi(InstalledAppResource):
     def get(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -167,8 +164,6 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
         message_id = str(message_id)
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
             )
