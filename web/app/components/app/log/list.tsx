@@ -14,6 +14,7 @@ import timezone from 'dayjs/plugin/timezone'
 import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { ChatItemInTree } from '../../base/chat/types'
 import Indicator from '../../header/indicator'
 import VarPanel from './var-panel'
@@ -41,6 +42,8 @@ import { getProcessedFilesFromResponse } from '@/app/components/base/file-upload
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
 import PromptLogModal from '../../base/prompt-log-modal'
+
+type AppStoreState = ReturnType<typeof useAppStore.getState>
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -201,7 +204,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
   const { notify } = useContext(ToastContext)
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
+  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow((state: AppStoreState) => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showMessageLogModal: state.showMessageLogModal,
@@ -893,19 +896,114 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
 const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const conversationIdInUrl = searchParams.get('conversation_id') ?? undefined
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false) // Whether to display the chat details drawer
   const [currentConversation, setCurrentConversation] = useState<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>() // Currently selected conversation
+  const closingConversationIdRef = useRef<string | null>(null)
+  const pendingConversationIdRef = useRef<string | null>(null)
+  const pendingConversationCacheRef = useRef<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>(undefined)
   const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
   const isChatflow = appDetail.mode === 'advanced-chat' // Whether the app is a chatflow app
-  const { setShowPromptLogModal, setShowAgentLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
+  const { setShowPromptLogModal, setShowAgentLogModal, setShowMessageLogModal } = useAppStore(useShallow((state: AppStoreState) => ({
     setShowPromptLogModal: state.setShowPromptLogModal,
     setShowAgentLogModal: state.setShowAgentLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
   })))
+
+  const activeConversationId = conversationIdInUrl ?? pendingConversationIdRef.current ?? currentConversation?.id
+
+  const buildUrlWithConversation = useCallback((conversationId?: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (conversationId)
+      params.set('conversation_id', conversationId)
+    else
+      params.delete('conversation_id')
+
+    const queryString = params.toString()
+    return queryString ? `${pathname}?${queryString}` : pathname
+  }, [pathname, searchParams])
+
+  const handleRowClick = useCallback((log: ChatConversationGeneralDetail | CompletionConversationGeneralDetail) => {
+    if (conversationIdInUrl === log.id) {
+      if (!showDrawer)
+        setShowDrawer(true)
+
+      if (!currentConversation || currentConversation.id !== log.id)
+        setCurrentConversation(log)
+      return
+    }
+
+    pendingConversationIdRef.current = log.id
+    pendingConversationCacheRef.current = log
+    if (!showDrawer)
+      setShowDrawer(true)
+
+    if (currentConversation?.id !== log.id)
+      setCurrentConversation(undefined)
+
+    router.push(buildUrlWithConversation(log.id), { scroll: false })
+  }, [buildUrlWithConversation, conversationIdInUrl, currentConversation, router, showDrawer])
+
+  const currentConversationId = currentConversation?.id
+
+  useEffect(() => {
+    if (!conversationIdInUrl) {
+      if (pendingConversationIdRef.current)
+        return
+
+      if (showDrawer || currentConversationId) {
+        setShowDrawer(false)
+        setCurrentConversation(undefined)
+      }
+      closingConversationIdRef.current = null
+      pendingConversationCacheRef.current = undefined
+      return
+    }
+
+    if (closingConversationIdRef.current === conversationIdInUrl)
+      return
+
+    if (pendingConversationIdRef.current === conversationIdInUrl)
+      pendingConversationIdRef.current = null
+
+    const matchedConversation = logs?.data?.find((item: ChatConversationGeneralDetail | CompletionConversationGeneralDetail) => item.id === conversationIdInUrl)
+    const nextConversation = matchedConversation
+      ?? pendingConversationCacheRef.current
+      ?? (isChatMode
+        ? ({ id: conversationIdInUrl } as ChatConversationGeneralDetail)
+        : ({ id: conversationIdInUrl } as CompletionConversationGeneralDetail))
+
+    if (!showDrawer)
+      setShowDrawer(true)
+
+    if (!currentConversation || currentConversation.id !== conversationIdInUrl || (matchedConversation && currentConversation !== matchedConversation))
+      setCurrentConversation(nextConversation)
+
+    if (pendingConversationCacheRef.current?.id === conversationIdInUrl || matchedConversation)
+      pendingConversationCacheRef.current = undefined
+  }, [conversationIdInUrl, currentConversation, currentConversationId, isChatMode, logs?.data, showDrawer])
+
+  const onCloseDrawer = useCallback(() => {
+    onRefresh()
+    setShowDrawer(false)
+    setCurrentConversation(undefined)
+    setShowPromptLogModal(false)
+    setShowAgentLogModal(false)
+    setShowMessageLogModal(false)
+    pendingConversationIdRef.current = null
+    pendingConversationCacheRef.current = undefined
+    closingConversationIdRef.current = conversationIdInUrl ?? null
+
+    if (conversationIdInUrl)
+      router.replace(buildUrlWithConversation(), { scroll: false })
+  }, [buildUrlWithConversation, conversationIdInUrl, onRefresh, router, setShowAgentLogModal, setShowMessageLogModal, setShowPromptLogModal])
 
   // Annotated data needs to be highlighted
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
@@ -923,15 +1021,6 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         </div>
       </Tooltip>
     )
-  }
-
-  const onCloseDrawer = () => {
-    onRefresh()
-    setShowDrawer(false)
-    setCurrentConversation(undefined)
-    setShowPromptLogModal(false)
-    setShowAgentLogModal(false)
-    setShowMessageLogModal(false)
   }
 
   if (!logs)
@@ -960,11 +1049,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
             return <tr
               key={log.id}
-              className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', currentConversation?.id !== log.id ? '' : 'bg-background-default-hover')}
-              onClick={() => {
-                setShowDrawer(true)
-                setCurrentConversation(log)
-              }}>
+              className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', activeConversationId !== log.id ? '' : 'bg-background-default-hover')}
+              onClick={() => handleRowClick(log)}>
               <td className='h-4'>
                 {!log.read_at && (
                   <div className='flex items-center p-3 pr-0.5'>
