@@ -38,11 +38,18 @@ describe('Webhook Trigger Node Default', () => {
       expect(Array.isArray(defaultValue.headers)).toBe(true)
       expect(Array.isArray(defaultValue.params)).toBe(true)
       expect(Array.isArray(defaultValue.body)).toBe(true)
+      expect(Array.isArray(defaultValue.variables)).toBe(true)
 
       // Initial arrays should be empty
       expect(defaultValue.headers).toHaveLength(0)
       expect(defaultValue.params).toHaveLength(0)
       expect(defaultValue.body).toHaveLength(0)
+      expect(defaultValue.variables).toHaveLength(1)
+
+      const rawVariable = defaultValue.variables?.[0]
+      expect(rawVariable?.variable).toBe('_webhook_raw')
+      expect(rawVariable?.label).toBe('raw')
+      expect(rawVariable?.value_type).toBe('object')
     })
 
     it('should have correct metadata for trigger node', () => {

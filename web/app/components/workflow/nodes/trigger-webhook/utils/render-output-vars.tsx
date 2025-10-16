@@ -7,10 +7,11 @@ type OutputVariablesContentProps = {
 }
 
 // Define the display order for variable labels to match the table order in the UI
-const LABEL_ORDER = { param: 1, header: 2, body: 3 } as const
+const LABEL_ORDER = { raw: 0, param: 1, header: 2, body: 3 } as const
 
 const getLabelPrefix = (label: string): string => {
   const prefixMap: Record<string, string> = {
+    raw: 'payload',
     param: 'query_params',
     header: 'header_params',
     body: 'req_body_params',

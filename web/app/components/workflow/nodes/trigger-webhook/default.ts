@@ -3,6 +3,7 @@ import type { NodeDefault } from '../../types'
 import { genNodeMetaData } from '../../utils'
 import type { WebhookTriggerNodeType } from './types'
 import { isValidParameterType } from './utils/parameter-type-utils'
+import { createWebhookRawVariable } from './utils/raw-variable'
 
 const metaData = genNodeMetaData({
   sort: 3,
@@ -22,6 +23,7 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
     async_mode: true,
     status_code: 200,
     response_body: '',
+    variables: [createWebhookRawVariable()],
   },
   checkValid(payload: WebhookTriggerNodeType, t: any) {
     // Require webhook_url to be configured

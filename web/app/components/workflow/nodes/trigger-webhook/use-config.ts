@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
@@ -11,6 +11,7 @@ import type { Variable } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import Toast from '@/app/components/base/toast'
 import { hasDuplicateStr } from '@/utils/var'
+import { WEBHOOK_RAW_VARIABLE_NAME, ensureWebhookRawVariable } from './utils/raw-variable'
 
 const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   const { t } = useTranslation()
@@ -18,15 +19,29 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   const { inputs, setInputs } = useNodeCrud<WebhookTriggerNodeType>(id, payload)
   const appId = useAppStore.getState().appDetail?.id
   const { isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
+  const hasWebhookRawVariable = inputs.variables?.some(variable => variable.variable === WEBHOOK_RAW_VARIABLE_NAME) ?? false
+
+  useEffect(() => {
+    if (readOnly)
+      return
+
+    if (!hasWebhookRawVariable) {
+      setInputs(produce(inputs, (draft) => {
+        ensureWebhookRawVariable(draft)
+      }))
+    }
+  }, [readOnly, hasWebhookRawVariable, inputs, setInputs])
 
   const handleMethodChange = useCallback((method: HttpMethod) => {
     setInputs(produce(inputs, (draft) => {
+      ensureWebhookRawVariable(draft)
       draft.method = method
     }))
   }, [inputs, setInputs])
 
   const handleContentTypeChange = useCallback((contentType: string) => {
     setInputs(produce(inputs, (draft) => {
+      ensureWebhookRawVariable(draft)
       const previousContentType = draft.content_type
       draft.content_type = contentType
 
@@ -107,6 +122,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
         draft.variables.push(newVar)
     })
 
+    ensureWebhookRawVariable(draft)
     return true
   }, [t, id, isVarUsedInNodes, removeUsedVarInNodes])
 
@@ -171,6 +187,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
       const response = await fetchWebhookUrl({ appId, nodeId: id })
 
       const newInputs = produce(inputs, (draft) => {
+        ensureWebhookRawVariable(draft)
         draft.webhook_url = response.webhook_url
         draft.webhook_debug_url = response.webhook_debug_url
       })
@@ -181,6 +198,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
       // Keep the UI unblocked and allow users to proceed in local/dev environments.
       console.error('Failed to generate webhook URL:', error)
       const newInputs = produce(inputs, (draft) => {
+        ensureWebhookRawVariable(draft)
         draft.webhook_url = ''
       })
       setInputs(newInputs)
