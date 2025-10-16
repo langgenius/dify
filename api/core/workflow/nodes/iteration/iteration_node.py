@@ -35,6 +35,7 @@ from core.workflow.node_events import (
     NodeRunResult,
     StreamCompletedEvent,
 )
+from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
@@ -59,7 +60,7 @@ logger = logging.getLogger(__name__)
 EmptyArraySegment = NewType("EmptyArraySegment", ArraySegment)
 
 
-class IterationNode(Node):
+class IterationNode(LLMUsageTrackingMixin, Node):
     """
     Iteration Node.
     """
@@ -471,23 +472,6 @@ class IterationNode(Node):
                 llm_usage=usage,
             )
         )
-
-    @staticmethod
-    def _merge_usage(current: LLMUsage, new_usage: LLMUsage | None) -> LLMUsage:
-        if new_usage is None or new_usage.total_tokens <= 0:
-            return current
-        if current.total_tokens == 0:
-            return new_usage
-        return current.plus(new_usage)
-
-    def _accumulate_usage(self, usage: LLMUsage) -> None:
-        if usage.total_tokens <= 0:
-            return
-        current_usage = self.graph_runtime_state.llm_usage
-        if current_usage.total_tokens == 0:
-            self.graph_runtime_state.llm_usage = usage.model_copy()
-        else:
-            self.graph_runtime_state.llm_usage = current_usage.plus(usage)
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

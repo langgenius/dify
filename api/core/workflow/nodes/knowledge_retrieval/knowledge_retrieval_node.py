@@ -37,6 +37,7 @@ from core.workflow.enums import (
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.node_events import ModelInvokeCompletedEvent, NodeRunResult
+from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.knowledge_retrieval.template_prompts import (
@@ -82,7 +83,7 @@ default_retrieval_model = {
 }
 
 
-class KnowledgeRetrievalNode(Node):
+class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node):
     node_type = NodeType.KNOWLEDGE_RETRIEVAL
 
     _node_data: KnowledgeRetrievalNodeData
@@ -670,14 +671,6 @@ class KnowledgeRetrievalNode(Node):
             case _:
                 pass
         return filters
-
-    @staticmethod
-    def _merge_usage(current: LLMUsage, new_usage: LLMUsage | None) -> LLMUsage:
-        if new_usage is None or new_usage.total_tokens <= 0:
-            return current
-        if current.total_tokens == 0:
-            return new_usage
-        return current.plus(new_usage)
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
