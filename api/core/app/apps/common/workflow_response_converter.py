@@ -368,7 +368,7 @@ class WorkflowResponseConverter:
 
         snapshot = self._get_snapshot(event.node_execution_id)
         if snapshot is None:
-            raise ValueError("node retry event arrived without a stored snapshot")
+            raise AssertionError("node retry event arrived without a stored snapshot")
         finished_at = naive_utc_now()
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
