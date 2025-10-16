@@ -9,9 +9,9 @@ Dify has upgraded from Weaviate v1.19 to v1.27 with the Python client updated fr
 ### Breaking Changes
 
 1. **Weaviate Server**: `1.19.0` → `1.27.0`
-1. **Python Client**: `weaviate-client~=3.24.0` → `weaviate-client==4.17.0`
-1. **gRPC Required**: Weaviate v1.27 requires gRPC port `50051` (in addition to HTTP port `8080`)
-1. **Docker Compose**: Added temporary entrypoint overrides for client installation
+2. **Python Client**: `weaviate-client~=3.24.0` → `weaviate-client==4.17.0`
+3. **gRPC Required**: Weaviate v1.27 requires gRPC port `50051` (in addition to HTTP port `8080`)
+4. **Docker Compose**: Added temporary entrypoint overrides for client installation
 
 ### Key Improvements
 
