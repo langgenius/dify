@@ -1,4 +1,5 @@
 import logging
+import inspect
 from collections.abc import Callable
 from contextlib import AbstractContextManager, ExitStack
 from types import TracebackType
@@ -99,7 +100,6 @@ class MCPClient:
                 else self.headers
             )
 
-            import inspect
             kwargs: dict[str, Any] = {
                 "url": self.server_url,
                 "headers": headers,

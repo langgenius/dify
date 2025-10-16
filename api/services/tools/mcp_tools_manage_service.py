@@ -125,13 +125,15 @@ class MCPToolManageService:
         # Encrypt proxy
         encrypted_proxy = None
         if proxy and isinstance(proxy, dict) and proxy.get("host"):
+            to_encrypt = {"host": proxy.get("host", "")}
+            if proxy.get("username"):
+                to_encrypt["username"] = proxy.get("username", "")
+            if proxy.get("password"):
+                to_encrypt["password"] = proxy.get("password", "")
+
             encrypted_proxy = json.dumps(
                 MCPToolManageService._encrypt_headers(
-                    {
-                        "host": proxy.get("host", ""),
-                        **({"username": proxy.get("username", "")} if proxy.get("username") else {}),
-                        **({"password": proxy.get("password", "")} if proxy.get("password") else {}),
-                    },
+                    to_encrypt,
                     tenant_id,
                 )
             )
