@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -74,7 +75,7 @@ from models.workflow import Workflow
 logger = logging.getLogger(__name__)
 
 
-class AdvancedChatAppGenerateTaskPipeline:
+class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     """
     AdvancedChatAppGenerateTaskPipeline is a class that generate stream output and state management for Application.
     """
@@ -273,35 +274,6 @@ class AdvancedChatAppGenerateTaskPipeline:
         """Fluent validation for workflow state."""
         if not self._workflow_run_id:
             raise ValueError("workflow run not initialized.")
-
-    def _ensure_graph_runtime_initialized(
-        self,
-        graph_runtime_state: GraphRuntimeState | None = None,
-    ) -> GraphRuntimeState:
-        """Fluent validation for graph runtime state."""
-        return self._resolve_graph_runtime_state(graph_runtime_state)
-
-    def _extract_workflow_run_id(self, graph_runtime_state: GraphRuntimeState) -> str:
-        system_variables = graph_runtime_state.variable_pool.system_variables
-        if not system_variables or not system_variables.workflow_execution_id:
-            raise ValueError("workflow_execution_id missing from runtime state")
-        return str(system_variables.workflow_execution_id)
-
-    def _resolve_graph_runtime_state(
-        self,
-        graph_runtime_state: GraphRuntimeState | None = None,
-    ) -> GraphRuntimeState:
-        if graph_runtime_state is not None:
-            self._update_graph_runtime_state(graph_runtime_state)
-            return graph_runtime_state
-
-        if self._graph_runtime_state is None:
-            self._seed_graph_runtime_state_from_queue_manager()
-
-        if self._graph_runtime_state is None:
-            raise ValueError("graph runtime state not initialized.")
-
-        return self._graph_runtime_state
 
     def _handle_ping_event(self, event: QueuePingEvent, **kwargs) -> Generator[PingStreamResponse, None, None]:
         """Handle ping events."""
@@ -837,10 +809,6 @@ class AdvancedChatAppGenerateTaskPipeline:
         candidate = self._base_task_pipeline.queue_manager.graph_runtime_state
         if candidate is not None:
             self._graph_runtime_state = candidate
-
-    def _update_graph_runtime_state(self, graph_runtime_state: GraphRuntimeState) -> None:
-        """Persist the latest runtime state snapshot for downstream handlers."""
-        self._graph_runtime_state = graph_runtime_state
 
     def _message_end_to_stream_response(self) -> MessageEndStreamResponse:
         """
