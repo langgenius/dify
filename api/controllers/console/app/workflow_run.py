@@ -34,9 +34,11 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         """
         Get advanced chat app workflow run list
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("last_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("last_id", type=uuid_value, location="args")
+            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        )
         args = parser.parse_args()
 
         workflow_run_service = WorkflowRunService()
@@ -61,9 +63,11 @@ class WorkflowRunListApi(Resource):
         """
         Get workflow run list
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("last_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("last_id", type=uuid_value, location="args")
+            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        )
         args = parser.parse_args()
 
         workflow_run_service = WorkflowRunService()

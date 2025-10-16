@@ -206,48 +206,50 @@ class DatasetListApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="type is required. Name must be between 1 to 40 characters.",
-            type=_validate_name,
-        )
-        parser.add_argument(
-            "description",
-            type=validate_description_length,
-            nullable=True,
-            required=False,
-            default="",
-        )
-        parser.add_argument(
-            "indexing_technique",
-            type=str,
-            location="json",
-            choices=Dataset.INDEXING_TECHNIQUE_LIST,
-            nullable=True,
-            help="Invalid indexing technique.",
-        )
-        parser.add_argument(
-            "external_knowledge_api_id",
-            type=str,
-            nullable=True,
-            required=False,
-        )
-        parser.add_argument(
-            "provider",
-            type=str,
-            nullable=True,
-            choices=Dataset.PROVIDER_LIST,
-            required=False,
-            default="vendor",
-        )
-        parser.add_argument(
-            "external_knowledge_id",
-            type=str,
-            nullable=True,
-            required=False,
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(
+                "name",
+                nullable=False,
+                required=True,
+                help="type is required. Name must be between 1 to 40 characters.",
+                type=_validate_name,
+            )
+            .add_argument(
+                "description",
+                type=validate_description_length,
+                nullable=True,
+                required=False,
+                default="",
+            )
+            .add_argument(
+                "indexing_technique",
+                type=str,
+                location="json",
+                choices=Dataset.INDEXING_TECHNIQUE_LIST,
+                nullable=True,
+                help="Invalid indexing technique.",
+            )
+            .add_argument(
+                "external_knowledge_api_id",
+                type=str,
+                nullable=True,
+                required=False,
+            )
+            .add_argument(
+                "provider",
+                type=str,
+                nullable=True,
+                choices=Dataset.PROVIDER_LIST,
+                required=False,
+                default="vendor",
+            )
+            .add_argument(
+                "external_knowledge_id",
+                type=str,
+                nullable=True,
+                required=False,
+            )
         )
         args = parser.parse_args()
         current_user, current_tenant_id = current_account_with_tenant()
@@ -352,70 +354,72 @@ class DatasetApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            help="type is required. Name must be between 1 to 40 characters.",
-            type=_validate_name,
-        )
-        parser.add_argument("description", location="json", store_missing=False, type=validate_description_length)
-        parser.add_argument(
-            "indexing_technique",
-            type=str,
-            location="json",
-            choices=Dataset.INDEXING_TECHNIQUE_LIST,
-            nullable=True,
-            help="Invalid indexing technique.",
-        )
-        parser.add_argument(
-            "permission",
-            type=str,
-            location="json",
-            choices=(DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM),
-            help="Invalid permission.",
-        )
-        parser.add_argument("embedding_model", type=str, location="json", help="Invalid embedding model.")
-        parser.add_argument(
-            "embedding_model_provider", type=str, location="json", help="Invalid embedding model provider."
-        )
-        parser.add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model.")
-        parser.add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list.")
-
-        parser.add_argument(
-            "external_retrieval_model",
-            type=dict,
-            required=False,
-            nullable=True,
-            location="json",
-            help="Invalid external retrieval model.",
-        )
-
-        parser.add_argument(
-            "external_knowledge_id",
-            type=str,
-            required=False,
-            nullable=True,
-            location="json",
-            help="Invalid external knowledge id.",
-        )
-
-        parser.add_argument(
-            "external_knowledge_api_id",
-            type=str,
-            required=False,
-            nullable=True,
-            location="json",
-            help="Invalid external knowledge api id.",
-        )
-
-        parser.add_argument(
-            "icon_info",
-            type=dict,
-            required=False,
-            nullable=True,
-            location="json",
-            help="Invalid icon info.",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(
+                "name",
+                nullable=False,
+                help="type is required. Name must be between 1 to 40 characters.",
+                type=_validate_name,
+            )
+            .add_argument("description", location="json", store_missing=False, type=validate_description_length)
+            .add_argument(
+                "indexing_technique",
+                type=str,
+                location="json",
+                choices=Dataset.INDEXING_TECHNIQUE_LIST,
+                nullable=True,
+                help="Invalid indexing technique.",
+            )
+            .add_argument(
+                "permission",
+                type=str,
+                location="json",
+                choices=(
+                    DatasetPermissionEnum.ONLY_ME,
+                    DatasetPermissionEnum.ALL_TEAM,
+                    DatasetPermissionEnum.PARTIAL_TEAM,
+                ),
+                help="Invalid permission.",
+            )
+            .add_argument("embedding_model", type=str, location="json", help="Invalid embedding model.")
+            .add_argument(
+                "embedding_model_provider", type=str, location="json", help="Invalid embedding model provider."
+            )
+            .add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model.")
+            .add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list.")
+            .add_argument(
+                "external_retrieval_model",
+                type=dict,
+                required=False,
+                nullable=True,
+                location="json",
+                help="Invalid external retrieval model.",
+            )
+            .add_argument(
+                "external_knowledge_id",
+                type=str,
+                required=False,
+                nullable=True,
+                location="json",
+                help="Invalid external knowledge id.",
+            )
+            .add_argument(
+                "external_knowledge_api_id",
+                type=str,
+                required=False,
+                nullable=True,
+                location="json",
+                help="Invalid external knowledge api id.",
+            )
+            .add_argument(
+                "icon_info",
+                type=dict,
+                required=False,
+                nullable=True,
+                location="json",
+                help="Invalid icon info.",
+            )
         )
         args = parser.parse_args()
         data = request.get_json()
@@ -543,21 +547,21 @@ class DatasetIndexingEstimateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("info_list", type=dict, required=True, nullable=True, location="json")
-        parser.add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
-        parser.add_argument(
-            "indexing_technique",
-            type=str,
-            required=True,
-            choices=Dataset.INDEXING_TECHNIQUE_LIST,
-            nullable=True,
-            location="json",
-        )
-        parser.add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
-        parser.add_argument("dataset_id", type=str, required=False, nullable=False, location="json")
-        parser.add_argument(
-            "doc_language", type=str, default="English", required=False, nullable=False, location="json"
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("info_list", type=dict, required=True, nullable=True, location="json")
+            .add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
+            .add_argument(
+                "indexing_technique",
+                type=str,
+                required=True,
+                choices=Dataset.INDEXING_TECHNIQUE_LIST,
+                nullable=True,
+                location="json",
+            )
+            .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
+            .add_argument("dataset_id", type=str, required=False, nullable=False, location="json")
+            .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
         )
         args = parser.parse_args()
         _, current_tenant_id = current_account_with_tenant()

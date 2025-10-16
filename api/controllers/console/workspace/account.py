@@ -56,10 +56,9 @@ class AccountInitApi(Resource):
         parser = reqparse.RequestParser()
 
         if dify_config.EDITION == "CLOUD":
-            parser.add_argument("invitation_code", type=str, location="json")
-
-        parser.add_argument("interface_language", type=supported_language, required=True, location="json")
-        parser.add_argument("timezone", type=timezone, required=True, location="json")
+            parser.add_argument("invitation_code", type=str, location="json").add_argument(
+                "interface_language", type=supported_language, required=True, location="json"
+            ).add_argument("timezone", type=timezone, required=True, location="json")
         args = parser.parse_args()
 
         if dify_config.EDITION == "CLOUD":
@@ -114,8 +113,7 @@ class AccountNameApi(Resource):
     @marshal_with(account_fields)
     def post(self):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
 
         # Validate account name length
@@ -135,8 +133,7 @@ class AccountAvatarApi(Resource):
     @marshal_with(account_fields)
     def post(self):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("avatar", type=str, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("avatar", type=str, required=True, location="json")
         args = parser.parse_args()
 
         updated_account = AccountService.update_account(current_user, avatar=args["avatar"])
@@ -152,8 +149,9 @@ class AccountInterfaceLanguageApi(Resource):
     @marshal_with(account_fields)
     def post(self):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("interface_language", type=supported_language, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "interface_language", type=supported_language, required=True, location="json"
+        )
         args = parser.parse_args()
 
         updated_account = AccountService.update_account(current_user, interface_language=args["interface_language"])
@@ -169,8 +167,9 @@ class AccountInterfaceThemeApi(Resource):
     @marshal_with(account_fields)
     def post(self):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("interface_theme", type=str, choices=["light", "dark"], required=True, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "interface_theme", type=str, choices=["light", "dark"], required=True, location="json"
+        )
         args = parser.parse_args()
 
         updated_account = AccountService.update_account(current_user, interface_theme=args["interface_theme"])
@@ -186,8 +185,7 @@ class AccountTimezoneApi(Resource):
     @marshal_with(account_fields)
     def post(self):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("timezone", type=str, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("timezone", type=str, required=True, location="json")
         args = parser.parse_args()
 
         # Validate timezone string, e.g. America/New_York, Asia/Shanghai
@@ -207,10 +205,12 @@ class AccountPasswordApi(Resource):
     @marshal_with(account_fields)
     def post(self):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("password", type=str, required=False, location="json")
-        parser.add_argument("new_password", type=str, required=True, location="json")
-        parser.add_argument("repeat_new_password", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("password", type=str, required=False, location="json")
+            .add_argument("new_password", type=str, required=True, location="json")
+            .add_argument("repeat_new_password", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         if args["new_password"] != args["repeat_new_password"]:
@@ -301,9 +301,11 @@ class AccountDeleteApi(Resource):
     def post(self):
         account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("token", type=str, required=True, location="json")
-        parser.add_argument("code", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("token", type=str, required=True, location="json")
+            .add_argument("code", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         if not AccountService.verify_account_deletion_code(args["token"], args["code"]):
@@ -318,9 +320,11 @@ class AccountDeleteApi(Resource):
 class AccountDeleteUpdateFeedbackApi(Resource):
     @setup_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=str, required=True, location="json")
-        parser.add_argument("feedback", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=str, required=True, location="json")
+            .add_argument("feedback", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         BillingService.update_account_deletion_feedback(args["email"], args["feedback"])
@@ -363,10 +367,12 @@ class EducationApi(Resource):
     def post(self):
         account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("token", type=str, required=True, location="json")
-        parser.add_argument("institution", type=str, required=True, location="json")
-        parser.add_argument("role", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("token", type=str, required=True, location="json")
+            .add_argument("institution", type=str, required=True, location="json")
+            .add_argument("role", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         return BillingService.EducationIdentity.activate(account, args["token"], args["institution"], args["role"])
@@ -402,10 +408,12 @@ class EducationAutoCompleteApi(Resource):
     @cloud_edition_billing_enabled
     @marshal_with(data_fields)
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("keywords", type=str, required=True, location="args")
-        parser.add_argument("page", type=int, required=False, location="args", default=0)
-        parser.add_argument("limit", type=int, required=False, location="args", default=20)
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("keywords", type=str, required=True, location="args")
+            .add_argument("page", type=int, required=False, location="args", default=0)
+            .add_argument("limit", type=int, required=False, location="args", default=20)
+        )
         args = parser.parse_args()
 
         return BillingService.EducationIdentity.autocomplete(args["keywords"], args["page"], args["limit"])
@@ -419,11 +427,13 @@ class ChangeEmailSendEmailApi(Resource):
     @account_initialization_required
     def post(self):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("language", type=str, required=False, location="json")
-        parser.add_argument("phase", type=str, required=False, location="json")
-        parser.add_argument("token", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=email, required=True, location="json")
+            .add_argument("language", type=str, required=False, location="json")
+            .add_argument("phase", type=str, required=False, location="json")
+            .add_argument("token", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         ip_address = extract_remote_ip(request)
@@ -466,10 +476,12 @@ class ChangeEmailCheckApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("code", type=str, required=True, location="json")
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=email, required=True, location="json")
+            .add_argument("code", type=str, required=True, location="json")
+            .add_argument("token", type=str, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         user_email = args["email"]
@@ -509,9 +521,11 @@ class ChangeEmailResetApi(Resource):
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("new_email", type=email, required=True, location="json")
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("new_email", type=email, required=True, location="json")
+            .add_argument("token", type=str, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         if AccountService.is_account_in_freeze(args["new_email"]):
@@ -544,8 +558,7 @@ class ChangeEmailResetApi(Resource):
 class CheckEmailUnique(Resource):
     @setup_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("email", type=email, required=True, location="json")
         args = parser.parse_args()
         if AccountService.is_account_in_freeze(args["email"]):
             raise AccountInFreezeError()

@@ -45,9 +45,11 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+            .add_argument("files", type=list, required=False, location="json")
+        )
         args = parser.parse_args()
         assert current_user is not None
         try:

@@ -88,12 +88,14 @@ class DraftRagPipelineApi(Resource):
         content_type = request.headers.get("Content-Type", "")
 
         if "application/json" in content_type:
-            parser = reqparse.RequestParser()
-            parser.add_argument("graph", type=dict, required=True, nullable=False, location="json")
-            parser.add_argument("hash", type=str, required=False, location="json")
-            parser.add_argument("environment_variables", type=list, required=False, location="json")
-            parser.add_argument("conversation_variables", type=list, required=False, location="json")
-            parser.add_argument("rag_pipeline_variables", type=list, required=False, location="json")
+            parser = (
+                reqparse.RequestParser()
+                .add_argument("graph", type=dict, required=True, nullable=False, location="json")
+                .add_argument("hash", type=str, required=False, location="json")
+                .add_argument("environment_variables", type=list, required=False, location="json")
+                .add_argument("conversation_variables", type=list, required=False, location="json")
+                .add_argument("rag_pipeline_variables", type=list, required=False, location="json")
+            )
             args = parser.parse_args()
         elif "text/plain" in content_type:
             try:
@@ -160,8 +162,7 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, location="json")
+        parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
 
         try:
@@ -196,8 +197,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, location="json")
+        parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
 
         try:
@@ -232,11 +232,13 @@ class DraftRagPipelineRunApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("datasource_type", type=str, required=True, location="json")
-        parser.add_argument("datasource_info_list", type=list, required=True, location="json")
-        parser.add_argument("start_node_id", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+            .add_argument("datasource_type", type=str, required=True, location="json")
+            .add_argument("datasource_info_list", type=list, required=True, location="json")
+            .add_argument("start_node_id", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         try:
@@ -268,14 +270,16 @@ class PublishedRagPipelineRunApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("datasource_type", type=str, required=True, location="json")
-        parser.add_argument("datasource_info_list", type=list, required=True, location="json")
-        parser.add_argument("start_node_id", type=str, required=True, location="json")
-        parser.add_argument("is_preview", type=bool, required=True, location="json", default=False)
-        parser.add_argument("response_mode", type=str, required=True, location="json", default="streaming")
-        parser.add_argument("original_document_id", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+            .add_argument("datasource_type", type=str, required=True, location="json")
+            .add_argument("datasource_info_list", type=list, required=True, location="json")
+            .add_argument("start_node_id", type=str, required=True, location="json")
+            .add_argument("is_preview", type=bool, required=True, location="json", default=False)
+            .add_argument("response_mode", type=str, required=True, location="json", default="streaming")
+            .add_argument("original_document_id", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         streaming = args["response_mode"] == "streaming"
@@ -310,9 +314,9 @@ class PublishedRagPipelineRunApi(Resource):
 #         if not isinstance(current_user, Account):
 #             raise Forbidden()
 #
-#         parser = reqparse.RequestParser()
-#         parser.add_argument("job_id", type=str, required=True, nullable=False, location="json")
-#         parser.add_argument("datasource_type", type=str, required=True, location="json")
+#         parser = (reqparse.RequestParser()
+# .add_argument("job_id", type=str, required=True, nullable=False, location="json")
+# .add_argument("datasource_type", type=str, required=True, location="json"))
 #         args = parser.parse_args()
 #
 #         job_id = args.get("job_id")
@@ -351,9 +355,9 @@ class PublishedRagPipelineRunApi(Resource):
 #         if not isinstance(current_user, Account):
 #             raise Forbidden()
 #
-#         parser = reqparse.RequestParser()
-#         parser.add_argument("job_id", type=str, required=True, nullable=False, location="json")
-#         parser.add_argument("datasource_type", type=str, required=True, location="json")
+#         parser = (reqparse.RequestParser()
+# .add_argument("job_id", type=str, required=True, nullable=False, location="json")
+# .add_argument("datasource_type", type=str, required=True, location="json"))
 #         args = parser.parse_args()
 #
 #         job_id = args.get("job_id")
@@ -390,10 +394,12 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("datasource_type", type=str, required=True, location="json")
-        parser.add_argument("credential_id", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+            .add_argument("datasource_type", type=str, required=True, location="json")
+            .add_argument("credential_id", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         inputs = args.get("inputs")
@@ -434,10 +440,12 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("datasource_type", type=str, required=True, location="json")
-        parser.add_argument("credential_id", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+            .add_argument("datasource_type", type=str, required=True, location="json")
+            .add_argument("credential_id", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         inputs = args.get("inputs")
@@ -479,8 +487,9 @@ class RagPipelineDraftNodeRunApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "inputs", type=dict, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
 
         inputs = args.get("inputs")
@@ -611,8 +620,7 @@ class DefaultRagPipelineBlockConfigApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("q", type=str, location="args")
+        parser = reqparse.RequestParser().add_argument("q", type=str, location="args")
         args = parser.parse_args()
 
         q = args.get("q")
@@ -644,11 +652,13 @@ class PublishedAllRagPipelineApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
-        parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument("user_id", type=str, required=False, location="args")
-        parser.add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+            .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+            .add_argument("user_id", type=str, required=False, location="args")
+            .add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
+        )
         args = parser.parse_args()
         page = int(args.get("page", 1))
         limit = int(args.get("limit", 10))
@@ -695,9 +705,11 @@ class RagPipelineByIdApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("marked_name", type=str, required=False, location="json")
-        parser.add_argument("marked_comment", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("marked_name", type=str, required=False, location="json")
+            .add_argument("marked_comment", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         # Validate name and comment length
@@ -749,8 +761,7 @@ class PublishedRagPipelineSecondStepApi(Resource):
         """
         Get second step parameters of rag pipeline
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, location="args")
+        parser = reqparse.RequestParser().add_argument("node_id", type=str, required=True, location="args")
         args = parser.parse_args()
         node_id = args.get("node_id")
         if not node_id:
@@ -773,8 +784,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
         """
         Get first step parameters of rag pipeline
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, location="args")
+        parser = reqparse.RequestParser().add_argument("node_id", type=str, required=True, location="args")
         args = parser.parse_args()
         node_id = args.get("node_id")
         if not node_id:
@@ -797,8 +807,7 @@ class DraftRagPipelineFirstStepApi(Resource):
         """
         Get first step parameters of rag pipeline
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, location="args")
+        parser = reqparse.RequestParser().add_argument("node_id", type=str, required=True, location="args")
         args = parser.parse_args()
         node_id = args.get("node_id")
         if not node_id:
@@ -821,8 +830,7 @@ class DraftRagPipelineSecondStepApi(Resource):
         """
         Get second step parameters of rag pipeline
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, location="args")
+        parser = reqparse.RequestParser().add_argument("node_id", type=str, required=True, location="args")
         args = parser.parse_args()
         node_id = args.get("node_id")
         if not node_id:
@@ -846,9 +854,11 @@ class RagPipelineWorkflowRunListApi(Resource):
         """
         Get workflow run list
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("last_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("last_id", type=uuid_value, location="args")
+            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        )
         args = parser.parse_args()
 
         rag_pipeline_service = RagPipelineService()
@@ -963,11 +973,13 @@ class RagPipelineDatasourceVariableApi(Resource):
         Set datasource variables
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("datasource_type", type=str, required=True, location="json")
-        parser.add_argument("datasource_info", type=dict, required=True, location="json")
-        parser.add_argument("start_node_id", type=str, required=True, location="json")
-        parser.add_argument("start_node_title", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("datasource_type", type=str, required=True, location="json")
+            .add_argument("datasource_info", type=dict, required=True, location="json")
+            .add_argument("start_node_id", type=str, required=True, location="json")
+            .add_argument("start_node_title", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         rag_pipeline_service = RagPipelineService()

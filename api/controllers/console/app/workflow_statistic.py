@@ -30,9 +30,11 @@ class WorkflowDailyRunsStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -98,9 +100,11 @@ class WorkflowDailyTerminalsStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -166,9 +170,11 @@ class WorkflowDailyTokenCostStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -239,9 +245,11 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        )
         args = parser.parse_args()
 
         sql_query = """SELECT
