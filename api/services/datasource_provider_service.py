@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_current_user():
-    from libs.login import current_user, Account, EndUser
+    from libs.login import Account, EndUser, current_user
 
     assert isinstance(current_user, (Account, EndUser))
     return current_user
