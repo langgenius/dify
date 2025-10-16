@@ -336,6 +336,8 @@ class PluginService:
             pkg,
             verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
         )
+        PluginService._check_plugin_installation_scope(response.verification)
+
         return response
 
     @staticmethod
@@ -358,6 +360,8 @@ class PluginService:
             pkg,
             verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
         )
+        PluginService._check_plugin_installation_scope(response.verification)
+
         return response
 
     @staticmethod
@@ -377,6 +381,10 @@ class PluginService:
 
         manager = PluginInstaller()
 
+        for plugin_unique_identifier in plugin_unique_identifiers:
+            resp = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
+            PluginService._check_plugin_installation_scope(resp.verification)
+
         return manager.install_from_identifiers(
             tenant_id,
             plugin_unique_identifiers,
@@ -393,6 +401,9 @@ class PluginService:
         PluginService._check_marketplace_only_permission()
 
         manager = PluginInstaller()
+        plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
+        PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
+
         return manager.install_from_identifiers(
             tenant_id,
             [plugin_unique_identifier],
