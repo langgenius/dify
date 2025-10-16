@@ -13,6 +13,7 @@ from .graph import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
+    GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
@@ -37,6 +38,7 @@ from .loop import (
 from .node import (
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
+    NodeRunPauseRequestedEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunRetryEvent,
     NodeRunStartedEvent,
@@ -51,6 +53,7 @@ __all__ = [
     "GraphRunAbortedEvent",
     "GraphRunFailedEvent",
     "GraphRunPartialSucceededEvent",
+    "GraphRunPausedEvent",
     "GraphRunStartedEvent",
     "GraphRunSucceededEvent",
     "NodeRunAgentLogEvent",
@@ -64,6 +67,7 @@ __all__ = [
     "NodeRunLoopNextEvent",
     "NodeRunLoopStartedEvent",
     "NodeRunLoopSucceededEvent",
+    "NodeRunPauseRequestedEvent",
     "NodeRunRetrieverResourceEvent",
     "NodeRunRetryEvent",
     "NodeRunStartedEvent",
