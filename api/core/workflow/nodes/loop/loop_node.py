@@ -181,7 +181,7 @@ class LoopNode(Node):
                             conditions=break_conditions,
                             operator=logical_operator,
                         )
-                    except ValueError as e:
+                    except Exception as e:
                         logger.warning(
                             "Loop %s break condition evaluation failed at iteration %s: %s",
                             self._node_id,
