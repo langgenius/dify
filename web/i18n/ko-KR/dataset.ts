@@ -225,6 +225,17 @@ const translation = {
   updated: '업데이트',
   externalKnowledgeBase: '외부 기술 자료',
   createFromPipeline: '지식 파이프라인에서 만들기',
+  serviceApi: {
+    card: {
+      apiReference: 'API 참고',
+      endpoint: '서비스 API 엔드포인트',
+      apiKey: 'API 키',
+      title: '백엔드 서비스 API',
+    },
+    enabled: '서비스 중',
+    title: '서비스 API',
+    disabled: '장애인',
+  },
 }
 
 export default translation
