@@ -100,28 +100,13 @@ class Worker(threading.Thread):
             except queue.Empty:
                 continue
 
-            # Execute node with full exception handling including node lookup
+            # Execute node with proper exception handling
             self._last_task_time = time.time()
             
-            # First, try to get the node from the graph
-            try:
-                node = self._graph.nodes[node_id]
-            except KeyError:
-                # Node not found in graph - this shouldn't happen in normal operation
-                # but could occur during state restoration or graph modifications
-                error_event = NodeRunFailedEvent(
-                    id=str(uuid4()),
-                    node_id=node_id,
-                    node_type=NodeType.CODE,
-                    in_iteration_id=None,
-                    error=f"Node '{node_id}' not found in graph",
-                    start_at=datetime.now(),
-                )
-                self._event_queue.put(error_event)
-                self._ready_queue.task_done()
-                continue
+            # Get node from graph (should always exist as enqueue_node validates this)
+            node = self._graph.nodes[node_id]
             
-            # Now execute the node (node is guaranteed to be defined here)
+            # Execute the node and handle any exceptions
             try:
                 self._execute_node(node)
                 self._ready_queue.task_done()
