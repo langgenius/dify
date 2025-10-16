@@ -201,8 +201,8 @@
     "uglify-js": "^3.19.3"
   },
   "resolutions": {
-    "@types/react": "~19.1.11",
-    "@types/react-dom": "~19.1.7",
+    "@types/react": "~19.1.17",
+    "@types/react-dom": "~19.1.11",
     "string-width": "~4.2.3",
     "@eslint/plugin-kit": "~0.3",
     "canvas": "^3.2.0",
