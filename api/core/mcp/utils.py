@@ -93,8 +93,14 @@ def create_ssrf_proxy_mcp_http_client(
             timeout=timeout,
             follow_redirects=True,
             mounts={
-                "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL, verify=HTTP_REQUEST_NODE_SSL_VERIFY),
-                "https://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTPS_URL, verify=HTTP_REQUEST_NODE_SSL_VERIFY),
+                "http://": httpx.HTTPTransport(
+                        proxy=dify_config.SSRF_PROXY_HTTP_URL, 
+                        verify=HTTP_REQUEST_NODE_SSL_VERIFY
+                    ),
+                "https://": httpx.HTTPTransport(
+                        proxy=dify_config.SSRF_PROXY_HTTPS_URL, 
+                        verify=HTTP_REQUEST_NODE_SSL_VERIFY
+                    ),
             },
         )
     else:
