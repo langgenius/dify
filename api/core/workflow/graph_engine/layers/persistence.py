@@ -313,6 +313,8 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         inputs = {**self._application_generate_entity.inputs}
         for field_name, value in self._system_variables().items():
             if field_name == SystemVariableKey.CONVERSATION_ID.value:
+                # Conversation IDs are tied to the current session; omit them so persisted
+                # workflow inputs stay reusable without binding future runs to this conversation.
                 continue
             inputs[f"sys.{field_name}"] = value
         handled = WorkflowEntry.handle_special_values(inputs)
