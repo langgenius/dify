@@ -110,14 +110,14 @@ class App(Base):
 
     @property
     def site(self) -> Optional["Site"]:
-        site = db.session.scalars(select(Site).where(Site.app_id == self.id).limit(1)).first()
+        site = db.session.scalars(sa.select(Site).where(Site.app_id == self.id).limit(1)).first()
         return site
 
     @property
     def app_model_config(self) -> Optional["AppModelConfig"]:
         if self.app_model_config_id:
             return db.session.scalars(
-                select(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).limit(1)
+                sa.select(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).limit(1)
             ).first()
 
         return None
@@ -127,7 +127,7 @@ class App(Base):
         if self.workflow_id:
             from .workflow import Workflow
 
-            return db.session.scalars(select(Workflow).where(Workflow.id == self.workflow_id).limit(1)).first()
+            return db.session.scalars(sa.select(Workflow).where(Workflow.id == self.workflow_id).limit(1)).first()
 
         return None
 
@@ -137,7 +137,7 @@ class App(Base):
 
     @property
     def tenant(self) -> Tenant | None:
-        tenant = db.session.scalars(select(Tenant).where(Tenant.id == self.tenant_id).limit(1)).first()
+        tenant = db.session.scalars(sa.select(Tenant).where(Tenant.id == self.tenant_id).limit(1)).first()
         return tenant
 
     @property
@@ -296,7 +296,7 @@ class App(Base):
     @property
     def author_name(self) -> str | None:
         if self.created_by:
-            account = db.session.scalars(select(Account).where(Account.id == self.created_by).limit(1)).first()
+            account = db.session.scalars(sa.select(Account).where(Account.id == self.created_by).limit(1)).first()
             if account:
                 return account.name
 
@@ -338,7 +338,7 @@ class AppModelConfig(Base):
 
     @property
     def app(self) -> App | None:
-        app = db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
+        app = db.session.scalars(sa.select(App).where(App.id == self.app_id).limit(1)).first()
         return app
 
     @property
@@ -372,7 +372,7 @@ class AppModelConfig(Base):
     @property
     def annotation_reply_dict(self) -> dict[str, Any]:
         annotation_setting = db.session.scalars(
-            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == self.app_id).limit(1)
+            sa.select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == self.app_id).limit(1)
         ).first()
         if annotation_setting:
             collection_binding_detail = annotation_setting.collection_binding_detail
@@ -550,7 +550,7 @@ class RecommendedApp(Base):
 
     @property
     def app(self) -> App | None:
-        app = db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
+        app = db.session.scalars(sa.select(App).where(App.id == self.app_id).limit(1)).first()
         return app
 
 
@@ -574,12 +574,12 @@ class InstalledApp(Base):
 
     @property
     def app(self) -> App | None:
-        app = db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
+        app = db.session.scalars(sa.select(App).where(App.id == self.app_id).limit(1)).first()
         return app
 
     @property
     def tenant(self) -> Tenant | None:
-        tenant = db.session.scalars(select(Tenant).where(Tenant.id == self.tenant_id).limit(1)).first()
+        tenant = db.session.scalars(sa.select(Tenant).where(Tenant.id == self.tenant_id).limit(1)).first()
         return tenant
 
 
@@ -732,7 +732,7 @@ class Conversation(Base):
                     model_config["configs"] = override_model_configs
             else:
                 app_model_config = db.session.scalars(
-                    select(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).limit(1)
+                    sa.select(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id).limit(1)
                 ).first()
                 if app_model_config:
                     model_config = app_model_config.to_dict()
@@ -760,7 +760,7 @@ class Conversation(Base):
     @property
     def annotation(self):
         return db.session.scalars(
-            select(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).limit(1)
+            sa.select(MessageAnnotation).where(MessageAnnotation.conversation_id == self.id).limit(1)
         ).first()
 
     @property
@@ -817,7 +817,7 @@ class Conversation(Base):
 
     @property
     def status_count(self):
-        messages = db.session.scalars(select(Message).where(Message.conversation_id == self.id)).all()
+        messages = db.session.scalars(sa.select(Message).where(Message.conversation_id == self.id)).all()
         status_counts = {
             WorkflowExecutionStatus.RUNNING: 0,
             WorkflowExecutionStatus.SUCCEEDED: 0,
@@ -851,12 +851,14 @@ class Conversation(Base):
 
     @property
     def app(self) -> App | None:
-        return db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
+        return db.session.scalars(sa.select(App).where(App.id == self.app_id).limit(1)).first()
 
     @property
     def from_end_user_session_id(self):
         if self.from_end_user_id:
-            end_user = db.session.scalars(select(EndUser).where(EndUser.id == self.from_end_user_id).limit(1)).first()
+            end_user = db.session.scalars(
+                sa.select(EndUser).where(EndUser.id == self.from_end_user_id).limit(1)
+            ).first()
             if end_user:
                 return end_user.session_id
 
@@ -865,7 +867,7 @@ class Conversation(Base):
     @property
     def from_account_name(self) -> str | None:
         if self.from_account_id:
-            account = db.session.scalars(select(Account).where(Account.id == self.from_account_id).limit(1)).first()
+            account = db.session.scalars(sa.select(Account).where(Account.id == self.from_account_id).limit(1)).first()
             if account:
                 return account.name
 
@@ -1080,7 +1082,7 @@ class Message(Base):
     @property
     def user_feedback(self):
         feedback = db.session.scalars(
-            select(MessageFeedback)
+            sa.select(MessageFeedback)
             .where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "user")
             .limit(1)
         ).first()
@@ -1089,7 +1091,7 @@ class Message(Base):
     @property
     def admin_feedback(self):
         feedback = db.session.scalars(
-            select(MessageFeedback)
+            sa.select(MessageFeedback)
             .where(MessageFeedback.message_id == self.id, MessageFeedback.from_source == "admin")
             .limit(1)
         ).first()
@@ -1097,24 +1099,24 @@ class Message(Base):
 
     @property
     def feedbacks(self):
-        feedbacks = db.session.scalars(select(MessageFeedback).where(MessageFeedback.message_id == self.id)).all()
+        feedbacks = db.session.scalars(sa.select(MessageFeedback).where(MessageFeedback.message_id == self.id)).all()
         return feedbacks
 
     @property
     def annotation(self):
         annotation = db.session.scalars(
-            select(MessageAnnotation).where(MessageAnnotation.message_id == self.id).limit(1)
+            sa.select(MessageAnnotation).where(MessageAnnotation.message_id == self.id).limit(1)
         ).first()
         return annotation
 
     @property
     def annotation_hit_history(self):
         annotation_history = db.session.scalars(
-            select(AppAnnotationHitHistory).where(AppAnnotationHitHistory.message_id == self.id).limit(1)
+            sa.select(AppAnnotationHitHistory).where(AppAnnotationHitHistory.message_id == self.id).limit(1)
         ).first()
         if annotation_history:
             annotation = db.session.scalars(
-                select(MessageAnnotation).where(MessageAnnotation.id == annotation_history.annotation_id).limit(1)
+                sa.select(MessageAnnotation).where(MessageAnnotation.id == annotation_history.annotation_id).limit(1)
             ).first()
             return annotation
         return None
@@ -1122,11 +1124,11 @@ class Message(Base):
     @property
     def app_model_config(self):
         conversation = db.session.scalars(
-            select(Conversation).where(Conversation.id == self.conversation_id).limit(1)
+            sa.select(Conversation).where(Conversation.id == self.conversation_id).limit(1)
         ).first()
         if conversation:
             return db.session.scalars(
-                select(AppModelConfig).where(AppModelConfig.id == conversation.app_model_config_id).limit(1)
+                sa.select(AppModelConfig).where(AppModelConfig.id == conversation.app_model_config_id).limit(1)
             ).first()
 
         return None
@@ -1156,8 +1158,8 @@ class Message(Base):
     def message_files(self) -> list[dict[str, Any]]:
         from factories import file_factory
 
-        message_files = db.session.scalars(select(MessageFile).where(MessageFile.message_id == self.id)).all()
-        current_app = db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
+        message_files = db.session.scalars(sa.select(MessageFile).where(MessageFile.message_id == self.id)).all()
+        current_app = db.session.scalars(sa.select(App).where(App.id == self.app_id).limit(1)).first()
         if not current_app:
             raise ValueError(f"App {self.app_id} not found")
 
@@ -1222,7 +1224,7 @@ class Message(Base):
             from .workflow import WorkflowRun
 
             return db.session.scalars(
-                select(WorkflowRun).where(WorkflowRun.id == self.workflow_run_id).limit(1)
+                sa.select(WorkflowRun).where(WorkflowRun.id == self.workflow_run_id).limit(1)
             ).first()
 
         return None
@@ -1298,7 +1300,7 @@ class MessageFeedback(Base):
 
     @property
     def from_account(self):
-        account = db.session.scalars(select(Account).where(Account.id == self.from_account_id).limit(1)).first()
+        account = db.session.scalars(sa.select(Account).where(Account.id == self.from_account_id).limit(1)).first()
         return account
 
     def to_dict(self) -> dict[str, Any]:
@@ -1380,12 +1382,12 @@ class MessageAnnotation(Base):
 
     @property
     def account(self):
-        account = db.session.scalars(select(Account).where(Account.id == self.account_id).limit(1)).first()
+        account = db.session.scalars(sa.select(Account).where(Account.id == self.account_id).limit(1)).first()
         return account
 
     @property
     def annotation_create_account(self):
-        account = db.session.scalars(select(Account).where(Account.id == self.account_id).limit(1)).first()
+        account = db.session.scalars(sa.select(Account).where(Account.id == self.account_id).limit(1)).first()
         return account
 
 
@@ -1423,7 +1425,7 @@ class AppAnnotationHitHistory(Base):
 
     @property
     def annotation_create_account(self):
-        account = db.session.scalars(select(Account).where(Account.id == self.account_id).limit(1)).first()
+        account = db.session.scalars(sa.select(Account).where(Account.id == self.account_id).limit(1)).first()
         return account
 
 
@@ -1448,7 +1450,9 @@ class AppAnnotationSetting(Base):
         from .dataset import DatasetCollectionBinding
 
         collection_binding_detail = db.session.scalars(
-            select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == self.collection_binding_id).limit(1)
+            sa.select(DatasetCollectionBinding)
+            .where(DatasetCollectionBinding.id == self.collection_binding_id)
+            .limit(1)
         ).first()
         return collection_binding_detail
 
@@ -1620,7 +1624,7 @@ class ApiToken(Base):
     def generate_api_key(prefix: str, n: int) -> str:
         while True:
             result = prefix + generate_string(n)
-            if db.session.scalar(select(exists().where(ApiToken.token == result))):
+            if db.session.scalar(sa.select(exists().where(ApiToken.token == result))):
                 continue
             return result
 

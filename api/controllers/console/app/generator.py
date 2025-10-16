@@ -40,11 +40,13 @@ class RuleGenerateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("no_variable", type=bool, required=True, default=False, location="json")
-        args = parser.parse_args()
+        args = (
+            reqparse.RequestParser()
+            .add_argument("instruction", type=str, required=True, nullable=False, location="json")
+            .add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+            .add_argument("no_variable", type=bool, required=True, default=False, location="json")
+            .parse_args()
+        )
         _, current_tenant_id = current_account_with_tenant()
 
         try:
@@ -90,12 +92,15 @@ class RuleCodeGenerateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("no_variable", type=bool, required=True, default=False, location="json")
-        parser.add_argument("code_language", type=str, required=False, default="javascript", location="json")
-        args = parser.parse_args()
+        args = (
+            reqparse.RequestParser()
+            .add_argument("instruction", type=str, required=True, nullable=False, location="json")
+            .add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+            .add_argument("no_variable", type=bool, required=True, default=False, location="json")
+            .add_argument("code_language", type=str, required=False, default="javascript", location="json")
+            .parse_args()
+        )
+
         _, current_tenant_id = current_account_with_tenant()
 
         try:
@@ -206,7 +211,8 @@ class InstructionGenerateApi(Resource):
         try:
             # Generate from nothing for a workflow node
             if (args["current"] == code_template or args["current"] == "") and args["node_id"] != "":
-                from models import App, db
+                from models import App
+                from models.engine import db
                 from services.workflow_service import WorkflowService
 
                 app = db.session.scalars(select(App).where(App.id == args["flow_id"]).limit(1)).first()
@@ -254,6 +260,8 @@ class InstructionGenerateApi(Resource):
                     ideal_output=args["ideal_output"],
                 )
             if args["node_id"] != "" and args["current"] != "":  # For workflow node
+                from services.workflow_service import WorkflowService
+
                 return LLMGenerator.instruction_modify_workflow(
                     tenant_id=current_tenant_id,
                     flow_id=args["flow_id"],

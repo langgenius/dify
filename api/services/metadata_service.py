@@ -1,6 +1,8 @@
 import copy
 import logging
 
+import sqlalchemy as sa
+
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -64,7 +66,7 @@ class MetadataService:
                 raise ValueError("Metadata name already exists in Built-in fields.")
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
-            metadata = db.session.scalars(select(DatasetMetadata).filter_by(id=metadata_id).limit(1)).first()
+            metadata = db.session.scalars(sa.select(DatasetMetadata).filter_by(id=metadata_id).limit(1)).first()
             if metadata is None:
                 raise ValueError("Metadata not found.")
             old_name = metadata.name
@@ -100,7 +102,7 @@ class MetadataService:
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
-            metadata = db.session.scalars(select(DatasetMetadata).filter_by(id=metadata_id).limit(1)).first()
+            metadata = db.session.scalars(sa.select(DatasetMetadata).filter_by(id=metadata_id).limit(1)).first()
             if metadata is None:
                 raise ValueError("Metadata not found.")
             db.session.delete(metadata)

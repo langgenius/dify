@@ -16,6 +16,7 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
@@ -27,7 +28,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
 from libs.datetime_utils import naive_utc_now
-from libs.login import current_user
+from libs.login import current_account_with_tenant, current_user
 from models import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -57,6 +58,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
+    RagPipelineDatasetCreateEntity,
 )
 from services.errors.account import NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
@@ -669,13 +671,13 @@ class DatasetService:
             data: Update data dictionary
             filtered_data: Filtered update data to modify
         """
-        # assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        # assert isinstance(current_user, Account) and current_tenant_id is not None
         try:
             model_manager = ModelManager()
             assert isinstance(current_user, Account)
-            assert current_user.current_tenant_id is not None
+            assert current_tenant_id is not None
             embedding_model = model_manager.get_model_instance(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_tenant_id,
                 provider=data["embedding_model_provider"],
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=data["embedding_model"],
@@ -785,14 +787,14 @@ class DatasetService:
             data: Update data dictionary
             filtered_data: Filtered update data to modify
         """
-        # assert isinstance(current_user, Account) and current_user.current_tenant_id is not None
+        # assert isinstance(current_user, Account) and current_tenant_id is not None
 
         model_manager = ModelManager()
         try:
             assert isinstance(current_user, Account)
-            assert current_user.current_tenant_id is not None
+            assert current_tenant_id is not None
             embedding_model = model_manager.get_model_instance(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_tenant_id,
                 provider=data["embedding_model_provider"],
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=data["embedding_model"],
@@ -824,8 +826,7 @@ class DatasetService:
     def update_rag_pipeline_dataset_settings(
         session: Session, dataset: Dataset, knowledge_configuration: KnowledgeConfiguration, has_published: bool = False
     ):
-        if not current_user or not current_user.current_tenant_id:
-            raise ValueError("Current user or current tenant not found")
+        current_user, current_tenant_id = current_account_with_tenant()
         dataset = session.merge(dataset)
         if not has_published:
             dataset.chunk_structure = knowledge_configuration.chunk_structure
@@ -833,7 +834,7 @@ class DatasetService:
             if knowledge_configuration.indexing_technique == "high_quality":
                 model_manager = ModelManager()
                 embedding_model = model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,  # ignore type error
+                    tenant_id=current_tenant_id,  # ignore type error
                     provider=knowledge_configuration.embedding_model_provider or "",
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=knowledge_configuration.embedding_model or "",
@@ -864,7 +865,7 @@ class DatasetService:
                     try:
                         model_manager = ModelManager()
                         embedding_model = model_manager.get_model_instance(
-                            tenant_id=current_user.current_tenant_id,
+                            tenant_id=current_tenant_id,
                             provider=knowledge_configuration.embedding_model_provider,
                             model_type=ModelType.TEXT_EMBEDDING,
                             model=knowledge_configuration.embedding_model,
@@ -911,7 +912,7 @@ class DatasetService:
                             embedding_model = None
                             try:
                                 embedding_model = model_manager.get_model_instance(
-                                    tenant_id=current_user.current_tenant_id,
+                                    tenant_id=current_tenant_id,
                                     provider=knowledge_configuration.embedding_model_provider,
                                     model_type=ModelType.TEXT_EMBEDDING,
                                     model=knowledge_configuration.embedding_model,
@@ -1037,9 +1038,8 @@ class DatasetService:
 
     @staticmethod
     def get_dataset_auto_disable_logs(dataset_id: str):
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        _, current_tenant_id = current_account_with_tenant()
+        features = FeatureService.get_features(current_tenant_id)
         if not features.billing.enabled or features.billing.subscription.plan == "sandbox":
             return {
                 "document_ids": [],
@@ -1238,7 +1238,7 @@ class DocumentService:
             select(Document).where(
                 Document.batch == batch,
                 Document.dataset_id == dataset_id,
-                Document.tenant_id == current_user.current_tenant_id,
+                Document.tenant_id == current_tenant_id,
             )
         ).all()
 
@@ -1303,7 +1303,7 @@ class DocumentService:
         if not document:
             raise ValueError("Document not found.")
 
-        if document.tenant_id != current_user.current_tenant_id:
+        if document.tenant_id != current_tenant_id:
             raise ValueError("No permission.")
 
         if dataset.built_in_field_enabled:
@@ -1412,10 +1412,9 @@ class DocumentService:
         # check doc_form
         DatasetService.check_doc_form(dataset, knowledge_config.doc_form)
         # check document limit
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
+        current_user, current_tenant_id = current_account_with_tenant()
 
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        features = FeatureService.get_features(current_tenant_id)
 
         if features.billing.enabled:
             if not knowledge_config.original_document_id:
@@ -1456,7 +1455,7 @@ class DocumentService:
                     dataset_embedding_model_provider = knowledge_config.embedding_model_provider
                 else:
                     embedding_model = model_manager.get_default_model_instance(
-                        tenant_id=current_user.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
+                        tenant_id=current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
                     )
                     dataset_embedding_model = embedding_model.model
                     dataset_embedding_model_provider = embedding_model.provider
@@ -1547,7 +1546,7 @@ class DocumentService:
                                 db.session.query(Document)
                                 .filter_by(
                                     dataset_id=dataset.id,
-                                    tenant_id=current_user.current_tenant_id,
+                                    tenant_id=current_tenant_id,
                                     data_source_type="upload_file",
                                     enabled=True,
                                     name=file_name,
@@ -1595,7 +1594,7 @@ class DocumentService:
                         db.session.query(Document)
                         .filter_by(
                             dataset_id=dataset.id,
-                            tenant_id=current_user.current_tenant_id,
+                            tenant_id=current_tenant_id,
                             data_source_type="notion_import",
                             enabled=True,
                         )
@@ -1696,7 +1695,7 @@ class DocumentService:
     #     created_from: str = "web",
     # ):
     #     # check document limit
-    #     features = FeatureService.get_features(current_user.current_tenant_id)
+    #     features = FeatureService.get_features(current_tenant_id)
 
     #     if features.billing.enabled:
     #         if not knowledge_config.original_document_id:
@@ -1738,7 +1737,7 @@ class DocumentService:
     #                 dataset_embedding_model_provider = knowledge_config.embedding_model_provider
     #             else:
     #                 embedding_model = model_manager.get_default_model_instance(
-    #                     tenant_id=current_user.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
+    #                     tenant_id=current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
     #                 )
     #                 dataset_embedding_model = embedding_model.model
     #                 dataset_embedding_model_provider = embedding_model.provider
@@ -1821,7 +1820,7 @@ class DocumentService:
     #                     if knowledge_config.duplicate:
     #                         document = Document.query.filter_by(
     #                             dataset_id=dataset.id,
-    #                             tenant_id=current_user.current_tenant_id,
+    #                             tenant_id=current_tenant_id,
     #                             data_source_type="upload_file",
     #                             enabled=True,
     #                             name=file_name,
@@ -1865,7 +1864,7 @@ class DocumentService:
     #                 exist_document = {}
     #                 documents = Document.query.filter_by(
     #                     dataset_id=dataset.id,
-    #                     tenant_id=current_user.current_tenant_id,
+    #                     tenant_id=current_tenant_id,
     #                     data_source_type="notion_import",
     #                     enabled=True,
     #                 ).all()
@@ -1878,7 +1877,7 @@ class DocumentService:
     #                     workspace_id = notion_info.workspace_id
     #                     data_source_binding = DataSourceOauthBinding.query.filter(
     #                         sa.and_(
-    #                             DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+    #                             DataSourceOauthBinding.tenant_id == current_tenant_id,
     #                             DataSourceOauthBinding.provider == "notion",
     #                             DataSourceOauthBinding.disabled == False,
     #                             DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
@@ -2023,7 +2022,7 @@ class DocumentService:
                 Document.completed_at.isnot(None),
                 Document.enabled == True,
                 Document.archived == False,
-                Document.tenant_id == current_user.current_tenant_id,
+                Document.tenant_id == current_tenant_id,
             )
             .count()
         )
@@ -2099,7 +2098,7 @@ class DocumentService:
                         select(DataSourceOauthBinding)
                         .where(
                             sa.and_(
-                                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                                DataSourceOauthBinding.tenant_id == current_tenant_id,
                                 DataSourceOauthBinding.provider == "notion",
                                 DataSourceOauthBinding.disabled == False,
                                 DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
@@ -2160,10 +2159,9 @@ class DocumentService:
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, knowledge_config: KnowledgeConfig, account: Account):
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
+        current_user, current_tenant_id = current_account_with_tenant()
 
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        features = FeatureService.get_features(current_tenant_id)
 
         if features.billing.enabled:
             count = 0
@@ -2602,8 +2600,7 @@ class SegmentService:
 
     @classmethod
     def create_segment(cls, args: dict, document: Document, dataset: Dataset):
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
+        current_user, current_tenant_id = current_account_with_tenant()
 
         content = args["content"]
         doc_id = str(uuid.uuid4())
@@ -2612,7 +2609,7 @@ class SegmentService:
         if dataset.indexing_technique == "high_quality":
             model_manager = ModelManager()
             embedding_model = model_manager.get_model_instance(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_tenant_id,
                 provider=dataset.embedding_model_provider,
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=dataset.embedding_model,
@@ -2627,7 +2624,7 @@ class SegmentService:
                 .scalar()
             )
             segment_document = DocumentSegment(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_tenant_id,
                 dataset_id=document.dataset_id,
                 document_id=document.id,
                 index_node_id=doc_id,
@@ -2669,8 +2666,7 @@ class SegmentService:
 
     @classmethod
     def multi_create_segment(cls, segments: list, document: Document, dataset: Dataset):
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
+        current_user, current_tenant_id = current_account_with_tenant()
 
         lock_name = f"multi_add_segment_lock_document_id_{document.id}"
         increment_word_count = 0
@@ -2679,7 +2675,7 @@ class SegmentService:
             if dataset.indexing_technique == "high_quality":
                 model_manager = ModelManager()
                 embedding_model = model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
@@ -2708,7 +2704,7 @@ class SegmentService:
                         tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
 
                 segment_document = DocumentSegment(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     dataset_id=document.dataset_id,
                     document_id=document.id,
                     index_node_id=doc_id,
@@ -2755,8 +2751,7 @@ class SegmentService:
 
     @classmethod
     def update_segment(cls, args: SegmentUpdateArgs, segment: DocumentSegment, document: Document, dataset: Dataset):
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
+        current_user, current_tenant_id = current_account_with_tenant()
 
         indexing_cache_key = f"segment_{segment.id}_indexing"
         cache_result = redis_client.get(indexing_cache_key)
@@ -2848,7 +2843,7 @@ class SegmentService:
                 if dataset.indexing_technique == "high_quality":
                     model_manager = ModelManager()
                     embedding_model = model_manager.get_model_instance(
-                        tenant_id=current_user.current_tenant_id,
+                        tenant_id=current_tenant_id,
                         provider=dataset.embedding_model_provider,
                         model_type=ModelType.TEXT_EMBEDDING,
                         model=dataset.embedding_model,
@@ -2977,7 +2972,7 @@ class SegmentService:
                 DocumentSegment.id.in_(segment_ids),
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.document_id == document.id,
-                DocumentSegment.tenant_id == current_user.current_tenant_id,
+                DocumentSegment.tenant_id == current_tenant_id,
             )
             .all()
         )
@@ -3081,7 +3076,7 @@ class SegmentService:
     def create_child_chunk(
         cls, content: str, segment: DocumentSegment, document: Document, dataset: Dataset
     ) -> ChildChunk:
-        assert isinstance(current_user, Account)
+        current_user, current_tenant_id = current_account_with_tenant()
 
         lock_name = f"add_child_lock_{segment.id}"
         with redis_client.lock(lock_name, timeout=20):
@@ -3090,7 +3085,7 @@ class SegmentService:
             max_position = (
                 db.session.query(func.max(ChildChunk.position))
                 .where(
-                    ChildChunk.tenant_id == current_user.current_tenant_id,
+                    ChildChunk.tenant_id == current_tenant_id,
                     ChildChunk.dataset_id == dataset.id,
                     ChildChunk.document_id == document.id,
                     ChildChunk.segment_id == segment.id,
@@ -3098,7 +3093,7 @@ class SegmentService:
                 .scalar()
             )
             child_chunk = ChildChunk(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
                 segment_id=segment.id,
@@ -3170,7 +3165,7 @@ class SegmentService:
                     index_node_id = str(uuid.uuid4())
                     index_node_hash = helper.generate_text_hash(args.content)
                     child_chunk = ChildChunk(
-                        tenant_id=current_user.current_tenant_id,
+                        tenant_id=current_tenant_id,
                         dataset_id=dataset.id,
                         document_id=document.id,
                         segment_id=segment.id,
@@ -3240,7 +3235,7 @@ class SegmentService:
         query = (
             select(ChildChunk)
             .filter_by(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_tenant_id,
                 dataset_id=dataset_id,
                 document_id=document_id,
                 segment_id=segment_id,
