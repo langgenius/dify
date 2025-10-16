@@ -560,7 +560,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       }
       if (code === 'unauthorized_and_force_logout') {
         // Cookies will be cleared by the backend
-        globalThis.location.href = loginUrl
+        globalThis.location.reload()
         return Promise.reject(err)
       }
       const {
