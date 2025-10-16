@@ -27,6 +27,9 @@ from core.workflow.graph_events import (
 )
 from core.workflow.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper
 
+if TYPE_CHECKING:  # pragma: no cover - used only for static analysis
+    from core.workflow.runtime.graph_runtime_state import GraphProtocol
+
 from .command_processing import AbortCommandHandler, CommandProcessor, PauseCommandHandler
 from .entities.commands import AbortCommand, PauseCommand
 from .error_handler import ErrorHandler
@@ -71,7 +74,7 @@ class GraphEngine:
         # Bind runtime state to current workflow context
         self._graph = graph
         self._graph_runtime_state = graph_runtime_state
-        self._graph_runtime_state.configure(graph=graph)
+        self._graph_runtime_state.configure(graph=cast("GraphProtocol", graph))
         self._command_channel = command_channel
 
         # Graph execution tracks the overall execution state
