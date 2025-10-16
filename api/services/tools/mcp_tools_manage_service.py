@@ -6,11 +6,11 @@ from typing import Any
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
+from configs import dify_config
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.error import MCPAuthError, MCPError
 from core.mcp.mcp_client import MCPClient
-from configs import dify_config
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
@@ -319,14 +319,10 @@ class MCPToolManageService:
 
                     final_host = incoming_host or existing_decrypted.get("host", "")
                     final_username = (
-                        incoming_username
-                        if incoming_username is not None
-                        else existing_decrypted.get("username", "")
+                        incoming_username if incoming_username is not None else existing_decrypted.get("username", "")
                     )
                     final_password = (
-                        incoming_password
-                        if incoming_password is not None
-                        else existing_decrypted.get("password", "")
+                        incoming_password if incoming_password is not None else existing_decrypted.get("password", "")
                     )
 
                     to_encrypt: dict[str, str] = {"host": final_host}
