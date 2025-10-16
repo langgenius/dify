@@ -28,6 +28,7 @@ from core.workflow.node_events import (
     NodeRunResult,
     StreamCompletedEvent,
 )
+from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.loop.entities import LoopNodeData, LoopVariableData
@@ -41,7 +42,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class LoopNode(Node):
+class LoopNode(LLMUsageTrackingMixin, Node):
     """
     Loop Node.
     """
@@ -301,23 +302,6 @@ class LoopNode(Node):
         current_metadata = event.node_run_result.metadata
         if WorkflowNodeExecutionMetadataKey.LOOP_ID not in current_metadata:
             event.node_run_result.metadata = {**current_metadata, **loop_metadata}
-
-    @staticmethod
-    def _merge_usage(current: LLMUsage, new_usage: LLMUsage | None) -> LLMUsage:
-        if new_usage is None or new_usage.total_tokens <= 0:
-            return current
-        if current.total_tokens == 0:
-            return new_usage
-        return current.plus(new_usage)
-
-    def _accumulate_usage(self, usage: LLMUsage) -> None:
-        if usage.total_tokens <= 0:
-            return
-        current_usage = self.graph_runtime_state.llm_usage
-        if current_usage.total_tokens == 0:
-            self.graph_runtime_state.llm_usage = usage.model_copy()
-        else:
-            self.graph_runtime_state.llm_usage = current_usage.plus(usage)
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
