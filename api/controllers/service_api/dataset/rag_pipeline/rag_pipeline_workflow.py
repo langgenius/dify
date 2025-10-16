@@ -17,7 +17,7 @@ from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from libs import helper
 from libs.login import current_user
-from models.account import Account
+from models import Account
 from models.dataset import Pipeline
 from models.engine import db
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError

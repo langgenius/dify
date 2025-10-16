@@ -10,7 +10,7 @@ from dify_app import DifyApp
 from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_access_token
-from models.account import Account, Tenant, TenantAccountJoin
+from models import Account, Tenant, TenantAccountJoin
 from models.model import AppMCPServer, EndUser
 from services.account_service import AccountService
 

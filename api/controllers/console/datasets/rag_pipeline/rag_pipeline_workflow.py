@@ -18,6 +18,7 @@ from controllers.console.app.error import (
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
     account_initialization_required,
+    edit_permission_required,
     setup_required,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
@@ -36,8 +37,8 @@ from fields.workflow_run_fields import (
 )
 from libs import helper
 from libs.helper import TimestampField, uuid_value
-from libs.login import current_user, login_required
-from models.account import Account
+from libs.login import current_account_with_tenant, current_user, login_required
+from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
 from services.errors.app import WorkflowHashNotEqualError
@@ -56,15 +57,12 @@ class DraftRagPipelineApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
+    @edit_permission_required
     @marshal_with(workflow_fields)
     def get(self, pipeline: Pipeline):
         """
         Get draft rag pipeline's workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
-            raise Forbidden()
-
         # fetch draft workflow by app_model
         rag_pipeline_service = RagPipelineService()
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
@@ -79,13 +77,13 @@ class DraftRagPipelineApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
+    @edit_permission_required
     def post(self, pipeline: Pipeline):
         """
         Sync draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
 
         content_type = request.headers.get("Content-Type", "")
 
@@ -154,13 +152,13 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
+    @edit_permission_required
     def post(self, pipeline: Pipeline, node_id: str):
         """
         Run draft workflow iteration node
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
@@ -194,7 +192,8 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -229,7 +228,8 @@ class DraftRagPipelineRunApi(Resource):
         Run draft workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -264,7 +264,8 @@ class PublishedRagPipelineRunApi(Resource):
         Run published workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -303,7 +304,7 @@ class PublishedRagPipelineRunApi(Resource):
 #         Run rag pipeline datasource
 #         """
 #         # The role of the current user in the ta table must be admin, owner, or editor
-#         if not current_user.is_editor:
+#         if not current_user.has_edit_permission:
 #             raise Forbidden()
 #
 #         if not isinstance(current_user, Account):
@@ -344,7 +345,7 @@ class PublishedRagPipelineRunApi(Resource):
 #         Run rag pipeline datasource
 #         """
 #         # The role of the current user in the ta table must be admin, owner, or editor
-#         if not current_user.is_editor:
+#         if not current_user.has_edit_permission:
 #             raise Forbidden()
 #
 #         if not isinstance(current_user, Account):
@@ -385,7 +386,8 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
         Run rag pipeline datasource
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -428,7 +430,8 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
         Run rag pipeline datasource
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -472,7 +475,8 @@ class RagPipelineDraftNodeRunApi(Resource):
         Run draft workflow node
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -505,7 +509,8 @@ class RagPipelineTaskStopApi(Resource):
         Stop workflow task
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
@@ -525,7 +530,8 @@ class PublishedRagPipelineApi(Resource):
         Get published pipeline
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
         if not pipeline.is_published:
             return None
@@ -545,7 +551,8 @@ class PublishedRagPipelineApi(Resource):
         Publish workflow
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         rag_pipeline_service = RagPipelineService()
@@ -580,7 +587,8 @@ class DefaultRagPipelineBlockConfigsApi(Resource):
         Get default block config
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         # Get default block configs
@@ -599,7 +607,8 @@ class DefaultRagPipelineBlockConfigApi(Resource):
         Get default block config
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -631,7 +640,8 @@ class PublishedAllRagPipelineApi(Resource):
         """
         Get published workflows
         """
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -681,7 +691,8 @@ class RagPipelineByIdApi(Resource):
         Update workflow attributes
         """
         # Check permission
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+        current_user, _ = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -733,13 +744,11 @@ class PublishedRagPipelineSecondStepApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
+    @edit_permission_required
     def get(self, pipeline: Pipeline):
         """
         Get second step parameters of rag pipeline
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
-            raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("node_id", type=str, required=True, location="args")
         args = parser.parse_args()
@@ -759,13 +768,11 @@ class PublishedRagPipelineFirstStepApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
+    @edit_permission_required
     def get(self, pipeline: Pipeline):
         """
         Get first step parameters of rag pipeline
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
-            raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("node_id", type=str, required=True, location="args")
         args = parser.parse_args()
@@ -785,13 +792,11 @@ class DraftRagPipelineFirstStepApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
+    @edit_permission_required
     def get(self, pipeline: Pipeline):
         """
         Get first step parameters of rag pipeline
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
-            raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("node_id", type=str, required=True, location="args")
         args = parser.parse_args()
@@ -811,13 +816,11 @@ class DraftRagPipelineSecondStepApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
+    @edit_permission_required
     def get(self, pipeline: Pipeline):
         """
         Get second step parameters of rag pipeline
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
-            raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("node_id", type=str, required=True, location="args")
         args = parser.parse_args()
@@ -880,7 +883,7 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @marshal_with(workflow_run_node_execution_list_fields)
-    def get(self, pipeline: Pipeline, run_id):
+    def get(self, pipeline: Pipeline, run_id: str):
         """
         Get workflow run node execution list
         """
@@ -903,14 +906,8 @@ class DatasourceListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user = current_user
-        if not isinstance(user, Account):
-            raise Forbidden()
-        tenant_id = user.current_tenant_id
-        if not tenant_id:
-            raise Forbidden()
-
-        return jsonable_encoder(RagPipelineManageService.list_rag_pipeline_datasources(tenant_id))
+        _, current_tenant_id = current_account_with_tenant()
+        return jsonable_encoder(RagPipelineManageService.list_rag_pipeline_datasources(current_tenant_id))
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/last-run")
@@ -940,11 +937,11 @@ class RagPipelineTransformApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, dataset_id):
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+    @edit_permission_required
+    def post(self, dataset_id: str):
+        current_user, _ = current_account_with_tenant()
 
-        if not (current_user.has_edit_permission or current_user.is_dataset_operator):
+        if not current_user.is_dataset_operator:
             raise Forbidden()
 
         dataset_id = str(dataset_id)
@@ -959,14 +956,13 @@ class RagPipelineDatasourceVariableApi(Resource):
     @login_required
     @account_initialization_required
     @get_rag_pipeline
+    @edit_permission_required
     @marshal_with(workflow_run_node_execution_fields)
     def post(self, pipeline: Pipeline):
         """
         Set datasource variables
         """
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
-            raise Forbidden()
-
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("datasource_type", type=str, required=True, location="json")
         parser.add_argument("datasource_info", type=dict, required=True, location="json")

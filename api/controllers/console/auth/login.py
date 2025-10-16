@@ -1,5 +1,3 @@
-from typing import cast
-
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource, reqparse
@@ -37,7 +35,7 @@ from libs.token import (
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
 )
-from models.account import Account
+from libs.login import current_account_with_tenant
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError
@@ -114,7 +112,8 @@ class LoginApi(Resource):
 class LogoutApi(Resource):
     @setup_required
     def post(self):
-        account = cast(Account, flask_login.current_user)
+        current_user, _ = current_account_with_tenant()
+        account = current_user
         if isinstance(account, flask_login.AnonymousUserMixin):
             response = make_response({"result": "success"})
         else:

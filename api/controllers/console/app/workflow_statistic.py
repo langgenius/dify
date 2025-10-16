@@ -4,7 +4,6 @@ from decimal import Decimal
 import pytz
 import sqlalchemy as sa
 from flask import jsonify
-from flask_login import current_user
 from flask_restx import Resource, reqparse
 
 from controllers.console import api, console_ns
@@ -12,7 +11,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from libs.helper import DatetimeString
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 
@@ -29,7 +28,7 @@ class WorkflowDailyRunsStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account = current_user
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -49,7 +48,7 @@ WHERE
             "app_id": app_model.id,
             "triggered_from": WorkflowRunTriggeredFrom.APP_RUN,
         }
-
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -97,7 +96,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account = current_user
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -117,7 +116,7 @@ WHERE
             "app_id": app_model.id,
             "triggered_from": WorkflowRunTriggeredFrom.APP_RUN,
         }
-
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -165,7 +164,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account = current_user
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -185,7 +184,7 @@ WHERE
             "app_id": app_model.id,
             "triggered_from": WorkflowRunTriggeredFrom.APP_RUN,
         }
-
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -238,7 +237,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
     def get(self, app_model):
-        account = current_user
+        account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -271,7 +270,7 @@ GROUP BY
             "app_id": app_model.id,
             "triggered_from": WorkflowRunTriggeredFrom.APP_RUN,
         }
-
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
