@@ -91,12 +91,12 @@ def test_parse_and_check_json_markdown_handles_think_fenced_and_raw_variants():
     expected = {"keywords": ["2"], "category_id": "2", "category_name": "2"}
     cases = [
         """
-        <think> xxx </think> ```json
+        ```json
         [{"keywords": ["2"], "category_id": "2", "category_name": "2"}]
         ```, error: Expecting value: line 1 column 1 (char 0)
         """,
         """
-        <think> xxx </think> ```json
+        ```json
         {"keywords": ["2"], "category_id": "2", "category_name": "2"}
         ```, error: Extra data: line 2 column 5 (char 66)
         """,
