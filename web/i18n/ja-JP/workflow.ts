@@ -340,6 +340,7 @@ const translation = {
     moveToThisNode: 'このノードに移動する',
     maximize: 'キャンバスを最大化する',
     minimize: '全画面を終了する',
+    optional_and_hidden: '（オプションおよび非表示）',
   },
   nodes: {
     common: {
