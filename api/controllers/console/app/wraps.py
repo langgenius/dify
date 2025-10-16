@@ -2,8 +2,6 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar, Union
 
-from sqlalchemy import select
-
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant

@@ -4,7 +4,7 @@ import pytz
 import sqlalchemy as sa
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import NotFound
 
