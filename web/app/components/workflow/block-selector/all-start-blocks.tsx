@@ -68,7 +68,7 @@ const AllStartBlocks = ({
       >
         <div className='flex-1'>
           {shouldShowEmptyState && (
-            <div className='flex flex-col items-center gap-1 pt-48'>
+            <div className='flex h-full flex-col items-center justify-center gap-3 py-12 text-center'>
               <SearchMenu className='h-8 w-8 text-text-quaternary' />
               <div className='text-sm font-medium text-text-secondary'>
                 {t('workflow.tabs.noPluginsFound')}
