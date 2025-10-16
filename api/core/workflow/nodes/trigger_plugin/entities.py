@@ -12,30 +12,32 @@ from core.workflow.nodes.trigger_plugin.exc import TriggerEventParameterError
 class TriggerEventNodeData(BaseNodeData):
     """Plugin trigger node data"""
 
-    class PluginTriggerInput(BaseModel):
+    class TriggerEventInput(BaseModel):
         value: Union[Any, list[str]]
         type: Literal["mixed", "variable", "constant"]
 
         @field_validator("type", mode="before")
         @classmethod
         def check_type(cls, value, validation_info: ValidationInfo):
-            typ = value
+            type = value
             value = validation_info.data.get("value")
 
             if value is None:
-                return typ
+                return type
 
-            if typ == "mixed" and not isinstance(value, str):
+            if type == "mixed" and not isinstance(value, str):
                 raise ValueError("value must be a string")
-            elif typ == "variable":
+            
+            if type == "variable":
                 if not isinstance(value, list):
                     raise ValueError("value must be a list")
                 for val in value:
                     if not isinstance(val, str):
                         raise ValueError("value must be a list of strings")
-            elif typ == "constant" and not isinstance(value, str | int | float | bool | dict):
+            
+            if type == "constant" and not isinstance(value, str | int | float | bool | dict | list):
                 raise ValueError("value must be a string, int, float, bool or dict")
-            return typ
+            return type
 
     title: str
     desc: Optional[str] = None
@@ -44,7 +46,7 @@ class TriggerEventNodeData(BaseNodeData):
     event_name: str = Field(..., description="Event name")
     subscription_id: str = Field(..., description="Subscription ID")
     plugin_unique_identifier: str = Field(..., description="Plugin unique identifier")
-    event_parameters: Mapping[str, PluginTriggerInput] = Field(default_factory=dict, description="Trigger parameters")
+    event_parameters: Mapping[str, TriggerEventInput] = Field(default_factory=dict, description="Trigger parameters")
 
     # Error handling
     error_strategy: Optional[ErrorStrategy] = Field(
