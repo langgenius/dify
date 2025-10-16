@@ -11,10 +11,11 @@ from models.model import EndUser
 
 
 def current_account_with_tenant():
-    if not isinstance(current_user._get_current_object(), Account):  # type: ignore
+    user = current_user._get_current_object() # type: ignore
+    if not isinstance(user, Account):
         raise ValueError("current_user must be an Account instance")
-    assert current_user.current_tenant_id is not None, "The tenant information should be loaded."
-    return current_user, current_user.current_tenant_id
+    assert user.current_tenant_id is not None, "The tenant information should be loaded."
+    return user, user.current_tenant_id
 
 
 from typing import ParamSpec, TypeVar
