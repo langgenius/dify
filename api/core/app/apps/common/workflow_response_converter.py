@@ -2,7 +2,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Union
+from typing import Any, NewType, Union
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -53,6 +53,8 @@ from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
 from services.variable_truncator import VariableTruncator
 
+NodeExecutionId = NewType("NodeExecutionId", str)
+
 
 @dataclass(slots=True)
 class _NodeSnapshot:
@@ -62,7 +64,9 @@ class _NodeSnapshot:
     index: int
     start_at: datetime
     iteration_id: str = ""
+    """Empty string means the node is not executing inside an iteration."""
     loop_id: str = ""
+    """Empty string means the node is not executing inside a loop."""
 
 
 class WorkflowResponseConverter:
@@ -78,7 +82,7 @@ class WorkflowResponseConverter:
         self._system_variables = system_variables
         self._workflow_inputs = self._prepare_workflow_inputs()
         self._truncator = VariableTruncator.default()
-        self._node_snapshots: dict[str, _NodeSnapshot] = {}
+        self._node_snapshots: dict[NodeExecutionId, _NodeSnapshot] = {}
         self._workflow_execution_id: str | None = None
         self._workflow_started_at: datetime | None = None
 
@@ -88,7 +92,11 @@ class WorkflowResponseConverter:
     def _prepare_workflow_inputs(self) -> Mapping[str, Any]:
         inputs = dict(self._application_generate_entity.inputs)
         for field_name, value in self._system_variables.to_dict().items():
+            # TODO(@future-refactor): store system variables separately from user inputs so we don't
+            # need to flatten `sys.*` entries into the input payload just for rerun/export tooling.
             if field_name == SystemVariableKey.CONVERSATION_ID:
+                # Conversation IDs are session-scoped; omitting them keeps workflow inputs
+                # reusable without pinning new runs to a prior conversation.
                 continue
             inputs[f"sys.{field_name}"] = value
         handled = WorkflowEntry.handle_special_values(inputs)
@@ -113,14 +121,15 @@ class WorkflowResponseConverter:
             iteration_id=event.in_iteration_id or "",
             loop_id=event.in_loop_id or "",
         )
-        self._node_snapshots[event.node_execution_id] = snapshot
+        node_execution_id = NodeExecutionId(event.node_execution_id)
+        self._node_snapshots[node_execution_id] = snapshot
         return snapshot
 
     def _get_snapshot(self, node_execution_id: str) -> _NodeSnapshot | None:
-        return self._node_snapshots.get(node_execution_id)
+        return self._node_snapshots.get(NodeExecutionId(node_execution_id))
 
     def _pop_snapshot(self, node_execution_id: str) -> _NodeSnapshot | None:
-        return self._node_snapshots.pop(node_execution_id, None)
+        return self._node_snapshots.pop(NodeExecutionId(node_execution_id), None)
 
     @staticmethod
     def _merge_metadata(
