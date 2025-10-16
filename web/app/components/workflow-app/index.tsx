@@ -56,8 +56,9 @@ const WorkflowAppWithAdditionalContext = () => {
   const searchParams = useSearchParams()
   const workflowStore = useWorkflowStore()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
+  const replayRunId = searchParams.get('replayRunId')
+
   useEffect(() => {
-    const replayRunId = searchParams.get('replayRunId')
     if (!replayRunId)
       return
     const { runUrl } = getWorkflowRunAndTraceUrl(replayRunId)
@@ -85,14 +86,37 @@ const WorkflowAppWithAdditionalContext = () => {
       if (!parsedInputs)
         return
 
-      const userInputs = Object.fromEntries(
-        Object.entries(parsedInputs).filter(([key]) => !key.startsWith('sys.')),
-      )
+      const userInputs: Record<string, string> = {}
+      Object.entries(parsedInputs).forEach(([key, value]) => {
+        if (key.startsWith('sys.'))
+          return
+
+        if (value == null) {
+          userInputs[key] = ''
+          return
+        }
+
+        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+          userInputs[key] = value
+          return
+        }
+
+        try {
+          userInputs[key] = JSON.stringify(value)
+        }
+        catch {
+          userInputs[key] = String(value)
+        }
+      })
+
+      if (!Object.keys(userInputs).length)
+        return
+
       setInputs(userInputs)
       setShowInputsPanel(true)
       setShowDebugAndPreviewPanel(true)
     })
-  }, [searchParams, workflowStore, getWorkflowRunAndTraceUrl])
+  }, [replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
 
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
