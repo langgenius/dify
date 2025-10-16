@@ -1,6 +1,6 @@
 import json
 from copy import deepcopy
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 from urllib.parse import urlparse
 
 import httpx
@@ -88,9 +88,9 @@ class ExternalDatasetService:
             else:
                 raise ValueError(f"invalid endpoint: {endpoint}")
         try:
-            response = httpx.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
-        except Exception:
-            raise ValueError(f"failed to connect to the endpoint: {endpoint}")
+            response = ssrf_proxy.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
+        except Exception as e:
+            raise ValueError(f"failed to connect to the endpoint: {endpoint}") from e
         if response.status_code == 502:
             raise ValueError(f"Bad Gateway: failed to connect to the endpoint: {endpoint}")
         if response.status_code == 404:
@@ -100,7 +100,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_api(external_knowledge_api_id: str) -> ExternalKnowledgeApis:
-        external_knowledge_api: Optional[ExternalKnowledgeApis] = (
+        external_knowledge_api: ExternalKnowledgeApis | None = (
             db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id).first()
         )
         if external_knowledge_api is None:
@@ -109,7 +109,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def update_external_knowledge_api(tenant_id, user_id, external_knowledge_api_id, args) -> ExternalKnowledgeApis:
-        external_knowledge_api: Optional[ExternalKnowledgeApis] = (
+        external_knowledge_api: ExternalKnowledgeApis | None = (
             db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
         )
         if external_knowledge_api is None:
@@ -151,7 +151,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_binding_with_dataset_id(tenant_id: str, dataset_id: str) -> ExternalKnowledgeBindings:
-        external_knowledge_binding: Optional[ExternalKnowledgeBindings] = (
+        external_knowledge_binding: ExternalKnowledgeBindings | None = (
             db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
         )
         if not external_knowledge_binding:
@@ -181,7 +181,7 @@ class ExternalDatasetService:
         do http request depending on api bundle
         """
 
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "url": settings.url,
             "headers": settings.headers,
             "follow_redirects": True,
@@ -203,7 +203,7 @@ class ExternalDatasetService:
         return response
 
     @staticmethod
-    def assembling_headers(authorization: Authorization, headers: Optional[dict] = None) -> dict[str, Any]:
+    def assembling_headers(authorization: Authorization, headers: dict | None = None) -> dict[str, Any]:
         authorization = deepcopy(authorization)
         if headers:
             headers = deepcopy(headers)
@@ -277,7 +277,7 @@ class ExternalDatasetService:
         dataset_id: str,
         query: str,
         external_retrieval_parameters: dict,
-        metadata_condition: Optional[MetadataCondition] = None,
+        metadata_condition: MetadataCondition | None = None,
     ):
         external_knowledge_binding = (
             db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()

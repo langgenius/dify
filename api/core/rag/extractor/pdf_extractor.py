@@ -2,7 +2,6 @@
 
 import contextlib
 from collections.abc import Iterator
-from typing import Optional
 
 from core.rag.extractor.blob.blob import Blob
 from core.rag.extractor.extractor_base import BaseExtractor
@@ -18,7 +17,7 @@ class PdfExtractor(BaseExtractor):
         file_path: Path to the file to load.
     """
 
-    def __init__(self, file_path: str, file_cache_key: Optional[str] = None):
+    def __init__(self, file_path: str, file_cache_key: str | None = None):
         """Initialize with file path."""
         self._file_path = file_path
         self._file_cache_key = file_cache_key

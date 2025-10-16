@@ -15,7 +15,20 @@ export type SlashCommandHandler<TDeps = any> = {
   description: string
 
   /**
-   * Search command results
+   * Command mode:
+   * - 'direct': Execute immediately when selected (e.g., /docs, /community)
+   * - 'submenu': Show submenu options (e.g., /theme, /language)
+   */
+  mode?: 'direct' | 'submenu'
+
+  /**
+   * Direct execution function for 'direct' mode commands
+   * Called when the command is selected and should execute immediately
+   */
+  execute?: () => void | Promise<void>
+
+  /**
+   * Search command results (for 'submenu' mode or showing options)
    * @param args Command arguments (part after removing command name)
    * @param locale Current language
    */

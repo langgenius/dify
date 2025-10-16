@@ -2,9 +2,10 @@ from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset
 from models.model import App, Tag, TagBinding
 from services.tag_service import TagService
@@ -65,7 +66,7 @@ class TestTagService:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)
@@ -954,7 +955,9 @@ class TestTagService:
         from extensions.ext_database import db
 
         # Verify only one binding exists
-        bindings = db.session.query(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == app.id).all()
+        bindings = db.session.scalars(
+            select(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == app.id)
+        ).all()
         assert len(bindings) == 1
 
     def test_save_tag_binding_invalid_target_type(self, db_session_with_containers, mock_external_service_dependencies):
@@ -1064,7 +1067,9 @@ class TestTagService:
         # No error should be raised, and database state should remain unchanged
         from extensions.ext_database import db
 
-        bindings = db.session.query(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == app.id).all()
+        bindings = db.session.scalars(
+            select(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == app.id)
+        ).all()
         assert len(bindings) == 0
 
     def test_check_target_exists_knowledge_success(

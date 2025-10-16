@@ -244,6 +244,7 @@ const translation = {
       publishTip: 'Ứng dụng chưa xuất bản. Vui lòng xuất bản ứng dụng trước.',
     },
   },
+  allTools: 'Tất cả các công cụ',
 }
 
 export default translation

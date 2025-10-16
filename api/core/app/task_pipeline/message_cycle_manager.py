@@ -1,6 +1,6 @@
 import logging
 from threading import Thread
-from typing import Optional, Union
+from typing import Union
 
 from flask import Flask, current_app
 from sqlalchemy import select
@@ -52,7 +52,7 @@ class MessageCycleManager:
         self._application_generate_entity = application_generate_entity
         self._task_state = task_state
 
-    def generate_conversation_name(self, *, conversation_id: str, query: str) -> Optional[Thread]:
+    def generate_conversation_name(self, *, conversation_id: str, query: str) -> Thread | None:
         """
         Generate conversation name.
         :param conversation_id: conversation id
@@ -92,7 +92,7 @@ class MessageCycleManager:
             if not conversation:
                 return
 
-            if conversation.mode != AppMode.COMPLETION.value:
+            if conversation.mode != AppMode.COMPLETION:
                 app_model = conversation.app
                 if not app_model:
                     return
@@ -107,11 +107,10 @@ class MessageCycleManager:
                     if dify_config.DEBUG:
                         logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
 
-                db.session.merge(conversation)
                 db.session.commit()
                 db.session.close()
 
-    def handle_annotation_reply(self, event: QueueAnnotationReplyEvent) -> Optional[MessageAnnotation]:
+    def handle_annotation_reply(self, event: QueueAnnotationReplyEvent) -> MessageAnnotation | None:
         """
         Handle annotation reply.
         :param event: event
@@ -138,10 +137,12 @@ class MessageCycleManager:
         :param event: event
         :return:
         """
+        if not self._application_generate_entity.app_config.additional_features:
+            raise ValueError("Additional features not found")
         if self._application_generate_entity.app_config.additional_features.show_retrieve_source:
             self._task_state.metadata.retriever_resources = event.retriever_resources
 
-    def message_file_to_stream_response(self, event: QueueMessageFileEvent) -> Optional[MessageFileStreamResponse]:
+    def message_file_to_stream_response(self, event: QueueMessageFileEvent) -> MessageFileStreamResponse | None:
         """
         Message file to stream response.
         :param event: event
@@ -180,7 +181,7 @@ class MessageCycleManager:
         return None
 
     def message_to_stream_response(
-        self, answer: str, message_id: str, from_variable_selector: Optional[list[str]] = None
+        self, answer: str, message_id: str, from_variable_selector: list[str] | None = None
     ) -> MessageStreamResponse:
         """
         Message to stream response.

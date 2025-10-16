@@ -1,8 +1,9 @@
 import json
 import logging
 import uuid
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Optional
+from typing import Any, Concatenate, ParamSpec, TypeVar
 
 from mo_vector.client import MoVectorClient  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -17,7 +18,6 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
-from typing import ParamSpec, TypeVar
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -47,16 +47,6 @@ class MatrixoneConfig(BaseModel):
         return values
 
 
-def ensure_client(func):
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        if self.client is None:
-            self.client = self._get_client(None, False)
-        return func(self, *args, **kwargs)
-
-    return wrapper
-
-
 class MatrixoneVector(BaseVector):
     """
     Matrixone vector storage implementation.
@@ -84,7 +74,7 @@ class MatrixoneVector(BaseVector):
             self.client = self._get_client(len(embeddings[0]), True)
         return self.add_texts(texts, embeddings)
 
-    def _get_client(self, dimension: Optional[int] = None, create_table: bool = False) -> MoVectorClient:
+    def _get_client(self, dimension: int | None = None, create_table: bool = False) -> MoVectorClient:
         """
         Create a new client for the collection.
 
@@ -113,7 +103,7 @@ class MatrixoneVector(BaseVector):
             self.client = self._get_client(len(embeddings[0]), True)
         assert self.client is not None
         ids = []
-        for _, doc in enumerate(documents):
+        for doc in documents:
             if doc.metadata is not None:
                 doc_id = doc.metadata.get("doc_id", str(uuid.uuid4()))
                 ids.append(doc_id)
@@ -214,6 +204,19 @@ class MatrixoneVector(BaseVector):
     def delete(self):
         assert self.client is not None
         self.client.delete()
+
+
+T = TypeVar("T", bound=MatrixoneVector)
+
+
+def ensure_client(func: Callable[Concatenate[T, P], R]):
+    @wraps(func)
+    def wrapper(self: T, *args: P.args, **kwargs: P.kwargs):
+        if self.client is None:
+            self.client = self._get_client(None, False)
+        return func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class MatrixoneVectorFactory(AbstractVectorFactory):

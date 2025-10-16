@@ -17,6 +17,7 @@ const translation = {
     other: 'अन्य',
     medical: 'चिकित्सा',
     finance: 'वित्त',
+    rag: 'राग',
   },
   searchTags: 'खोज टैग',
   allTags: 'सभी टैग',

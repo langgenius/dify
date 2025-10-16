@@ -4,7 +4,7 @@ from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
 from datetime import timedelta
 from types import TracebackType
-from typing import Any, Generic, Optional, Self, TypeVar
+from typing import Any, Generic, Self, TypeVar
 
 from httpx import HTTPStatusError
 from pydantic import BaseModel
@@ -81,7 +81,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         self.request_meta = request_meta
         self.request = request
         self._session = session
-        self._completed = False
+        self.completed = False
         self._on_complete = on_complete
         self._entered = False  # Track if we're in a context manager
 
@@ -98,7 +98,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
     ):
         """Exit the context manager, performing cleanup and notifying completion."""
         try:
-            if self._completed:
+            if self.completed:
                 self._on_complete(self)
         finally:
             self._entered = False
@@ -113,9 +113,9 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         """
         if not self._entered:
             raise RuntimeError("RequestResponder must be used as a context manager")
-        assert not self._completed, "Request already responded to"
+        assert not self.completed, "Request already responded to"
 
-        self._completed = True
+        self.completed = True
 
         self._session._send_response(request_id=self.request_id, response=response)
 
@@ -124,7 +124,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         if not self._entered:
             raise RuntimeError("RequestResponder must be used as a context manager")
 
-        self._completed = True  # Mark as completed so it's removed from in_flight
+        self.completed = True  # Mark as completed so it's removed from in_flight
         # Send an error response to indicate cancellation
         self._session._send_response(
             request_id=self.request_id,
@@ -212,7 +212,7 @@ class BaseSession(
         request: SendRequestT,
         result_type: type[ReceiveResultT],
         request_read_timeout_seconds: timedelta | None = None,
-        metadata: Optional[MessageMetadata] = None,
+        metadata: MessageMetadata | None = None,
     ) -> ReceiveResultT:
         """
         Sends a request and wait for a response. Raises an McpError if the
@@ -351,7 +351,7 @@ class BaseSession(
                     self._in_flight[responder.request_id] = responder
                     self._received_request(responder)
 
-                    if not responder._completed:
+                    if not responder.completed:
                         self._handle_incoming(responder)
 
                 elif isinstance(message.message.root, JSONRPCNotification):

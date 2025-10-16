@@ -12,12 +12,13 @@ and realistic testing scenarios with actual PostgreSQL and Redis instances.
 
 import uuid
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
 
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -111,7 +112,7 @@ class TestBatchCreateSegmentToIndexTask:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)
@@ -276,8 +277,7 @@ class TestBatchCreateSegmentToIndexTask:
         mock_storage = mock_external_service_dependencies["storage"]
 
         def mock_download(key, file_path):
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(csv_content)
+            Path(file_path).write_text(csv_content, encoding="utf-8")
 
         mock_storage.download.side_effect = mock_download
 
@@ -296,7 +296,12 @@ class TestBatchCreateSegmentToIndexTask:
         from extensions.ext_database import db
 
         # Check that segments were created
-        segments = db.session.query(DocumentSegment).filter_by(document_id=document.id).all()
+        segments = (
+            db.session.query(DocumentSegment)
+            .filter_by(document_id=document.id)
+            .order_by(DocumentSegment.position)
+            .all()
+        )
         assert len(segments) == 3
 
         # Verify segment content and metadata
@@ -500,7 +505,7 @@ class TestBatchCreateSegmentToIndexTask:
         db.session.commit()
 
         # Test each unavailable document
-        for i, document in enumerate(test_cases):
+        for document in test_cases:
             job_id = str(uuid.uuid4())
             batch_create_segment_to_index_task(
                 job_id=job_id,
@@ -596,8 +601,7 @@ class TestBatchCreateSegmentToIndexTask:
         mock_storage = mock_external_service_dependencies["storage"]
 
         def mock_download(key, file_path):
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(empty_csv_content)
+            Path(file_path).write_text(empty_csv_content, encoding="utf-8")
 
         mock_storage.download.side_effect = mock_download
 
@@ -679,8 +683,7 @@ class TestBatchCreateSegmentToIndexTask:
         mock_storage = mock_external_service_dependencies["storage"]
 
         def mock_download(key, file_path):
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(csv_content)
+            Path(file_path).write_text(csv_content, encoding="utf-8")
 
         mock_storage.download.side_effect = mock_download
 

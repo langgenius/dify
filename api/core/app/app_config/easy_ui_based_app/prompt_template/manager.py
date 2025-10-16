@@ -25,10 +25,14 @@ class PromptTemplateConfigManager:
             if chat_prompt_config:
                 chat_prompt_messages = []
                 for message in chat_prompt_config.get("prompt", []):
+                    text = message.get("text")
+                    if not isinstance(text, str):
+                        raise ValueError("message text must be a string")
+                    role = message.get("role")
+                    if not isinstance(role, str):
+                        raise ValueError("message role must be a string")
                     chat_prompt_messages.append(
-                        AdvancedChatMessageEntity(
-                            **{"text": message["text"], "role": PromptMessageRole.value_of(message["role"])}
-                        )
+                        AdvancedChatMessageEntity(text=text, role=PromptMessageRole.value_of(role))
                     )
 
                 advanced_chat_prompt_template = AdvancedChatPromptTemplateEntity(messages=chat_prompt_messages)
@@ -66,7 +70,7 @@ class PromptTemplateConfigManager:
         :param config: app model config args
         """
         if not config.get("prompt_type"):
-            config["prompt_type"] = PromptTemplateEntity.PromptType.SIMPLE.value
+            config["prompt_type"] = PromptTemplateEntity.PromptType.SIMPLE
 
         prompt_type_vals = [typ.value for typ in PromptTemplateEntity.PromptType]
         if config["prompt_type"] not in prompt_type_vals:
@@ -86,7 +90,7 @@ class PromptTemplateConfigManager:
         if not isinstance(config["completion_prompt_config"], dict):
             raise ValueError("completion_prompt_config must be of object type")
 
-        if config["prompt_type"] == PromptTemplateEntity.PromptType.ADVANCED.value:
+        if config["prompt_type"] == PromptTemplateEntity.PromptType.ADVANCED:
             if not config["chat_prompt_config"] and not config["completion_prompt_config"]:
                 raise ValueError(
                     "chat_prompt_config or completion_prompt_config is required when prompt_type is advanced"
@@ -96,7 +100,7 @@ class PromptTemplateConfigManager:
             if config["model"]["mode"] not in model_mode_vals:
                 raise ValueError(f"model.mode must be in {model_mode_vals} when prompt_type is advanced")
 
-            if app_mode == AppMode.CHAT and config["model"]["mode"] == ModelMode.COMPLETION.value:
+            if app_mode == AppMode.CHAT and config["model"]["mode"] == ModelMode.COMPLETION:
                 user_prefix = config["completion_prompt_config"]["conversation_histories_role"]["user_prefix"]
                 assistant_prefix = config["completion_prompt_config"]["conversation_histories_role"]["assistant_prefix"]
 
@@ -106,7 +110,7 @@ class PromptTemplateConfigManager:
                 if not assistant_prefix:
                     config["completion_prompt_config"]["conversation_histories_role"]["assistant_prefix"] = "Assistant"
 
-            if config["model"]["mode"] == ModelMode.CHAT.value:
+            if config["model"]["mode"] == ModelMode.CHAT:
                 prompt_list = config["chat_prompt_config"]["prompt"]
 
                 if len(prompt_list) > 10:

@@ -3,16 +3,8 @@ import re
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
-from enum import Enum, StrEnum
+from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Any, Literal, Optional, cast
-
-from core.plugin.entities.plugin import GenericProviderID
-from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.signature import sign_tool_file
-from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
-
-if TYPE_CHECKING:
-    from models.workflow import Workflow
 
 import sqlalchemy as sa
 from flask import request
@@ -24,13 +16,19 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
+from core.tools.signature import sign_tool_file
+from core.workflow.enums import WorkflowExecutionStatus
 from libs.helper import generate_string  # type: ignore[import-not-found]
 
 from .account import Account, Tenant
 from .base import Base
 from .engine import db
 from .enums import CreatorUserRole
+from .provider_ids import GenericProviderID
 from .types import StringUUID
+
+if TYPE_CHECKING:
+    from models.workflow import Workflow
 
 
 class DifySetup(Base):
@@ -47,6 +45,8 @@ class AppMode(StrEnum):
     CHAT = "chat"
     ADVANCED_CHAT = "advanced-chat"
     AGENT_CHAT = "agent-chat"
+    CHANNEL = "channel"
+    RAG_PIPELINE = "rag-pipeline"
 
     @classmethod
     def value_of(cls, value: str) -> "AppMode":
@@ -62,9 +62,9 @@ class AppMode(StrEnum):
         raise ValueError(f"invalid mode value {value}")
 
 
-class IconType(Enum):
-    IMAGE = "image"
-    EMOJI = "emoji"
+class IconType(StrEnum):
+    IMAGE = auto()
+    EMOJI = auto()
 
 
 class App(Base):
@@ -76,9 +76,9 @@ class App(Base):
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(sa.Text, server_default=sa.text("''::character varying"))
     mode: Mapped[str] = mapped_column(String(255))
-    icon_type: Mapped[Optional[str]] = mapped_column(String(255))  # image, emoji
+    icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji
     icon = mapped_column(String(255))
-    icon_background: Mapped[Optional[str]] = mapped_column(String(255))
+    icon_background: Mapped[str | None] = mapped_column(String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
     workflow_id = mapped_column(StringUUID, nullable=True)
     status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'::character varying"))
@@ -90,7 +90,7 @@ class App(Base):
     is_public: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"))
     is_universal: Mapped[bool] = mapped_column(sa.Boolean, server_default=sa.text("false"))
     tracing = mapped_column(sa.Text, nullable=True)
-    max_active_requests: Mapped[Optional[int]]
+    max_active_requests: Mapped[int | None]
     created_by = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
@@ -134,7 +134,7 @@ class App(Base):
         return (dify_config.SERVICE_API_URL or request.host_url.rstrip("/")) + "/v1"
 
     @property
-    def tenant(self) -> Optional[Tenant]:
+    def tenant(self) -> Tenant | None:
         tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
         return tenant
 
@@ -149,21 +149,21 @@ class App(Base):
         if app_model_config.agent_mode_dict.get("enabled", False) and app_model_config.agent_mode_dict.get(
             "strategy", ""
         ) in {"function_call", "react"}:
-            self.mode = AppMode.AGENT_CHAT.value
+            self.mode = AppMode.AGENT_CHAT
             db.session.commit()
             return True
         return False
 
     @property
     def mode_compatible_with_agent(self) -> str:
-        if self.mode == AppMode.CHAT.value and self.is_agent:
-            return AppMode.AGENT_CHAT.value
+        if self.mode == AppMode.CHAT and self.is_agent:
+            return AppMode.AGENT_CHAT
 
         return str(self.mode)
 
     @property
     def deleted_tools(self) -> list[dict[str, str]]:
-        from core.tools.tool_manager import ToolManager
+        from core.tools.tool_manager import ToolManager, ToolProviderType
         from services.plugin.plugin_service import PluginService
 
         # get agent mode tools
@@ -178,6 +178,7 @@ class App(Base):
         tools = agent_mode.get("tools", [])
 
         api_provider_ids: list[str] = []
+
         builtin_provider_ids: list[GenericProviderID] = []
 
         for tool in tools:
@@ -185,13 +186,13 @@ class App(Base):
             if len(keys) >= 4:
                 provider_type = tool.get("provider_type", "")
                 provider_id = tool.get("provider_id", "")
-                if provider_type == ToolProviderType.API.value:
+                if provider_type == ToolProviderType.API:
                     try:
                         uuid.UUID(provider_id)
                     except Exception:
                         continue
                     api_provider_ids.append(provider_id)
-                if provider_type == ToolProviderType.BUILT_IN.value:
+                if provider_type == ToolProviderType.BUILT_IN:
                     try:
                         # check if it's hardcoded
                         try:
@@ -250,23 +251,23 @@ class App(Base):
                 provider_type = tool.get("provider_type", "")
                 provider_id = tool.get("provider_id", "")
 
-                if provider_type == ToolProviderType.API.value:
+                if provider_type == ToolProviderType.API:
                     if uuid.UUID(provider_id) not in existing_api_providers:
                         deleted_tools.append(
                             {
-                                "type": ToolProviderType.API.value,
+                                "type": ToolProviderType.API,
                                 "tool_name": tool["tool_name"],
                                 "provider_id": provider_id,
                             }
                         )
 
-                if provider_type == ToolProviderType.BUILT_IN.value:
+                if provider_type == ToolProviderType.BUILT_IN:
                     generic_provider_id = GenericProviderID(provider_id)
 
                     if not existing_builtin_providers[generic_provider_id.provider_name]:
                         deleted_tools.append(
                             {
-                                "type": ToolProviderType.BUILT_IN.value,
+                                "type": ToolProviderType.BUILT_IN,
                                 "tool_name": tool["tool_name"],
                                 "provider_id": provider_id,  # use the original one
                             }
@@ -291,7 +292,7 @@ class App(Base):
         return tags or []
 
     @property
-    def author_name(self) -> Optional[str]:
+    def author_name(self) -> str | None:
         if self.created_by:
             account = db.session.query(Account).where(Account.id == self.created_by).first()
             if account:
@@ -334,7 +335,7 @@ class AppModelConfig(Base):
     file_upload = mapped_column(sa.Text)
 
     @property
-    def app(self) -> Optional[App]:
+    def app(self) -> App | None:
         app = db.session.query(App).where(App.id == self.app_id).first()
         return app
 
@@ -546,7 +547,7 @@ class RecommendedApp(Base):
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def app(self) -> Optional[App]:
+    def app(self) -> App | None:
         app = db.session.query(App).where(App.id == self.app_id).first()
         return app
 
@@ -570,12 +571,12 @@ class InstalledApp(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def app(self) -> Optional[App]:
+    def app(self) -> App | None:
         app = db.session.query(App).where(App.id == self.app_id).first()
         return app
 
     @property
-    def tenant(self) -> Optional[Tenant]:
+    def tenant(self) -> Tenant | None:
         tenant = db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
         return tenant
 
@@ -711,9 +712,9 @@ class Conversation(Base):
     @property
     def model_config(self):
         model_config = {}
-        app_model_config: Optional[AppModelConfig] = None
+        app_model_config: AppModelConfig | None = None
 
-        if self.mode == AppMode.ADVANCED_CHAT.value:
+        if self.mode == AppMode.ADVANCED_CHAT:
             if self.override_model_configs:
                 override_model_configs = json.loads(self.override_model_configs)
                 model_config = override_model_configs
@@ -812,7 +813,7 @@ class Conversation(Base):
 
     @property
     def status_count(self):
-        messages = db.session.query(Message).where(Message.conversation_id == self.id).all()
+        messages = db.session.scalars(select(Message).where(Message.conversation_id == self.id)).all()
         status_counts = {
             WorkflowExecutionStatus.RUNNING: 0,
             WorkflowExecutionStatus.SUCCEEDED: 0,
@@ -845,8 +846,9 @@ class Conversation(Base):
         )
 
     @property
-    def app(self) -> Optional[App]:
-        return db.session.query(App).where(App.id == self.app_id).first()
+    def app(self) -> App | None:
+        with Session(db.engine, expire_on_commit=False) as session:
+            return session.query(App).where(App.id == self.app_id).first()
 
     @property
     def from_end_user_session_id(self):
@@ -858,7 +860,7 @@ class Conversation(Base):
         return None
 
     @property
-    def from_account_name(self) -> Optional[str]:
+    def from_account_name(self) -> str | None:
         if self.from_account_id:
             account = db.session.query(Account).where(Account.id == self.from_account_id).first()
             if account:
@@ -908,6 +910,7 @@ class Message(Base):
         Index("message_account_idx", "app_id", "from_source", "from_account_id"),
         Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
         Index("message_created_at_idx", "created_at"),
+        Index("message_app_mode_idx", "app_mode"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
@@ -933,14 +936,15 @@ class Message(Base):
     status = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'::character varying"))
     error = mapped_column(sa.Text)
     message_metadata = mapped_column(sa.Text)
-    invoke_from: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    invoke_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
-    from_end_user_id: Mapped[Optional[str]] = mapped_column(StringUUID)
-    from_account_id: Mapped[Optional[str]] = mapped_column(StringUUID)
+    from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
+    from_account_id: Mapped[str | None] = mapped_column(StringUUID)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, server_default=func.current_timestamp())
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
+    app_mode: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     @property
     def inputs(self) -> dict[str, Any]:
@@ -1042,7 +1046,7 @@ class Message(Base):
                 sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
             elif "file-preview" in url:
                 # get upload file id
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview?\?timestamp="
+                upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview\?timestamp="
                 result = re.search(upload_file_id_pattern, url)
                 if not result:
                     continue
@@ -1053,7 +1057,7 @@ class Message(Base):
                 sign_url = file_helpers.get_signed_file_url(upload_file_id)
             elif "image-preview" in url:
                 # image-preview is deprecated, use file-preview instead
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview?\?timestamp="
+                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview\?timestamp="
                 result = re.search(upload_file_id_pattern, url)
                 if not result:
                     continue
@@ -1090,7 +1094,7 @@ class Message(Base):
 
     @property
     def feedbacks(self):
-        feedbacks = db.session.query(MessageFeedback).where(MessageFeedback.message_id == self.id).all()
+        feedbacks = db.session.scalars(select(MessageFeedback).where(MessageFeedback.message_id == self.id)).all()
         return feedbacks
 
     @property
@@ -1138,21 +1142,21 @@ class Message(Base):
         )
 
     @property
-    def retriever_resources(self) -> Any | list[Any]:
+    def retriever_resources(self) -> Any:
         return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
 
     @property
     def message_files(self) -> list[dict[str, Any]]:
         from factories import file_factory
 
-        message_files = db.session.query(MessageFile).where(MessageFile.message_id == self.id).all()
+        message_files = db.session.scalars(select(MessageFile).where(MessageFile.message_id == self.id)).all()
         current_app = db.session.query(App).where(App.id == self.app_id).first()
         if not current_app:
             raise ValueError(f"App {self.app_id} not found")
 
         files: list[File] = []
         for message_file in message_files:
-            if message_file.transfer_method == FileTransferMethod.LOCAL_FILE.value:
+            if message_file.transfer_method == FileTransferMethod.LOCAL_FILE:
                 if message_file.upload_file_id is None:
                     raise ValueError(f"MessageFile {message_file.id} is a local file but has no upload_file_id")
                 file = file_factory.build_from_mapping(
@@ -1164,7 +1168,7 @@ class Message(Base):
                     },
                     tenant_id=current_app.tenant_id,
                 )
-            elif message_file.transfer_method == FileTransferMethod.REMOTE_URL.value:
+            elif message_file.transfer_method == FileTransferMethod.REMOTE_URL:
                 if message_file.url is None:
                     raise ValueError(f"MessageFile {message_file.id} is a remote url but has no url")
                 file = file_factory.build_from_mapping(
@@ -1177,7 +1181,7 @@ class Message(Base):
                     },
                     tenant_id=current_app.tenant_id,
                 )
-            elif message_file.transfer_method == FileTransferMethod.TOOL_FILE.value:
+            elif message_file.transfer_method == FileTransferMethod.TOOL_FILE:
                 if message_file.upload_file_id is None:
                     assert message_file.url is not None
                     message_file.upload_file_id = message_file.url.split("/")[-1].split(".")[0]
@@ -1337,9 +1341,9 @@ class MessageFile(Base):
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     transfer_method: Mapped[str] = mapped_column(String(255), nullable=False)
-    url: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
-    belongs_to: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    upload_file_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    url: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    belongs_to: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1356,8 +1360,8 @@ class MessageAnnotation(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     app_id: Mapped[str] = mapped_column(StringUUID)
-    conversation_id: Mapped[Optional[str]] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
-    message_id: Mapped[Optional[str]] = mapped_column(StringUUID)
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"))
+    message_id: Mapped[str | None] = mapped_column(StringUUID)
     question = mapped_column(sa.Text, nullable=True)
     content = mapped_column(sa.Text, nullable=False)
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
@@ -1457,6 +1461,14 @@ class OperationLog(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     created_ip: Mapped[str] = mapped_column(String(255), nullable=False)
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class DefaultEndUserSessionID(StrEnum):
+    """
+    End User Session ID enum.
+    """
+
+    DEFAULT_SESSION_ID = "DEFAULT-USER"
 
 
 class EndUser(Base, UserMixin):
@@ -1613,6 +1625,9 @@ class UploadFile(Base):
         sa.Index("upload_file_tenant_idx", "tenant_id"),
     )
 
+    # NOTE: The `id` field is generated within the application to minimize extra roundtrips
+    # (especially when generating `source_url`).
+    # The `server_default` serves as a fallback mechanism.
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     storage_type: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1621,12 +1636,32 @@ class UploadFile(Base):
     size: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     extension: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(255), nullable=True)
+
+    # The `created_by_role` field indicates whether the file was created by an `Account` or an `EndUser`.
+    # Its value is derived from the `CreatorUserRole` enumeration.
     created_by_role: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'account'::character varying")
     )
+
+    # The `created_by` field stores the ID of the entity that created this upload file.
+    #
+    # If `created_by_role` is `ACCOUNT`, it corresponds to `Account.id`.
+    # Otherwise, it corresponds to `EndUser.id`.
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    # The fields `used` and `used_by` are not consistently maintained.
+    #
+    # When using this model in new code, ensure the following:
+    #
+    # 1. Set `used` to `true` when the file is utilized.
+    # 2. Assign `used_by` to the corresponding `Account.id` or `EndUser.id` based on the `created_by_role`.
+    # 3. Avoid relying on these fields for logic, as their values may not always be accurate.
+    #
+    # `used` may indicate whether the file has been utilized by another service.
     used: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+
+    # `used_by` may indicate the ID of the user who utilized this file.
     used_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True)
     hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -1651,6 +1686,7 @@ class UploadFile(Base):
         hash: str | None = None,
         source_url: str = "",
     ):
+        self.id = str(uuid.uuid4())
         self.tenant_id = tenant_id
         self.storage_type = storage_type
         self.key = key
@@ -1697,7 +1733,7 @@ class MessageChain(Base):
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     input = mapped_column(sa.Text, nullable=True)
     output = mapped_column(sa.Text, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
 
 class MessageAgentThought(Base):
@@ -1721,21 +1757,21 @@ class MessageAgentThought(Base):
     # plugin_id = mapped_column(StringUUID, nullable=True)  ## for future design
     tool_process_data = mapped_column(sa.Text, nullable=True)
     message = mapped_column(sa.Text, nullable=True)
-    message_token: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    message_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     message_unit_price = mapped_column(sa.Numeric, nullable=True)
     message_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
     message_files = mapped_column(sa.Text, nullable=True)
     answer = mapped_column(sa.Text, nullable=True)
-    answer_token: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    answer_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     answer_unit_price = mapped_column(sa.Numeric, nullable=True)
     answer_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
-    tokens: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     total_price = mapped_column(sa.Numeric, nullable=True)
     currency = mapped_column(String, nullable=True)
-    latency: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
+    latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
     created_by_role = mapped_column(String, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
     @property
     def files(self) -> list[Any]:
@@ -1830,15 +1866,15 @@ class DatasetRetrieverResource(Base):
     document_name = mapped_column(sa.Text, nullable=False)
     data_source_type = mapped_column(sa.Text, nullable=True)
     segment_id = mapped_column(StringUUID, nullable=True)
-    score: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
+    score: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
     content = mapped_column(sa.Text, nullable=False)
-    hit_count: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    word_count: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
-    segment_position: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    hit_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    word_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
+    segment_position: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     index_node_hash = mapped_column(sa.Text, nullable=True)
     retriever_from = mapped_column(sa.Text, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
 
 class Tag(Base):

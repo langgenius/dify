@@ -3,7 +3,7 @@ from functools import wraps
 from typing import ParamSpec, TypeVar
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource, fields, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
@@ -12,7 +12,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 from configs import dify_config
 from constants.languages import supported_language
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.wraps import only_edition_cloud
 from extensions.ext_database import db
 from models.model import App, InstalledApp, RecommendedApp
@@ -45,7 +45,28 @@ def admin_required(view: Callable[P, R]):
     return decorated
 
 
+@console_ns.route("/admin/insert-explore-apps")
 class InsertExploreAppListApi(Resource):
+    @api.doc("insert_explore_app")
+    @api.doc(description="Insert or update an app in the explore list")
+    @api.expect(
+        api.model(
+            "InsertExploreAppRequest",
+            {
+                "app_id": fields.String(required=True, description="Application ID"),
+                "desc": fields.String(description="App description"),
+                "copyright": fields.String(description="Copyright information"),
+                "privacy_policy": fields.String(description="Privacy policy"),
+                "custom_disclaimer": fields.String(description="Custom disclaimer"),
+                "language": fields.String(required=True, description="Language code"),
+                "category": fields.String(required=True, description="App category"),
+                "position": fields.Integer(required=True, description="Display position"),
+            },
+        )
+    )
+    @api.response(200, "App updated successfully")
+    @api.response(201, "App inserted successfully")
+    @api.response(404, "App not found")
     @only_edition_cloud
     @admin_required
     def post(self):
@@ -115,7 +136,12 @@ class InsertExploreAppListApi(Resource):
                 return {"result": "success"}, 200
 
 
+@console_ns.route("/admin/insert-explore-apps/<uuid:app_id>")
 class InsertExploreAppApi(Resource):
+    @api.doc("delete_explore_app")
+    @api.doc(description="Remove an app from the explore list")
+    @api.doc(params={"app_id": "Application ID to remove"})
+    @api.response(204, "App removed successfully")
     @only_edition_cloud
     @admin_required
     def delete(self, app_id):
@@ -152,7 +178,3 @@ class InsertExploreAppApi(Resource):
         db.session.commit()
 
         return {"result": "success"}, 204
-
-
-api.add_resource(InsertExploreAppListApi, "/admin/insert-explore-apps")
-api.add_resource(InsertExploreAppApi, "/admin/insert-explore-apps/<uuid:app_id>")

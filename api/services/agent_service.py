@@ -1,5 +1,5 @@
 import threading
-from typing import Any, Optional
+from typing import Any
 
 import pytz
 
@@ -10,7 +10,7 @@ from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from libs.login import current_user
-from models.account import Account
+from models import Account
 from models.model import App, Conversation, EndUser, Message, MessageAgentThought
 
 
@@ -35,7 +35,7 @@ class AgentService:
         if not conversation:
             raise ValueError(f"Conversation not found: {conversation_id}")
 
-        message: Optional[Message] = (
+        message: Message | None = (
             db.session.query(Message)
             .where(
                 Message.id == message_id,

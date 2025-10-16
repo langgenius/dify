@@ -1,3 +1,6 @@
+export type { AddApiKeyButtonProps } from './authorize/add-api-key-button'
+export type { AddOAuthButtonProps } from './authorize/add-oauth-button'
+
 export enum AuthCategory {
   tool = 'tool',
   datasource = 'datasource',

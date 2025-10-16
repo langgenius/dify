@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping
-from typing import Optional, Union
+from typing import Union
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,7 +14,7 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from models.model import App, AppMode, EndUser
 
 
@@ -27,7 +27,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         app = cls._get_app(app_id, tenant_id)
 
         """Retrieve app parameters."""
-        if app.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
+        if app.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app.workflow
             if workflow is None:
                 raise ValueError("unexpected app type")
@@ -53,8 +53,8 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         app_id: str,
         user_id: str,
         tenant_id: str,
-        conversation_id: Optional[str],
-        query: Optional[str],
+        conversation_id: str | None,
+        query: str | None,
         stream: bool,
         inputs: Mapping,
         files: list[dict],
@@ -70,7 +70,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
 
         conversation_id = conversation_id or ""
 
-        if app.mode in {AppMode.ADVANCED_CHAT.value, AppMode.AGENT_CHAT.value, AppMode.CHAT.value}:
+        if app.mode in {AppMode.ADVANCED_CHAT, AppMode.AGENT_CHAT, AppMode.CHAT}:
             if not query:
                 raise ValueError("missing query")
 
@@ -96,7 +96,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         invoke chat app
         """
-        if app.mode == AppMode.ADVANCED_CHAT.value:
+        if app.mode == AppMode.ADVANCED_CHAT:
             workflow = app.workflow
             if not workflow:
                 raise ValueError("unexpected app type")
@@ -114,7 +114,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=stream,
             )
-        elif app.mode == AppMode.AGENT_CHAT.value:
+        elif app.mode == AppMode.AGENT_CHAT:
             return AgentChatAppGenerator().generate(
                 app_model=app,
                 user=user,
@@ -127,7 +127,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=stream,
             )
-        elif app.mode == AppMode.CHAT.value:
+        elif app.mode == AppMode.CHAT:
             return ChatAppGenerator().generate(
                 app_model=app,
                 user=user,
@@ -167,7 +167,6 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=stream,
             call_depth=1,
-            workflow_thread_pool_id=None,
         )
 
     @classmethod

@@ -4,7 +4,7 @@ import pytest
 from faker import Faker
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
 from services.metadata_service import MetadataService
@@ -17,9 +17,7 @@ class TestMetadataService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch(
-                "services.metadata_service.current_user", create_autospec(Account, instance=True)
-            ) as mock_current_user,
+            patch("libs.login.current_user", create_autospec(Account, instance=True)) as mock_current_user,
             patch("services.metadata_service.redis_client") as mock_redis_client,
             patch("services.dataset_service.DocumentService") as mock_document_service,
         ):
@@ -72,7 +70,7 @@ class TestMetadataService:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)
@@ -255,7 +253,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Try to create metadata with built-in field name
-        built_in_field_name = BuiltInField.document_name.value
+        built_in_field_name = BuiltInField.document_name
         metadata_args = MetadataArgs(type="string", name=built_in_field_name)
 
         # Act & Assert: Verify proper error handling
@@ -375,7 +373,7 @@ class TestMetadataService:
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Try to update with built-in field name
-        built_in_field_name = BuiltInField.document_name.value
+        built_in_field_name = BuiltInField.document_name
 
         with pytest.raises(ValueError, match="Metadata name already exists in Built-in fields."):
             MetadataService.update_metadata_name(dataset.id, metadata.id, built_in_field_name)
@@ -540,11 +538,11 @@ class TestMetadataService:
         field_names = [field["name"] for field in result]
         field_types = [field["type"] for field in result]
 
-        assert BuiltInField.document_name.value in field_names
-        assert BuiltInField.uploader.value in field_names
-        assert BuiltInField.upload_date.value in field_names
-        assert BuiltInField.last_update_date.value in field_names
-        assert BuiltInField.source.value in field_names
+        assert BuiltInField.document_name in field_names
+        assert BuiltInField.uploader in field_names
+        assert BuiltInField.upload_date in field_names
+        assert BuiltInField.last_update_date in field_names
+        assert BuiltInField.source in field_names
 
         # Verify field types
         assert "string" in field_types
@@ -682,11 +680,11 @@ class TestMetadataService:
 
         # Set document metadata with built-in fields
         document.doc_metadata = {
-            BuiltInField.document_name.value: document.name,
-            BuiltInField.uploader.value: "test_uploader",
-            BuiltInField.upload_date.value: 1234567890.0,
-            BuiltInField.last_update_date.value: 1234567890.0,
-            BuiltInField.source.value: "test_source",
+            BuiltInField.document_name: document.name,
+            BuiltInField.uploader: "test_uploader",
+            BuiltInField.upload_date: 1234567890.0,
+            BuiltInField.last_update_date: 1234567890.0,
+            BuiltInField.source: "test_source",
         }
         db.session.add(document)
         db.session.commit()

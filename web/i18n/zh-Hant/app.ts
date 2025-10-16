@@ -79,6 +79,7 @@ const translation = {
     chooseAppType: '選擇 App Type',
     completionShortDescription: '用於文本生成任務的 AI 助手',
     dropDSLToCreateApp: '將 DSL 檔案拖放到此處以創建應用程式',
+    import: '進口',
   },
   editApp: '編輯資訊',
   editAppTitle: '編輯應用資訊',
@@ -160,6 +161,10 @@ const translation = {
     aliyun: {
       title: '雲端監控',
       description: '阿里雲提供的完全管理且無需維護的可觀察性平台，支持即時監控、追蹤和評估 Dify 應用程序。',
+    },
+    tencent: {
+      title: '騰訊 APM',
+      description: '騰訊應用性能監控為大型語言模型應用提供全面的追蹤和多維分析。',
     },
   },
   answerIcon: {
@@ -315,6 +320,10 @@ const translation = {
     noMatchingCommands: '未找到匹配的命令',
     tryDifferentSearch: '嘗試其他搜尋字詞',
     slashHint: '輸入 / 以查看所有可用的指令',
+    tips: '按 ↑ ↓ 鍵進行導航',
+    startTyping: '開始輸入以進行搜尋',
+    pressEscToClose: '按 ESC 鍵關閉',
+    selectToNavigate: '選擇以進行導航',
   },
 }
 

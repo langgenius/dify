@@ -43,9 +43,9 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const handleSaveAvatar = useCallback(async (uploadedFileId: string) => {
     try {
       await updateUserProfile({ url: 'account/avatar', body: { avatar: uploadedFileId } })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       setIsShowAvatarPicker(false)
       onSave?.()
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
     catch (e) {
       notify({ type: 'error', message: (e as Error).message })

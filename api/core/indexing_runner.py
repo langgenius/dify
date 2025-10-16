@@ -5,7 +5,7 @@ import re
 import threading
 import time
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from flask import current_app
 from sqlalchemy import select
@@ -20,7 +20,7 @@ from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.datasource_type import DatasourceType
-from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -230,9 +230,9 @@ class IndexingRunner:
         tenant_id: str,
         extract_settings: list[ExtractSetting],
         tmp_processing_rule: dict,
-        doc_form: Optional[str] = None,
+        doc_form: str | None = None,
         doc_language: str = "English",
-        dataset_id: Optional[str] = None,
+        dataset_id: str | None = None,
         indexing_technique: str = "economy",
     ) -> IndexingEstimate:
         """
@@ -343,7 +343,7 @@ class IndexingRunner:
 
             if file_detail:
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.FILE.value,
+                    datasource_type=DatasourceType.FILE,
                     upload_file=file_detail,
                     document_model=dataset_document.doc_form,
                 )
@@ -356,14 +356,17 @@ class IndexingRunner:
             ):
                 raise ValueError("no notion import info found")
             extract_setting = ExtractSetting(
-                datasource_type=DatasourceType.NOTION.value,
-                notion_info={
-                    "notion_workspace_id": data_source_info["notion_workspace_id"],
-                    "notion_obj_id": data_source_info["notion_page_id"],
-                    "notion_page_type": data_source_info["type"],
-                    "document": dataset_document,
-                    "tenant_id": dataset_document.tenant_id,
-                },
+                datasource_type=DatasourceType.NOTION,
+                notion_info=NotionInfo.model_validate(
+                    {
+                        "credential_id": data_source_info["credential_id"],
+                        "notion_workspace_id": data_source_info["notion_workspace_id"],
+                        "notion_obj_id": data_source_info["notion_page_id"],
+                        "notion_page_type": data_source_info["type"],
+                        "document": dataset_document,
+                        "tenant_id": dataset_document.tenant_id,
+                    }
+                ),
                 document_model=dataset_document.doc_form,
             )
             text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
@@ -376,15 +379,17 @@ class IndexingRunner:
             ):
                 raise ValueError("no website import info found")
             extract_setting = ExtractSetting(
-                datasource_type=DatasourceType.WEBSITE.value,
-                website_info={
-                    "provider": data_source_info["provider"],
-                    "job_id": data_source_info["job_id"],
-                    "tenant_id": dataset_document.tenant_id,
-                    "url": data_source_info["url"],
-                    "mode": data_source_info["mode"],
-                    "only_main_content": data_source_info["only_main_content"],
-                },
+                datasource_type=DatasourceType.WEBSITE,
+                website_info=WebsiteInfo.model_validate(
+                    {
+                        "provider": data_source_info["provider"],
+                        "job_id": data_source_info["job_id"],
+                        "tenant_id": dataset_document.tenant_id,
+                        "url": data_source_info["url"],
+                        "mode": data_source_info["mode"],
+                        "only_main_content": data_source_info["only_main_content"],
+                    }
+                ),
                 document_model=dataset_document.doc_form,
             )
             text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
@@ -421,7 +426,7 @@ class IndexingRunner:
         max_tokens: int,
         chunk_overlap: int,
         separator: str,
-        embedding_model_instance: Optional[ModelInstance],
+        embedding_model_instance: ModelInstance | None,
     ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
@@ -529,6 +534,7 @@ class IndexingRunner:
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
         tokens = 0
+        create_keyword_thread = None
         if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
             # create keyword index
             create_keyword_thread = threading.Thread(
@@ -567,7 +573,11 @@ class IndexingRunner:
 
                 for future in futures:
                     tokens += future.result()
-        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
+        if (
+            dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX
+            and dataset.indexing_technique == "economy"
+            and create_keyword_thread is not None
+        ):
             create_keyword_thread.join()
         indexing_end_at = time.perf_counter()
 
@@ -650,7 +660,7 @@ class IndexingRunner:
 
     @staticmethod
     def _update_document_index_status(
-        document_id: str, after_indexing_status: str, extra_update_params: Optional[dict] = None
+        document_id: str, after_indexing_status: str, extra_update_params: dict | None = None
     ):
         """
         Update the document indexing status.

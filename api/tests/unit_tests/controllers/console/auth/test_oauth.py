@@ -12,7 +12,7 @@ from controllers.console.auth.oauth import (
 )
 from libs.oauth import OAuthUserInfo
 from models.account import AccountStatus
-from services.errors.account import AccountNotFoundError
+from services.errors.account import AccountRegisterError
 
 
 class TestGetOAuthProviders:
@@ -143,7 +143,7 @@ class TestOAuthCallback:
         oauth_provider.get_user_info.return_value = OAuthUserInfo(id="123", name="Test User", email="test@example.com")
 
         account = MagicMock()
-        account.status = AccountStatus.ACTIVE.value
+        account.status = AccountStatus.ACTIVE
 
         token_pair = MagicMock()
         token_pair.access_token = "jwt_access_token"
@@ -201,9 +201,9 @@ class TestOAuthCallback:
         mock_db.session.rollback = MagicMock()
 
         # Import the real requests module to create a proper exception
-        import requests
+        import httpx
 
-        request_exception = requests.exceptions.RequestException("OAuth error")
+        request_exception = httpx.RequestError("OAuth error")
         request_exception.response = MagicMock()
         request_exception.response.text = str(exception)
 
@@ -220,11 +220,11 @@ class TestOAuthCallback:
     @pytest.mark.parametrize(
         ("account_status", "expected_redirect"),
         [
-            (AccountStatus.BANNED.value, "http://localhost:3000/signin?message=Account is banned."),
+            (AccountStatus.BANNED, "http://localhost:3000/signin?message=Account is banned."),
             # CLOSED status: Currently NOT handled, will proceed to login (security issue)
             # This documents actual behavior. See test_defensive_check_for_closed_account_status for details
             (
-                AccountStatus.CLOSED.value,
+                AccountStatus.CLOSED,
                 "http://localhost:3000?access_token=jwt_access_token&refresh_token=jwt_refresh_token",
             ),
         ],
@@ -296,13 +296,13 @@ class TestOAuthCallback:
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
 
         mock_account = MagicMock()
-        mock_account.status = AccountStatus.PENDING.value
+        mock_account.status = AccountStatus.PENDING
         mock_generate_account.return_value = mock_account
 
         with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
             resource.get("github")
 
-        assert mock_account.status == AccountStatus.ACTIVE.value
+        assert mock_account.status == AccountStatus.ACTIVE
         assert mock_account.initialized_at is not None
         mock_db.session.commit.assert_called_once()
 
@@ -352,7 +352,7 @@ class TestOAuthCallback:
 
         # Create account with CLOSED status
         closed_account = MagicMock()
-        closed_account.status = AccountStatus.CLOSED.value
+        closed_account.status = AccountStatus.CLOSED
         closed_account.id = "123"
         closed_account.name = "Closed Account"
         mock_generate_account.return_value = closed_account
@@ -451,7 +451,7 @@ class TestAccountGeneration:
 
         with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
             if not allow_register and not existing_account:
-                with pytest.raises(AccountNotFoundError):
+                with pytest.raises(AccountRegisterError):
                     _generate_account("github", user_info)
             else:
                 result = _generate_account("github", user_info)

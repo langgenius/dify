@@ -100,6 +100,9 @@ const translation = {
       upload_file: 'Télécharger le fichier',
       notion: 'Synchroniser le formulaire depuis Notion',
       github: 'Synchroniser à partir de Github',
+      local_file: 'Fichier local',
+      online_document: 'Document en ligne',
+      website_crawl: 'Exploration du site Web',
     },
     type: {
       book: 'Livre',
@@ -337,6 +340,7 @@ const translation = {
     hierarchical: 'Parent-enfant',
     pause: 'Pause',
     parentMaxTokens: 'Parent',
+    waiting: 'En attente d\'incorporation...',
   },
   segment: {
     paragraphs: 'Paragraphes',

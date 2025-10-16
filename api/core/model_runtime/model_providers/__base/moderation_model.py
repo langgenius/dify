@@ -1,11 +1,9 @@
 import time
-from typing import Optional
 
 from pydantic import ConfigDict
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.plugin.impl.model import PluginModelClient
 
 
 class ModerationModel(AIModel):
@@ -18,7 +16,7 @@ class ModerationModel(AIModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def invoke(self, model: str, credentials: dict, text: str, user: Optional[str] = None) -> bool:
+    def invoke(self, model: str, credentials: dict, text: str, user: str | None = None) -> bool:
         """
         Invoke moderation model
 
@@ -31,6 +29,8 @@ class ModerationModel(AIModel):
         self.started_at = time.perf_counter()
 
         try:
+            from core.plugin.impl.model import PluginModelClient
+
             plugin_model_manager = PluginModelClient()
             return plugin_model_manager.invoke_moderation(
                 tenant_id=self.tenant_id,

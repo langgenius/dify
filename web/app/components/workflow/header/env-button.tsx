@@ -4,17 +4,20 @@ import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import { useStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
 import cn from '@/utils/classnames'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 
 const EnvButton = ({ disabled }: { disabled: boolean }) => {
   const { theme } = useTheme()
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
   const setShowDebugAndPreviewPanel = useStore(s => s.setShowDebugAndPreviewPanel)
+  const { closeAllInputFieldPanels } = useInputFieldPanel()
 
   const handleClick = () => {
     setShowEnvPanel(true)
     setShowChatVariablePanel(false)
     setShowDebugAndPreviewPanel(false)
+    closeAllInputFieldPanels()
   }
 
   return (

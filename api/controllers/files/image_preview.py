@@ -8,6 +8,7 @@ from werkzeug.exceptions import NotFound
 import services
 from controllers.common.errors import UnsupportedFileTypeError
 from controllers.files import files_ns
+from extensions.ext_database import db
 from services.account_service import TenantService
 from services.file_service import FileService
 
@@ -29,7 +30,7 @@ class ImagePreviewApi(Resource):
             return {"content": "Invalid request."}, 400
 
         try:
-            generator, mimetype = FileService.get_image_preview(
+            generator, mimetype = FileService(db.engine).get_image_preview(
                 file_id=file_id,
                 timestamp=timestamp,
                 nonce=nonce,
@@ -58,7 +59,7 @@ class FilePreviewApi(Resource):
             return {"content": "Invalid request."}, 400
 
         try:
-            generator, upload_file = FileService.get_file_generator_by_file_id(
+            generator, upload_file = FileService(db.engine).get_file_generator_by_file_id(
                 file_id=file_id,
                 timestamp=args["timestamp"],
                 nonce=args["nonce"],
@@ -109,7 +110,7 @@ class WorkspaceWebappLogoApi(Resource):
             raise NotFound("webapp logo is not found")
 
         try:
-            generator, mimetype = FileService.get_public_image_preview(
+            generator, mimetype = FileService(db.engine).get_public_image_preview(
                 webapp_logo_file_id,
             )
         except services.errors.file.UnsupportedFileTypeError:

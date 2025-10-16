@@ -144,9 +144,11 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       })
       const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      a.href = URL.createObjectURL(file)
+      const url = URL.createObjectURL(file)
+      a.href = url
       a.download = `${appDetail.name}.yml`
       a.click()
+      URL.revokeObjectURL(url)
     }
     catch {
       notify({ type: 'error', message: t('app.exportFailed') })
@@ -258,7 +260,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   return (
     <div>
       {!onlyShowDetail && (
-        <button
+        <button type="button"
           onClick={() => {
             if (isCurrentWorkspaceEditor)
               setOpen(v => !v)
@@ -313,13 +315,13 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         <div className='flex shrink-0 flex-col items-start justify-center gap-3 self-stretch p-4'>
           <div className='flex items-center gap-3 self-stretch'>
             <AppIcon
-              size="large"
+              size='large'
               iconType={appDetail.icon_type}
               icon={appDetail.icon}
               background={appDetail.icon_background}
               imageUrl={appDetail.icon_url}
             />
-            <div className='flex w-full grow flex-col items-start justify-center'>
+            <div className='flex flex-1 flex-col items-start justify-center overflow-hidden'>
               <div className='system-md-semibold w-full truncate text-text-secondary'>{appDetail.name}</div>
               <div className='system-2xs-medium-uppercase text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
             </div>

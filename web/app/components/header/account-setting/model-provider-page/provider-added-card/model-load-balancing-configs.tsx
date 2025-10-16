@@ -49,7 +49,7 @@ const ModelLoadBalancingConfigs = ({
   provider,
   model,
   configurationMethod,
-  currentCustomConfigurationModelFixedFields,
+  currentCustomConfigurationModelFixedFields: _currentCustomConfigurationModelFixedFields,
   withSwitch = false,
   className,
   modelCredential,
@@ -196,7 +196,7 @@ const ModelLoadBalancingConfigs = ({
                         )
                         : (
                           <Tooltip popupContent={t('common.modelProvider.apiKeyStatusNormal')}>
-                            <Indicator color='green' />
+                            <Indicator color={credential?.not_allowed_to_use ? 'gray' : 'green'} />
                           </Tooltip>
                         )}
                     </div>
@@ -232,7 +232,7 @@ const ModelLoadBalancingConfigs = ({
                         <>
                           <span className='mr-2 h-3 border-r border-r-divider-subtle' />
                           <Switch
-                            defaultValue={Boolean(config.enabled)}
+                            defaultValue={credential?.not_allowed_to_use ? false : Boolean(config.enabled)}
                             size='md'
                             className='justify-self-end'
                             onChange={value => toggleConfigEntryEnabled(index, value)}

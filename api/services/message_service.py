@@ -1,5 +1,5 @@
 import json
-from typing import Optional, Union
+from typing import Union
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -12,7 +12,7 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.account import Account
+from models import Account
 from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService
 from services.errors.message import (
@@ -29,9 +29,9 @@ class MessageService:
     def pagination_by_first_id(
         cls,
         app_model: App,
-        user: Optional[Union[Account, EndUser]],
+        user: Union[Account, EndUser] | None,
         conversation_id: str,
-        first_id: Optional[str],
+        first_id: str | None,
         limit: int,
         order: str = "asc",
     ) -> InfiniteScrollPagination:
@@ -91,11 +91,11 @@ class MessageService:
     def pagination_by_last_id(
         cls,
         app_model: App,
-        user: Optional[Union[Account, EndUser]],
-        last_id: Optional[str],
+        user: Union[Account, EndUser] | None,
+        last_id: str | None,
         limit: int,
-        conversation_id: Optional[str] = None,
-        include_ids: Optional[list] = None,
+        conversation_id: str | None = None,
+        include_ids: list | None = None,
     ) -> InfiniteScrollPagination:
         if not user:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
@@ -145,9 +145,9 @@ class MessageService:
         *,
         app_model: App,
         message_id: str,
-        user: Optional[Union[Account, EndUser]],
-        rating: Optional[str],
-        content: Optional[str],
+        user: Union[Account, EndUser] | None,
+        rating: str | None,
+        content: str | None,
     ):
         if not user:
             raise ValueError("user cannot be None")
@@ -196,7 +196,7 @@ class MessageService:
         return [record.to_dict() for record in feedbacks]
 
     @classmethod
-    def get_message(cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str):
+    def get_message(cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str):
         message = (
             db.session.query(Message)
             .where(
@@ -216,8 +216,8 @@ class MessageService:
 
     @classmethod
     def get_suggested_questions_after_answer(
-        cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str, invoke_from: InvokeFrom
-    ) -> list[Message]:
+        cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str, invoke_from: InvokeFrom
+    ) -> list[str]:
         if not user:
             raise ValueError("user cannot be None")
 
@@ -229,7 +229,7 @@ class MessageService:
 
         model_manager = ModelManager()
 
-        if app_model.mode == AppMode.ADVANCED_CHAT.value:
+        if app_model.mode == AppMode.ADVANCED_CHAT:
             workflow_service = WorkflowService()
             if invoke_from == InvokeFrom.DEBUGGER:
                 workflow = workflow_service.get_draft_workflow(app_model=app_model)
@@ -240,6 +240,9 @@ class MessageService:
                 return []
 
             app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
+
+            if not app_config.additional_features:
+                raise ValueError("Additional features not found")
 
             if not app_config.additional_features.suggested_questions_after_answer:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
@@ -285,7 +288,7 @@ class MessageService:
         )
 
         with measure_time() as timer:
-            questions: list[Message] = LLMGenerator.generate_suggested_questions_after_answer(
+            questions: list[str] = LLMGenerator.generate_suggested_questions_after_answer(
                 tenant_id=app_model.tenant_id, histories=histories
             )
 

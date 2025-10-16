@@ -3,13 +3,14 @@ import time
 from collections import defaultdict
 
 import click
+from sqlalchemy import select
 
 import app
 from configs import dify_config
 from extensions.ext_database import db
 from extensions.ext_mail import mail
 from libs.email_i18n import EmailType, get_email_i18n_service
-from models.account import Account, Tenant, TenantAccountJoin
+from models import Account, Tenant, TenantAccountJoin
 from models.dataset import Dataset, DatasetAutoDisableLog
 from services.feature_service import FeatureService
 
@@ -31,9 +32,9 @@ def mail_clean_document_notify_task():
 
     # send document clean notify mail
     try:
-        dataset_auto_disable_logs = (
-            db.session.query(DatasetAutoDisableLog).where(DatasetAutoDisableLog.notified == False).all()
-        )
+        dataset_auto_disable_logs = db.session.scalars(
+            select(DatasetAutoDisableLog).where(DatasetAutoDisableLog.notified == False)
+        ).all()
         # group by tenant_id
         dataset_auto_disable_logs_map: dict[str, list[DatasetAutoDisableLog]] = defaultdict(list)
         for dataset_auto_disable_log in dataset_auto_disable_logs:

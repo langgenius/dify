@@ -68,6 +68,7 @@ const translation = {
     hideTemplates: 'Kembali ke pemilihan mode',
     useTemplate: 'Gunakan template ini',
     appCreateDSLErrorPart2: 'Apakah Anda ingin melanjutkan?',
+    import: 'Mengimpor',
   },
   newAppFromTemplate: {
     sidebar: {
@@ -154,6 +155,10 @@ const translation = {
     description: 'Mengonfigurasi penyedia LLMOps Pihak Ketiga dan melacak performa aplikasi.',
     inUse: 'Sedang digunakan',
     tracingDescription: 'Tangkap konteks lengkap eksekusi aplikasi, termasuk panggilan LLM, konteks, perintah, permintaan HTTP, dan lainnya, ke platform pelacakan pihak ketiga.',
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring menyediakan pelacakan komprehensif dan analisis multi-dimensi untuk aplikasi LLM.',
+    },
   },
   appSelector: {
     placeholder: 'Pilih aplikasi...',
@@ -263,6 +268,10 @@ const translation = {
     tryDifferentSearch: 'Coba istilah penelusuran lain',
     noMatchingCommands: 'Tidak ada perintah yang cocok ditemukan',
     searchFailed: 'Pencarian gagal',
+    tips: 'Tekan ↑↓ untuk menavigasi',
+    startTyping: 'Mulai mengetik untuk mencari',
+    selectToNavigate: 'Pilih untuk menavigasi',
+    pressEscToClose: 'Tekan ESC untuk menutup',
   },
   createApp: 'BUAT APLIKASI',
   accessControl: 'Kontrol Akses Aplikasi Web',

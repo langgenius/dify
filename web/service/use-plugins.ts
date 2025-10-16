@@ -39,7 +39,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { useInvalidateAllBuiltInTools } from './use-tools'
+import { useInvalidateAllBuiltInTools, useInvalidateRAGRecommendedPlugins } from './use-tools'
 import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { uninstallPlugin } from '@/service/plugins'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
@@ -135,12 +135,14 @@ export const useInstalledLatestVersion = (pluginIds: string[]) => {
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
+  const invalidateRAGRecommendedPlugins = useInvalidateRAGRecommendedPlugins()
   return () => {
     queryClient.invalidateQueries(
       {
         queryKey: useInstalledPluginListKey,
       })
     invalidateAllBuiltInTools()
+    invalidateRAGRecommendedPlugins()
   }
 }
 

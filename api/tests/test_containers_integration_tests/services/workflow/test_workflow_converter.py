@@ -14,7 +14,8 @@ from core.app.app_config.entities import (
     VariableEntityType,
 )
 from core.model_runtime.entities.llm_entities import LLMMode
-from models.account import Account, Tenant
+from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from models import Account, Tenant
 from models.api_based_extension import APIBasedExtension
 from models.model import App, AppMode, AppModelConfig
 from models.workflow import Workflow
@@ -37,7 +38,7 @@ class TestWorkflowConverter:
             # Setup default mock returns
             mock_encrypter.decrypt_token.return_value = "decrypted_api_key"
             mock_prompt_transform.return_value.get_prompt_template.return_value = {
-                "prompt_template": type("obj", (object,), {"template": "You are a helpful assistant {{text_input}}"})(),
+                "prompt_template": PromptTemplateParser(template="You are a helpful assistant {{text_input}}"),
                 "prompt_rules": {"human_prefix": "Human", "assistant_prefix": "Assistant"},
             }
             mock_agent_chat_config_manager.get_app_config.return_value = self._create_mock_app_config()
@@ -65,7 +66,7 @@ class TestWorkflowConverter:
         mock_config.model = ModelConfigEntity(
             provider="openai",
             model="gpt-4",
-            mode=LLMMode.CHAT.value,
+            mode=LLMMode.CHAT,
             parameters={},
             stop=[],
         )
@@ -119,7 +120,7 @@ class TestWorkflowConverter:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)
@@ -149,7 +150,7 @@ class TestWorkflowConverter:
         app = App(
             tenant_id=tenant.id,
             name=fake.company(),
-            mode=AppMode.CHAT.value,
+            mode=AppMode.CHAT,
             icon_type="emoji",
             icon="🤖",
             icon_background="#FF6B6B",
@@ -217,7 +218,7 @@ class TestWorkflowConverter:
         # Assert: Verify the expected outcomes
         assert new_app is not None
         assert new_app.name == "Test Workflow App"
-        assert new_app.mode == AppMode.ADVANCED_CHAT.value
+        assert new_app.mode == AppMode.ADVANCED_CHAT
         assert new_app.icon_type == "emoji"
         assert new_app.icon == "🚀"
         assert new_app.icon_background == "#4CAF50"
@@ -256,7 +257,7 @@ class TestWorkflowConverter:
         app = App(
             tenant_id=tenant.id,
             name=fake.company(),
-            mode=AppMode.CHAT.value,
+            mode=AppMode.CHAT,
             icon_type="emoji",
             icon="🤖",
             icon_background="#FF6B6B",
@@ -521,7 +522,7 @@ class TestWorkflowConverter:
         model_config = ModelConfigEntity(
             provider="openai",
             model="gpt-4",
-            mode=LLMMode.CHAT.value,
+            mode=LLMMode.CHAT,
             parameters={"temperature": 0.7},
             stop=[],
         )

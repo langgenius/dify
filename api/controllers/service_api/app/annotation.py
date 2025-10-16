@@ -10,7 +10,7 @@ from controllers.service_api.wraps import validate_app_token
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import annotation_fields, build_annotation_model
 from libs.login import current_user
-from models.account import Account
+from models import Account
 from models.model import App
 from services.annotation_service import AppAnnotationService
 
@@ -165,7 +165,7 @@ class AnnotationUpdateDeleteApi(Resource):
     def put(self, app_model: App, annotation_id):
         """Update an existing annotation."""
         assert isinstance(current_user, Account)
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         annotation_id = str(annotation_id)
@@ -189,7 +189,7 @@ class AnnotationUpdateDeleteApi(Resource):
         """Delete an annotation."""
         assert isinstance(current_user, Account)
 
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         annotation_id = str(annotation_id)

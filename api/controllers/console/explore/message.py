@@ -1,6 +1,5 @@
 import logging
 
-from flask_login import current_user
 from flask_restx import marshal_with, reqparse
 from flask_restx.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
@@ -24,6 +23,7 @@ from core.model_runtime.errors.invoke import InvokeError
 from fields.message_fields import message_infinite_scroll_pagination_fields
 from libs import helper
 from libs.helper import uuid_value
+from libs.login import current_account_with_tenant
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
@@ -35,12 +35,19 @@ from services.errors.message import (
 )
 from services.message_service import MessageService
 
+from .. import console_ns
+
 logger = logging.getLogger(__name__)
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages",
+    endpoint="installed_app_messages",
+)
 class MessageListApi(InstalledAppResource):
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, installed_app):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
         app_mode = AppMode.value_of(app_model.mode)
@@ -63,8 +70,13 @@ class MessageListApi(InstalledAppResource):
             raise NotFound("First Message Not Exists.")
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/feedbacks",
+    endpoint="installed_app_message_feedback",
+)
 class MessageFeedbackApi(InstalledAppResource):
     def post(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
         message_id = str(message_id)
@@ -88,8 +100,13 @@ class MessageFeedbackApi(InstalledAppResource):
         return {"result": "success"}
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/more-like-this",
+    endpoint="installed_app_more_like_this",
+)
 class MessageMoreLikeThisApi(InstalledAppResource):
     def get(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -132,8 +149,13 @@ class MessageMoreLikeThisApi(InstalledAppResource):
             raise InternalServerError()
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/suggested-questions",
+    endpoint="installed_app_suggested_question",
+)
 class MessageSuggestedQuestionApi(InstalledAppResource):
     def get(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:

@@ -9,7 +9,7 @@ from configs import dify_config
 from dify_app import DifyApp
 from extensions.ext_database import db
 from libs.passport import PassportService
-from models.account import Account, Tenant, TenantAccountJoin
+from models import Account, Tenant, TenantAccountJoin
 from models.model import AppMCPServer, EndUser
 from services.account_service import AccountService
 
@@ -86,9 +86,7 @@ def load_user_from_request(request_from_flask_login):
         if not app_mcp_server:
             raise NotFound("App MCP server not found.")
         end_user = (
-            db.session.query(EndUser)
-            .where(EndUser.external_user_id == app_mcp_server.id, EndUser.type == "mcp")
-            .first()
+            db.session.query(EndUser).where(EndUser.session_id == app_mcp_server.id, EndUser.type == "mcp").first()
         )
         if not end_user:
             raise NotFound("End user not found.")

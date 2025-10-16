@@ -186,12 +186,12 @@ const ParameterItem: FC<ParameterItemProps> = ({
     if (parameterRule.type === 'boolean') {
       return (
         <Radio.Group
-          className='flex w-[178px] items-center'
+          className='flex w-[150px] items-center'
           value={renderValue as boolean}
           onChange={handleRadioChange}
         >
-          <Radio value={true} className='w-[83px]'>True</Radio>
-          <Radio value={false} className='w-[83px]'>False</Radio>
+          <Radio value={true} className='w-[70px] px-[18px]'>True</Radio>
+          <Radio value={false} className='w-[70px] px-[18px]'>False</Radio>
         </Radio.Group>
       )
     }
@@ -199,7 +199,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
     if (parameterRule.type === 'string' && !parameterRule.options?.length) {
       return (
         <input
-          className={cn(isInWorkflow ? 'w-[178px]' : 'w-full', 'system-sm-regular ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 text-components-input-text-filled outline-none')}
+          className={cn(isInWorkflow ? 'w-[150px]' : 'w-full', 'system-sm-regular ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 text-components-input-text-filled outline-none')}
           value={renderValue as string}
           onChange={handleStringInputChange}
         />
@@ -270,7 +270,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
             parameterRule.help && (
               <Tooltip
                 popupContent={(
-                  <div className='w-[178px] whitespace-pre-wrap'>{parameterRule.help[language] || parameterRule.help.en_US}</div>
+                  <div className='w-[150px] whitespace-pre-wrap'>{parameterRule.help[language] || parameterRule.help.en_US}</div>
                 )}
                 popupClassName='mr-1'
                 triggerClassName='mr-1 w-4 h-4 shrink-0'
@@ -280,7 +280,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
         </div>
         {
           parameterRule.type === 'tag' && (
-            <div className={cn(!isInWorkflow && 'w-[178px]', 'system-xs-regular text-text-tertiary')}>
+            <div className={cn(!isInWorkflow && 'w-[150px]', 'system-xs-regular text-text-tertiary')}>
               {parameterRule?.tagPlaceholder?.[language]}
             </div>
           )

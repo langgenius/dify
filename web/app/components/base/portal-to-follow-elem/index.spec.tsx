@@ -14,7 +14,7 @@ describe('PortalToFollowElem', () => {
 
       expect(() => {
         render(
-          <PortalToFollowElemTrigger>Trigger </PortalToFollowElemTrigger>,
+          <PortalToFollowElemTrigger>Trigger</PortalToFollowElemTrigger>,
         )
       }).toThrow('PortalToFollowElem components must be wrapped in <PortalToFollowElem />')
 
@@ -25,7 +25,7 @@ describe('PortalToFollowElem', () => {
       expect(() => {
         render(
           <PortalToFollowElem>
-            <PortalToFollowElemTrigger>Trigger </PortalToFollowElemTrigger>
+            <PortalToFollowElemTrigger>Trigger</PortalToFollowElemTrigger>
           </PortalToFollowElem>,
         )
       }).not.toThrow()
@@ -36,7 +36,7 @@ describe('PortalToFollowElem', () => {
     test('should render children correctly', () => {
       const { getByText } = render(
         <PortalToFollowElem>
-          <PortalToFollowElemTrigger>Trigger Text </PortalToFollowElemTrigger>
+          <PortalToFollowElemTrigger>Trigger Text</PortalToFollowElemTrigger>
         </PortalToFollowElem>,
       )
       expect(getByText('Trigger Text')).toBeInTheDocument()
@@ -46,7 +46,7 @@ describe('PortalToFollowElem', () => {
       const { getByRole } = render(
         <PortalToFollowElem>
           <PortalToFollowElemTrigger asChild >
-            <button>Button Trigger </button>
+            <button>Button Trigger</button>
           </PortalToFollowElemTrigger>
         </PortalToFollowElem>,
       )
@@ -59,8 +59,8 @@ describe('PortalToFollowElem', () => {
     test('should not render content when closed', () => {
       const { queryByText } = render(
         <PortalToFollowElem open={false} >
-          <PortalToFollowElemTrigger>Trigger </PortalToFollowElemTrigger>
-          <PortalToFollowElemContent > Popup Content </PortalToFollowElemContent>
+          <PortalToFollowElemTrigger>Trigger</PortalToFollowElemTrigger>
+          <PortalToFollowElemContent>Popup Content</PortalToFollowElemContent>
         </PortalToFollowElem>,
       )
 
@@ -71,7 +71,7 @@ describe('PortalToFollowElem', () => {
       const { getByText } = render(
         <PortalToFollowElem open={true} >
           <PortalToFollowElemTrigger>Trigger </PortalToFollowElemTrigger>
-          <PortalToFollowElemContent > Popup Content </PortalToFollowElemContent>
+          <PortalToFollowElemContent>Popup Content</PortalToFollowElemContent>
         </PortalToFollowElem>,
       )
 
@@ -85,8 +85,8 @@ describe('PortalToFollowElem', () => {
 
       const { getByText } = render(
         <PortalToFollowElem onOpenChange={handleOpenChange} >
-          <PortalToFollowElemTrigger>Hover Me </PortalToFollowElemTrigger>
-          <PortalToFollowElemContent > Content </PortalToFollowElemContent>
+          <PortalToFollowElemTrigger>Hover Me</PortalToFollowElemTrigger>
+          <PortalToFollowElemContent>Content</PortalToFollowElemContent>
         </PortalToFollowElem>,
       )
 
@@ -104,8 +104,8 @@ describe('PortalToFollowElem', () => {
       const useFloatingMock = jest.spyOn(require('@floating-ui/react'), 'useFloating')
 
       render(
-        <PortalToFollowElem placement="top-start" >
-          <PortalToFollowElemTrigger>Trigger </PortalToFollowElemTrigger>
+        <PortalToFollowElem placement='top-start' >
+          <PortalToFollowElemTrigger>Trigger</PortalToFollowElemTrigger>
         </PortalToFollowElem>,
       )
 

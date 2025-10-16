@@ -1,4 +1,5 @@
 from flask_restx import Resource, reqparse
+from flask_restx._http import HTTPStatus
 from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
@@ -121,7 +122,7 @@ class ConversationDetailApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    @service_api_ns.marshal_with(build_conversation_delete_model(service_api_ns), code=204)
+    @service_api_ns.marshal_with(build_conversation_delete_model(service_api_ns), code=HTTPStatus.NO_CONTENT)
     def delete(self, app_model: App, end_user: EndUser, c_id):
         """Delete a specific conversation."""
         app_mode = AppMode.value_of(app_model.mode)

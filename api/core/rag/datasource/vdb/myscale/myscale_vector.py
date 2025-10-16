@@ -1,7 +1,7 @@
 import json
 import logging
 import uuid
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from clickhouse_connect import get_client
@@ -27,7 +27,7 @@ class MyScaleConfig(BaseModel):
     fts_params: str
 
 
-class SortOrder(Enum):
+class SortOrder(StrEnum):
     ASC = "ASC"
     DESC = "DESC"
 

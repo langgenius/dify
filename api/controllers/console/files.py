@@ -1,7 +1,6 @@
 from typing import Literal
 
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource, marshal_with
 from werkzeug.exceptions import Forbidden
 
@@ -20,13 +19,17 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     setup_required,
 )
+from extensions.ext_database import db
 from fields.file_fields import file_fields, upload_config_fields
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from services.file_service import FileService
+
+from . import console_ns
 
 PREVIEW_WORDS_LIMIT = 3000
 
 
+@console_ns.route("/files/upload")
 class FileApi(Resource):
     @setup_required
     @login_required
@@ -48,6 +51,7 @@ class FileApi(Resource):
     @marshal_with(file_fields)
     @cloud_edition_billing_resource_check("documents")
     def post(self):
+        current_user, _ = current_account_with_tenant()
         source_str = request.form.get("source")
         source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
 
@@ -60,7 +64,6 @@ class FileApi(Resource):
 
         if not file.filename:
             raise FilenameNotExistsError
-
         if source == "datasets" and not current_user.is_dataset_editor:
             raise Forbidden()
 
@@ -68,7 +71,7 @@ class FileApi(Resource):
             source = None
 
         try:
-            upload_file = FileService.upload_file(
+            upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
                 content=file.read(),
                 mimetype=file.mimetype,
@@ -83,19 +86,21 @@ class FileApi(Resource):
         return upload_file, 201
 
 
+@console_ns.route("/files/<uuid:file_id>/preview")
 class FilePreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, file_id):
         file_id = str(file_id)
-        text = FileService.get_file_preview(file_id)
+        text = FileService(db.engine).get_file_preview(file_id)
         return {"content": text}
 
 
+@console_ns.route("/files/support-type")
 class FileSupportTypeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
-        return {"allowed_extensions": DOCUMENT_EXTENSIONS}
+        return {"allowed_extensions": list(DOCUMENT_EXTENSIONS)}

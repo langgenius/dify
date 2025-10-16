@@ -16,8 +16,8 @@ def full_mask_token(token_length=20):
 
 
 def encrypt_token(tenant_id: str, token: str):
+    from extensions.ext_database import db
     from models.account import Tenant
-    from models.engine import db
 
     if not (tenant := db.session.query(Tenant).where(Tenant.id == tenant_id).first()):
         raise ValueError(f"Tenant with id {tenant_id} not found")

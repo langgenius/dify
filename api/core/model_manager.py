@@ -23,6 +23,7 @@ from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
 from models.provider import ProviderType
+from services.enterprise.plugin_manager_service import PluginCredentialType
 
 logger = logging.getLogger(__name__)
 
@@ -102,47 +103,47 @@ class ModelInstance:
     def invoke_llm(
         self,
         prompt_messages: Sequence[PromptMessage],
-        model_parameters: Optional[dict] = None,
+        model_parameters: dict | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
-        stop: Optional[list[str]] = None,
+        stop: list[str] | None = None,
         stream: Literal[True] = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ) -> Generator: ...
 
     @overload
     def invoke_llm(
         self,
         prompt_messages: list[PromptMessage],
-        model_parameters: Optional[dict] = None,
+        model_parameters: dict | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
-        stop: Optional[list[str]] = None,
+        stop: list[str] | None = None,
         stream: Literal[False] = False,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ) -> LLMResult: ...
 
     @overload
     def invoke_llm(
         self,
         prompt_messages: list[PromptMessage],
-        model_parameters: Optional[dict] = None,
+        model_parameters: dict | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
-        stop: Optional[list[str]] = None,
+        stop: list[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ) -> Union[LLMResult, Generator]: ...
 
     def invoke_llm(
         self,
         prompt_messages: Sequence[PromptMessage],
-        model_parameters: Optional[dict] = None,
+        model_parameters: dict | None = None,
         tools: Sequence[PromptMessageTool] | None = None,
-        stop: Optional[Sequence[str]] = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-        callbacks: Optional[list[Callback]] = None,
+        user: str | None = None,
+        callbacks: list[Callback] | None = None,
     ) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
@@ -175,7 +176,7 @@ class ModelInstance:
         )
 
     def get_llm_num_tokens(
-        self, prompt_messages: Sequence[PromptMessage], tools: Optional[Sequence[PromptMessageTool]] = None
+        self, prompt_messages: Sequence[PromptMessage], tools: Sequence[PromptMessageTool] | None = None
     ) -> int:
         """
         Get number of tokens for llm
@@ -198,7 +199,7 @@ class ModelInstance:
         )
 
     def invoke_text_embedding(
-        self, texts: list[str], user: Optional[str] = None, input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
+        self, texts: list[str], user: str | None = None, input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
     ) -> TextEmbeddingResult:
         """
         Invoke large language model
@@ -245,9 +246,9 @@ class ModelInstance:
         self,
         query: str,
         docs: list[str],
-        score_threshold: Optional[float] = None,
-        top_n: Optional[int] = None,
-        user: Optional[str] = None,
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
     ) -> RerankResult:
         """
         Invoke rerank model
@@ -275,7 +276,7 @@ class ModelInstance:
             ),
         )
 
-    def invoke_moderation(self, text: str, user: Optional[str] = None) -> bool:
+    def invoke_moderation(self, text: str, user: str | None = None) -> bool:
         """
         Invoke moderation model
 
@@ -296,7 +297,7 @@ class ModelInstance:
             ),
         )
 
-    def invoke_speech2text(self, file: IO[bytes], user: Optional[str] = None) -> str:
+    def invoke_speech2text(self, file: IO[bytes], user: str | None = None) -> str:
         """
         Invoke large language model
 
@@ -317,7 +318,7 @@ class ModelInstance:
             ),
         )
 
-    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: Optional[str] = None) -> Iterable[bytes]:
+    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: str | None = None) -> Iterable[bytes]:
         """
         Invoke large language tts model
 
@@ -362,6 +363,23 @@ class ModelInstance:
                 else:
                     raise last_exception
 
+            # Additional policy compliance check as fallback (in case fetch_next didn't catch it)
+            try:
+                from core.helper.credential_utils import check_credential_policy_compliance
+
+                if lb_config.credential_id:
+                    check_credential_policy_compliance(
+                        credential_id=lb_config.credential_id,
+                        provider=self.provider,
+                        credential_type=PluginCredentialType.MODEL,
+                    )
+            except Exception as e:
+                logger.warning(
+                    "Load balancing config %s failed policy compliance check in round-robin: %s", lb_config.id, str(e)
+                )
+                self.load_balancing_manager.cooldown(lb_config, expire=60)
+                continue
+
             try:
                 if "credentials" in kwargs:
                     del kwargs["credentials"]
@@ -379,7 +397,7 @@ class ModelInstance:
             except Exception as e:
                 raise e
 
-    def get_tts_voices(self, language: Optional[str] = None):
+    def get_tts_voices(self, language: str | None = None):
         """
         Invoke large language tts model voices
 
@@ -452,7 +470,7 @@ class LBModelManager:
         model_type: ModelType,
         model: str,
         load_balancing_configs: list[ModelLoadBalancingConfiguration],
-        managed_credentials: Optional[dict] = None,
+        managed_credentials: dict | None = None,
     ):
         """
         Load balancing model manager
@@ -477,7 +495,7 @@ class LBModelManager:
                 else:
                     load_balancing_config.credentials = managed_credentials
 
-    def fetch_next(self) -> Optional[ModelLoadBalancingConfiguration]:
+    def fetch_next(self) -> ModelLoadBalancingConfiguration | None:
         """
         Get next model load balancing config
         Strategy: Round Robin
@@ -513,6 +531,24 @@ class LBModelManager:
                     # all configs are in cooldown
                     return None
 
+                continue
+
+            # Check policy compliance for the selected configuration
+            try:
+                from core.helper.credential_utils import check_credential_policy_compliance
+
+                if config.credential_id:
+                    check_credential_policy_compliance(
+                        credential_id=config.credential_id,
+                        provider=self._provider,
+                        credential_type=PluginCredentialType.MODEL,
+                    )
+            except Exception as e:
+                logger.warning("Load balancing config %s failed policy compliance check: %s", config.id, str(e))
+                cooldown_load_balancing_configs.append(config)
+                if len(cooldown_load_balancing_configs) >= len(self._load_balancing_configs):
+                    # all configs are in cooldown or failed policy compliance
+                    return None
                 continue
 
             if dify_config.DEBUG:

@@ -8,15 +8,15 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from controllers.console.error import AccountNotFound, NotAllowedCreateWorkspace
-from models.account import AccountStatus, TenantAccountJoin
+from models import AccountStatus, TenantAccountJoin
 from services.account_service import AccountService, RegisterService, TenantService, TokenPair
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
-    AccountNotFoundError,
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
+    TenantNotFoundError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 
@@ -64,7 +64,7 @@ class TestAccountService:
             password=password,
         )
         assert account.email == email
-        assert account.status == AccountStatus.ACTIVE.value
+        assert account.status == AccountStatus.ACTIVE
 
         # Login with correct password
         logged_in = AccountService.authenticate(email, password)
@@ -90,6 +90,28 @@ class TestAccountService:
         assert account.email == email
         assert account.password is None
         assert account.password_salt is None
+
+    def test_create_account_password_invalid_new_password(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test account create with invalid new password format.
+        """
+        fake = Faker()
+        email = fake.email()
+        name = fake.name()
+        # Setup mocks
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
+        # Test with too short password (assuming minimum length validation)
+        with pytest.raises(ValueError):  # Password validation error
+            AccountService.create_account(
+                email=email,
+                name=name,
+                interface_language="en-US",
+                password="invalid_new_password",
+            )
 
     def test_create_account_registration_disabled(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -139,7 +161,7 @@ class TestAccountService:
         fake = Faker()
         email = fake.email()
         password = fake.password(length=12)
-        with pytest.raises(AccountNotFoundError):
+        with pytest.raises(AccountPasswordError):
             AccountService.authenticate(email, password)
 
     def test_authenticate_banned_account(self, db_session_with_containers, mock_external_service_dependencies):
@@ -163,7 +185,7 @@ class TestAccountService:
         )
 
         # Ban the account
-        account.status = AccountStatus.BANNED.value
+        account.status = AccountStatus.BANNED
         from extensions.ext_database import db
 
         db.session.commit()
@@ -247,14 +269,14 @@ class TestAccountService:
             interface_language="en-US",
             password=password,
         )
-        account.status = AccountStatus.PENDING.value
+        account.status = AccountStatus.PENDING
         from extensions.ext_database import db
 
         db.session.commit()
 
         # Authenticate should activate the account
         authenticated_account = AccountService.authenticate(email, password)
-        assert authenticated_account.status == AccountStatus.ACTIVE.value
+        assert authenticated_account.status == AccountStatus.ACTIVE
         assert authenticated_account.initialized_at is not None
 
     def test_update_account_password_success(self, db_session_with_containers, mock_external_service_dependencies):
@@ -448,7 +470,7 @@ class TestAccountService:
 
         # Verify integration was created
         from extensions.ext_database import db
-        from models.account import AccountIntegrate
+        from models import AccountIntegrate
 
         integration = db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider="new-google").first()
         assert integration is not None
@@ -483,7 +505,7 @@ class TestAccountService:
 
         # Verify integration was updated
         from extensions.ext_database import db
-        from models.account import AccountIntegrate
+        from models import AccountIntegrate
 
         integration = (
             db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider="exists-google").first()
@@ -517,7 +539,7 @@ class TestAccountService:
         from extensions.ext_database import db
 
         db.session.refresh(account)
-        assert account.status == AccountStatus.CLOSED.value
+        assert account.status == AccountStatus.CLOSED
 
     def test_update_account_fields(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -657,7 +679,7 @@ class TestAccountService:
             interface_language="en-US",
             password=password,
         )
-        account.status = AccountStatus.PENDING.value
+        account.status = AccountStatus.PENDING
         from extensions.ext_database import db
 
         db.session.commit()
@@ -666,7 +688,7 @@ class TestAccountService:
         token_pair = AccountService.login(account)
 
         db.session.refresh(account)
-        assert account.status == AccountStatus.ACTIVE.value
+        assert account.status == AccountStatus.ACTIVE
 
     def test_logout(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -838,7 +860,7 @@ class TestAccountService:
         )
 
         # Ban the account
-        account.status = AccountStatus.BANNED.value
+        account.status = AccountStatus.BANNED
         from extensions.ext_database import db
 
         db.session.commit()
@@ -940,7 +962,8 @@ class TestAccountService:
         Test getting user through non-existent email.
         """
         fake = Faker()
-        non_existent_email = fake.email()
+        domain = f"test-{fake.random_letters(10)}.com"
+        non_existent_email = fake.email(domain=domain)
         found_user = AccountService.get_user_through_email(non_existent_email)
         assert found_user is None
 
@@ -967,7 +990,7 @@ class TestAccountService:
         )
 
         # Ban the account
-        account.status = AccountStatus.BANNED.value
+        account.status = AccountStatus.BANNED
         from extensions.ext_database import db
 
         db.session.commit()
@@ -1392,7 +1415,7 @@ class TestTenantService:
         )
 
         # Try to get current tenant (should fail)
-        with pytest.raises(AttributeError):
+        with pytest.raises((AttributeError, TenantNotFoundError)):
             TenantService.get_current_tenant_by_account(account)
 
     def test_switch_tenant_success(self, db_session_with_containers, mock_external_service_dependencies):
@@ -2280,7 +2303,7 @@ class TestRegisterService:
 
         # Verify account was created
         from extensions.ext_database import db
-        from models.account import Account
+        from models import Account
         from models.model import DifySetup
 
         account = db.session.query(Account).filter_by(email=admin_email).first()
@@ -2329,7 +2352,7 @@ class TestRegisterService:
 
             # Verify no entities were created (rollback worked)
             from extensions.ext_database import db
-            from models.account import Account, Tenant, TenantAccountJoin
+            from models import Account, Tenant, TenantAccountJoin
             from models.model import DifySetup
 
             account = db.session.query(Account).filter_by(email=admin_email).first()
@@ -2423,7 +2446,7 @@ class TestRegisterService:
 
         # Verify OAuth integration was created
         from extensions.ext_database import db
-        from models.account import AccountIntegrate
+        from models import AccountIntegrate
 
         integration = db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider=provider).first()
         assert integration is not None
@@ -2449,7 +2472,7 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Execute registration with pending status
-        from models.account import AccountStatus
+        from models import AccountStatus
 
         account = RegisterService.register(
             email=email,
@@ -2638,7 +2661,7 @@ class TestRegisterService:
 
         # Verify new account was created with pending status
         from extensions.ext_database import db
-        from models.account import Account, TenantAccountJoin
+        from models import Account, TenantAccountJoin
 
         new_account = db.session.query(Account).filter_by(email=new_member_email).first()
         assert new_account is not None
@@ -3278,7 +3301,7 @@ class TestRegisterService:
         redis_client.setex(cache_key, 24 * 60 * 60, account_id)
 
         # Execute invitation retrieval
-        result = RegisterService._get_invitation_by_token(
+        result = RegisterService.get_invitation_by_token(
             token=token,
             workspace_id=workspace_id,
             email=email,
@@ -3316,7 +3339,7 @@ class TestRegisterService:
         redis_client.setex(token_key, 24 * 60 * 60, json.dumps(invitation_data))
 
         # Execute invitation retrieval
-        result = RegisterService._get_invitation_by_token(token=token)
+        result = RegisterService.get_invitation_by_token(token=token)
 
         # Verify result contains expected data
         assert result is not None

@@ -1,28 +1,32 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Optional, Union
+from typing import ParamSpec, TypeVar, Union
 
 from controllers.console.app.error import AppNotFoundError
 from extensions.ext_database import db
-from libs.login import current_user
+from libs.login import current_account_with_tenant
 from models import App, AppMode
-from models.account import Account
+
+P = ParamSpec("P")
+R = TypeVar("R")
+P1 = ParamSpec("P1")
+R1 = TypeVar("R1")
 
 
-def _load_app_model(app_id: str) -> Optional[App]:
-    assert isinstance(current_user, Account)
+def _load_app_model(app_id: str) -> App | None:
+    _, current_tenant_id = current_account_with_tenant()
     app_model = (
         db.session.query(App)
-        .where(App.id == app_id, App.tenant_id == current_user.current_tenant_id, App.status == "normal")
+        .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
         .first()
     )
     return app_model
 
 
-def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[AppMode], None] = None):
-    def decorator(view_func):
+def get_app_model(view: Callable[P, R] | None = None, *, mode: Union[AppMode, list[AppMode], None] = None):
+    def decorator(view_func: Callable[P1, R1]):
         @wraps(view_func)
-        def decorated_view(*args, **kwargs):
+        def decorated_view(*args: P1.args, **kwargs: P1.kwargs):
             if not kwargs.get("app_id"):
                 raise ValueError("missing app_id in path parameters")
 

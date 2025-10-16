@@ -1,14 +1,9 @@
 import hashlib
 import logging
-import os
 from collections.abc import Sequence
 from threading import Lock
-from typing import Optional
-
-from pydantic import BaseModel
 
 import contexts
-from core.helper.position_helper import get_provider_position_map, sort_to_dict_by_position_map
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
 from core.model_runtime.model_providers.__base.ai_model import AIModel
@@ -20,58 +15,30 @@ from core.model_runtime.model_providers.__base.text_embedding_model import TextE
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
 from core.model_runtime.schema_validators.provider_credential_schema_validator import ProviderCredentialSchemaValidator
-from core.plugin.entities.plugin import ModelProviderID
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
-from core.plugin.impl.asset import PluginAssetManager
-from core.plugin.impl.model import PluginModelClient
+from models.provider_ids import ModelProviderID
 
 logger = logging.getLogger(__name__)
 
 
-class ModelProviderExtension(BaseModel):
-    plugin_model_provider_entity: PluginModelProviderEntity
-    position: Optional[int] = None
-
-
 class ModelProviderFactory:
-    provider_position_map: dict[str, int]
-
     def __init__(self, tenant_id: str):
-        self.provider_position_map = {}
+        from core.plugin.impl.model import PluginModelClient
 
         self.tenant_id = tenant_id
         self.plugin_model_manager = PluginModelClient()
-
-        if not self.provider_position_map:
-            # get the path of current classes
-            current_path = os.path.abspath(__file__)
-            model_providers_path = os.path.dirname(current_path)
-
-            # get _position.yaml file path
-            self.provider_position_map = get_provider_position_map(model_providers_path)
 
     def get_providers(self) -> Sequence[ProviderEntity]:
         """
         Get all providers
         :return: list of providers
         """
-        # Fetch plugin model providers
+        # FIXME(-LAN-): Removed position map sorting since providers are fetched from plugin server
+        # The plugin server should return providers in the desired order
         plugin_providers = self.get_plugin_model_providers()
+        return [provider.declaration for provider in plugin_providers]
 
-        # Convert PluginModelProviderEntity to ModelProviderExtension
-        model_provider_extensions = []
-        for provider in plugin_providers:
-            model_provider_extensions.append(ModelProviderExtension(plugin_model_provider_entity=provider))
-
-        sorted_extensions = sort_to_dict_by_position_map(
-            position_map=self.provider_position_map,
-            data=model_provider_extensions,
-            name_func=lambda x: x.plugin_model_provider_entity.declaration.provider,
-        )
-
-        return [extension.plugin_model_provider_entity.declaration for extension in sorted_extensions.values()]
-
-    def get_plugin_model_providers(self) -> Sequence[PluginModelProviderEntity]:
+    def get_plugin_model_providers(self) -> Sequence["PluginModelProviderEntity"]:
         """
         Get all plugin model providers
         :return: list of plugin model providers
@@ -109,7 +76,7 @@ class ModelProviderFactory:
         plugin_model_provider_entity = self.get_plugin_model_provider(provider=provider)
         return plugin_model_provider_entity.declaration
 
-    def get_plugin_model_provider(self, provider: str) -> PluginModelProviderEntity:
+    def get_plugin_model_provider(self, provider: str) -> "PluginModelProviderEntity":
         """
         Get plugin model provider
         :param provider: provider name
@@ -238,9 +205,9 @@ class ModelProviderFactory:
     def get_models(
         self,
         *,
-        provider: Optional[str] = None,
-        model_type: Optional[ModelType] = None,
-        provider_configs: Optional[list[ProviderConfig]] = None,
+        provider: str | None = None,
+        model_type: ModelType | None = None,
+        provider_configs: list[ProviderConfig] | None = None,
     ) -> list[SimpleProviderEntity]:
         """
         Get all models for given model type
@@ -302,17 +269,17 @@ class ModelProviderFactory:
         }
 
         if model_type == ModelType.LLM:
-            return LargeLanguageModel(**init_params)  # type: ignore
+            return LargeLanguageModel.model_validate(init_params)
         elif model_type == ModelType.TEXT_EMBEDDING:
-            return TextEmbeddingModel(**init_params)  # type: ignore
+            return TextEmbeddingModel.model_validate(init_params)
         elif model_type == ModelType.RERANK:
-            return RerankModel(**init_params)  # type: ignore
+            return RerankModel.model_validate(init_params)
         elif model_type == ModelType.SPEECH2TEXT:
-            return Speech2TextModel(**init_params)  # type: ignore
+            return Speech2TextModel.model_validate(init_params)
         elif model_type == ModelType.MODERATION:
-            return ModerationModel(**init_params)  # type: ignore
+            return ModerationModel.model_validate(init_params)
         elif model_type == ModelType.TTS:
-            return TTSModel(**init_params)  # type: ignore
+            return TTSModel.model_validate(init_params)
 
     def get_provider_icon(self, provider: str, icon_type: str, lang: str) -> tuple[bytes, str]:
         """
@@ -364,6 +331,8 @@ class ModelProviderFactory:
         mime_type = image_mime_types.get(extension, "image/png")
 
         # get icon bytes from plugin asset manager
+        from core.plugin.impl.asset import PluginAssetManager
+
         plugin_asset_manager = PluginAssetManager()
         return plugin_asset_manager.fetch_asset(tenant_id=self.tenant_id, id=file_name), mime_type
 
@@ -373,5 +342,6 @@ class ModelProviderFactory:
         :param provider: provider name
         :return: plugin id and provider name
         """
+
         provider_id = ModelProviderID(provider)
         return provider_id.plugin_id, provider_id.provider_name
