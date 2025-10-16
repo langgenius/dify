@@ -12,7 +12,15 @@ from models.model import EndUser
 
 
 def current_account_with_tenant():
-    user = current_user._get_current_object()  # type: ignore
+    """
+    Resolve the underlying account for the current user proxy and ensure tenant context exists.
+    Allows tests to supply plain Account mocks without the LocalProxy helper.
+    """
+    user_proxy = current_user
+
+    get_current_object = getattr(user_proxy, "_get_current_object", None)
+    user = get_current_object() if callable(get_current_object) else user_proxy  # type: ignore
+
     if not isinstance(user, Account):
         raise ValueError("current_user must be an Account instance")
     assert user.current_tenant_id is not None, "The tenant information should be loaded."
