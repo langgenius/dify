@@ -1,14 +1,18 @@
 """Test the command system for GraphEngine control."""
 
 import time
+from datetime import datetime
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 from core.workflow.entities import GraphRuntimeState, VariablePool
+from core.workflow.enums import NodeType
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_engine.entities.commands import AbortCommand
-from core.workflow.graph_events import GraphRunAbortedEvent, GraphRunStartedEvent
+from core.workflow.graph_events import GraphRunAbortedEvent, GraphRunStartedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
+from core.workflow.node_events import NodeRunResult
 
 
 def test_abort_command():
@@ -28,7 +32,28 @@ def test_abort_command():
     mock_start_node = MagicMock()
     mock_start_node.state = None
     mock_start_node.id = "start"
+    mock_start_node.node_type = NodeType.START
     mock_start_node.graph_runtime_state = shared_runtime_state  # Use shared instance
+    
+    # Make mock node.run() return proper events to allow GraphEngine to complete
+    def mock_run():
+        exec_id = str(uuid4())
+        yield NodeRunStartedEvent(
+            id=exec_id,
+            node_id="start",
+            node_type=NodeType.START,
+            node_title="Start",
+            start_at=datetime.now(),
+        )
+        yield NodeRunSucceededEvent(
+            id=exec_id,
+            node_id="start",
+            node_type=NodeType.START,
+            start_at=datetime.now(),
+            node_run_result=NodeRunResult(outputs={}),
+        )
+    mock_start_node.run = mock_run
+    
     mock_graph.nodes["start"] = mock_start_node
 
     # Mock graph methods
