@@ -29,7 +29,8 @@ def get_current_user():
     from models.account import Account
     from models.model import EndUser
 
-    assert isinstance(current_user, (Account, EndUser)), (
+    if not isinstance(current_user, (Account, EndUser)):
+        raise TypeError(f'current_user must be Account or EndUser, got {type(current_user).__name__}')
         f"current_user must be Account or EndUser, got {type(current_user).__name__}"
     )
     return current_user
