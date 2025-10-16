@@ -10,9 +10,6 @@ from configs import dify_config
 from models import Account
 from models.model import EndUser
 
-#: A proxy for the current user. If no user is logged in, this will be an
-#: anonymous user
-current_user = cast(Union[Account, EndUser, None], LocalProxy(lambda: _get_user()))
 
 
 def current_account_with_tenant():
@@ -81,3 +78,7 @@ def _get_user() -> EndUser | Account | None:
         return g._login_user  # type: ignore
 
     return None
+
+#: A proxy for the current user. If no user is logged in, this will be an
+#: anonymous user
+current_user = LocalProxy(lambda: _get_user())._get_current_object()
