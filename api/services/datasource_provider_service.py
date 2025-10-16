@@ -104,8 +104,6 @@ class DatasourceProviderService:
         """
         get credential by id
         """
-        current_user = get_current_user()
-
         with Session(db.engine) as session:
             if credential_id:
                 datasource_provider = (
@@ -122,6 +120,7 @@ class DatasourceProviderService:
                 return {}
             # refresh the credentials
             if datasource_provider.expires_at != -1 and (datasource_provider.expires_at - 60) < int(time.time()):
+                current_user = get_current_user()
                 decrypted_credentials = self.decrypt_datasource_provider_credentials(
                     tenant_id=tenant_id,
                     datasource_provider=datasource_provider,
@@ -170,8 +169,6 @@ class DatasourceProviderService:
         """
         get all datasource credentials by provider
         """
-        current_user = get_current_user()
-
         with Session(db.engine) as session:
             datasource_providers = (
                 session.query(DatasourceProvider)
@@ -181,6 +178,7 @@ class DatasourceProviderService:
             )
             if not datasource_providers:
                 return []
+            current_user = get_current_user()
             # refresh the credentials
             real_credentials_list = []
             for datasource_provider in datasource_providers:
@@ -619,7 +617,6 @@ class DatasourceProviderService:
         """
         provider_name = provider_id.provider_name
         plugin_id = provider_id.plugin_id
-        current_user = get_current_user()
 
         with Session(db.engine) as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{CredentialType.API_KEY}"
@@ -641,6 +638,7 @@ class DatasourceProviderService:
                     raise ValueError("Authorization name is already exists")
 
                 try:
+                    current_user = get_current_user()
                     self.provider_manager.validate_provider_credentials(
                         tenant_id=tenant_id,
                         user_id=current_user.id,
@@ -918,7 +916,6 @@ class DatasourceProviderService:
         """
         update datasource credentials.
         """
-        current_user = get_current_user()
 
         with Session(db.engine) as session:
             datasource_provider = (
@@ -955,6 +952,7 @@ class DatasourceProviderService:
                     for key, value in credentials.items()
                 }
                 try:
+                    current_user = get_current_user()
                     self.provider_manager.validate_provider_credentials(
                         tenant_id=tenant_id,
                         user_id=current_user.id,
