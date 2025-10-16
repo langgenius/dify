@@ -234,6 +234,8 @@ const ConditionItem = ({
       draft.varType = resolvedVarType
       draft.value = resolvedVarType === VarType.boolean ? false : ''
       draft.comparison_operator = getOperators(resolvedVarType)[0]
+      delete draft.key
+      delete draft.sub_variable_condition
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     })
     doUpdateCondition(newCondition)
