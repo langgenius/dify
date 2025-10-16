@@ -35,6 +35,7 @@ class AppAnnotationService:
         if args.get("message_id"):
             message_id = str(args["message_id"])
             # get message info
+            # TODO(core-refactor): replace direct Message queries with MessageRepository usage.
             message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app.id).first()
 
             if not message:

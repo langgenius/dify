@@ -136,6 +136,7 @@ class AudioService:
                 uuid.UUID(message_id)
             except ValueError:
                 return None
+            # TODO(core-refactor): replace direct message query with MessageRepository usage.
             message = db.session.query(Message).where(Message.id == message_id).first()
             if message is None:
                 return None

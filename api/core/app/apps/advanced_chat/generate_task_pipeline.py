@@ -6,7 +6,6 @@ from contextlib import contextmanager
 from threading import Thread
 from typing import Any, Union
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
@@ -58,6 +57,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.message.repositories.factory import get_message_repository
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.entities import GraphRuntimeState
@@ -918,8 +918,8 @@ class AdvancedChatAppGenerateTaskPipeline:
         return False
 
     def _get_message(self, *, session: Session):
-        stmt = select(Message).where(Message.id == self._message_id)
-        message = session.scalar(stmt)
+        message_repository = get_message_repository()
+        message = message_repository.get_by_id(self._message_id, session=session)
         if not message:
             raise ValueError(f"Message not found: {self._message_id}")
         return message

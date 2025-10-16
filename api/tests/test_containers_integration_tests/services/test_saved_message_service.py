@@ -29,13 +29,15 @@ class TestSavedMessageService:
             mock_model_instance.get_default_provider_model_name.return_value = ("openai", "gpt-3.5-turbo")
 
             # Mock MessageService
-            mock_message_service.get_message.return_value = None
-            mock_message_service.pagination_by_last_id.return_value = None
+            message_service_instance = mock_message_service.create.return_value
+            message_service_instance.get_message.return_value = None
+            message_service_instance.pagination_by_last_id.return_value = None
 
             yield {
                 "account_feature_service": mock_account_feature_service,
                 "model_manager": mock_model_manager,
                 "message_service": mock_message_service,
+                "message_service_instance": message_service_instance,
             }
 
     def _create_test_app_and_account(self, db_session_with_containers, mock_external_service_dependencies):
@@ -216,7 +218,9 @@ class TestSavedMessageService:
         from libs.infinite_scroll_pagination import InfiniteScrollPagination
 
         mock_pagination = InfiniteScrollPagination(data=[message1, message2], limit=10, has_more=False)
-        mock_external_service_dependencies["message_service"].pagination_by_last_id.return_value = mock_pagination
+        mock_external_service_dependencies[
+            "message_service_instance"
+        ].pagination_by_last_id.return_value = mock_pagination
 
         # Act: Execute the method under test
         result = SavedMessageService.pagination_by_last_id(app_model=app, user=account, last_id=None, limit=10)
@@ -230,7 +234,7 @@ class TestSavedMessageService:
         # Verify MessageService was called with correct parameters
         # Sort the IDs to handle database query order variations
         expected_include_ids = sorted([message1.id, message2.id])
-        actual_call = mock_external_service_dependencies["message_service"].pagination_by_last_id.call_args
+        actual_call = mock_external_service_dependencies["message_service_instance"].pagination_by_last_id.call_args
         actual_include_ids = sorted(actual_call.kwargs.get("include_ids", []))
 
         assert actual_call.kwargs["app_model"] == app
@@ -291,7 +295,9 @@ class TestSavedMessageService:
         from libs.infinite_scroll_pagination import InfiniteScrollPagination
 
         mock_pagination = InfiniteScrollPagination(data=[message1, message2], limit=5, has_more=True)
-        mock_external_service_dependencies["message_service"].pagination_by_last_id.return_value = mock_pagination
+        mock_external_service_dependencies[
+            "message_service_instance"
+        ].pagination_by_last_id.return_value = mock_pagination
 
         # Act: Execute the method under test
         result = SavedMessageService.pagination_by_last_id(
@@ -307,7 +313,7 @@ class TestSavedMessageService:
         # Verify MessageService was called with correct parameters
         # Sort the IDs to handle database query order variations
         expected_include_ids = sorted([message1.id, message2.id])
-        actual_call = mock_external_service_dependencies["message_service"].pagination_by_last_id.call_args
+        actual_call = mock_external_service_dependencies["message_service_instance"].pagination_by_last_id.call_args
         actual_include_ids = sorted(actual_call.kwargs.get("include_ids", []))
 
         assert actual_call.kwargs["app_model"] == app
@@ -340,7 +346,7 @@ class TestSavedMessageService:
         message = self._create_test_message(db_session_with_containers, app, account)
 
         # Mock MessageService.get_message return value
-        mock_external_service_dependencies["message_service"].get_message.return_value = message
+        mock_external_service_dependencies["message_service_instance"].get_message.return_value = message
 
         # Act: Execute the method under test
         SavedMessageService.save(app_model=app, user=account, message_id=message.id)
@@ -368,7 +374,7 @@ class TestSavedMessageService:
         assert saved_message.created_at is not None
 
         # Verify MessageService.get_message was called
-        mock_external_service_dependencies["message_service"].get_message.assert_called_once_with(
+        mock_external_service_dependencies["message_service_instance"].get_message.assert_called_once_with(
             app_model=app, user=account, message_id=message.id
         )
 

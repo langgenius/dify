@@ -663,6 +663,16 @@ class RepositoryConfig(BaseSettings):
         default="repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository",
     )
 
+    API_MESSAGE_REPOSITORY: str = Field(
+        description="Service-layer repository implementation for Message operations. Specify as a module path",
+        default="core.repositories.sqlalchemy_message_repository.SQLAlchemyMessageRepository",
+    )
+
+    CORE_MESSAGE_REPOSITORY: str = Field(
+        description="Core repository implementation for Message operations. Specify as a module path",
+        default="core.repositories.sqlalchemy_message_repository.SQLAlchemyMessageRepository",
+    )
+
 
 class AuthConfig(BaseSettings):
     """

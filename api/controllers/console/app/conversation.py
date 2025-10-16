@@ -75,6 +75,7 @@ class CompletionConversationApi(Resource):
         )
 
         if args["keyword"]:
+            # TODO(core-refactor): replace joins on Message with repository-backed lookups.
             query = query.join(Message, Message.conversation_id == Conversation.id).where(
                 or_(
                     Message.query.ilike(f"%{args['keyword']}%"),

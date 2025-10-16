@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.file import file_manager
+from core.message.repositories.factory import get_message_repository
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
     AssistantPromptMessage,
@@ -105,18 +106,17 @@ class TokenBufferMemory:
         app_record = self.conversation.app
 
         # fetch limited messages, and return reversed
-        stmt = (
-            select(Message).where(Message.conversation_id == self.conversation.id).order_by(Message.created_at.desc())
-        )
-
         if message_limit and message_limit > 0:
             message_limit = min(message_limit, 500)
         else:
             message_limit = 500
 
-        msg_limit_stmt = stmt.limit(message_limit)
-
-        messages = db.session.scalars(msg_limit_stmt).all()
+        message_repository = get_message_repository()
+        messages = message_repository.get_conversation_messages(
+            conversation_id=self.conversation.id,
+            limit=message_limit,
+            order="desc",
+        )
 
         # instead of all messages from the conversation, we only need to extract messages
         # that belong to the thread of last message

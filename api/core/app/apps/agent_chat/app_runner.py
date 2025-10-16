@@ -13,6 +13,7 @@ from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.message.repositories.factory import get_message_repository
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
@@ -188,8 +189,8 @@ class AgentChatAppRunner(AppRunner):
         conversation_result = db.session.scalar(conversation_stmt)
         if conversation_result is None:
             raise ValueError("Conversation not found")
-        msg_stmt = select(Message).where(Message.id == message.id)
-        message_result = db.session.scalar(msg_stmt)
+        message_repository = get_message_repository()
+        message_result = message_repository.get_by_id(message.id)
         if message_result is None:
             raise ValueError("Message not found")
         db.session.close()

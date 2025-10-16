@@ -96,7 +96,8 @@ def clean_workflow_runlogs_precise():
 def _delete_batch(session: Session, workflow_run_ids: Sequence[str], attempt_count: int) -> bool:
     """Delete a single batch of workflow runs and all related data within a nested transaction."""
     try:
-        with session.begin_nested():
+        with db.session.begin_nested():
+            # TODO(core-refactor): rely on MessageRepository for workflow log cleanup lookups.
             message_data = (
                 session.query(Message.id, Message.conversation_id)
                 .where(Message.workflow_run_id.in_(workflow_run_ids))

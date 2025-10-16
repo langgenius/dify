@@ -8,6 +8,7 @@ service-layer operations with dependency injection patterns.
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from core.message.repositories.message_repository import MessageRepository
 from core.repositories import DifyCoreRepositoryFactory, RepositoryImportError
 from libs.module_loading import import_string
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
@@ -80,3 +81,25 @@ class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
             return repository_class(session_maker=session_maker)  # type: ignore[no-any-return]
         except (ImportError, Exception) as e:
             raise RepositoryImportError(f"Failed to create APIWorkflowRunRepository from '{class_path}': {e}") from e
+
+    @classmethod
+    def create_api_message_repository(cls, session_maker: sessionmaker) -> MessageRepository:
+        """
+        Create a MessageRepository instance based on configuration.
+
+        Args:
+            session_maker: SQLAlchemy sessionmaker to inject for database session management.
+
+        Returns:
+            Configured MessageRepository instance
+
+        Raises:
+            RepositoryImportError: If the configured repository cannot be imported or instantiated
+        """
+        class_path = dify_config.API_MESSAGE_REPOSITORY
+
+        try:
+            repository_class = import_string(class_path)
+            return repository_class(session_maker=session_maker)  # type: ignore[no-any-return]
+        except (ImportError, Exception) as e:
+            raise RepositoryImportError(f"Failed to create APIMessageRepository from '{class_path}': {e}") from e

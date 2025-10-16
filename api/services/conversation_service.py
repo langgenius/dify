@@ -135,6 +135,7 @@ class ConversationService:
     @classmethod
     def auto_generate_name(cls, app_model: App, conversation: Conversation):
         # get conversation first message
+        # TODO(core-refactor): use MessageRepository instead of querying Message directly.
         message = (
             db.session.query(Message)
             .where(Message.app_id == app_model.id, Message.conversation_id == conversation.id)

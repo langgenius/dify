@@ -46,6 +46,7 @@ pnpm test
 - Prefer editing existing files; add new documentation only when requested.
 - Inject dependencies through constructors and preserve clean architecture boundaries.
 - Handle errors with domain-specific exceptions at the correct layer.
+- When introducing API environment variables, update both `api/.env.example` and `docker/.env.example`, then run `./generate_docker_compose` inside `/docker`; never edit `docker/docker-compose.yaml` directly.
 
 ## Project Conventions
 

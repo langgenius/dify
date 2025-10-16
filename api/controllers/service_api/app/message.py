@@ -116,8 +116,10 @@ class MessageListApi(Resource):
 
         args = message_list_parser.parse_args()
 
+        message_service = MessageService.create()
+
         try:
-            return MessageService.pagination_by_first_id(
+            return message_service.pagination_by_first_id(
                 app_model, end_user, args["conversation_id"], args["first_id"], args["limit"]
             )
         except services.errors.conversation.ConversationNotExistsError:
@@ -149,8 +151,10 @@ class MessageFeedbackApi(Resource):
 
         args = message_feedback_parser.parse_args()
 
+        message_service = MessageService.create()
+
         try:
-            MessageService.create_feedback(
+            message_service.create_feedback(
                 app_model=app_model,
                 message_id=message_id,
                 user=end_user,
@@ -181,7 +185,8 @@ class AppGetFeedbacksApi(Resource):
         Returns paginated list of all feedback submitted for messages in this app.
         """
         args = feedback_list_parser.parse_args()
-        feedbacks = MessageService.get_all_messages_feedbacks(app_model, page=args["page"], limit=args["limit"])
+        message_service = MessageService.create()
+        feedbacks = message_service.get_all_messages_feedbacks(app_model, page=args["page"], limit=args["limit"])
         return {"data": feedbacks}
 
 
@@ -210,8 +215,10 @@ class MessageSuggestedApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
+        message_service = MessageService.create()
+
         try:
-            questions = MessageService.get_suggested_questions_after_answer(
+            questions = message_service.get_suggested_questions_after_answer(
                 app_model=app_model, user=end_user, message_id=message_id, invoke_from=InvokeFrom.SERVICE_API
             )
         except MessageNotExistsError:
