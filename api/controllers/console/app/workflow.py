@@ -5,6 +5,7 @@ from typing import cast
 
 from flask import abort, request
 from flask_restx import Resource, fields, inputs, marshal_with, reqparse
+from pydantic_core import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -188,6 +189,8 @@ class DraftWorkflowApi(Resource):
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
+        except ValidationError as e:
+            return {"message": str(e)}, 400
 
         return {
             "result": "success",
