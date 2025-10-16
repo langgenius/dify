@@ -10,7 +10,7 @@ from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from libs.login import current_user
-from models.account import Account
+from models import Account
 from models.model import App, Conversation, EndUser, Message, MessageAgentThought
 
 

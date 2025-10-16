@@ -9,7 +9,7 @@ from extensions.ext_database import db
 from fields.app_fields import app_site_fields
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
-from models import Account, Site
+from models import Site
 
 
 def parse_app_site_args():
@@ -107,8 +107,6 @@ class AppSite(Resource):
             if value is not None:
                 setattr(site, attr_name, value)
 
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
         site.updated_by = current_user.id
         site.updated_at = naive_utc_now()
         db.session.commit()
@@ -142,8 +140,6 @@ class AppSiteAccessTokenReset(Resource):
             raise NotFound
 
         site.code = Site.generate_code(16)
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
         site.updated_by = current_user.id
         site.updated_at = naive_utc_now()
         db.session.commit()

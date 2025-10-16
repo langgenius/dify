@@ -14,8 +14,7 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
-from models import Account
-from models.account import AccountStatus
+from models import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
