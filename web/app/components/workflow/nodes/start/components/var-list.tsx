@@ -5,7 +5,6 @@ import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import VarItem from './var-item'
 import { ChangeType, type InputVar, type MoreInfo } from '@/app/components/workflow/types'
-import { v4 as uuid4 } from 'uuid'
 import { ReactSortable } from 'react-sortablejs'
 import { RiDraggable } from '@remixicon/react'
 import cn from '@/utils/classnames'
@@ -71,9 +70,8 @@ const VarList: FC<Props> = ({
   }, [list, onChange])
 
   const listWithIds = useMemo(() => list.map((item) => {
-    const id = uuid4()
     return {
-      id,
+      id: item.variable,
       variable: { ...item },
     }
   }), [list])
@@ -88,6 +86,8 @@ const VarList: FC<Props> = ({
     )
   }
 
+  const canDrag = !readonly && varCount > 1
+
   return (
     <ReactSortable
       className='space-y-1'
@@ -97,30 +97,23 @@ const VarList: FC<Props> = ({
       ghostClass='opacity-50'
       animation={150}
     >
-      {list.map((item, index) => {
-        const canDrag = (() => {
-          if (readonly)
-            return false
-          return varCount > 1
-        })()
-        return (
-          <div key={index} className='group relative'>
-            <VarItem
-              className={cn(canDrag && 'handle')}
-              readonly={readonly}
-              payload={item}
-              onChange={handleVarChange(index)}
-              onRemove={handleVarRemove(index)}
-              varKeys={list.map(item => item.variable)}
-              canDrag={canDrag}
-            />
-            {canDrag && <RiDraggable className={cn(
-              'handle absolute left-3 top-2.5 hidden h-3 w-3 cursor-pointer text-text-tertiary',
-              'group-hover:block',
-            )} />}
-          </div>
-        )
-      })}
+      {listWithIds.map((itemWithId, index) => (
+        <div key={itemWithId.id} className='group relative'>
+          <VarItem
+            className={cn(canDrag && 'handle')}
+            readonly={readonly}
+            payload={itemWithId.variable}
+            onChange={handleVarChange(index)}
+            onRemove={handleVarRemove(index)}
+            varKeys={list.map(item => item.variable)}
+            canDrag={canDrag}
+          />
+          {canDrag && <RiDraggable className={cn(
+            'handle absolute left-3 top-2.5 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+            'group-hover:block',
+          )} />}
+        </div>
+      ))}
     </ReactSortable>
   )
 }
