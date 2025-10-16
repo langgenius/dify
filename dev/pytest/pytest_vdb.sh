@@ -4,7 +4,9 @@ set -x
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 cd "$SCRIPT_DIR/../.."
 
-pytest api/tests/integration_tests/vdb/chroma \
+PYTEST_TIMEOUT="${PYTEST_TIMEOUT:-180}"
+
+pytest --timeout "${PYTEST_TIMEOUT}" api/tests/integration_tests/vdb/chroma \
   api/tests/integration_tests/vdb/milvus \
   api/tests/integration_tests/vdb/pgvecto_rs \
   api/tests/integration_tests/vdb/pgvector \
