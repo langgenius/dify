@@ -1,4 +1,16 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react'
+import {
+  type MouseEvent,
+  type MouseEventHandler,
+  type ReactElement,
+  cloneElement,
+  forwardRef,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -40,16 +52,17 @@ type ShortcutMapping = {
 const buildShortcutMappings = (options: TestRunOptions): ShortcutMapping[] => {
   const mappings: ShortcutMapping[] = []
 
-  if (options.userInput)
+  if (options.userInput && options.userInput.enabled !== false)
     mappings.push({ option: options.userInput, shortcutKey: '~' })
 
   let numericShortcut = 0
 
-  if (options.runAll)
+  if (options.runAll && options.runAll.enabled !== false)
     mappings.push({ option: options.runAll, shortcutKey: String(numericShortcut++) })
 
   options.triggers.forEach((trigger) => {
-    mappings.push({ option: trigger, shortcutKey: String(numericShortcut++) })
+    if (trigger.enabled !== false)
+      mappings.push({ option: trigger, shortcutKey: String(numericShortcut++) })
   })
 
   return mappings
@@ -71,14 +84,41 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
     return map
   }, [shortcutMappings])
 
-  useImperativeHandle(ref, () => ({
-    toggle: () => setOpen(prev => !prev),
-  }))
-
   const handleSelect = useCallback((option: TriggerOption) => {
     onSelect(option)
     setOpen(false)
   }, [onSelect])
+
+  const enabledOptions = useMemo(() => {
+    const flattened: TriggerOption[] = []
+
+    if (options.userInput)
+      flattened.push(options.userInput)
+    if (options.runAll)
+      flattened.push(options.runAll)
+    flattened.push(...options.triggers)
+
+    return flattened.filter(option => option.enabled !== false)
+  }, [options])
+
+  const hasSingleEnabledOption = enabledOptions.length === 1
+  const soleEnabledOption = hasSingleEnabledOption ? enabledOptions[0] : undefined
+
+  const runSoleOption = useCallback(() => {
+    if (soleEnabledOption)
+      handleSelect(soleEnabledOption)
+  }, [handleSelect, soleEnabledOption])
+
+  useImperativeHandle(ref, () => ({
+    toggle: () => {
+      if (hasSingleEnabledOption) {
+        runSoleOption()
+        return
+      }
+
+      setOpen(prev => !prev)
+    },
+  }), [hasSingleEnabledOption, runSoleOption])
 
   useEffect(() => {
     if (!open)
@@ -125,9 +165,41 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
     )
   }
 
-  const hasUserInput = !!options.userInput
-  const hasTriggers = options.triggers.length > 0
-  const hasRunAll = !!options.runAll
+  const hasUserInput = !!options.userInput && options.userInput.enabled !== false
+  const hasTriggers = options.triggers.some(trigger => trigger.enabled !== false)
+  const hasRunAll = !!options.runAll && options.runAll.enabled !== false
+
+  if (hasSingleEnabledOption && soleEnabledOption) {
+    const handleRunClick = (event?: MouseEvent<HTMLElement>) => {
+      if (event?.defaultPrevented)
+        return
+
+      runSoleOption()
+    }
+
+    if (isValidElement(children)) {
+      const childElement = children as ReactElement<{ onClick?: MouseEventHandler<HTMLElement> }>
+      const originalOnClick = childElement.props?.onClick
+
+      return cloneElement(childElement, {
+        onClick: (event: MouseEvent<HTMLElement>) => {
+          if (typeof originalOnClick === 'function')
+            originalOnClick(event)
+
+          if (event?.defaultPrevented)
+            return
+
+          runSoleOption()
+        },
+      })
+    }
+
+    return (
+      <span onClick={handleRunClick}>
+        {children}
+      </span>
+    )
+  }
 
   return (
     <PortalToFollowElem
@@ -155,9 +227,9 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(({
 
             {hasRunAll && renderOption(options.runAll!)}
 
-            {hasTriggers && options.triggers.map(trigger =>
-              renderOption(trigger),
-            )}
+            {hasTriggers && options.triggers
+              .filter(trigger => trigger.enabled !== false)
+              .map(trigger => renderOption(trigger))}
           </div>
         </div>
       </PortalToFollowElemContent>
