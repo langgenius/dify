@@ -43,7 +43,7 @@ def parse_and_check_json_markdown(text: str, expected_keys: list[str]):
         if len(json_obj) == 1 and isinstance(json_obj[0], dict):
             json_obj = json_obj[0]
         else:
-            raise OutputParserError("got invalid return object. obj:{json_obj}")
+            raise OutputParserError(f"got invalid return object. obj:{json_obj}")
     for key in expected_keys:
         if key not in json_obj:
             raise OutputParserError(
