@@ -23,6 +23,7 @@ import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import QuotaPanel from './provider-added-card/quota-panel'
 import { useAppContext } from '@/context/app-context'
+import { IS_CLOUD_EDITION } from '@/config'
 
 type Props = {
   searchText: string
@@ -114,7 +115,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
           />
         </div>
       </div>
-      <QuotaPanel providers={providers} isLoading={isValidatingCurrentWorkspace}/>
+      {IS_CLOUD_EDITION && <QuotaPanel providers={providers} isLoading={isValidatingCurrentWorkspace}/>}
       {!filteredConfiguredProviders?.length && (
         <div className='mb-2 rounded-[10px] bg-workflow-process-bg p-4'>
           <div className='flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur'>
