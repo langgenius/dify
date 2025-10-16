@@ -25,7 +25,7 @@ type BannerItemProps = {
   isPaused?: boolean
 }
 
-const RESPONSIVE_BREAKPOINT = 1280
+const RESPONSIVE_BREAKPOINT = 1200
 const MAX_RESPONSIVE_WIDTH = 600
 const INDICATOR_WIDTH = 20
 const INDICATOR_GAP = 8
@@ -177,7 +177,7 @@ export const BannerItem: FC<BannerItemProps> = ({ banner, autoplayDelay, isPause
                   />
                 ))}
               </div>
-              <div className="hidden h-[1px] flex-1 bg-divider-regular 2xl:block" />
+              <div className="hidden h-[1px] flex-1 bg-divider-regular min-[1380px]:block" />
             </div>
           </div>
         </div>
