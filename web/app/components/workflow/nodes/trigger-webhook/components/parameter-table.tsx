@@ -37,22 +37,22 @@ const ParameterTable: FC<ParameterTableProps> = ({
   const columns: ColumnConfig[] = [
     {
       key: 'key',
-      title: 'Variable Name',
+      title: t('workflow.nodes.triggerWebhook.varName'),
       type: 'input',
       width: 'flex-1',
-      placeholder: 'Variable Name',
+      placeholder: t('workflow.nodes.triggerWebhook.varNamePlaceholder'),
     },
     {
       key: 'type',
-      title: 'Type',
+      title: t('workflow.nodes.triggerWebhook.varType'),
       type: 'select',
       width: 'w-[120px]',
-      placeholder: 'Type',
+      placeholder: t('workflow.nodes.triggerWebhook.varType'),
       options: typeOptions,
     },
     {
       key: 'required',
-      title: 'Required',
+      title: t('workflow.nodes.triggerWebhook.required'),
       type: 'switch',
       width: 'w-[88px]',
     },

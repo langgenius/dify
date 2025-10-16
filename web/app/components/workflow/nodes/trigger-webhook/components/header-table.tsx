@@ -23,14 +23,14 @@ const HeaderTable: FC<HeaderTableProps> = ({
   const columns: ColumnConfig[] = [
     {
       key: 'name',
-      title: 'Variable Name',
+      title: t('workflow.nodes.triggerWebhook.varName'),
       type: 'input',
       width: 'flex-1',
-      placeholder: 'Variable Name',
+      placeholder: t('workflow.nodes.triggerWebhook.varNamePlaceholder'),
     },
     {
       key: 'required',
-      title: 'Required',
+      title: t('workflow.nodes.triggerWebhook.required'),
       type: 'switch',
       width: 'w-[88px]',
     },
