@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import produce from 'immer'
 import type { PluginTriggerNodeType } from './types'
 import type { PluginTriggerVarInputs } from './types'
@@ -9,13 +9,67 @@ import {
   useTriggerSubscriptions,
 } from '@/service/use-triggers'
 import {
-  addDefaultValue,
+  getConfiguredValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { Event } from '@/app/components/tools/types'
 import { VarKindType } from '../_base/types'
+
+const normalizeEventParameters = (
+  params: PluginTriggerVarInputs | Record<string, unknown> | null | undefined,
+  { allowScalars = false }: { allowScalars?: boolean } = {},
+): PluginTriggerVarInputs => {
+  if (!params || typeof params !== 'object' || Array.isArray(params))
+    return {} as PluginTriggerVarInputs
+
+  return Object.entries(params).reduce((acc, [key, entry]) => {
+    if (!entry && entry !== 0 && entry !== false)
+      return acc
+
+    if (
+      typeof entry === 'object'
+      && !Array.isArray(entry)
+      && 'type' in entry
+      && 'value' in entry
+    ) {
+      const normalizedEntry = { ...(entry as PluginTriggerVarInputs[string]) }
+      if (normalizedEntry.type === VarKindType.mixed)
+        normalizedEntry.type = VarKindType.constant
+      acc[key] = normalizedEntry
+      return acc
+    }
+
+    if (!allowScalars)
+      return acc
+
+    if (typeof entry === 'string') {
+      acc[key] = {
+        type: VarKindType.constant,
+        value: entry,
+      }
+      return acc
+    }
+
+    if (typeof entry === 'number' || typeof entry === 'boolean') {
+      acc[key] = {
+        type: VarKindType.constant,
+        value: entry,
+      }
+      return acc
+    }
+
+    if (Array.isArray(entry) && entry.every(item => typeof item === 'string')) {
+      acc[key] = {
+        type: VarKindType.variable,
+        value: entry,
+      }
+    }
+
+    return acc
+  }, {} as PluginTriggerVarInputs)
+}
 
 const useConfig = (id: string, payload: PluginTriggerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -31,8 +85,17 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     provider_name,
     event_name: event_name,
     config = {},
-    event_parameters = {},
+    event_parameters: rawEventParameters = {},
   } = inputs
+
+  const event_parameters = useMemo(
+    () => normalizeEventParameters(rawEventParameters as PluginTriggerVarInputs),
+    [rawEventParameters],
+  )
+  const legacy_config_parameters = useMemo(
+    () => normalizeEventParameters(config as PluginTriggerVarInputs, { allowScalars: true }),
+    [config],
+  )
 
   // Construct provider for authentication check
   const authProvider = useMemo(() => {
@@ -78,19 +141,44 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
 
   const triggerParameterValue = useMemo(() => {
     if (!triggerParameterSchema.length)
-      return {}
+      return {} as PluginTriggerVarInputs
 
-    const hasNewParameters = event_parameters && Object.keys(event_parameters).length > 0
-    const baseValue = hasNewParameters ? event_parameters : (config || {})
+    const hasStoredParameters = event_parameters && Object.keys(event_parameters).length > 0
+    const baseValue = hasStoredParameters ? event_parameters : legacy_config_parameters
 
-    return addDefaultValue(baseValue, triggerParameterSchema)
-  }, [triggerParameterSchema, event_parameters, config])
+    const configuredValue = getConfiguredValue(baseValue, triggerParameterSchema) as PluginTriggerVarInputs
+    return normalizeEventParameters(configuredValue)
+  }, [triggerParameterSchema, event_parameters, legacy_config_parameters])
+
+  useEffect(() => {
+    if (!triggerParameterSchema.length)
+      return
+
+    if (event_parameters && Object.keys(event_parameters).length > 0)
+      return
+
+    if (!triggerParameterValue || Object.keys(triggerParameterValue).length === 0)
+      return
+
+    const newInputs = produce(inputs, (draft) => {
+      draft.event_parameters = triggerParameterValue
+      draft.config = triggerParameterValue
+    })
+    doSetInputs(newInputs)
+  }, [
+    doSetInputs,
+    event_parameters,
+    inputs,
+    triggerParameterSchema,
+    triggerParameterValue,
+  ])
 
   const setTriggerParameterValue = useCallback(
-    (value: Record<string, any>) => {
+    (value: PluginTriggerVarInputs) => {
+      const sanitizedValue = normalizeEventParameters(value)
       const newInputs = produce(inputs, (draft) => {
-        draft.event_parameters = value
-        draft.config = value
+        draft.event_parameters = sanitizedValue
+        draft.config = sanitizedValue
       })
       doSetInputs(newInputs)
     },
@@ -100,20 +188,16 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
   const setInputVar = useCallback(
     (variable: InputVar, varDetail: InputVar) => {
       const newInputs = produce(inputs, (draft) => {
-        const nextEventParameters = {
+        const nextEventParameters = normalizeEventParameters({
           ...(draft.event_parameters || {}),
-        } as PluginTriggerVarInputs
-
-        nextEventParameters[variable.variable] = {
-          type: VarKindType.variable,
-          value: varDetail.variable,
-        }
+          [variable.variable]: {
+            type: VarKindType.variable,
+            value: varDetail.variable,
+          },
+        } as PluginTriggerVarInputs)
 
         draft.event_parameters = nextEventParameters
-        draft.config = {
-          ...nextEventParameters,
-          [variable.variable]: varDetail.variable,
-        }
+        draft.config = nextEventParameters
       })
       doSetInputs(newInputs)
     },
