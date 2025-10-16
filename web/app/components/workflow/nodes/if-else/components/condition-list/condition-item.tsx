@@ -236,6 +236,7 @@ const ConditionItem = ({
       draft.comparison_operator = getOperators(resolvedVarType)[0]
       delete draft.key
       delete draft.sub_variable_condition
+      delete draft.numberVarType
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     })
     doUpdateCondition(newCondition)
