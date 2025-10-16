@@ -256,6 +256,7 @@ def sse_client(
     headers: dict[str, Any] | None = None,
     timeout: float = 5.0,
     sse_read_timeout: float = 5 * 60,
+    proxy: dict[str, Any] | None = None,
 ) -> Generator[tuple[ReadQueue, WriteQueue], None, None]:
     """
     Client transport for SSE.
@@ -278,7 +279,7 @@ def sse_client(
 
     with ThreadPoolExecutor() as executor:
         try:
-            with create_ssrf_proxy_mcp_http_client(headers=transport.headers) as client:
+            with create_ssrf_proxy_mcp_http_client(headers=transport.headers, proxy=proxy) as client:
                 with ssrf_proxy_sse_connect(
                     url, timeout=httpx.Timeout(timeout, read=sse_read_timeout), client=client
                 ) as event_source:

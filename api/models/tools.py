@@ -327,6 +327,8 @@ class MCPToolProvider(TypeBase):
     )
     # encrypted headers for MCP server requests
     encrypted_headers: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
+    # encrypted proxy settings for MCP server requests
+    encrypted_proxy: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
 
     def load_user(self) -> Account | None:
         return db.session.query(Account).where(Account.id == self.user_id).first()
@@ -419,6 +421,49 @@ class MCPToolProvider(TypeBase):
             return result
         except Exception:
             return {}
+
+    @property
+    def decrypted_proxy(self) -> dict[str, Any]:
+        """Get decrypted proxy config for MCP server requests."""
+        from core.entities.provider_entities import BasicProviderConfig
+        from core.helper.provider_cache import NoOpProviderCredentialCache
+        from core.tools.utils.encryption import create_provider_encrypter
+
+        try:
+            if not self.encrypted_proxy:
+                return {}
+
+            proxy_data = json.loads(self.encrypted_proxy)
+
+            # Treat all fields as secret inputs for consistency
+            config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in proxy_data]
+
+            encrypter_instance, _ = create_provider_encrypter(
+                tenant_id=self.tenant_id,
+                config=config,
+                cache=NoOpProviderCredentialCache(),
+            )
+
+            result = encrypter_instance.decrypt(proxy_data)
+            return result
+        except Exception:
+            return {}
+
+    @property
+    def proxy_host(self) -> str:
+        proxy = self.decrypted_proxy
+        return str(proxy.get("host", "")) if isinstance(proxy, dict) else ""
+
+    @property
+    def proxy_username(self) -> str:
+        proxy = self.decrypted_proxy
+        return str(proxy.get("username", "")) if isinstance(proxy, dict) else ""
+
+    @property
+    def masked_proxy_password(self) -> str:
+        proxy = self.decrypted_proxy
+        pwd = proxy.get("password") if isinstance(proxy, dict) else ""
+        return "********" if pwd else ""
 
     @property
     def masked_server_url(self) -> str:

@@ -1,6 +1,7 @@
 import json
 from collections.abc import Generator
 from contextlib import AbstractContextManager
+from urllib.parse import urlparse, urlunparse, quote
 
 import httpx
 import httpx_sse
@@ -18,6 +19,7 @@ STATUS_FORCELIST = [429, 500, 502, 503, 504]
 def create_ssrf_proxy_mcp_http_client(
     headers: dict[str, str] | None = None,
     timeout: httpx.Timeout | None = None,
+    proxy: dict[str, str] | None = None,
 ) -> httpx.Client:
     """Create an HTTPX client with SSRF proxy configuration for MCP connections.
 
@@ -28,6 +30,37 @@ def create_ssrf_proxy_mcp_http_client(
     Returns:
         Configured httpx.Client with proxy settings
     """
+    # Per-provider proxy overrides global SSRF proxy settings
+    if proxy and isinstance(proxy, dict) and proxy.get("host"):
+        def build_proxy_url(host: str, user: str, pwd: str) -> str:
+            parsed = urlparse(host if "://" in host else f"http://{host}")
+
+            hostname = parsed.hostname or ""
+            netloc = f"{hostname}:{parsed.port}" if parsed.port else hostname
+            if user or pwd:
+                u = quote(user or "", safe="")
+                p = quote(pwd or "", safe="")
+                netloc = f"{u}:{p}@{netloc}"
+            return urlunparse((parsed.scheme, netloc, parsed.path or "", parsed.params, parsed.query, parsed.fragment))
+
+        proxy_url = build_proxy_url(
+            str(proxy.get("host", "")).strip(),
+            str(proxy.get("username", "")).strip(),
+            str(proxy.get("password", "")).strip(),
+        )
+
+        proxy_mounts = {
+            "http://": httpx.HTTPTransport(proxy=proxy_url, verify=HTTP_REQUEST_NODE_SSL_VERIFY),
+            "https://": httpx.HTTPTransport(proxy=proxy_url, verify=HTTP_REQUEST_NODE_SSL_VERIFY),
+        }
+        return httpx.Client(
+            verify=HTTP_REQUEST_NODE_SSL_VERIFY,
+            headers=headers or {},
+            timeout=timeout,
+            follow_redirects=True,
+            mounts=proxy_mounts,
+        )
+
     if dify_config.SSRF_PROXY_ALL_URL:
         return httpx.Client(
             verify=HTTP_REQUEST_NODE_SSL_VERIFY,

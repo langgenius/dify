@@ -10,6 +10,7 @@ from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.error import MCPAuthError, MCPError
 from core.mcp.mcp_client import MCPClient
+from configs import dify_config
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
@@ -92,6 +93,7 @@ class MCPToolManageService:
         timeout: float,
         sse_read_timeout: float,
         headers: dict[str, str] | None = None,
+        proxy: dict[str, str] | None = None,
     ) -> ToolProviderApiEntity:
         server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
         existing_provider = (
@@ -120,6 +122,20 @@ class MCPToolManageService:
             encrypted_headers_dict = MCPToolManageService._encrypt_headers(headers, tenant_id)
             encrypted_headers = json.dumps(encrypted_headers_dict)
 
+        # Encrypt proxy
+        encrypted_proxy = None
+        if proxy and isinstance(proxy, dict) and proxy.get("host"):
+            encrypted_proxy = json.dumps(
+                MCPToolManageService._encrypt_headers(
+                    {
+                        "host": proxy.get("host", ""),
+                        **({"username": proxy.get("username", "")} if proxy.get("username") else {}),
+                        **({"password": proxy.get("password", "")} if proxy.get("password") else {}),
+                    },
+                    tenant_id,
+                )
+            )
+
         mcp_tool = MCPToolProvider(
             tenant_id=tenant_id,
             name=name,
@@ -133,6 +149,7 @@ class MCPToolManageService:
             timeout=timeout,
             sse_read_timeout=sse_read_timeout,
             encrypted_headers=encrypted_headers,
+            encrypted_proxy=encrypted_proxy,
         )
         db.session.add(mcp_tool)
         db.session.commit()
@@ -157,6 +174,7 @@ class MCPToolManageService:
         server_url = mcp_provider.decrypted_server_url
         authed = mcp_provider.authed
         headers = mcp_provider.decrypted_headers
+        proxy = mcp_provider.decrypted_proxy
         timeout = mcp_provider.timeout
         sse_read_timeout = mcp_provider.sse_read_timeout
 
@@ -170,6 +188,7 @@ class MCPToolManageService:
                 headers=headers,
                 timeout=timeout,
                 sse_read_timeout=sse_read_timeout,
+                proxy=(proxy if dify_config.MCP_PROVIDER_PROXY_ENABLED else {}),
             ) as mcp_client:
                 tools = mcp_client.list_tools()
         except MCPAuthError:
@@ -225,6 +244,7 @@ class MCPToolManageService:
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
         headers: dict[str, str] | None = None,
+        proxy: dict[str, str] | None = None,
     ):
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
 
@@ -286,6 +306,41 @@ class MCPToolManageService:
                 else:
                     # Explicitly clear headers if empty dict passed
                     mcp_provider.encrypted_headers = None
+
+            if proxy is not None:
+                if proxy and proxy.get("host"):
+                    # Merge with existing decrypted proxy to preserve password/username when not provided
+                    existing_decrypted = mcp_provider.decrypted_proxy or {}
+                    incoming_host = proxy.get("host")
+                    incoming_username = proxy.get("username")
+                    incoming_password = proxy.get("password")
+
+                    final_host = incoming_host or existing_decrypted.get("host", "")
+                    final_username = (
+                        incoming_username
+                        if incoming_username is not None
+                        else existing_decrypted.get("username", "")
+                    )
+                    final_password = (
+                        incoming_password
+                        if incoming_password is not None
+                        else existing_decrypted.get("password", "")
+                    )
+
+                    to_encrypt: dict[str, str] = {"host": final_host}
+                    if final_username:
+                        to_encrypt["username"] = final_username
+                    if final_password:
+                        to_encrypt["password"] = final_password
+
+                    encrypted_proxy_dict = MCPToolManageService._encrypt_headers(
+                        to_encrypt,
+                        tenant_id,
+                    )
+                    mcp_provider.encrypted_proxy = json.dumps(encrypted_proxy_dict)
+                else:
+                    # Explicitly clear proxy if host is empty
+                    mcp_provider.encrypted_proxy = None
             db.session.commit()
         except IntegrityError as e:
             db.session.rollback()

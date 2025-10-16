@@ -88,6 +88,7 @@ export const useCreateMCP = () => {
       timeout?: number
       sse_read_timeout?: number
       headers?: Record<string, string>
+      proxy?: { host: string; username?: string; password?: string }
     }) => {
       return post<ToolWithProvider>('workspaces/current/tool-provider/mcp', {
         body: {
@@ -115,6 +116,7 @@ export const useUpdateMCP = ({
       timeout?: number
       sse_read_timeout?: number
       headers?: Record<string, string>
+      proxy?: { host: string; username?: string; password?: string }
     }) => {
       return put('workspaces/current/tool-provider/mcp', {
         body: {

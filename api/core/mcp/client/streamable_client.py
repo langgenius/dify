@@ -407,6 +407,7 @@ def streamablehttp_client(
     timeout: float | timedelta = 30,
     sse_read_timeout: float | timedelta = 60 * 5,
     terminate_on_close: bool = True,
+    proxy: dict[str, Any] | None = None,
 ) -> Generator[
     tuple[
         ServerToClientQueue,  # Queue for receiving messages FROM server
@@ -439,6 +440,7 @@ def streamablehttp_client(
             with create_ssrf_proxy_mcp_http_client(
                 headers=transport.request_headers,
                 timeout=httpx.Timeout(transport.timeout, read=transport.sse_read_timeout),
+                proxy=proxy,
             ) as client:
                 # Define callbacks that need access to thread pool
                 def start_get_stream():

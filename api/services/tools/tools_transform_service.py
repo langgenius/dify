@@ -253,6 +253,9 @@ class ToolTransformService:
             sse_read_timeout=db_provider.sse_read_timeout,
             masked_headers=db_provider.masked_headers,
             original_headers=db_provider.decrypted_headers,
+            proxy_host=db_provider.proxy_host,
+            proxy_username=db_provider.proxy_username,
+            masked_proxy_password=db_provider.masked_proxy_password,
         )
 
     @staticmethod
