@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.provider_cache import NoOpProviderCredentialCache
-from core.helper.provider_encryption import create_provider_encrypter
+from core.helper.provider_encryption import ProviderConfigEncrypter, create_provider_encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
@@ -154,11 +154,13 @@ class TriggerProviderService:
                     if existing:
                         raise ValueError(f"Credential name '{name}' already exists for this provider")
 
-                    credential_encrypter, _ = create_provider_encrypter(
-                        tenant_id=tenant_id,
-                        config=provider_controller.get_credential_schema_config(credential_type),
-                        cache=NoOpProviderCredentialCache(),
-                    )
+                    credential_encrypter: ProviderConfigEncrypter | None = None
+                    if credential_type != CredentialType.UNAUTHORIZED:
+                        credential_encrypter, _ = create_provider_encrypter(
+                            tenant_id=tenant_id,
+                            config=provider_controller.get_credential_schema_config(credential_type),
+                            cache=NoOpProviderCredentialCache(),
+                        )
 
                     properties_encrypter, _ = create_provider_encrypter(
                         tenant_id=tenant_id,
@@ -176,7 +178,7 @@ class TriggerProviderService:
                         provider_id=str(provider_id),
                         parameters=parameters,
                         properties=properties_encrypter.encrypt(dict(properties)),
-                        credentials=credential_encrypter.encrypt(dict(credentials)),
+                        credentials=credential_encrypter.encrypt(dict(credentials)) if credential_encrypter else {},
                         credential_type=credential_type.value,
                         credential_expires_at=credential_expires_at,
                         expires_at=expires_at,
