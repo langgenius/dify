@@ -26,7 +26,7 @@ import { useGetTryAppDataSets, useGetTryAppInfo } from '@/service/use-try-app'
 import { noop } from 'lodash'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../header/account-setting/model-provider-page/hooks'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../../header/account-setting/model-provider-page/hooks'
 import { useAllToolProviders } from '@/service/use-tools'
 import { basePath } from '@/utils/var'
 
@@ -55,7 +55,7 @@ const defaultModelConfig = {
   dataSets: [],
   agentConfig: DEFAULT_AGENT_SETTING,
 }
-const Configuration: FC<Props> = ({
+const BasicAppPreview: FC<Props> = ({
   appId,
 }) => {
   const media = useBreakpoints()
@@ -358,4 +358,4 @@ const Configuration: FC<Props> = ({
     </ConfigContext.Provider>
   )
 }
-export default React.memo(Configuration)
+export default React.memo(BasicAppPreview)

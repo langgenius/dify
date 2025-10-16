@@ -310,7 +310,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
         </div>
       )}
 
-      {mode === AppType.completion && dataSet.length > 0 && (
+      {!readonly && mode === AppType.completion && dataSet.length > 0 && (
         <ContextVar
           value={selectedContextVar?.key}
           options={promptVariablesToSelect}
