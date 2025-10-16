@@ -8,6 +8,8 @@ import type {
 import type { ModelConfig } from '@/types/app'
 import qs from 'qs'
 import type { DataSetListResponse } from '@/models/datasets'
+import type { Edge, Node } from '@/app/components/workflow/types'
+import type { Viewport } from 'reactflow'
 
 type TryAppInfo = {
   name: string
@@ -24,4 +26,16 @@ export const fetchTryAppInfo = async (appId: string) => {
 export const fetchTryAppDatasets = (appId: string, ids: string[]) => {
   const urlParams = qs.stringify({ ids }, { indices: false })
   return get<DataSetListResponse>(`/trial-apps/${appId}/datasets?${urlParams}`)
+}
+
+type TryAppFlowPreview = {
+  graph: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport: Viewport
+  }
+}
+
+export const fetchTryAppFlowPreview = (appId: string) => {
+  return get<TryAppFlowPreview>(`/trial-apps/${appId}/workflows`)
 }

@@ -21,6 +21,6 @@ const Preview: FC<Props> = ({
     </div>
   }
 
-  return isBasicApp ? <BasicAppPreview appId={appId} /> : <FlowAppPreview appId={appId} />
+  return isBasicApp ? <BasicAppPreview appId={appId} /> : <FlowAppPreview appId={appId} className='h-[80vh]' />
 }
 export default React.memo(Preview)

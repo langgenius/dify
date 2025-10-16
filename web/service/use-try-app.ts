@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchTryAppDatasets, fetchTryAppInfo } from './try-app'
+import { fetchTryAppDatasets, fetchTryAppFlowPreview, fetchTryAppInfo } from './try-app'
 import { AppSourceType, fetchAppParams } from './share'
 import type { DataSetListResponse } from '@/models/datasets'
 
@@ -30,5 +30,14 @@ export const useGetTryAppDataSets = (appId: string, ids: string[]) => {
       return fetchTryAppDatasets(appId, ids)
     },
     enabled: ids.length > 0,
+  })
+}
+
+export const useGetTryAppFlowPreview = (appId: string) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'preview', appId],
+    queryFn: () => {
+      return fetchTryAppFlowPreview(appId)
+    },
   })
 }
