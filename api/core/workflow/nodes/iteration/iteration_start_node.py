@@ -18,7 +18,7 @@ class IterationStartNode(Node):
     _node_data: IterationStartNodeData
 
     def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = IterationStartNodeData(**data)
+        self._node_data = IterationStartNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy

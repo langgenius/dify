@@ -328,6 +328,7 @@ const translation = {
     changeBlock: 'Changer de nœud',
     maximize: 'Maximiser le Canvas',
     minimize: 'Sortir du mode plein écran',
+    optional_and_hidden: '(optionnel et caché)',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'Contenu généré',
+        reasoning_content: 'Contenu de raisonnement',
         usage: 'Informations sur l\'utilisation du modèle',
       },
       singleRun: {
@@ -944,6 +946,9 @@ const translation = {
       retrievalSettingIsRequired: 'Le paramètre de récupération est requis',
       chunksInput: 'Morceaux',
       chunksInputTip: 'La variable d\'entrée du nœud de la base de connaissances est Chunks. Le type de variable est un objet avec un schéma JSON spécifique qui doit être cohérent avec la structure de morceau sélectionnée.',
+      rerankingModelIsRequired: 'Un modèle de rerankage est requis',
+      embeddingModelIsRequired: 'Un modèle d\'intégration est requis',
+      chunksVariableIsRequired: 'La variable Chunks est requise',
     },
   },
   tracing: {

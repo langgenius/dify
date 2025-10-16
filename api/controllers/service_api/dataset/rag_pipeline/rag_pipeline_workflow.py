@@ -17,7 +17,7 @@ from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from libs import helper
 from libs.login import current_user
-from models.account import Account
+from models import Account
 from models.dataset import Pipeline
 from models.engine import db
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
@@ -98,7 +98,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
         parser.add_argument("is_published", type=bool, required=True, location="json")
         args: ParseResult = parser.parse_args()
 
-        datasource_node_run_api_entity: DatasourceNodeRunApiEntity = DatasourceNodeRunApiEntity(**args)
+        datasource_node_run_api_entity = DatasourceNodeRunApiEntity.model_validate(args)
         assert isinstance(current_user, Account)
         rag_pipeline_service: RagPipelineService = RagPipelineService()
         pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id)

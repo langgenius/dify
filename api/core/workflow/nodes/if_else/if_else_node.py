@@ -83,7 +83,7 @@ class IfElseNode(Node):
             else:
                 # TODO: Update database then remove this
                 # Fallback to old structure if cases are not defined
-                input_conditions, group_result, final_result = _should_not_use_old_function(  # ty: ignore [deprecated]
+                input_conditions, group_result, final_result = _should_not_use_old_function(  # pyright: ignore [reportDeprecated]
                     condition_processor=condition_processor,
                     variable_pool=self.graph_runtime_state.variable_pool,
                     conditions=self._node_data.conditions or [],

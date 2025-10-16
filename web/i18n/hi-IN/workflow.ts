@@ -340,6 +340,7 @@ const translation = {
     organizeBlocks: 'नोड्स का आयोजन करें',
     minimize: 'पूर्ण स्क्रीन से बाहर निकलें',
     maximize: 'कैनवास का अधिकतम लाभ उठाएँ',
+    optional_and_hidden: '(वैकल्पिक और छिपा हुआ)',
   },
   nodes: {
     common: {
@@ -457,6 +458,7 @@ const translation = {
       },
       outputVars: {
         output: 'सामग्री उत्पन्न करें',
+        reasoning_content: 'तर्क सामग्री',
         usage: 'मॉडल उपयोग जानकारी',
       },
       singleRun: {
@@ -963,7 +965,10 @@ const translation = {
       aboutRetrieval: 'पुनर्प्राप्ति विधि के बारे में।',
       chooseChunkStructure: 'एक चंक संरचना चुनें',
       chunksInput: 'टुकड़े',
-      chunksInputTip: 'ज्ञान आधार नोड का इनपुट वेरिएबल चंक्स है। वेरिएबल प्रकार एक ऑब्जेक्ट है जिसमें एक विशेष JSON स्कीमा है जो चयनित चंक संरचना के साथ सुसंगत होना चाहिए।',
+      chunksInputTip: 'ज्ञान आधार नोड का इनपुट वेरिएबल टुकड़े है। वेरिएबल प्रकार एक ऑब्जेक्ट है जिसमें एक विशेष JSON स्कीमा है जो चयनित चंक संरचना के साथ सुसंगत होना चाहिए।',
+      chunksVariableIsRequired: 'टुकड़े चर आवश्यक है',
+      embeddingModelIsRequired: 'एम्बेडिंग मॉडल आवश्यक है',
+      rerankingModelIsRequired: 'पुनः क्रमांकन मॉडल की आवश्यकता है',
     },
   },
   tracing: {

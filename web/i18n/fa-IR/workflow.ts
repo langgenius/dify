@@ -328,6 +328,7 @@ const translation = {
     addNextStep: 'مرحله بعدی را به این فرآیند اضافه کنید',
     minimize: 'خروج از حالت تمام صفحه',
     maximize: 'بیشینه‌سازی بوم',
+    optional_and_hidden: '(اختیاری و پنهان)',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'تولید محتوا',
+        reasoning_content: 'محتوای استدلال',
         usage: 'اطلاعات استفاده از مدل',
       },
       singleRun: {
@@ -943,7 +945,10 @@ const translation = {
       chunkIsRequired: 'ساختار تکه ای مورد نیاز است',
       chooseChunkStructure: 'یک ساختار تکه ای را انتخاب کنید',
       chunksInput: 'تکه‌ها',
-      chunksInputTip: 'متغیر ورودی گره پایگاه دانش چانک‌ها است. نوع متغیر یک شیء با یک طرح JSON خاص است که باید با ساختار چانک انتخاب شده سازگار باشد.',
+      chunksInputTip: 'متغیر ورودی گره پایگاه دانش تکه‌ها است. نوع متغیر یک شیء با یک طرح JSON خاص است که باید با ساختار تکه انتخاب شده سازگار باشد.',
+      embeddingModelIsRequired: 'مدل جاسازی مورد نیاز است',
+      chunksVariableIsRequired: 'متغیر تکه‌ها الزامی است',
+      rerankingModelIsRequired: 'مدل رتبه‌بندی مجدد مورد نیاز است',
     },
   },
   tracing: {

@@ -163,6 +163,10 @@ const translation = {
       description: 'Platforma de observabilitate SaaS oferită de Alibaba Cloud permite monitorizarea, urmărirea și evaluarea aplicațiilor Dify din cutie.',
       title: 'Monitorizarea Cloud',
     },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Monitorizarea Performanței Aplicațiilor Tencent oferă trasabilitate cuprinzătoare și analiză multidimensională pentru aplicațiile LLM.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Dacă să utilizați pictograma web app pentru a înlocui 🤖 în Explore',

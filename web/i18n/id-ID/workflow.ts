@@ -325,6 +325,7 @@ const translation = {
     changeBlock: 'Ubah Node',
     runThisStep: 'Jalankan langkah ini',
     maximize: 'Maksimalkan Kanvas',
+    optional_and_hidden: '(opsional & tersembunyi)',
   },
   nodes: {
     common: {
@@ -427,6 +428,7 @@ const translation = {
       },
       outputVars: {
         output: 'Hasilkan konten',
+        reasoning_content: 'Konten penalaran',
         usage: 'Informasi Penggunaan Model',
       },
       singleRun: {
@@ -919,6 +921,9 @@ const translation = {
       chunkStructure: 'Struktur Potongan',
       chunksInput: 'Potongan',
       chunksInputTip: 'Variabel input dari node basis pengetahuan adalah Chunks. Tipe variabel adalah objek dengan Skema JSON tertentu yang harus konsisten dengan struktur chunk yang dipilih.',
+      chunksVariableIsRequired: 'Variabel Chunks diperlukan',
+      rerankingModelIsRequired: 'Model reranking diperlukan',
+      embeddingModelIsRequired: 'Model embedding diperlukan',
     },
   },
   tracing: {},
