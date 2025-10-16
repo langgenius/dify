@@ -43,6 +43,7 @@ def test_abort_command():
     # Make mock node.run() return proper events to allow GraphEngine to complete
     # Use fixed timestamp for test determinism
     test_time = datetime(2025, 1, 1, 12, 0, 0)
+
     def mock_run():
         exec_id = str(uuid4())
         yield NodeRunStartedEvent(
