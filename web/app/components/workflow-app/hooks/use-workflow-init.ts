@@ -18,6 +18,7 @@ import {
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import type { FileUploadConfigResponse } from '@/models/common'
+import { useFormatMemoryVariables } from '@/app/components/workflow/hooks'
 
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
@@ -41,6 +42,7 @@ export const useWorkflowInit = () => {
     data: fileUploadConfigResponse,
     isLoading: isFileUploadConfigLoading,
   } = useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
+  const { formatMemoryVariables } = useFormatMemoryVariables()
 
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
@@ -53,7 +55,7 @@ export const useWorkflowInit = () => {
         }, {} as Record<string, string>),
         environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
         conversationVariables: res.conversation_variables || [],
-        memoryVariables: res.memory_blocks || [],
+        memoryVariables: formatMemoryVariables((res.memory_blocks || []), res.graph.nodes),
       })
       setSyncWorkflowDraftHash(res.hash)
       setIsLoading(false)

@@ -3,10 +3,12 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks'
+import { useFormatMemoryVariables } from '@/app/components/workflow/hooks'
 
 export const useWorkflowRefreshDraft = () => {
   const workflowStore = useWorkflowStore()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
+  const { formatMemoryVariables } = useFormatMemoryVariables()
 
   const handleRefreshWorkflowDraft = useCallback(() => {
     const {
@@ -28,9 +30,9 @@ export const useWorkflowRefreshDraft = () => {
       }, {} as Record<string, string>))
       setEnvironmentVariables(response.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [])
       setConversationVariables(response.conversation_variables || [])
-      setMemoryVariables(response.memory_blocks || [])
+      setMemoryVariables(formatMemoryVariables((response.memory_blocks || []), response.graph.nodes))
     }).finally(() => setIsSyncingWorkflowDraft(false))
-  }, [handleUpdateWorkflowCanvas, workflowStore])
+  }, [handleUpdateWorkflowCanvas, workflowStore, formatMemoryVariables])
 
   return {
     handleRefreshWorkflowDraft,

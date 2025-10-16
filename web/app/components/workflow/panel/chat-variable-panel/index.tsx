@@ -29,12 +29,14 @@ import { useDocLink } from '@/context/i18n'
 import cn from '@/utils/classnames'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { ChatVarType } from './type'
+import { useMemoryVariable } from '@/app/components/workflow/hooks'
 
 const ChatVariablePanel = () => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const { handleAddMemoryVariable, handleUpdateMemoryVariable, handleDeleteMemoryVariable } = useMemoryVariable()
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
   const memoryVariables = useStore(s => s.memoryVariables) as MemoryVariable[]
@@ -90,8 +92,8 @@ const ChatVariablePanel = () => {
     removeUsedVarInNodes(chatVar)
     const varList = workflowStore.getState().conversationVariables
     updateChatVarList(varList.filter(v => v.id !== chatVar.id))
-    const memoryList = workflowStore.getState().memoryVariables
-    setMemoryVariables(memoryList.filter(v => v.id !== chatVar.id))
+    if (chatVar.value_type === ChatVarType.Memory)
+      handleDeleteMemoryVariable(chatVar as MemoryVariable)
     setCacheForDelete(undefined)
     setShowRemoveConfirm(false)
     handleVarChanged(chatVar.value_type === ChatVarType.Memory)
@@ -110,8 +112,10 @@ const ChatVariablePanel = () => {
 
   const handleSave = useCallback(async (chatVar: ConversationVariable | MemoryVariable) => {
     if (chatVar.value_type === ChatVarType.Memory) {
-      const memoryVarList = workflowStore.getState().memoryVariables
-      setMemoryVariables([chatVar, ...memoryVarList])
+      if (!currentVar)
+        handleAddMemoryVariable(chatVar as MemoryVariable)
+      else
+        handleUpdateMemoryVariable(chatVar as MemoryVariable)
       handleVarChanged(true)
       return
     }

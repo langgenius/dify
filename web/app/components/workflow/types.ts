@@ -179,6 +179,8 @@ export type MemoryVariable = {
   term?: string
   end_user_editable?: boolean
   value_type: ChatVarType
+  node?: string
+  more?: boolean
 }
 
 export type ConversationVariable = {

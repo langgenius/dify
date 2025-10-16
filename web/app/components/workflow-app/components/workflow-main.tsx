@@ -19,6 +19,7 @@ import {
   useWorkflowStartRun,
 } from '../hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useFormatMemoryVariables } from '@/app/components/workflow/hooks'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({
@@ -28,6 +29,7 @@ const WorkflowMain = ({
 }: WorkflowMainProps) => {
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
+  const { formatMemoryVariables } = useFormatMemoryVariables()
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {
@@ -51,9 +53,9 @@ const WorkflowMain = ({
     }
     if (memory_blocks) {
       const { setMemoryVariables } = workflowStore.getState()
-      setMemoryVariables(memory_blocks)
+      setMemoryVariables(formatMemoryVariables(memory_blocks, nodes))
     }
-  }, [featuresStore, workflowStore])
+  }, [featuresStore, workflowStore, formatMemoryVariables])
 
   const {
     doSyncWorkflowDraft,

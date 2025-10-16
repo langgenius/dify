@@ -39,6 +39,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { useFormatMemoryVariables } from '@/app/components/workflow/hooks'
 
 type UpdateDSLModalProps = {
   onCancel: () => void
@@ -80,6 +81,7 @@ const UpdateDSLModal = ({
     if (!file)
       setFileContent('')
   }
+  const { formatMemoryVariables } = useFormatMemoryVariables()
 
   const handleWorkflowUpdate = useCallback(async (app_id: string) => {
     const {
@@ -117,20 +119,21 @@ const UpdateDSLModal = ({
       moderation: features.sensitive_word_avoidance || { enabled: false },
     }
 
+    const formattedNodes = initialNodes(nodes, edges)
     eventEmitter?.emit({
       type: WORKFLOW_DATA_UPDATE,
       payload: {
-        nodes: initialNodes(nodes, edges),
+        nodes: formattedNodes,
         edges: initialEdges(edges, nodes),
         viewport,
         features: newFeatures,
         hash,
         conversation_variables: conversation_variables || [],
         environment_variables: environment_variables || [],
-        memory_blocks: memory_blocks || [],
+        memory_blocks: formatMemoryVariables(memory_blocks || [], formattedNodes),
       },
     } as any)
-  }, [eventEmitter])
+  }, [eventEmitter, formatMemoryVariables])
 
   const isCreatingRef = useRef(false)
   const handleImport: MouseEventHandler = useCallback(async () => {

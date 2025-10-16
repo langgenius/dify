@@ -5,8 +5,9 @@ import {
   RiArrowDownSLine,
   RiCheckLine,
 } from '@remixicon/react'
+import { useShallow } from 'zustand/react/shallow'
 import {
-  useNodes,
+  useStore,
 } from 'reactflow'
 import {
   PortalToFollowElem,
@@ -14,9 +15,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import type {
-  CommonNodeType,
-} from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
@@ -32,12 +30,13 @@ const NodeSelector: FC<Props> = ({
   nodeType = BlockEnum.LLM,
 }) => {
   const [open, setOpen] = useState(false)
-  const nodes = useNodes<CommonNodeType>()
 
-  const filteredNodes = nodeType ? nodes.filter(node => node.data?.type === nodeType) : nodes
+  const filteredNodes = useStore(useShallow((s) => {
+    const nodes = [...s.nodeInternals.values()]
+    return nodes.filter(node => node.data?.type === nodeType)
+  }))
 
   const currentNode = useMemo(() => filteredNodes.find(node => node.id === value), [filteredNodes, value])
-
   return (
     <PortalToFollowElem
       open={open}
