@@ -16,6 +16,7 @@ from uuid import uuid4
 from flask import Flask
 from typing_extensions import override
 
+from core.workflow.enums import NodeType
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent
 from core.workflow.nodes.base.node import Node
@@ -99,12 +100,27 @@ class Worker(threading.Thread):
             except queue.Empty:
                 continue
 
+            # Execute node with full exception handling including node lookup
             self._last_task_time = time.time()
-            node = self._graph.nodes[node_id]
             try:
+                node = self._graph.nodes[node_id]
                 self._execute_node(node)
                 self._ready_queue.task_done()
+            except KeyError:
+                # Node not found in graph - this shouldn't happen in normal operation
+                # but could occur during state restoration or graph modifications
+                error_event = NodeRunFailedEvent(
+                    id=str(uuid4()),
+                    node_id=node_id,
+                    node_type=NodeType.CODE,
+                    in_iteration_id=None,
+                    error=f"Node '{node_id}' not found in graph",
+                    start_at=datetime.now(),
+                )
+                self._event_queue.put(error_event)
+                self._ready_queue.task_done()
             except Exception as e:
+                # General exception during node execution
                 error_event = NodeRunFailedEvent(
                     id=str(uuid4()),
                     node_id=node_id,

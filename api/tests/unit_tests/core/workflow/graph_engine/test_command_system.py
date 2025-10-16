@@ -41,6 +41,8 @@ def test_abort_command():
     mock_start_node.graph_runtime_state = shared_runtime_state  # Use shared instance
     
     # Make mock node.run() return proper events to allow GraphEngine to complete
+    # Use fixed timestamp for test determinism
+    test_time = datetime(2025, 1, 1, 12, 0, 0)
     def mock_run():
         exec_id = str(uuid4())
         yield NodeRunStartedEvent(
@@ -48,13 +50,13 @@ def test_abort_command():
             node_id="start",
             node_type=NodeType.START,
             node_title="Start",
-            start_at=datetime.now(),
+            start_at=test_time,
         )
         yield NodeRunSucceededEvent(
             id=exec_id,
             node_id="start",
             node_type=NodeType.START,
-            start_at=datetime.now(),
+            start_at=test_time,
             node_run_result=NodeRunResult(outputs={}),
         )
     mock_start_node.run = mock_run
