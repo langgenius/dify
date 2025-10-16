@@ -10,7 +10,7 @@ from configs import dify_config
 from dify_app import DifyApp
 from extensions.ext_database import db
 from libs.passport import PassportService
-from models.account import Account, Tenant, TenantAccountJoin
+from models import Account, Tenant, TenantAccountJoin
 from models.model import AppMCPServer, EndUser
 from services.account_service import AccountService
 

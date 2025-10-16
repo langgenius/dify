@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy import select
 
 from constants.model_template import default_app_templates
-from models.account import Account
+from models import Account
 from models.model import App, Site
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService

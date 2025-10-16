@@ -7,13 +7,12 @@ from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
 from libs.helper import TimestampField
-from libs.login import current_user, login_required
-from models.account import Account
+from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
 from models.model import ApiToken, App
 
 from . import api, console_ns
-from .wraps import account_initialization_required, setup_required
+from .wraps import account_initialization_required, edit_permission_required, setup_required
 
 api_key_fields = {
     "id": fields.String,
@@ -57,9 +56,9 @@ class BaseApiKeyListResource(Resource):
     def get(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-        _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
+        _, current_tenant_id = current_account_with_tenant()
+
+        _get_resource(resource_id, current_tenant_id, self.resource_model)
         keys = db.session.scalars(
             select(ApiToken).where(
                 ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id
@@ -68,15 +67,12 @@ class BaseApiKeyListResource(Resource):
         return {"items": keys}
 
     @marshal_with(api_key_fields)
+    @edit_permission_required
     def post(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-        _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
+        _, current_tenant_id = current_account_with_tenant()
+        _get_resource(resource_id, current_tenant_id, self.resource_model)
         current_key_count = (
             db.session.query(ApiToken)
             .where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
@@ -93,7 +89,7 @@ class BaseApiKeyListResource(Resource):
         key = ApiToken.generate_api_key(self.token_prefix or "", 24)
         api_token = ApiToken()
         setattr(api_token, self.resource_id_field, resource_id)
-        api_token.tenant_id = current_user.current_tenant_id
+        api_token.tenant_id = current_tenant_id
         api_token.token = key
         api_token.type = self.resource_type
         db.session.add(api_token)
@@ -112,9 +108,8 @@ class BaseApiKeyResource(Resource):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         api_key_id = str(api_key_id)
-        assert isinstance(current_user, Account)
-        assert current_user.current_tenant_id is not None
-        _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
+        current_user, current_tenant_id = current_account_with_tenant()
+        _get_resource(resource_id, current_tenant_id, self.resource_model)
 
         # The role of the current user in the ta table must be admin or owner
         if not current_user.is_admin_or_owner:
@@ -158,11 +153,6 @@ class AppApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for an app"""
         return super().post(resource_id)
 
-    def after_request(self, resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
-
     resource_type = "app"
     resource_model = App
     resource_id_field = "app_id"
@@ -178,11 +168,6 @@ class AppApiKeyResource(BaseApiKeyResource):
     def delete(self, resource_id, api_key_id):
         """Delete an API key for an app"""
         return super().delete(resource_id, api_key_id)
-
-    def after_request(self, resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
 
     resource_type = "app"
     resource_model = App
@@ -208,11 +193,6 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for a dataset"""
         return super().post(resource_id)
 
-    def after_request(self, resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
-
     resource_type = "dataset"
     resource_model = Dataset
     resource_id_field = "dataset_id"
@@ -228,11 +208,6 @@ class DatasetApiKeyResource(BaseApiKeyResource):
     def delete(self, resource_id, api_key_id):
         """Delete an API key for a dataset"""
         return super().delete(resource_id, api_key_id)
-
-    def after_request(self, resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
 
     resource_type = "dataset"
     resource_model = Dataset

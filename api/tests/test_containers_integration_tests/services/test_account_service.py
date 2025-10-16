@@ -9,7 +9,7 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from controllers.console.error import AccountNotFound, NotAllowedCreateWorkspace
-from models.account import AccountStatus, TenantAccountJoin
+from models import AccountStatus, TenantAccountJoin
 from services.account_service import AccountService, RegisterService, TenantService, TokenPair
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -471,7 +471,7 @@ class TestAccountService:
 
         # Verify integration was created
         from extensions.ext_database import db
-        from models.account import AccountIntegrate
+        from models import AccountIntegrate
 
         integration = db.session.scalars(
             select(AccountIntegrate).filter_by(account_id=account.id, provider="new-google").limit(1)
@@ -508,7 +508,7 @@ class TestAccountService:
 
         # Verify integration was updated
         from extensions.ext_database import db
-        from models.account import AccountIntegrate
+        from models import AccountIntegrate
 
         integration = db.session.scalars(
             select(AccountIntegrate).filter_by(account_id=account.id, provider="exists-google").limit(1)
@@ -2306,7 +2306,7 @@ class TestRegisterService:
 
         # Verify account was created
         from extensions.ext_database import db
-        from models.account import Account
+        from models import Account
         from models.model import DifySetup
 
         account = db.session.scalars(select(Account).filter_by(email=admin_email).limit(1)).first()
@@ -2355,7 +2355,7 @@ class TestRegisterService:
 
             # Verify no entities were created (rollback worked)
             from extensions.ext_database import db
-            from models.account import Account, Tenant, TenantAccountJoin
+            from models import Account, Tenant, TenantAccountJoin
             from models.model import DifySetup
 
             account = db.session.scalars(select(Account).filter_by(email=admin_email).limit(1)).first()
@@ -2449,7 +2449,7 @@ class TestRegisterService:
 
         # Verify OAuth integration was created
         from extensions.ext_database import db
-        from models.account import AccountIntegrate
+        from models import AccountIntegrate
 
         integration = db.session.scalars(
             select(AccountIntegrate).filter_by(account_id=account.id, provider=provider).limit(1)
@@ -2477,7 +2477,7 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Execute registration with pending status
-        from models.account import AccountStatus
+        from models import AccountStatus
 
         account = RegisterService.register(
             email=email,
@@ -2666,7 +2666,7 @@ class TestRegisterService:
 
         # Verify new account was created with pending status
         from extensions.ext_database import db
-        from models.account import Account, TenantAccountJoin
+        from models import Account, TenantAccountJoin
 
         new_account = db.session.scalars(select(Account).filter_by(email=new_member_email).limit(1)).first()
         assert new_account is not None

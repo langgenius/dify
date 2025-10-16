@@ -4,7 +4,7 @@ from celery import shared_task
 from sqlalchemy import select
 
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from services.billing_service import BillingService
 from tasks.mail_account_deletion_task import send_deletion_success_task
 

@@ -1,7 +1,6 @@
 import uuid
 
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource, marshal, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
@@ -27,7 +26,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import child_chunk_fields, segment_fields
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.dataset import ChildChunk, DocumentSegment
 from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService, SegmentService
@@ -43,6 +42,8 @@ class DatasetDocumentSegmentListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, dataset_id, document_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         dataset_id = str(dataset_id)
         document_id = str(document_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -79,7 +80,7 @@ class DatasetDocumentSegmentListApi(Resource):
             select(DocumentSegment)
             .where(
                 DocumentSegment.document_id == str(document_id),
-                DocumentSegment.tenant_id == current_user.current_tenant_id,
+                DocumentSegment.tenant_id == current_tenant_id,
             )
             .order_by(DocumentSegment.position.asc())
         )
@@ -115,6 +116,8 @@ class DatasetDocumentSegmentListApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id, document_id):
+        current_user, _ = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -148,6 +151,8 @@ class DatasetDocumentSegmentApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, action):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
@@ -171,7 +176,7 @@ class DatasetDocumentSegmentApi(Resource):
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
@@ -204,6 +209,8 @@ class DatasetDocumentSegmentAddApi(Resource):
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id, document_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -221,7 +228,7 @@ class DatasetDocumentSegmentAddApi(Resource):
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
@@ -255,6 +262,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, segment_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -272,7 +281,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
@@ -285,11 +294,11 @@ class DatasetDocumentSegmentUpdateApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
             # check segment
         segment_id = str(segment_id)
-        segment = db.session.scalars(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .limit(1)
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -317,6 +326,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id, document_id, segment_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -331,11 +342,11 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = db.session.scalars(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .limit(1)
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -361,6 +372,8 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id, document_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -396,7 +409,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
                 upload_file_id,
                 dataset_id,
                 document_id,
-                current_user.current_tenant_id,
+                current_tenant_id,
                 current_user.id,
             )
         except Exception as e:
@@ -427,6 +440,8 @@ class ChildChunkAddApi(Resource):
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id, document_id, segment_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -439,11 +454,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = db.session.scalars(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .limit(1)
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         if not current_user.is_dataset_editor:
@@ -453,7 +468,7 @@ class ChildChunkAddApi(Resource):
             try:
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     provider=dataset.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
@@ -483,6 +498,8 @@ class ChildChunkAddApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, dataset_id, document_id, segment_id):
+        _, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -497,11 +514,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = db.session.scalars(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .limit(1)
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         parser = reqparse.RequestParser()
@@ -530,6 +547,8 @@ class ChildChunkAddApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, segment_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -544,11 +563,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
             # check segment
         segment_id = str(segment_id)
-        segment = db.session.scalars(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .limit(1)
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -580,6 +599,8 @@ class ChildChunkUpdateApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id, document_id, segment_id, child_chunk_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -594,11 +615,11 @@ class ChildChunkUpdateApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = db.session.scalars(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .limit(1)
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # check child chunk
@@ -607,7 +628,7 @@ class ChildChunkUpdateApi(Resource):
             select(ChildChunk)
             .where(
                 ChildChunk.id == str(child_chunk_id),
-                ChildChunk.tenant_id == current_user.current_tenant_id,
+                ChildChunk.tenant_id == current_tenant_id,
                 ChildChunk.segment_id == segment.id,
                 ChildChunk.document_id == document_id,
             )
@@ -634,6 +655,8 @@ class ChildChunkUpdateApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def patch(self, dataset_id, document_id, segment_id, child_chunk_id):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -648,11 +671,11 @@ class ChildChunkUpdateApi(Resource):
             raise NotFound("Document not found.")
             # check segment
         segment_id = str(segment_id)
-        segment = db.session.scalars(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
-            .limit(1)
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .where(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # check child chunk
@@ -661,7 +684,7 @@ class ChildChunkUpdateApi(Resource):
             select(ChildChunk)
             .where(
                 ChildChunk.id == str(child_chunk_id),
-                ChildChunk.tenant_id == current_user.current_tenant_id,
+                ChildChunk.tenant_id == current_tenant_id,
                 ChildChunk.segment_id == segment.id,
                 ChildChunk.document_id == document_id,
             )

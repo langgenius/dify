@@ -24,7 +24,7 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.nodes import NodeType
 from events.app_event import app_was_created
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import App, AppMode, AppModelConfig
 from models.workflow import Workflow, WorkflowType

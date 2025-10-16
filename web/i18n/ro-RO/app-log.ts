@@ -82,6 +82,7 @@ const translation = {
     workflowTitle: 'Detalii jurnal',
     fileListDetail: 'Amănunt',
     fileListLabel: 'Detalii fișier',
+    testWithParams: 'Test cu parametri',
   },
   promptLog: 'Jurnal prompt',
   agentLog: 'Jurnal agent',

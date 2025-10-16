@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy import select
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding, Document
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
 from services.metadata_service import MetadataService
@@ -18,9 +18,7 @@ class TestMetadataService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch(
-                "services.metadata_service.current_user", create_autospec(Account, instance=True)
-            ) as mock_current_user,
+            patch("libs.login.current_user", create_autospec(Account, instance=True)) as mock_current_user,
             patch("services.metadata_service.redis_client") as mock_redis_client,
             patch("services.dataset_service.DocumentService") as mock_document_service,
         ):

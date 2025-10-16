@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy import select
 
 from core.tools.entities.tool_entities import ToolProviderType
-from models.account import Account, Tenant
+from models import Account, Tenant
 from models.tools import MCPToolProvider
 from services.tools.mcp_tools_manage_service import UNCHANGED_SERVER_URL_PLACEHOLDER, MCPToolManageService
 

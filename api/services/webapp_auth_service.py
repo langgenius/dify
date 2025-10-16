@@ -11,7 +11,7 @@ from extensions.ext_database import db
 from libs.helper import TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password
-from models.account import Account, AccountStatus
+from models import Account, AccountStatus
 from models.model import App, EndUser, Site
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService

@@ -19,7 +19,7 @@ from events.app_event import app_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
-from models.account import Account
+from models import Account
 from models.model import App, AppMode, AppModelConfig, Site
 from models.tools import ApiToolProvider
 from services.billing_service import BillingService
