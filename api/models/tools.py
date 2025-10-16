@@ -328,7 +328,7 @@ class MCPToolProvider(TypeBase):
     # encrypted headers for MCP server requests
     encrypted_headers: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
     # encrypted proxy settings for MCP server requests
-    encrypted_proxy: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    encrypted_proxy: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
 
     def load_user(self) -> Account | None:
         return db.session.query(Account).where(Account.id == self.user_id).first()
