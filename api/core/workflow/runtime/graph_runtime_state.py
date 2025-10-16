@@ -16,19 +16,26 @@ from core.workflow.runtime.variable_pool import VariablePool
 class ReadyQueueProtocol(Protocol):
     """Structural interface required from ready queue implementations."""
 
-    def put(self, item: str) -> None: ...
+    def put(self, item: str) -> None:
+        """Enqueue the identifier of a node that is ready to run."""
 
-    def get(self, timeout: float | None = None) -> str: ...
+    def get(self, timeout: float | None = None) -> str:
+        """Return the next node identifier, blocking until available or timeout expires."""
 
-    def task_done(self) -> None: ...
+    def task_done(self) -> None:
+        """Signal that the most recently dequeued node has completed processing."""
 
-    def empty(self) -> bool: ...
+    def empty(self) -> bool:
+        """Return True when the queue contains no pending nodes."""
 
-    def qsize(self) -> int: ...
+    def qsize(self) -> int:
+        """Approximate the number of pending nodes awaiting execution."""
 
-    def dumps(self) -> str: ...
+    def dumps(self) -> str:
+        """Serialize the queue contents for persistence."""
 
-    def loads(self, data: str) -> None: ...
+    def loads(self, data: str) -> None:
+        """Restore the queue contents from a serialized payload."""
 
 
 class GraphExecutionProtocol(Protocol):
@@ -41,27 +48,36 @@ class GraphExecutionProtocol(Protocol):
     error: Exception | None
     exceptions_count: int
 
-    def start(self) -> None: ...
+    def start(self) -> None:
+        """Transition execution into the running state."""
 
-    def complete(self) -> None: ...
+    def complete(self) -> None:
+        """Mark execution as successfully completed."""
 
-    def abort(self, reason: str) -> None: ...
+    def abort(self, reason: str) -> None:
+        """Abort execution in response to an external stop request."""
 
-    def fail(self, error: Exception) -> None: ...
+    def fail(self, error: Exception) -> None:
+        """Record an unrecoverable error and end execution."""
 
-    def dumps(self) -> str: ...
+    def dumps(self) -> str:
+        """Serialize execution state into a JSON payload."""
 
-    def loads(self, data: str) -> None: ...
+    def loads(self, data: str) -> None:
+        """Restore execution state from a previously serialized payload."""
 
 
 class ResponseStreamCoordinatorProtocol(Protocol):
     """Structural interface for response stream coordinator."""
 
-    def register(self, response_node_id: str) -> None: ...
+    def register(self, response_node_id: str) -> None:
+        """Register a response node so its outputs can be streamed."""
 
-    def loads(self, data: str) -> None: ...
+    def loads(self, data: str) -> None:
+        """Restore coordinator state from a serialized payload."""
 
-    def dumps(self) -> str: ...
+    def dumps(self) -> str:
+        """Serialize coordinator state for persistence."""
 
 
 class GraphProtocol(Protocol):
