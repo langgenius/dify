@@ -158,7 +158,7 @@ const AgentTools: FC = () => {
         headerRight={
           <div className='flex items-center'>
             <div className='text-xs font-normal leading-[18px] text-text-tertiary'>{tools.filter(item => !!item.enabled).length}/{tools.length}&nbsp;{t('appDebug.agent.tools.enabled')}</div>
-            {tools.length < MAX_TOOLS_NUM && (
+            {tools.length < MAX_TOOLS_NUM && !readonly && (
               <>
                 <div className='ml-3 mr-1 h-3.5 w-px bg-divider-regular'></div>
                 <ToolPicker
@@ -201,7 +201,7 @@ const AgentTools: FC = () => {
                 >
                   <span className='system-xs-medium pr-1.5 text-text-secondary'>{getProviderShowName(item)}</span>
                   <span className='text-text-tertiary'>{item.tool_label}</span>
-                  {!item.isDeleted && (
+                  {!item.isDeleted && !readonly && (
                     <Tooltip
                       popupContent={
                         <div className='w-[180px]'>
@@ -212,7 +212,7 @@ const AgentTools: FC = () => {
                       }
                     >
                       <div className='h-4 w-4'>
-                        <div className='ml-0.5 hidden group-hover:inline-block'>
+                        <div className={cn('ml-0.5 hidden group-hover:inline-block')}>
                           <RiInformation2Line className='h-4 w-4 text-text-tertiary' />
                         </div>
                       </div>
@@ -246,8 +246,8 @@ const AgentTools: FC = () => {
                     </div>
                   </div>
                 )}
-                {!item.isDeleted && (
-                  <div className='mr-2 hidden items-center gap-1 group-hover:flex'>
+                {!item.isDeleted && !readonly && (
+                  <div className={cn('mr-2 hidden items-center gap-1 group-hover:flex')}>
                     {!item.notAuthor && (
                       <Tooltip
                         popupContent={t('tools.setBuiltInTools.infoAndSetting')}
@@ -280,7 +280,7 @@ const AgentTools: FC = () => {
                   {!item.notAuthor && (
                     <Switch
                       defaultValue={item.isDeleted ? false : item.enabled}
-                      disabled={item.isDeleted}
+                      disabled={item.isDeleted || readonly}
                       size='md'
                       onChange={(enabled) => {
                         const newModelConfig = produce(modelConfig, (draft) => {
