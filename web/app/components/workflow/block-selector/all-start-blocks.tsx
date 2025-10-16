@@ -67,6 +67,24 @@ const AllStartBlocks = ({
         className='flex max-h-[640px] flex-col overflow-y-auto'
       >
         <div className='flex-1'>
+          <div className={cn(shouldShowEmptyState && 'hidden')}>
+            <StartBlocks
+              searchText={searchText}
+              onSelect={onSelect as OnSelectBlock}
+              availableBlocksTypes={entryNodeTypes as unknown as BlockEnum[]}
+              onContentStateChange={handleStartBlocksContentChange}
+            />
+
+            {enableTriggerPlugin && (
+              <TriggerPluginSelector
+                onSelect={onSelect}
+                searchText={searchText}
+                onContentStateChange={handlePluginContentChange}
+                tags={tags}
+              />
+            )}
+          </div>
+
           {shouldShowEmptyState && (
             <div className='flex h-full flex-col items-center justify-center gap-3 py-12 text-center'>
               <SearchMenu className='h-8 w-8 text-text-quaternary' />
@@ -86,26 +104,6 @@ const AllStartBlocks = ({
                 </Button>
               </Link>
             </div>
-          )}
-
-          {!shouldShowEmptyState && (
-            <>
-              <StartBlocks
-                searchText={searchText}
-                onSelect={onSelect as OnSelectBlock}
-                availableBlocksTypes={entryNodeTypes as unknown as BlockEnum[]}
-                onContentStateChange={handleStartBlocksContentChange}
-              />
-
-              { (
-                <TriggerPluginSelector
-                  onSelect={onSelect}
-                  searchText={searchText}
-                  onContentStateChange={handlePluginContentChange}
-                  tags={tags}
-                />
-              )}
-            </>
           )}
         </div>
 
