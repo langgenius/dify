@@ -3,7 +3,7 @@ import { memo, useEffect, useMemo } from 'react'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import TriggerPluginItem from './item'
 import type { BlockEnum } from '../../types'
-import type { TriggerDefaultValue } from '../types'
+import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
 import { useGetLanguage } from '@/context/i18n'
 
 type TriggerPluginListProps = {
@@ -21,23 +21,49 @@ const TriggerPluginList = ({
   const { data: triggerPluginsData } = useAllTriggerPlugins()
   const language = useGetLanguage()
 
+  const normalizedSearch = searchText.trim().toLowerCase()
   const triggerPlugins = useMemo(() => {
-    // Follow exact same pattern as tools
-    return (triggerPluginsData || []).filter((triggerWithProvider) => {
-      if (triggerWithProvider.events.length === 0) return false
+    const plugins = triggerPluginsData || []
 
-      // Filter by search text
-      if (searchText) {
-        const matchesSearch = triggerWithProvider.name.toLowerCase().includes(searchText.toLowerCase())
-          || triggerWithProvider.events.some(event =>
-            event.label[language].toLowerCase().includes(searchText.toLowerCase()),
-          )
-        if (!matchesSearch) return false
+    if (!normalizedSearch)
+      return plugins.filter(triggerWithProvider => triggerWithProvider.events.length > 0)
+
+    return plugins.reduce<TriggerWithProvider[]>((acc, triggerWithProvider) => {
+      if (triggerWithProvider.events.length === 0)
+        return acc
+
+      const providerLabel = triggerWithProvider.label?.[language] || ''
+      const providerMatches = triggerWithProvider.name.toLowerCase().includes(normalizedSearch)
+        || (providerLabel && providerLabel.toLowerCase().includes(normalizedSearch))
+
+      if (providerMatches) {
+        acc.push(triggerWithProvider)
+        return acc
       }
 
-      return true
-    })
-  }, [triggerPluginsData, searchText, language])
+      const matchedEvents = triggerWithProvider.events.filter((event) => {
+        const rawLabel = event.label?.[language]
+        const eventLabel = typeof rawLabel === 'string' ? rawLabel.toLowerCase() : ''
+        const rawDescription = event.description?.[language]
+        const eventDescription = typeof rawDescription === 'string' ? rawDescription.toLowerCase() : ''
+
+        return (
+          eventLabel.includes(normalizedSearch)
+          || event.name.toLowerCase().includes(normalizedSearch)
+          || eventDescription.includes(normalizedSearch)
+        )
+      })
+
+      if (matchedEvents.length > 0) {
+        acc.push({
+          ...triggerWithProvider,
+          events: matchedEvents,
+        })
+      }
+
+      return acc
+    }, [])
+  }, [triggerPluginsData, normalizedSearch, language])
 
   const hasContent = triggerPlugins.length > 0
 

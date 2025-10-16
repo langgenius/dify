@@ -85,14 +85,41 @@ const AllTools = ({
     if (activeTab === ToolTypeEnum.MCP)
       mergedTools = mcpTools
 
-    if (!hasFilter)
+    const normalizedSearch = searchText.trim().toLowerCase()
+
+    if (!hasFilter || !normalizedSearch)
       return mergedTools.filter(toolWithProvider => toolWithProvider.tools.length > 0)
 
-    return mergedTools.filter((toolWithProvider) => {
-      return isMatchingKeywords(toolWithProvider.name, searchText) || toolWithProvider.tools.some((tool) => {
-        return tool.label[language].toLowerCase().includes(searchText.toLowerCase()) || tool.name.toLowerCase().includes(searchText.toLowerCase())
+    return mergedTools.reduce<ToolWithProvider[]>((acc, toolWithProvider) => {
+      const providerLabel = toolWithProvider.label?.[language] || ''
+      const providerMatches = isMatchingKeywords(toolWithProvider.name, normalizedSearch)
+        || (providerLabel && isMatchingKeywords(providerLabel, normalizedSearch))
+
+      if (providerMatches) {
+        if (toolWithProvider.tools.length > 0)
+          acc.push(toolWithProvider)
+        return acc
+      }
+
+      const matchedTools = toolWithProvider.tools.filter((tool) => {
+        const toolLabel = tool.label?.[language] || ''
+        const toolDescription = typeof tool.description === 'object' ? tool.description?.[language] : ''
+        return (
+          (toolLabel && toolLabel.toLowerCase().includes(normalizedSearch))
+          || tool.name.toLowerCase().includes(normalizedSearch)
+          || (typeof toolDescription === 'string' && toolDescription.toLowerCase().includes(normalizedSearch))
+        )
       })
-    })
+
+      if (matchedTools.length > 0) {
+        acc.push({
+          ...toolWithProvider,
+          tools: matchedTools,
+        })
+      }
+
+      return acc
+    }, [])
   }, [activeTab, buildInTools, customTools, workflowTools, mcpTools, searchText, language, hasFilter])
 
   const {
