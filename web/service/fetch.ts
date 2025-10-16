@@ -72,7 +72,8 @@ const beforeErrorToast = (otherOptions: IOtherOptions): BeforeErrorHook => {
 const beforeRequestPublicWithCode = (request: Request) => {
   request.headers.set('Authorization', `Bearer ${getWebAppAccessToken()}`)
   const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
-  if (shareCode === 'webapp-signin')
+  // oh my god what's this
+  if (shareCode === 'webapp-signin' || shareCode === 'check-code')
     return
   request.headers.set(WEB_APP_SHARE_CODE_HEADER_NAME, shareCode)
   request.headers.set(PASSPORT_HEADER_NAME, getWebAppPassport(shareCode))
