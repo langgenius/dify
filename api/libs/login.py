@@ -1,6 +1,6 @@
-from typing import Any
 from collections.abc import Callable
 from functools import wraps
+from typing import Any
 
 from flask import current_app, g, has_request_context, request
 from flask_login.config import EXEMPT_METHODS  # type: ignore

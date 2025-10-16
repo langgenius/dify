@@ -31,7 +31,8 @@ from .. import console_ns
 
 logger = logging.getLogger(__name__)
 
-current_user = current_user_._get_current_object() # type: ignore
+current_user = current_user_._get_current_object()  # type: ignore
+
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
 class InstalledAppWorkflowRunApi(InstalledAppResource):
