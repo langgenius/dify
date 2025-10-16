@@ -102,7 +102,7 @@ class Worker(threading.Thread):
 
             # Execute node with full exception handling including node lookup
             self._last_task_time = time.time()
-            
+
             # First, try to get the node from the graph
             try:
                 node = self._graph.nodes[node_id]
@@ -120,7 +120,7 @@ class Worker(threading.Thread):
                 self._event_queue.put(error_event)
                 self._ready_queue.task_done()
                 continue
-            
+
             # Now execute the node (node is guaranteed to be defined here)
             try:
                 self._execute_node(node)
