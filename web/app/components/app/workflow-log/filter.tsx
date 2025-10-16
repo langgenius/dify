@@ -57,6 +57,10 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
         leftIcon={<RiCalendarLine className='h-4 w-4 text-text-secondary' />}
         value={queryParams.period}
         onSelect={(item) => {
+          sendGAEvent('filter_workflow_period', {
+            period: item.value,
+            period_name: item.name,
+          })
           setQueryParams({ ...queryParams, period: item.value })
         }}
         onClear={() => setQueryParams({ ...queryParams, period: '9' })}

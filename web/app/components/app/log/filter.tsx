@@ -11,6 +11,7 @@ import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
 import Sort from '@/app/components/base/sort'
 import { fetchAnnotationsCount } from '@/service/log'
+import { sendGAEvent } from '@/utils/gtag'
 dayjs.extend(quarterOfYear)
 
 const today = dayjs()
@@ -47,6 +48,10 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
         leftIcon={<RiCalendarLine className='h-4 w-4 text-text-secondary' />}
         value={queryParams.period}
         onSelect={(item) => {
+          sendGAEvent('filter_chat_conversation_period', {
+            period: item.value,
+            period_name: item.name,
+          })
           setQueryParams({ ...queryParams, period: item.value })
         }}
         onClear={() => setQueryParams({ ...queryParams, period: '9' })}
@@ -58,6 +63,10 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
         showLeftIcon={false}
         value={queryParams.annotation_status || 'all'}
         onSelect={(item) => {
+          sendGAEvent('filter_chat_conversation_annotation_status', {
+            annotation_status: item.value,
+            annotation_status_name: item.name,
+          })
           setQueryParams({ ...queryParams, annotation_status: item.value as string })
         }}
         onClear={() => setQueryParams({ ...queryParams, annotation_status: 'all' })}
