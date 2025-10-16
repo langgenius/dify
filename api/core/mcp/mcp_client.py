@@ -100,6 +100,7 @@ class MCPClient:
             )
 
             import inspect
+
             kwargs: dict[str, Any] = {
                 "url": self.server_url,
                 "headers": headers,

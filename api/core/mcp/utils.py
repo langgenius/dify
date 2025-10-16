@@ -1,7 +1,7 @@
 import json
 from collections.abc import Generator
 from contextlib import AbstractContextManager
-from urllib.parse import urlparse, urlunparse, quote
+from urllib.parse import quote, urlparse, urlunparse
 
 import httpx
 import httpx_sse
@@ -32,6 +32,7 @@ def create_ssrf_proxy_mcp_http_client(
     """
     # Per-provider proxy overrides global SSRF proxy settings
     if proxy and isinstance(proxy, dict) and proxy.get("host"):
+
         def build_proxy_url(host: str, user: str, pwd: str) -> str:
             parsed = urlparse(host if "://" in host else f"http://{host}")
 
