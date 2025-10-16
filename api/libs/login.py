@@ -11,7 +11,7 @@ from models.model import EndUser
 
 
 def current_account_with_tenant():
-    if not isinstance(current_user, Account):
+    if not isinstance(current_user._get_current_object(), Account): # type: ignore
         raise ValueError("current_user must be an Account instance")
     assert current_user.current_tenant_id is not None, "The tenant information should be loaded."
     return current_user, current_user.current_tenant_id
@@ -80,4 +80,4 @@ def _get_user() -> EndUser | Account | None:
 
 #: A proxy for the current user. If no user is logged in, this will be an
 #: anonymous user
-current_user = LocalProxy(lambda: _get_user())._get_current_object()  # type: ignore
+current_user = LocalProxy(lambda: _get_user())

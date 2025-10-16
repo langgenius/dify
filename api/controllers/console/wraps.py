@@ -303,7 +303,12 @@ def edit_permission_required(f: Callable[P, R]):
     def decorated_function(*args: P.args, **kwargs: P.kwargs):
         from werkzeug.exceptions import Forbidden
 
-        current_user, _ = current_account_with_tenant()
+        from libs.login import current_user
+        from models import Account
+
+        user = current_user._get_current_object()  # type: ingore
+        if not isinstance(user, Account):
+            raise Forbidden()
         if not current_user.has_edit_permission:
             raise Forbidden()
         return f(*args, **kwargs)
