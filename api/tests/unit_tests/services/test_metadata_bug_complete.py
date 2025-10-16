@@ -43,7 +43,7 @@ class TestMetadataBugCompleteValidation:
 
         with patch("services.metadata_service.current_user", mock_user):
             # Should crash with TypeError
-            with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
+            with pytest.raises(TypeError, match=r"object of type 'NoneType' has no len\(\)"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
 
         # Test update method as well
@@ -52,7 +52,7 @@ class TestMetadataBugCompleteValidation:
         mock_user.id = "user-456"
 
         with patch("services.metadata_service.current_user", mock_user):
-            with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
+            with pytest.raises(TypeError, match=r"object of type 'NoneType' has no len\(\)"):
                 MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
 
     def test_3_database_constraints_verification(self):
