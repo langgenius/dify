@@ -17,7 +17,7 @@ from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEnti
 from core.repositories.factory import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.account import Account, Tenant
+from models import Account, Tenant
 from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
