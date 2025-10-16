@@ -7,14 +7,12 @@ This test suite validates the behavior of a workflow that:
 3. Handles multiple answer nodes with different outputs
 """
 
-import pytest
 
 from core.workflow.graph_events import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
-    NodeRunSucceededEvent,
 )
 
 from .test_mock_config import MockConfigBuilder
@@ -29,7 +27,6 @@ class TestComplexBranchWorkflow:
         self.runner = TableTestRunner()
         self.fixture_path = "test_complex_branch"
 
-    @pytest.mark.skip(reason="output in this workflow can be random")
     def test_hello_branch_with_llm(self):
         """
         Test when query contains 'hello' - should trigger true branch.
@@ -41,42 +38,17 @@ class TestComplexBranchWorkflow:
                 fixture_path=self.fixture_path,
                 query="hello world",
                 expected_outputs={
-                    "answer": f"{mock_text_1}contains 'hello'",
+                    "answer": f"contains 'hello'{mock_text_1}",
                 },
                 description="Basic hello case with parallel LLM execution",
                 use_auto_mock=True,
                 mock_config=(MockConfigBuilder().with_node_output("1755502777322", {"text": mock_text_1}).build()),
-                expected_event_sequence=[
-                    GraphRunStartedEvent,
-                    # Start
-                    NodeRunStartedEvent,
-                    NodeRunSucceededEvent,
-                    # If/Else (no streaming)
-                    NodeRunStartedEvent,
-                    NodeRunSucceededEvent,
-                    # LLM (with streaming)
-                    NodeRunStartedEvent,
-                ]
-                # LLM
-                + [NodeRunStreamChunkEvent] * (mock_text_1.count(" ") + 2)
-                + [
-                    # Answer's text
-                    NodeRunStreamChunkEvent,
-                    NodeRunSucceededEvent,
-                    # Answer
-                    NodeRunStartedEvent,
-                    NodeRunSucceededEvent,
-                    # Answer 2
-                    NodeRunStartedEvent,
-                    NodeRunSucceededEvent,
-                    GraphRunSucceededEvent,
-                ],
             ),
             WorkflowTestCase(
                 fixture_path=self.fixture_path,
                 query="say hello to everyone",
                 expected_outputs={
-                    "answer": "Mocked response for greetingcontains 'hello'",
+                    "answer": "contains 'hello'Mocked response for greeting",
                 },
                 description="Hello in middle of sentence",
                 use_auto_mock=True,
@@ -93,6 +65,35 @@ class TestComplexBranchWorkflow:
         for result in suite_result.results:
             assert result.success, f"Test '{result.test_case.description}' failed: {result.error}"
             assert result.actual_outputs
+            assert any(isinstance(event, GraphRunStartedEvent) for event in result.events)
+            assert any(isinstance(event, GraphRunSucceededEvent) for event in result.events)
+
+            start_index = next(
+                idx for idx, event in enumerate(result.events) if isinstance(event, GraphRunStartedEvent)
+            )
+            success_index = max(
+                idx for idx, event in enumerate(result.events) if isinstance(event, GraphRunSucceededEvent)
+            )
+            assert start_index < success_index
+
+            started_node_ids = {event.node_id for event in result.events if isinstance(event, NodeRunStartedEvent)}
+            assert {"1755502773326", "1755502777322"}.issubset(started_node_ids), (
+                f"Branch or LLM nodes missing in events: {started_node_ids}"
+            )
+
+            assert any(isinstance(event, NodeRunStreamChunkEvent) for event in result.events), (
+                "Expected streaming chunks from LLM execution"
+            )
+
+            llm_start_index = next(
+                idx
+                for idx, event in enumerate(result.events)
+                if isinstance(event, NodeRunStartedEvent) and event.node_id == "1755502777322"
+            )
+            assert any(
+                idx > llm_start_index and isinstance(event, NodeRunStreamChunkEvent)
+                for idx, event in enumerate(result.events)
+            ), "Streaming chunks should follow LLM node start"
 
     def test_non_hello_branch_with_llm(self):
         """
