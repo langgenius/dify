@@ -9,7 +9,7 @@ from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from models.dataset import Dataset, DatasetQuery
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ class HitTestingService:
             if metadata_condition and not document_ids_filter:
                 return cls.compact_retrieve_response(query, [])
         all_documents = RetrievalService.retrieve(
-            retrieval_method=retrieval_model.get("search_method", "semantic_search"),
+            retrieval_method=RetrievalMethod(retrieval_model.get("search_method", RetrievalMethod.SEMANTIC_SEARCH)),
             dataset_id=dataset.id,
             query=query,
             top_k=retrieval_model.get("top_k", 4),
