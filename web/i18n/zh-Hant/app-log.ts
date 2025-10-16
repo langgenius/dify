@@ -82,6 +82,7 @@ const translation = {
     workflowTitle: '日誌詳情',
     fileListDetail: '細節',
     fileListLabel: '檔詳細資訊',
+    testWithParams: '使用參數測試',
   },
   promptLog: 'Prompt 日誌',
   agentLog: 'Agent 日誌',
