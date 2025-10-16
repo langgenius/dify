@@ -250,7 +250,6 @@ class WeaviateVector(BaseVector):
                 )
             )
 
-        batch_size = max(1, int(dify_config.WEAVIATE_BATCH_SIZE or 100))
         with col.batch.dynamic() as batch:
             for obj in objs:
                 batch.add_object(properties=obj.properties, uuid=obj.uuid, vector=obj.vector)
