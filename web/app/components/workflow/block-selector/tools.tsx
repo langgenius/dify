@@ -100,11 +100,6 @@ const Blocks = ({
 
   return (
     <div className={classNames('max-w-[100%] p-1', className)}>
-      {
-        !tools.length && hasSearchText && (
-          <div className='mt-2 flex h-[22px] items-center px-3 text-xs font-medium text-text-secondary'>{t('workflow.tabs.noResult')}</div>
-        )
-      }
       {!tools.length && !hasSearchText && (
         <div className='py-10'>
           <Empty type={toolType!} isAgent={isAgent} />
