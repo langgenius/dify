@@ -65,14 +65,32 @@ const WorkflowAppWithAdditionalContext = () => {
       return
     fetchRunDetail(runUrl).then((res) => {
       const { setInputs, setShowInputsPanel, setShowDebugAndPreviewPanel } = workflowStore.getState()
-      if (res.inputs && typeof res.inputs === 'object') {
-        const userInputs = Object.fromEntries(
-          Object.entries(res.inputs as Record<string, any>).filter(([key]) => !key.startsWith('sys.')),
-        )
-        setInputs(userInputs)
-        setShowInputsPanel(true)
-        setShowDebugAndPreviewPanel(true)
+      const rawInputs = res.inputs
+      let parsedInputs: Record<string, unknown> | null = null
+
+      if (typeof rawInputs === 'string') {
+        try {
+          const maybeParsed = JSON.parse(rawInputs) as unknown
+          if (maybeParsed && typeof maybeParsed === 'object' && !Array.isArray(maybeParsed))
+            parsedInputs = maybeParsed as Record<string, unknown>
+        }
+        catch (error) {
+          console.error('Failed to parse workflow run inputs', error)
+        }
       }
+      else if (rawInputs && typeof rawInputs === 'object' && !Array.isArray(rawInputs)) {
+        parsedInputs = rawInputs as Record<string, unknown>
+      }
+
+      if (!parsedInputs)
+        return
+
+      const userInputs = Object.fromEntries(
+        Object.entries(parsedInputs).filter(([key]) => !key.startsWith('sys.')),
+      )
+      setInputs(userInputs)
+      setShowInputsPanel(true)
+      setShowDebugAndPreviewPanel(true)
     })
   }, [searchParams, workflowStore, getWorkflowRunAndTraceUrl])
 
