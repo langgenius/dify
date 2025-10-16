@@ -124,9 +124,9 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     options.signal = abortController.signal
   }
 
-  const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`);
-
-  (headers as any).set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME) || '')
+  const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
+  if (!isMarketplaceAPI)
+    (headers as any).set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME) || '')
 
   if (deleteContentType)
     (headers as any).delete('Content-Type')
