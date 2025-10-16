@@ -340,6 +340,7 @@ const translation = {
     optional: '(optional)',
     maximize: 'Maximize Canvas',
     minimize: 'Exit Full Screen',
+    optional_and_hidden: '(optional & hidden)',
   },
   nodes: {
     common: {
@@ -456,6 +457,7 @@ const translation = {
       },
       outputVars: {
         output: 'Generate content',
+        reasoning_content: 'Reasoning Content',
         usage: 'Model Usage Information',
       },
       singleRun: {

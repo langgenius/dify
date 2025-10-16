@@ -49,7 +49,7 @@ class TestRedisStopIntegration:
             # Verify the command data
             command_json = calls[0][0][1]
             command_data = json.loads(command_json)
-            assert command_data["command_type"] == CommandType.ABORT.value
+            assert command_data["command_type"] == CommandType.ABORT
             assert command_data["reason"] == "Test stop"
 
     def test_graph_engine_manager_handles_redis_failure_gracefully(self):
@@ -122,7 +122,7 @@ class TestRedisStopIntegration:
         # Verify serialized command
         command_json = calls[0][0][1]
         command_data = json.loads(command_json)
-        assert command_data["command_type"] == CommandType.ABORT.value
+        assert command_data["command_type"] == CommandType.ABORT
         assert command_data["reason"] == "User requested stop"
 
         # Check expire was set
@@ -132,17 +132,22 @@ class TestRedisStopIntegration:
         """Test RedisChannel correctly fetches and deserializes commands."""
         # Setup
         mock_redis = MagicMock()
-        mock_pipeline = MagicMock()
-        mock_redis.pipeline.return_value.__enter__ = Mock(return_value=mock_pipeline)
-        mock_redis.pipeline.return_value.__exit__ = Mock(return_value=None)
+        pending_pipe = MagicMock()
+        fetch_pipe = MagicMock()
+        pending_context = MagicMock()
+        fetch_context = MagicMock()
+        pending_context.__enter__.return_value = pending_pipe
+        pending_context.__exit__.return_value = None
+        fetch_context.__enter__.return_value = fetch_pipe
+        fetch_context.__exit__.return_value = None
+        mock_redis.pipeline.side_effect = [pending_context, fetch_context]
 
         # Mock command data
-        abort_command_json = json.dumps(
-            {"command_type": CommandType.ABORT.value, "reason": "Test abort", "payload": None}
-        )
+        abort_command_json = json.dumps({"command_type": CommandType.ABORT, "reason": "Test abort", "payload": None})
 
         # Mock pipeline execute to return commands
-        mock_pipeline.execute.return_value = [
+        pending_pipe.execute.return_value = [b"1", 1]
+        fetch_pipe.execute.return_value = [
             [abort_command_json.encode()],  # lrange result
             True,  # delete result
         ]
@@ -160,19 +165,29 @@ class TestRedisStopIntegration:
         assert commands[0].reason == "Test abort"
 
         # Verify Redis operations
-        mock_pipeline.lrange.assert_called_once_with(channel_key, 0, -1)
-        mock_pipeline.delete.assert_called_once_with(channel_key)
+        pending_pipe.get.assert_called_once_with(f"{channel_key}:pending")
+        pending_pipe.delete.assert_called_once_with(f"{channel_key}:pending")
+        fetch_pipe.lrange.assert_called_once_with(channel_key, 0, -1)
+        fetch_pipe.delete.assert_called_once_with(channel_key)
+        assert mock_redis.pipeline.call_count == 2
 
     def test_redis_channel_fetch_commands_handles_invalid_json(self):
         """Test RedisChannel gracefully handles invalid JSON in commands."""
         # Setup
         mock_redis = MagicMock()
-        mock_pipeline = MagicMock()
-        mock_redis.pipeline.return_value.__enter__ = Mock(return_value=mock_pipeline)
-        mock_redis.pipeline.return_value.__exit__ = Mock(return_value=None)
+        pending_pipe = MagicMock()
+        fetch_pipe = MagicMock()
+        pending_context = MagicMock()
+        fetch_context = MagicMock()
+        pending_context.__enter__.return_value = pending_pipe
+        pending_context.__exit__.return_value = None
+        fetch_context.__enter__.return_value = fetch_pipe
+        fetch_context.__exit__.return_value = None
+        mock_redis.pipeline.side_effect = [pending_context, fetch_context]
 
         # Mock invalid command data
-        mock_pipeline.execute.return_value = [
+        pending_pipe.execute.return_value = [b"1", 1]
+        fetch_pipe.execute.return_value = [
             [b"invalid json", b'{"command_type": "invalid_type"}'],  # lrange result
             True,  # delete result
         ]

@@ -1,17 +1,16 @@
 from datetime import datetime
 
-import pytz  # pip install pytz
+import pytz
 import sqlalchemy as sa
-from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
 from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
@@ -22,8 +21,8 @@ from fields.conversation_fields import (
 )
 from libs.datetime_utils import naive_utc_now
 from libs.helper import DatetimeString
-from libs.login import login_required
-from models import Account, Conversation, EndUser, Message, MessageAnnotation
+from libs.login import current_account_with_tenant, login_required
+from models import Conversation, EndUser, Message, MessageAnnotation
 from models.model import AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
@@ -57,9 +56,9 @@ class CompletionConversationApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_pagination_fields)
+    @edit_permission_required
     def get(self, app_model):
-        if not current_user.is_editor:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("keyword", type=str, location="args")
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -84,6 +83,7 @@ class CompletionConversationApi(Resource):
             )
 
         account = current_user
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -137,9 +137,8 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_message_detail_fields)
+    @edit_permission_required
     def get(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_model, conversation_id)
@@ -154,14 +153,12 @@ class CompletionConversationDetailApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
+    @edit_permission_required
     def delete(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
         conversation_id = str(conversation_id)
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -206,9 +203,9 @@ class ChatConversationApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(conversation_with_summary_pagination_fields)
+    @edit_permission_required
     def get(self, app_model):
-        if not current_user.is_editor:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("keyword", type=str, location="args")
         parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
@@ -260,6 +257,7 @@ class ChatConversationApi(Resource):
             )
 
         account = current_user
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -309,7 +307,7 @@ class ChatConversationApi(Resource):
             )
 
         if app_model.mode == AppMode.ADVANCED_CHAT:
-            query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER.value)
+            query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
 
         match args["sort_by"]:
             case "created_at":
@@ -341,9 +339,8 @@ class ChatConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(conversation_detail_fields)
+    @edit_permission_required
     def get(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_model, conversation_id)
@@ -358,14 +355,12 @@ class ChatConversationDetailApi(Resource):
     @login_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @account_initialization_required
+    @edit_permission_required
     def delete(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
         conversation_id = str(conversation_id)
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -374,6 +369,7 @@ class ChatConversationDetailApi(Resource):
 
 
 def _get_conversation(app_model, conversation_id):
+    current_user, _ = current_account_with_tenant()
     conversation = (
         db.session.query(Conversation)
         .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)

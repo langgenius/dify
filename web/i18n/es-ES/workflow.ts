@@ -328,6 +328,7 @@ const translation = {
     selectNextStep: 'Seleccionar siguiente paso',
     maximize: 'Maximizar Canvas',
     minimize: 'Salir de pantalla completa',
+    optional_and_hidden: '(opcional y oculto)',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'Generar contenido',
+        reasoning_content: 'Contenido de razonamiento',
         usage: 'Información de uso del modelo',
       },
       singleRun: {

@@ -328,6 +328,7 @@ const translation = {
     changeBlock: 'Changer de nœud',
     maximize: 'Maximiser le Canvas',
     minimize: 'Sortir du mode plein écran',
+    optional_and_hidden: '(optionnel et caché)',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'Contenu généré',
+        reasoning_content: 'Contenu de raisonnement',
         usage: 'Informations sur l\'utilisation du modèle',
       },
       singleRun: {

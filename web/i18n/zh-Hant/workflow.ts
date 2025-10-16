@@ -328,6 +328,7 @@ const translation = {
     moveToThisNode: '定位至此節點',
     minimize: '退出全螢幕',
     maximize: '最大化畫布',
+    optional_and_hidden: '（可選且隱藏）',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: '生成內容',
+        reasoning_content: '推理內容',
         usage: '模型用量信息',
       },
       singleRun: {

@@ -328,6 +328,7 @@ const translation = {
     selectNextStep: 'Selecione o próximo passo',
     maximize: 'Maximize Canvas',
     minimize: 'Sair do Modo Tela Cheia',
+    optional_and_hidden: '(opcional & oculto)',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'Conteúdo gerado',
+        reasoning_content: 'Conteúdo de raciocínio',
         usage: 'Informações de uso do modelo',
       },
       singleRun: {

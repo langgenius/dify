@@ -328,6 +328,7 @@ const translation = {
     addNextStep: 'Додайте наступний крок у цей робочий процес',
     minimize: 'Вийти з повноекранного режиму',
     maximize: 'Максимізувати полотно',
+    optional_and_hidden: '(необов\'язково & приховано)',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'Генерований вміст',
+        reasoning_content: 'Зміст міркування',
         usage: 'Інформація про використання моделі',
       },
       singleRun: {

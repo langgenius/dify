@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: '全不選',
     selectAll: '全選',
     config: '配置',
+    yes: '是',
+    confirmAction: '請確認您的操作。',
+    deleteConfirmTitle: '刪除？',
+    no: '不',
   },
   placeholder: {
     input: '請輸入',
