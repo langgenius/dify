@@ -2,7 +2,7 @@
   "compilerOptions": {
     "incremental": true,
     "target": "es2015",
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "lib": [
       "dom",
       "dom.iterable",
@@ -27,6 +27,7 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "skipLibCheck": true,
+    "incremental": true,
     "plugins": [
       {
         "name": "next"
@@ -38,7 +39,8 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "app/components/develop/Prose.jsx"
+    "app/components/develop/Prose.jsx",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

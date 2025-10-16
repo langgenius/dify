@@ -6,7 +6,9 @@ on:
       - "main"
     paths:
       - api/Dockerfile
+      - api/uv.lock
       - web/Dockerfile
+      - web/pnpm-lock.yaml
 
 concurrency:
   group: docker-build-${{ github.head_ref || github.run_id }}
