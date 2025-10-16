@@ -1,7 +1,7 @@
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any, NewType, Union
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
@@ -349,7 +349,7 @@ class WorkflowResponseConverter:
                 elapsed_time=elapsed_time,
                 execution_metadata=metadata,
                 created_at=int(start_at.timestamp()),
-                finished_at=int(finished_at.replace(tzinfo=UTC).timestamp()),
+                finished_at=int(finished_at.timestamp()),
                 files=self.fetch_files_from_node_outputs(event.outputs or {}),
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
