@@ -37,22 +37,6 @@ export async function webAppLoginStatus(enabled: boolean, shareCode: string) {
       appLoggedIn: true,
     }
   }
-  const localAccessToken = getWebAppAccessToken()
-  const localPassport = getWebAppPassport(shareCode)
-  if (localAccessToken) {
-    return {
-      userLoggedIn: true,
-      appLoggedIn: localPassport !== '',
-    }
-  }
-  // if passport is available, we assume the user is also logged in.
-  // we made this assumption to minimize remote api calls
-  if (localPassport) {
-    return {
-      userLoggedIn: true,
-      appLoggedIn: true,
-    }
-  }
 
   // check remotely, the access token could be in cookie (enterprise SSO redirected with https)
   const { logged_in, app_logged_in } = await getPublic<isWebAppLogin>(`/login/status?app_code=${shareCode}`)
