@@ -1,3 +1,4 @@
+from typing import Any
 from collections.abc import Callable
 from functools import wraps
 
@@ -81,4 +82,5 @@ def _get_user() -> EndUser | Account | None:
 
 #: A proxy for the current user. If no user is logged in, this will be an
 #: anonymous user
-current_user = LocalProxy(lambda: _get_user())
+# NOTE: Any here, but use _get_current_object to check the fields
+current_user: Any = LocalProxy(lambda: _get_user())
