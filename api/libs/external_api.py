@@ -22,7 +22,7 @@ def register_external_error_handlers(api: Api):
         got_request_exception.send(current_app, exception=e)
 
         # If Werkzeug already prepared a Response, just use it.
-        if getattr(e, "response", None) is not None:
+        if e.response is not None:
             return e.response
 
         status_code = getattr(e, "code", 500) or 500
@@ -103,7 +103,7 @@ def register_external_error_handlers(api: Api):
         # Log stack
         exc_info: Any = sys.exc_info()
         if exc_info[1] is None:
-            exc_info = None
+            exc_info = (None, None, None)
         current_app.log_exception(exc_info)
 
         return data, status_code

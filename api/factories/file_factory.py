@@ -63,7 +63,10 @@ def build_from_mapping(
     config: FileUploadConfig | None = None,
     strict_type_validation: bool = False,
 ) -> File:
-    transfer_method = FileTransferMethod.value_of(mapping.get("transfer_method"))
+    transfer_method_value = mapping.get("transfer_method")
+    if not transfer_method_value:
+        raise ValueError("transfer_method is required in file mapping")
+    transfer_method = FileTransferMethod.value_of(transfer_method_value)
 
     build_functions: dict[FileTransferMethod, Callable] = {
         FileTransferMethod.LOCAL_FILE: _build_from_local_file,
@@ -103,6 +106,8 @@ def build_from_mappings(
 ) -> Sequence[File]:
     # TODO(QuantumGhost): Performance concern - each mapping triggers a separate database query.
     # Implement batch processing to reduce database load when handling multiple files.
+    # Filter out None/empty mappings to avoid errors
+    valid_mappings = [m for m in mappings if m and m.get("transfer_method")]
     files = [
         build_from_mapping(
             mapping=mapping,
@@ -110,7 +115,7 @@ def build_from_mappings(
             config=config,
             strict_type_validation=strict_type_validation,
         )
-        for mapping in mappings
+        for mapping in valid_mappings
     ]
 
     if (

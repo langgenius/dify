@@ -219,6 +219,17 @@ const translation = {
   updated: 'Diperbarui',
   createFromPipeline: 'Membuat dari Knowledge Pipeline',
   externalKnowledgeBase: 'Basis Pengetahuan Eksternal',
+  serviceApi: {
+    card: {
+      apiKey: 'Kunci API',
+      apiReference: 'Referensi API',
+      title: 'API layanan backend',
+      endpoint: 'Titik Akhir API Layanan',
+    },
+    title: 'API Layanan',
+    enabled: 'Sedang Beroperasi',
+    disabled: 'Dinonaktifkan',
+  },
 }
 
 export default translation

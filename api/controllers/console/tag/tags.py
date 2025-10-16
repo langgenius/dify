@@ -1,12 +1,11 @@
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.tag_fields import dataset_tag_fields
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.model import Tag
 from services.tag_service import TagService
 
@@ -24,9 +23,10 @@ class TagListApi(Resource):
     @account_initialization_required
     @marshal_with(dataset_tag_fields)
     def get(self):
+        _, current_tenant_id = current_account_with_tenant()
         tag_type = request.args.get("type", type=str, default="")
         keyword = request.args.get("keyword", default=None, type=str)
-        tags = TagService.get_tags(tag_type, current_user.current_tenant_id, keyword)
+        tags = TagService.get_tags(tag_type, current_tenant_id, keyword)
 
         return tags, 200
 
@@ -34,8 +34,9 @@ class TagListApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -59,9 +60,10 @@ class TagUpdateDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def patch(self, tag_id):
+        current_user, _ = current_account_with_tenant()
         tag_id = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -81,9 +83,10 @@ class TagUpdateDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, tag_id):
+        current_user, _ = current_account_with_tenant()
         tag_id = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         TagService.delete_tag(tag_id)
@@ -97,8 +100,9 @@ class TagBindingCreateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -123,8 +127,9 @@ class TagBindingDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
+        current_user, _ = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        if not (current_user.is_editor or current_user.is_dataset_editor):
+        if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
         parser = reqparse.RequestParser()

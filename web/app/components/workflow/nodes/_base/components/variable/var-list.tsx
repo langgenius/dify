@@ -61,7 +61,6 @@ const VarList: FC<Props> = ({
       return
     }
     if (list.some(item => item.variable?.trim() === newKey.trim())) {
-      console.log('new key', newKey.trim())
       setToastHandle(Toast.notify({
         type: 'error',
         message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
