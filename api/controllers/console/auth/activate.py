@@ -7,7 +7,7 @@ from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import StrLen, email, extract_remote_ip, timezone
-from models.account import AccountStatus
+from models import AccountStatus
 from services.account_service import AccountService, RegisterService
 
 active_check_parser = reqparse.RequestParser()

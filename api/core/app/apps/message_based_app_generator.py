@@ -196,6 +196,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             message={},
             answer="",
             from_source=from_source,
+            from_end_user_id=end_user_id,
+            from_account_id=account_id,
+            app_mode=app_config.app_mode,
         )
         message.model_provider = model_provider
         message.model_id = model_id

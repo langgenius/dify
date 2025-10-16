@@ -941,6 +941,7 @@ class Message(TypeBase):
         Index("message_account_idx", "app_id", "from_source", "from_account_id"),
         Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
         Index("message_created_at_idx", "created_at"),
+        Index("message_app_mode_idx", "app_mode"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
@@ -976,14 +977,13 @@ class Message(TypeBase):
     message_metadata: Mapped[str | None] = mapped_column(sa.Text, init=False)
     invoke_from: Mapped[str | None] = mapped_column(String(255), nullable=True, init=False)
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
-    from_end_user_id: Mapped[str | None] = mapped_column(StringUUID, init=False)
-    from_account_id: Mapped[str | None] = mapped_column(StringUUID, init=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, server_default=func.current_timestamp(), init=False)
-    updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
-    )
-    agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), init=False)
-    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, init=False)
+    from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
+    from_account_id: Mapped[str | None] = mapped_column(StringUUID)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, server_default=func.current_timestamp())
+    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
+    app_mode: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     @property
     def inputs(self) -> dict[str, Any]:

@@ -13,7 +13,7 @@ from models.dataset import Dataset
 from models.model import ApiToken, App
 
 from . import api, console_ns
-from .wraps import account_initialization_required, setup_required
+from .wraps import account_initialization_required, edit_permission_required, setup_required
 
 api_key_fields = {
     "id": fields.String,
@@ -68,14 +68,12 @@ class BaseApiKeyListResource(Resource):
         return {"items": keys}
 
     @marshal_with(api_key_fields)
+    @edit_permission_required
     def post(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         current_key_count = (
             db.session.query(ApiToken)
             .where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
