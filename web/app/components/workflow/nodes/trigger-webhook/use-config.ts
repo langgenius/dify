@@ -10,7 +10,7 @@ import { fetchWebhookUrl } from '@/service/apps'
 import type { Variable } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import Toast from '@/app/components/base/toast'
-import { hasDuplicateStr } from '@/utils/var'
+import { checkKeys, hasDuplicateStr } from '@/utils/var'
 import { WEBHOOK_RAW_VARIABLE_NAME, ensureWebhookRawVariable } from './utils/raw-variable'
 
 const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
@@ -70,6 +70,34 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     if (!draft.variables)
       draft.variables = []
 
+    const hasReservedConflict = newData.some(item => item.name === WEBHOOK_RAW_VARIABLE_NAME)
+    if (hasReservedConflict) {
+      Toast.notify({
+        type: 'error',
+        message: t('appDebug.varKeyError.keyAlreadyExists', {
+          key: t('appDebug.variableConfig.varName'),
+        }),
+      })
+      return false
+    }
+
+    const existingOtherVarNames = new Set(
+      draft.variables
+        .filter(v => v.label !== sourceType && v.variable !== WEBHOOK_RAW_VARIABLE_NAME)
+        .map(v => v.variable),
+    )
+
+    const crossScopeConflict = newData.find(item => existingOtherVarNames.has(item.name))
+    if (crossScopeConflict) {
+      Toast.notify({
+        type: 'error',
+        message: t('appDebug.varKeyError.keyAlreadyExists', {
+          key: crossScopeConflict.name,
+        }),
+      })
+      return false
+    }
+
     if(hasDuplicateStr(newData.map(item => item.name))) {
       Toast.notify({
         type: 'error',
@@ -78,6 +106,19 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
         }),
       })
       return false
+    }
+
+    for (const item of newData) {
+      const { isValid, errorMessageKey } = checkKeys([item.name], false)
+      if (!isValid) {
+        Toast.notify({
+          type: 'error',
+          message: t(`appDebug.varKeyError.${errorMessageKey}`, {
+            key: t('appDebug.variableConfig.varName'),
+          }),
+        })
+        return false
+      }
     }
 
     // Create set of new variable names for this source
