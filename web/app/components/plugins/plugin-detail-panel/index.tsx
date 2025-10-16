@@ -1,6 +1,6 @@
 'use client'
 import Drawer from '@/app/components/base/drawer'
-import { type PluginDetail, PluginType } from '@/app/components/plugins/types'
+import { PluginCategoryEnum, type PluginDetail } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
 import type { FC } from 'react'
 import { useEffect } from 'react'
@@ -62,7 +62,7 @@ const PluginDetailPanel: FC<Props> = ({
             onUpdate={handleUpdate}
           />
           <div className='grow overflow-y-auto'>
-            {detail.declaration.category === PluginType.trigger && (
+            {detail.declaration.category === PluginCategoryEnum.trigger && (
               <>
                 <SubscriptionList />
                 <TriggerEventsList />

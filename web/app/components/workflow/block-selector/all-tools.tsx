@@ -22,7 +22,7 @@ import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
 import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import { PluginType } from '../../plugins/types'
+import { PluginCategoryEnum } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import RAGToolSuggestions from './rag-tool-suggestions'
@@ -107,7 +107,7 @@ const AllTools = ({
       fetchPlugins({
         query: searchText,
         tags,
-        category: PluginType.tool,
+        category: PluginCategoryEnum.tool,
       })
     }
   }, [searchText, tags, enable_marketplace])

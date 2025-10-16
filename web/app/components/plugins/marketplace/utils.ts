@@ -1,6 +1,6 @@
 import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import type { Plugin } from '@/app/components/plugins/types'
-import { PluginType } from '@/app/components/plugins/types'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
@@ -113,19 +113,19 @@ export const getMarketplaceCollectionsAndPlugins = async (query?: CollectionsAnd
 }
 
 export const getMarketplaceListCondition = (pluginType: string) => {
-  if (pluginType === PluginType.tool)
+  if (pluginType === PluginCategoryEnum.tool)
     return 'category=tool'
 
-  if (pluginType === PluginType.agent)
+  if (pluginType === PluginCategoryEnum.agent)
     return 'category=agent-strategy'
 
-  if (pluginType === PluginType.model)
+  if (pluginType === PluginCategoryEnum.model)
     return 'category=model'
 
-  if (pluginType === PluginType.extension)
+  if (pluginType === PluginCategoryEnum.extension)
     return 'category=endpoint'
 
-  if (pluginType === PluginType.datasource)
+  if (pluginType === PluginCategoryEnum.datasource)
     return 'category=datasource'
 
   if (pluginType === 'bundle')

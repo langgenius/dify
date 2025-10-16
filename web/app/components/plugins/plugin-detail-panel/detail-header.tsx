@@ -10,7 +10,7 @@ import {
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import type { PluginDetail } from '../types'
-import { PluginSource, PluginType } from '../types'
+import { PluginCategoryEnum, PluginSource } from '../types'
 import Description from '../card/base/description'
 import Icon from '../card/base/card-icon'
 import Title from '../card/base/title'
@@ -86,7 +86,7 @@ const DetailHeader = ({
     alternative_plugin_id,
   } = detail
   const { author, category, name, label, description, icon, verified, tool } = detail.declaration
-  const isTool = category === PluginType.tool
+  const isTool = category === PluginCategoryEnum.tool
   const providerBriefInfo = tool?.identity
   const providerKey = `${plugin_id}/${providerBriefInfo?.name}`
   const { data: collectionList = [] } = useAllToolProviders(isTool)
@@ -202,9 +202,9 @@ const DetailHeader = ({
     if (res.success) {
       hideDeleteConfirm()
       onUpdate(true)
-      if (PluginType.model.includes(category))
+      if (PluginCategoryEnum.model.includes(category))
         refreshModelProviders()
-      if (PluginType.tool.includes(category))
+      if (PluginCategoryEnum.tool.includes(category))
         invalidateAllToolProviders()
     }
   }, [showDeleting, installation_id, hideDeleting, hideDeleteConfirm, onUpdate, category, refreshModelProviders, invalidateAllToolProviders])
@@ -326,7 +326,7 @@ const DetailHeader = ({
       )}
       <Description className='mb-2 mt-3 h-auto' text={description[locale]} descriptionLineRows={2}></Description>
       {
-        category === PluginType.tool && (
+        category === PluginCategoryEnum.tool && (
           <PluginAuth
             pluginPayload={{
               provider: provider?.name || '',

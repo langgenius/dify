@@ -17,7 +17,7 @@ import PluginList, { type ListRef } from '@/app/components/workflow/block-select
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
-import { PluginType } from '../../plugins/types'
+import { PluginCategoryEnum } from '../../plugins/types'
 import { useGetLanguage } from '@/context/i18n'
 
 type AllToolsProps = {
@@ -86,7 +86,7 @@ const DataSources = ({
     if (searchText) {
       fetchPlugins({
         query: searchText,
-        category: PluginType.datasource,
+        category: PluginCategoryEnum.datasource,
       })
     }
   }, [searchText, enable_marketplace])

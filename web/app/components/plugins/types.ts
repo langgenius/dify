@@ -5,7 +5,7 @@ import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { FormTypeEnum } from '../base/form/types'
 
-export enum PluginType {
+export enum PluginCategoryEnum {
   tool = 'tool',
   model = 'model',
   extension = 'extension',
@@ -71,7 +71,7 @@ export type PluginDeclaration = {
   author: string
   icon: string
   name: string
-  category: PluginType
+  category: PluginCategoryEnum
   label: Record<Locale, string>
   description: Record<Locale, string>
   created_at: string
@@ -190,7 +190,7 @@ export type PluginManifestInMarket = {
   org: string
   icon: string
   label: Record<Locale, string>
-  category: PluginType
+  category: PluginCategoryEnum
   version: string // combine the other place to it
   latest_version: string
   brief: Record<Locale, string>
@@ -233,7 +233,7 @@ export type PluginDetail = {
 }
 
 export type PluginInfoFromMarketPlace = {
-  category: PluginType
+  category: PluginCategoryEnum
   latest_package_identifier: string
   latest_version: string
 }
@@ -255,7 +255,7 @@ export type Plugin = {
   // Repo readme.md content
   introduction: string
   repository: string
-  category: PluginType
+  category: PluginCategoryEnum
   install_count: number
   endpoint: {
     settings: CredentialFormSchemaBase[]
@@ -285,7 +285,7 @@ export type ReferenceSetting = {
 }
 
 export type UpdateFromMarketPlacePayload = {
-  category: PluginType
+  category: PluginCategoryEnum
   originalPackageInfo: {
     id: string
     payload: PluginDeclaration
@@ -308,7 +308,7 @@ export type UpdateFromGitHubPayload = {
 
 export type UpdatePluginPayload = {
   type: PluginSource
-  category: PluginType
+  category: PluginCategoryEnum
   marketPlace?: UpdateFromMarketPlacePayload
   github?: UpdateFromGitHubPayload
 }

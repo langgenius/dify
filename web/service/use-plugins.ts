@@ -18,7 +18,6 @@ import type {
   PluginDetail,
   PluginInfoFromMarketPlace,
   PluginTask,
-  PluginType,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
   ReferenceSetting,
@@ -27,7 +26,7 @@ import type {
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
 import { TaskStatus } from '@/app/components/plugins/types'
-import { PluginType as PluginTypeEnum } from '@/app/components/plugins/types'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import type {
   PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
@@ -488,7 +487,7 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[])
 }
 
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
-export const usePluginTaskList = (category?: PluginType) => {
+export const usePluginTaskList = (category?: PluginCategoryEnum) => {
   const {
     canManagement,
   } = useReferenceSetting()
@@ -605,7 +604,7 @@ export const usePluginInfo = (providerName?: string) => {
       const name = parts[1]
       try {
         const response = await fetchPluginInfoFromMarketPlace({ org, name })
-        return response.data.plugin.category === PluginTypeEnum.model ? response.data.plugin : null
+        return response.data.plugin.category === PluginCategoryEnum.model ? response.data.plugin : null
       }
       catch {
         return null

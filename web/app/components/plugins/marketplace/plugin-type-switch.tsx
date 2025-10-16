@@ -7,7 +7,7 @@ import {
   RiPuzzle2Line,
   RiSpeakAiLine,
 } from '@remixicon/react'
-import { PluginType } from '../types'
+import { PluginCategoryEnum } from '../types'
 import { useMarketplaceContext } from './context'
 import {
   useMixedTranslation,
@@ -18,11 +18,11 @@ import { useCallback, useEffect } from 'react'
 
 export const PLUGIN_TYPE_SEARCH_MAP = {
   all: 'all',
-  model: PluginType.model,
-  tool: PluginType.tool,
-  agent: PluginType.agent,
-  extension: PluginType.extension,
-  datasource: PluginType.datasource,
+  model: PluginCategoryEnum.model,
+  tool: PluginCategoryEnum.tool,
+  agent: PluginCategoryEnum.agent,
+  extension: PluginCategoryEnum.extension,
+  datasource: PluginCategoryEnum.datasource,
   bundle: 'bundle',
 }
 type PluginTypeSwitchProps = {

@@ -14,7 +14,7 @@ import { useGitHubReleases } from '../install-plugin/hooks'
 import Toast from '@/app/components/base/toast'
 import { useModalContext } from '@/context/modal-context'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import type { PluginType } from '@/app/components/plugins/types'
+import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 
 const i18nPrefix = 'plugin.action'
 
@@ -23,7 +23,7 @@ type Props = {
   installationId: string
   pluginUniqueIdentifier: string
   pluginName: string
-  category: PluginType
+  category: PluginCategoryEnum
   usedInApps: number
   isShowFetchNewVersion: boolean
   isShowInfo: boolean
