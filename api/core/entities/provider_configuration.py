@@ -472,6 +472,9 @@ class ProviderConfiguration(BaseModel):
                     provider_model_credentials_cache.delete()
 
                     self.switch_preferred_provider_type(provider_type=ProviderType.CUSTOM, session=session)
+                else:
+                    # some historical data may have a provider record but not be set as valid
+                    provider_record.is_valid = True
 
                 session.commit()
             except Exception:
@@ -1145,6 +1148,15 @@ class ProviderConfiguration(BaseModel):
                     raise ValueError("Can't add same credential")
                 provider_model_record.credential_id = credential_record.id
                 provider_model_record.updated_at = naive_utc_now()
+
+                # clear cache
+                provider_model_credentials_cache = ProviderCredentialsCache(
+                    tenant_id=self.tenant_id,
+                    identity_id=provider_model_record.id,
+                    cache_type=ProviderCredentialsCacheType.MODEL,
+                )
+                provider_model_credentials_cache.delete()
+
             session.add(provider_model_record)
             session.commit()
 
@@ -1177,6 +1189,14 @@ class ProviderConfiguration(BaseModel):
             provider_model_record.updated_at = naive_utc_now()
             session.add(provider_model_record)
             session.commit()
+
+            # clear cache
+            provider_model_credentials_cache = ProviderCredentialsCache(
+                tenant_id=self.tenant_id,
+                identity_id=provider_model_record.id,
+                cache_type=ProviderCredentialsCacheType.MODEL,
+            )
+            provider_model_credentials_cache.delete()
 
     def delete_custom_model(self, model_type: ModelType, model: str):
         """

@@ -183,6 +183,10 @@ const translation = {
       title: 'Cloud Monitor',
       description: 'The fully-managed and maintenance-free observability platform provided by Alibaba Cloud, enables out-of-the-box monitoring, tracing, and evaluation of Dify applications.',
     },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring provides comprehensive tracing and multi-dimensional analysis for LLM applications.',
+    },
     inUse: 'In use',
     configProvider: {
       title: 'Config ',

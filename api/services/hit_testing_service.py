@@ -9,7 +9,7 @@ from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from models.dataset import Dataset, DatasetQuery
 
 logger = logging.getLogger(__name__)
