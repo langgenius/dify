@@ -1,11 +1,9 @@
 import logging
 from threading import Lock
-from typing import Union
 
 import contexts
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
-from core.datasource.entities.common_entities import I18nObject
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.datasource.errors import DatasourceProviderNotFoundError
 from core.datasource.local_file.local_file_provider import LocalFileDatasourcePluginProviderController
@@ -18,10 +16,6 @@ logger = logging.getLogger(__name__)
 
 
 class DatasourceManager:
-    _builtin_provider_lock = Lock()
-    _hardcoded_providers: dict[str, DatasourcePluginProviderController] = {}
-    _builtin_providers_loaded = False
-    _builtin_tools_labels: dict[str, Union[I18nObject, None]] = {}
 
     @classmethod
     def get_datasource_plugin_provider(
