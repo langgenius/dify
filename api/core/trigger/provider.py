@@ -207,7 +207,7 @@ class PluginTriggerProviderController:
         """
         subscription_constructor = self.entity.subscription_constructor
         if not subscription_constructor:
-            raise ValueError("Subscription constructor not found")
+            return []
         credential_type = CredentialType.of(credential_type) if isinstance(credential_type, str) else credential_type
         if credential_type == CredentialType.OAUTH2:
             return (
