@@ -11,7 +11,7 @@ from models.model import EndUser
 
 
 def current_account_with_tenant():
-    user = current_user._get_current_object() # type: ignore
+    user = current_user._get_current_object()  # type: ignore
     if not isinstance(user, Account):
         raise ValueError("current_user must be an Account instance")
     assert user.current_tenant_id is not None, "The tenant information should be loaded."
