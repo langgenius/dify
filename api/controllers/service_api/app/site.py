@@ -1,4 +1,4 @@
-from flask_restx import Resource
+from flask.views import MethodView
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.fields import build_site_model
@@ -10,7 +10,7 @@ from models.model import App, Site
 
 
 @service_api_ns.route("/site")
-class AppSiteApi(Resource):
+class AppSiteApi(MethodView):
     """Resource for app sites."""
 
     @service_api_ns.doc("get_app_site")

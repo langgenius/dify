@@ -1,4 +1,5 @@
-from flask_restx import Resource, marshal_with, reqparse  # type: ignore
+from flask.views import MethodView
+from flask_restx import marshal_with, reqparse  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -17,7 +18,7 @@ from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
 @console_ns.route("/rag/pipelines/imports")
-class RagPipelineImportApi(Resource):
+class RagPipelineImportApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -65,7 +66,7 @@ class RagPipelineImportApi(Resource):
 
 
 @console_ns.route("/rag/pipelines/imports/<string:import_id>/confirm")
-class RagPipelineImportConfirmApi(Resource):
+class RagPipelineImportConfirmApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -91,7 +92,7 @@ class RagPipelineImportConfirmApi(Resource):
 
 
 @console_ns.route("/rag/pipelines/imports/<string:pipeline_id>/check-dependencies")
-class RagPipelineImportCheckDependenciesApi(Resource):
+class RagPipelineImportCheckDependenciesApi(MethodView):
     @setup_required
     @login_required
     @get_rag_pipeline
@@ -110,7 +111,7 @@ class RagPipelineImportCheckDependenciesApi(Resource):
 
 
 @console_ns.route("/rag/pipelines/<string:pipeline_id>/exports")
-class RagPipelineExportApi(Resource):
+class RagPipelineExportApi(MethodView):
     @setup_required
     @login_required
     @get_rag_pipeline

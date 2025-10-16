@@ -1,6 +1,7 @@
 from mimetypes import guess_extension
 
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from flask_restx.api import HTTPStatus
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
@@ -34,7 +35,7 @@ upload_parser.add_argument("user_id", type=str, required=False, location="args",
 
 
 @files_ns.route("/upload/for-plugin")
-class PluginUploadFileApi(Resource):
+class PluginUploadFileApi(MethodView):
     @setup_required
     @files_ns.expect(upload_parser)
     @files_ns.doc("upload_plugin_file")

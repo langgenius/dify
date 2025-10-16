@@ -1,6 +1,6 @@
 import logging
 
-from flask_restx import Resource
+from flask.views import MethodView
 
 from controllers.console.wraps import (
     account_initialization_required,
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 @console_ns.route("/spec/schema-definitions")
-class SpecSchemaDefinitionsApi(Resource):
+class SpecSchemaDefinitionsApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

@@ -1,4 +1,5 @@
-from flask_restx import Resource, fields
+from flask.views import MethodView
+from flask_restx import fields
 
 from libs.login import current_account_with_tenant, login_required
 from services.feature_service import FeatureService
@@ -8,7 +9,7 @@ from .wraps import account_initialization_required, cloud_utm_record, setup_requ
 
 
 @console_ns.route("/features")
-class FeatureApi(Resource):
+class FeatureApi(MethodView):
     @api.doc("get_tenant_features")
     @api.doc(description="Get feature configuration for current tenant")
     @api.response(
@@ -28,7 +29,7 @@ class FeatureApi(Resource):
 
 
 @console_ns.route("/system-features")
-class SystemFeatureApi(Resource):
+class SystemFeatureApi(MethodView):
     @api.doc("get_system_features")
     @api.doc(description="Get system-wide feature configuration")
     @api.response(

@@ -1,4 +1,5 @@
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from flask_restx._http import HTTPStatus
 from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session
@@ -70,7 +71,7 @@ conversation_variable_update_parser.add_argument(
 
 
 @service_api_ns.route("/conversations")
-class ConversationApi(Resource):
+class ConversationApi(MethodView):
     @service_api_ns.expect(conversation_list_parser)
     @service_api_ns.doc("list_conversations")
     @service_api_ns.doc(description="List all conversations for the current user")
@@ -110,7 +111,7 @@ class ConversationApi(Resource):
 
 
 @service_api_ns.route("/conversations/<uuid:c_id>")
-class ConversationDetailApi(Resource):
+class ConversationDetailApi(MethodView):
     @service_api_ns.doc("delete_conversation")
     @service_api_ns.doc(description="Delete a specific conversation")
     @service_api_ns.doc(params={"c_id": "Conversation ID"})
@@ -139,7 +140,7 @@ class ConversationDetailApi(Resource):
 
 
 @service_api_ns.route("/conversations/<uuid:c_id>/name")
-class ConversationRenameApi(Resource):
+class ConversationRenameApi(MethodView):
     @service_api_ns.expect(conversation_rename_parser)
     @service_api_ns.doc("rename_conversation")
     @service_api_ns.doc(description="Rename a conversation or auto-generate a name")
@@ -170,7 +171,7 @@ class ConversationRenameApi(Resource):
 
 
 @service_api_ns.route("/conversations/<uuid:c_id>/variables")
-class ConversationVariablesApi(Resource):
+class ConversationVariablesApi(MethodView):
     @service_api_ns.expect(conversation_variables_parser)
     @service_api_ns.doc("list_conversation_variables")
     @service_api_ns.doc(description="List all variables for a conversation")
@@ -207,7 +208,7 @@ class ConversationVariablesApi(Resource):
 
 
 @service_api_ns.route("/conversations/<uuid:c_id>/variables/<uuid:variable_id>")
-class ConversationVariableDetailApi(Resource):
+class ConversationVariableDetailApi(MethodView):
     @service_api_ns.expect(conversation_variable_update_parser)
     @service_api_ns.doc("update_conversation_variable")
     @service_api_ns.doc(description="Update a conversation variable's value")

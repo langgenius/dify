@@ -1,7 +1,8 @@
 import io
 
 from flask import request, send_file
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -19,7 +20,7 @@ from services.plugin.plugin_service import PluginService
 
 
 @console_ns.route("/workspaces/current/plugin/debugging-key")
-class PluginDebuggingKeyApi(Resource):
+class PluginDebuggingKeyApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -38,7 +39,7 @@ class PluginDebuggingKeyApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/list")
-class PluginListApi(Resource):
+class PluginListApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -57,7 +58,7 @@ class PluginListApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
-class PluginListLatestVersionsApi(Resource):
+class PluginListLatestVersionsApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -75,7 +76,7 @@ class PluginListLatestVersionsApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/list/installations/ids")
-class PluginListInstallationsFromIdsApi(Resource):
+class PluginListInstallationsFromIdsApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -95,7 +96,7 @@ class PluginListInstallationsFromIdsApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/icon")
-class PluginIconApi(Resource):
+class PluginIconApi(MethodView):
     @setup_required
     def get(self):
         req = reqparse.RequestParser()
@@ -113,7 +114,7 @@ class PluginIconApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/upload/pkg")
-class PluginUploadFromPkgApi(Resource):
+class PluginUploadFromPkgApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -137,7 +138,7 @@ class PluginUploadFromPkgApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/upload/github")
-class PluginUploadFromGithubApi(Resource):
+class PluginUploadFromGithubApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -160,7 +161,7 @@ class PluginUploadFromGithubApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/upload/bundle")
-class PluginUploadFromBundleApi(Resource):
+class PluginUploadFromBundleApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -184,7 +185,7 @@ class PluginUploadFromBundleApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/install/pkg")
-class PluginInstallFromPkgApi(Resource):
+class PluginInstallFromPkgApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -210,7 +211,7 @@ class PluginInstallFromPkgApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/install/github")
-class PluginInstallFromGithubApi(Resource):
+class PluginInstallFromGithubApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -240,7 +241,7 @@ class PluginInstallFromGithubApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/install/marketplace")
-class PluginInstallFromMarketplaceApi(Resource):
+class PluginInstallFromMarketplaceApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -266,7 +267,7 @@ class PluginInstallFromMarketplaceApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/marketplace/pkg")
-class PluginFetchMarketplacePkgApi(Resource):
+class PluginFetchMarketplacePkgApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -292,7 +293,7 @@ class PluginFetchMarketplacePkgApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/fetch-manifest")
-class PluginFetchManifestApi(Resource):
+class PluginFetchManifestApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -317,7 +318,7 @@ class PluginFetchManifestApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/tasks")
-class PluginFetchInstallTasksApi(Resource):
+class PluginFetchInstallTasksApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -339,7 +340,7 @@ class PluginFetchInstallTasksApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/tasks/<task_id>")
-class PluginFetchInstallTaskApi(Resource):
+class PluginFetchInstallTaskApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -354,7 +355,7 @@ class PluginFetchInstallTaskApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/tasks/<task_id>/delete")
-class PluginDeleteInstallTaskApi(Resource):
+class PluginDeleteInstallTaskApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -369,7 +370,7 @@ class PluginDeleteInstallTaskApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/tasks/delete_all")
-class PluginDeleteAllInstallTaskItemsApi(Resource):
+class PluginDeleteAllInstallTaskItemsApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -384,7 +385,7 @@ class PluginDeleteAllInstallTaskItemsApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
-class PluginDeleteInstallTaskItemApi(Resource):
+class PluginDeleteInstallTaskItemApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -399,7 +400,7 @@ class PluginDeleteInstallTaskItemApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/upgrade/marketplace")
-class PluginUpgradeFromMarketplaceApi(Resource):
+class PluginUpgradeFromMarketplaceApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -423,7 +424,7 @@ class PluginUpgradeFromMarketplaceApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/upgrade/github")
-class PluginUpgradeFromGithubApi(Resource):
+class PluginUpgradeFromGithubApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -455,7 +456,7 @@ class PluginUpgradeFromGithubApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/uninstall")
-class PluginUninstallApi(Resource):
+class PluginUninstallApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -474,7 +475,7 @@ class PluginUninstallApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/permission/change")
-class PluginChangePermissionApi(Resource):
+class PluginChangePermissionApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -498,7 +499,7 @@ class PluginChangePermissionApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/permission/fetch")
-class PluginFetchPermissionApi(Resource):
+class PluginFetchPermissionApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -523,7 +524,7 @@ class PluginFetchPermissionApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/parameters/dynamic-options")
-class PluginFetchDynamicSelectOptionsApi(Resource):
+class PluginFetchDynamicSelectOptionsApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -560,7 +561,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/preferences/change")
-class PluginChangePreferencesApi(Resource):
+class PluginChangePreferencesApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -614,7 +615,7 @@ class PluginChangePreferencesApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/preferences/fetch")
-class PluginFetchPreferencesApi(Resource):
+class PluginFetchPreferencesApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -653,7 +654,7 @@ class PluginFetchPreferencesApi(Resource):
 
 
 @console_ns.route("/workspaces/current/plugin/preferences/autoupgrade/exclude")
-class PluginAutoUpgradeExcludePluginApi(Resource):
+class PluginAutoUpgradeExcludePluginApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

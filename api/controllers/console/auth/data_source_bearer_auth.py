@@ -1,4 +1,5 @@
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
@@ -10,7 +11,7 @@ from ..wraps import account_initialization_required, setup_required
 
 
 @console_ns.route("/api-key-auth/data-source")
-class ApiKeyAuthDataSource(Resource):
+class ApiKeyAuthDataSource(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -35,7 +36,7 @@ class ApiKeyAuthDataSource(Resource):
 
 
 @console_ns.route("/api-key-auth/data-source/binding")
-class ApiKeyAuthDataSourceBinding(Resource):
+class ApiKeyAuthDataSourceBinding(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -59,7 +60,7 @@ class ApiKeyAuthDataSourceBinding(Resource):
 
 
 @console_ns.route("/api-key-auth/data-source/<uuid:binding_id>")
-class ApiKeyAuthDataSourceBindingDelete(Resource):
+class ApiKeyAuthDataSourceBindingDelete(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

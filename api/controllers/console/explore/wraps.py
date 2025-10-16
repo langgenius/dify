@@ -2,7 +2,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
-from flask_restx import Resource
+from flask.views import MethodView
 from werkzeug.exceptions import NotFound
 
 from controllers.console.explore.error import AppAccessDeniedError
@@ -73,7 +73,7 @@ def user_allowed_to_access_app(view: Callable[Concatenate[InstalledApp, P], R] |
     return decorator
 
 
-class InstalledAppResource(Resource):
+class InstalledAppResource(MethodView):
     # must be reversed if there are multiple decorators
 
     method_decorators = [

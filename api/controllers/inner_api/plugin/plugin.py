@@ -1,4 +1,4 @@
-from flask_restx import Resource
+from flask.views import MethodView
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
@@ -36,7 +36,7 @@ from models.model import EndUser
 
 
 @inner_api_ns.route("/invoke/llm")
-class PluginInvokeLLMApi(Resource):
+class PluginInvokeLLMApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -59,7 +59,7 @@ class PluginInvokeLLMApi(Resource):
 
 
 @inner_api_ns.route("/invoke/llm/structured-output")
-class PluginInvokeLLMWithStructuredOutputApi(Resource):
+class PluginInvokeLLMWithStructuredOutputApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -84,7 +84,7 @@ class PluginInvokeLLMWithStructuredOutputApi(Resource):
 
 
 @inner_api_ns.route("/invoke/text-embedding")
-class PluginInvokeTextEmbeddingApi(Resource):
+class PluginInvokeTextEmbeddingApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -114,7 +114,7 @@ class PluginInvokeTextEmbeddingApi(Resource):
 
 
 @inner_api_ns.route("/invoke/rerank")
-class PluginInvokeRerankApi(Resource):
+class PluginInvokeRerankApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -140,7 +140,7 @@ class PluginInvokeRerankApi(Resource):
 
 
 @inner_api_ns.route("/invoke/tts")
-class PluginInvokeTTSApi(Resource):
+class PluginInvokeTTSApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -167,7 +167,7 @@ class PluginInvokeTTSApi(Resource):
 
 
 @inner_api_ns.route("/invoke/speech2text")
-class PluginInvokeSpeech2TextApi(Resource):
+class PluginInvokeSpeech2TextApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -193,7 +193,7 @@ class PluginInvokeSpeech2TextApi(Resource):
 
 
 @inner_api_ns.route("/invoke/moderation")
-class PluginInvokeModerationApi(Resource):
+class PluginInvokeModerationApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -219,7 +219,7 @@ class PluginInvokeModerationApi(Resource):
 
 
 @inner_api_ns.route("/invoke/tool")
-class PluginInvokeToolApi(Resource):
+class PluginInvokeToolApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -251,7 +251,7 @@ class PluginInvokeToolApi(Resource):
 
 
 @inner_api_ns.route("/invoke/parameter-extractor")
-class PluginInvokeParameterExtractorNodeApi(Resource):
+class PluginInvokeParameterExtractorNodeApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -284,7 +284,7 @@ class PluginInvokeParameterExtractorNodeApi(Resource):
 
 
 @inner_api_ns.route("/invoke/question-classifier")
-class PluginInvokeQuestionClassifierNodeApi(Resource):
+class PluginInvokeQuestionClassifierNodeApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -317,7 +317,7 @@ class PluginInvokeQuestionClassifierNodeApi(Resource):
 
 
 @inner_api_ns.route("/invoke/app")
-class PluginInvokeAppApi(Resource):
+class PluginInvokeAppApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -347,7 +347,7 @@ class PluginInvokeAppApi(Resource):
 
 
 @inner_api_ns.route("/invoke/encrypt")
-class PluginInvokeEncryptApi(Resource):
+class PluginInvokeEncryptApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -374,7 +374,7 @@ class PluginInvokeEncryptApi(Resource):
 
 
 @inner_api_ns.route("/invoke/summary")
-class PluginInvokeSummaryApi(Resource):
+class PluginInvokeSummaryApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -404,7 +404,7 @@ class PluginInvokeSummaryApi(Resource):
 
 
 @inner_api_ns.route("/upload/file/request")
-class PluginUploadFileRequestApi(Resource):
+class PluginUploadFileRequestApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only
@@ -430,7 +430,7 @@ class PluginUploadFileRequestApi(Resource):
 
 
 @inner_api_ns.route("/fetch/app/info")
-class PluginFetchAppInfoApi(Resource):
+class PluginFetchAppInfoApi(MethodView):
     @get_user_tenant
     @setup_required
     @plugin_inner_api_only

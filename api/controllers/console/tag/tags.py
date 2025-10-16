@@ -1,5 +1,6 @@
 from flask import request
-from flask_restx import Resource, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
@@ -17,7 +18,7 @@ def _validate_name(name):
 
 
 @console_ns.route("/tags")
-class TagListApi(Resource):
+class TagListApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -55,7 +56,7 @@ class TagListApi(Resource):
 
 
 @console_ns.route("/tags/<uuid:tag_id>")
-class TagUpdateDeleteApi(Resource):
+class TagUpdateDeleteApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -95,7 +96,7 @@ class TagUpdateDeleteApi(Resource):
 
 
 @console_ns.route("/tag-bindings/create")
-class TagBindingCreateApi(Resource):
+class TagBindingCreateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -122,7 +123,7 @@ class TagBindingCreateApi(Resource):
 
 
 @console_ns.route("/tag-bindings/remove")
-class TagBindingDeleteApi(Resource):
+class TagBindingDeleteApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

@@ -1,4 +1,5 @@
-from flask_restx import Resource, fields, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, marshal_with, reqparse
 
 from constants.languages import languages
 from controllers.console import console_ns
@@ -36,7 +37,7 @@ recommended_app_list_fields = {
 
 
 @console_ns.route("/explore/apps")
-class RecommendedAppListApi(Resource):
+class RecommendedAppListApi(MethodView):
     @login_required
     @account_initialization_required
     @marshal_with(recommended_app_list_fields)
@@ -58,7 +59,7 @@ class RecommendedAppListApi(Resource):
 
 
 @console_ns.route("/explore/apps/<uuid:app_id>")
-class RecommendedAppApi(Resource):
+class RecommendedAppApi(MethodView):
     @login_required
     @account_initialization_required
     def get(self, app_id):

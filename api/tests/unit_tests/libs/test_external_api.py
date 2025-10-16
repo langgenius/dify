@@ -1,5 +1,5 @@
 from flask import Blueprint, Flask
-from flask_restx import Resource
+from flask.views import MethodView
 from werkzeug.exceptions import BadRequest, Unauthorized
 
 from core.errors.error import AppInvokeQuotaExceededError
@@ -12,27 +12,27 @@ def _create_api_app():
     api = ExternalApi(bp)
 
     @api.route("/bad-request")
-    class Bad(Resource):  # type: ignore
+    class Bad(MethodView):  # type: ignore
         def get(self):  # type: ignore
             raise BadRequest("invalid input")
 
     @api.route("/unauth")
-    class Unauth(Resource):  # type: ignore
+    class Unauth(MethodView):  # type: ignore
         def get(self):  # type: ignore
             raise Unauthorized("auth required")
 
     @api.route("/value-error")
-    class ValErr(Resource):  # type: ignore
+    class ValErr(MethodView):  # type: ignore
         def get(self):  # type: ignore
             raise ValueError("boom")
 
     @api.route("/quota")
-    class Quota(Resource):  # type: ignore
+    class Quota(MethodView):  # type: ignore
         def get(self):  # type: ignore
             raise AppInvokeQuotaExceededError("quota exceeded")
 
     @api.route("/general")
-    class Gen(Resource):  # type: ignore
+    class Gen(MethodView):  # type: ignore
         def get(self):  # type: ignore
             raise RuntimeError("oops")
 
@@ -40,7 +40,7 @@ def _create_api_app():
 
     # Special 400 message rewrite
     @api.route("/json-empty")
-    class JsonEmpty(Resource):  # type: ignore
+    class JsonEmpty(MethodView):  # type: ignore
         def get(self):  # type: ignore
             e = BadRequest()
             # Force the specific message the handler rewrites
@@ -49,7 +49,7 @@ def _create_api_app():
 
     # 400 mapping payload path
     @api.route("/param-errors")
-    class ParamErrors(Resource):  # type: ignore
+    class ParamErrors(MethodView):  # type: ignore
         def get(self):  # type: ignore
             e = BadRequest()
             # Coerce a mapping description to trigger param error shaping

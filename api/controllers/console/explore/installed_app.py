@@ -2,7 +2,8 @@ import logging
 from typing import Any
 
 from flask import request
-from flask_restx import Resource, inputs, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import inputs, marshal_with, reqparse
 from sqlalchemy import and_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 @console_ns.route("/installed-apps")
-class InstalledAppsListApi(Resource):
+class InstalledAppsListApi(MethodView):
     @login_required
     @account_initialization_required
     @marshal_with(installed_app_list_fields)

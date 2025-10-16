@@ -4,7 +4,8 @@ from decimal import Decimal
 import pytz
 import sqlalchemy as sa
 from flask import jsonify
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 
 from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
@@ -17,7 +18,7 @@ from models.model import AppMode
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/daily-conversations")
-class WorkflowDailyRunsStatistic(Resource):
+class WorkflowDailyRunsStatistic(MethodView):
     @api.doc("get_workflow_daily_runs_statistic")
     @api.doc(description="Get workflow daily runs statistics")
     @api.doc(params={"app_id": "Application ID"})
@@ -85,7 +86,7 @@ WHERE
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/daily-terminals")
-class WorkflowDailyTerminalsStatistic(Resource):
+class WorkflowDailyTerminalsStatistic(MethodView):
     @api.doc("get_workflow_daily_terminals_statistic")
     @api.doc(description="Get workflow daily terminals statistics")
     @api.doc(params={"app_id": "Application ID"})
@@ -153,7 +154,7 @@ WHERE
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/token-costs")
-class WorkflowDailyTokenCostStatistic(Resource):
+class WorkflowDailyTokenCostStatistic(MethodView):
     @api.doc("get_workflow_daily_token_cost_statistic")
     @api.doc(description="Get workflow daily token cost statistics")
     @api.doc(params={"app_id": "Application ID"})
@@ -226,7 +227,7 @@ WHERE
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/average-app-interactions")
-class WorkflowAverageAppInteractionStatistic(Resource):
+class WorkflowAverageAppInteractionStatistic(MethodView):
     @api.doc("get_workflow_average_app_interaction_statistic")
     @api.doc(description="Get workflow average app interaction statistics")
     @api.doc(params={"app_id": "Application ID"})

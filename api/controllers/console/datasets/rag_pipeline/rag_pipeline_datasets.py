@@ -1,4 +1,5 @@
-from flask_restx import Resource, marshal, reqparse
+from flask.views import MethodView
+from flask_restx import marshal, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -20,7 +21,7 @@ from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
 @console_ns.route("/rag/pipeline/dataset")
-class CreateRagPipelineDatasetApi(Resource):
+class CreateRagPipelineDatasetApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -73,7 +74,7 @@ class CreateRagPipelineDatasetApi(Resource):
 
 
 @console_ns.route("/rag/pipeline/empty-dataset")
-class CreateEmptyRagPipelineDatasetApi(Resource):
+class CreateEmptyRagPipelineDatasetApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

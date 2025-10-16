@@ -1,7 +1,8 @@
 from typing import Any, cast
 
 from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -117,7 +118,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
 
 
 @console_ns.route("/datasets")
-class DatasetListApi(Resource):
+class DatasetListApi(MethodView):
     @api.doc("get_datasets")
     @api.doc(description="Get list of datasets")
     @api.doc(
@@ -275,7 +276,7 @@ class DatasetListApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>")
-class DatasetApi(Resource):
+class DatasetApi(MethodView):
     @api.doc("get_dataset")
     @api.doc(description="Get dataset details")
     @api.doc(params={"dataset_id": "Dataset ID"})
@@ -483,7 +484,7 @@ class DatasetApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/use-check")
-class DatasetUseCheckApi(Resource):
+class DatasetUseCheckApi(MethodView):
     @api.doc("check_dataset_use")
     @api.doc(description="Check if dataset is in use")
     @api.doc(params={"dataset_id": "Dataset ID"})
@@ -499,7 +500,7 @@ class DatasetUseCheckApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/queries")
-class DatasetQueryApi(Resource):
+class DatasetQueryApi(MethodView):
     @api.doc("get_dataset_queries")
     @api.doc(description="Get dataset query history")
     @api.doc(params={"dataset_id": "Dataset ID"})
@@ -535,7 +536,7 @@ class DatasetQueryApi(Resource):
 
 
 @console_ns.route("/datasets/indexing-estimate")
-class DatasetIndexingEstimateApi(Resource):
+class DatasetIndexingEstimateApi(MethodView):
     @api.doc("estimate_dataset_indexing")
     @api.doc(description="Estimate dataset indexing cost")
     @api.response(200, "Indexing estimate calculated successfully")
@@ -645,7 +646,7 @@ class DatasetIndexingEstimateApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/related-apps")
-class DatasetRelatedAppListApi(Resource):
+class DatasetRelatedAppListApi(MethodView):
     @api.doc("get_dataset_related_apps")
     @api.doc(description="Get applications related to dataset")
     @api.doc(params={"dataset_id": "Dataset ID"})
@@ -678,7 +679,7 @@ class DatasetRelatedAppListApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/indexing-status")
-class DatasetIndexingStatusApi(Resource):
+class DatasetIndexingStatusApi(MethodView):
     @api.doc("get_dataset_indexing_status")
     @api.doc(description="Get dataset indexing status")
     @api.doc(params={"dataset_id": "Dataset ID"})
@@ -729,7 +730,7 @@ class DatasetIndexingStatusApi(Resource):
 
 
 @console_ns.route("/datasets/api-keys")
-class DatasetApiKeyApi(Resource):
+class DatasetApiKeyApi(MethodView):
     max_keys = 10
     token_prefix = "dataset-"
     resource_type = "dataset"
@@ -782,7 +783,7 @@ class DatasetApiKeyApi(Resource):
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
-class DatasetApiDeleteApi(Resource):
+class DatasetApiDeleteApi(MethodView):
     resource_type = "dataset"
 
     @api.doc("delete_dataset_api_key")
@@ -820,7 +821,7 @@ class DatasetApiDeleteApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/api-keys/<string:status>")
-class DatasetEnableApiApi(Resource):
+class DatasetEnableApiApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -833,7 +834,7 @@ class DatasetEnableApiApi(Resource):
 
 
 @console_ns.route("/datasets/api-base-info")
-class DatasetApiBaseUrlApi(Resource):
+class DatasetApiBaseUrlApi(MethodView):
     @api.doc("get_dataset_api_base_info")
     @api.doc(description="Get dataset API base information")
     @api.response(200, "API base info retrieved successfully")
@@ -845,7 +846,7 @@ class DatasetApiBaseUrlApi(Resource):
 
 
 @console_ns.route("/datasets/retrieval-setting")
-class DatasetRetrievalSettingApi(Resource):
+class DatasetRetrievalSettingApi(MethodView):
     @api.doc("get_dataset_retrieval_setting")
     @api.doc(description="Get dataset retrieval settings")
     @api.response(200, "Retrieval settings retrieved successfully")
@@ -858,7 +859,7 @@ class DatasetRetrievalSettingApi(Resource):
 
 
 @console_ns.route("/datasets/retrieval-setting/<string:vector_type>")
-class DatasetRetrievalSettingMockApi(Resource):
+class DatasetRetrievalSettingMockApi(MethodView):
     @api.doc("get_dataset_retrieval_setting_mock")
     @api.doc(description="Get mock dataset retrieval settings by vector type")
     @api.doc(params={"vector_type": "Vector store type"})
@@ -871,7 +872,7 @@ class DatasetRetrievalSettingMockApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/error-docs")
-class DatasetErrorDocs(Resource):
+class DatasetErrorDocs(MethodView):
     @api.doc("get_dataset_error_docs")
     @api.doc(description="Get dataset error documents")
     @api.doc(params={"dataset_id": "Dataset ID"})
@@ -891,7 +892,7 @@ class DatasetErrorDocs(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/permission-part-users")
-class DatasetPermissionUserListApi(Resource):
+class DatasetPermissionUserListApi(MethodView):
     @api.doc("get_dataset_permission_users")
     @api.doc(description="Get dataset permission user list")
     @api.doc(params={"dataset_id": "Dataset ID"})
@@ -920,7 +921,7 @@ class DatasetPermissionUserListApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/auto-disable-logs")
-class DatasetAutoDisableLogApi(Resource):
+class DatasetAutoDisableLogApi(MethodView):
     @api.doc("get_dataset_auto_disable_logs")
     @api.doc(description="Get dataset auto disable logs")
     @api.doc(params={"dataset_id": "Dataset ID"})

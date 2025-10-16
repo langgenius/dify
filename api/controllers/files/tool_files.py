@@ -1,7 +1,8 @@
 from urllib.parse import quote
 
 from flask import Response
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.errors import UnsupportedFileTypeError
@@ -12,7 +13,7 @@ from extensions.ext_database import db as global_db
 
 
 @files_ns.route("/tools/<uuid:file_id>.<string:extension>")
-class ToolFileApi(Resource):
+class ToolFileApi(MethodView):
     def get(self, file_id, extension):
         file_id = str(file_id)
 

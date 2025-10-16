@@ -1,7 +1,7 @@
 from urllib.parse import quote
 
 from flask import Response, request
-from flask.views import MethodView as Resource
+from flask.views import MethodView
 from flask_restx import reqparse
 from werkzeug.exceptions import NotFound
 
@@ -14,7 +14,7 @@ from services.file_service import FileService
 
 
 @files_ns.route("/<uuid:file_id>/image-preview")
-class ImagePreviewApi(Resource):
+class ImagePreviewApi(MethodView):
     """
     Deprecated
     """
@@ -43,7 +43,7 @@ class ImagePreviewApi(Resource):
 
 
 @files_ns.route("/<uuid:file_id>/file-preview")
-class FilePreviewApi(Resource):
+class FilePreviewApi(MethodView):
     def get(self, file_id):
         file_id = str(file_id)
 
@@ -99,7 +99,7 @@ class FilePreviewApi(Resource):
 
 
 @files_ns.route("/workspaces/<uuid:workspace_id>/webapp-logo")
-class WorkspaceWebappLogoApi(Resource):
+class WorkspaceWebappLogoApi(MethodView):
     def get(self, workspace_id):
         workspace_id = str(workspace_id)
 

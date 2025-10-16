@@ -1,7 +1,8 @@
 import io
 
 from flask import send_file
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
@@ -16,7 +17,7 @@ from services.model_provider_service import ModelProviderService
 
 
 @console_ns.route("/workspaces/current/model-providers")
-class ModelProviderListApi(Resource):
+class ModelProviderListApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -42,7 +43,7 @@ class ModelProviderListApi(Resource):
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials")
-class ModelProviderCredentialApi(Resource):
+class ModelProviderCredentialApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -137,7 +138,7 @@ class ModelProviderCredentialApi(Resource):
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/switch")
-class ModelProviderCredentialSwitchApi(Resource):
+class ModelProviderCredentialSwitchApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -159,7 +160,7 @@ class ModelProviderCredentialSwitchApi(Resource):
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/validate")
-class ModelProviderValidateApi(Resource):
+class ModelProviderValidateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -193,7 +194,7 @@ class ModelProviderValidateApi(Resource):
 
 
 @console_ns.route("/workspaces/<string:tenant_id>/model-providers/<path:provider>/<string:icon_type>/<string:lang>")
-class ModelProviderIconApi(Resource):
+class ModelProviderIconApi(MethodView):
     """
     Get model provider icon
     """
@@ -212,7 +213,7 @@ class ModelProviderIconApi(Resource):
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/preferred-provider-type")
-class PreferredProviderTypeUpdateApi(Resource):
+class PreferredProviderTypeUpdateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -243,7 +244,7 @@ class PreferredProviderTypeUpdateApi(Resource):
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/checkout-url")
-class ModelProviderPaymentCheckoutUrlApi(Resource):
+class ModelProviderPaymentCheckoutUrlApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

@@ -1,5 +1,6 @@
 import flask_restx
-from flask_restx import Resource, fields, marshal_with
+from flask.views import MethodView
+from flask_restx import fields, marshal_with
 from flask_restx._http import HTTPStatus
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -43,7 +44,7 @@ def _get_resource(resource_id, tenant_id, resource_model):
     return resource
 
 
-class BaseApiKeyListResource(Resource):
+class BaseApiKeyListResource(MethodView):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
@@ -97,7 +98,7 @@ class BaseApiKeyListResource(Resource):
         return api_token, 201
 
 
-class BaseApiKeyResource(Resource):
+class BaseApiKeyResource(MethodView):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None

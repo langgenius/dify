@@ -1,6 +1,7 @@
 from typing import Literal
 
-from flask_restx import Resource, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import marshal_with, reqparse
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns
@@ -16,7 +17,7 @@ from services.metadata_service import MetadataService
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata")
-class DatasetMetadataCreateApi(Resource):
+class DatasetMetadataCreateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -52,7 +53,7 @@ class DatasetMetadataCreateApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
-class DatasetMetadataApi(Resource):
+class DatasetMetadataApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -93,7 +94,7 @@ class DatasetMetadataApi(Resource):
 
 
 @console_ns.route("/datasets/metadata/built-in")
-class DatasetMetadataBuiltInFieldApi(Resource):
+class DatasetMetadataBuiltInFieldApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -104,7 +105,7 @@ class DatasetMetadataBuiltInFieldApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>")
-class DatasetMetadataBuiltInFieldActionApi(Resource):
+class DatasetMetadataBuiltInFieldActionApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -125,7 +126,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/metadata")
-class DocumentMetadataEditApi(Resource):
+class DocumentMetadataEditApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

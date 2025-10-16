@@ -1,10 +1,11 @@
-from flask_restx import Resource, fields
+from flask.views import MethodView
+from flask_restx import fields
 
 from . import api, console_ns
 
 
 @console_ns.route("/ping")
-class PingApi(Resource):
+class PingApi(MethodView):
     @api.doc("health_check")
     @api.doc(description="Health check endpoint for connection testing")
     @api.response(

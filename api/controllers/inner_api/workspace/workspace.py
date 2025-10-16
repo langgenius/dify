@@ -1,6 +1,7 @@
 import json
 
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
@@ -12,7 +13,7 @@ from services.account_service import TenantService
 
 
 @inner_api_ns.route("/enterprise/workspace")
-class EnterpriseWorkspace(Resource):
+class EnterpriseWorkspace(MethodView):
     @setup_required
     @enterprise_inner_api_only
     @inner_api_ns.doc("create_enterprise_workspace")
@@ -55,7 +56,7 @@ class EnterpriseWorkspace(Resource):
 
 
 @inner_api_ns.route("/enterprise/workspace/ownerless")
-class EnterpriseWorkspaceNoOwnerEmail(Resource):
+class EnterpriseWorkspaceNoOwnerEmail(MethodView):
     @setup_required
     @enterprise_inner_api_only
     @inner_api_ns.doc("create_enterprise_workspace_ownerless")

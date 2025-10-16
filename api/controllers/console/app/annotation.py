@@ -1,7 +1,8 @@
 from typing import Literal
 
 from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, marshal, marshal_with, reqparse
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
 from controllers.console import api, console_ns
@@ -21,7 +22,7 @@ from services.annotation_service import AppAnnotationService
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>")
-class AnnotationReplyActionApi(Resource):
+class AnnotationReplyActionApi(MethodView):
     @api.doc("annotation_reply_action")
     @api.doc(description="Enable or disable annotation reply for an app")
     @api.doc(params={"app_id": "Application ID", "action": "Action to perform (enable/disable)"})
@@ -57,7 +58,7 @@ class AnnotationReplyActionApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-setting")
-class AppAnnotationSettingDetailApi(Resource):
+class AppAnnotationSettingDetailApi(MethodView):
     @api.doc("get_annotation_setting")
     @api.doc(description="Get annotation settings for an app")
     @api.doc(params={"app_id": "Application ID"})
@@ -74,7 +75,7 @@ class AppAnnotationSettingDetailApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-settings/<uuid:annotation_setting_id>")
-class AppAnnotationSettingUpdateApi(Resource):
+class AppAnnotationSettingUpdateApi(MethodView):
     @api.doc("update_annotation_setting")
     @api.doc(description="Update annotation settings for an app")
     @api.doc(params={"app_id": "Application ID", "annotation_setting_id": "Annotation setting ID"})
@@ -107,7 +108,7 @@ class AppAnnotationSettingUpdateApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>/status/<uuid:job_id>")
-class AnnotationReplyActionStatusApi(Resource):
+class AnnotationReplyActionStatusApi(MethodView):
     @api.doc("get_annotation_reply_action_status")
     @api.doc(description="Get status of annotation reply action job")
     @api.doc(params={"app_id": "Application ID", "job_id": "Job ID", "action": "Action type"})
@@ -135,7 +136,7 @@ class AnnotationReplyActionStatusApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations")
-class AnnotationApi(Resource):
+class AnnotationApi(MethodView):
     @api.doc("list_annotations")
     @api.doc(description="Get annotations for an app with pagination")
     @api.doc(params={"app_id": "Application ID"})
@@ -225,7 +226,7 @@ class AnnotationApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/export")
-class AnnotationExportApi(Resource):
+class AnnotationExportApi(MethodView):
     @api.doc("export_annotations")
     @api.doc(description="Export all annotations for an app")
     @api.doc(params={"app_id": "Application ID"})
@@ -243,7 +244,7 @@ class AnnotationExportApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
-class AnnotationUpdateDeleteApi(Resource):
+class AnnotationUpdateDeleteApi(MethodView):
     @api.doc("update_delete_annotation")
     @api.doc(description="Update or delete an annotation")
     @api.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
@@ -278,7 +279,7 @@ class AnnotationUpdateDeleteApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import")
-class AnnotationBatchImportApi(Resource):
+class AnnotationBatchImportApi(MethodView):
     @api.doc("batch_import_annotations")
     @api.doc(description="Batch import annotations from CSV file")
     @api.doc(params={"app_id": "Application ID"})
@@ -308,7 +309,7 @@ class AnnotationBatchImportApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>")
-class AnnotationBatchImportStatusApi(Resource):
+class AnnotationBatchImportStatusApi(MethodView):
     @api.doc("get_batch_import_status")
     @api.doc(description="Get status of batch import job")
     @api.doc(params={"app_id": "Application ID", "job_id": "Job ID"})
@@ -335,7 +336,7 @@ class AnnotationBatchImportStatusApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>/hit-histories")
-class AnnotationHitHistoryListApi(Resource):
+class AnnotationHitHistoryListApi(MethodView):
     @api.doc("list_annotation_hit_histories")
     @api.doc(description="Get hit histories for an annotation")
     @api.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})

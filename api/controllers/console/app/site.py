@@ -1,4 +1,5 @@
-from flask_restx import Resource, fields, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 from constants.languages import supported_language
@@ -36,7 +37,7 @@ def parse_app_site_args():
 
 
 @console_ns.route("/apps/<uuid:app_id>/site")
-class AppSite(Resource):
+class AppSite(MethodView):
     @api.doc("update_app_site")
     @api.doc(description="Update application site configuration")
     @api.doc(params={"app_id": "Application ID"})
@@ -115,7 +116,7 @@ class AppSite(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/site/access-token-reset")
-class AppSiteAccessTokenReset(Resource):
+class AppSiteAccessTokenReset(MethodView):
     @api.doc("reset_app_site_access_token")
     @api.doc(description="Reset access token for application site")
     @api.doc(params={"app_id": "Application ID"})

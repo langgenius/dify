@@ -2,7 +2,8 @@ from datetime import datetime
 
 import pytz
 from flask import request
-from flask_restx import Resource, fields, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -44,7 +45,7 @@ from services.errors.account import CurrentPasswordIncorrectError as ServiceCurr
 
 
 @console_ns.route("/account/init")
-class AccountInitApi(Resource):
+class AccountInitApi(MethodView):
     @setup_required
     @login_required
     def post(self):
@@ -95,7 +96,7 @@ class AccountInitApi(Resource):
 
 
 @console_ns.route("/account/profile")
-class AccountProfileApi(Resource):
+class AccountProfileApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -107,7 +108,7 @@ class AccountProfileApi(Resource):
 
 
 @console_ns.route("/account/name")
-class AccountNameApi(Resource):
+class AccountNameApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -128,7 +129,7 @@ class AccountNameApi(Resource):
 
 
 @console_ns.route("/account/avatar")
-class AccountAvatarApi(Resource):
+class AccountAvatarApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -145,7 +146,7 @@ class AccountAvatarApi(Resource):
 
 
 @console_ns.route("/account/interface-language")
-class AccountInterfaceLanguageApi(Resource):
+class AccountInterfaceLanguageApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -162,7 +163,7 @@ class AccountInterfaceLanguageApi(Resource):
 
 
 @console_ns.route("/account/interface-theme")
-class AccountInterfaceThemeApi(Resource):
+class AccountInterfaceThemeApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -179,7 +180,7 @@ class AccountInterfaceThemeApi(Resource):
 
 
 @console_ns.route("/account/timezone")
-class AccountTimezoneApi(Resource):
+class AccountTimezoneApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -200,7 +201,7 @@ class AccountTimezoneApi(Resource):
 
 
 @console_ns.route("/account/password")
-class AccountPasswordApi(Resource):
+class AccountPasswordApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -225,7 +226,7 @@ class AccountPasswordApi(Resource):
 
 
 @console_ns.route("/account/integrates")
-class AccountIntegrateApi(Resource):
+class AccountIntegrateApi(MethodView):
     integrate_fields = {
         "provider": fields.String,
         "created_at": TimestampField,
@@ -280,7 +281,7 @@ class AccountIntegrateApi(Resource):
 
 
 @console_ns.route("/account/delete/verify")
-class AccountDeleteVerifyApi(Resource):
+class AccountDeleteVerifyApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -294,7 +295,7 @@ class AccountDeleteVerifyApi(Resource):
 
 
 @console_ns.route("/account/delete")
-class AccountDeleteApi(Resource):
+class AccountDeleteApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -315,7 +316,7 @@ class AccountDeleteApi(Resource):
 
 
 @console_ns.route("/account/delete/feedback")
-class AccountDeleteUpdateFeedbackApi(Resource):
+class AccountDeleteUpdateFeedbackApi(MethodView):
     @setup_required
     def post(self):
         parser = reqparse.RequestParser()
@@ -329,7 +330,7 @@ class AccountDeleteUpdateFeedbackApi(Resource):
 
 
 @console_ns.route("/account/education/verify")
-class EducationVerifyApi(Resource):
+class EducationVerifyApi(MethodView):
     verify_fields = {
         "token": fields.String,
     }
@@ -347,7 +348,7 @@ class EducationVerifyApi(Resource):
 
 
 @console_ns.route("/account/education")
-class EducationApi(Resource):
+class EducationApi(MethodView):
     status_fields = {
         "result": fields.Boolean,
         "is_student": fields.Boolean,
@@ -388,7 +389,7 @@ class EducationApi(Resource):
 
 
 @console_ns.route("/account/education/autocomplete")
-class EducationAutoCompleteApi(Resource):
+class EducationAutoCompleteApi(MethodView):
     data_fields = {
         "data": fields.List(fields.String),
         "curr_page": fields.Integer,
@@ -412,7 +413,7 @@ class EducationAutoCompleteApi(Resource):
 
 
 @console_ns.route("/account/change-email")
-class ChangeEmailSendEmailApi(Resource):
+class ChangeEmailSendEmailApi(MethodView):
     @enable_change_email
     @setup_required
     @login_required
@@ -460,7 +461,7 @@ class ChangeEmailSendEmailApi(Resource):
 
 
 @console_ns.route("/account/change-email/validity")
-class ChangeEmailCheckApi(Resource):
+class ChangeEmailCheckApi(MethodView):
     @enable_change_email
     @setup_required
     @login_required
@@ -502,7 +503,7 @@ class ChangeEmailCheckApi(Resource):
 
 
 @console_ns.route("/account/change-email/reset")
-class ChangeEmailResetApi(Resource):
+class ChangeEmailResetApi(MethodView):
     @enable_change_email
     @setup_required
     @login_required
@@ -541,7 +542,7 @@ class ChangeEmailResetApi(Resource):
 
 
 @console_ns.route("/account/change-email/check-email-unique")
-class CheckEmailUnique(Resource):
+class CheckEmailUnique(MethodView):
     @setup_required
     def post(self):
         parser = reqparse.RequestParser()

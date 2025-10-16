@@ -1,4 +1,5 @@
-from flask_restx import Resource, fields, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, marshal_with, reqparse
 
 from constants import HIDDEN_VALUE
 from controllers.console import api, console_ns
@@ -11,7 +12,7 @@ from services.code_based_extension_service import CodeBasedExtensionService
 
 
 @console_ns.route("/code-based-extension")
-class CodeBasedExtensionAPI(Resource):
+class CodeBasedExtensionAPI(MethodView):
     @api.doc("get_code_based_extension")
     @api.doc(description="Get code-based extension data by module name")
     @api.expect(
@@ -37,7 +38,7 @@ class CodeBasedExtensionAPI(Resource):
 
 
 @console_ns.route("/api-based-extension")
-class APIBasedExtensionAPI(Resource):
+class APIBasedExtensionAPI(MethodView):
     @api.doc("get_api_based_extensions")
     @api.doc(description="Get all API-based extensions for current tenant")
     @api.response(200, "Success", fields.List(fields.Nested(api_based_extension_fields)))
@@ -86,7 +87,7 @@ class APIBasedExtensionAPI(Resource):
 
 
 @console_ns.route("/api-based-extension/<uuid:id>")
-class APIBasedExtensionDetailAPI(Resource):
+class APIBasedExtensionDetailAPI(MethodView):
     @api.doc("get_api_based_extension")
     @api.doc(description="Get API-based extension by ID")
     @api.doc(params={"id": "Extension ID"})

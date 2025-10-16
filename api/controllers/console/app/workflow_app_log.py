@@ -1,5 +1,6 @@
 from dateutil.parser import isoparse
-from flask_restx import Resource, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session
 
@@ -16,7 +17,7 @@ from services.workflow_app_service import WorkflowAppService
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-app-logs")
-class WorkflowAppLogApi(Resource):
+class WorkflowAppLogApi(MethodView):
     @api.doc("get_workflow_app_logs")
     @api.doc(description="Get workflow application execution logs")
     @api.doc(params={"app_id": "Application ID"})

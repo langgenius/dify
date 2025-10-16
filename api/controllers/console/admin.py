@@ -3,7 +3,8 @@ from functools import wraps
 from typing import ParamSpec, TypeVar
 
 from flask import request
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
@@ -46,7 +47,7 @@ def admin_required(view: Callable[P, R]):
 
 
 @console_ns.route("/admin/insert-explore-apps")
-class InsertExploreAppListApi(Resource):
+class InsertExploreAppListApi(MethodView):
     @api.doc("insert_explore_app")
     @api.doc(description="Insert or update an app in the explore list")
     @api.expect(
@@ -137,7 +138,7 @@ class InsertExploreAppListApi(Resource):
 
 
 @console_ns.route("/admin/insert-explore-apps/<uuid:app_id>")
-class InsertExploreAppApi(Resource):
+class InsertExploreAppApi(MethodView):
     @api.doc("delete_explore_app")
     @api.doc(description="Remove an app from the explore list")
     @api.doc(params={"app_id": "Application ID to remove"})

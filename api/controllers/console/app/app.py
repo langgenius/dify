@@ -1,6 +1,7 @@
 import uuid
 
-from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, abort
@@ -29,7 +30,7 @@ ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "co
 
 
 @console_ns.route("/apps")
-class AppListApi(Resource):
+class AppListApi(MethodView):
     @api.doc("list_apps")
     @api.doc(description="Get list of applications with pagination and filtering")
     @api.expect(
@@ -152,7 +153,7 @@ class AppListApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>")
-class AppApi(Resource):
+class AppApi(MethodView):
     @api.doc("get_app_detail")
     @api.doc(description="Get application details")
     @api.doc(params={"app_id": "Application ID"})
@@ -249,7 +250,7 @@ class AppApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/copy")
-class AppCopyApi(Resource):
+class AppCopyApi(MethodView):
     @api.doc("copy_app")
     @api.doc(description="Create a copy of an existing application")
     @api.doc(params={"app_id": "Application ID to copy"})
@@ -308,7 +309,7 @@ class AppCopyApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/export")
-class AppExportApi(Resource):
+class AppExportApi(MethodView):
     @api.doc("export_app")
     @api.doc(description="Export application configuration as DSL")
     @api.doc(params={"app_id": "Application ID to export"})
@@ -344,7 +345,7 @@ class AppExportApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/name")
-class AppNameApi(Resource):
+class AppNameApi(MethodView):
     @api.doc("check_app_name")
     @api.doc(description="Check if app name is available")
     @api.doc(params={"app_id": "Application ID"})
@@ -368,7 +369,7 @@ class AppNameApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/icon")
-class AppIconApi(Resource):
+class AppIconApi(MethodView):
     @api.doc("update_app_icon")
     @api.doc(description="Update application icon")
     @api.doc(params={"app_id": "Application ID"})
@@ -403,7 +404,7 @@ class AppIconApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/site-enable")
-class AppSiteStatus(Resource):
+class AppSiteStatus(MethodView):
     @api.doc("update_app_site_status")
     @api.doc(description="Enable or disable app site")
     @api.doc(params={"app_id": "Application ID"})
@@ -432,7 +433,7 @@ class AppSiteStatus(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/api-enable")
-class AppApiStatus(Resource):
+class AppApiStatus(MethodView):
     @api.doc("update_app_api_status")
     @api.doc(description="Enable or disable app API")
     @api.doc(params={"app_id": "Application ID"})
@@ -465,7 +466,7 @@ class AppApiStatus(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/trace")
-class AppTraceApi(Resource):
+class AppTraceApi(MethodView):
     @api.doc("get_app_trace")
     @api.doc(description="Get app tracing configuration")
     @api.doc(params={"app_id": "Application ID"})

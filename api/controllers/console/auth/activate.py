@@ -1,5 +1,6 @@
 from flask import request
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 
 from constants.languages import supported_language
 from controllers.console import api, console_ns
@@ -23,7 +24,7 @@ active_check_parser.add_argument(
 
 
 @console_ns.route("/activate/check")
-class ActivateCheckApi(Resource):
+class ActivateCheckApi(MethodView):
     @api.doc("check_activation_token")
     @api.doc(description="Check if activation token is valid")
     @api.expect(active_check_parser)
@@ -72,7 +73,7 @@ active_parser.add_argument("timezone", type=timezone, required=True, nullable=Fa
 
 
 @console_ns.route("/activate")
-class ActivateApi(Resource):
+class ActivateApi(MethodView):
     @api.doc("activate_account")
     @api.doc(description="Activate account with invitation token")
     @api.expect(active_parser)

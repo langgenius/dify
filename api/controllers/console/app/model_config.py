@@ -2,7 +2,8 @@ import json
 from typing import cast
 
 from flask import request
-from flask_restx import Resource, fields
+from flask.views import MethodView
+from flask_restx import fields
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api, console_ns
@@ -20,7 +21,7 @@ from services.app_model_config_service import AppModelConfigService
 
 
 @console_ns.route("/apps/<uuid:app_id>/model-config")
-class ModelConfigResource(Resource):
+class ModelConfigResource(MethodView):
     @api.doc("update_app_model_config")
     @api.doc(description="Update application model configuration")
     @api.doc(params={"app_id": "Application ID"})

@@ -2,7 +2,8 @@ from datetime import datetime
 
 import pytz
 import sqlalchemy as sa
-from flask_restx import Resource, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
@@ -29,7 +30,7 @@ from services.errors.conversation import ConversationNotExistsError
 
 
 @console_ns.route("/apps/<uuid:app_id>/completion-conversations")
-class CompletionConversationApi(Resource):
+class CompletionConversationApi(MethodView):
     @api.doc("list_completion_conversations")
     @api.doc(description="Get completion conversations with pagination and filtering")
     @api.doc(params={"app_id": "Application ID"})
@@ -125,7 +126,7 @@ class CompletionConversationApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
-class CompletionConversationDetailApi(Resource):
+class CompletionConversationDetailApi(MethodView):
     @api.doc("get_completion_conversation")
     @api.doc(description="Get completion conversation details with messages")
     @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
@@ -167,7 +168,7 @@ class CompletionConversationDetailApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations")
-class ChatConversationApi(Resource):
+class ChatConversationApi(MethodView):
     @api.doc("list_chat_conversations")
     @api.doc(description="Get chat conversations with pagination, filtering and summary")
     @api.doc(params={"app_id": "Application ID"})
@@ -327,7 +328,7 @@ class ChatConversationApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")
-class ChatConversationDetailApi(Resource):
+class ChatConversationDetailApi(MethodView):
     @api.doc("get_chat_conversation")
     @api.doc(description="Get chat conversation details")
     @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})

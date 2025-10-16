@@ -2,7 +2,7 @@ import logging
 
 import httpx
 from flask import current_app, redirect, request
-from flask_restx import Resource
+from flask.views import MethodView
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
@@ -50,7 +50,7 @@ def get_oauth_providers():
 
 
 @console_ns.route("/oauth/login/<provider>")
-class OAuthLogin(Resource):
+class OAuthLogin(MethodView):
     @api.doc("oauth_login")
     @api.doc(description="Initiate OAuth login process")
     @api.doc(params={"provider": "OAuth provider name (github/google)", "invite_token": "Optional invitation token"})
@@ -69,7 +69,7 @@ class OAuthLogin(Resource):
 
 
 @console_ns.route("/oauth/authorize/<provider>")
-class OAuthCallback(Resource):
+class OAuthCallback(MethodView):
     @api.doc("oauth_callback")
     @api.doc(description="Handle OAuth callback and complete login process")
     @api.doc(

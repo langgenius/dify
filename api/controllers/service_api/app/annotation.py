@@ -1,7 +1,8 @@
 from typing import Literal
 
 from flask import request
-from flask_restx import Api, Namespace, Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import Api, Namespace, fields, reqparse
 from flask_restx.api import HTTPStatus
 from werkzeug.exceptions import Forbidden
 
@@ -32,7 +33,7 @@ annotation_reply_action_parser.add_argument(
 
 
 @service_api_ns.route("/apps/annotation-reply/<string:action>")
-class AnnotationReplyActionApi(Resource):
+class AnnotationReplyActionApi(MethodView):
     @service_api_ns.expect(annotation_reply_action_parser)
     @service_api_ns.doc("annotation_reply_action")
     @service_api_ns.doc(description="Enable or disable annotation reply feature")
@@ -55,7 +56,7 @@ class AnnotationReplyActionApi(Resource):
 
 
 @service_api_ns.route("/apps/annotation-reply/<string:action>/status/<uuid:job_id>")
-class AnnotationReplyActionStatusApi(Resource):
+class AnnotationReplyActionStatusApi(MethodView):
     @service_api_ns.doc("get_annotation_reply_action_status")
     @service_api_ns.doc(description="Get the status of an annotation reply action job")
     @service_api_ns.doc(params={"action": "Action type", "job_id": "Job ID"})
@@ -102,7 +103,7 @@ def build_annotation_list_model(api_or_ns: Api | Namespace):
 
 
 @service_api_ns.route("/apps/annotations")
-class AnnotationListApi(Resource):
+class AnnotationListApi(MethodView):
     @service_api_ns.doc("list_annotations")
     @service_api_ns.doc(description="List annotations for the application")
     @service_api_ns.doc(
@@ -147,7 +148,7 @@ class AnnotationListApi(Resource):
 
 
 @service_api_ns.route("/apps/annotations/<uuid:annotation_id>")
-class AnnotationUpdateDeleteApi(Resource):
+class AnnotationUpdateDeleteApi(MethodView):
     @service_api_ns.expect(annotation_create_parser)
     @service_api_ns.doc("update_annotation")
     @service_api_ns.doc(description="Update an existing annotation")

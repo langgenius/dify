@@ -1,4 +1,5 @@
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 
 from controllers.console import api, console_ns
 from controllers.console.datasets.error import WebsiteCrawlError
@@ -8,7 +9,7 @@ from services.website_service import WebsiteCrawlApiRequest, WebsiteCrawlStatusA
 
 
 @console_ns.route("/website/crawl")
-class WebsiteCrawlApi(Resource):
+class WebsiteCrawlApi(MethodView):
     @api.doc("crawl_website")
     @api.doc(description="Crawl website content")
     @api.expect(
@@ -59,7 +60,7 @@ class WebsiteCrawlApi(Resource):
 
 
 @console_ns.route("/website/crawl/status/<string:job_id>")
-class WebsiteCrawlStatusApi(Resource):
+class WebsiteCrawlStatusApi(MethodView):
     @api.doc("get_crawl_status")
     @api.doc(description="Get website crawl status")
     @api.doc(params={"job_id": "Crawl job ID", "provider": "Crawl provider (firecrawl/watercrawl/jinareader)"})

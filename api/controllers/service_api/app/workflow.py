@@ -2,7 +2,8 @@ import logging
 
 from dateutil.parser import isoparse
 from flask import request
-from flask_restx import Api, Namespace, Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import Api, Namespace, fields, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
@@ -90,7 +91,7 @@ def build_workflow_run_model(api_or_ns: Api | Namespace):
 
 
 @service_api_ns.route("/workflows/run/<string:workflow_run_id>")
-class WorkflowRunDetailApi(Resource):
+class WorkflowRunDetailApi(MethodView):
     @service_api_ns.doc("get_workflow_run_detail")
     @service_api_ns.doc(description="Get workflow run details")
     @service_api_ns.doc(params={"workflow_run_id": "Workflow run ID"})
@@ -125,7 +126,7 @@ class WorkflowRunDetailApi(Resource):
 
 
 @service_api_ns.route("/workflows/run")
-class WorkflowRunApi(Resource):
+class WorkflowRunApi(MethodView):
     @service_api_ns.expect(workflow_run_parser)
     @service_api_ns.doc("run_workflow")
     @service_api_ns.doc(description="Execute a workflow")
@@ -180,7 +181,7 @@ class WorkflowRunApi(Resource):
 
 
 @service_api_ns.route("/workflows/<string:workflow_id>/run")
-class WorkflowRunByIdApi(Resource):
+class WorkflowRunByIdApi(MethodView):
     @service_api_ns.expect(workflow_run_parser)
     @service_api_ns.doc("run_workflow_by_id")
     @service_api_ns.doc(description="Execute a specific workflow by ID")
@@ -245,7 +246,7 @@ class WorkflowRunByIdApi(Resource):
 
 
 @service_api_ns.route("/workflows/tasks/<string:task_id>/stop")
-class WorkflowTaskStopApi(Resource):
+class WorkflowTaskStopApi(MethodView):
     @service_api_ns.doc("stop_workflow_task")
     @service_api_ns.doc(description="Stop a running workflow task")
     @service_api_ns.doc(params={"task_id": "Task ID to stop"})
@@ -274,7 +275,7 @@ class WorkflowTaskStopApi(Resource):
 
 
 @service_api_ns.route("/workflows/logs")
-class WorkflowAppLogApi(Resource):
+class WorkflowAppLogApi(MethodView):
     @service_api_ns.expect(workflow_log_parser)
     @service_api_ns.doc("get_workflow_logs")
     @service_api_ns.doc(description="Get workflow execution logs")

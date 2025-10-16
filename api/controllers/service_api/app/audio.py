@@ -1,7 +1,8 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from werkzeug.exceptions import InternalServerError
 
 import services
@@ -33,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 @service_api_ns.route("/audio-to-text")
-class AudioApi(Resource):
+class AudioApi(MethodView):
     @service_api_ns.doc("audio_to_text")
     @service_api_ns.doc(description="Convert audio to text using speech-to-text")
     @service_api_ns.doc(
@@ -93,7 +94,7 @@ text_to_audio_parser.add_argument("streaming", type=bool, location="json", help=
 
 
 @service_api_ns.route("/text-to-audio")
-class TextApi(Resource):
+class TextApi(MethodView):
     @service_api_ns.expect(text_to_audio_parser)
     @service_api_ns.doc("text_to_audio")
     @service_api_ns.doc(description="Convert text to audio using text-to-speech")

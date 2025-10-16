@@ -1,5 +1,5 @@
+from flask.views import MethodView
 from flask_login import current_user
-from flask_restx import Resource
 
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_dataset_token
@@ -8,7 +8,7 @@ from services.model_provider_service import ModelProviderService
 
 
 @service_api_ns.route("/workspaces/current/models/model-types/<string:model_type>")
-class ModelProviderAvailableModelApi(Resource):
+class ModelProviderAvailableModelApi(MethodView):
     @service_api_ns.doc("get_available_models")
     @service_api_ns.doc(description="Get available models by model type")
     @service_api_ns.doc(params={"model_type": "Type of model to retrieve"})

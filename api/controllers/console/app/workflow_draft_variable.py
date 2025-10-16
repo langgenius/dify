@@ -2,7 +2,8 @@ import logging
 from typing import NoReturn
 
 from flask import Response
-from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -164,7 +165,7 @@ def _api_prerequisite(f):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
-class WorkflowVariableCollectionApi(Resource):
+class WorkflowVariableCollectionApi(MethodView):
     @api.doc("get_workflow_variables")
     @api.doc(description="Get draft workflow variables")
     @api.doc(params={"app_id": "Application ID"})
@@ -230,7 +231,7 @@ def validate_node_id(node_id: str) -> NoReturn | None:
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/variables")
-class NodeVariableCollectionApi(Resource):
+class NodeVariableCollectionApi(MethodView):
     @api.doc("get_node_variables")
     @api.doc(description="Get variables for a specific node")
     @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
@@ -260,7 +261,7 @@ class NodeVariableCollectionApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>")
-class VariableApi(Resource):
+class VariableApi(MethodView):
     _PATCH_NAME_FIELD = "name"
     _PATCH_VALUE_FIELD = "value"
 
@@ -377,7 +378,7 @@ class VariableApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>/reset")
-class VariableResetApi(Resource):
+class VariableResetApi(MethodView):
     @api.doc("reset_variable")
     @api.doc(description="Reset a workflow variable to its default value")
     @api.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
@@ -425,7 +426,7 @@ def _get_variable_list(app_model: App, node_id) -> WorkflowDraftVariableList:
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/conversation-variables")
-class ConversationVariableCollectionApi(Resource):
+class ConversationVariableCollectionApi(MethodView):
     @api.doc("get_conversation_variables")
     @api.doc(description="Get conversation variables for workflow")
     @api.doc(params={"app_id": "Application ID"})
@@ -447,7 +448,7 @@ class ConversationVariableCollectionApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/system-variables")
-class SystemVariableCollectionApi(Resource):
+class SystemVariableCollectionApi(MethodView):
     @api.doc("get_system_variables")
     @api.doc(description="Get system variables for workflow")
     @api.doc(params={"app_id": "Application ID"})
@@ -459,7 +460,7 @@ class SystemVariableCollectionApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/environment-variables")
-class EnvironmentVariableCollectionApi(Resource):
+class EnvironmentVariableCollectionApi(MethodView):
     @api.doc("get_environment_variables")
     @api.doc(description="Get environment variables for workflow")
     @api.doc(params={"app_id": "Application ID"})

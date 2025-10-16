@@ -1,4 +1,5 @@
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
@@ -12,7 +13,7 @@ _mail_parser.add_argument("body", type=str, required=True)
 _mail_parser.add_argument("substitutions", type=dict, required=False)
 
 
-class BaseMail(Resource):
+class BaseMail(MethodView):
     """Shared logic for sending an inner email."""
 
     def post(self):

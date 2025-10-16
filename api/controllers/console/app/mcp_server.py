@@ -1,7 +1,8 @@
 import json
 from enum import StrEnum
 
-from flask_restx import Resource, fields, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, marshal_with, reqparse
 from werkzeug.exceptions import NotFound
 
 from controllers.console import api, console_ns
@@ -19,7 +20,7 @@ class AppMCPServerStatus(StrEnum):
 
 
 @console_ns.route("/apps/<uuid:app_id>/server")
-class AppMCPServerController(Resource):
+class AppMCPServerController(MethodView):
     @api.doc("get_app_mcp_server")
     @api.doc(description="Get MCP server configuration for an application")
     @api.doc(params={"app_id": "Application ID"})
@@ -129,7 +130,7 @@ class AppMCPServerController(Resource):
 
 
 @console_ns.route("/apps/<uuid:server_id>/server/refresh")
-class AppMCPServerRefreshController(Resource):
+class AppMCPServerRefreshController(MethodView):
     @api.doc("refresh_app_mcp_server")
     @api.doc(description="Refresh MCP server configuration and regenerate server code")
     @api.doc(params={"server_id": "Server ID"})

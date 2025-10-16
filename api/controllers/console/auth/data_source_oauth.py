@@ -2,7 +2,8 @@ import logging
 
 import httpx
 from flask import current_app, redirect, request
-from flask_restx import Resource, fields
+from flask.views import MethodView
+from flask_restx import fields
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -28,7 +29,7 @@ def get_oauth_providers():
 
 
 @console_ns.route("/oauth/data-source/<string:provider>")
-class OAuthDataSource(Resource):
+class OAuthDataSource(MethodView):
     @api.doc("oauth_data_source")
     @api.doc(description="Get OAuth authorization URL for data source provider")
     @api.doc(params={"provider": "Data source provider name (notion)"})
@@ -64,7 +65,7 @@ class OAuthDataSource(Resource):
 
 
 @console_ns.route("/oauth/data-source/callback/<string:provider>")
-class OAuthDataSourceCallback(Resource):
+class OAuthDataSourceCallback(MethodView):
     @api.doc("oauth_data_source_callback")
     @api.doc(description="Handle OAuth callback from data source provider")
     @api.doc(
@@ -95,7 +96,7 @@ class OAuthDataSourceCallback(Resource):
 
 
 @console_ns.route("/oauth/data-source/binding/<string:provider>")
-class OAuthDataSourceBinding(Resource):
+class OAuthDataSourceBinding(MethodView):
     @api.doc("oauth_data_source_binding")
     @api.doc(description="Bind OAuth data source with authorization code")
     @api.doc(
@@ -129,7 +130,7 @@ class OAuthDataSourceBinding(Resource):
 
 
 @console_ns.route("/oauth/data-source/<string:provider>/<uuid:binding_id>/sync")
-class OAuthDataSourceSync(Resource):
+class OAuthDataSourceSync(MethodView):
     @api.doc("oauth_data_source_sync")
     @api.doc(description="Sync data from OAuth data source")
     @api.doc(params={"provider": "Data source provider name (notion)", "binding_id": "Data source binding ID"})

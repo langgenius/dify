@@ -1,5 +1,5 @@
 from flask import request
-from flask_restx import Resource
+from flask.views import MethodView
 from flask_restx.api import HTTPStatus
 
 import services
@@ -19,7 +19,7 @@ from services.file_service import FileService
 
 
 @service_api_ns.route("/files/upload")
-class FileApi(Resource):
+class FileApi(MethodView):
     @service_api_ns.doc("upload_file")
     @service_api_ns.doc(description="Upload a file for use in conversations")
     @service_api_ns.doc(

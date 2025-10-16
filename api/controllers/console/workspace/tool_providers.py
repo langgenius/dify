@@ -2,8 +2,8 @@ import io
 from urllib.parse import urlparse
 
 from flask import make_response, redirect, request, send_file
+from flask.views import MethodView
 from flask_restx import (
-    Resource,
     reqparse,
 )
 from werkzeug.exceptions import Forbidden
@@ -47,7 +47,7 @@ def is_valid_url(url: str) -> bool:
 
 
 @console_ns.route("/workspaces/current/tool-providers")
-class ToolProviderListApi(Resource):
+class ToolProviderListApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -71,7 +71,7 @@ class ToolProviderListApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/tools")
-class ToolBuiltinProviderListToolsApi(Resource):
+class ToolBuiltinProviderListToolsApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -87,7 +87,7 @@ class ToolBuiltinProviderListToolsApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/info")
-class ToolBuiltinProviderInfoApi(Resource):
+class ToolBuiltinProviderInfoApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -98,7 +98,7 @@ class ToolBuiltinProviderInfoApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/delete")
-class ToolBuiltinProviderDeleteApi(Resource):
+class ToolBuiltinProviderDeleteApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -119,7 +119,7 @@ class ToolBuiltinProviderDeleteApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/add")
-class ToolBuiltinProviderAddApi(Resource):
+class ToolBuiltinProviderAddApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -148,7 +148,7 @@ class ToolBuiltinProviderAddApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/update")
-class ToolBuiltinProviderUpdateApi(Resource):
+class ToolBuiltinProviderUpdateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -179,7 +179,7 @@ class ToolBuiltinProviderUpdateApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/credentials")
-class ToolBuiltinProviderGetCredentialsApi(Resource):
+class ToolBuiltinProviderGetCredentialsApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -195,7 +195,7 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/icon")
-class ToolBuiltinProviderIconApi(Resource):
+class ToolBuiltinProviderIconApi(MethodView):
     @setup_required
     def get(self, provider):
         icon_bytes, mimetype = BuiltinToolManageService.get_builtin_tool_provider_icon(provider)
@@ -204,7 +204,7 @@ class ToolBuiltinProviderIconApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/add")
-class ToolApiProviderAddApi(Resource):
+class ToolApiProviderAddApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -243,7 +243,7 @@ class ToolApiProviderAddApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/remote")
-class ToolApiProviderGetRemoteSchemaApi(Resource):
+class ToolApiProviderGetRemoteSchemaApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -266,7 +266,7 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/tools")
-class ToolApiProviderListToolsApi(Resource):
+class ToolApiProviderListToolsApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -291,7 +291,7 @@ class ToolApiProviderListToolsApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/update")
-class ToolApiProviderUpdateApi(Resource):
+class ToolApiProviderUpdateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -332,7 +332,7 @@ class ToolApiProviderUpdateApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/delete")
-class ToolApiProviderDeleteApi(Resource):
+class ToolApiProviderDeleteApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -358,7 +358,7 @@ class ToolApiProviderDeleteApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/get")
-class ToolApiProviderGetApi(Resource):
+class ToolApiProviderGetApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -381,7 +381,7 @@ class ToolApiProviderGetApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/credential/schema/<path:credential_type>")
-class ToolBuiltinProviderCredentialsSchemaApi(Resource):
+class ToolBuiltinProviderCredentialsSchemaApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -396,7 +396,7 @@ class ToolBuiltinProviderCredentialsSchemaApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/schema")
-class ToolApiProviderSchemaApi(Resource):
+class ToolApiProviderSchemaApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -413,7 +413,7 @@ class ToolApiProviderSchemaApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/test/pre")
-class ToolApiProviderPreviousTestApi(Resource):
+class ToolApiProviderPreviousTestApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -441,7 +441,7 @@ class ToolApiProviderPreviousTestApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/create")
-class ToolWorkflowProviderCreateApi(Resource):
+class ToolWorkflowProviderCreateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -480,7 +480,7 @@ class ToolWorkflowProviderCreateApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/update")
-class ToolWorkflowProviderUpdateApi(Resource):
+class ToolWorkflowProviderUpdateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -522,7 +522,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/delete")
-class ToolWorkflowProviderDeleteApi(Resource):
+class ToolWorkflowProviderDeleteApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -547,7 +547,7 @@ class ToolWorkflowProviderDeleteApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/get")
-class ToolWorkflowProviderGetApi(Resource):
+class ToolWorkflowProviderGetApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -581,7 +581,7 @@ class ToolWorkflowProviderGetApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/tools")
-class ToolWorkflowProviderListToolApi(Resource):
+class ToolWorkflowProviderListToolApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -605,7 +605,7 @@ class ToolWorkflowProviderListToolApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tools/builtin")
-class ToolBuiltinListApi(Resource):
+class ToolBuiltinListApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -626,7 +626,7 @@ class ToolBuiltinListApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tools/api")
-class ToolApiListApi(Resource):
+class ToolApiListApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -644,7 +644,7 @@ class ToolApiListApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tools/workflow")
-class ToolWorkflowListApi(Resource):
+class ToolWorkflowListApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -665,7 +665,7 @@ class ToolWorkflowListApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-labels")
-class ToolLabelsApi(Resource):
+class ToolLabelsApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -675,7 +675,7 @@ class ToolLabelsApi(Resource):
 
 
 @console_ns.route("/oauth/plugin/<path:provider>/tool/authorization-url")
-class ToolPluginOAuthApi(Resource):
+class ToolPluginOAuthApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -719,7 +719,7 @@ class ToolPluginOAuthApi(Resource):
 
 
 @console_ns.route("/oauth/plugin/<path:provider>/tool/callback")
-class ToolOAuthCallback(Resource):
+class ToolOAuthCallback(MethodView):
     @setup_required
     def get(self, provider):
         context_id = request.cookies.get("context_id")
@@ -770,7 +770,7 @@ class ToolOAuthCallback(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/default-credential")
-class ToolBuiltinProviderSetDefaultApi(Resource):
+class ToolBuiltinProviderSetDefaultApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -785,7 +785,7 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/oauth/custom-client")
-class ToolOAuthCustomClient(Resource):
+class ToolOAuthCustomClient(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -827,7 +827,7 @@ class ToolOAuthCustomClient(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/oauth/client-schema")
-class ToolBuiltinProviderGetOauthClientSchemaApi(Resource):
+class ToolBuiltinProviderGetOauthClientSchemaApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -841,7 +841,7 @@ class ToolBuiltinProviderGetOauthClientSchemaApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/credential/info")
-class ToolBuiltinProviderGetCredentialInfoApi(Resource):
+class ToolBuiltinProviderGetCredentialInfoApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -857,7 +857,7 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/mcp")
-class ToolProviderMCPApi(Resource):
+class ToolProviderMCPApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -944,7 +944,7 @@ class ToolProviderMCPApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/mcp/auth")
-class ToolMCPAuthApi(Resource):
+class ToolMCPAuthApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -990,7 +990,7 @@ class ToolMCPAuthApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/mcp/tools/<path:provider_id>")
-class ToolMCPDetailApi(Resource):
+class ToolMCPDetailApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -1001,7 +1001,7 @@ class ToolMCPDetailApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tools/mcp")
-class ToolMCPListAllApi(Resource):
+class ToolMCPListAllApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -1014,7 +1014,7 @@ class ToolMCPListAllApi(Resource):
 
 
 @console_ns.route("/workspaces/current/tool-provider/mcp/update/<path:provider_id>")
-class ToolMCPUpdateApi(Resource):
+class ToolMCPUpdateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -1028,7 +1028,7 @@ class ToolMCPUpdateApi(Resource):
 
 
 @console_ns.route("/mcp/oauth/callback")
-class ToolMCPCallbackApi(Resource):
+class ToolMCPCallbackApi(MethodView):
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument("code", type=str, required=True, nullable=False, location="args")

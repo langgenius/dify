@@ -1,6 +1,7 @@
 from typing import cast
 
-from flask_restx import Resource, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import marshal_with, reqparse
 from flask_restx.inputs import int_range
 
 from controllers.console import api, console_ns
@@ -19,7 +20,7 @@ from services.workflow_run_service import WorkflowRunService
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs")
-class AdvancedChatAppWorkflowRunListApi(Resource):
+class AdvancedChatAppWorkflowRunListApi(MethodView):
     @api.doc("get_advanced_chat_workflow_runs")
     @api.doc(description="Get advanced chat workflow run list")
     @api.doc(params={"app_id": "Application ID"})
@@ -46,7 +47,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs")
-class WorkflowRunListApi(Resource):
+class WorkflowRunListApi(MethodView):
     @api.doc("get_workflow_runs")
     @api.doc(description="Get workflow run list")
     @api.doc(params={"app_id": "Application ID"})
@@ -73,7 +74,7 @@ class WorkflowRunListApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>")
-class WorkflowRunDetailApi(Resource):
+class WorkflowRunDetailApi(MethodView):
     @api.doc("get_workflow_run_detail")
     @api.doc(description="Get workflow run detail")
     @api.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
@@ -97,7 +98,7 @@ class WorkflowRunDetailApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions")
-class WorkflowRunNodeExecutionListApi(Resource):
+class WorkflowRunNodeExecutionListApi(MethodView):
     @api.doc("get_workflow_run_node_executions")
     @api.doc(description="Get workflow run node execution list")
     @api.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})

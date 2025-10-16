@@ -1,5 +1,6 @@
 from flask import make_response, redirect, request
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -16,7 +17,7 @@ from services.plugin.oauth_service import OAuthProxyService
 
 
 @console_ns.route("/oauth/plugin/<path:provider_id>/datasource/get-authorization-url")
-class DatasourcePluginOAuthAuthorizationUrl(Resource):
+class DatasourcePluginOAuthAuthorizationUrl(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -66,7 +67,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
 
 
 @console_ns.route("/oauth/plugin/<path:provider_id>/datasource/callback")
-class DatasourceOAuthCallback(Resource):
+class DatasourceOAuthCallback(MethodView):
     @setup_required
     def get(self, provider_id: str):
         context_id = request.cookies.get("context_id") or request.args.get("context_id")
@@ -122,7 +123,7 @@ class DatasourceOAuthCallback(Resource):
 
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>")
-class DatasourceAuth(Resource):
+class DatasourceAuth(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -167,7 +168,7 @@ class DatasourceAuth(Resource):
 
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/delete")
-class DatasourceAuthDeleteApi(Resource):
+class DatasourceAuthDeleteApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -193,7 +194,7 @@ class DatasourceAuthDeleteApi(Resource):
 
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update")
-class DatasourceAuthUpdateApi(Resource):
+class DatasourceAuthUpdateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -221,7 +222,7 @@ class DatasourceAuthUpdateApi(Resource):
 
 
 @console_ns.route("/auth/plugin/datasource/list")
-class DatasourceAuthListApi(Resource):
+class DatasourceAuthListApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -234,7 +235,7 @@ class DatasourceAuthListApi(Resource):
 
 
 @console_ns.route("/auth/plugin/datasource/default-list")
-class DatasourceHardCodeAuthListApi(Resource):
+class DatasourceHardCodeAuthListApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -247,7 +248,7 @@ class DatasourceHardCodeAuthListApi(Resource):
 
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/custom-client")
-class DatasourceAuthOauthCustomClient(Resource):
+class DatasourceAuthOauthCustomClient(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -285,7 +286,7 @@ class DatasourceAuthOauthCustomClient(Resource):
 
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/default")
-class DatasourceAuthDefaultApi(Resource):
+class DatasourceAuthDefaultApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -307,7 +308,7 @@ class DatasourceAuthDefaultApi(Resource):
 
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update-name")
-class DatasourceUpdateProviderNameApi(Resource):
+class DatasourceUpdateProviderNameApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

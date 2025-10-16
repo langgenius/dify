@@ -4,7 +4,8 @@ from collections.abc import Sequence
 from typing import cast
 
 from flask import abort, request
-from flask_restx import Resource, fields, inputs, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, inputs, marshal_with, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -58,7 +59,7 @@ def _parse_file(workflow: Workflow, files: list[dict] | None = None) -> Sequence
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft")
-class DraftWorkflowApi(Resource):
+class DraftWorkflowApi(MethodView):
     @api.doc("get_draft_workflow")
     @api.doc(description="Get draft workflow for an application")
     @api.doc(params={"app_id": "Application ID"})
@@ -173,7 +174,7 @@ class DraftWorkflowApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
-class AdvancedChatDraftWorkflowRunApi(Resource):
+class AdvancedChatDraftWorkflowRunApi(MethodView):
     @api.doc("run_advanced_chat_draft_workflow")
     @api.doc(description="Run draft workflow for advanced chat application")
     @api.doc(params={"app_id": "Application ID"})
@@ -235,7 +236,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/iteration/nodes/<string:node_id>/run")
-class AdvancedChatDraftRunIterationNodeApi(Resource):
+class AdvancedChatDraftRunIterationNodeApi(MethodView):
     @api.doc("run_advanced_chat_draft_iteration_node")
     @api.doc(description="Run draft workflow iteration node for advanced chat")
     @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
@@ -283,7 +284,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run")
-class WorkflowDraftRunIterationNodeApi(Resource):
+class WorkflowDraftRunIterationNodeApi(MethodView):
     @api.doc("run_workflow_draft_iteration_node")
     @api.doc(description="Run draft workflow iteration node")
     @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
@@ -331,7 +332,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/loop/nodes/<string:node_id>/run")
-class AdvancedChatDraftRunLoopNodeApi(Resource):
+class AdvancedChatDraftRunLoopNodeApi(MethodView):
     @api.doc("run_advanced_chat_draft_loop_node")
     @api.doc(description="Run draft workflow loop node for advanced chat")
     @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
@@ -379,7 +380,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/loop/nodes/<string:node_id>/run")
-class WorkflowDraftRunLoopNodeApi(Resource):
+class WorkflowDraftRunLoopNodeApi(MethodView):
     @api.doc("run_workflow_draft_loop_node")
     @api.doc(description="Run draft workflow loop node")
     @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
@@ -427,7 +428,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/run")
-class DraftWorkflowRunApi(Resource):
+class DraftWorkflowRunApi(MethodView):
     @api.doc("run_draft_workflow")
     @api.doc(description="Run draft workflow")
     @api.doc(params={"app_id": "Application ID"})
@@ -476,7 +477,7 @@ class DraftWorkflowRunApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
-class WorkflowTaskStopApi(Resource):
+class WorkflowTaskStopApi(MethodView):
     @api.doc("stop_workflow_task")
     @api.doc(description="Stop running workflow task")
     @api.doc(params={"app_id": "Application ID", "task_id": "Task ID"})
@@ -503,7 +504,7 @@ class WorkflowTaskStopApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/run")
-class DraftWorkflowNodeRunApi(Resource):
+class DraftWorkflowNodeRunApi(MethodView):
     @api.doc("run_draft_workflow_node")
     @api.doc(description="Run draft workflow node")
     @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
@@ -561,7 +562,7 @@ class DraftWorkflowNodeRunApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
-class PublishedWorkflowApi(Resource):
+class PublishedWorkflowApi(MethodView):
     @api.doc("get_published_workflow")
     @api.doc(description="Get published workflow for an application")
     @api.doc(params={"app_id": "Application ID"})
@@ -633,7 +634,7 @@ class PublishedWorkflowApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
-class DefaultBlockConfigsApi(Resource):
+class DefaultBlockConfigsApi(MethodView):
     @api.doc("get_default_block_configs")
     @api.doc(description="Get default block configurations for workflow")
     @api.doc(params={"app_id": "Application ID"})
@@ -653,7 +654,7 @@ class DefaultBlockConfigsApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>")
-class DefaultBlockConfigApi(Resource):
+class DefaultBlockConfigApi(MethodView):
     @api.doc("get_default_block_config")
     @api.doc(description="Get default block configuration by type")
     @api.doc(params={"app_id": "Application ID", "block_type": "Block type"})
@@ -687,7 +688,7 @@ class DefaultBlockConfigApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/convert-to-workflow")
-class ConvertToWorkflowApi(Resource):
+class ConvertToWorkflowApi(MethodView):
     @api.doc("convert_to_workflow")
     @api.doc(description="Convert application to workflow mode")
     @api.doc(params={"app_id": "Application ID"})
@@ -728,7 +729,7 @@ class ConvertToWorkflowApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows")
-class PublishedAllWorkflowApi(Resource):
+class PublishedAllWorkflowApi(MethodView):
     @api.doc("get_all_published_workflows")
     @api.doc(description="Get all published workflows for an application")
     @api.doc(params={"app_id": "Application ID"})
@@ -781,7 +782,7 @@ class PublishedAllWorkflowApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>")
-class WorkflowByIdApi(Resource):
+class WorkflowByIdApi(MethodView):
     @api.doc("update_workflow_by_id")
     @api.doc(description="Update workflow by ID")
     @api.doc(params={"app_id": "Application ID", "workflow_id": "Workflow ID"})
@@ -879,7 +880,7 @@ class WorkflowByIdApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/last-run")
-class DraftWorkflowNodeLastRunApi(Resource):
+class DraftWorkflowNodeLastRunApi(MethodView):
     @api.doc("get_draft_workflow_node_last_run")
     @api.doc(description="Get last run result for draft workflow node")
     @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})

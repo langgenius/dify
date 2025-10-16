@@ -1,4 +1,5 @@
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
@@ -7,7 +8,7 @@ from services.billing_service import BillingService
 
 
 @console_ns.route("/billing/subscription")
-class Subscription(Resource):
+class Subscription(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -23,7 +24,7 @@ class Subscription(Resource):
 
 
 @console_ns.route("/billing/invoices")
-class Invoices(Resource):
+class Invoices(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

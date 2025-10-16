@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from flask import request
-from flask_restx import Resource
+from flask.views import MethodView
 from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound, Unauthorized
 
@@ -18,7 +18,7 @@ from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
 
 
 @web_ns.route("/passport")
-class PassportResource(Resource):
+class PassportResource(MethodView):
     """Base resource for passport."""
 
     @web_ns.doc("get_passport")

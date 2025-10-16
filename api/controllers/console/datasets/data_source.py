@@ -3,7 +3,8 @@ from collections.abc import Generator
 from typing import cast
 
 from flask import request
-from flask_restx import Resource, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
@@ -30,7 +31,7 @@ from tasks.document_indexing_sync_task import document_indexing_sync_task
     "/data-source/integrates",
     "/data-source/integrates/<uuid:binding_id>/<string:action>",
 )
-class DataSourceApi(Resource):
+class DataSourceApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -115,7 +116,7 @@ class DataSourceApi(Resource):
 
 
 @console_ns.route("/notion/pre-import/pages")
-class DataSourceNotionListApi(Resource):
+class DataSourceNotionListApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -208,7 +209,7 @@ class DataSourceNotionListApi(Resource):
     "/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/<string:page_type>/preview",
     "/datasets/notion-indexing-estimate",
 )
-class DataSourceNotionApi(Resource):
+class DataSourceNotionApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -288,7 +289,7 @@ class DataSourceNotionApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/notion/sync")
-class DataSourceNotionDatasetSyncApi(Resource):
+class DataSourceNotionDatasetSyncApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -305,7 +306,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync")
-class DataSourceNotionDocumentSyncApi(Resource):
+class DataSourceNotionDocumentSyncApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

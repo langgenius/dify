@@ -1,7 +1,8 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 from werkzeug.exceptions import InternalServerError
 
 import services
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 @console_ns.route("/apps/<uuid:app_id>/audio-to-text")
-class ChatMessageAudioApi(Resource):
+class ChatMessageAudioApi(MethodView):
     @api.doc("chat_message_audio_transcript")
     @api.doc(description="Transcript audio to text for chat messages")
     @api.doc(params={"app_id": "App ID"})
@@ -88,7 +89,7 @@ class ChatMessageAudioApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio")
-class ChatMessageTextApi(Resource):
+class ChatMessageTextApi(MethodView):
     @api.doc("chat_message_text_to_speech")
     @api.doc(description="Convert text to speech for chat messages")
     @api.doc(params={"app_id": "App ID"})
@@ -153,7 +154,7 @@ class ChatMessageTextApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio/voices")
-class TextModesApi(Resource):
+class TextModesApi(MethodView):
     @api.doc("get_text_to_speech_voices")
     @api.doc(description="Get available TTS voices for a specific language")
     @api.doc(params={"app_id": "App ID"})

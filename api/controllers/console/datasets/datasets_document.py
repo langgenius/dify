@@ -6,7 +6,8 @@ from typing import Literal, cast
 
 import sqlalchemy as sa
 from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, marshal, marshal_with, reqparse
 from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -61,7 +62,7 @@ from services.entities.knowledge_entities.knowledge_entities import KnowledgeCon
 logger = logging.getLogger(__name__)
 
 
-class DocumentResource(Resource):
+class DocumentResource(MethodView):
     def get_document(self, dataset_id: str, document_id: str) -> Document:
         current_user, current_tenant_id = current_account_with_tenant()
         dataset = DatasetService.get_dataset(dataset_id)
@@ -103,7 +104,7 @@ class DocumentResource(Resource):
 
 
 @console_ns.route("/datasets/process-rule")
-class GetProcessRuleApi(Resource):
+class GetProcessRuleApi(MethodView):
     @api.doc("get_process_rule")
     @api.doc(description="Get dataset document processing rules")
     @api.doc(params={"document_id": "Document ID (optional)"})
@@ -151,7 +152,7 @@ class GetProcessRuleApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents")
-class DatasetDocumentListApi(Resource):
+class DatasetDocumentListApi(MethodView):
     @api.doc("get_dataset_documents")
     @api.doc(description="Get documents in a dataset")
     @api.doc(
@@ -351,7 +352,7 @@ class DatasetDocumentListApi(Resource):
 
 
 @console_ns.route("/datasets/init")
-class DatasetInitApi(Resource):
+class DatasetInitApi(MethodView):
     @api.doc("init_dataset")
     @api.doc(description="Initialize dataset with documents")
     @api.expect(

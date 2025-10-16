@@ -1,7 +1,8 @@
 import os
 
 from flask import session
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -17,7 +18,7 @@ from .wraps import only_edition_self_hosted
 
 
 @console_ns.route("/init")
-class InitValidateAPI(Resource):
+class InitValidateAPI(MethodView):
     @api.doc("get_init_status")
     @api.doc(description="Get initialization validation status")
     @api.response(

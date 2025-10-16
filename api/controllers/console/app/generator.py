@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 
 from controllers.console import api, console_ns
 from controllers.console.app.error import (
@@ -22,7 +23,7 @@ from services.workflow_service import WorkflowService
 
 
 @console_ns.route("/rule-generate")
-class RuleGenerateApi(Resource):
+class RuleGenerateApi(MethodView):
     @api.doc("generate_rule_config")
     @api.doc(description="Generate rule configuration using LLM")
     @api.expect(
@@ -69,7 +70,7 @@ class RuleGenerateApi(Resource):
 
 
 @console_ns.route("/rule-code-generate")
-class RuleCodeGenerateApi(Resource):
+class RuleCodeGenerateApi(MethodView):
     @api.doc("generate_rule_code")
     @api.doc(description="Generate code rules using LLM")
     @api.expect(
@@ -120,7 +121,7 @@ class RuleCodeGenerateApi(Resource):
 
 
 @console_ns.route("/rule-structured-output-generate")
-class RuleStructuredOutputGenerateApi(Resource):
+class RuleStructuredOutputGenerateApi(MethodView):
     @api.doc("generate_structured_output")
     @api.doc(description="Generate structured output rules using LLM")
     @api.expect(
@@ -164,7 +165,7 @@ class RuleStructuredOutputGenerateApi(Resource):
 
 
 @console_ns.route("/instruction-generate")
-class InstructionGenerateApi(Resource):
+class InstructionGenerateApi(MethodView):
     @api.doc("generate_instruction")
     @api.doc(description="Generate instruction for workflow nodes or general use")
     @api.expect(
@@ -275,7 +276,7 @@ class InstructionGenerateApi(Resource):
 
 
 @console_ns.route("/instruction-generate/template")
-class InstructionGenerationTemplateApi(Resource):
+class InstructionGenerationTemplateApi(MethodView):
     @api.doc("get_instruction_template")
     @api.doc(description="Get instruction generation template")
     @api.expect(

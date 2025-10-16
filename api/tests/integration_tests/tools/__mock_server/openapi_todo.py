@@ -1,5 +1,6 @@
 from flask import Flask, request
-from flask_restx import Api, Resource
+from flask.views import MethodView
+from flask_restx import Api
 
 app = Flask(__name__)
 api = Api(app)
@@ -11,7 +12,7 @@ todos_data = {
 }
 
 
-class TodosResource(Resource):
+class TodosResource(MethodView):
     def get(self, username):
         todos = todos_data.get(username, [])
         return {"todos": todos}

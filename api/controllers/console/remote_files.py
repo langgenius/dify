@@ -1,7 +1,8 @@
 import urllib.parse
 
 import httpx
-from flask_restx import Resource, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import marshal_with, reqparse
 
 import services
 from controllers.common import helpers
@@ -21,7 +22,7 @@ from . import console_ns
 
 
 @console_ns.route("/remote-files/<path:url>")
-class RemoteFileInfoApi(Resource):
+class RemoteFileInfoApi(MethodView):
     @marshal_with(remote_file_info_fields)
     def get(self, url):
         decoded_url = urllib.parse.unquote(url)
@@ -37,7 +38,7 @@ class RemoteFileInfoApi(Resource):
 
 
 @console_ns.route("/remote-files/upload")
-class RemoteFileUploadApi(Resource):
+class RemoteFileUploadApi(MethodView):
     @marshal_with(file_fields_with_signed_url)
     def post(self):
         parser = reqparse.RequestParser()

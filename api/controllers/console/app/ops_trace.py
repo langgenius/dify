@@ -1,4 +1,5 @@
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 from werkzeug.exceptions import BadRequest
 
 from controllers.console import api, console_ns
@@ -9,7 +10,7 @@ from services.ops_service import OpsService
 
 
 @console_ns.route("/apps/<uuid:app_id>/trace-config")
-class TraceAppConfigApi(Resource):
+class TraceAppConfigApi(MethodView):
     """
     Manage trace app configurations
     """

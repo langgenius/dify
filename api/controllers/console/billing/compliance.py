@@ -1,5 +1,6 @@
 from flask import request
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 
 from libs.helper import extract_remote_ip
 from libs.login import current_account_with_tenant, login_required
@@ -10,7 +11,7 @@ from ..wraps import account_initialization_required, only_edition_cloud, setup_r
 
 
 @console_ns.route("/compliance/download")
-class ComplianceApi(Resource):
+class ComplianceApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

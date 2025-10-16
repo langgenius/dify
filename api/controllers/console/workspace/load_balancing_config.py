@@ -1,4 +1,5 @@
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
@@ -13,7 +14,7 @@ from services.model_load_balancing_service import ModelLoadBalancingService
 @console_ns.route(
     "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/credentials-validate"
 )
-class LoadBalancingCredentialsValidateApi(Resource):
+class LoadBalancingCredentialsValidateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -66,7 +67,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
 @console_ns.route(
     "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/<string:config_id>/credentials-validate"
 )
-class LoadBalancingConfigCredentialsValidateApi(Resource):
+class LoadBalancingConfigCredentialsValidateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

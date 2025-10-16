@@ -1,5 +1,6 @@
 from flask import request
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -26,7 +27,7 @@ from services.errors.account import AccountNotFoundError, AccountRegisterError
 
 
 @console_ns.route("/email-register/send-email")
-class EmailRegisterSendEmailApi(Resource):
+class EmailRegisterSendEmailApi(MethodView):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
@@ -54,7 +55,7 @@ class EmailRegisterSendEmailApi(Resource):
 
 
 @console_ns.route("/email-register/validity")
-class EmailRegisterCheckApi(Resource):
+class EmailRegisterCheckApi(MethodView):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
@@ -95,7 +96,7 @@ class EmailRegisterCheckApi(Resource):
 
 
 @console_ns.route("/email-register")
-class EmailRegisterResetApi(Resource):
+class EmailRegisterResetApi(MethodView):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled

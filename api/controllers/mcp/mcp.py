@@ -1,7 +1,8 @@
 from typing import Union
 
 from flask import Response
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -45,7 +46,7 @@ mcp_request_parser.add_argument(
 
 
 @mcp_ns.route("/server/<string:server_code>/mcp")
-class MCPAppApi(Resource):
+class MCPAppApi(MethodView):
     @mcp_ns.expect(mcp_request_parser)
     @mcp_ns.doc("handle_mcp_request")
     @mcp_ns.doc(description="Handle Model Context Protocol (MCP) requests for a specific server")

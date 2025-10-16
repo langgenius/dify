@@ -1,6 +1,7 @@
 import logging
 
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 @console_ns.route("/workspaces/current/default-model")
-class DefaultModelApi(Resource):
+class DefaultModelApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -85,7 +86,7 @@ class DefaultModelApi(Resource):
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models")
-class ModelProviderModelApi(Resource):
+class ModelProviderModelApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -188,7 +189,7 @@ class ModelProviderModelApi(Resource):
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
-class ModelProviderModelCredentialApi(Resource):
+class ModelProviderModelCredentialApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -371,7 +372,7 @@ class ModelProviderModelCredentialApi(Resource):
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
-class ModelProviderModelCredentialSwitchApi(Resource):
+class ModelProviderModelCredentialSwitchApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -407,7 +408,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
 @console_ns.route(
     "/workspaces/current/model-providers/<path:provider>/models/enable", endpoint="model-provider-model-enable"
 )
-class ModelProviderModelEnableApi(Resource):
+class ModelProviderModelEnableApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -437,7 +438,7 @@ class ModelProviderModelEnableApi(Resource):
 @console_ns.route(
     "/workspaces/current/model-providers/<path:provider>/models/disable", endpoint="model-provider-model-disable"
 )
-class ModelProviderModelDisableApi(Resource):
+class ModelProviderModelDisableApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -465,7 +466,7 @@ class ModelProviderModelDisableApi(Resource):
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/validate")
-class ModelProviderModelValidateApi(Resource):
+class ModelProviderModelValidateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -511,7 +512,7 @@ class ModelProviderModelValidateApi(Resource):
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/parameter-rules")
-class ModelProviderModelParameterRuleApi(Resource):
+class ModelProviderModelParameterRuleApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -530,7 +531,7 @@ class ModelProviderModelParameterRuleApi(Resource):
 
 
 @console_ns.route("/workspaces/current/models/model-types/<string:model_type>")
-class ModelProviderAvailableModelApi(Resource):
+class ModelProviderAvailableModelApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

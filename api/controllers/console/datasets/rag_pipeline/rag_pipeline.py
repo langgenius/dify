@@ -1,7 +1,8 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from sqlalchemy.orm import Session
 
 from controllers.console import console_ns
@@ -33,7 +34,7 @@ def _validate_description_length(description: str) -> str:
 
 
 @console_ns.route("/rag/pipeline/templates")
-class PipelineTemplateListApi(Resource):
+class PipelineTemplateListApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -47,7 +48,7 @@ class PipelineTemplateListApi(Resource):
 
 
 @console_ns.route("/rag/pipeline/templates/<string:template_id>")
-class PipelineTemplateDetailApi(Resource):
+class PipelineTemplateDetailApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -60,7 +61,7 @@ class PipelineTemplateDetailApi(Resource):
 
 
 @console_ns.route("/rag/pipeline/customized/templates/<string:template_id>")
-class CustomizedPipelineTemplateApi(Resource):
+class CustomizedPipelineTemplateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -116,7 +117,7 @@ class CustomizedPipelineTemplateApi(Resource):
 
 
 @console_ns.route("/rag/pipelines/<string:pipeline_id>/customized/publish")
-class PublishCustomizedPipelineTemplateApi(Resource):
+class PublishCustomizedPipelineTemplateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

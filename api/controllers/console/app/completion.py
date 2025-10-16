@@ -1,7 +1,8 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -39,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 # define completion message api for user
 @console_ns.route("/apps/<uuid:app_id>/completion-messages")
-class CompletionMessageApi(Resource):
+class CompletionMessageApi(MethodView):
     @api.doc("create_completion_message")
     @api.doc(description="Generate completion message for debugging")
     @api.doc(params={"app_id": "Application ID"})
@@ -107,7 +108,7 @@ class CompletionMessageApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/completion-messages/<string:task_id>/stop")
-class CompletionMessageStopApi(Resource):
+class CompletionMessageStopApi(MethodView):
     @api.doc("stop_completion_message")
     @api.doc(description="Stop a running completion message generation")
     @api.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
@@ -125,7 +126,7 @@ class CompletionMessageStopApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages")
-class ChatMessageApi(Resource):
+class ChatMessageApi(MethodView):
     @api.doc("create_chat_message")
     @api.doc(description="Generate chat message for debugging")
     @api.doc(params={"app_id": "Application ID"})
@@ -204,7 +205,7 @@ class ChatMessageApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<string:task_id>/stop")
-class ChatMessageStopApi(Resource):
+class ChatMessageStopApi(MethodView):
     @api.doc("stop_chat_message")
     @api.doc(description="Stop a running chat message generation")
     @api.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})

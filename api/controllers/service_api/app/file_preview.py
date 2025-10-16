@@ -2,7 +2,8 @@ import logging
 from urllib.parse import quote
 
 from flask import Response
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -25,7 +26,7 @@ file_preview_parser.add_argument(
 
 
 @service_api_ns.route("/files/<uuid:file_id>/preview")
-class FilePreviewApi(Resource):
+class FilePreviewApi(MethodView):
     """
     Service API File Preview endpoint
 

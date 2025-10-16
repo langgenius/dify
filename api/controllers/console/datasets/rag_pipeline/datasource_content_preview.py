@@ -1,5 +1,5 @@
+from flask.views import MethodView
 from flask_restx import (  # type: ignore
-    Resource,  # type: ignore
     reqparse,
 )
 from werkzeug.exceptions import Forbidden
@@ -14,7 +14,7 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview")
-class DataSourceContentPreviewApi(Resource):
+class DataSourceContentPreviewApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

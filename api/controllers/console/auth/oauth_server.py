@@ -3,7 +3,8 @@ from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
 from flask import jsonify, request
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -86,7 +87,7 @@ def oauth_server_access_token_required(view: Callable[Concatenate[T, OAuthProvid
 
 
 @console_ns.route("/oauth/provider")
-class OAuthServerAppApi(Resource):
+class OAuthServerAppApi(MethodView):
     @setup_required
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
@@ -109,7 +110,7 @@ class OAuthServerAppApi(Resource):
 
 
 @console_ns.route("/oauth/provider/authorize")
-class OAuthServerUserAuthorizeApi(Resource):
+class OAuthServerUserAuthorizeApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -128,7 +129,7 @@ class OAuthServerUserAuthorizeApi(Resource):
 
 
 @console_ns.route("/oauth/provider/token")
-class OAuthServerUserTokenApi(Resource):
+class OAuthServerUserTokenApi(MethodView):
     @setup_required
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
@@ -184,7 +185,7 @@ class OAuthServerUserTokenApi(Resource):
 
 
 @console_ns.route("/oauth/provider/account")
-class OAuthServerUserAccountApi(Resource):
+class OAuthServerUserAccountApi(MethodView):
     @setup_required
     @oauth_server_client_id_required
     @oauth_server_access_token_required

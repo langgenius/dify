@@ -1,7 +1,8 @@
 import json
 import logging
 
-from flask_restx import Api, Namespace, Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import Api, Namespace, fields, reqparse
 from flask_restx.inputs import int_range
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
@@ -92,7 +93,7 @@ def build_message_infinite_scroll_pagination_model(api_or_ns: Api | Namespace):
 
 
 @service_api_ns.route("/messages")
-class MessageListApi(Resource):
+class MessageListApi(MethodView):
     @service_api_ns.expect(message_list_parser)
     @service_api_ns.doc("list_messages")
     @service_api_ns.doc(description="List messages in a conversation")
@@ -127,7 +128,7 @@ class MessageListApi(Resource):
 
 
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
-class MessageFeedbackApi(Resource):
+class MessageFeedbackApi(MethodView):
     @service_api_ns.expect(message_feedback_parser)
     @service_api_ns.doc("create_message_feedback")
     @service_api_ns.doc(description="Submit feedback for a message")
@@ -164,7 +165,7 @@ class MessageFeedbackApi(Resource):
 
 
 @service_api_ns.route("/app/feedbacks")
-class AppGetFeedbacksApi(Resource):
+class AppGetFeedbacksApi(MethodView):
     @service_api_ns.expect(feedback_list_parser)
     @service_api_ns.doc("get_app_feedbacks")
     @service_api_ns.doc(description="Get all feedbacks for the application")
@@ -186,7 +187,7 @@ class AppGetFeedbacksApi(Resource):
 
 
 @service_api_ns.route("/messages/<uuid:message_id>/suggested")
-class MessageSuggestedApi(Resource):
+class MessageSuggestedApi(MethodView):
     @service_api_ns.doc("get_suggested_questions")
     @service_api_ns.doc(description="Get suggested follow-up questions for a message")
     @service_api_ns.doc(params={"message_id": "Message ID"})

@@ -4,7 +4,8 @@ from decimal import Decimal
 import pytz
 import sqlalchemy as sa
 from flask import jsonify
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 
 from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
@@ -17,7 +18,7 @@ from models import AppMode, Message
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/daily-messages")
-class DailyMessageStatistic(Resource):
+class DailyMessageStatistic(MethodView):
     @api.doc("get_daily_message_statistics")
     @api.doc(description="Get daily message statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
@@ -90,7 +91,7 @@ WHERE
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/daily-conversations")
-class DailyConversationStatistic(Resource):
+class DailyConversationStatistic(MethodView):
     @api.doc("get_daily_conversation_statistics")
     @api.doc(description="Get daily conversation statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
@@ -156,7 +157,7 @@ class DailyConversationStatistic(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/daily-end-users")
-class DailyTerminalsStatistic(Resource):
+class DailyTerminalsStatistic(MethodView):
     @api.doc("get_daily_terminals_statistics")
     @api.doc(description="Get daily terminal/end-user statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
@@ -228,7 +229,7 @@ WHERE
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/token-costs")
-class DailyTokenCostStatistic(Resource):
+class DailyTokenCostStatistic(MethodView):
     @api.doc("get_daily_token_cost_statistics")
     @api.doc(description="Get daily token cost statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
@@ -303,7 +304,7 @@ WHERE
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/average-session-interactions")
-class AverageSessionInteractionStatistic(Resource):
+class AverageSessionInteractionStatistic(MethodView):
     @api.doc("get_average_session_interaction_statistics")
     @api.doc(description="Get average session interaction statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
@@ -394,7 +395,7 @@ ORDER BY
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/user-satisfaction-rate")
-class UserSatisfactionRateStatistic(Resource):
+class UserSatisfactionRateStatistic(MethodView):
     @api.doc("get_user_satisfaction_rate_statistics")
     @api.doc(description="Get user satisfaction rate statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
@@ -475,7 +476,7 @@ WHERE
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/average-response-time")
-class AverageResponseTimeStatistic(Resource):
+class AverageResponseTimeStatistic(MethodView):
     @api.doc("get_average_response_time_statistics")
     @api.doc(description="Get average response time statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
@@ -547,7 +548,7 @@ WHERE
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/tokens-per-second")
-class TokensPerSecondStatistic(Resource):
+class TokensPerSecondStatistic(MethodView):
     @api.doc("get_tokens_per_second_statistics")
     @api.doc(description="Get tokens per second statistics for an application")
     @api.doc(params={"app_id": "Application ID"})

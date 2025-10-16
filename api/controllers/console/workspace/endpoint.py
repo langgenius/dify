@@ -1,4 +1,5 @@
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api, console_ns
@@ -10,7 +11,7 @@ from services.plugin.endpoint_service import EndpointService
 
 
 @console_ns.route("/workspaces/current/endpoints/create")
-class EndpointCreateApi(Resource):
+class EndpointCreateApi(MethodView):
     @api.doc("create_endpoint")
     @api.doc(description="Create a new plugin endpoint")
     @api.expect(
@@ -62,7 +63,7 @@ class EndpointCreateApi(Resource):
 
 
 @console_ns.route("/workspaces/current/endpoints/list")
-class EndpointListApi(Resource):
+class EndpointListApi(MethodView):
     @api.doc("list_endpoints")
     @api.doc(description="List plugin endpoints with pagination")
     @api.expect(
@@ -102,7 +103,7 @@ class EndpointListApi(Resource):
 
 
 @console_ns.route("/workspaces/current/endpoints/list/plugin")
-class EndpointListForSinglePluginApi(Resource):
+class EndpointListForSinglePluginApi(MethodView):
     @api.doc("list_plugin_endpoints")
     @api.doc(description="List endpoints for a specific plugin")
     @api.expect(
@@ -148,7 +149,7 @@ class EndpointListForSinglePluginApi(Resource):
 
 
 @console_ns.route("/workspaces/current/endpoints/delete")
-class EndpointDeleteApi(Resource):
+class EndpointDeleteApi(MethodView):
     @api.doc("delete_endpoint")
     @api.doc(description="Delete a plugin endpoint")
     @api.expect(
@@ -181,7 +182,7 @@ class EndpointDeleteApi(Resource):
 
 
 @console_ns.route("/workspaces/current/endpoints/update")
-class EndpointUpdateApi(Resource):
+class EndpointUpdateApi(MethodView):
     @api.doc("update_endpoint")
     @api.doc(description="Update a plugin endpoint")
     @api.expect(
@@ -231,7 +232,7 @@ class EndpointUpdateApi(Resource):
 
 
 @console_ns.route("/workspaces/current/endpoints/enable")
-class EndpointEnableApi(Resource):
+class EndpointEnableApi(MethodView):
     @api.doc("enable_endpoint")
     @api.doc(description="Enable a plugin endpoint")
     @api.expect(
@@ -264,7 +265,7 @@ class EndpointEnableApi(Resource):
 
 
 @console_ns.route("/workspaces/current/endpoints/disable")
-class EndpointDisableApi(Resource):
+class EndpointDisableApi(MethodView):
     @api.doc("disable_endpoint")
     @api.doc(description="Disable a plugin endpoint")
     @api.expect(

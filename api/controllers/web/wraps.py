@@ -4,7 +4,7 @@ from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
 from flask import request
-from flask_restx import Resource
+from flask.views import MethodView
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
@@ -149,5 +149,5 @@ def _validate_user_accessibility(
                 raise WebAppAuthAccessDeniedError("SSO settings have been updated. Please re-login.")
 
 
-class WebApiResource(Resource):
+class WebApiResource(MethodView):
     method_decorators = [validate_jwt_token]

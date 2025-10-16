@@ -1,7 +1,8 @@
 from urllib import parse
 
 from flask import abort, request
-from flask_restx import Resource, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import marshal_with, reqparse
 
 import services
 from configs import dify_config
@@ -33,7 +34,7 @@ from services.feature_service import FeatureService
 
 
 @console_ns.route("/workspaces/current/members")
-class MemberListApi(Resource):
+class MemberListApi(MethodView):
     """List all members of current tenant."""
 
     @setup_required
@@ -49,7 +50,7 @@ class MemberListApi(Resource):
 
 
 @console_ns.route("/workspaces/current/members/invite-email")
-class MemberInviteEmailApi(Resource):
+class MemberInviteEmailApi(MethodView):
     """Invite a new member by email."""
 
     @setup_required
@@ -110,7 +111,7 @@ class MemberInviteEmailApi(Resource):
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>")
-class MemberCancelInviteApi(Resource):
+class MemberCancelInviteApi(MethodView):
     """Cancel an invitation by member id."""
 
     @setup_required
@@ -142,7 +143,7 @@ class MemberCancelInviteApi(Resource):
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/update-role")
-class MemberUpdateRoleApi(Resource):
+class MemberUpdateRoleApi(MethodView):
     """Update member role."""
 
     @setup_required
@@ -175,7 +176,7 @@ class MemberUpdateRoleApi(Resource):
 
 
 @console_ns.route("/workspaces/current/dataset-operators")
-class DatasetOperatorMemberListApi(Resource):
+class DatasetOperatorMemberListApi(MethodView):
     """List all members of current tenant."""
 
     @setup_required
@@ -191,7 +192,7 @@ class DatasetOperatorMemberListApi(Resource):
 
 
 @console_ns.route("/workspaces/current/members/send-owner-transfer-confirm-email")
-class SendOwnerTransferEmailApi(Resource):
+class SendOwnerTransferEmailApi(MethodView):
     """Send owner transfer email."""
 
     @setup_required
@@ -230,7 +231,7 @@ class SendOwnerTransferEmailApi(Resource):
 
 
 @console_ns.route("/workspaces/current/members/owner-transfer-check")
-class OwnerTransferCheckApi(Resource):
+class OwnerTransferCheckApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -275,7 +276,7 @@ class OwnerTransferCheckApi(Resource):
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
-class OwnerTransfer(Resource):
+class OwnerTransfer(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

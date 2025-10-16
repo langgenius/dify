@@ -1,5 +1,6 @@
 from flask import request
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 
 from configs import dify_config
 from libs.helper import StrLen, email, extract_remote_ip
@@ -14,7 +15,7 @@ from .wraps import only_edition_self_hosted
 
 
 @console_ns.route("/setup")
-class SetupApi(Resource):
+class SetupApi(MethodView):
     @api.doc("get_setup_status")
     @api.doc(description="Get system setup status")
     @api.response(

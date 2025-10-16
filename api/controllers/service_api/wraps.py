@@ -6,8 +6,8 @@ from functools import wraps
 from typing import Concatenate, ParamSpec, TypeVar
 
 from flask import current_app, request
+from flask.views import MethodView
 from flask_login import user_logged_in
-from flask_restx import Resource
 from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -341,7 +341,7 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: str | None = 
     return end_user
 
 
-class DatasetApiResource(Resource):
+class DatasetApiResource(MethodView):
     method_decorators = [validate_dataset_token]
 
     def get_dataset(self, dataset_id: str, tenant_id: str) -> Dataset:

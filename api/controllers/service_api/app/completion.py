@@ -1,7 +1,8 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -74,7 +75,7 @@ chat_parser.add_argument("workflow_id", type=str, required=False, location="json
 
 
 @service_api_ns.route("/completion-messages")
-class CompletionApi(Resource):
+class CompletionApi(MethodView):
     @service_api_ns.expect(completion_parser)
     @service_api_ns.doc("create_completion")
     @service_api_ns.doc(description="Create a completion for the given prompt")
@@ -139,7 +140,7 @@ class CompletionApi(Resource):
 
 
 @service_api_ns.route("/completion-messages/<string:task_id>/stop")
-class CompletionStopApi(Resource):
+class CompletionStopApi(MethodView):
     @service_api_ns.doc("stop_completion")
     @service_api_ns.doc(description="Stop a running completion task")
     @service_api_ns.doc(params={"task_id": "The ID of the task to stop"})
@@ -162,7 +163,7 @@ class CompletionStopApi(Resource):
 
 
 @service_api_ns.route("/chat-messages")
-class ChatApi(Resource):
+class ChatApi(MethodView):
     @service_api_ns.expect(chat_parser)
     @service_api_ns.doc("create_chat_message")
     @service_api_ns.doc(description="Send a message in a chat conversation")
@@ -232,7 +233,7 @@ class ChatApi(Resource):
 
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")
-class ChatStopApi(Resource):
+class ChatStopApi(MethodView):
     @service_api_ns.doc("stop_chat_message")
     @service_api_ns.doc(description="Stop a running chat message generation")
     @service_api_ns.doc(params={"task_id": "The ID of the task to stop"})

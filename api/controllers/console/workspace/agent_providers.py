@@ -1,4 +1,5 @@
-from flask_restx import Resource, fields
+from flask.views import MethodView
+from flask_restx import fields
 
 from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -8,7 +9,7 @@ from services.agent_service import AgentService
 
 
 @console_ns.route("/workspaces/current/agent-providers")
-class AgentProviderListApi(Resource):
+class AgentProviderListApi(MethodView):
     @api.doc("list_agent_providers")
     @api.doc(description="Get list of available agent providers")
     @api.response(
@@ -30,7 +31,7 @@ class AgentProviderListApi(Resource):
 
 
 @console_ns.route("/workspaces/current/agent-provider/<path:provider_name>")
-class AgentProviderApi(Resource):
+class AgentProviderApi(MethodView):
     @api.doc("get_agent_provider")
     @api.doc(description="Get specific agent provider details")
     @api.doc(params={"provider_name": "Agent provider name"})

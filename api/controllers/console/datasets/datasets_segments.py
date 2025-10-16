@@ -1,7 +1,8 @@
 import uuid
 
 from flask import request
-from flask_restx import Resource, marshal, reqparse
+from flask.views import MethodView
+from flask_restx import marshal, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -37,7 +38,7 @@ from tasks.batch_create_segment_to_index_task import batch_create_segment_to_ind
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
-class DatasetDocumentSegmentListApi(Resource):
+class DatasetDocumentSegmentListApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -144,7 +145,7 @@ class DatasetDocumentSegmentListApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment/<string:action>")
-class DatasetDocumentSegmentApi(Resource):
+class DatasetDocumentSegmentApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -201,7 +202,7 @@ class DatasetDocumentSegmentApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment")
-class DatasetDocumentSegmentAddApi(Resource):
+class DatasetDocumentSegmentAddApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -255,7 +256,7 @@ class DatasetDocumentSegmentAddApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")
-class DatasetDocumentSegmentUpdateApi(Resource):
+class DatasetDocumentSegmentUpdateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -364,7 +365,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/batch_import",
     "/datasets/batch_import_status/<uuid:job_id>",
 )
-class DatasetDocumentSegmentBatchImportApi(Resource):
+class DatasetDocumentSegmentBatchImportApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -432,7 +433,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks")
-class ChildChunkAddApi(Resource):
+class ChildChunkAddApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -593,7 +594,7 @@ class ChildChunkAddApi(Resource):
 @console_ns.route(
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>"
 )
-class ChildChunkUpdateApi(Resource):
+class ChildChunkUpdateApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

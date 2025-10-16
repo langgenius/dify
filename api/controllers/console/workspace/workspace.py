@@ -1,7 +1,8 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
 
@@ -65,7 +66,7 @@ workspace_fields = {"id": fields.String, "name": fields.String, "status": fields
 
 
 @console_ns.route("/workspaces")
-class TenantListApi(Resource):
+class TenantListApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -93,7 +94,7 @@ class TenantListApi(Resource):
 
 
 @console_ns.route("/all-workspaces")
-class WorkspaceListApi(Resource):
+class WorkspaceListApi(MethodView):
     @setup_required
     @admin_required
     def get(self):
@@ -120,7 +121,7 @@ class WorkspaceListApi(Resource):
 
 @console_ns.route("/workspaces/current", endpoint="workspaces_current")
 @console_ns.route("/info", endpoint="info")  # Deprecated
-class TenantApi(Resource):
+class TenantApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -148,7 +149,7 @@ class TenantApi(Resource):
 
 
 @console_ns.route("/workspaces/switch")
-class SwitchWorkspaceApi(Resource):
+class SwitchWorkspaceApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -172,7 +173,7 @@ class SwitchWorkspaceApi(Resource):
 
 
 @console_ns.route("/workspaces/custom-config")
-class CustomConfigWorkspaceApi(Resource):
+class CustomConfigWorkspaceApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -199,7 +200,7 @@ class CustomConfigWorkspaceApi(Resource):
 
 
 @console_ns.route("/workspaces/custom-config/webapp-logo/upload")
-class WebappLogoWorkspaceApi(Resource):
+class WebappLogoWorkspaceApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -239,7 +240,7 @@ class WebappLogoWorkspaceApi(Resource):
 
 
 @console_ns.route("/workspaces/info")
-class WorkspaceInfoApi(Resource):
+class WorkspaceInfoApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

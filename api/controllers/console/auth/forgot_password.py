@@ -2,7 +2,8 @@ import base64
 import secrets
 
 from flask import request
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -26,7 +27,7 @@ from services.feature_service import FeatureService
 
 
 @console_ns.route("/forgot-password")
-class ForgotPasswordSendEmailApi(Resource):
+class ForgotPasswordSendEmailApi(MethodView):
     @api.doc("send_forgot_password_email")
     @api.doc(description="Send password reset email")
     @api.expect(
@@ -82,7 +83,7 @@ class ForgotPasswordSendEmailApi(Resource):
 
 
 @console_ns.route("/forgot-password/validity")
-class ForgotPasswordCheckApi(Resource):
+class ForgotPasswordCheckApi(MethodView):
     @api.doc("check_forgot_password_code")
     @api.doc(description="Verify password reset code")
     @api.expect(
@@ -147,7 +148,7 @@ class ForgotPasswordCheckApi(Resource):
 
 
 @console_ns.route("/forgot-password/resets")
-class ForgotPasswordResetApi(Resource):
+class ForgotPasswordResetApi(MethodView):
     @api.doc("reset_password")
     @api.doc(description="Reset password with verification token")
     @api.expect(

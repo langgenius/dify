@@ -1,4 +1,5 @@
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 
 from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
@@ -10,7 +11,7 @@ from services.agent_service import AgentService
 
 
 @console_ns.route("/apps/<uuid:app_id>/agent/logs")
-class AgentLogApi(Resource):
+class AgentLogApi(MethodView):
     @api.doc("get_agent_logs")
     @api.doc(description="Get agent execution logs for an application")
     @api.doc(params={"app_id": "Application ID"})

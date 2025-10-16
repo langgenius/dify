@@ -2,7 +2,8 @@ import json
 import logging
 
 import httpx
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 from packaging import version
 
 from configs import dify_config
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @console_ns.route("/version")
-class VersionApi(Resource):
+class VersionApi(MethodView):
     @api.doc("check_version_update")
     @api.doc(description="Check for application version updates")
     @api.expect(

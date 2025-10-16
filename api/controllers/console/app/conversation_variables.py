@@ -1,4 +1,5 @@
-from flask_restx import Resource, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,7 +14,7 @@ from models.model import AppMode
 
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-variables")
-class ConversationVariablesApi(Resource):
+class ConversationVariablesApi(MethodView):
     @api.doc("get_conversation_variables")
     @api.doc(description="Get conversation variables for an application")
     @api.doc(params={"app_id": "Application ID"})

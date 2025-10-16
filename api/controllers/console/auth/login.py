@@ -1,6 +1,7 @@
 import flask_login
 from flask import request
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 
 import services
 from configs import dify_config
@@ -33,7 +34,7 @@ from services.feature_service import FeatureService
 
 
 @console_ns.route("/login")
-class LoginApi(Resource):
+class LoginApi(MethodView):
     """Resource for user login."""
 
     @setup_required
@@ -91,7 +92,7 @@ class LoginApi(Resource):
 
 
 @console_ns.route("/logout")
-class LogoutApi(Resource):
+class LogoutApi(MethodView):
     @setup_required
     def get(self):
         current_user, _ = current_account_with_tenant()
@@ -104,7 +105,7 @@ class LogoutApi(Resource):
 
 
 @console_ns.route("/reset-password")
-class ResetPasswordSendEmailApi(Resource):
+class ResetPasswordSendEmailApi(MethodView):
     @setup_required
     @email_password_login_enabled
     def post(self):
@@ -133,7 +134,7 @@ class ResetPasswordSendEmailApi(Resource):
 
 
 @console_ns.route("/email-code-login")
-class EmailCodeLoginSendEmailApi(Resource):
+class EmailCodeLoginSendEmailApi(MethodView):
     @setup_required
     def post(self):
         parser = reqparse.RequestParser()
@@ -166,7 +167,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 
 
 @console_ns.route("/email-code-login/validity")
-class EmailCodeLoginApi(Resource):
+class EmailCodeLoginApi(MethodView):
     @setup_required
     def post(self):
         parser = reqparse.RequestParser()
@@ -223,7 +224,7 @@ class EmailCodeLoginApi(Resource):
 
 
 @console_ns.route("/refresh-token")
-class RefreshTokenApi(Resource):
+class RefreshTokenApi(MethodView):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("refresh_token", type=str, required=True, location="json")

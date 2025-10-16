@@ -1,4 +1,5 @@
-from flask_restx import Resource, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import marshal_with, reqparse
 from sqlalchemy.orm import Session
 
 from controllers.console.app.wraps import get_app_model
@@ -20,7 +21,7 @@ from .. import console_ns
 
 
 @console_ns.route("/apps/imports")
-class AppImportApi(Resource):
+class AppImportApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -73,7 +74,7 @@ class AppImportApi(Resource):
 
 
 @console_ns.route("/apps/imports/<string:import_id>/confirm")
-class AppImportConfirmApi(Resource):
+class AppImportConfirmApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -98,7 +99,7 @@ class AppImportConfirmApi(Resource):
 
 
 @console_ns.route("/apps/imports/<string:app_id>/check-dependencies")
-class AppImportCheckDependenciesApi(Resource):
+class AppImportCheckDependenciesApi(MethodView):
     @setup_required
     @login_required
     @get_app_model

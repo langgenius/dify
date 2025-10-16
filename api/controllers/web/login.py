@@ -1,4 +1,5 @@
-from flask_restx import Resource, reqparse
+from flask.views import MethodView
+from flask_restx import reqparse
 from jwt import InvalidTokenError
 
 import services
@@ -17,7 +18,7 @@ from services.webapp_auth_service import WebAppAuthService
 
 
 @web_ns.route("/login")
-class LoginApi(Resource):
+class LoginApi(MethodView):
     """Resource for web app email/password login."""
 
     @setup_required
@@ -53,7 +54,7 @@ class LoginApi(Resource):
         return {"result": "success", "data": {"access_token": token}}
 
 
-# class LogoutApi(Resource):
+# class LogoutApi(MethodView):
 #     @setup_required
 #     def get(self):
 #         account = cast(Account, flask_login.current_user)
@@ -64,7 +65,7 @@ class LoginApi(Resource):
 
 
 @web_ns.route("/email-code-login")
-class EmailCodeLoginSendEmailApi(Resource):
+class EmailCodeLoginSendEmailApi(MethodView):
     @setup_required
     @only_edition_enterprise
     @web_ns.doc("send_email_code_login")
@@ -97,7 +98,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 
 
 @web_ns.route("/email-code-login/validity")
-class EmailCodeLoginApi(Resource):
+class EmailCodeLoginApi(MethodView):
     @setup_required
     @only_edition_enterprise
     @web_ns.doc("verify_email_code_login")

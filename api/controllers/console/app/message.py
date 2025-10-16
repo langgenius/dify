@@ -1,6 +1,7 @@
 import logging
 
-from flask_restx import Resource, fields, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy import exists, select
 from werkzeug.exceptions import InternalServerError, NotFound
@@ -38,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages")
-class ChatMessageListApi(Resource):
+class ChatMessageListApi(MethodView):
     message_infinite_scroll_pagination_fields = {
         "limit": fields.Integer,
         "has_more": fields.Boolean,
@@ -131,7 +132,7 @@ class ChatMessageListApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/feedbacks")
-class MessageFeedbackApi(Resource):
+class MessageFeedbackApi(MethodView):
     @api.doc("create_message_feedback")
     @api.doc(description="Create or update message feedback (like/dislike)")
     @api.doc(params={"app_id": "Application ID"})
@@ -191,7 +192,7 @@ class MessageFeedbackApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations")
-class MessageAnnotationApi(Resource):
+class MessageAnnotationApi(MethodView):
     @api.doc("create_message_annotation")
     @api.doc(description="Create message annotation")
     @api.doc(params={"app_id": "Application ID"})
@@ -228,7 +229,7 @@ class MessageAnnotationApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/count")
-class MessageAnnotationCountApi(Resource):
+class MessageAnnotationCountApi(MethodView):
     @api.doc("get_annotation_count")
     @api.doc(description="Get count of message annotations for the app")
     @api.doc(params={"app_id": "Application ID"})
@@ -248,7 +249,7 @@ class MessageAnnotationCountApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<uuid:message_id>/suggested-questions")
-class MessageSuggestedQuestionApi(Resource):
+class MessageSuggestedQuestionApi(MethodView):
     @api.doc("get_message_suggested_questions")
     @api.doc(description="Get suggested questions for a message")
     @api.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
@@ -292,7 +293,7 @@ class MessageSuggestedQuestionApi(Resource):
 
 
 @console_ns.route("/apps/<uuid:app_id>/messages/<uuid:message_id>")
-class MessageApi(Resource):
+class MessageApi(MethodView):
     @api.doc("get_message")
     @api.doc(description="Get message details by ID")
     @api.doc(params={"app_id": "Application ID", "message_id": "Message ID"})

@@ -2,7 +2,8 @@ import logging
 from typing import NoReturn
 
 from flask import Response
-from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -84,7 +85,7 @@ def _api_prerequisite(f):
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables")
-class RagPipelineVariableCollectionApi(Resource):
+class RagPipelineVariableCollectionApi(MethodView):
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
     def get(self, pipeline: Pipeline):
@@ -142,7 +143,7 @@ def validate_node_id(node_id: str) -> NoReturn | None:
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/variables")
-class RagPipelineNodeVariableCollectionApi(Resource):
+class RagPipelineNodeVariableCollectionApi(MethodView):
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
     def get(self, pipeline: Pipeline, node_id: str):
@@ -165,7 +166,7 @@ class RagPipelineNodeVariableCollectionApi(Resource):
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>")
-class RagPipelineVariableApi(Resource):
+class RagPipelineVariableApi(MethodView):
     _PATCH_NAME_FIELD = "name"
     _PATCH_VALUE_FIELD = "value"
 
@@ -260,7 +261,7 @@ class RagPipelineVariableApi(Resource):
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>/reset")
-class RagPipelineVariableResetApi(Resource):
+class RagPipelineVariableResetApi(MethodView):
     @_api_prerequisite
     def put(self, pipeline: Pipeline, variable_id: str):
         draft_var_srv = WorkflowDraftVariableService(
@@ -302,7 +303,7 @@ def _get_variable_list(pipeline: Pipeline, node_id) -> WorkflowDraftVariableList
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/system-variables")
-class RagPipelineSystemVariableCollectionApi(Resource):
+class RagPipelineSystemVariableCollectionApi(MethodView):
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
     def get(self, pipeline: Pipeline):
@@ -310,7 +311,7 @@ class RagPipelineSystemVariableCollectionApi(Resource):
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/environment-variables")
-class RagPipelineEnvironmentVariableCollectionApi(Resource):
+class RagPipelineEnvironmentVariableCollectionApi(MethodView):
     @_api_prerequisite
     def get(self, pipeline: Pipeline):
         """

@@ -1,7 +1,8 @@
 from typing import Literal
 
 from flask import request
-from flask_restx import Resource, marshal_with
+from flask.views import MethodView
+from flask_restx import marshal_with
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -30,7 +31,7 @@ PREVIEW_WORDS_LIMIT = 3000
 
 
 @console_ns.route("/files/upload")
-class FileApi(Resource):
+class FileApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -87,7 +88,7 @@ class FileApi(Resource):
 
 
 @console_ns.route("/files/<uuid:file_id>/preview")
-class FilePreviewApi(Resource):
+class FilePreviewApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required
@@ -98,7 +99,7 @@ class FilePreviewApi(Resource):
 
 
 @console_ns.route("/files/support-type")
-class FileSupportTypeApi(Resource):
+class FileSupportTypeApi(MethodView):
     @setup_required
     @login_required
     @account_initialization_required

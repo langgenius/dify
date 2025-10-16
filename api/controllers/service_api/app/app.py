@@ -1,4 +1,4 @@
-from flask_restx import Resource
+from flask.views import MethodView
 
 from controllers.common.fields import build_parameters_model
 from controllers.service_api import service_api_ns
@@ -10,7 +10,7 @@ from services.app_service import AppService
 
 
 @service_api_ns.route("/parameters")
-class AppParameterApi(Resource):
+class AppParameterApi(MethodView):
     """Resource for app variables."""
 
     @service_api_ns.doc("get_app_parameters")
@@ -49,7 +49,7 @@ class AppParameterApi(Resource):
 
 
 @service_api_ns.route("/meta")
-class AppMetaApi(Resource):
+class AppMetaApi(MethodView):
     @service_api_ns.doc("get_app_meta")
     @service_api_ns.doc(description="Get application metadata")
     @service_api_ns.doc(
@@ -69,7 +69,7 @@ class AppMetaApi(Resource):
 
 
 @service_api_ns.route("/info")
-class AppInfoApi(Resource):
+class AppInfoApi(MethodView):
     @service_api_ns.doc("get_app_info")
     @service_api_ns.doc(description="Get basic application information")
     @service_api_ns.doc(

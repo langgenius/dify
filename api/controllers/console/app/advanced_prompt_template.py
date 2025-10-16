@@ -1,4 +1,5 @@
-from flask_restx import Resource, fields, reqparse
+from flask.views import MethodView
+from flask_restx import fields, reqparse
 
 from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -7,7 +8,7 @@ from services.advanced_prompt_template_service import AdvancedPromptTemplateServ
 
 
 @console_ns.route("/app/prompt-templates")
-class AdvancedPromptTemplateList(Resource):
+class AdvancedPromptTemplateList(MethodView):
     @api.doc("get_advanced_prompt_templates")
     @api.doc(description="Get advanced prompt templates based on app mode and model configuration")
     @api.expect(

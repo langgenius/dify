@@ -1,7 +1,8 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, marshal_with, reqparse
+from flask.views import MethodView
+from flask_restx import marshal_with, reqparse
 from werkzeug.exceptions import Unauthorized
 
 from controllers.common import fields
@@ -77,7 +78,7 @@ class AppMeta(WebApiResource):
 
 
 @web_ns.route("/webapp/access-mode")
-class AppAccessMode(Resource):
+class AppAccessMode(MethodView):
     @web_ns.doc("Get App Access Mode")
     @web_ns.doc(description="Retrieve the access mode for a web application (public or restricted).")
     @web_ns.doc(
@@ -117,7 +118,7 @@ class AppAccessMode(Resource):
 
 
 @web_ns.route("/webapp/permission")
-class AppWebAuthPermission(Resource):
+class AppWebAuthPermission(MethodView):
     @web_ns.doc("Check App Permission")
     @web_ns.doc(description="Check if user has permission to access a web application.")
     @web_ns.doc(params={"appId": {"description": "Application ID", "type": "string", "required": True}})

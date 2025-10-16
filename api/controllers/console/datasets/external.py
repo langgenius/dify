@@ -1,5 +1,6 @@
 from flask import request
-from flask_restx import Resource, fields, marshal, reqparse
+from flask.views import MethodView
+from flask_restx import fields, marshal, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -21,7 +22,7 @@ def _validate_name(name: str) -> str:
 
 
 @console_ns.route("/datasets/external-knowledge-api")
-class ExternalApiTemplateListApi(Resource):
+class ExternalApiTemplateListApi(MethodView):
     @api.doc("get_external_api_templates")
     @api.doc(description="Get external knowledge API templates")
     @api.doc(
@@ -92,7 +93,7 @@ class ExternalApiTemplateListApi(Resource):
 
 
 @console_ns.route("/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>")
-class ExternalApiTemplateApi(Resource):
+class ExternalApiTemplateApi(MethodView):
     @api.doc("get_external_api_template")
     @api.doc(description="Get external knowledge API template details")
     @api.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
@@ -159,7 +160,7 @@ class ExternalApiTemplateApi(Resource):
 
 
 @console_ns.route("/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>/use-check")
-class ExternalApiUseCheckApi(Resource):
+class ExternalApiUseCheckApi(MethodView):
     @api.doc("check_external_api_usage")
     @api.doc(description="Check if external knowledge API is being used")
     @api.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
@@ -177,7 +178,7 @@ class ExternalApiUseCheckApi(Resource):
 
 
 @console_ns.route("/datasets/external")
-class ExternalDatasetCreateApi(Resource):
+class ExternalDatasetCreateApi(MethodView):
     @api.doc("create_external_dataset")
     @api.doc(description="Create external knowledge dataset")
     @api.expect(
@@ -235,7 +236,7 @@ class ExternalDatasetCreateApi(Resource):
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/external-hit-testing")
-class ExternalKnowledgeHitTestingApi(Resource):
+class ExternalKnowledgeHitTestingApi(MethodView):
     @api.doc("test_external_knowledge_retrieval")
     @api.doc(description="Test external knowledge retrieval for dataset")
     @api.doc(params={"dataset_id": "Dataset ID"})
@@ -290,7 +291,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
 
 
 @console_ns.route("/test/retrieval")
-class BedrockRetrievalApi(Resource):
+class BedrockRetrievalApi(MethodView):
     # this api is only for internal testing
     @api.doc("bedrock_retrieval_test")
     @api.doc(description="Bedrock retrieval test (internal use only)")
