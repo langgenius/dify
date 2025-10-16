@@ -49,6 +49,23 @@ conversation_variable_fields = {
     "description": fields.String,
 }
 
+memory_block_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "description": fields.String,
+    "template": fields.String,
+    "instruction": fields.String,
+    "scope": fields.String,
+    "term": fields.String,
+    "strategy": fields.String,
+    "update_turns": fields.Integer,
+    "preserved_turns": fields.Integer,
+    "schedule_mode": fields.String,
+    "model": fields.Raw,
+    "end_user_visible": fields.Boolean,
+    "end_user_editable": fields.Boolean,
+}
+
 pipeline_variable_fields = {
     "label": fields.String,
     "variable": fields.String,
@@ -81,6 +98,7 @@ workflow_fields = {
     "tool_published": fields.Boolean,
     "environment_variables": fields.List(EnvironmentVariableField()),
     "conversation_variables": fields.List(fields.Nested(conversation_variable_fields)),
+    "memory_blocks": fields.List(fields.Nested(memory_block_fields)),
     "rag_pipeline_variables": fields.List(fields.Nested(pipeline_variable_fields)),
 }
 
