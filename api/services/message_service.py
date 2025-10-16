@@ -12,7 +12,7 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.account import Account
+from models import Account
 from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService
 from services.errors.message import (
