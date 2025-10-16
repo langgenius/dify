@@ -30,7 +30,7 @@ class TestMetadataBugCompleteValidation:
         assert valid_args.type == "string"
         assert valid_args.name == "test_name"
 
-    def test_2_business_logic_layer_crashes_on_none(self):
+    def test_2_business_logic_layer_crashes_on_none(self, app):
         """Test Layer 2: Business logic crashes when None values slip through."""
         # Create mock that bypasses Pydantic validation
         mock_metadata_args = Mock()
@@ -41,19 +41,20 @@ class TestMetadataBugCompleteValidation:
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
 
-        with patch("services.metadata_service.current_user", mock_user):
-            # Should crash with TypeError
-            with pytest.raises(TypeError, match=r"object of type 'NoneType'.*len"):
-                MetadataService.create_metadata("dataset-123", mock_metadata_args)
+        with app.app_context():
+            with patch("services.metadata_service.current_user", mock_user):
+                # Should crash with TypeError
+                with pytest.raises(TypeError, match=r"object of type 'NoneType'.*len"):
+                    MetadataService.create_metadata("dataset-123", mock_metadata_args)
 
-        # Test update method as well
-        mock_user = create_autospec(Account, instance=True)
-        mock_user.current_tenant_id = "tenant-123"
-        mock_user.id = "user-456"
+            # Test update method as well
+            mock_user = create_autospec(Account, instance=True)
+            mock_user.current_tenant_id = "tenant-123"
+            mock_user.id = "user-456"
 
-        with patch("services.metadata_service.current_user", mock_user):
-            with pytest.raises(TypeError, match=r"object of type 'NoneType'.*len"):
-                MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
+            with patch("services.metadata_service.current_user", mock_user):
+                with pytest.raises(TypeError, match=r"object of type 'NoneType'.*len"):
+                    MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
 
     def test_3_database_constraints_verification(self):
         """Test Layer 3: Verify database model has nullable=False constraints."""
