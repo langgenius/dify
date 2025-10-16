@@ -4,7 +4,7 @@ import importlib
 import json
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any, Protocol
+from typing import Any, Mapping as TypingMapping, Protocol, Sequence
 
 from pydantic.json import pydantic_encoder
 
@@ -64,9 +64,13 @@ class ResponseStreamCoordinatorProtocol(Protocol):
 
 
 class GraphProtocol(Protocol):
-    """Marker protocol for Graph runtime state attachment."""
+    """Structural interface required from graph instances attached to the runtime state."""
 
-    ...
+    nodes: TypingMapping[str, object]
+    edges: TypingMapping[str, object]
+    root_node: object
+
+    def get_outgoing_edges(self, node_id: str) -> Sequence[object]: ...
 
 
 class GraphRuntimeState:
