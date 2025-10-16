@@ -109,7 +109,7 @@ class Worker(threading.Thread):
                     id=str(uuid4()),
                     node_id=node_id,
                     node_type=node.node_type,
-                    in_iteration_id=node.iteration_id,
+                    in_iteration_id=None,
                     error=str(e),
                     start_at=datetime.now(),
                 )
