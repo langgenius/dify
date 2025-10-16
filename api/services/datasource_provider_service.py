@@ -17,12 +17,18 @@ from core.tools.entities.tool_entities import CredentialType
 from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.login import current_account_with_tenant
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID
 from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
+
+
+def get_current_user():
+    from libs.login import current_user, Account, EndUser
+
+    assert isinstance(current_user, (Account, EndUser))
+    return current_user
 
 
 class DatasourceProviderService:
@@ -93,7 +99,7 @@ class DatasourceProviderService:
         """
         get credential by id
         """
-        current_user, _ = current_account_with_tenant()
+        current_user = get_current_user()
 
         with Session(db.engine) as session:
             if credential_id:
@@ -159,7 +165,7 @@ class DatasourceProviderService:
         """
         get all datasource credentials by provider
         """
-        current_user, _ = current_account_with_tenant()
+        current_user = get_current_user()
 
         with Session(db.engine) as session:
             datasource_providers = (
@@ -608,7 +614,7 @@ class DatasourceProviderService:
         """
         provider_name = provider_id.provider_name
         plugin_id = provider_id.plugin_id
-        current_user, _ = current_account_with_tenant()
+        current_user = get_current_user()
 
         with Session(db.engine) as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{CredentialType.API_KEY}"
@@ -907,7 +913,7 @@ class DatasourceProviderService:
         """
         update datasource credentials.
         """
-        current_user, _ = current_account_with_tenant()
+        current_user = get_current_user()
 
         with Session(db.engine) as session:
             datasource_provider = (
