@@ -87,6 +87,7 @@ def test_parse_and_check_json_markdown_multiple_blocks_fails():
     with pytest.raises(OutputParserError):
         parse_and_check_json_markdown(src, [])
 
+
 def test_parse_and_check_json_markdown_handles_think_fenced_and_raw_variants():
     expected = {"keywords": ["2"], "category_id": "2", "category_name": "2"}
     cases = [
