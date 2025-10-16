@@ -44,6 +44,8 @@ import { noop } from 'lodash-es'
 import PromptLogModal from '../../base/prompt-log-modal'
 
 type AppStoreState = ReturnType<typeof useAppStore.getState>
+type ConversationListItem = ChatConversationGeneralDetail | CompletionConversationGeneralDetail
+type ConversationSelection = ConversationListItem | { id: string; isPlaceholder?: true }
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -905,10 +907,10 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const isMobile = media === MediaType.mobile
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false) // Whether to display the chat details drawer
-  const [currentConversation, setCurrentConversation] = useState<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>() // Currently selected conversation
+  const [currentConversation, setCurrentConversation] = useState<ConversationSelection | undefined>() // Currently selected conversation
   const closingConversationIdRef = useRef<string | null>(null)
   const pendingConversationIdRef = useRef<string | null>(null)
-  const pendingConversationCacheRef = useRef<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>(undefined)
+  const pendingConversationCacheRef = useRef<ConversationSelection | undefined>(undefined)
   const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
   const isChatflow = appDetail.mode === 'advanced-chat' // Whether the app is a chatflow app
   const { setShowPromptLogModal, setShowAgentLogModal, setShowMessageLogModal } = useAppStore(useShallow((state: AppStoreState) => ({
@@ -930,7 +932,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     return queryString ? `${pathname}?${queryString}` : pathname
   }, [pathname, searchParams])
 
-  const handleRowClick = useCallback((log: ChatConversationGeneralDetail | CompletionConversationGeneralDetail) => {
+  const handleRowClick = useCallback((log: ConversationListItem) => {
     if (conversationIdInUrl === log.id) {
       if (!showDrawer)
         setShowDrawer(true)
@@ -973,12 +975,10 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     if (pendingConversationIdRef.current === conversationIdInUrl)
       pendingConversationIdRef.current = null
 
-    const matchedConversation = logs?.data?.find((item: ChatConversationGeneralDetail | CompletionConversationGeneralDetail) => item.id === conversationIdInUrl)
-    const nextConversation = matchedConversation
+    const matchedConversation = logs?.data?.find((item: ConversationListItem) => item.id === conversationIdInUrl)
+    const nextConversation: ConversationSelection = matchedConversation
       ?? pendingConversationCacheRef.current
-      ?? (isChatMode
-        ? ({ id: conversationIdInUrl } as ChatConversationGeneralDetail)
-        : ({ id: conversationIdInUrl } as CompletionConversationGeneralDetail))
+      ?? { id: conversationIdInUrl, isPlaceholder: true }
 
     if (!showDrawer)
       setShowDrawer(true)
@@ -988,7 +988,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
     if (pendingConversationCacheRef.current?.id === conversationIdInUrl || matchedConversation)
       pendingConversationCacheRef.current = undefined
-  }, [conversationIdInUrl, currentConversation, currentConversationId, isChatMode, logs?.data, showDrawer])
+  }, [conversationIdInUrl, currentConversation, isChatMode, logs?.data, showDrawer])
 
   const onCloseDrawer = useCallback(() => {
     onRefresh()
