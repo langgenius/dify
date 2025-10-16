@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import importlib
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from collections.abc import Mapping as TypingMapping
 from copy import deepcopy
-from typing import Any, Mapping as TypingMapping, Protocol, Sequence
+from typing import Any, Protocol
 
 from pydantic.json import pydantic_encoder
 
@@ -340,11 +341,13 @@ class GraphRuntimeState:
     # Builders
     # ------------------------------------------------------------------
     def _build_ready_queue(self) -> ReadyQueueProtocol:
+        # Import lazily to avoid breaching architecture boundaries enforced by import-linter.
         module = importlib.import_module("core.workflow.graph_engine.ready_queue")
         in_memory_cls = module.InMemoryReadyQueue
         return in_memory_cls()
 
     def _build_graph_execution(self) -> GraphExecutionProtocol:
+        # Lazily import to keep the runtime domain decoupled from graph_engine modules.
         module = importlib.import_module("core.workflow.graph_engine.domain.graph_execution")
         graph_execution_cls = module.GraphExecution
         workflow_id = self._pending_graph_execution_workflow_id or ""
@@ -352,6 +355,7 @@ class GraphRuntimeState:
         return graph_execution_cls(workflow_id=workflow_id)
 
     def _build_response_coordinator(self, graph: GraphProtocol) -> ResponseStreamCoordinatorProtocol:
+        # Lazily import to keep the runtime domain decoupled from graph_engine modules.
         module = importlib.import_module("core.workflow.graph_engine.response_coordinator")
         coordinator_cls = module.ResponseStreamCoordinator
         return coordinator_cls(variable_pool=self.variable_pool, graph=graph)
