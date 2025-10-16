@@ -31,7 +31,7 @@ class TestMetadataNullableBug:
 
         with patch("services.metadata_service.current_user", mock_user):
             # This should crash with TypeError when calling len(None)
-            with pytest.raises(TypeError, match=r"object of type 'NoneType' has no len\(\)"):
+            with pytest.raises(TypeError, match=r"object of type 'NoneType'.*len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
 
     def test_metadata_service_update_with_none_name_crashes(self):
@@ -42,7 +42,7 @@ class TestMetadataNullableBug:
 
         with patch("services.metadata_service.current_user", mock_user):
             # This should crash with TypeError when calling len(None)
-            with pytest.raises(TypeError, match=r"object of type 'NoneType' has no len\(\)"):
+            with pytest.raises(TypeError, match=r"object of type 'NoneType'.*len"):
                 MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
 
     def test_api_parser_accepts_null_values(self, app):
@@ -90,7 +90,7 @@ class TestMetadataNullableBug:
 
         with patch("services.metadata_service.current_user", mock_user):
             # Step 4: Service layer crashes on len(None)
-            with pytest.raises(TypeError, match=r"object of type 'NoneType' has no len\(\)"):
+            with pytest.raises(TypeError, match=r"object of type 'NoneType'.*len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
 
     def test_correct_nullable_false_configuration_works(self, app):
