@@ -80,4 +80,4 @@ def _get_user() -> EndUser | Account | None:
 
 #: A proxy for the current user. If no user is logged in, this will be an
 #: anonymous user
-current_user = LocalProxy(lambda: _get_user())._get_current_object() # type: ignore
+current_user = LocalProxy(lambda: _get_user())._get_current_object()  # type: ignore
