@@ -101,10 +101,10 @@ class Worker(threading.Thread):
 
             # Execute node with proper exception handling
             self._last_task_time = time.time()
-            
+
             # Get node from graph (should always exist as enqueue_node validates this)
             node = self._graph.nodes[node_id]
-            
+
             # Execute the node and handle any exceptions
             try:
                 self._execute_node(node)
