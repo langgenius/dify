@@ -1,5 +1,5 @@
-import logging
 import inspect
+import logging
 from collections.abc import Callable
 from contextlib import AbstractContextManager, ExitStack
 from types import TracebackType
