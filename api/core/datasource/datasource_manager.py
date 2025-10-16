@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 
 class DatasourceManager:
-
     @classmethod
     def get_datasource_plugin_provider(
         cls, provider_id: str, tenant_id: str, datasource_type: DatasourceProviderType
