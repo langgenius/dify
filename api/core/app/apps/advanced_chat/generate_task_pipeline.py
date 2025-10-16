@@ -140,7 +140,8 @@ class AdvancedChatAppGenerateTaskPipeline:
         self._recorded_files: list[Mapping[str, Any]] = []
         self._workflow_run_id: str = ""
         self._draft_var_saver_factory = draft_var_saver_factory
-        self._graph_runtime_state: GraphRuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
+        self._graph_runtime_state: GraphRuntimeState | None = None
+        self._seed_graph_runtime_state_from_queue_manager()
 
     def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
@@ -291,13 +292,11 @@ class AdvancedChatAppGenerateTaskPipeline:
         graph_runtime_state: GraphRuntimeState | None = None,
     ) -> GraphRuntimeState:
         if graph_runtime_state is not None:
-            self._graph_runtime_state = graph_runtime_state
+            self._update_graph_runtime_state(graph_runtime_state)
             return graph_runtime_state
 
         if self._graph_runtime_state is None:
-            candidate = self._base_task_pipeline.queue_manager.graph_runtime_state
-            if candidate is not None:
-                self._graph_runtime_state = candidate
+            self._seed_graph_runtime_state_from_queue_manager()
 
         if self._graph_runtime_state is None:
             raise ValueError("graph runtime state not initialized.")
@@ -832,6 +831,16 @@ class AdvancedChatAppGenerateTaskPipeline:
             self._task_state.metadata.usage = usage
         else:
             self._task_state.metadata.usage = LLMUsage.empty_usage()
+
+    def _seed_graph_runtime_state_from_queue_manager(self) -> None:
+        """Bootstrap the cached runtime state from the queue manager when present."""
+        candidate = self._base_task_pipeline.queue_manager.graph_runtime_state
+        if candidate is not None:
+            self._graph_runtime_state = candidate
+
+    def _update_graph_runtime_state(self, graph_runtime_state: GraphRuntimeState) -> None:
+        """Persist the latest runtime state snapshot for downstream handlers."""
+        self._graph_runtime_state = graph_runtime_state
 
     def _message_end_to_stream_response(self) -> MessageEndStreamResponse:
         """
