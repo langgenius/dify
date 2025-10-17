@@ -98,7 +98,7 @@ const AllStartBlocks = ({
                 <Button
                   size='small'
                   variant='secondary-accent'
-                  className='h-6 px-3 text-xs'
+                  className='h-6 cursor-pointer px-3 text-xs'
                 >
                   {t('workflow.tabs.requestToCommunity')}
                 </Button>
