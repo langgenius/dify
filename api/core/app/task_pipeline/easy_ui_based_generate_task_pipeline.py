@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from collections.abc import Generator
 from threading import Thread
@@ -58,7 +59,7 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models.model import AppMode, Conversation, Message, MessageAgentThought
+from models.model import AppMode, Conversation, Message, MessageAgentThought, Site
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
         self._message_id = message.id
         self._message_created_at = int(message.created_at.timestamp())
+        
+        self._show_reasoning = self._get_show_reasoning_config(conversation.app_id)
 
         self._task_state = EasyUITaskState(
             llm_result=LLMResult(
@@ -110,6 +113,68 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         )
 
         self._conversation_name_generate_thread: Thread | None = None
+        
+        self._think_buffer = ""
+        self._in_think_tag = False
+
+    def _get_show_reasoning_config(self, app_id: str) -> bool:
+        """Get show_reasoning configuration from site."""
+        try:
+            with Session(db.engine) as session:
+                site = session.scalar(select(Site).where(Site.app_id == app_id))
+                if site:
+                    return site.show_reasoning
+                return True
+        except Exception:
+            logger.exception("Failed to get show_reasoning config")
+            return True
+
+    @staticmethod
+    def _filter_think_tags(text: str) -> str:
+        """Filter out <think> tags and their content from text."""
+        return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    
+    def _filter_think_tags_streaming(self, delta_text: str) -> str:
+        """
+        Filter out <think> tags in streaming mode.
+        Maintains state across multiple chunks.
+        Returns filtered text to output.
+        """
+        if self._show_reasoning:
+            return delta_text
+        
+        result = ""
+        self._think_buffer += delta_text
+        
+        while self._think_buffer:
+            if not self._in_think_tag:
+                think_start = self._think_buffer.lower().find('<think>')
+                if think_start == -1:
+                    if '<' in self._think_buffer:
+                        last_bracket = self._think_buffer.rfind('<')
+                        result += self._think_buffer[:last_bracket]
+                        self._think_buffer = self._think_buffer[last_bracket:]
+                    else:
+                        result += self._think_buffer
+                        self._think_buffer = ""
+                    break
+                else:
+                    result += self._think_buffer[:think_start]
+                    self._think_buffer = self._think_buffer[think_start + 7:]
+                    self._in_think_tag = True
+            else:
+                think_end = self._think_buffer.lower().find('</think>')
+                if think_end == -1:
+                    if '</' in self._think_buffer and len(self._think_buffer) < 10:
+                        break
+                    else:
+                        self._think_buffer = ""
+                    break
+                else:
+                    self._think_buffer = self._think_buffer[think_end + 8:]
+                    self._in_think_tag = False
+        
+        return result
 
     def process(
         self,
@@ -337,18 +402,21 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 if should_direct_answer:
                     continue
 
+                # Filter think tags if show_reasoning is disabled
+                filtered_delta_text = self._filter_think_tags_streaming(cast(str, delta_text))
+
                 current_content = cast(str, self._task_state.llm_result.message.content)
                 current_content += cast(str, delta_text)
                 self._task_state.llm_result.message.content = current_content
 
-                if isinstance(event, QueueLLMChunkEvent):
+                if isinstance(event, QueueLLMChunkEvent) and filtered_delta_text:
                     yield self._message_cycle_manager.message_to_stream_response(
-                        answer=cast(str, delta_text),
+                        answer=filtered_delta_text,
                         message_id=self._message_id,
                     )
-                else:
+                elif isinstance(event, QueueAgentMessageEvent) and filtered_delta_text:
                     yield self._agent_message_to_stream_response(
-                        answer=cast(str, delta_text),
+                        answer=filtered_delta_text,
                         message_id=self._message_id,
                     )
             elif isinstance(event, QueueMessageReplaceEvent):
