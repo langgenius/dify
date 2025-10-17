@@ -1,9 +1,0 @@
-services:
-  api:
-    volumes:
-      - ../api/core/rag/datasource/vdb/weaviate/weaviate_vector.py:/app/api/core/rag/datasource/vdb/weaviate/weaviate_vector.py:ro
-    command: >
-      sh -c "
-        pip install --no-cache-dir 'weaviate>=4.0.0' &&
-        /bin/bash /entrypoint.sh
-      "

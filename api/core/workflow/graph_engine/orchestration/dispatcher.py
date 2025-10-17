@@ -99,6 +99,8 @@ class Dispatcher:
                         self._execution_coordinator.check_commands()
                     self._event_queue.task_done()
                 except queue.Empty:
+                    # Process commands even when no new events arrive so abort requests are not missed
+                    self._execution_coordinator.check_commands()
                     # Check if execution is complete
                     if self._execution_coordinator.is_execution_complete():
                         break
