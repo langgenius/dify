@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import PluginTriggerDebugEvent
+from core.trigger.entities.entities import EventEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import (
@@ -112,7 +113,7 @@ def dispatch_triggered_workflows_async(
             dispatched_count = 0
             for event_name in events:
                 try:
-                    event = controller.get_event(event_name)
+                    event: EventEntity | None = controller.get_event(event_name)
                     if event is None:
                         logger.error(
                             "Trigger '%s' not found in provider '%s'",
@@ -129,9 +130,10 @@ def dispatch_triggered_workflows_async(
 
                 except Exception:
                     logger.exception(
-                        "Failed to dispatch trigger '%s' for subscription %s",
+                        "Failed to dispatch trigger '%s' for subscription %s and provider %s. Continuing...",
                         event_name,
                         subscription_id,
+                        provider_id,
                     )
                     # Continue processing other triggers even if one fails
                     continue

@@ -127,7 +127,7 @@ class PluginTriggerProviderController:
         """
         return self.entity.events
 
-    def get_event(self, event_name: str) -> EventEntity:
+    def get_event(self, event_name: str) -> EventEntity | None:
         """
         Get a specific event by name
 
@@ -137,7 +137,7 @@ class PluginTriggerProviderController:
         for event in self.entity.events:
             if event.identity.name == event_name:
                 return event
-        raise ValueError(f"Event {event_name} not found in provider {self.provider_id}")
+        return None
 
     def get_subscription_default_properties(self) -> Mapping[str, Any]:
         """
@@ -260,7 +260,10 @@ class PluginTriggerProviderController:
         """
         Get event parameters for this provider
         """
-        return {parameter.name: parameter for parameter in self.get_event(event_name).parameters}
+        event = self.get_event(event_name)
+        if not event:
+            return {}
+        return {parameter.name: parameter for parameter in event.parameters}
 
     def dispatch(
         self,
@@ -317,13 +320,12 @@ class PluginTriggerProviderController:
         """
         manager = PluginTriggerManager()
         provider_id: TriggerProviderID = self.get_provider_id()
-        event: EventEntity = self.get_event(event_name=event_name)
 
         return manager.invoke_trigger_event(
             tenant_id=self.tenant_id,
             user_id=user_id,
             provider=str(provider_id),
-            event_name=event.identity.name,
+            event_name=event_name,
             credentials=credentials,
             credential_type=credential_type,
             request=request,
