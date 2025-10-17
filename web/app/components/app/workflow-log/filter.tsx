@@ -43,7 +43,13 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
           })
           setQueryParams({ ...queryParams, status: item.value as string })
         }}
-        onClear={() => setQueryParams({ ...queryParams, status: 'all' })}
+        onClear={() => {
+          sendGAEvent('filter_workflow_status_clear', {
+            status: 'reset',
+            status_name: 'reset',
+          })
+          setQueryParams({ ...queryParams, status: 'all' })
+        }}
         items={[{ value: 'all', name: 'All' },
           { value: 'succeeded', name: 'Success' },
           { value: 'failed', name: 'Fail' },
