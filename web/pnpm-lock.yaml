@@ -345,8 +345,8 @@ importers:
         specifier: ^1.15.0
         version: 1.52.3(eslint@9.35.0(jiti@2.6.1))(ts-api-utils@2.1.0(typescript@5.8.3))(typescript@5.8.3)
       '@happy-dom/jest-environment':
-        specifier: ^20.0.0
-        version: 20.0.0(@jest/environment@29.7.0)(@jest/fake-timers@29.7.0)(@jest/types@29.6.3)(jest-mock@29.7.0)(jest-util@29.7.0)
+        specifier: ^20.0.2
+        version: 20.0.4(@jest/environment@29.7.0)(@jest/fake-timers@29.7.0)(@jest/types@29.6.3)(jest-mock@29.7.0)(jest-util@29.7.0)
       '@mdx-js/loader':
         specifier: ^3.1.0
         version: 3.1.0(acorn@8.15.0)(webpack@5.100.2(esbuild@0.25.0)(uglify-js@3.19.3))
@@ -1644,8 +1644,8 @@ packages:
   '@formatjs/intl-localematcher@0.5.10':
     resolution: {integrity: sha512-af3qATX+m4Rnd9+wHcjJ4w2ijq+rAVP3CCinJQvFv1kgSu1W6jypUmvleJxcewdxmutM8dmIRZFxO/IQBZmP2Q==}
 
-  '@happy-dom/jest-environment@20.0.0':
-    resolution: {integrity: sha512-dUyMDNJzPDFopSDyzKdbeYs8z9B4jLj9kXnru8TjYdGeLsQKf+6r0lq/9T2XVcu04QFxXMykt64A+KjsaJTaNA==}
+  '@happy-dom/jest-environment@20.0.4':
+    resolution: {integrity: sha512-75OcYtjO+jqxWiYiXvbwR8JZITX1/8iAjRSRpZ/rNjO6UnYebwX6HdI91Ix09xYZEO1X/xOof6HX1EiZnrgnXA==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       '@jest/environment': '>=25.0.0'
@@ -5575,8 +5575,8 @@ packages:
   hachure-fill@0.5.2:
     resolution: {integrity: sha512-3GKBOn+m2LX9iq+JC1064cSFprJY4jL1jCXTcpnfER5HYE2l/4EfWSGzkPa/ZDBmYI0ZOEj5VHV/eKnPGkHuOg==}
 
-  happy-dom@20.0.0:
-    resolution: {integrity: sha512-GkWnwIFxVGCf2raNrxImLo397RdGhLapj5cT3R2PT7FwL62Ze1DROhzmYW7+J3p9105DYMVenEejEbnq5wA37w==}
+  happy-dom@20.0.4:
+    resolution: {integrity: sha512-WxFtvnij6G64/MtMimnZhF0nKx3LUQKc20zjATD6tKiqOykUwQkd+2FW/DZBAFNjk4oWh0xdv/HBleGJmSY/Iw==}
     engines: {node: '>=20.0.0'}
 
   has-flag@4.0.0:
@@ -10132,12 +10132,12 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@happy-dom/jest-environment@20.0.0(@jest/environment@29.7.0)(@jest/fake-timers@29.7.0)(@jest/types@29.6.3)(jest-mock@29.7.0)(jest-util@29.7.0)':
+  '@happy-dom/jest-environment@20.0.4(@jest/environment@29.7.0)(@jest/fake-timers@29.7.0)(@jest/types@29.6.3)(jest-mock@29.7.0)(jest-util@29.7.0)':
     dependencies:
       '@jest/environment': 29.7.0
       '@jest/fake-timers': 29.7.0
       '@jest/types': 29.6.3
-      happy-dom: 20.0.0
+      happy-dom: 20.0.4
       jest-mock: 29.7.0
       jest-util: 29.7.0
 
@@ -14787,7 +14787,7 @@ snapshots:
 
   hachure-fill@0.5.2: {}
 
-  happy-dom@20.0.0:
+  happy-dom@20.0.4:
     dependencies:
       '@types/node': 20.19.20
       '@types/whatwg-mimetype': 3.0.2
