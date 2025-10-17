@@ -49,6 +49,7 @@ class Tool(ABC):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        passthrough: str | None = None,
     ) -> Generator[ToolInvokeMessage]:
         if self.runtime and self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
@@ -62,6 +63,7 @@ class Tool(ABC):
             conversation_id=conversation_id,
             app_id=app_id,
             message_id=message_id,
+            passthrough=passthrough,
         )
 
         if isinstance(result, ToolInvokeMessage):
@@ -99,6 +101,7 @@ class Tool(ABC):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        passthrough: str | None = None,
     ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
         pass
 

@@ -30,6 +30,8 @@ class SystemVariableKey(StrEnum):
     DATASOURCE_TYPE = "datasource_type"
     DATASOURCE_INFO = "datasource_info"
     INVOKE_FROM = "invoke_from"
+    # Plugin Integration
+    PASSTHROUGH = "passthrough"
 
 
 class NodeType(StrEnum):

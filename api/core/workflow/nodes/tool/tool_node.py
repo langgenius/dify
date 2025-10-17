@@ -111,6 +111,9 @@ class ToolNode(Node):
         )
         # get conversation id
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
+        
+        # get passthrough parameter
+        passthrough = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.PASSTHROUGH])
 
         try:
             message_stream = ToolEngine.generic_invoke(
@@ -121,6 +124,7 @@ class ToolNode(Node):
                 workflow_call_depth=self.workflow_call_depth,
                 app_id=self.app_id,
                 conversation_id=conversation_id.text if conversation_id else None,
+                passthrough=passthrough.text if passthrough else None,
             )
         except ToolNodeError as e:
             yield StreamCompletedEvent(

@@ -997,12 +997,16 @@ def _setup_variable_pool(
 ):
     # Only inject system variables for START node type.
     if node_type == NodeType.START:
+        # Extract passthrough parameter from user_inputs
+        passthrough = user_inputs.get('passthrough') if user_inputs else None
+        
         system_variable = SystemVariable(
             user_id=user_id,
             app_id=workflow.app_id,
             workflow_id=workflow.id,
             files=files or [],
             workflow_execution_id=str(uuid.uuid4()),
+            passthrough=passthrough,
         )
 
         # Only add chatflow-specific variables for non-workflow types
