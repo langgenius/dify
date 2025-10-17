@@ -146,33 +146,46 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         result = ""
         self._think_buffer += delta_text
 
+        THINK_TAG = "<think>"
+        END_THINK_TAG = "</think>"
+
         while self._think_buffer:
             if not self._in_think_tag:
-                think_start = self._think_buffer.lower().find("<think>")
-                if think_start == -1:
-                    if "<" in self._think_buffer:
-                        last_bracket = self._think_buffer.rfind("<")
-                        result += self._think_buffer[:last_bracket]
-                        self._think_buffer = self._think_buffer[last_bracket:]
+                think_start = self._think_buffer.lower().find(THINK_TAG)
+                if think_start != -1:
+                    result += self._think_buffer[:think_start]
+                    self._think_buffer = self._think_buffer[think_start + len(THINK_TAG) :]
+                    self._in_think_tag = True
+                else:
+                    last_lt_pos = self._think_buffer.rfind("<")
+                    if last_lt_pos != -1:
+                        suffix = self._think_buffer[last_lt_pos + 1 :]
+                        if THINK_TAG[1:].startswith(suffix.lower()):
+                            result += self._think_buffer[:last_lt_pos]
+                            self._think_buffer = self._think_buffer[last_lt_pos:]
+                        else:
+                            result += self._think_buffer
+                            self._think_buffer = ""
                     else:
                         result += self._think_buffer
                         self._think_buffer = ""
                     break
-                else:
-                    result += self._think_buffer[:think_start]
-                    self._think_buffer = self._think_buffer[think_start + 7 :]
-                    self._in_think_tag = True
             else:
-                think_end = self._think_buffer.lower().find("</think>")
-                if think_end == -1:
-                    if "</" in self._think_buffer and len(self._think_buffer) < 10:
-                        break
+                think_end = self._think_buffer.lower().find(END_THINK_TAG)
+                if think_end != -1:
+                    self._think_buffer = self._think_buffer[think_end + len(END_THINK_TAG) :]
+                    self._in_think_tag = False
+                else:
+                    last_lt_pos = self._think_buffer.rfind("</")
+                    if last_lt_pos != -1:
+                        suffix = self._think_buffer[last_lt_pos + 2 :]
+                        if END_THINK_TAG[2:].startswith(suffix.lower()):
+                            self._think_buffer = self._think_buffer[last_lt_pos:]
+                        else:
+                            self._think_buffer = ""
                     else:
                         self._think_buffer = ""
                     break
-                else:
-                    self._think_buffer = self._think_buffer[think_end + 8 :]
-                    self._in_think_tag = False
 
         return result
 
