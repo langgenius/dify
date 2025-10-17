@@ -9,7 +9,10 @@ import BlockSelector from '../../../../block-selector'
 import type { Param, ParamType } from '../../types'
 import cn from '@/utils/classnames'
 import { useStore } from '@/app/components/workflow/store'
-import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type {
+  PluginDefaultValue,
+  ToolDefaultValue,
+} from '@/app/components/workflow/block-selector/types'
 import type { ToolParameter } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
@@ -44,9 +47,10 @@ const ImportFromTool: FC<Props> = ({
   const workflowTools = useStore(s => s.workflowTools)
 
   const handleSelectTool = useCallback((_type: BlockEnum, toolInfo?: PluginDefaultValue) => {
-    if (!toolInfo || !('tool_name' in toolInfo))
+    if (!toolInfo || 'datasource_name' in toolInfo || !('tool_name' in toolInfo))
       return
-    const { provider_id, provider_type, tool_name: tool_name } = toolInfo!
+
+    const { provider_id, provider_type, tool_name } = toolInfo as ToolDefaultValue
     const currentTools = (() => {
       switch (provider_type) {
         case CollectionType.builtIn:
