@@ -11,6 +11,7 @@ import { useStore } from '@/app/components/workflow/store'
 import { useStoreApi } from 'reactflow'
 import PluginDependency from '../../workflow/plugin-dependency'
 import {
+  useAutoGenerateWebhookUrl,
   useDSL,
   usePanelInteractions,
 } from '@/app/components/workflow/hooks'
@@ -91,6 +92,8 @@ const WorkflowChildren = () => {
       setSecretEnvList(v.payload.data as EnvironmentVariable[])
   })
 
+  const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
+
   const handleCloseOnboarding = useCallback(() => {
     handleOnboardingClose()
   }, [handleOnboardingClose])
@@ -142,6 +145,7 @@ const WorkflowChildren = () => {
 
     handleSyncWorkflowDraft(true, false, {
       onSuccess: () => {
+        autoGenerateWebhookUrl(newNode.id)
         console.log('Node successfully saved to draft')
       },
       onError: () => {

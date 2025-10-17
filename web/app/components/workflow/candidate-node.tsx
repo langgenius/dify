@@ -1,7 +1,4 @@
-import {
-  memo,
-  useCallback,
-} from 'react'
+import { memo } from 'react'
 import produce from 'immer'
 import {
   useReactFlow,
@@ -13,15 +10,13 @@ import {
   useStore,
   useWorkflowStore,
 } from './store'
-import { WorkflowHistoryEvent, useNodesInteractions, useNodesSyncDraft, useWorkflowHistory } from './hooks'
+import { WorkflowHistoryEvent, useAutoGenerateWebhookUrl, useNodesInteractions, useNodesSyncDraft, useWorkflowHistory } from './hooks'
 import { CUSTOM_NODE } from './constants'
 import { getIterationStartNode, getLoopStartNode } from './utils'
 import CustomNode from './nodes'
 import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import { BlockEnum } from './types'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { fetchWebhookUrl } from '@/service/apps'
 
 const CandidateNode = () => {
   const store = useStoreApi()
@@ -33,34 +28,7 @@ const CandidateNode = () => {
   const { handleNodeSelect } = useNodesInteractions()
   const { saveStateToHistory } = useWorkflowHistory()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-
-  const autoGenerateWebhookUrl = useCallback((nodeId: string) => {
-    const appId = useAppStore.getState().appDetail?.id
-    if (!appId)
-      return
-
-    fetchWebhookUrl({ appId, nodeId }).then((response) => {
-      const { getNodes, setNodes } = store.getState()
-      let hasUpdated = false
-      const updatedNodes = produce(getNodes(), (draft) => {
-        const targetNode = draft.find(n => n.id === nodeId)
-        if (!targetNode || targetNode.data.type !== BlockEnum.TriggerWebhook)
-          return
-
-        targetNode.data = {
-          ...targetNode.data,
-          webhook_url: response.webhook_url,
-          webhook_debug_url: response.webhook_debug_url,
-        }
-        hasUpdated = true
-      })
-      if (hasUpdated)
-        setNodes(updatedNodes)
-    })
-      .catch((error: unknown) => {
-        console.error('Failed to auto-generate webhook URL from candidate placement:', error)
-      })
-  }, [store])
+  const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
 
   useEventListener('click', (e) => {
     const { candidateNode, mousePosition } = workflowStore.getState()
