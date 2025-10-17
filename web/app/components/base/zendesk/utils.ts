@@ -21,3 +21,8 @@ export const setZendeskConversationFields = (fields: ConversationField[], callba
   if (!IS_CE_EDITION && window.zE)
     window.zE('messenger:set', 'conversationFields', fields, callback)
 }
+
+export const setZendeskWidgetVisibility = (visible: boolean) => {
+  if (!IS_CE_EDITION && window.zE)
+    window.zE('messenger', visible ? 'show' : 'hide')
+}
