@@ -44,6 +44,27 @@ enum ApiKeyStep {
 
 const defaultFormValues = { values: {}, isCheckValidated: false }
 
+const normalizeFormType = (type: FormTypeEnum | string): FormTypeEnum => {
+  if (Object.values(FormTypeEnum).includes(type as FormTypeEnum))
+    return type as FormTypeEnum
+
+  switch (type) {
+    case 'string':
+    case 'text':
+      return FormTypeEnum.textInput
+    case 'password':
+    case 'secret':
+      return FormTypeEnum.secretInput
+    case 'number':
+    case 'integer':
+      return FormTypeEnum.textNumber
+    case 'boolean':
+      return FormTypeEnum.boolean
+    default:
+      return FormTypeEnum.textInput
+  }
+}
+
 // Check if URL is a private/local network address
 const isPrivateOrLocalAddress = (url: string): boolean => {
   try {
@@ -390,16 +411,20 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
         </div> */}
         {createType !== SupportedCreationMethods.MANUAL && autoCommonParametersSchema.length > 0 && (
           <BaseForm
-            formSchemas={autoCommonParametersSchema.map(schema => ({
-              ...schema,
-              dynamicSelectParams: schema.type === FormTypeEnum.dynamicSelect ? {
-                plugin_id: detail?.plugin_id || '',
-                provider: detail?.provider || '',
-                action: 'provider',
-                parameter: schema.name,
-                credential_id: subscriptionBuilder?.id || '',
-              } : undefined,
-            }))}
+            formSchemas={autoCommonParametersSchema.map((schema) => {
+              const normalizedType = normalizeFormType(schema.type as FormTypeEnum | string)
+              return {
+                ...schema,
+                type: normalizedType,
+                dynamicSelectParams: normalizedType === FormTypeEnum.dynamicSelect ? {
+                  plugin_id: detail?.plugin_id || '',
+                  provider: detail?.provider || '',
+                  action: 'provider',
+                  parameter: schema.name,
+                  credential_id: subscriptionBuilder?.id || '',
+                } : undefined,
+              }
+            })}
             ref={autoCommonParametersFormRef}
             labelClassName='system-sm-medium mb-2 block text-text-primary'
             formClassName='space-y-4'
