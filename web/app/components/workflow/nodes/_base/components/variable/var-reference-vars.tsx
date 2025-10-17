@@ -187,6 +187,7 @@ const Item: FC<ItemProps> = ({
         >
           <div className='flex w-0 grow items-center'>
             {!isFlat && <VariableIconWithColor
+              variables={itemData.variable.split('.')}
               variableCategory={variableCategory}
               isExceptionVariable={isException}
             />}

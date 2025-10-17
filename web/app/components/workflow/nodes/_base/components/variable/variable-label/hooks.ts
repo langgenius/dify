@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
+import { BubbleX, Env, GlobalVariable } from '@/app/components/base/icons/src/vender/line/others'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import {
   isConversationVar,
   isENV,
+  isGlobalVar,
   isRagVariableVar,
   isSystemVar,
 } from '../utils'
@@ -24,6 +25,9 @@ export const useVarIcon = (variables: string[], variableCategory?: VarInInspectT
   if (isConversationVar(variables) || variableCategory === VarInInspectType.conversation || variableCategory === 'conversation')
     return BubbleX
 
+  if(isGlobalVar(variables))
+    return GlobalVariable
+
   return Variable02
 }
 
@@ -40,6 +44,9 @@ export const useVarColor = (variables: string[], isExceptionVariable?: boolean, 
 
     if (isConversationVar(variables) || variableCategory === VarInInspectType.conversation || variableCategory === 'conversation')
       return 'text-util-colors-teal-teal-700'
+
+    if (isGlobalVar(variables))
+      return 'text-util-colors-orange-orange-600'
 
     return 'text-text-accent'
   }, [variables, isExceptionVariable])
