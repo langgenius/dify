@@ -632,6 +632,13 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+    # TODO: Remove this entrypoint override when weaviate-client 4.17.0 is included in the next Dify release
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        uv pip install --system weaviate-client==4.17.0
+        exec /bin/bash /app/api/docker/entrypoint.sh
     networks:
       - ssrf_proxy_network
       - default
@@ -659,6 +666,13 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+    # TODO: Remove this entrypoint override when weaviate-client 4.17.0 is included in the next Dify release
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        uv pip install --system weaviate-client==4.17.0
+        exec /bin/bash /app/api/docker/entrypoint.sh
     networks:
       - ssrf_proxy_network
       - default
@@ -939,7 +953,6 @@ services:
   weaviate:
     image: semitechnologies/weaviate:1.27.0
     profiles:
-      - ""
       - weaviate
     restart: always
     volumes:

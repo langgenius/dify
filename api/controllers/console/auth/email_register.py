@@ -19,7 +19,7 @@ from controllers.console.wraps import email_password_login_enabled, email_regist
 from extensions.ext_database import db
 from libs.helper import email, extract_remote_ip
 from libs.password import valid_password
-from models.account import Account
+from models import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError

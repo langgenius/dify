@@ -31,7 +31,7 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from libs.helper import length_prefixed_response
-from models.account import Account, Tenant
+from models import Account, Tenant
 from models.model import EndUser
 
 

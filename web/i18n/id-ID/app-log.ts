@@ -74,6 +74,7 @@ const translation = {
     workflowTitle: 'Log Detail',
     title: 'Log Percakapan',
     fileListLabel: 'Rincian File',
+    testWithParams: 'Uji Dengan Param',
   },
   agentLogDetail: {
     iterations: 'Iterasi',
