@@ -91,13 +91,19 @@ curl -X POST 'https://api.dify.ai/v1/workflows/run' \
 
 ### Receiving Passthrough Parameters in Plugins
 
-Plugins can receive passthrough parameters through `tool_parameters` or runtime context:
+Plugin developers need to implement the `_invoke` method to receive passthrough parameters:
 
 ```python
-def invoke(self, user_id: str, tool_parameters: dict, **kwargs):
-    # Get passthrough parameter from runtime context
-    passthrough = kwargs.get('passthrough')
-    
+def _invoke(
+    self,
+    user_id: str,
+    tool_parameters: dict,
+    conversation_id: str | None = None,
+    app_id: str | None = None,
+    message_id: str | None = None,
+    passthrough: str | None = None,  # passthrough parameter passed as named argument
+) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
+    # Use passthrough parameter directly
     if passthrough:
         # Use passthrough data for processing
         print(f"Received passthrough data: {passthrough}")

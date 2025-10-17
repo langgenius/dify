@@ -91,13 +91,19 @@ curl -X POST 'https://api.dify.ai/v1/workflows/run' \
 
 ### 在插件中接收 passthrough 参数
 
-插件可以通过 `tool_parameters` 或运行时上下文接收 passthrough 参数：
+插件开发者需要实现 `_invoke` 方法来接收 passthrough 参数：
 
 ```python
-def invoke(self, user_id: str, tool_parameters: dict, **kwargs):
-    # 从运行时上下文获取 passthrough 参数
-    passthrough = kwargs.get('passthrough')
-    
+def _invoke(
+    self,
+    user_id: str,
+    tool_parameters: dict,
+    conversation_id: str | None = None,
+    app_id: str | None = None,
+    message_id: str | None = None,
+    passthrough: str | None = None,  # passthrough 参数作为命名参数传递
+) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
+    # 直接使用 passthrough 参数
     if passthrough:
         # 使用 passthrough 数据进行处理
         print(f"Received passthrough data: {passthrough}")
