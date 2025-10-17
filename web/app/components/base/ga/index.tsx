@@ -24,7 +24,8 @@ const GA: FC<IGAProps> = ({
   if (IS_CE_EDITION)
     return null
 
-  const nonce = process.env.NODE_ENV === 'production' ? (headers() as unknown as UnsafeUnwrappedHeaders).get('x-nonce') ?? '' : ''
+  const nonceValue = process.env.NODE_ENV === 'production' ? (headers() as unknown as UnsafeUnwrappedHeaders).get('x-nonce') : null
+  const nonce = nonceValue || undefined
 
   return (
     <>
@@ -40,20 +41,20 @@ const GA: FC<IGAProps> = ({
             window.gtag('config', '${gaIdMaps[gaType]}');
           `,
         }}
-        nonce={nonce ?? undefined}
+        nonce={nonce}
       />
       {/* Load GA script */}
       <Script
         strategy="afterInteractive"
         src={`https://www.googletagmanager.com/gtag/js?id=${gaIdMaps[gaType]}`}
-        nonce={nonce ?? undefined}
+        nonce={nonce}
       />
       {/* Cookie banner */}
       <Script
         id="cookieyes"
         strategy="lazyOnload"
         src='https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js'
-        nonce={nonce ?? undefined}
+        nonce={nonce}
       />
     </>
   )
