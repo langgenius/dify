@@ -231,6 +231,7 @@ const Chat: FC<ChatProps> = ({
       onAnnotationEdited={onAnnotationEdited}
       onAnnotationRemoved={onAnnotationRemoved}
       onFeedback={onFeedback}
+      showReasoning={appData?.site?.show_reasoning}
     >
       <div className='relative h-full'>
         <div

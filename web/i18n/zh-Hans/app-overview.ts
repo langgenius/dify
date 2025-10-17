@@ -53,6 +53,10 @@ const translation = {
           hide: '隐藏',
           showDesc: '在 web app 中展示或者隐藏工作流详情',
         },
+        reasoning: {
+          subTitle: 'LLM 推理过程显示',
+          showDesc: '在 web app 中展示或隐藏 LLM 推理过程（思考过程）',
+        },
         chatColorTheme: '聊天颜色主题',
         chatColorThemeDesc: '设置聊天机器人的颜色主题',
         chatColorThemeInverted: '反转',

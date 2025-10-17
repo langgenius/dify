@@ -53,6 +53,10 @@ const translation = {
           hide: 'Hide',
           showDesc: 'Show or hide workflow details in web app',
         },
+        reasoning: {
+          subTitle: 'LLM Reasoning Display',
+          showDesc: 'Show or hide LLM reasoning process (think process) in web app',
+        },
         chatColorTheme: 'Chat color theme',
         chatColorThemeDesc: 'Set the color theme of the chatbot',
         chatColorThemeInverted: 'Inverted',
