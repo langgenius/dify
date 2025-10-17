@@ -165,6 +165,7 @@ const translation = {
     item: {
       parameters: '{{count}}个参数',
     },
+    output: '输出',
   },
 }
 

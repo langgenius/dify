@@ -12,7 +12,7 @@ import EndpointList from './endpoint-list'
 import ModelList from './model-list'
 import { SubscriptionList } from './subscription-list'
 import { usePluginStore } from './subscription-list/store'
-import { TriggerEventsList } from './trigger-events-list'
+import { TriggerEventsList } from './trigger/event-list'
 
 type Props = {
   detail?: PluginDetail

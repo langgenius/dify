@@ -165,6 +165,7 @@ const translation = {
     item: {
       parameters: '{{count}} parameters',
     },
+    output: 'Output',
   },
 }
 

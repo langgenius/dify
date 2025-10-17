@@ -95,7 +95,7 @@ export type PluginTriggerSubscriptionConstructor = {
 }
 
 export type PluginTriggerDefinition = {
-  events: Trigger[]
+  events: TriggerEvent[]
   identity: Identity
   subscription_constructor: PluginTriggerSubscriptionConstructor
   subscription_schema: ParametersSchema[]
@@ -158,29 +158,31 @@ export type PropertiesSchema = {
   placeholder: any
 }
 
-export type Trigger = {
+export type TriggerEventParameter = {
+  name: string
+  label: Record<Locale, string>
+  type: string
+  auto_generate: any
+  template: any
+  scope: any
+  required: boolean
+  multiple: boolean
+  default: any
+  min: any
+  max: any
+  precision: any
+  options?: Array<{
+    value: string
+    label: Record<Locale, string>
+    icon?: string
+  }>
+  description?: Record<Locale, string>
+}
+
+export type TriggerEvent = {
   identity: Identity
   description: Record<Locale, string>
-  parameters: {
-    name: string
-    label: Record<Locale, string>
-    type: string
-    auto_generate: any
-    template: any
-    scope: any
-    required: boolean
-    multiple: boolean
-    default: any
-    min: any
-    max: any
-    precision: any
-    options?: Array<{
-      value: string
-      label: Record<Locale, string>
-      icon?: string
-    }>
-    description?: Record<Locale, string>
-  }[]
+  parameters: TriggerEventParameter[]
   output_schema: Record<string, any>
 }
 
