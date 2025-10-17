@@ -234,6 +234,7 @@ class ToolTransformService:
     @staticmethod
     def mcp_provider_to_user_provider(db_provider: MCPToolProvider, for_list: bool = False) -> ToolProviderApiEntity:
         user = db_provider.load_user()
+
         # Normalize optional proxy fields to avoid passing Mock objects into pydantic model
         def _as_optional_str(value: object) -> str | None:
             return value if isinstance(value, str) and value else None
