@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <style>
     body {
@@ -10,6 +11,7 @@
       margin: 0;
       padding: 0;
     }
+
     .container {
       width: 504px;
       min-height: 444px;
@@ -30,6 +32,7 @@
       max-width: 63px;
       height: auto;
     }
+
     .button {
       display: block;
       padding: 8px 12px;
@@ -45,42 +48,52 @@
       font-size: 14px;
       font-style: normal;
       font-weight: 600;
-      line-height: 20px; /* 142.857% */
+      line-height: 20px;
+      /* 142.857% */
     }
+
     .button:hover {
       background-color: #004AEB;
       border: 0.5px solid rgba(16, 24, 40, 0.08);
       box-shadow: 0px 1px 2px 0px rgba(9, 9, 11, 0.05);
     }
+
     .content {
       color: #354052;
       font-family: Inter;
       font-size: 14px;
       font-style: normal;
       font-weight: 400;
-      line-height: 20px; /* 142.857% */
+      line-height: 20px;
+      /* 142.857% */
       letter-spacing: -0.07px;
     }
+
     .content1 {
       margin: 0;
       padding-top: 24px;
       padding-bottom: 12px;
       font-weight: 500;
     }
+
     .content2 {
       margin: 0;
       padding-bottom: 12px;
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="header"></div>
     <div class="content">
       <p class="content1">Dear {{ to }},</p>
-      <p class="content2">{{ inviter_name }} is pleased to invite you to join our workspace on {{application_title}}, a platform specifically designed for LLM application development. On {{application_title}}, you can explore, create, and collaborate to build and operate AI applications.</p>
+      <p class="content2">{{ inviter_name }} is pleased to invite you to join our workspace on {{application_title}}, a
+        platform specifically designed for LLM application development. On {{application_title}}, you can explore,
+        create, and collaborate to build and operate AI applications.</p>
       <p class="content2">Click the button below to log in to {{application_title}} and join the workspace.</p>
-      <p style="text-align: center; margin: 0; margin-bottom: 32px;"><a style="color: #fff; text-decoration: none" class="button" href="{{ url }}">Login Here</a></p>
+      <p style="text-align: center; margin: 0; margin-bottom: 32px;"><a style="color: #fff; text-decoration: none"
+          class="button" href="{{ url }}">Login Here</a></p>
       <p class="content2">Best regards,</p>
       <p class="content2">{{application_title}} Team</p>
     </div>
