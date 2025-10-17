@@ -181,23 +181,31 @@ class MCPToolManageService:
         sse_read_timeout = mcp_provider.sse_read_timeout
 
         try:
-            mcp_kwargs: dict[str, Any] = {
-                "server_url": server_url,
-                "provider_id": provider_id,
-                "tenant_id": tenant_id,
-                "authed": authed,
-                "for_list": True,
-                "headers": headers,
-                "timeout": timeout,
-                "sse_read_timeout": sse_read_timeout,
-            }
-            
-            # Only pass proxy when feature is enabled and a non-empty proxy is provided
             if dify_config.MCP_PROVIDER_PROXY_ENABLED and proxy:
-                mcp_kwargs["proxy"] = proxy
-
-            with MCPClient(**mcp_kwargs) as mcp_client:
-                tools = mcp_client.list_tools()
+                with MCPClient(
+                    server_url,
+                    provider_id,
+                    tenant_id,
+                    authed=authed,
+                    for_list=True,
+                    headers=headers,
+                    timeout=timeout,
+                    sse_read_timeout=sse_read_timeout,
+                    proxy=proxy,
+                ) as mcp_client:
+                    tools = mcp_client.list_tools()
+            else:
+                with MCPClient(
+                    server_url,
+                    provider_id,
+                    tenant_id,
+                    authed=authed,
+                    for_list=True,
+                    headers=headers,
+                    timeout=timeout,
+                    sse_read_timeout=sse_read_timeout,
+                ) as mcp_client:
+                    tools = mcp_client.list_tools()
         except MCPAuthError:
             raise ValueError("Please auth the tool first")
         except MCPError as e:
