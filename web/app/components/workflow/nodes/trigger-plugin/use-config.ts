@@ -219,9 +219,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
 
   // Authentication status check
   const isAuthenticated = useMemo(() => {
-    if (!subscriptions.length) return false
-    const subscription = subscriptions[0]
-    return subscription.credential_type !== 'unauthorized'
+    return subscriptions.length > 0
   }, [subscriptions])
 
   const showAuthRequired = !isAuthenticated && !!currentProvider
