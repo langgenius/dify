@@ -1086,7 +1086,7 @@ class TenantService:
                 TenantAccountJoin.account_id == account.id,
                 TenantAccountJoin.tenant_id == tenant_id,
                 Tenant.status == TenantStatus.NORMAL,
-            )
+                )
             .first()
         )
 
@@ -1255,7 +1255,7 @@ class RegisterService:
         return f"member_invite:token:{token}"
 
     @classmethod
-    def setup(cls, email: str, name: str, password: str, ip_address: str):
+    def setup(cls, email: str, name: str, password: str, ip_address: str, language: str):
         """
         Setup dify
 
@@ -1269,7 +1269,7 @@ class RegisterService:
             account = AccountService.create_account(
                 email=email,
                 name=name,
-                interface_language=languages[0],
+                interface_language=language or languages[0],
                 password=password,
                 is_setup=True,
             )
