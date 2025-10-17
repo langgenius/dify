@@ -10,16 +10,3 @@ export const createWebhookRawVariable = (): Variable => ({
   value_selector: [],
   required: true,
 })
-
-type WithVariables = {
-  variables?: Variable[]
-}
-
-export const ensureWebhookRawVariable = <T extends WithVariables>(payload: T): void => {
-  if (!payload.variables)
-    payload.variables = []
-
-  const hasRawVariable = payload.variables.some(variable => variable.variable === WEBHOOK_RAW_VARIABLE_NAME)
-  if (!hasRawVariable)
-    payload.variables.push(createWebhookRawVariable())
-}
