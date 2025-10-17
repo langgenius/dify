@@ -22,7 +22,7 @@ from core.errors.error import (
 from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.graph_engine.manager import GraphEngineManager
 from libs import helper
-from libs.login import current_user
+from libs.login import current_user as current_user_
 from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
@@ -30,6 +30,8 @@ from services.errors.llm import InvokeRateLimitError
 from .. import console_ns
 
 logger = logging.getLogger(__name__)
+
+current_user = current_user_._get_current_object()  # type: ignore
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")

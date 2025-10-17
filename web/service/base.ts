@@ -324,7 +324,7 @@ const baseFetch = base
 
 type UploadOptions = {
   xhr: XMLHttpRequest
-  method: string
+  method?: string
   url?: string
   headers?: Record<string, string>
   data: FormData

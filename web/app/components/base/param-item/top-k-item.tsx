@@ -32,7 +32,7 @@ const TopKItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const handleParamChange = (key: string, value: number) => {
-    let notOutRangeValue = Number.parseFloat(value.toFixed(2))
+    let notOutRangeValue = Number.parseInt(value.toFixed(0))
     notOutRangeValue = Math.max(VALUE_LIMIT.min, notOutRangeValue)
     notOutRangeValue = Math.min(VALUE_LIMIT.max, notOutRangeValue)
     onChange(key, notOutRangeValue)

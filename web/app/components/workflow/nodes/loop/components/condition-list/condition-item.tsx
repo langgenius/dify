@@ -196,6 +196,9 @@ const ConditionItem = ({
       draft.varType = varItem.type
       draft.value = ''
       draft.comparison_operator = getOperators(varItem.type)[0]
+      delete draft.key
+      delete draft.sub_variable_condition
+      delete draft.numberVarType
     })
     doUpdateCondition(newCondition)
     setOpen(false)
