@@ -37,6 +37,7 @@ const TimePicker = ({
   minuteFilter,
   popupClassName,
   notClearable = false,
+  triggerFullWidth = false,
   showTimezone = false,
 }: TimePickerProps) => {
   const { t } = useTranslation()
@@ -205,14 +206,17 @@ const TimePicker = ({
       onOpenChange={setIsOpen}
       placement='bottom-start'
     >
-      <PortalToFollowElemTrigger>
+      <PortalToFollowElemTrigger className={triggerFullWidth ? '!block w-full' : undefined}>
         {renderTrigger ? (renderTrigger({
           inputElem,
           onClick: handleClickTrigger,
           isOpen,
         })) : (
           <div
-            className='group flex w-[252px] cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt'
+            className={cn(
+              'group flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
+              triggerFullWidth ? 'w-full min-w-0' : 'w-[252px]',
+            )}
             onClick={handleClickTrigger}
           >
             {inputElem}

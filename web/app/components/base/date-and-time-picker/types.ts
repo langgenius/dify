@@ -65,6 +65,7 @@ export type TimePickerProps = {
   minuteFilter?: (minutes: string[]) => string[]
   popupClassName?: string
   notClearable?: boolean
+  triggerFullWidth?: boolean
   /** Show timezone label inline with the time picker */
   showTimezone?: boolean
 }

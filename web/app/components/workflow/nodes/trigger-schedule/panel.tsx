@@ -73,6 +73,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                           notClearable={true}
                           timezone={inputs.timezone}
                           value={inputs.visual_config?.time || '12:00 AM'}
+                          triggerFullWidth={true}
                           onChange={(time) => {
                             if (time) {
                               const timeString = time.format('h:mm A')
