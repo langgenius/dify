@@ -95,10 +95,10 @@ def _make_succeeded_event() -> NodeRunSucceededEvent:
     )
 
 
-def test_dispatcher_checks_commands_after_node_completion() -> None:
-    """Dispatcher should only check commands after node completion events."""
+def test_dispatcher_checks_commands_during_idle_and_on_completion() -> None:
+    """Dispatcher polls commands when idle and re-checks after completion events."""
     started_checks = _run_dispatcher_for_event(_make_started_event())
     succeeded_checks = _run_dispatcher_for_event(_make_succeeded_event())
 
-    assert started_checks == 0
-    assert succeeded_checks == 1
+    assert started_checks == 1
+    assert succeeded_checks == 2
