@@ -61,6 +61,8 @@ class PluginTriggerData(TriggerData):
 class PluginTriggerDispatchData(BaseModel):
     """Plugin trigger dispatch data for Celery tasks"""
 
+    user_id: str
+    tenant_id: str
     endpoint_id: str
     provider_id: str
     subscription_id: str

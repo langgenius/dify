@@ -1114,7 +1114,10 @@ class DraftWorkflowTriggerRunAllApi(Resource):
 
         try:
             trigger_debug_event: TriggerDebugEvent | None = select_trigger_debug_events(
-                draft_workflow=draft_workflow, app_model=app_model, user_id=current_user.id, node_ids=node_ids
+                draft_workflow=draft_workflow,
+                app_model=app_model,
+                user_id=current_user.id,
+                node_ids=node_ids,
             )
         except ValueError as e:
             raise e

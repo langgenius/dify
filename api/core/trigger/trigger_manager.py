@@ -13,7 +13,7 @@ import contexts
 from configs import dify_config
 from core.plugin.entities.plugin_daemon import CredentialType, PluginTriggerProviderEntity
 from core.plugin.entities.request import TriggerInvokeEventResponse
-from core.plugin.impl.exc import PluginDaemonError, PluginInvokeError
+from core.plugin.impl.exc import PluginDaemonError, PluginInvokeError, PluginNotFoundError
 from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.entities import (
     EventEntity,
@@ -100,13 +100,13 @@ class TriggerManager:
             if provider_id_str in plugin_trigger_providers:
                 return plugin_trigger_providers[provider_id_str]
 
-            manager = PluginTriggerManager()
-            provider = manager.fetch_trigger_provider(tenant_id, provider_id)
-
-            if not provider:
-                raise ValueError(f"Trigger provider {provider_id} not found")
-
             try:
+                manager = PluginTriggerManager()
+                provider = manager.fetch_trigger_provider(tenant_id, provider_id)
+
+                if not provider:
+                    raise ValueError(f"Trigger provider {provider_id} not found")
+
                 controller = PluginTriggerProviderController(
                     entity=provider.declaration,
                     plugin_id=provider.plugin_id,
@@ -116,6 +116,8 @@ class TriggerManager:
                 )
                 plugin_trigger_providers[provider_id_str] = controller
                 return controller
+            except PluginNotFoundError as e:
+                raise ValueError(f"Trigger provider {provider_id} not found") from e
             except PluginDaemonError as e:
                 raise e
             except Exception as e:

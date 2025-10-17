@@ -459,7 +459,6 @@ class TriggerSubscriptionBuilderService:
         )
         try:
             dispatch_response: TriggerDispatchResponse = controller.dispatch(
-                user_id=subscription_builder.user_id,
                 request=request,
                 subscription=subscription_builder.to_subscription(),
                 credentials={},

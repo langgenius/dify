@@ -81,6 +81,8 @@ class TriggerSubscriptionListApi(Resource):
                     tenant_id=user.current_tenant_id, provider_id=TriggerProviderID(provider)
                 )
             )
+        except ValueError as e:
+            return jsonable_encoder({"error": str(e)}), 404
         except Exception as e:
             logger.exception("Error listing trigger providers", exc_info=e)
             raise

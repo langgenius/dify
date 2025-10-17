@@ -6,30 +6,261 @@ to avoid blocking the main request thread.
 """
 
 import logging
+from collections.abc import Mapping, Sequence
 
 from celery import shared_task
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.request import TriggerInvokeEventResponse
+from core.plugin.utils.http_parser import deserialize_request
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import PluginTriggerDebugEvent
-from core.trigger.entities.entities import EventEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
-from core.trigger.utils.encryption import (
-    create_trigger_provider_encrypter_for_properties,
-    create_trigger_provider_encrypter_for_subscription,
-)
+from core.workflow.enums import NodeType
+from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from models.enums import WorkflowRunTriggeredFrom
+from models.model import EndUser
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
-from services.trigger.trigger_service import TriggerService
-from services.workflow.entities import PluginTriggerDispatchData
+from models.workflow import Workflow, WorkflowPluginTrigger
+from services.async_workflow_service import AsyncWorkflowService
+from services.trigger.trigger_provider_service import TriggerProviderService
+from services.workflow.entities import PluginTriggerData, PluginTriggerDispatchData
 
 logger = logging.getLogger(__name__)
 
 # Use workflow queue for trigger processing
 TRIGGER_QUEUE = "triggered_workflow_dispatcher"
+
+
+def dispatch_trigger_debug_event(
+    events: list[str],
+    user_id: str,
+    timestamp: int,
+    request_id: str,
+    subscription: TriggerSubscription,
+) -> int:
+    debug_dispatched = 0
+    try:
+        for event_name in events:
+            pool_key: str = PluginTriggerDebugEvent.build_pool_key(
+                name=event_name,
+                tenant_id=subscription.tenant_id,
+                subscription_id=subscription.id,
+                provider_id=subscription.provider_id,
+            )
+            trigger_debug_event: PluginTriggerDebugEvent = PluginTriggerDebugEvent(
+                timestamp=timestamp,
+                user_id=user_id,
+                name=event_name,
+                request_id=request_id,
+                subscription_id=subscription.id,
+                provider_id=subscription.provider_id,
+            )
+            debug_dispatched += TriggerDebugEventBus.dispatch(
+                tenant_id=subscription.tenant_id,
+                event=trigger_debug_event,
+                pool_key=pool_key,
+            )
+            logger.debug(
+                "Trigger debug dispatched %d sessions to pool %s for event %s for subscription %s provider %s",
+                debug_dispatched,
+                pool_key,
+                event_name,
+                subscription.id,
+                subscription.provider_id,
+            )
+        return debug_dispatched
+    except Exception:
+        logger.exception("Failed to dispatch to debug sessions")
+        return 0
+
+
+def _get_latest_workflows_by_app_ids(
+    session: Session, subscribers: Sequence[WorkflowPluginTrigger]
+) -> Mapping[str, Workflow]:
+    """Get the latest workflows by app_ids"""
+    workflow_query = (
+        select(Workflow.app_id, func.max(Workflow.created_at).label("max_created_at"))
+        .where(
+            Workflow.app_id.in_({t.app_id for t in subscribers}),
+            Workflow.version != Workflow.VERSION_DRAFT,
+        )
+        .group_by(Workflow.app_id)
+        .subquery()
+    )
+    workflows = session.scalars(
+        select(Workflow).join(
+            workflow_query,
+            (Workflow.app_id == workflow_query.c.app_id) & (Workflow.created_at == workflow_query.c.max_created_at),
+        )
+    ).all()
+    return {w.app_id: w for w in workflows}
+
+
+def dispatch_triggered_workflow(
+    user_id: str,
+    subscription: TriggerSubscription,
+    event_name: str,
+    request_id: str,
+) -> int:
+    """Process triggered workflows.
+
+    Args:
+        subscription: The trigger subscription
+        event: The trigger entity that was activated
+        request_id: The ID of the stored request in storage system
+    """
+    request = deserialize_request(storage.load_once(f"triggers/{request_id}"))
+    if not request:
+        logger.error("Request not found for request_id %s", request_id)
+        return 0
+
+    from services.trigger.trigger_service import TriggerService
+
+    subscribers: list[WorkflowPluginTrigger] = TriggerService.get_subscriber_triggers(
+        tenant_id=subscription.tenant_id, subscription_id=subscription.id, event_name=event_name
+    )
+    if not subscribers:
+        logger.warning(
+            "No workflows found for trigger event '%s' in subscription '%s'",
+            event_name,
+            subscription.id,
+        )
+        return 0
+
+    dispatched_count = 0
+    provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+        tenant_id=subscription.tenant_id, provider_id=TriggerProviderID(subscription.provider_id)
+    )
+    with Session(db.engine) as session:
+        workflows: Mapping[str, Workflow] = _get_latest_workflows_by_app_ids(session, subscribers)
+        # Lazy import to avoid circular import during app initialization
+        from controllers.service_api.wraps import create_end_user_batch
+
+        end_users: Mapping[str, EndUser] = create_end_user_batch(
+            type=InvokeFrom.TRIGGER,
+            tenant_id=subscription.tenant_id,
+            app_ids=[plugin_trigger.app_id for plugin_trigger in subscribers],
+            user_id=user_id,
+        )
+        for plugin_trigger in subscribers:
+            # Get workflow from mapping
+            workflow: Workflow | None = workflows.get(plugin_trigger.app_id)
+            if not workflow:
+                logger.error(
+                    "Workflow not found for app %s",
+                    plugin_trigger.app_id,
+                )
+                continue
+
+            # Find the trigger node in the workflow
+            event_node = None
+            for node_id, node_config in workflow.walk_nodes(NodeType.TRIGGER_PLUGIN):
+                if node_id == plugin_trigger.node_id:
+                    event_node = node_config
+                    break
+
+            if not event_node:
+                logger.error("Trigger event node not found for app %s", plugin_trigger.app_id)
+                continue
+
+            # invoke triger
+            node_data: TriggerEventNodeData = TriggerEventNodeData.model_validate(event_node)
+            invoke_response: TriggerInvokeEventResponse = TriggerManager.invoke_trigger_event(
+                tenant_id=subscription.tenant_id,
+                user_id=user_id,
+                provider_id=TriggerProviderID(subscription.provider_id),
+                event_name=event_name,
+                parameters=node_data.resolve_parameters(
+                    parameter_schemas=provider_controller.get_event_parameters(event_name=event_name)
+                ),
+                credentials=subscription.credentials,
+                credential_type=CredentialType.of(subscription.credential_type),
+                subscription=subscription.to_entity(),
+                request=request,
+            )
+            if invoke_response.cancelled:
+                logger.info(
+                    "Trigger ignored for app %s with trigger event %s",
+                    plugin_trigger.app_id,
+                    event_name,
+                )
+                continue
+
+            # Create trigger data for async execution
+            trigger_data = PluginTriggerData(
+                app_id=plugin_trigger.app_id,
+                tenant_id=subscription.tenant_id,
+                workflow_id=workflow.id,
+                root_node_id=plugin_trigger.node_id,
+                trigger_type=WorkflowRunTriggeredFrom.PLUGIN,
+                plugin_id=subscription.provider_id,
+                endpoint_id=subscription.endpoint_id,
+                inputs=invoke_response.variables,
+            )
+
+            # Trigger async workflow
+            try:
+                end_user = end_users.get(plugin_trigger.app_id)
+                if not end_user:
+                    raise ValueError(f"End user not found for app {plugin_trigger.app_id}")
+
+                AsyncWorkflowService.trigger_workflow_async(session=session, user=end_user, trigger_data=trigger_data)
+                dispatched_count += 1
+                logger.info(
+                    "Triggered workflow for app %s with trigger event %s",
+                    plugin_trigger.app_id,
+                    event_name,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to trigger workflow for app %s",
+                    plugin_trigger.app_id,
+                )
+
+        return dispatched_count
+
+
+def dispatch_triggered_workflows(
+    user_id: str,
+    events: list[str],
+    subscription: TriggerSubscription,
+    request_id: str,
+) -> int:
+    dispatched_count = 0
+    for event_name in events:
+        try:
+            dispatched_count += dispatch_triggered_workflow(
+                user_id=user_id,
+                subscription=subscription,
+                event_name=event_name,
+                request_id=request_id,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to dispatch trigger '%s' for subscription %s and provider %s. Continuing...",
+                event_name,
+                subscription.id,
+                subscription.provider_id,
+            )
+            # Continue processing other triggers even if one fails
+            continue
+
+    logger.info(
+        "Completed async trigger dispatching: processed %d/%d triggers for subscription %s and provider %s",
+        dispatched_count,
+        len(events),
+        subscription.id,
+        subscription.provider_id,
+    )
+    return dispatched_count
 
 
 @shared_task(queue=TRIGGER_QUEUE)
@@ -51,6 +282,8 @@ def dispatch_triggered_workflows_async(
         dict: Execution result with status and dispatched trigger count
     """
     dispatch_params: PluginTriggerDispatchData = PluginTriggerDispatchData.model_validate(dispatch_data)
+    user_id = dispatch_params.user_id
+    tenant_id = dispatch_params.tenant_id
     endpoint_id = dispatch_params.endpoint_id
     provider_id = dispatch_params.provider_id
     subscription_id = dispatch_params.subscription_id
@@ -60,7 +293,8 @@ def dispatch_triggered_workflows_async(
 
     try:
         logger.info(
-            "Starting trigger dispatching endpoint=%s, events=%s, request_id=%s, subscription_id=%s, provider_id=%s",
+            "Starting trigger dispatching uid=%s, endpoint=%s, events=%s, req_id=%s, sub_id=%s, provider_id=%s",
+            user_id,
             endpoint_id,
             events,
             request_id,
@@ -68,125 +302,35 @@ def dispatch_triggered_workflows_async(
             provider_id,
         )
 
-        # Verify request exists in storage
-        try:
-            serialized_request = storage.load_once(f"triggers/{request_id}")
-            # Just verify it exists, we don't need to deserialize it here
-            if not serialized_request:
-                raise ValueError("Request not found in storage")
-        except Exception as e:
-            logger.exception("Failed to load request %s", request_id, exc_info=e)
-            return {"status": "failed", "error": f"Failed to load request: {str(e)}"}
+        subscription: TriggerSubscription | None = TriggerProviderService.get_subscription_by_id(
+            tenant_id=tenant_id,
+            subscription_id=subscription_id,
+        )
+        if not subscription:
+            logger.error("Subscription not found: %s", subscription_id)
+            return {"status": "failed", "error": "Subscription not found"}
 
-        with Session(db.engine) as session:
-            # Get subscription
-            subscription: TriggerSubscription | None = (
-                session.query(TriggerSubscription).filter_by(id=subscription_id).first()
-            )
-            if not subscription:
-                logger.error("Subscription not found: %s", subscription_id)
-                return {"status": "failed", "error": "Subscription not found"}
+        workflow_dispatched = dispatch_triggered_workflows(
+            user_id=user_id,
+            events=events,
+            subscription=subscription,
+            request_id=request_id,
+        )
 
-            # Get controller
-            controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
-                subscription.tenant_id, TriggerProviderID(provider_id)
-            )
-            if not controller:
-                logger.error("Controller not found for provider: %s", provider_id)
-                return {"status": "failed", "error": "Controller not found"}
+        debug_dispatched = dispatch_trigger_debug_event(
+            events=events,
+            user_id=user_id,
+            timestamp=timestamp,
+            request_id=request_id,
+            subscription=subscription,
+        )
 
-            credential_encrypter, _ = create_trigger_provider_encrypter_for_subscription(
-                tenant_id=subscription.tenant_id,
-                controller=controller,
-                subscription=subscription,
-            )
-            subscription.credentials = credential_encrypter.decrypt(subscription.credentials)
-
-            properties_encrypter, _ = create_trigger_provider_encrypter_for_properties(
-                tenant_id=subscription.tenant_id,
-                controller=controller,
-                subscription=subscription,
-            )
-            subscription.properties = properties_encrypter.decrypt(subscription.properties)
-
-            # Dispatch each trigger
-            dispatched_count = 0
-            for event_name in events:
-                try:
-                    event: EventEntity | None = controller.get_event(event_name)
-                    if event is None:
-                        logger.error(
-                            "Trigger '%s' not found in provider '%s'",
-                            event_name,
-                            provider_id,
-                        )
-                        continue
-
-                    dispatched_count += TriggerService.dispatch_triggered_workflows(
-                        subscription=subscription,
-                        event=event,
-                        request_id=request_id,
-                    )
-
-                except Exception:
-                    logger.exception(
-                        "Failed to dispatch trigger '%s' for subscription %s and provider %s. Continuing...",
-                        event_name,
-                        subscription_id,
-                        provider_id,
-                    )
-                    # Continue processing other triggers even if one fails
-                    continue
-
-            # Dispatch to debug sessions after processing all triggers
-            debug_dispatched = 0
-            try:
-                for event_name in events:
-                    pool_key: str = PluginTriggerDebugEvent.build_pool_key(
-                        name=event_name,
-                        tenant_id=subscription.tenant_id,
-                        subscription_id=subscription_id,
-                        provider_id=provider_id,
-                    )
-                    event = PluginTriggerDebugEvent(
-                        provider_id=provider_id,
-                        subscription_id=subscription_id,
-                        request_id=request_id,
-                        timestamp=timestamp,
-                        name=event_name,
-                    )
-                    debug_dispatched += TriggerDebugEventBus.dispatch(
-                        tenant_id=subscription.tenant_id,
-                        event=event,
-                        pool_key=pool_key,
-                    )
-                    logger.debug(
-                        "Trigger debug dispatched %d sessions to pool %s for event %s for subscription %s provider %s",
-                        debug_dispatched,
-                        pool_key,
-                        event_name,
-                        subscription_id,
-                        provider_id,
-                    )
-
-            except Exception:
-                # Silent failure for debug dispatch
-                logger.exception("Failed to dispatch to debug sessions")
-
-            logger.info(
-                "Completed async trigger dispatching: processed %d/%d triggers for subscription %s and provider %s",
-                dispatched_count,
-                len(events),
-                subscription_id,
-                provider_id,
-            )
-
-            return {
-                "status": "completed",
-                "total_count": len(events),
-                "dispatched_count": dispatched_count,
-                "debug_dispatched_count": debug_dispatched,
-            }
+        return {
+            "status": "completed",
+            "total_count": len(events),
+            "workflows": workflow_dispatched,
+            "debug_events": debug_dispatched,
+        }
 
     except Exception as e:
         logger.exception(

@@ -15,8 +15,6 @@ from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from models.model import App
 from models.provider_ids import TriggerProviderID
 from models.workflow import Workflow
-from services.trigger.trigger_service import TriggerService
-from services.trigger.webhook_service import WebhookService
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +45,8 @@ class TriggerDebugEventPoller(ABC):
 
 class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
     def poll(self) -> TriggerDebugEvent | None:
+        from services.trigger.trigger_service import TriggerService
+
         plugin_trigger_data = TriggerEventNodeData.model_validate(self.node_config.get("data", {}))
         provider_id = TriggerProviderID(plugin_trigger_data.provider_id)
         pool_key: str = PluginTriggerDebugEvent.build_pool_key(
@@ -67,7 +67,7 @@ class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
             return None
         trigger_event_response: TriggerInvokeEventResponse = TriggerService.invoke_trigger_event(
             event=plugin_trigger_event,
-            user_id=self.user_id,
+            user_id=plugin_trigger_event.user_id,
             tenant_id=self.tenant_id,
             node_config=self.node_config,
         )
@@ -102,6 +102,8 @@ class WebhookTriggerDebugEventPoller(TriggerDebugEventPoller):
         )
         if not webhook_event:
             return None
+
+        from services.trigger.webhook_service import WebhookService
 
         payload = webhook_event.payload or {}
         workflow_inputs = payload.get("inputs")

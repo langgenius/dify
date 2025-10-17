@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
+from controllers.service_api.wraps import get_or_create_end_user_by_type
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
 from core.variables.types import SegmentType
@@ -19,7 +21,6 @@ from core.workflow.enums import NodeType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
-from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App
 from models.workflow import AppTrigger, AppTriggerStatus, AppTriggerType, Workflow, WorkflowWebhookTrigger
@@ -704,20 +705,6 @@ class WebhookService:
         """
         try:
             with Session(db.engine) as session:
-                # Get tenant owner as the user for webhook execution
-                tenant_owner = session.scalar(
-                    select(Account)
-                    .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
-                    .where(
-                        TenantAccountJoin.tenant_id == webhook_trigger.tenant_id,
-                        TenantAccountJoin.role == TenantAccountRole.OWNER,
-                    )
-                )
-
-                if not tenant_owner:
-                    logger.error("Tenant owner not found for tenant %s", webhook_trigger.tenant_id)
-                    raise ValueError("Tenant owner not found")
-
                 # Prepare inputs for the webhook node
                 # The webhook node expects webhook_data in the inputs
                 workflow_inputs = cls.build_workflow_inputs(webhook_data)
@@ -732,10 +719,17 @@ class WebhookService:
                     tenant_id=webhook_trigger.tenant_id,
                 )
 
+                end_user = get_or_create_end_user_by_type(
+                    type=InvokeFrom.TRIGGER,
+                    tenant_id=webhook_trigger.tenant_id,
+                    app_id=webhook_trigger.app_id,
+                    user_id=None,
+                )
+
                 # Trigger workflow execution asynchronously
                 AsyncWorkflowService.trigger_workflow_async(
                     session,
-                    tenant_owner,
+                    end_user,
                     trigger_data,
                 )
 

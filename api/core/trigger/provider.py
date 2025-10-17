@@ -267,7 +267,6 @@ class PluginTriggerProviderController:
 
     def dispatch(
         self,
-        user_id: str,
         request: Request,
         subscription: Subscription,
         credentials: Mapping[str, str],
@@ -288,7 +287,6 @@ class PluginTriggerProviderController:
 
         response: TriggerDispatchResponse = manager.dispatch_event(
             tenant_id=self.tenant_id,
-            user_id=user_id,
             provider=str(provider_id),
             subscription=subscription.model_dump(),
             request=request,

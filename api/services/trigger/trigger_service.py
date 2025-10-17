@@ -1,12 +1,12 @@
 import logging
 import time
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from typing import Any
 
 from flask import Request, Response
 from pydantic import BaseModel
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -14,25 +14,21 @@ from core.plugin.entities.request import TriggerDispatchResponse, TriggerInvokeE
 from core.plugin.impl.exc import PluginNotFoundError
 from core.plugin.utils.http_parser import deserialize_request, serialize_request
 from core.trigger.debug.events import PluginTriggerDebugEvent
-from core.trigger.entities.entities import EventEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import create_trigger_provider_encrypter_for_subscription
 from core.workflow.enums import NodeType
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
-from core.workflow.nodes.trigger_schedule.exc import TenantOwnerNotFoundError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.enums import WorkflowRunTriggeredFrom
 from models.model import App
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
 from models.workflow import AppTrigger, AppTriggerStatus, Workflow, WorkflowPluginTrigger
-from services.async_workflow_service import AsyncWorkflowService
 from services.trigger.trigger_provider_service import TriggerProviderService
-from services.workflow.entities import PluginTriggerData, PluginTriggerDispatchData
+from services.workflow.entities import PluginTriggerDispatchData
+from tasks.trigger_processing_tasks import dispatch_triggered_workflows_async
 
 logger = logging.getLogger(__name__)
 
@@ -78,147 +74,6 @@ class TriggerService:
         )
 
     @classmethod
-    def _get_latest_workflows_by_app_ids(
-        cls, session: Session, subscribers: Sequence[WorkflowPluginTrigger]
-    ) -> Mapping[str, Workflow]:
-        """Get the latest workflows by app_ids"""
-        workflow_query = (
-            select(Workflow.app_id, func.max(Workflow.created_at).label("max_created_at"))
-            .where(
-                Workflow.app_id.in_({t.app_id for t in subscribers}),
-                Workflow.version != Workflow.VERSION_DRAFT,
-            )
-            .group_by(Workflow.app_id)
-            .subquery()
-        )
-        workflows = session.scalars(
-            select(Workflow).join(
-                workflow_query,
-                (Workflow.app_id == workflow_query.c.app_id) & (Workflow.created_at == workflow_query.c.max_created_at),
-            )
-        ).all()
-        return {w.app_id: w for w in workflows}
-
-    @classmethod
-    def _get_tenant_owner(cls, session: Session, tenant_id: str) -> Account:
-        """Get the tenant owner account for workflow execution."""
-        owner = session.scalar(
-            select(Account)
-            .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
-            .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.role == TenantAccountRole.OWNER)
-        )
-        if not owner:
-            raise TenantOwnerNotFoundError(f"Tenant owner not found for tenant {tenant_id}")
-        return owner
-
-    @classmethod
-    def dispatch_triggered_workflows(
-        cls, subscription: TriggerSubscription, event: EventEntity, request_id: str
-    ) -> int:
-        """Process triggered workflows.
-
-        Args:
-            subscription: The trigger subscription
-            event: The trigger entity that was activated
-            request_id: The ID of the stored request in storage system
-        """
-        request = deserialize_request(storage.load_once(f"triggers/{request_id}"))
-        if not request:
-            logger.error("Request not found for request_id %s", request_id)
-            return 0
-
-        subscribers: list[WorkflowPluginTrigger] = cls.get_subscriber_triggers(
-            tenant_id=subscription.tenant_id, subscription_id=subscription.id, event_name=event.identity.name
-        )
-        if not subscribers:
-            logger.warning(
-                "No workflows found for trigger event '%s' in subscription '%s'",
-                event.identity.name,
-                subscription.id,
-            )
-            return 0
-
-        dispatched_count = 0
-        provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
-            tenant_id=subscription.tenant_id, provider_id=TriggerProviderID(subscription.provider_id)
-        )
-        with Session(db.engine) as session:
-            tenant_owner = cls._get_tenant_owner(session, subscription.tenant_id)
-            workflows = cls._get_latest_workflows_by_app_ids(session, subscribers)
-            for plugin_trigger in subscribers:
-                # Get workflow from mapping
-                workflow = workflows.get(plugin_trigger.app_id)
-                if not workflow:
-                    logger.error(
-                        "Workflow not found for app %s",
-                        plugin_trigger.app_id,
-                    )
-                    continue
-
-                # Find the trigger node in the workflow
-                event_node = None
-                for node_id, node_config in workflow.walk_nodes(NodeType.TRIGGER_PLUGIN):
-                    if node_id == plugin_trigger.node_id:
-                        event_node = node_config
-                        break
-
-                if not event_node:
-                    logger.error("Trigger event node not found for app %s", plugin_trigger.app_id)
-                    continue
-
-                # invoke triger
-                node_data: TriggerEventNodeData = TriggerEventNodeData.model_validate(event_node)
-                invoke_response: TriggerInvokeEventResponse = TriggerManager.invoke_trigger_event(
-                    tenant_id=subscription.tenant_id,
-                    user_id=subscription.user_id,
-                    provider_id=TriggerProviderID(subscription.provider_id),
-                    event_name=event.identity.name,
-                    parameters=node_data.resolve_parameters(
-                        parameter_schemas=provider_controller.get_event_parameters(event_name=event.identity.name)
-                    ),
-                    credentials=subscription.credentials,
-                    credential_type=CredentialType.of(subscription.credential_type),
-                    subscription=subscription.to_entity(),
-                    request=request,
-                )
-                if invoke_response.cancelled:
-                    logger.info(
-                        "Trigger ignored for app %s with trigger event %s",
-                        plugin_trigger.app_id,
-                        event.identity.name,
-                    )
-                    continue
-
-                # Create trigger data for async execution
-                trigger_data = PluginTriggerData(
-                    app_id=plugin_trigger.app_id,
-                    tenant_id=subscription.tenant_id,
-                    workflow_id=workflow.id,
-                    root_node_id=plugin_trigger.node_id,
-                    trigger_type=WorkflowRunTriggeredFrom.PLUGIN,
-                    plugin_id=subscription.provider_id,
-                    endpoint_id=subscription.endpoint_id,
-                    inputs=invoke_response.variables,
-                )
-
-                # Trigger async workflow
-                try:
-                    AsyncWorkflowService.trigger_workflow_async(session, tenant_owner, trigger_data)
-                    dispatched_count += 1
-                    logger.info(
-                        "Triggered workflow for app %s with trigger event %s",
-                        plugin_trigger.app_id,
-                        event.identity.name,
-                    )
-                except Exception:
-                    logger.exception(
-                        "Failed to trigger workflow for app %s",
-                        plugin_trigger.app_id,
-                    )
-
-            return dispatched_count
-
-    @classmethod
     def process_endpoint(cls, endpoint_id: str, request: Request) -> Response | None:
         """
         Extract and process data from incoming endpoint request.
@@ -249,7 +104,6 @@ class TriggerService:
             subscription=subscription,
         )
         dispatch_response: TriggerDispatchResponse = controller.dispatch(
-            user_id=subscription.user_id,
             request=request,
             subscription=subscription.to_entity(),
             credentials=encrypter.decrypt(subscription.credentials),
@@ -261,10 +115,20 @@ class TriggerService:
             serialized_request = serialize_request(request)
             storage.save(f"triggers/{request_id}", serialized_request)
 
-            # Production dispatch
-            from tasks.trigger_processing_tasks import dispatch_triggered_workflows_async
+            # Validate event names
+            for event_name in dispatch_response.events:
+                if controller.get_event(event_name) is None:
+                    logger.error(
+                        "Event name %s not found in provider %s for endpoint %s",
+                        event_name,
+                        subscription.provider_id,
+                        endpoint_id,
+                    )
+                    raise ValueError(f"Event name {event_name} not found in provider {subscription.provider_id}")
 
             plugin_trigger_dispatch_data = PluginTriggerDispatchData(
+                user_id=dispatch_response.user_id,
+                tenant_id=subscription.tenant_id,
                 endpoint_id=endpoint_id,
                 provider_id=subscription.provider_id,
                 subscription_id=subscription.id,

@@ -32,6 +32,10 @@ class InvokeFrom(StrEnum):
     # https://docs.dify.ai/en/guides/application-publishing/launch-your-webapp-quickly/README
     WEB_APP = "web-app"
 
+    # TRIGGER indicates that this invocation is from a trigger.
+    # this is used for plugin trigger and webhook trigger.
+    TRIGGER = "trigger"
+
     # EXPLORE indicates that this invocation is from
     # the workflow (or chatflow) explore page.
     EXPLORE = "explore"
@@ -65,6 +69,8 @@ class InvokeFrom(StrEnum):
             return "dev"
         elif self == InvokeFrom.EXPLORE:
             return "explore_app"
+        elif self == InvokeFrom.TRIGGER:
+            return "trigger"
         elif self == InvokeFrom.SERVICE_API:
             return "api"
 

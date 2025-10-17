@@ -247,6 +247,7 @@ class TriggerInvokeEventResponse(BaseModel):
 
 
 class PluginTriggerDispatchResponse(BaseModel):
+    user_id: str
     events: list[str]
     raw_http_response: str
 
@@ -260,9 +261,11 @@ class TriggerValidateProviderCredentialsResponse(BaseModel):
 
 
 class TriggerDispatchResponse:
+    user_id: str
     events: list[str]
     response: Response
 
-    def __init__(self, events: list[str], response: Response):
+    def __init__(self, user_id: str, events: list[str], response: Response):
+        self.user_id = user_id
         self.events = events
         self.response = response

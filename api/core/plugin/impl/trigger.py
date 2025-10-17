@@ -156,7 +156,6 @@ class PluginTriggerManager(BasePluginClient):
     def dispatch_event(
         self,
         tenant_id: str,
-        user_id: str,
         provider: str,
         subscription: Mapping[str, Any],
         request: Request,
@@ -173,7 +172,6 @@ class PluginTriggerManager(BasePluginClient):
                 path=f"plugin/{tenant_id}/dispatch/trigger/dispatch_event",
                 type_=PluginTriggerDispatchResponse,
                 data={
-                    "user_id": user_id,
                     "data": {
                         "provider": provider_id.provider_name,
                         "subscription": subscription,
@@ -191,6 +189,7 @@ class PluginTriggerManager(BasePluginClient):
 
         for resp in response:
             return TriggerDispatchResponse(
+                user_id=resp.user_id or "",
                 events=resp.events,
                 response=deserialize_response(binascii.unhexlify(resp.raw_http_response.encode())),
             )

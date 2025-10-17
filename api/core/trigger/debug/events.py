@@ -71,6 +71,7 @@ class PluginTriggerDebugEvent(BaseDebugEvent):
     """Debug event for plugin triggers."""
 
     name: str
+    user_id: str = Field(description="This is end user id, only for trigger the event. no related with account user id")
     request_id: str
     subscription_id: str
     provider_id: str
