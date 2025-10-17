@@ -20,6 +20,10 @@ export type WorkflowSliceShape = {
   setListeningTriggerType: (triggerType: TriggerNodeType | null) => void
   listeningTriggerNodeId: string | null
   setListeningTriggerNodeId: (nodeId: string | null) => void
+  listeningTriggerNodeIds: string[]
+  setListeningTriggerNodeIds: (nodeIds: string[]) => void
+  listeningTriggerIsAll: boolean
+  setListeningTriggerIsAll: (isAll: boolean) => void
   clipboardElements: Node[]
   setClipboardElements: (clipboardElements: Node[]) => void
   selection: null | { x1: number; y1: number; x2: number; y2: number }
@@ -49,6 +53,10 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setListeningTriggerType: triggerType => set(() => ({ listeningTriggerType: triggerType })),
   listeningTriggerNodeId: null,
   setListeningTriggerNodeId: nodeId => set(() => ({ listeningTriggerNodeId: nodeId })),
+  listeningTriggerNodeIds: [],
+  setListeningTriggerNodeIds: nodeIds => set(() => ({ listeningTriggerNodeIds: nodeIds })),
+  listeningTriggerIsAll: false,
+  setListeningTriggerIsAll: isAll => set(() => ({ listeningTriggerIsAll: isAll })),
   clipboardElements: [],
   setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
   selection: null,

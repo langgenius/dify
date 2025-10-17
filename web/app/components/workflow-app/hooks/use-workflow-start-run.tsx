@@ -74,6 +74,8 @@ export const useWorkflowStartRun = () => {
       setShowEnvPanel,
       setListeningTriggerType,
       setListeningTriggerNodeId,
+      setListeningTriggerNodeIds,
+      setListeningTriggerIsAll,
     } = workflowStore.getState()
 
     if (workflowRunningData?.result.status === WorkflowRunningStatus.Running)
@@ -97,6 +99,8 @@ export const useWorkflowStartRun = () => {
 
     setListeningTriggerType(BlockEnum.TriggerSchedule)
     setListeningTriggerNodeId(nodeId)
+    setListeningTriggerNodeIds([nodeId])
+    setListeningTriggerIsAll(false)
 
     await doSyncWorkflowDraft()
     handleRun(
@@ -123,6 +127,8 @@ export const useWorkflowStartRun = () => {
       setShowEnvPanel,
       setListeningTriggerType,
       setListeningTriggerNodeId,
+      setListeningTriggerNodeIds,
+      setListeningTriggerIsAll,
     } = workflowStore.getState()
 
     if (workflowRunningData?.result.status === WorkflowRunningStatus.Running)
@@ -145,6 +151,8 @@ export const useWorkflowStartRun = () => {
     setShowInputsPanel(false)
     setListeningTriggerType(BlockEnum.TriggerWebhook)
     setListeningTriggerNodeId(nodeId)
+    setListeningTriggerNodeIds([nodeId])
+    setListeningTriggerIsAll(false)
 
     await doSyncWorkflowDraft()
     handleRun(
@@ -168,6 +176,8 @@ export const useWorkflowStartRun = () => {
       setShowEnvPanel,
       setListeningTriggerType,
       setListeningTriggerNodeId,
+      setListeningTriggerNodeIds,
+      setListeningTriggerIsAll,
     } = workflowStore.getState()
 
     if (workflowRunningData?.result.status === WorkflowRunningStatus.Running)
@@ -190,6 +200,8 @@ export const useWorkflowStartRun = () => {
     setShowInputsPanel(false)
     setListeningTriggerType(BlockEnum.TriggerPlugin)
     setListeningTriggerNodeId(nodeId)
+    setListeningTriggerNodeIds([nodeId])
+    setListeningTriggerIsAll(false)
 
     await doSyncWorkflowDraft()
     handleRun(
@@ -211,6 +223,9 @@ export const useWorkflowStartRun = () => {
       setShowDebugAndPreviewPanel,
       setShowInputsPanel,
       setShowEnvPanel,
+      setListeningTriggerIsAll,
+      setListeningTriggerNodeIds,
+      setListeningTriggerNodeId,
     } = workflowStore.getState()
 
     if (workflowRunningData?.result.status === WorkflowRunningStatus.Running)
@@ -218,6 +233,9 @@ export const useWorkflowStartRun = () => {
 
     setShowEnvPanel(false)
     setShowInputsPanel(false)
+    setListeningTriggerIsAll(true)
+    setListeningTriggerNodeIds(nodeIds)
+    setListeningTriggerNodeId(null)
 
     if (!showDebugAndPreviewPanel)
       setShowDebugAndPreviewPanel(true)

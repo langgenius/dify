@@ -241,12 +241,23 @@ export const useWorkflowRun = () => {
       setIsListening,
       setShowVariableInspectPanel,
       setListeningTriggerType,
+      setListeningTriggerNodeIds,
+      setListeningTriggerIsAll,
       setListeningTriggerNodeId,
     } = workflowStore.getState()
 
     if (runMode === TriggerType.Webhook || runMode === TriggerType.Plugin || runMode === TriggerType.All) {
       setIsListening(true)
       setShowVariableInspectPanel(true)
+      setListeningTriggerIsAll(runMode === TriggerType.All)
+      if (runMode === TriggerType.All)
+        setListeningTriggerNodeIds(options?.allNodeIds ?? [])
+      else if (runMode === TriggerType.Webhook && options?.webhookNodeId)
+        setListeningTriggerNodeIds([options.webhookNodeId])
+      else if (runMode === TriggerType.Plugin && options?.pluginNodeId)
+        setListeningTriggerNodeIds([options.pluginNodeId])
+      else
+        setListeningTriggerNodeIds([])
       setWorkflowRunningData({
         result: {
           status: WorkflowRunningStatus.Running,
@@ -262,6 +273,8 @@ export const useWorkflowRun = () => {
       setIsListening(false)
       setListeningTriggerType(null)
       setListeningTriggerNodeId(null)
+      setListeningTriggerNodeIds([])
+      setListeningTriggerIsAll(false)
       setWorkflowRunningData({
         result: {
           status: WorkflowRunningStatus.Running,
@@ -299,6 +312,8 @@ export const useWorkflowRun = () => {
       state.setIsListening(false)
       state.setListeningTriggerType(null)
       state.setListeningTriggerNodeId(null)
+      state.setListeningTriggerNodeIds([])
+      state.setListeningTriggerIsAll(false)
     }
 
     const wrappedOnError = (params: any) => {
