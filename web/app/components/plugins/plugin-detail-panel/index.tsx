@@ -35,7 +35,7 @@ const PluginDetailPanel: FC<Props> = ({
   useEffect(() => {
     setDetail(!detail ? undefined : {
       plugin_id: detail.plugin_id,
-      provider: `${detail.plugin_id}/${detail.declaration.name}`,
+      provider: `${detail.plugin_id}/${detail.declaration.trigger.identity.name}`,
       declaration: detail.declaration,
       name: detail.name,
     })
