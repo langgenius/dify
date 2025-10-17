@@ -134,7 +134,7 @@ If you need to customize the configuration, please refer to the comments in our 
 
 ### Metrics Monitoring with Grafana
 Import the dashboard to Grafana, using Dify's PostgreSQL database as data source, to monitor metrics in granularity of apps, tenants, messages, and more.
-- [Grafana Dashboard by @bowenliang123](./https://github.com/bowenliang123/dify-grafana-dashboard)
+- [Grafana Dashboard by @bowenliang123](https://github.com/bowenliang123/dify-grafana-dashboard)
 
 ### Deployment with Kubernetes
 If you'd like to configure a highly-available setup, there are community-contributed [Helm Charts](https://helm.sh/) and YAML files which allow Dify to be deployed on Kubernetes.
