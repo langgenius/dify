@@ -41,7 +41,7 @@ const AgentLogNavMore = ({
           {
             options.map(option => (
               <div
-                key={option.id}
+                key={option.node_execution_id}
                 className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 text-text-secondary hover:bg-state-base-hover'
                 onClick={() => {
                   onShowAgentOrToolLog(option)
