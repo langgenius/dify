@@ -54,6 +54,7 @@ import {
   SUPPORT_OUTPUT_VARS_NODE,
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
+  getGlobalVars,
 } from '@/app/components/workflow/constants'
 import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
@@ -65,6 +66,15 @@ import type { SchemaTypeDefinition } from '@/service/use-common'
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
+}
+
+export const isGlobalVar = (valueSelector: ValueSelector) => {
+  if(!isSystemVar(valueSelector)) return false
+  const second = valueSelector[1]
+  // eslint-disable-next-line sonarjs/prefer-single-boolean-return
+  if(['query', 'files'].includes(second))
+    return false
+  return true
 }
 
 export const isENV = (valueSelector: ValueSelector) => {
@@ -351,36 +361,11 @@ const formatItem = (
           variable: 'sys.query',
           type: VarType.string,
         })
-        res.vars.push({
-          variable: 'sys.dialogue_count',
-          type: VarType.number,
-        })
-        res.vars.push({
-          variable: 'sys.conversation_id',
-          type: VarType.string,
-        })
       }
-      res.vars.push({
-        variable: 'sys.user_id',
-        type: VarType.string,
-      })
       res.vars.push({
         variable: 'sys.files',
         type: VarType.arrayFile,
       })
-      res.vars.push({
-        variable: 'sys.app_id',
-        type: VarType.string,
-      })
-      res.vars.push({
-        variable: 'sys.workflow_id',
-        type: VarType.string,
-      })
-      res.vars.push({
-        variable: 'sys.workflow_run_id',
-        type: VarType.string,
-      })
-
       break
     }
 
@@ -668,6 +653,11 @@ const formatItem = (
       break
     }
 
+    case 'global': {
+      res.vars = data.globalVarList
+      break
+    }
+
     case 'rag': {
       res.vars = data.ragVariables.map((ragVar: RAGPipelineVariable) => {
         return {
@@ -808,6 +798,15 @@ export const toNodeOutputVars = (
       chatVarList: conversationVariables,
     },
   }
+  // GLOBAL_VAR_NODE data format
+  const GLOBAL_VAR_NODE = {
+    id: 'global',
+    data: {
+      title: 'SYSTEM',
+      type: 'global',
+      globalVarList: getGlobalVars(isChatMode),
+    },
+  }
   // RAG_PIPELINE_NODE data format
   const RAG_PIPELINE_NODE = {
     id: 'rag',
@@ -827,6 +826,8 @@ export const toNodeOutputVars = (
     if (b.data.type === 'env') return -1
     if (a.data.type === 'conversation') return 1
     if (b.data.type === 'conversation') return -1
+    if (a.data.type === 'global') return 1
+    if (b.data.type === 'global') return -1
     // sort nodes by x position
     return (b.position?.x || 0) - (a.position?.x || 0)
   })
@@ -837,6 +838,7 @@ export const toNodeOutputVars = (
     ),
     ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
     ...(isChatMode && conversationVariables.length > 0 ? [CHAT_VAR_NODE] : []),
+    GLOBAL_VAR_NODE,
     ...(RAG_PIPELINE_NODE.data.ragVariables.length > 0
       ? [RAG_PIPELINE_NODE]
       : []),

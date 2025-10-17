@@ -35,6 +35,43 @@ export const NODE_LAYOUT_HORIZONTAL_PADDING = 60
 export const NODE_LAYOUT_VERTICAL_PADDING = 60
 export const NODE_LAYOUT_MIN_DISTANCE = 100
 
+export const getGlobalVars = (isChatMode: boolean): Var[] => {
+  const vars: Var[] = [
+    ...(isChatMode ? [
+      {
+        variable: 'sys.dialogue_count',
+        type: VarType.number,
+      },
+      {
+        variable: 'sys.conversation_id',
+        type: VarType.string,
+      },
+    ] : []),
+    {
+      variable: 'sys.user_id',
+      type: VarType.string,
+    },
+    {
+      variable: 'sys.app_id',
+      type: VarType.string,
+    },
+    {
+      variable: 'sys.workflow_id',
+      type: VarType.string,
+    },
+    {
+      variable: 'sys.workflow_run_id',
+      type: VarType.string,
+    },
+  ]
+  return vars
+}
+
+export const VAR_SHOW_NAME_MAP: Record<string, string> = {
+  'sys.query': 'query',
+  'sys.files': 'files',
+}
+
 export const RETRIEVAL_OUTPUT_STRUCT = `{
   "content": "",
   "title": "",
