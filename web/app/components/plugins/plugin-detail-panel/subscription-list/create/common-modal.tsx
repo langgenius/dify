@@ -359,7 +359,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
           )}
         </>
       )}
-      {currentStep === ApiKeyStep.Configuration && <div className='max-h-[70vh] overflow-y-auto'>
+      {currentStep === ApiKeyStep.Configuration && <div className='max-h-[70vh]'>
         <BaseForm
           formSchemas={[
             {

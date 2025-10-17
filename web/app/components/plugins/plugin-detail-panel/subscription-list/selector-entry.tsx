@@ -99,7 +99,10 @@ export const SubscriptionSelectorEntry = ({ selectedId, onSelect }: {
         <SubscriptionList
           mode={SubscriptionListMode.SELECTOR}
           selectedId={selectedId}
-          onSelect={onSelect}
+          onSelect={(...args) => {
+            onSelect(...args)
+            setIsOpen(false)
+          }}
         />
       </div>
     </PortalToFollowElemContent>
