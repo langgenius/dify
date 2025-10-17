@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'सभी चुनें',
     deSelectAll: 'सभी चयन हटाएँ',
     config: 'कॉन्फ़िगरेशन',
+    no: 'नहीं',
+    yes: 'हाँ',
+    deleteConfirmTitle: 'हटाएं?',
+    confirmAction: 'कृपया अपनी क्रिया की पुष्टि करें।',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -511,7 +515,17 @@ const translation = {
       specifyModelCredentialTip: 'कॉन्फ़िगर की गई मॉडल क्रेडेंशियल का उपयोग करें।',
       providerManagedTip: 'वर्तमान कॉन्फ़िगरेशन प्रदाता द्वारा होस्ट किया गया है।',
       selectModelCredential: 'एक मॉडल क्रेडेंशियल चुनें',
+      addModel: 'मॉडल जोड़ें',
+      removeModel: 'मॉडल हटाएं',
+      customModelCredentialsDeleteTip: 'क्रेडेंशियल उपयोग में है और इसे हटाया नहीं जा सकता',
+      modelCredential: 'मॉडल क्रेडेंशियल',
+      addNewModelCredential: 'नई मॉडल क्रेडेंशियल जोड़ें',
+      manageCredentials: 'क्रेडेंशियल्स प्रबंधित करें',
+      customModelCredentials: 'कस्टम मॉडल क्रेडेंशियल्स',
+      editModelCredential: 'मॉडल की क्रेडेंशियल संपादित करें',
     },
+    parametersInvalidRemoved: 'कुछ पैरामीटर अमान्य हैं और हटा दिए गए हैं',
+    installDataSourceProvider: 'डेटा स्रोत प्रदाताओं को स्थापित करें',
   },
   dataSource: {
     add: 'डेटा स्रोत जोड़ें',
@@ -612,6 +626,7 @@ const translation = {
     viewDoc: 'दस्तावेज़ देखें',
     relatedApp: 'संबंधित ऐप्स',
     noRelatedApp: 'कोई लिंक नहीं किए गए ऐप्स',
+    pipeline: 'पाइपलाइन',
   },
   voiceInput: {
     speaking: 'अब बोलें...',
@@ -770,6 +785,9 @@ const translation = {
     title: 'प्रतिक्रिया प्रदान करें',
     subtitle: 'कृपया हमें बताएं कि इस प्रतिक्रिया में क्या गलत हुआ',
     placeholder: 'कृपया बताएं कि क्या गलत हुआ या हम कैसे सुधार कर सकते हैं...',
+  },
+  label: {
+    optional: '(अनिवार्य नहीं)',
   },
 }
 

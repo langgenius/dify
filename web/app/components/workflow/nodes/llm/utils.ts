@@ -10,6 +10,7 @@ export const checkNodeValid = (_payload: LLMNodeType) => {
 
 export const getFieldType = (field: Field) => {
   const { type, items } = field
+  if(field.schemaType === 'file') return 'file'
   if (type !== Type.array || !items)
     return type
 

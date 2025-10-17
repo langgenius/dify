@@ -9,26 +9,26 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from configs import dify_config
 from controllers.console import api, console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.helper.trace_id_helper import get_external_trace_id
+from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
+from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, uuid_value
-from libs.login import current_user, login_required
+from libs.login import current_account_with_tenant, login_required
 from models import App
-from models.account import Account
 from models.model import AppMode
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
@@ -69,15 +69,11 @@ class DraftWorkflowApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @marshal_with(workflow_fields)
+    @edit_permission_required
     def get(self, app_model: App):
         """
         Get draft workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        assert isinstance(current_user, Account)
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
         workflow = workflow_service.get_draft_workflow(app_model=app_model)
@@ -109,14 +105,12 @@ class DraftWorkflowApi(Resource):
     @api.response(200, "Draft workflow synced successfully", workflow_fields)
     @api.response(400, "Invalid workflow configuration")
     @api.response(403, "Permission denied")
+    @edit_permission_required
     def post(self, app_model: App):
         """
         Sync draft workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        assert isinstance(current_user, Account)
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
 
         content_type = request.headers.get("Content-Type", "")
 
@@ -148,10 +142,6 @@ class DraftWorkflowApi(Resource):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
         workflow_service = WorkflowService()
 
         try:
@@ -205,17 +195,12 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @edit_permission_required
     def post(self, app_model: App):
         """
         Run draft workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        assert isinstance(current_user, Account)
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
@@ -270,16 +255,12 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
@@ -322,16 +303,12 @@ class WorkflowDraftRunIterationNodeApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
         Run draft workflow iteration node
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
@@ -374,17 +351,12 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
         Run draft workflow loop node
         """
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
@@ -427,17 +399,12 @@ class WorkflowDraftRunLoopNodeApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
         Run draft workflow loop node
         """
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
@@ -479,17 +446,12 @@ class DraftWorkflowRunApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @edit_permission_required
     def post(self, app_model: App):
         """
         Run draft workflow
         """
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("files", type=list, required=False, location="json")
@@ -513,7 +475,7 @@ class DraftWorkflowRunApi(Resource):
             raise InvokeRateLimitHttpError(ex.description)
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/tasks/<string:task_id>/stop")
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(Resource):
     @api.doc("stop_workflow_task")
     @api.doc(description="Stop running workflow task")
@@ -525,18 +487,17 @@ class WorkflowTaskStopApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @edit_permission_required
     def post(self, app_model: App, task_id: str):
         """
         Stop workflow task
         """
+        # Stop using both mechanisms for backward compatibility
+        # Legacy stop flag mechanism (without user check)
+        AppQueueManager.set_stop_flag_no_user_check(task_id)
 
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+        # New graph engine command channel mechanism
+        GraphEngineManager.send_stop_command(task_id)
 
         return {"result": "success"}
 
@@ -562,17 +523,12 @@ class DraftWorkflowNodeRunApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @marshal_with(workflow_run_node_execution_fields)
+    @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
         Run draft workflow node
         """
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("query", type=str, required=False, location="json", default="")
@@ -616,17 +572,11 @@ class PublishedWorkflowApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @marshal_with(workflow_fields)
+    @edit_permission_required
     def get(self, app_model: App):
         """
         Get published workflow
         """
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         # fetch published workflow by app_model
         workflow_service = WorkflowService()
         workflow = workflow_service.get_published_workflow(app_model=app_model)
@@ -638,16 +588,12 @@ class PublishedWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @edit_permission_required
     def post(self, app_model: App):
         """
         Publish workflow
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("marked_name", type=str, required=False, default="", location="json")
         parser.add_argument("marked_comment", type=str, required=False, default="", location="json")
@@ -669,8 +615,12 @@ class PublishedWorkflowApi(Resource):
                 marked_comment=args.marked_comment or "",
             )
 
-            app_model.workflow_id = workflow.id
-            db.session.commit()  # NOTE: this is necessary for update app_model.workflow_id
+            # Update app_model within the same session to ensure atomicity
+            app_model_in_session = session.get(App, app_model.id)
+            if app_model_in_session:
+                app_model_in_session.workflow_id = workflow.id
+                app_model_in_session.updated_by = current_user.id
+                app_model_in_session.updated_at = naive_utc_now()
 
             workflow_created_at = TimestampField().format(workflow.created_at)
 
@@ -682,7 +632,7 @@ class PublishedWorkflowApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/default-block-configs")
+@console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 class DefaultBlockConfigsApi(Resource):
     @api.doc("get_default_block_configs")
     @api.doc(description="Get default block configurations for workflow")
@@ -692,23 +642,17 @@ class DefaultBlockConfigsApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @edit_permission_required
     def get(self, app_model: App):
         """
         Get default block config
         """
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         # Get default block configs
         workflow_service = WorkflowService()
         return workflow_service.get_default_block_configs()
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/default-block-configs/<string:block_type>")
+@console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>")
 class DefaultBlockConfigApi(Resource):
     @api.doc("get_default_block_config")
     @api.doc(description="Get default block configuration by type")
@@ -719,16 +663,11 @@ class DefaultBlockConfigApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @edit_permission_required
     def get(self, app_model: App, block_type: str):
         """
         Get default block config
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("q", type=str, location="args")
         args = parser.parse_args()
@@ -759,17 +698,14 @@ class ConvertToWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.COMPLETION])
+    @edit_permission_required
     def post(self, app_model: App):
         """
         Convert basic mode of chatbot app to workflow mode
         Convert expert mode of chatbot app to workflow mode
         Convert Completion App to Workflow App
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
 
         if request.data:
             parser = reqparse.RequestParser()
@@ -791,25 +727,7 @@ class ConvertToWorkflowApi(Resource):
         }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/config")
-class WorkflowConfigApi(Resource):
-    """Resource for workflow configuration."""
-
-    @api.doc("get_workflow_config")
-    @api.doc(description="Get workflow configuration")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Workflow configuration retrieved successfully")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def get(self, app_model: App):
-        return {
-            "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
-        }
-
-
-@console_ns.route("/apps/<uuid:app_id>/workflows/published")
+@console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
     @api.doc("get_all_published_workflows")
     @api.doc(description="Get all published workflows for an application")
@@ -820,15 +738,12 @@ class PublishedAllWorkflowApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @marshal_with(workflow_pagination_fields)
+    @edit_permission_required
     def get(self, app_model: App):
         """
         Get published workflows
         """
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
@@ -865,7 +780,7 @@ class PublishedAllWorkflowApi(Resource):
             }
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/<uuid:workflow_id>")
+@console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>")
 class WorkflowByIdApi(Resource):
     @api.doc("update_workflow_by_id")
     @api.doc(description="Update workflow by ID")
@@ -887,16 +802,12 @@ class WorkflowByIdApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @marshal_with(workflow_fields)
+    @edit_permission_required
     def patch(self, app_model: App, workflow_id: str):
         """
         Update workflow attributes
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # Check permission
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("marked_name", type=str, required=False, location="json")
         parser.add_argument("marked_comment", type=str, required=False, location="json")
@@ -942,16 +853,11 @@ class WorkflowByIdApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @edit_permission_required
     def delete(self, app_model: App, workflow_id: str):
         """
         Delete workflow
         """
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        # Check permission
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         workflow_service = WorkflowService()
 
         # Create a session and manage the transaction

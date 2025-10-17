@@ -84,6 +84,7 @@ const translation = {
     noIdeaTip: 'Fikriniz yok mu? Şablonlarımıza göz atın',
     forAdvanced: 'İLERI DÜZEY KULLANICILAR IÇIN',
     dropDSLToCreateApp: 'Uygulama oluşturmak için DSL dosyasını buraya bırakın',
+    import: 'Ithalat',
   },
   editApp: 'Bilgileri Düzenle',
   editAppTitle: 'Uygulama Bilgilerini Düzenle',
@@ -165,6 +166,10 @@ const translation = {
     aliyun: {
       title: 'Bulut İzleyici',
       description: 'Alibaba Cloud tarafından sağlanan tamamen yönetilen ve bakım gerektirmeyen gözlemleme platformu, Dify uygulamalarının kutudan çıkar çıkmaz izlenmesi, takip edilmesi ve değerlendirilmesine olanak tanır.',
+    },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Uygulama Performans İzleme, LLM uygulamaları için kapsamlı izleme ve çok boyutlu analiz sağlar.',
     },
   },
   answerIcon: {

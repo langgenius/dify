@@ -3,6 +3,7 @@ import logging
 from collections.abc import Generator
 from typing import Any
 
+from flask import has_request_context
 from sqlalchemy import select
 
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
@@ -18,7 +19,8 @@ from core.tools.errors import ToolInvokeError
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from libs.login import current_user
-from models.model import App
+from models import Account, Tenant
+from models.model import App, EndUser
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -39,14 +41,12 @@ class WorkflowTool(Tool):
         entity: ToolEntity,
         runtime: ToolRuntime,
         label: str = "Workflow",
-        thread_pool_id: str | None = None,
     ):
         self.workflow_app_id = workflow_app_id
         self.workflow_as_tool_id = workflow_as_tool_id
         self.version = version
         self.workflow_entities = workflow_entities
         self.workflow_call_depth = workflow_call_depth
-        self.thread_pool_id = thread_pool_id
         self.label = label
 
         super().__init__(entity=entity, runtime=runtime)
@@ -81,16 +81,20 @@ class WorkflowTool(Tool):
         generator = WorkflowAppGenerator()
         assert self.runtime is not None
         assert self.runtime.invoke_from is not None
-        assert current_user is not None
+
+        user = self._resolve_user(user_id=user_id)
+
+        if user is None:
+            raise ToolInvokeError("User not found")
+
         result = generator.generate(
             app_model=app,
             workflow=workflow,
-            user=current_user,
+            user=user,
             args={"inputs": tool_parameters, "files": files},
             invoke_from=self.runtime.invoke_from,
             streaming=False,
             call_depth=self.workflow_call_depth + 1,
-            workflow_thread_pool_id=self.thread_pool_id,
         )
         assert isinstance(result, dict)
         data = result.get("data", {})
@@ -125,6 +129,51 @@ class WorkflowTool(Tool):
             version=self.version,
             label=self.label,
         )
+
+    def _resolve_user(self, user_id: str) -> Account | EndUser | None:
+        """
+        Resolve user object in both HTTP and worker contexts.
+
+        In HTTP context: dereference the current_user LocalProxy (can return Account or EndUser).
+        In worker context: load Account from database by user_id (only returns Account, never EndUser).
+
+        Returns:
+            Account | EndUser | None: The resolved user object, or None if resolution fails.
+        """
+        if has_request_context():
+            return self._resolve_user_from_request()
+        else:
+            return self._resolve_user_from_database(user_id=user_id)
+
+    def _resolve_user_from_request(self) -> Account | EndUser | None:
+        """
+        Resolve user from Flask request context.
+        """
+        try:
+            # Note: `current_user` is a LocalProxy. Never compare it with None directly.
+            return getattr(current_user, "_get_current_object", lambda: current_user)()
+        except Exception as e:
+            logger.warning("Failed to resolve user from request context: %s", e)
+            return None
+
+    def _resolve_user_from_database(self, user_id: str) -> Account | None:
+        """
+        Resolve user from database (worker/Celery context).
+        """
+
+        user_stmt = select(Account).where(Account.id == user_id)
+        user = db.session.scalar(user_stmt)
+        if not user:
+            return None
+
+        tenant_stmt = select(Tenant).where(Tenant.id == self.runtime.tenant_id)
+        tenant = db.session.scalar(tenant_stmt)
+        if not tenant:
+            return None
+
+        user.current_tenant = tenant
+
+        return user
 
     def _get_workflow(self, app_id: str, version: str) -> Workflow:
         """

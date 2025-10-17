@@ -136,6 +136,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           provider,
           model,
           value?.completion_params,
+          isAdvancedMode,
         )
         nextCompletionParams = filtered
 
@@ -147,7 +148,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           })
         }
       }
-      catch (e) {
+      catch {
         Toast.notify({ type: 'error', message: t('common.error') })
       }
     }

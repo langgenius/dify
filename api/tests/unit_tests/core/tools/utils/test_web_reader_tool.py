@@ -15,7 +15,7 @@ class FakeResponse:
         self.status_code = status_code
         self.headers = headers or {}
         self.content = content
-        self.text = text if text else content.decode("utf-8", errors="ignore")
+        self.text = text or content.decode("utf-8", errors="ignore")
 
 
 # ---------------------------

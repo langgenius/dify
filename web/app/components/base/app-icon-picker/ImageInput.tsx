@@ -106,7 +106,7 @@ const ImageInput: FC<UploaderProps> = ({
               <ImagePlus className="pointer-events-none mb-3 h-[30px] w-[30px]" />
               <div className="mb-[2px] text-sm font-medium">
                 <span className="pointer-events-none">{t('common.imageInput.dropImageHere')}&nbsp;</span>
-                <button className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>{t('common.imageInput.browse')}</button>
+                <button type="button" className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>{t('common.imageInput.browse')}</button>
                 <input
                   ref={inputRef} type="file" className="hidden"
                   onClick={e => ((e.target as HTMLInputElement).value = '')}

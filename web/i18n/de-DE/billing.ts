@@ -93,6 +93,9 @@ const translation = {
     documentsRequestQuota: '{{count,number}}/min Wissensanforderungsratenlimit',
     teamMember_one: '{{count,number}} Teammitglied',
     documentsRequestQuotaTooltip: 'Gibt die Gesamtzahl der Aktionen an, die ein Arbeitsbereich pro Minute innerhalb der Wissensbasis ausführen kann, einschließlich der Erstellung, Löschung, Aktualisierung von Datensätzen, des Hochladens von Dokumenten, von Änderungen, der Archivierung und von Abfragen in der Wissensbasis. Diese Kennzahl wird verwendet, um die Leistung von Anfragen an die Wissensbasis zu bewerten. Wenn ein Sandbox-Nutzer beispielsweise in einer Minute 10 aufeinanderfolgende Testdurchläufe durchführt, wird sein Arbeitsbereich für die nächste Minute vorübergehend daran gehindert, die folgenden Aktionen auszuführen: Erstellung, Löschung, Aktualisierung von Datensätzen sowie das Hochladen oder Ändern von Dokumenten.',
+    startBuilding: 'Beginnen Sie mit der Entwicklung',
+    taxTipSecond: 'Wenn in Ihrer Region keine relevanten Steuervorschriften gelten, wird an der Kasse keine Steuer angezeigt und Ihnen werden während der gesamten Abonnementlaufzeit keine zusätzlichen Gebühren berechnet.',
+    taxTip: 'Alle Abonnementspreise (monatlich/jährlich) verstehen sich zuzüglich der geltenden Steuern (z. B. MwSt., Umsatzsteuer).',
   },
   plans: {
     sandbox: {

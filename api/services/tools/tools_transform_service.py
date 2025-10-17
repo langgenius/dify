@@ -1,12 +1,14 @@
 import json
 import logging
-from typing import Any, Union, cast
+from collections.abc import Mapping
+from typing import Any, Union
 
 from yarl import URL
 
 from configs import dify_config
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.mcp.types import Tool as MCPTool
+from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -38,7 +40,9 @@ class ToolTransformService:
         return str(url_prefix % {"tenant_id": tenant_id, "filename": filename})
 
     @classmethod
-    def get_tool_provider_icon_url(cls, provider_type: str, provider_name: str, icon: str | dict) -> Union[str, dict]:
+    def get_tool_provider_icon_url(
+        cls, provider_type: str, provider_name: str, icon: str | Mapping[str, str]
+    ) -> str | Mapping[str, str]:
         """
         get tool provider icon url
         """
@@ -46,21 +50,21 @@ class ToolTransformService:
             URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "tool-provider"
         )
 
-        if provider_type == ToolProviderType.BUILT_IN.value:
+        if provider_type == ToolProviderType.BUILT_IN:
             return str(url_prefix / "builtin" / provider_name / "icon")
-        elif provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value}:
+        elif provider_type in {ToolProviderType.API, ToolProviderType.WORKFLOW}:
             try:
                 if isinstance(icon, str):
-                    return cast(dict, json.loads(icon))
+                    return json.loads(icon)
                 return icon
             except Exception:
                 return {"background": "#252525", "content": "\ud83d\ude01"}
-        elif provider_type == ToolProviderType.MCP.value:
+        elif provider_type == ToolProviderType.MCP:
             return icon
         return ""
 
     @staticmethod
-    def repack_provider(tenant_id: str, provider: Union[dict, ToolProviderApiEntity]):
+    def repack_provider(tenant_id: str, provider: Union[dict, ToolProviderApiEntity, PluginDatasourceProviderEntity]):
         """
         repack provider
 
@@ -89,6 +93,12 @@ class ToolTransformService:
                     provider.icon_dark = ToolTransformService.get_tool_provider_icon_url(
                         provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon_dark
                     )
+        elif isinstance(provider, PluginDatasourceProviderEntity):
+            if provider.plugin_id:
+                if isinstance(provider.declaration.identity.icon, str):
+                    provider.declaration.identity.icon = ToolTransformService.get_plugin_icon_url(
+                        tenant_id=tenant_id, filename=provider.declaration.identity.icon
+                    )
 
     @classmethod
     def builtin_provider_to_user_provider(
@@ -106,7 +116,7 @@ class ToolTransformService:
             name=provider_controller.entity.identity.name,
             description=provider_controller.entity.identity.description,
             icon=provider_controller.entity.identity.icon,
-            icon_dark=provider_controller.entity.identity.icon_dark,
+            icon_dark=provider_controller.entity.identity.icon_dark or "",
             label=provider_controller.entity.identity.label,
             type=ToolProviderType.BUILT_IN,
             masked_credentials={},
@@ -128,9 +138,10 @@ class ToolTransformService:
             )
         }
 
+        masked_creds = {}
         for name in schema:
-            if result.masked_credentials:
-                result.masked_credentials[name] = ""
+            masked_creds[name] = ""
+        result.masked_credentials = masked_creds
 
         # check if the provider need credentials
         if not provider_controller.need_credentials:
@@ -141,7 +152,8 @@ class ToolTransformService:
 
             if decrypt_credentials:
                 credentials = db_provider.credentials
-
+                if not db_provider.tenant_id:
+                    raise ValueError(f"Required tenant_id is missing for BuiltinToolProvider with id {db_provider.id}")
                 # init tool configuration
                 encrypter, _ = create_provider_encrypter(
                     tenant_id=db_provider.tenant_id,
@@ -208,7 +220,7 @@ class ToolTransformService:
             name=provider_controller.entity.identity.name,
             description=provider_controller.entity.identity.description,
             icon=provider_controller.entity.identity.icon,
-            icon_dark=provider_controller.entity.identity.icon_dark,
+            icon_dark=provider_controller.entity.identity.icon_dark or "",
             label=provider_controller.entity.identity.label,
             type=ToolProviderType.WORKFLOW,
             masked_credentials={},
@@ -231,7 +243,7 @@ class ToolTransformService:
             is_team_authorization=db_provider.authed,
             server_url=db_provider.masked_server_url,
             tools=ToolTransformService.mcp_tool_to_user_tool(
-                db_provider, [MCPTool(**tool) for tool in json.loads(db_provider.tools)]
+                db_provider, [MCPTool.model_validate(tool) for tool in json.loads(db_provider.tools)]
             ),
             updated_at=int(db_provider.updated_at.timestamp()),
             label=I18nObject(en_US=db_provider.name, zh_Hans=db_provider.name),
@@ -251,7 +263,7 @@ class ToolTransformService:
                 author=user.name if user else "Anonymous",
                 name=tool.name,
                 label=I18nObject(en_US=tool.name, zh_Hans=tool.name),
-                description=I18nObject(en_US=tool.description, zh_Hans=tool.description),
+                description=I18nObject(en_US=tool.description or "", zh_Hans=tool.description or ""),
                 parameters=ToolTransformService.convert_mcp_schema_to_parameter(tool.inputSchema),
                 labels=[],
             )
@@ -321,7 +333,7 @@ class ToolTransformService:
 
     @staticmethod
     def convert_tool_entity_to_api_entity(
-        tool: Union[ApiToolBundle, WorkflowTool, Tool],
+        tool: ApiToolBundle | WorkflowTool | Tool,
         tenant_id: str,
         labels: list[str] | None = None,
     ) -> ToolApiEntity:
@@ -375,7 +387,8 @@ class ToolTransformService:
                 parameters=merged_parameters,
                 labels=labels or [],
             )
-        elif isinstance(tool, ApiToolBundle):
+        else:
+            assert tool.operation_id
             return ToolApiEntity(
                 author=tool.author,
                 name=tool.operation_id or "",
@@ -384,9 +397,6 @@ class ToolTransformService:
                 parameters=tool.parameters,
                 labels=labels or [],
             )
-        else:
-            # Handle WorkflowTool case
-            raise ValueError(f"Unsupported tool type: {type(tool)}")
 
     @staticmethod
     def convert_builtin_provider_to_credential_entity(

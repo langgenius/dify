@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import Mock, create_autospec, patch
 
 import pytest
@@ -40,7 +41,10 @@ class TestMetadataBugCompleteValidation:
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
 
-        with patch("services.metadata_service.current_user", mock_user):
+        with patch(
+            "services.metadata_service.current_account_with_tenant",
+            return_value=(mock_user, mock_user.current_tenant_id),
+        ):
             # Should crash with TypeError
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
@@ -50,7 +54,10 @@ class TestMetadataBugCompleteValidation:
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
 
-        with patch("services.metadata_service.current_user", mock_user):
+        with patch(
+            "services.metadata_service.current_account_with_tenant",
+            return_value=(mock_user, mock_user.current_tenant_id),
+        ):
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
 
@@ -117,7 +124,7 @@ class TestMetadataBugCompleteValidation:
 
             # But would crash when trying to create MetadataArgs
             with pytest.raises((ValueError, TypeError)):
-                MetadataArgs(**args)
+                MetadataArgs.model_validate(args)
 
     def test_7_end_to_end_validation_layers(self):
         """Test all validation layers work together correctly."""
@@ -130,7 +137,7 @@ class TestMetadataBugCompleteValidation:
         valid_data = {"type": "string", "name": "test_metadata"}
 
         # Should create valid Pydantic object
-        metadata_args = MetadataArgs(**valid_data)
+        metadata_args = MetadataArgs.model_validate(valid_data)
         assert metadata_args.type == "string"
         assert metadata_args.name == "test_metadata"
 
@@ -146,19 +153,17 @@ class TestMetadataBugCompleteValidation:
         # Console API create
         console_create_file = "api/controllers/console/datasets/metadata.py"
         if os.path.exists(console_create_file):
-            with open(console_create_file) as f:
-                content = f.read()
-                # Should contain nullable=False, not nullable=True
-                assert "nullable=True" not in content.split("class DatasetMetadataCreateApi")[1].split("class")[0]
+            content = Path(console_create_file).read_text()
+            # Should contain nullable=False, not nullable=True
+            assert "nullable=True" not in content.split("class DatasetMetadataCreateApi")[1].split("class")[0]
 
         # Service API create
         service_create_file = "api/controllers/service_api/dataset/metadata.py"
         if os.path.exists(service_create_file):
-            with open(service_create_file) as f:
-                content = f.read()
-                # Should contain nullable=False, not nullable=True
-                create_api_section = content.split("class DatasetMetadataCreateServiceApi")[1].split("class")[0]
-                assert "nullable=True" not in create_api_section
+            content = Path(service_create_file).read_text()
+            # Should contain nullable=False, not nullable=True
+            create_api_section = content.split("class DatasetMetadataCreateServiceApi")[1].split("class")[0]
+            assert "nullable=True" not in create_api_section
 
 
 class TestMetadataValidationSummary:

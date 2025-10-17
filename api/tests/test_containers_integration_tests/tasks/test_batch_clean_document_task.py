@@ -13,7 +13,8 @@ import pytest
 from faker import Faker
 
 from extensions.ext_database import db
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from libs.datetime_utils import naive_utc_now
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.model import UploadFile
 from tasks.batch_clean_document_task import batch_clean_document_task
@@ -83,7 +84,7 @@ class TestBatchCleanDocumentTask:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)
@@ -202,7 +203,6 @@ class TestBatchCleanDocumentTask:
             UploadFile: Created upload file instance
         """
         fake = Faker()
-        from datetime import datetime
 
         from models.enums import CreatorUserRole
 
@@ -216,7 +216,7 @@ class TestBatchCleanDocumentTask:
             mime_type="text/plain",
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.utcnow(),
+            created_at=naive_utc_now(),
             used=False,
         )
 

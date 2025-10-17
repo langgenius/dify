@@ -31,7 +31,7 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from libs.helper import length_prefixed_response
-from models.account import Account, Tenant
+from models import Account, Tenant
 from models.model import EndUser
 
 
@@ -420,7 +420,12 @@ class PluginUploadFileRequestApi(Resource):
     )
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestRequestUploadFile):
         # generate signed url
-        url = get_signed_file_url_for_plugin(payload.filename, payload.mimetype, tenant_model.id, user_model.id)
+        url = get_signed_file_url_for_plugin(
+            filename=payload.filename,
+            mimetype=payload.mimetype,
+            tenant_id=tenant_model.id,
+            user_id=user_model.id,
+        )
         return BaseBackwardsInvocationResponse(data={"url": url}).model_dump()
 
 

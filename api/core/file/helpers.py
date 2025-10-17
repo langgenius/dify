@@ -3,11 +3,12 @@ import hashlib
 import hmac
 import os
 import time
+import urllib.parse
 
 from configs import dify_config
 
 
-def get_signed_file_url(upload_file_id: str) -> str:
+def get_signed_file_url(upload_file_id: str, as_attachment=False) -> str:
     url = f"{dify_config.FILES_URL}/files/{upload_file_id}/file-preview"
 
     timestamp = str(int(time.time()))
@@ -16,8 +17,12 @@ def get_signed_file_url(upload_file_id: str) -> str:
     msg = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
     sign = hmac.new(key, msg.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()
+    query = {"timestamp": timestamp, "nonce": nonce, "sign": encoded_sign}
+    if as_attachment:
+        query["as_attachment"] = "true"
+    query_string = urllib.parse.urlencode(query)
 
-    return f"{url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+    return f"{url}?{query_string}"
 
 
 def get_signed_file_url_for_plugin(filename: str, mimetype: str, tenant_id: str, user_id: str) -> str:
@@ -30,7 +35,6 @@ def get_signed_file_url_for_plugin(filename: str, mimetype: str, tenant_id: str,
     msg = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{timestamp}|{nonce}"
     sign = hmac.new(key, msg.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
     return f"{url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}&user_id={user_id}&tenant_id={tenant_id}"
 
 

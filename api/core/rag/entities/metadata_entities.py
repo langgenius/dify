@@ -30,7 +30,7 @@ SupportedComparisonOperator = Literal[
 
 class Condition(BaseModel):
     """
-    Conditon detail
+    Condition detail
     """
 
     name: str

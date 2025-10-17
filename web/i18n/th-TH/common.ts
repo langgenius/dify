@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'เลือกทั้งหมด',
     deSelectAll: 'ยกเลิกการเลือกทั้งหมด',
     config: 'การตั้งค่า',
+    no: 'ไม่',
+    deleteConfirmTitle: 'ลบหรือไม่?',
+    confirmAction: 'กรุณายืนยันการกระทำของคุณ',
+    yes: 'ใช่',
   },
   errorMsg: {
     fieldRequired: '{{field}} เป็นสิ่งจําเป็น',
@@ -490,7 +494,17 @@ const translation = {
       specifyModelCredentialTip: 'ใช้ข้อมูลรับรองโมเดลที่กำหนดไว้',
       providerManagedTip: 'การกำหนดค่าปัจจุบันถูกโฮสต์โดยผู้ให้บริการ.',
       customModelCredentialsDeleteTip: 'ข้อมูลรับรองกำลังถูกใช้งานและไม่สามารถลบได้',
+      addModel: 'เพิ่มรุ่น',
+      removeModel: 'ลบโมเดล',
+      manageCredentials: 'จัดการข้อมูลประจําตัว',
+      modelCredential: 'ข้อมูลประจําตัวของรุ่น',
+      editModelCredential: 'แก้ไขข้อมูลประจําตัวของโมเดล',
+      selectModelCredential: 'เลือกข้อมูลประจําตัวของโมเดล',
+      customModelCredentials: 'ข้อมูลประจําตัวของโมเดลแบบกําหนดเอง',
+      addNewModelCredential: 'เพิ่มข้อมูลประจําตัวของโมเดลใหม่',
     },
+    parametersInvalidRemoved: 'บางพารามิเตอร์ไม่ถูกต้องและถูกนำออก',
+    installDataSourceProvider: 'ติดตั้งผู้ให้บริการแหล่งข้อมูล',
   },
   dataSource: {
     add: 'เพิ่มแหล่งข้อมูล',
@@ -589,6 +603,7 @@ const translation = {
     viewDoc: 'ดูเอกสารประกอบ',
     relatedApp: 'แอปที่เชื่อมโยง',
     noRelatedApp: 'ไม่มีแอปที่เชื่อมโยง',
+    pipeline: 'ท่อ',
   },
   voiceInput: {
     speaking: 'พูดเดี๋ยวนี้...',
@@ -743,6 +758,9 @@ const translation = {
     title: 'ให้ข้อเสนอแนะ',
     placeholder: 'กรุณาบรรยายสิ่งที่ผิดพลาดหรือวิธีที่เราสามารถปรับปรุงได้...',
     subtitle: 'กรุณาบอกเราว่าเกิดอะไรขึ้นผิดพลาดกับการตอบนี้',
+  },
+  label: {
+    optional: '(ไม่บังคับ)',
   },
 }
 

@@ -15,19 +15,23 @@ jobs:
       # Use uv to ensure we have the same ruff version in CI and locally.
       - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.12"
+          python-version: "3.11"
       - run: |
           cd api
           uv sync --dev
+          # fmt first to avoid line too long
+          uv run ruff format ..
           # Fix lint errors
           uv run ruff check --fix .
           # Format code
-          uv run ruff format .
+          uv run ruff format ..
 
       - name: ast-grep
         run: |
           uvx --from ast-grep-cli sg --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all
           uvx --from ast-grep-cli sg --pattern 'session.query($WHATEVER).filter($HERE)' --rewrite 'session.query($WHATEVER).where($HERE)' -l py --update-all
+          uvx --from ast-grep-cli sg -p '$A = db.Column($$$B)' -r '$A = mapped_column($$$B)' -l py --update-all
+          uvx --from ast-grep-cli sg -p '$A : $T = db.Column($$$B)' -r '$A : $T = mapped_column($$$B)' -l py --update-all
           # Convert Optional[T] to T | None (ignoring quoted types)
           cat > /tmp/optional-rule.yml << 'EOF'
           id: convert-optional-to-union

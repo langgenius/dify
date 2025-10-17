@@ -5,7 +5,7 @@ from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -28,7 +28,6 @@ from core.model_runtime.entities.provider_entities import (
 )
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.plugin.entities.plugin import ModelProviderID
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.provider import (
@@ -41,6 +40,7 @@ from models.provider import (
     ProviderType,
     TenantPreferredModelProvider,
 )
+from models.provider_ids import ModelProviderID
 from services.enterprise.plugin_manager_service import PluginCredentialType
 
 logger = logging.getLogger(__name__)
@@ -73,9 +73,8 @@ class ProviderConfiguration(BaseModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def __init__(self, **data):
-        super().__init__(**data)
-
+    @model_validator(mode="after")
+    def _(self):
         if self.provider.provider not in original_provider_configurate_methods:
             original_provider_configurate_methods[self.provider.provider] = []
             for configurate_method in self.provider.configurate_methods:
@@ -90,6 +89,7 @@ class ProviderConfiguration(BaseModel):
                 and ConfigurateMethod.PREDEFINED_MODEL not in self.provider.configurate_methods
             ):
                 self.provider.configurate_methods.append(ConfigurateMethod.PREDEFINED_MODEL)
+        return self
 
     def get_current_credentials(self, model_type: ModelType, model: str) -> dict | None:
         """
@@ -205,16 +205,10 @@ class ProviderConfiguration(BaseModel):
         """
         Get custom provider record.
         """
-        # get provider
-        model_provider_id = ModelProviderID(self.provider.provider)
-        provider_names = [self.provider.provider]
-        if model_provider_id.is_langgenius():
-            provider_names.append(model_provider_id.provider_name)
-
         stmt = select(Provider).where(
             Provider.tenant_id == self.tenant_id,
-            Provider.provider_type == ProviderType.CUSTOM.value,
-            Provider.provider_name.in_(provider_names),
+            Provider.provider_type == ProviderType.CUSTOM,
+            Provider.provider_name.in_(self._get_provider_names()),
         )
 
         return session.execute(stmt).scalar_one_or_none()
@@ -276,7 +270,7 @@ class ProviderConfiguration(BaseModel):
         """
         stmt = select(ProviderCredential.id).where(
             ProviderCredential.tenant_id == self.tenant_id,
-            ProviderCredential.provider_name == self.provider.provider,
+            ProviderCredential.provider_name.in_(self._get_provider_names()),
             ProviderCredential.credential_name == credential_name,
         )
         if exclude_id:
@@ -324,7 +318,7 @@ class ProviderConfiguration(BaseModel):
                 try:
                     stmt = select(ProviderCredential).where(
                         ProviderCredential.tenant_id == self.tenant_id,
-                        ProviderCredential.provider_name == self.provider.provider,
+                        ProviderCredential.provider_name.in_(self._get_provider_names()),
                         ProviderCredential.id == credential_id,
                     )
                     credential_record = s.execute(stmt).scalar_one_or_none()
@@ -374,7 +368,7 @@ class ProviderConfiguration(BaseModel):
             session=session,
             query_factory=lambda: select(ProviderCredential).where(
                 ProviderCredential.tenant_id == self.tenant_id,
-                ProviderCredential.provider_name == self.provider.provider,
+                ProviderCredential.provider_name.in_(self._get_provider_names()),
             ),
         )
 
@@ -387,7 +381,7 @@ class ProviderConfiguration(BaseModel):
             session=session,
             query_factory=lambda: select(ProviderModelCredential).where(
                 ProviderModelCredential.tenant_id == self.tenant_id,
-                ProviderModelCredential.provider_name == self.provider.provider,
+                ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
                 ProviderModelCredential.model_type == model_type.to_origin_model_type(),
             ),
@@ -423,6 +417,16 @@ class ProviderConfiguration(BaseModel):
             logger.warning("Error generating next credential name: %s", str(e))
             return "API KEY 1"
 
+    def _get_provider_names(self):
+        """
+        The provider name might be stored in the database as either `openai` or `langgenius/openai/openai`.
+        """
+        model_provider_id = ModelProviderID(self.provider.provider)
+        provider_names = [self.provider.provider]
+        if model_provider_id.is_langgenius():
+            provider_names.append(model_provider_id.provider_name)
+        return provider_names
+
     def create_provider_credential(self, credentials: dict, credential_name: str | None):
         """
         Add custom provider credentials.
@@ -454,7 +458,7 @@ class ProviderConfiguration(BaseModel):
                     provider_record = Provider(
                         tenant_id=self.tenant_id,
                         provider_name=self.provider.provider,
-                        provider_type=ProviderType.CUSTOM.value,
+                        provider_type=ProviderType.CUSTOM,
                         is_valid=True,
                         credential_id=new_record.id,
                     )
@@ -468,6 +472,9 @@ class ProviderConfiguration(BaseModel):
                     provider_model_credentials_cache.delete()
 
                     self.switch_preferred_provider_type(provider_type=ProviderType.CUSTOM, session=session)
+                else:
+                    # some historical data may have a provider record but not be set as valid
+                    provider_record.is_valid = True
 
                 session.commit()
             except Exception:
@@ -501,7 +508,7 @@ class ProviderConfiguration(BaseModel):
             stmt = select(ProviderCredential).where(
                 ProviderCredential.id == credential_id,
                 ProviderCredential.tenant_id == self.tenant_id,
-                ProviderCredential.provider_name == self.provider.provider,
+                ProviderCredential.provider_name.in_(self._get_provider_names()),
             )
 
             # Get the credential record to update
@@ -554,7 +561,7 @@ class ProviderConfiguration(BaseModel):
         # Find all load balancing configs that use this credential_id
         stmt = select(LoadBalancingModelConfig).where(
             LoadBalancingModelConfig.tenant_id == self.tenant_id,
-            LoadBalancingModelConfig.provider_name == self.provider.provider,
+            LoadBalancingModelConfig.provider_name.in_(self._get_provider_names()),
             LoadBalancingModelConfig.credential_id == credential_id,
             LoadBalancingModelConfig.credential_source_type == credential_source,
         )
@@ -591,7 +598,7 @@ class ProviderConfiguration(BaseModel):
             stmt = select(ProviderCredential).where(
                 ProviderCredential.id == credential_id,
                 ProviderCredential.tenant_id == self.tenant_id,
-                ProviderCredential.provider_name == self.provider.provider,
+                ProviderCredential.provider_name.in_(self._get_provider_names()),
             )
 
             # Get the credential record to update
@@ -602,7 +609,7 @@ class ProviderConfiguration(BaseModel):
             # Check if this credential is used in load balancing configs
             lb_stmt = select(LoadBalancingModelConfig).where(
                 LoadBalancingModelConfig.tenant_id == self.tenant_id,
-                LoadBalancingModelConfig.provider_name == self.provider.provider,
+                LoadBalancingModelConfig.provider_name.in_(self._get_provider_names()),
                 LoadBalancingModelConfig.credential_id == credential_id,
                 LoadBalancingModelConfig.credential_source_type == "provider",
             )
@@ -624,7 +631,7 @@ class ProviderConfiguration(BaseModel):
                 # if this is the last credential, we need to delete the provider record
                 count_stmt = select(func.count(ProviderCredential.id)).where(
                     ProviderCredential.tenant_id == self.tenant_id,
-                    ProviderCredential.provider_name == self.provider.provider,
+                    ProviderCredential.provider_name.in_(self._get_provider_names()),
                 )
                 available_credentials_count = session.execute(count_stmt).scalar() or 0
                 session.delete(credential_record)
@@ -668,7 +675,7 @@ class ProviderConfiguration(BaseModel):
             stmt = select(ProviderCredential).where(
                 ProviderCredential.id == credential_id,
                 ProviderCredential.tenant_id == self.tenant_id,
-                ProviderCredential.provider_name == self.provider.provider,
+                ProviderCredential.provider_name.in_(self._get_provider_names()),
             )
             credential_record = session.execute(stmt).scalar_one_or_none()
             if not credential_record:
@@ -704,6 +711,7 @@ class ProviderConfiguration(BaseModel):
         Get custom model credentials.
         """
         # get provider model
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -736,7 +744,7 @@ class ProviderConfiguration(BaseModel):
             stmt = select(ProviderModelCredential).where(
                 ProviderModelCredential.id == credential_id,
                 ProviderModelCredential.tenant_id == self.tenant_id,
-                ProviderModelCredential.provider_name == self.provider.provider,
+                ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
                 ProviderModelCredential.model_type == model_type.to_origin_model_type(),
             )
@@ -783,7 +791,7 @@ class ProviderConfiguration(BaseModel):
         """
         stmt = select(ProviderModelCredential).where(
             ProviderModelCredential.tenant_id == self.tenant_id,
-            ProviderModelCredential.provider_name == self.provider.provider,
+            ProviderModelCredential.provider_name.in_(self._get_provider_names()),
             ProviderModelCredential.model_name == model,
             ProviderModelCredential.model_type == model_type.to_origin_model_type(),
             ProviderModelCredential.credential_name == credential_name,
@@ -859,7 +867,7 @@ class ProviderConfiguration(BaseModel):
                     stmt = select(ProviderModelCredential).where(
                         ProviderModelCredential.id == credential_id,
                         ProviderModelCredential.tenant_id == self.tenant_id,
-                        ProviderModelCredential.provider_name == self.provider.provider,
+                        ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                         ProviderModelCredential.model_name == model,
                         ProviderModelCredential.model_type == model_type.to_origin_model_type(),
                     )
@@ -996,7 +1004,7 @@ class ProviderConfiguration(BaseModel):
             stmt = select(ProviderModelCredential).where(
                 ProviderModelCredential.id == credential_id,
                 ProviderModelCredential.tenant_id == self.tenant_id,
-                ProviderModelCredential.provider_name == self.provider.provider,
+                ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
                 ProviderModelCredential.model_type == model_type.to_origin_model_type(),
             )
@@ -1041,7 +1049,7 @@ class ProviderConfiguration(BaseModel):
             stmt = select(ProviderModelCredential).where(
                 ProviderModelCredential.id == credential_id,
                 ProviderModelCredential.tenant_id == self.tenant_id,
-                ProviderModelCredential.provider_name == self.provider.provider,
+                ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
                 ProviderModelCredential.model_type == model_type.to_origin_model_type(),
             )
@@ -1051,7 +1059,7 @@ class ProviderConfiguration(BaseModel):
 
             lb_stmt = select(LoadBalancingModelConfig).where(
                 LoadBalancingModelConfig.tenant_id == self.tenant_id,
-                LoadBalancingModelConfig.provider_name == self.provider.provider,
+                LoadBalancingModelConfig.provider_name.in_(self._get_provider_names()),
                 LoadBalancingModelConfig.credential_id == credential_id,
                 LoadBalancingModelConfig.credential_source_type == "custom_model",
             )
@@ -1074,7 +1082,7 @@ class ProviderConfiguration(BaseModel):
                 # if this is the last credential, we need to delete the custom model record
                 count_stmt = select(func.count(ProviderModelCredential.id)).where(
                     ProviderModelCredential.tenant_id == self.tenant_id,
-                    ProviderModelCredential.provider_name == self.provider.provider,
+                    ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                     ProviderModelCredential.model_name == model,
                     ProviderModelCredential.model_type == model_type.to_origin_model_type(),
                 )
@@ -1114,7 +1122,7 @@ class ProviderConfiguration(BaseModel):
             stmt = select(ProviderModelCredential).where(
                 ProviderModelCredential.id == credential_id,
                 ProviderModelCredential.tenant_id == self.tenant_id,
-                ProviderModelCredential.provider_name == self.provider.provider,
+                ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
                 ProviderModelCredential.model_type == model_type.to_origin_model_type(),
             )
@@ -1140,6 +1148,15 @@ class ProviderConfiguration(BaseModel):
                     raise ValueError("Can't add same credential")
                 provider_model_record.credential_id = credential_record.id
                 provider_model_record.updated_at = naive_utc_now()
+
+                # clear cache
+                provider_model_credentials_cache = ProviderCredentialsCache(
+                    tenant_id=self.tenant_id,
+                    identity_id=provider_model_record.id,
+                    cache_type=ProviderCredentialsCacheType.MODEL,
+                )
+                provider_model_credentials_cache.delete()
+
             session.add(provider_model_record)
             session.commit()
 
@@ -1156,7 +1173,7 @@ class ProviderConfiguration(BaseModel):
             stmt = select(ProviderModelCredential).where(
                 ProviderModelCredential.id == credential_id,
                 ProviderModelCredential.tenant_id == self.tenant_id,
-                ProviderModelCredential.provider_name == self.provider.provider,
+                ProviderModelCredential.provider_name.in_(self._get_provider_names()),
                 ProviderModelCredential.model_name == model,
                 ProviderModelCredential.model_type == model_type.to_origin_model_type(),
             )
@@ -1172,6 +1189,14 @@ class ProviderConfiguration(BaseModel):
             provider_model_record.updated_at = naive_utc_now()
             session.add(provider_model_record)
             session.commit()
+
+            # clear cache
+            provider_model_credentials_cache = ProviderCredentialsCache(
+                tenant_id=self.tenant_id,
+                identity_id=provider_model_record.id,
+                cache_type=ProviderCredentialsCacheType.MODEL,
+            )
+            provider_model_credentials_cache.delete()
 
     def delete_custom_model(self, model_type: ModelType, model: str):
         """
@@ -1203,14 +1228,9 @@ class ProviderConfiguration(BaseModel):
         """
         Get provider model setting.
         """
-        model_provider_id = ModelProviderID(self.provider.provider)
-        provider_names = [self.provider.provider]
-        if model_provider_id.is_langgenius():
-            provider_names.append(model_provider_id.provider_name)
-
         stmt = select(ProviderModelSetting).where(
             ProviderModelSetting.tenant_id == self.tenant_id,
-            ProviderModelSetting.provider_name.in_(provider_names),
+            ProviderModelSetting.provider_name.in_(self._get_provider_names()),
             ProviderModelSetting.model_type == model_type.to_origin_model_type(),
             ProviderModelSetting.model_name == model,
         )
@@ -1286,6 +1306,7 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
+
         model_provider_id = ModelProviderID(self.provider.provider)
         provider_names = [self.provider.provider]
         if model_provider_id.is_langgenius():
@@ -1381,15 +1402,9 @@ class ProviderConfiguration(BaseModel):
             return
 
         def _switch(s: Session):
-            # get preferred provider
-            model_provider_id = ModelProviderID(self.provider.provider)
-            provider_names = [self.provider.provider]
-            if model_provider_id.is_langgenius():
-                provider_names.append(model_provider_id.provider_name)
-
             stmt = select(TenantPreferredModelProvider).where(
                 TenantPreferredModelProvider.tenant_id == self.tenant_id,
-                TenantPreferredModelProvider.provider_name.in_(provider_names),
+                TenantPreferredModelProvider.provider_name.in_(self._get_provider_names()),
             )
             preferred_model_provider = s.execute(stmt).scalars().first()
 

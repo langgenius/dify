@@ -29,7 +29,10 @@ class TestMetadataNullableBug:
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
 
-        with patch("services.metadata_service.current_user", mock_user):
+        with patch(
+            "services.metadata_service.current_account_with_tenant",
+            return_value=(mock_user, mock_user.current_tenant_id),
+        ):
             # This should crash with TypeError when calling len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
@@ -40,7 +43,10 @@ class TestMetadataNullableBug:
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
 
-        with patch("services.metadata_service.current_user", mock_user):
+        with patch(
+            "services.metadata_service.current_account_with_tenant",
+            return_value=(mock_user, mock_user.current_tenant_id),
+        ):
             # This should crash with TypeError when calling len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
@@ -76,7 +82,7 @@ class TestMetadataNullableBug:
             # Step 2: Try to create MetadataArgs with None values
             # This should fail at Pydantic validation level
             with pytest.raises((ValueError, TypeError)):
-                metadata_args = MetadataArgs(**args)
+                metadata_args = MetadataArgs.model_validate(args)
 
         # Step 3: If we bypass Pydantic (simulating the bug scenario)
         # Move this outside the request context to avoid Flask-Login issues
@@ -88,7 +94,10 @@ class TestMetadataNullableBug:
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
 
-        with patch("services.metadata_service.current_user", mock_user):
+        with patch(
+            "services.metadata_service.current_account_with_tenant",
+            return_value=(mock_user, mock_user.current_tenant_id),
+        ):
             # Step 4: Service layer crashes on len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)

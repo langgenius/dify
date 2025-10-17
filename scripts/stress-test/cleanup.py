@@ -51,9 +51,7 @@ def cleanup() -> None:
     if sys.stdin.isatty():
         log.separator()
         log.warning("This action cannot be undone!")
-        confirmation = input(
-            "Are you sure you want to remove all config and report files? (yes/no): "
-        )
+        confirmation = input("Are you sure you want to remove all config and report files? (yes/no): ")
 
         if confirmation.lower() not in ["yes", "y"]:
             log.error("Cleanup cancelled.")

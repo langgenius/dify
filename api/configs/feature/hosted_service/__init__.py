@@ -220,11 +220,28 @@ class HostedFetchAppTemplateConfig(BaseSettings):
     )
 
 
+class HostedFetchPipelineTemplateConfig(BaseSettings):
+    """
+    Configuration for fetching pipeline templates
+    """
+
+    HOSTED_FETCH_PIPELINE_TEMPLATES_MODE: str = Field(
+        description="Mode for fetching pipeline templates: remote, db, or builtin default to remote,",
+        default="remote",
+    )
+
+    HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN: str = Field(
+        description="Domain for fetching remote pipeline templates",
+        default="https://tmpl.dify.ai",
+    )
+
+
 class HostedServiceConfig(
     # place the configs in alphabet order
     HostedAnthropicConfig,
     HostedAzureOpenAiConfig,
     HostedFetchAppTemplateConfig,
+    HostedFetchPipelineTemplateConfig,
     HostedMinmaxConfig,
     HostedOpenAiConfig,
     HostedSparkConfig,

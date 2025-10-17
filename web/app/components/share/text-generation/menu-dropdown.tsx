@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Placement } from '@floating-ui/react'
 import {
@@ -25,12 +25,14 @@ type Props = {
   data?: SiteInfo
   placement?: Placement
   hideLogout?: boolean
+  forceClose?: boolean
 }
 
 const MenuDropdown: FC<Props> = ({
   data,
   placement,
   hideLogout,
+  forceClose,
 }) => {
   const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
   const router = useRouter()
@@ -54,6 +56,11 @@ const MenuDropdown: FC<Props> = ({
   }, [router, pathname])
 
   const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    if (forceClose)
+      setOpen(false)
+  }, [forceClose, setOpen])
 
   return (
     <>

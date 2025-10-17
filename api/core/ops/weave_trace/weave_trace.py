@@ -23,8 +23,7 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -63,7 +62,8 @@ class WeaveDataTrace(BaseTraceInstance):
         self,
     ):
         try:
-            project_url = f"https://wandb.ai/{self.weave_client._project_id()}"
+            project_identifier = f"{self.entity}/{self.project_name}" if self.entity else self.project_name
+            project_url = f"https://wandb.ai/{project_identifier}"
             return project_url
         except Exception as e:
             logger.debug("Weave get run url failed: %s", str(e))
@@ -104,7 +104,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
             message_run = WeaveTraceModel(
                 id=trace_info.message_id,
-                op=str(TraceTaskName.MESSAGE_TRACE.value),
+                op=str(TraceTaskName.MESSAGE_TRACE),
                 inputs=dict(trace_info.workflow_run_inputs),
                 outputs=dict(trace_info.workflow_run_outputs),
                 total_tokens=trace_info.total_tokens,
@@ -126,7 +126,7 @@ class WeaveDataTrace(BaseTraceInstance):
             file_list=trace_info.file_list,
             total_tokens=trace_info.total_tokens,
             id=trace_info.workflow_run_id,
-            op=str(TraceTaskName.WORKFLOW_TRACE.value),
+            op=str(TraceTaskName.WORKFLOW_TRACE),
             inputs=dict(trace_info.workflow_run_inputs),
             outputs=dict(trace_info.workflow_run_outputs),
             attributes=workflow_attributes,
@@ -169,13 +169,13 @@ class WeaveDataTrace(BaseTraceInstance):
             if node_type == NodeType.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
-                inputs = node_execution.inputs if node_execution.inputs else {}
-            outputs = node_execution.outputs if node_execution.outputs else {}
+                inputs = node_execution.inputs or {}
+            outputs = node_execution.outputs or {}
             created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
-            execution_metadata = node_execution.metadata if node_execution.metadata else {}
+            execution_metadata = node_execution.metadata or {}
             node_total_tokens = execution_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS) or 0
             attributes = {str(k): v for k, v in execution_metadata.items()}
             attributes.update(
@@ -190,7 +190,7 @@ class WeaveDataTrace(BaseTraceInstance):
                 }
             )
 
-            process_data = node_execution.process_data if node_execution.process_data else {}
+            process_data = node_execution.process_data or {}
             if process_data and process_data.get("model_mode") == "chat":
                 attributes.update(
                     {
@@ -253,7 +253,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
         message_run = WeaveTraceModel(
             id=trace_id,
-            op=str(TraceTaskName.MESSAGE_TRACE.value),
+            op=str(TraceTaskName.MESSAGE_TRACE),
             input_tokens=trace_info.message_tokens,
             output_tokens=trace_info.answer_tokens,
             total_tokens=trace_info.total_tokens,
@@ -300,7 +300,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
         moderation_run = WeaveTraceModel(
             id=str(uuid.uuid4()),
-            op=str(TraceTaskName.MODERATION_TRACE.value),
+            op=str(TraceTaskName.MODERATION_TRACE),
             inputs=trace_info.inputs,
             outputs={
                 "action": trace_info.action,
@@ -330,7 +330,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
         suggested_question_run = WeaveTraceModel(
             id=str(uuid.uuid4()),
-            op=str(TraceTaskName.SUGGESTED_QUESTION_TRACE.value),
+            op=str(TraceTaskName.SUGGESTED_QUESTION_TRACE),
             inputs=trace_info.inputs,
             outputs=trace_info.suggested_question,
             attributes=attributes,
@@ -355,7 +355,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
         dataset_retrieval_run = WeaveTraceModel(
             id=str(uuid.uuid4()),
-            op=str(TraceTaskName.DATASET_RETRIEVAL_TRACE.value),
+            op=str(TraceTaskName.DATASET_RETRIEVAL_TRACE),
             inputs=trace_info.inputs,
             outputs={"documents": trace_info.documents},
             attributes=attributes,
@@ -397,7 +397,7 @@ class WeaveDataTrace(BaseTraceInstance):
 
         name_run = WeaveTraceModel(
             id=str(uuid.uuid4()),
-            op=str(TraceTaskName.GENERATE_NAME_TRACE.value),
+            op=str(TraceTaskName.GENERATE_NAME_TRACE),
             inputs=trace_info.inputs,
             outputs=trace_info.outputs,
             attributes=attributes,
@@ -418,14 +418,30 @@ class WeaveDataTrace(BaseTraceInstance):
             if not login_status:
                 raise ValueError("Weave login failed")
             else:
-                print("Weave login successful")
+                logger.info("Weave login successful")
                 return True
         except Exception as e:
             logger.debug("Weave API check failed: %s", str(e))
             raise ValueError(f"Weave API check failed: {str(e)}")
 
     def start_call(self, run_data: WeaveTraceModel, parent_run_id: str | None = None):
-        call = self.weave_client.create_call(op=run_data.op, inputs=run_data.inputs, attributes=run_data.attributes)
+        inputs = run_data.inputs
+        if inputs is None:
+            inputs = {}
+        elif not isinstance(inputs, dict):
+            inputs = {"inputs": str(inputs)}
+
+        attributes = run_data.attributes
+        if attributes is None:
+            attributes = {}
+        elif not isinstance(attributes, dict):
+            attributes = {"attributes": str(attributes)}
+
+        call = self.weave_client.create_call(
+            op=run_data.op,
+            inputs=inputs,
+            attributes=attributes,
+        )
         self.calls[run_data.id] = call
         if parent_run_id:
             self.calls[run_data.id].parent_id = parent_run_id
@@ -433,6 +449,7 @@ class WeaveDataTrace(BaseTraceInstance):
     def finish_call(self, run_data: WeaveTraceModel):
         call = self.calls.get(run_data.id)
         if call:
-            self.weave_client.finish_call(call=call, output=run_data.outputs, exception=run_data.exception)
+            exception = Exception(run_data.exception) if run_data.exception else None
+            self.weave_client.finish_call(call=call, output=run_data.outputs, exception=exception)
         else:
             raise ValueError(f"Call with id {run_data.id} not found")

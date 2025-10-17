@@ -1,4 +1,7 @@
-import { useMemo } from 'react'
+import {
+  memo,
+  useMemo,
+} from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/app/components/workflow/store'
 import {
@@ -28,9 +31,6 @@ const ChatVariablePanel = dynamic(() => import('@/app/components/workflow/panel/
   ssr: false,
 })
 const GlobalVariablePanel = dynamic(() => import('@/app/components/workflow/panel/global-variable-panel'), {
-  ssr: false,
-})
-const VersionHistoryPanel = dynamic(() => import('@/app/components/workflow/panel/version-history-panel'), {
   ssr: false,
 })
 
@@ -67,7 +67,6 @@ const WorkflowPanelOnRight = () => {
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   const showChatVariablePanel = useStore(s => s.showChatVariablePanel)
   const showGlobalVariablePanel = useStore(s => s.showGlobalVariablePanel)
-  const showWorkflowVersionHistoryPanel = useStore(s => s.showWorkflowVersionHistoryPanel)
 
   return (
     <>
@@ -101,27 +100,34 @@ const WorkflowPanelOnRight = () => {
           <GlobalVariablePanel />
         )
       }
-      {
-        showWorkflowVersionHistoryPanel && (
-          <VersionHistoryPanel/>
-        )
-      }
     </>
   )
 }
 const WorkflowPanel = () => {
+  const appDetail = useAppStore(s => s.appDetail)
+  const versionHistoryPanelProps = useMemo(() => {
+    const appId = appDetail?.id
+    return {
+      getVersionListUrl: `/apps/${appId}/workflows`,
+      deleteVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}`,
+      updateVersionUrl: (versionId: string) => `/apps/${appId}/workflows/${versionId}`,
+      latestVersionId: appDetail?.workflow?.id,
+    }
+  }, [appDetail?.id, appDetail?.workflow?.id])
+
   const panelProps: PanelProps = useMemo(() => {
     return {
       components: {
         left: <WorkflowPanelOnLeft />,
         right: <WorkflowPanelOnRight />,
       },
+      versionHistoryPanelProps,
     }
-  }, [])
+  }, [versionHistoryPanelProps])
 
   return (
     <Panel {...panelProps} />
   )
 }
 
-export default WorkflowPanel
+export default memo(WorkflowPanel)

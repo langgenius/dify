@@ -17,7 +17,6 @@ import Textarea from '@/app/components/base/textarea'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { Resolution, TransferMethod } from '@/types/app'
-import { useFeatures } from '@/app/components/base/features/hooks'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -26,6 +25,7 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import cn from '@/utils/classnames'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import BoolInput from './bool-input'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 
 type Props = {
   payload: InputVar
@@ -46,7 +46,8 @@ const FormItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { type } = payload
-  const fileSettings = useFeatures(s => s.features.file)
+  const fileSettings = useHooksStore(s => s.configsMap?.fileSettings)
+
   const handleArrayItemChange = useCallback((index: number) => {
     return (newValue: any) => {
       const newValues = produce(value, (draft: any) => {
@@ -117,8 +118,20 @@ const FormItem: FC<Props> = ({
     <div className={cn(className)}>
       {!isArrayLikeType && !isBooleanType && (
         <div className='system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary'>
-          <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
-          {!payload.required && <span className='system-xs-regular text-text-tertiary'>{t('workflow.panel.optional')}</span>}
+          <div className='truncate'>
+            {typeof payload.label === 'object' ? nodeKey : payload.label}
+          </div>
+          {payload.hide === true ? (
+            <span className='system-xs-regular text-text-tertiary'>
+              {t('workflow.panel.optional_and_hidden')}
+            </span>
+          ) : (
+            !payload.required && (
+              <span className='system-xs-regular text-text-tertiary'>
+                {t('workflow.panel.optional')}
+              </span>
+            )
+          )}
         </div>
       )}
       <div className='grow'>
@@ -187,7 +200,7 @@ const FormItem: FC<Props> = ({
             />
           )
         }
-        { type === InputVarType.jsonObject && (
+        {type === InputVarType.jsonObject && (
           <CodeEditor
             value={value}
             language={CodeLanguage.json}

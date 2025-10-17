@@ -17,7 +17,6 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
         identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
         parameters=[],
         description=None,
-        output_schema=None,
         has_runtime_parameters=False,
     )
     runtime = ToolRuntime(tenant_id="test_tool", invoke_from=InvokeFrom.EXPLORE)
@@ -35,12 +34,17 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
+    # Mock user resolution to avoid database access
+    from unittest.mock import Mock
+
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+
     # replace `WorkflowAppGenerator.generate` 's return value.
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate",
         lambda *args, **kwargs: {"data": {"error": "oops"}},
     )
-    monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
 
     with pytest.raises(ToolInvokeError) as exc_info:
         # WorkflowTool always returns a generator, so we need to iterate to

@@ -106,6 +106,8 @@ const FileUploaderInAttachment = ({
               showDownloadAction={false}
               onRemove={() => handleRemoveFile(file.id)}
               onReUpload={() => handleReUploadFile(file.id)}
+              canPreview={fileConfig.preview_config?.file_type_list?.includes(file.type)}
+              previewMode={fileConfig.preview_config?.mode}
             />
           ))
         }
@@ -114,7 +116,7 @@ const FileUploaderInAttachment = ({
   )
 }
 
-type FileUploaderInAttachmentWrapperProps = {
+export type FileUploaderInAttachmentWrapperProps = {
   value?: FileEntity[]
   onChange: (files: FileEntity[]) => void
   fileConfig: FileUpload

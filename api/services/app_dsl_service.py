@@ -20,7 +20,7 @@ from configs import dify_config
 from core.helper import ssrf_proxy
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import PluginDependency
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
@@ -29,6 +29,7 @@ from core.workflow.nodes.tool.entities import ToolNodeData
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
+from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
 from models.model import AppModelConfig
 from models.workflow import Workflow
@@ -439,6 +440,7 @@ class AppDslService:
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
             app.updated_by = account.id
+            app.updated_at = naive_utc_now()
         else:
             if account.current_tenant_id is None:
                 raise ValueError("Current tenant is not set")
@@ -494,7 +496,7 @@ class AppDslService:
                 unique_hash = None
             graph = workflow_data.get("graph", {})
             for node in graph.get("nodes", []):
-                if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL.value:
+                if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL:
                     dataset_ids = node["data"].get("dataset_ids", [])
                     node["data"]["dataset_ids"] = [
                         decrypted_id
@@ -584,17 +586,17 @@ class AppDslService:
             if not node_data:
                 continue
             data_type = node_data.get("type", "")
-            if data_type == NodeType.KNOWLEDGE_RETRIEVAL.value:
+            if data_type == NodeType.KNOWLEDGE_RETRIEVAL:
                 dataset_ids = node_data.get("dataset_ids", [])
                 node_data["dataset_ids"] = [
                     cls.encrypt_dataset_id(dataset_id=dataset_id, tenant_id=app_model.tenant_id)
                     for dataset_id in dataset_ids
                 ]
             # filter credential id from tool node
-            if not include_secret and data_type == NodeType.TOOL.value:
+            if not include_secret and data_type == NodeType.TOOL:
                 node_data.pop("credential_id", None)
             # filter credential id from agent node
-            if not include_secret and data_type == NodeType.AGENT.value:
+            if not include_secret and data_type == NodeType.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
                     tool.pop("credential_id", None)
 
@@ -658,32 +660,32 @@ class AppDslService:
             try:
                 typ = node.get("data", {}).get("type")
                 match typ:
-                    case NodeType.TOOL.value:
-                        tool_entity = ToolNodeData(**node["data"])
+                    case NodeType.TOOL:
+                        tool_entity = ToolNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
                         )
-                    case NodeType.LLM.value:
-                        llm_entity = LLMNodeData(**node["data"])
+                    case NodeType.LLM:
+                        llm_entity = LLMNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(llm_entity.model.provider),
                         )
-                    case NodeType.QUESTION_CLASSIFIER.value:
-                        question_classifier_entity = QuestionClassifierNodeData(**node["data"])
+                    case NodeType.QUESTION_CLASSIFIER:
+                        question_classifier_entity = QuestionClassifierNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 question_classifier_entity.model.provider
                             ),
                         )
-                    case NodeType.PARAMETER_EXTRACTOR.value:
-                        parameter_extractor_entity = ParameterExtractorNodeData(**node["data"])
+                    case NodeType.PARAMETER_EXTRACTOR:
+                        parameter_extractor_entity = ParameterExtractorNodeData.model_validate(node["data"])
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
                                 parameter_extractor_entity.model.provider
                             ),
                         )
-                    case NodeType.KNOWLEDGE_RETRIEVAL.value:
-                        knowledge_retrieval_entity = KnowledgeRetrievalNodeData(**node["data"])
+                    case NodeType.KNOWLEDGE_RETRIEVAL:
+                        knowledge_retrieval_entity = KnowledgeRetrievalNodeData.model_validate(node["data"])
                         if knowledge_retrieval_entity.retrieval_mode == "multiple":
                             if knowledge_retrieval_entity.multiple_retrieval_config:
                                 if (
@@ -773,7 +775,7 @@ class AppDslService:
         """
         Returns the leaked dependencies in current workspace
         """
-        dependencies = [PluginDependency(**dep) for dep in dsl_dependencies]
+        dependencies = [PluginDependency.model_validate(dep) for dep in dsl_dependencies]
         if not dependencies:
             return []
 

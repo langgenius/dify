@@ -6,8 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 import httpx
-from common import config_helper
-from common import Logger
+from common import Logger, config_helper
 
 
 def configure_openai_plugin() -> None:
@@ -72,29 +71,19 @@ def configure_openai_plugin() -> None:
 
             if response.status_code == 200:
                 log.success("OpenAI plugin configured successfully!")
-                log.key_value(
-                    "API Base", config_payload["credentials"]["openai_api_base"]
-                )
-                log.key_value(
-                    "API Key", config_payload["credentials"]["openai_api_key"]
-                )
+                log.key_value("API Base", config_payload["credentials"]["openai_api_base"])
+                log.key_value("API Key", config_payload["credentials"]["openai_api_key"])
 
             elif response.status_code == 201:
                 log.success("OpenAI plugin credentials created successfully!")
-                log.key_value(
-                    "API Base", config_payload["credentials"]["openai_api_base"]
-                )
-                log.key_value(
-                    "API Key", config_payload["credentials"]["openai_api_key"]
-                )
+                log.key_value("API Base", config_payload["credentials"]["openai_api_base"])
+                log.key_value("API Key", config_payload["credentials"]["openai_api_key"])
 
             elif response.status_code == 401:
                 log.error("Configuration failed: Unauthorized")
                 log.info("Token may have expired. Please run login_admin.py again")
             else:
-                log.error(
-                    f"Configuration failed with status code: {response.status_code}"
-                )
+                log.error(f"Configuration failed with status code: {response.status_code}")
                 log.debug(f"Response: {response.text}")
 
     except httpx.ConnectError:

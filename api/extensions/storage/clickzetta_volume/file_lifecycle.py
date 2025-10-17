@@ -7,6 +7,7 @@ Supports complete lifecycle management for knowledge base files.
 
 import json
 import logging
+import operator
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import StrEnum, auto
@@ -263,7 +264,7 @@ class FileLifecycleManager:
                 logger.warning("File %s not found in metadata", filename)
                 return False
 
-            metadata_dict[filename]["status"] = FileStatus.ARCHIVED.value
+            metadata_dict[filename]["status"] = FileStatus.ARCHIVED
             metadata_dict[filename]["modified_at"] = datetime.now().isoformat()
 
             self._save_metadata(metadata_dict)
@@ -308,7 +309,7 @@ class FileLifecycleManager:
             # Update metadata
             metadata_dict = self._load_metadata()
             if filename in metadata_dict:
-                metadata_dict[filename]["status"] = FileStatus.DELETED.value
+                metadata_dict[filename]["status"] = FileStatus.DELETED
                 metadata_dict[filename]["modified_at"] = datetime.now().isoformat()
                 self._save_metadata(metadata_dict)
 
@@ -356,7 +357,7 @@ class FileLifecycleManager:
                 # Cleanup old versions for each file
                 for base_filename, versions in file_versions.items():
                     # Sort by version number
-                    versions.sort(key=lambda x: x[0], reverse=True)
+                    versions.sort(key=operator.itemgetter(0), reverse=True)
 
                     # Keep the newest max_versions versions, delete the rest
                     if len(versions) > max_versions:

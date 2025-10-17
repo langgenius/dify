@@ -12,7 +12,7 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.account import Account
+from models import Account
 from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService
 from services.errors.message import (
@@ -217,7 +217,7 @@ class MessageService:
     @classmethod
     def get_suggested_questions_after_answer(
         cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str, invoke_from: InvokeFrom
-    ) -> list[Message]:
+    ) -> list[str]:
         if not user:
             raise ValueError("user cannot be None")
 
@@ -240,6 +240,9 @@ class MessageService:
                 return []
 
             app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
+
+            if not app_config.additional_features:
+                raise ValueError("Additional features not found")
 
             if not app_config.additional_features.suggested_questions_after_answer:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
@@ -285,7 +288,7 @@ class MessageService:
         )
 
         with measure_time() as timer:
-            questions: list[Message] = LLMGenerator.generate_suggested_questions_after_answer(
+            questions: list[str] = LLMGenerator.generate_suggested_questions_after_answer(
                 tenant_id=app_model.tenant_id, histories=histories
             )
 

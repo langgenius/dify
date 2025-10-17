@@ -1,25 +1,24 @@
 from collections.abc import Mapping
 from typing import Any
 
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.iteration.entities import IterationStartNodeData
 
 
-class IterationStartNode(BaseNode):
+class IterationStartNode(Node):
     """
     Iteration Start Node.
     """
 
-    _node_type = NodeType.ITERATION_START
+    node_type = NodeType.ITERATION_START
 
     _node_data: IterationStartNodeData
 
     def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = IterationStartNodeData(**data)
+        self._node_data = IterationStartNodeData.model_validate(data)
 
     def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy

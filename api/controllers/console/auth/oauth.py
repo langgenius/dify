@@ -1,6 +1,6 @@
 import logging
 
-import requests
+import httpx
 from flask import current_app, redirect, request
 from flask_restx import Resource
 from sqlalchemy import select
@@ -14,8 +14,7 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
-from models import Account
-from models.account import AccountStatus
+from models import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
@@ -101,8 +100,10 @@ class OAuthCallback(Resource):
         try:
             token = oauth_provider.get_access_token(code)
             user_info = oauth_provider.get_user_info(token)
-        except requests.RequestException as e:
-            error_text = e.response.text if e.response else str(e)
+        except httpx.RequestError as e:
+            error_text = str(e)
+            if isinstance(e, httpx.HTTPStatusError):
+                error_text = e.response.text
             logger.exception("An error occurred during the OAuth process with %s: %s", provider, error_text)
             return {"error": "OAuth process failed"}, 400
 
@@ -128,11 +129,11 @@ class OAuthCallback(Resource):
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
 
         # Check account status
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account is banned.")
 
-        if account.status == AccountStatus.PENDING.value:
-            account.status = AccountStatus.ACTIVE.value
+        if account.status == AccountStatus.PENDING:
+            account.status = AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
             db.session.commit()
 

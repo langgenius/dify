@@ -80,6 +80,7 @@ const translation = {
     workflowShortDescription: 'Agentowy przepływ dla inteligentnych automatyzacji',
     advancedUserDescription: 'Przepływ z dodatkowymi funkcjami pamięci i interfejsem chatbota.',
     dropDSLToCreateApp: 'Upuść plik DSL tutaj, aby utworzyć aplikację',
+    import: 'Import',
   },
   editApp: 'Edytuj informacje',
   editAppTitle: 'Edytuj informacje o aplikacji',
@@ -162,6 +163,10 @@ const translation = {
     aliyun: {
       title: 'Monitor Chmury',
       description: 'W pełni zarządzana i wolna od konserwacji platforma obserwowalności oferowana przez Alibaba Cloud umożliwia gotowe monitorowanie, śledzenie i oceny aplikacji Dify.',
+    },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring zapewnia kompleksowe śledzenie i wielowymiarową analizę dla aplikacji LLM.',
     },
   },
   answerIcon: {

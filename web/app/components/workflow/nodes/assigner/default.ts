@@ -1,23 +1,21 @@
-import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import { type AssignerNodeType, WriteMode } from './types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Transform,
+  sort: 5,
+  type: BlockEnum.Assigner,
+  helpLinkUri: 'variable-assigner',
+})
 const nodeDefault: NodeDefault<AssignerNodeType> = {
+  metaData,
   defaultValue: {
     version: '2',
     items: [],
-  },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
   },
   checkValid(payload: AssignerNodeType, t: any) {
     let errorMessages = ''

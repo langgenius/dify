@@ -1,10 +1,9 @@
 'use client'
-import React from 'react'
+import React, { useCallback, useState } from 'react'
 import {
   FloatingPortal,
   autoUpdate,
   flip,
-  hide,
   offset,
   shift,
   size,
@@ -34,34 +33,31 @@ export type PortalToFollowElemOptions = {
 
 export function usePortalToFollowElem({
   placement = 'bottom',
-  open,
+  open: controlledOpen,
   offset: offsetValue = 0,
   onOpenChange: setControlledOpen,
   triggerPopupSameWidth,
 }: PortalToFollowElemOptions = {}) {
-  const setOpen = setControlledOpen
-  const container = document.getElementById('workflow-container') || document.body
+  const [localOpen, setLocalOpen] = useState(false)
+  const open = controlledOpen ?? localOpen
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    setLocalOpen(newOpen)
+    setControlledOpen?.(newOpen)
+  }, [setControlledOpen, setLocalOpen])
+
   const data = useFloating({
     placement,
     open,
-    onOpenChange: setOpen,
+    onOpenChange: handleOpenChange,
     whileElementsMounted: autoUpdate,
     middleware: [
       offset(offsetValue),
       flip({
         crossAxis: placement.includes('-'),
         fallbackAxisSideDirection: 'start',
-        padding: 8,
+        padding: 5,
       }),
-      shift({
-        padding: 8,
-        boundary: container,
-        altBoundary: true,
-      }),
-      hide({
-        // hide when the reference element is not visible
-        boundary: container,
-      }),
+      shift({ padding: 5 }),
       size({
         apply({ rects, elements }) {
           if (triggerPopupSameWidth)
@@ -75,10 +71,10 @@ export function usePortalToFollowElem({
 
   const hover = useHover(context, {
     move: false,
-    enabled: open == null,
+    enabled: controlledOpen === undefined,
   })
   const focus = useFocus(context, {
-    enabled: open == null,
+    enabled: controlledOpen === undefined,
   })
   const dismiss = useDismiss(context)
   const role = useRole(context, { role: 'tooltip' })
@@ -88,11 +84,11 @@ export function usePortalToFollowElem({
   return React.useMemo(
     () => ({
       open,
-      setOpen,
+      setOpen: handleOpenChange,
       ...interactions,
       ...data,
     }),
-    [open, setOpen, interactions, data],
+    [open, handleOpenChange, interactions, data],
   )
 }
 

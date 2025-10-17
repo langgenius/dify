@@ -14,7 +14,7 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from models.model import App, AppMode, EndUser
 
 
@@ -167,7 +167,6 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=stream,
             call_depth=1,
-            workflow_thread_pool_id=None,
         )
 
     @classmethod

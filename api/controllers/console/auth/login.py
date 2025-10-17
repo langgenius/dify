@@ -1,5 +1,3 @@
-from typing import cast
-
 import flask_login
 from flask import request
 from flask_restx import Resource, reqparse
@@ -7,7 +5,7 @@ from flask_restx import Resource, reqparse
 import services
 from configs import dify_config
 from constants.languages import languages
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
@@ -26,7 +24,7 @@ from controllers.console.error import (
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
-from models.account import Account
+from libs.login import current_account_with_tenant
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError
@@ -34,6 +32,7 @@ from services.errors.workspace import WorkSpaceNotAllowedCreateError, Workspaces
 from services.feature_service import FeatureService
 
 
+@console_ns.route("/login")
 class LoginApi(Resource):
     """Resource for user login."""
 
@@ -91,10 +90,12 @@ class LoginApi(Resource):
         return {"result": "success", "data": token_pair.model_dump()}
 
 
+@console_ns.route("/logout")
 class LogoutApi(Resource):
     @setup_required
     def get(self):
-        account = cast(Account, flask_login.current_user)
+        current_user, _ = current_account_with_tenant()
+        account = current_user
         if isinstance(account, flask_login.AnonymousUserMixin):
             return {"result": "success"}
         AccountService.logout(account=account)
@@ -102,6 +103,7 @@ class LogoutApi(Resource):
         return {"result": "success"}
 
 
+@console_ns.route("/reset-password")
 class ResetPasswordSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
@@ -130,6 +132,7 @@ class ResetPasswordSendEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
+@console_ns.route("/email-code-login")
 class EmailCodeLoginSendEmailApi(Resource):
     @setup_required
     def post(self):
@@ -162,6 +165,7 @@ class EmailCodeLoginSendEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
+@console_ns.route("/email-code-login/validity")
 class EmailCodeLoginApi(Resource):
     @setup_required
     def post(self):
@@ -218,6 +222,7 @@ class EmailCodeLoginApi(Resource):
         return {"result": "success", "data": token_pair.model_dump()}
 
 
+@console_ns.route("/refresh-token")
 class RefreshTokenApi(Resource):
     def post(self):
         parser = reqparse.RequestParser()
@@ -229,11 +234,3 @@ class RefreshTokenApi(Resource):
             return {"result": "success", "data": new_token_pair.model_dump()}
         except Exception as e:
             return {"result": "fail", "data": str(e)}, 401
-
-
-api.add_resource(LoginApi, "/login")
-api.add_resource(LogoutApi, "/logout")
-api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
-api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
-api.add_resource(ResetPasswordSendEmailApi, "/reset-password")
-api.add_resource(RefreshTokenApi, "/refresh-token")
