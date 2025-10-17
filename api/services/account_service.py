@@ -1086,7 +1086,7 @@ class TenantService:
                 TenantAccountJoin.account_id == account.id,
                 TenantAccountJoin.tenant_id == tenant_id,
                 Tenant.status == TenantStatus.NORMAL,
-                )
+            )
             .first()
         )
 

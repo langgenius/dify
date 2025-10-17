@@ -211,7 +211,9 @@ class EmailCodeLoginApi(Resource):
         if account is None:
             try:
                 account = AccountService.create_account_and_tenant(
-                    email=user_email, name=user_email, interface_language=language if language and language in languages else languages[0]
+                    email=user_email,
+                    name=user_email,
+                    interface_language=language if language and language in languages else languages[0],
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()
