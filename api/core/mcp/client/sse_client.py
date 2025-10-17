@@ -279,7 +279,12 @@ def sse_client(
 
     with ThreadPoolExecutor() as executor:
         try:
-            with create_ssrf_proxy_mcp_http_client(headers=transport.headers, proxy=proxy) as client:
+            if proxy:
+                mcp_client = create_ssrf_proxy_mcp_http_client(headers=transport.headers, proxy=proxy)
+            else:
+                mcp_client = create_ssrf_proxy_mcp_http_client(headers=transport.headers)
+
+            with mcp_client as client:
                 with ssrf_proxy_sse_connect(
                     url, timeout=httpx.Timeout(timeout, read=sse_read_timeout), client=client
                 ) as event_source:

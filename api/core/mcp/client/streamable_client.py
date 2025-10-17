@@ -437,11 +437,12 @@ def streamablehttp_client(
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         try:
-            with create_ssrf_proxy_mcp_http_client(
-                headers=transport.request_headers,
-                timeout=httpx.Timeout(transport.timeout, read=transport.sse_read_timeout),
-                proxy=proxy,
-            ) as client:
+            if proxy:
+                mcp_client = create_ssrf_proxy_mcp_http_client(headers=transport.request_headers, proxy=proxy)
+            else:
+                mcp_client = create_ssrf_proxy_mcp_http_client(headers=transport.request_headers)
+                
+            with mcp_client as client:
                 # Define callbacks that need access to thread pool
                 def start_get_stream():
                     """Start a worker thread to handle server-initiated messages."""
