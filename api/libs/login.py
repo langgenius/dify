@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Union, cast
+from typing import Any
 
 from flask import current_app, g, has_request_context, request
 from flask_login.config import EXEMPT_METHODS  # type: ignore
@@ -11,16 +11,21 @@ from libs.token import check_csrf_token
 from models import Account
 from models.model import EndUser
 
-#: A proxy for the current user. If no user is logged in, this will be an
-#: anonymous user
-current_user = cast(Union[Account, EndUser, None], LocalProxy(lambda: _get_user()))
-
 
 def current_account_with_tenant():
-    if not isinstance(current_user, Account):
+    """
+    Resolve the underlying account for the current user proxy and ensure tenant context exists.
+    Allows tests to supply plain Account mocks without the LocalProxy helper.
+    """
+    user_proxy = current_user
+
+    get_current_object = getattr(user_proxy, "_get_current_object", None)
+    user = get_current_object() if callable(get_current_object) else user_proxy  # type: ignore
+
+    if not isinstance(user, Account):
         raise ValueError("current_user must be an Account instance")
-    assert current_user.current_tenant_id is not None, "The tenant information should be loaded."
-    return current_user, current_user.current_tenant_id
+    assert user.current_tenant_id is not None, "The tenant information should be loaded."
+    return user, user.current_tenant_id
 
 
 from typing import ParamSpec, TypeVar
@@ -85,3 +90,9 @@ def _get_user() -> EndUser | Account | None:
         return g._login_user  # type: ignore
 
     return None
+
+
+#: A proxy for the current user. If no user is logged in, this will be an
+#: anonymous user
+# NOTE: Any here, but use _get_current_object to check the fields
+current_user: Any = LocalProxy(lambda: _get_user())
