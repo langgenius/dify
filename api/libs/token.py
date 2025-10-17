@@ -19,7 +19,9 @@ from libs.passport import PassportService
 
 logger = logging.getLogger(__name__)
 
-CSRF_WHITE_LIST = [re.compile(r'/console/api/apps/[a-f0-9-]+/workflows/draft'),]
+CSRF_WHITE_LIST = [
+    re.compile(r"/console/api/apps/[a-f0-9-]+/workflows/draft"),
+]
 
 
 # server is behind a reverse proxy, so we need to check the url
@@ -157,11 +159,11 @@ def clear_csrf_token_from_cookie(request: Request, response: Response):
 def check_csrf_token(request: Request):
     # some apis are sent by beacon, so we need to bypass csrf token check
     # since these APIs are post, they are already protected by SameSite: Lax, so csrf is not required.
-    
+
     for pattern in CSRF_WHITE_LIST:
         if pattern.match(request.path):
             return
-    
+
     csrf_token = extract_csrf_token(request)
 
     def _unauthorized():
