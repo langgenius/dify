@@ -1,4 +1,3 @@
-
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 
 
@@ -189,4 +188,3 @@ class TestThinkTagFiltering:
             results.append(result)
 
         assert "".join(results) == "Math: 2 < 3 and  5 > 4 is true"
-
