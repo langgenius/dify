@@ -375,6 +375,7 @@ const translation = {
     organizeBlocks: 'नोड्स का आयोजन करें',
     minimize: 'पूर्ण स्क्रीन से बाहर निकलें',
     maximize: 'कैनवास का अधिकतम लाभ उठाएँ',
+    optional_and_hidden: '(वैकल्पिक और छिपा हुआ)',
   },
   nodes: {
     common: {

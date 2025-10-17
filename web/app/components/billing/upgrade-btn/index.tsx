@@ -6,6 +6,7 @@ import PremiumBadge from '../../base/premium-badge'
 import Button from '@/app/components/base/button'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { useModalContext } from '@/context/modal-context'
+import { sendGAEvent } from '@/utils/gtag'
 
 type Props = {
   className?: string
@@ -33,8 +34,8 @@ const UpgradeBtn: FC<Props> = ({
   }
   const onClick = () => {
     handleClick()
-    if (loc && (window as any).gtag) {
-      (window as any).gtag('event', 'click_upgrade_btn', {
+    if (loc) {
+      sendGAEvent('click_upgrade_btn', {
         loc,
       })
     }

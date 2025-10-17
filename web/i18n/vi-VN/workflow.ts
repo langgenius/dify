@@ -331,6 +331,7 @@ const translation = {
     addNextStep: 'Thêm bước tiếp theo trong quy trình này',
     maximize: 'Tối đa hóa Canvas',
     minimize: 'Thoát chế độ toàn màn hình',
+    optional_and_hidden: '(tùy chọn & ẩn)',
   },
   nodes: {
     common: {

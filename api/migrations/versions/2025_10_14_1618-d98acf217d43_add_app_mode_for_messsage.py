@@ -23,43 +23,52 @@ def upgrade():
         batch_op.create_index('message_app_mode_idx', ['app_mode'], unique=False)
 
     conn = op.get_bind()
-    
+
     # Strategy: Update in batches to minimize lock time
     # For large tables (millions of rows), this prevents long-running transactions
     batch_size = 10000
-    
+
     print("Starting backfill of app_mode from conversations...")
-    
+
     # Use a more efficient UPDATE with JOIN
     # This query updates messages.app_mode from conversations.mode
-    update_query = """
+    # Using string formatting for LIMIT since it's a constant
+    update_query = f"""
         UPDATE messages m
         SET app_mode = c.mode
         FROM conversations c
         WHERE m.conversation_id = c.id
           AND m.app_mode IS NULL
           AND m.id IN (
-              SELECT id FROM messages 
-              WHERE app_mode IS NULL 
-              LIMIT :batch_size
+              SELECT id FROM messages
+              WHERE app_mode IS NULL
+              LIMIT {batch_size}
           )
     """
-    
+
     # Execute batched updates
     total_updated = 0
+    iteration = 0
     while True:
-        result = conn.execute(sa.text(update_query), {"batch_size": batch_size})
-        rows_updated = result.rowcount
+        iteration += 1
+        result = conn.execute(sa.text(update_query))
+
+        # Check if result is None or has no rowcount
+        if result is None:
+            print("Warning: Query returned None, stopping backfill")
+            break
+
+        rows_updated = result.rowcount if hasattr(result, 'rowcount') else 0
         total_updated += rows_updated
-        
+
         if rows_updated == 0:
             break
-            
-        print(f"Updated {rows_updated} messages (total: {total_updated})")
-        
-        # Commit each batch to release locks
-        # Note: Alembic auto-commits in upgrade() by default
-    
+
+        print(f"Iteration {iteration}: Updated {rows_updated} messages (total: {total_updated})")
+
+        # For very large tables, add a small delay to reduce load
+        # Uncomment if needed: import time; time.sleep(0.1)
+
     print(f"Backfill completed. Total messages updated: {total_updated}")
 
     # ### end Alembic commands ###

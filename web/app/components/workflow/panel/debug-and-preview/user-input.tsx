@@ -15,8 +15,9 @@ const UserInput = () => {
   const workflowStore = useWorkflowStore()
   const inputs = useStore(s => s.inputs)
   const startNode = useFindNode(['sys']) as Node<StartNodeType>
+  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   const variables = startNode?.data.variables || []
-  const visibleVariables = variables.filter(v => v.hide !== true)
+  const visibleVariables = showDebugAndPreviewPanel ? variables : variables.filter(v => v.hide !== true)
 
   const handleValueChange = (variable: string, v: string) => {
     const {

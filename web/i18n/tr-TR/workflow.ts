@@ -331,6 +331,7 @@ const translation = {
     selectNextStep: 'Sonraki Adımı Seç',
     minimize: 'Tam Ekrandan Çık',
     maximize: 'Kanvası Maksimize Et',
+    optional_and_hidden: '(isteğe bağlı ve gizli)',
   },
   nodes: {
     common: {

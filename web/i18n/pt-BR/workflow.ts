@@ -331,6 +331,7 @@ const translation = {
     selectNextStep: 'Selecione o próximo passo',
     maximize: 'Maximize Canvas',
     minimize: 'Sair do Modo Tela Cheia',
+    optional_and_hidden: '(opcional & oculto)',
   },
   nodes: {
     common: {

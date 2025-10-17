@@ -28,14 +28,10 @@ const GA: FC<IGAProps> = ({
 
   return (
     <>
-      <Script
-        strategy="beforeInteractive"
-        async
-        src={`https://www.googletagmanager.com/gtag/js?id=${gaIdMaps[gaType]}`}
-        nonce={nonce ?? undefined}
-      ></Script>
+      {/* Initialize dataLayer first */}
       <Script
         id="ga-init"
+        strategy="afterInteractive"
         dangerouslySetInnerHTML={{
           __html: `
 window.dataLayer = window.dataLayer || [];
@@ -45,14 +41,20 @@ gtag('config', '${gaIdMaps[gaType]}');
           `,
         }}
         nonce={nonce ?? undefined}
-      >
-      </Script>
+      />
+      {/* Load GA script */}
+      <Script
+        strategy="afterInteractive"
+        src={`https://www.googletagmanager.com/gtag/js?id=${gaIdMaps[gaType]}`}
+        nonce={nonce ?? undefined}
+      />
       {/* Cookie banner */}
       <Script
         id="cookieyes"
+        strategy="lazyOnload"
         src='https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js'
         nonce={nonce ?? undefined}
-      ></Script>
+      />
     </>
 
   )

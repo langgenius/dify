@@ -39,7 +39,7 @@ const DebugAndPreview = () => {
   const startNode = useFindNode(['sys']) as Node<StartNodeType>
   const selectedNode = useReactFlowStore(s => s.getNodes().find(node => node.data.selected))
   const variables = startNode?.data.variables || []
-  const visibleVariables = variables.filter(v => v.hide !== true)
+  const visibleVariables = variables
 
   const [showConversationVariableModal, setShowConversationVariableModal] = useState(false)
 
