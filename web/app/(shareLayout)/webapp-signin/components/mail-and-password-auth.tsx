@@ -93,7 +93,10 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         })
       }
     }
-
+    catch (e: any) {
+      if (e.code === 'authentication_failed')
+        Toast.notify({ type: 'error', message: e.message })
+    }
     finally {
       setIsLoading(false)
     }
