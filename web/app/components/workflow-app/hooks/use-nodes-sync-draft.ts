@@ -96,8 +96,6 @@ export const useNodesSyncDraft = () => {
     const postParams = getPostParams()
 
     if (postParams) {
-      // For sendBeacon, we need to use URL parameter since it doesn't support credentials
-      // Backend should still accept _token query parameter for this case
       navigator.sendBeacon(
         `${API_PREFIX}/apps/${params.appId}/workflows/draft`,
         JSON.stringify(postParams.params),
