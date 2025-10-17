@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse, TriggerInvokeEventResponse
+from core.plugin.impl.exc import PluginNotFoundError
 from core.plugin.utils.http_parser import deserialize_request, serialize_request
 from core.trigger.debug.events import PluginTriggerDebugEvent
 from core.trigger.entities.entities import EventEntity
@@ -227,7 +228,14 @@ class TriggerService:
             request: Request
         """
         timestamp = int(time.time())
-        subscription: TriggerSubscription | None = TriggerProviderService.get_subscription_by_endpoint(endpoint_id)
+        subscription: TriggerSubscription | None = None
+        try:
+            subscription = TriggerProviderService.get_subscription_by_endpoint(endpoint_id)
+        except PluginNotFoundError:
+            return Response(status=404, response="Trigger provider not found")
+        except Exception:
+            return Response(status=500, response="Failed to get subscription by endpoint")
+
         if not subscription:
             return None
 
@@ -235,9 +243,6 @@ class TriggerService:
         controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
             tenant_id=subscription.tenant_id, provider_id=provider_id
         )
-        if not controller:
-            return None
-
         encrypter, _ = create_trigger_provider_encrypter_for_subscription(
             tenant_id=subscription.tenant_id,
             controller=controller,
