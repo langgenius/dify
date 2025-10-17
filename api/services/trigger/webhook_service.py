@@ -35,6 +35,13 @@ class WebhookService:
     __WEBHOOK_NODE_CACHE_KEY__ = "webhook_nodes"
     MAX_WEBHOOK_NODES_PER_WORKFLOW = 5  # Maximum allowed webhook nodes per workflow
 
+    @staticmethod
+    def _sanitize_key(key: str) -> str:
+        """Normalize external keys (headers/params) to workflow-safe variables."""
+        if not isinstance(key, str):
+            return key
+        return key.replace("-", "_")
+
     @classmethod
     def get_webhook_trigger_and_workflow(
         cls, webhook_id: str, is_debug: bool = False
@@ -590,10 +597,12 @@ class WebhookService:
             ValueError: If required headers are missing
         """
         headers_lower = {k.lower(): v for k, v in headers.items()}
+        headers_sanitized = {cls._sanitize_key(k).lower(): v for k, v in headers.items()}
         for header_config in header_configs:
             if header_config.get("required", False):
                 header_name = header_config.get("name", "")
-                if header_name.lower() not in headers_lower:
+                sanitized_name = cls._sanitize_key(header_name).lower()
+                if header_name.lower() not in headers_lower and sanitized_name not in headers_sanitized:
                     raise ValueError(f"Required header missing: {header_name}")
 
     @classmethod

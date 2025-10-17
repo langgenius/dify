@@ -70,7 +70,12 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     if (!draft.variables)
       draft.variables = []
 
-    const hasReservedConflict = newData.some(item => item.name === WEBHOOK_RAW_VARIABLE_NAME)
+    const sanitizedEntries = newData.map(item => ({
+      item,
+      sanitizedName: sourceType === 'header' ? item.name.replace(/-/g, '_') : item.name,
+    }))
+
+    const hasReservedConflict = sanitizedEntries.some(entry => entry.sanitizedName === WEBHOOK_RAW_VARIABLE_NAME)
     if (hasReservedConflict) {
       Toast.notify({
         type: 'error',
@@ -80,25 +85,24 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
       })
       return false
     }
-
     const existingOtherVarNames = new Set(
       draft.variables
         .filter(v => v.label !== sourceType && v.variable !== WEBHOOK_RAW_VARIABLE_NAME)
         .map(v => v.variable),
     )
 
-    const crossScopeConflict = newData.find(item => existingOtherVarNames.has(item.name))
+    const crossScopeConflict = sanitizedEntries.find(entry => existingOtherVarNames.has(entry.sanitizedName))
     if (crossScopeConflict) {
       Toast.notify({
         type: 'error',
         message: t('appDebug.varKeyError.keyAlreadyExists', {
-          key: crossScopeConflict.name,
+          key: crossScopeConflict.sanitizedName,
         }),
       })
       return false
     }
 
-    if(hasDuplicateStr(newData.map(item => item.name))) {
+    if(hasDuplicateStr(sanitizedEntries.map(entry => entry.sanitizedName))) {
       Toast.notify({
         type: 'error',
         message: t('appDebug.varKeyError.keyAlreadyExists', {
@@ -108,8 +112,8 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
       return false
     }
 
-    for (const item of newData) {
-      const { isValid, errorMessageKey } = checkKeys([item.name], false)
+    for (const { sanitizedName } of sanitizedEntries) {
+      const { isValid, errorMessageKey } = checkKeys([sanitizedName], false)
       if (!isValid) {
         Toast.notify({
           type: 'error',
@@ -122,7 +126,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     }
 
     // Create set of new variable names for this source
-    const newVarNames = new Set(newData.map(item => item.name))
+    const newVarNames = new Set(sanitizedEntries.map(entry => entry.sanitizedName))
 
     // Find variables from current source that will be deleted and clean up references
     draft.variables
@@ -141,9 +145,8 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     })
 
     // Add or update variables
-    newData.forEach((item) => {
-      const varName = item.name
-      const existingVarIndex = draft.variables.findIndex(v => v.variable === varName)
+    sanitizedEntries.forEach(({ item, sanitizedName }) => {
+      const existingVarIndex = draft.variables.findIndex(v => v.variable === sanitizedName)
 
       const inputVarType = 'type' in item
         ? item.type
@@ -152,7 +155,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
       const newVar: Variable = {
         value_type: inputVarType,
         label: sourceType, // Use sourceType as label to identify source
-        variable: varName,
+        variable: sanitizedName,
         value_selector: [],
         required: item.required,
       }

@@ -85,15 +85,30 @@ class TriggerWebhookNode(Node):
         # Get the raw webhook data (should be injected by Celery task)
         webhook_data = webhook_inputs.get("webhook_data", {})
 
+        def _to_sanitized(name: str) -> str:
+            return name.replace("-", "_")
+
+        def _get_normalized(mapping: dict[str, Any], key: str) -> Any:
+            if not isinstance(mapping, dict):
+                return None
+            if key in mapping:
+                return mapping[key]
+            alternate = key.replace("-", "_") if "-" in key else key.replace("_", "-")
+            if alternate in mapping:
+                return mapping[alternate]
+            return None
+
         # Extract configured headers (case-insensitive)
         webhook_headers = webhook_data.get("headers", {})
         webhook_headers_lower = {k.lower(): v for k, v in webhook_headers.items()}
 
         for header in self._node_data.headers:
             header_name = header.name
-            # Try exact match first, then case-insensitive match
-            value = webhook_headers.get(header_name) or webhook_headers_lower.get(header_name.lower())
-            outputs[header_name] = value
+            value = _get_normalized(webhook_headers, header_name)
+            if value is None:
+                value = _get_normalized(webhook_headers_lower, header_name.lower())
+            sanitized_name = _to_sanitized(header_name)
+            outputs[sanitized_name] = value
 
         # Extract configured query parameters
         for param in self._node_data.params:
