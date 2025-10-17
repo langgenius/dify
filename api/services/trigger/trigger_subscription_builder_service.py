@@ -385,7 +385,9 @@ class TriggerSubscriptionBuilderService:
             credentials=masked_credentials(
                 schemas=controller.get_credentials_schema(credential_type),
                 credentials=entity.credentials,
-            ) if controller.get_subscription_constructor() else {},
+            )
+            if controller.get_subscription_constructor()
+            else {},
         )
 
     @classmethod

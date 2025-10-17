@@ -4,8 +4,7 @@ from typing import Any, Literal, Optional, Union
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from core.trigger.entities.entities import EventParameter
-from core.workflow.enums import ErrorStrategy
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.base.entities import BaseNodeData
 from core.workflow.nodes.trigger_plugin.exc import TriggerEventParameterError
 
 
@@ -27,14 +26,14 @@ class TriggerEventNodeData(BaseNodeData):
 
             if type == "mixed" and not isinstance(value, str):
                 raise ValueError("value must be a string")
-            
+
             if type == "variable":
                 if not isinstance(value, list):
                     raise ValueError("value must be a list")
                 for val in value:
                     if not isinstance(val, str):
                         raise ValueError("value must be a list of strings")
-            
+
             if type == "constant" and not isinstance(value, str | int | float | bool | dict | list):
                 raise ValueError("value must be a string, int, float, bool or dict")
             return type
@@ -47,12 +46,6 @@ class TriggerEventNodeData(BaseNodeData):
     subscription_id: str = Field(..., description="Subscription ID")
     plugin_unique_identifier: str = Field(..., description="Plugin unique identifier")
     event_parameters: Mapping[str, TriggerEventInput] = Field(default_factory=dict, description="Trigger parameters")
-
-    # Error handling
-    error_strategy: Optional[ErrorStrategy] = Field(
-        default=ErrorStrategy.FAIL_BRANCH, description="Error handling strategy"
-    )
-    retry_config: RetryConfig = Field(default_factory=lambda: RetryConfig(), description="Retry configuration")
 
     def resolve_parameters(
         self,
