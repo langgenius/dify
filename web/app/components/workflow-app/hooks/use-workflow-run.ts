@@ -25,13 +25,15 @@ import { useSetWorkflowVarsWithValue } from '../../workflow/hooks/use-fetch-work
 import { useConfigsMap } from './use-configs-map'
 import { API_PREFIX } from '@/config'
 import { ContentType, getAccessToken, getBaseOptions } from '@/service/fetch'
+import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 
-type HandleRunMode = 'default' | 'schedule' | 'webhook' | 'plugin'
+type HandleRunMode = TriggerType
 type HandleRunOptions = {
   mode?: HandleRunMode
   scheduleNodeId?: string
   webhookNodeId?: string
   pluginNodeId?: string
+  allNodeIds?: string[]
 }
 
 export const useWorkflowRun = () => {
@@ -126,7 +128,7 @@ export const useWorkflowRun = () => {
     callback?: IOtherOptions,
     options?: HandleRunOptions,
   ) => {
-    const runMode: HandleRunMode = options?.mode ?? 'default'
+    const runMode: HandleRunMode = options?.mode ?? TriggerType.UserInput
     const resolvedParams = params ?? {}
     const {
       getNodes,
@@ -170,12 +172,19 @@ export const useWorkflowRun = () => {
     const isInWorkflowDebug = appDetail?.mode === 'workflow'
 
     let url = ''
-    if (runMode === 'plugin' || runMode === 'webhook' || runMode === 'schedule') {
+    if (runMode === TriggerType.Plugin || runMode === TriggerType.Webhook || runMode === TriggerType.Schedule) {
       if (!appDetail?.id) {
         console.error('handleRun: missing app id for trigger plugin run')
         return
       }
       url = `/apps/${appDetail.id}/workflows/draft/trigger/run`
+    }
+    else if (runMode === TriggerType.All) {
+      if (!appDetail?.id) {
+        console.error('handleRun: missing app id for trigger run all')
+        return
+      }
+      url = `/apps/${appDetail.id}/workflows/draft/trigger/run-all`
     }
     else if (appDetail?.mode === 'advanced-chat') {
       url = `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
@@ -186,14 +195,17 @@ export const useWorkflowRun = () => {
 
     let requestBody = {}
 
-    if (runMode === 'schedule')
+    if (runMode === TriggerType.Schedule)
       requestBody = { node_id: options?.scheduleNodeId }
 
-    else if (runMode === 'webhook')
+    else if (runMode === TriggerType.Webhook)
       requestBody = { node_id: options?.webhookNodeId }
 
-    else if (runMode === 'plugin')
+    else if (runMode === TriggerType.Plugin)
       requestBody = { node_id: options?.pluginNodeId }
+
+    else if (runMode === TriggerType.All)
+      requestBody = { node_ids: options?.allNodeIds }
 
     else
       requestBody = resolvedParams
@@ -201,18 +213,23 @@ export const useWorkflowRun = () => {
     if (!url)
       return
 
-    if (runMode === 'schedule' && !options?.scheduleNodeId) {
+    if (runMode === TriggerType.Schedule && !options?.scheduleNodeId) {
       console.error('handleRun: schedule trigger run requires node id')
       return
     }
 
-    if (runMode === 'webhook' && !options?.webhookNodeId) {
+    if (runMode === TriggerType.Webhook && !options?.webhookNodeId) {
       console.error('handleRun: webhook trigger run requires node id')
       return
     }
 
-    if (runMode === 'plugin' && !options?.pluginNodeId) {
+    if (runMode === TriggerType.Plugin && !options?.pluginNodeId) {
       console.error('handleRun: plugin trigger run requires node id')
+      return
+    }
+
+    if (runMode === TriggerType.All && !options?.allNodeIds && options?.allNodeIds?.length === 0) {
+      console.error('handleRun: all trigger run requires node ids')
       return
     }
 
@@ -227,7 +244,7 @@ export const useWorkflowRun = () => {
       setListeningTriggerNodeId,
     } = workflowStore.getState()
 
-    if (runMode === 'webhook' || runMode === 'plugin') {
+    if (runMode === TriggerType.Webhook || runMode === TriggerType.Plugin || runMode === TriggerType.All) {
       setIsListening(true)
       setShowVariableInspectPanel(true)
       setWorkflowRunningData({
@@ -430,7 +447,7 @@ export const useWorkflowRun = () => {
       }, { once: true })
     })
 
-    const runTriggerDebug = async (debugType: 'webhook' | 'plugin') => {
+    const runTriggerDebug = async (debugType: TriggerType.Webhook | TriggerType.Plugin | TriggerType.All) => {
       const urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
         ? url
         : `${API_PREFIX}${url.startsWith('/') ? url : `/${url}`}`
@@ -438,13 +455,13 @@ export const useWorkflowRun = () => {
       const controller = new AbortController()
       abortControllerRef.current = controller
 
-      const controllerKey = debugType === 'webhook'
+      const controllerKey = debugType === TriggerType.Webhook
         ? '__webhookDebugAbortController'
         : '__pluginDebugAbortController'
 
       ;(window as any)[controllerKey] = controller
 
-      const debugLabel = debugType === 'webhook' ? 'Webhook' : 'Plugin'
+      const debugLabel = debugType === TriggerType.Webhook ? 'Webhook' : debugType === TriggerType.Plugin ? 'Plugin' : 'All'
 
       const poll = async (): Promise<void> => {
         try {
@@ -559,13 +576,18 @@ export const useWorkflowRun = () => {
       await poll()
     }
 
-    if (runMode === 'webhook') {
-      await runTriggerDebug('webhook')
+    if (runMode === TriggerType.Webhook) {
+      await runTriggerDebug(TriggerType.Webhook)
       return
     }
 
-    if (runMode === 'plugin') {
-      await runTriggerDebug('plugin')
+    if (runMode === TriggerType.Plugin) {
+      await runTriggerDebug(TriggerType.Plugin)
+      return
+    }
+
+    if (runMode === TriggerType.All) {
+      await runTriggerDebug(TriggerType.All)
       return
     }
 

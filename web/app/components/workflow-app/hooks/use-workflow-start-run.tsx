@@ -12,6 +12,7 @@ import {
   useNodesSyncDraft,
   useWorkflowRun,
 } from '.'
+import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 
 export const useWorkflowStartRun = () => {
   const store = useStoreApi()
@@ -102,7 +103,7 @@ export const useWorkflowStartRun = () => {
       {},
       undefined,
       {
-        mode: 'schedule',
+        mode: TriggerType.Schedule,
         scheduleNodeId: nodeId,
       },
     )
@@ -150,7 +151,7 @@ export const useWorkflowStartRun = () => {
       { node_id: nodeId },
       undefined,
       {
-        mode: 'webhook',
+        mode: TriggerType.Webhook,
         webhookNodeId: nodeId,
       },
     )
@@ -195,8 +196,39 @@ export const useWorkflowStartRun = () => {
       { node_id: nodeId },
       undefined,
       {
-        mode: 'plugin',
+        mode: TriggerType.Plugin,
         pluginNodeId: nodeId,
+      },
+    )
+  }, [store, workflowStore, handleRun, doSyncWorkflowDraft])
+
+  const handleWorkflowRunAllTriggersInWorkflow = useCallback(async (nodeIds: string[]) => {
+    if (!nodeIds.length)
+      return
+    const {
+      workflowRunningData,
+      showDebugAndPreviewPanel,
+      setShowDebugAndPreviewPanel,
+      setShowInputsPanel,
+      setShowEnvPanel,
+    } = workflowStore.getState()
+
+    if (workflowRunningData?.result.status === WorkflowRunningStatus.Running)
+      return
+
+    setShowEnvPanel(false)
+    setShowInputsPanel(false)
+
+    if (!showDebugAndPreviewPanel)
+      setShowDebugAndPreviewPanel(true)
+
+    await doSyncWorkflowDraft()
+    handleRun(
+      { node_ids: nodeIds },
+      undefined,
+      {
+        mode: TriggerType.All,
+        allNodeIds: nodeIds,
       },
     )
   }, [store, workflowStore, handleRun, doSyncWorkflowDraft])
@@ -235,5 +267,6 @@ export const useWorkflowStartRun = () => {
     handleWorkflowTriggerScheduleRunInWorkflow,
     handleWorkflowTriggerWebhookRunInWorkflow,
     handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow,
   }
 }

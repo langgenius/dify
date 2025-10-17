@@ -3,7 +3,7 @@ import { useNodes } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { BlockEnum, type CommonNodeType } from '../types'
 import { getWorkflowEntryNode } from '../utils/workflow-entry'
-import type { TestRunOptions, TriggerOption } from '../header/test-run-menu'
+import { type TestRunOptions, type TriggerOption, TriggerType } from '../header/test-run-menu'
 import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import BlockIcon from '../block-icon'
 import { useStore } from '../store'
@@ -30,7 +30,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
       if (nodeData.type === BlockEnum.Start) {
         userInput = {
           id: node.id,
-          type: 'user_input',
+          type: TriggerType.UserInput,
           name: nodeData.title || t('workflow.blocks.start'),
           icon: (
             <BlockIcon
@@ -45,7 +45,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
       else if (nodeData.type === BlockEnum.TriggerSchedule) {
         allTriggers.push({
           id: node.id,
-          type: 'schedule',
+          type: TriggerType.Schedule,
           name: nodeData.title || t('workflow.blocks.trigger-schedule'),
           icon: (
             <BlockIcon
@@ -60,7 +60,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
       else if (nodeData.type === BlockEnum.TriggerWebhook) {
         allTriggers.push({
           id: node.id,
-          type: 'webhook',
+          type: TriggerType.Webhook,
           name: nodeData.title || t('workflow.blocks.trigger-webhook'),
           icon: (
             <BlockIcon
@@ -90,7 +90,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
 
         allTriggers.push({
           id: node.id,
-          type: 'plugin',
+          type: TriggerType.Plugin,
           name: nodeData.title || (nodeData as any).plugin_name || t('workflow.blocks.trigger-plugin'),
           icon,
           nodeId: node.id,
@@ -104,7 +104,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
       if (startNode && startNode.data?.type === BlockEnum.Start) {
         userInput = {
           id: startNode.id,
-          type: 'user_input',
+          type: TriggerType.UserInput,
           name: (startNode.data as CommonNodeType)?.title || t('workflow.blocks.start'),
           icon: (
             <BlockIcon
@@ -118,15 +118,20 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
       }
     }
 
-    const runAll: TriggerOption | undefined = allTriggers.length > 1 ? {
+    const triggerNodeIds = allTriggers
+      .map(trigger => trigger.nodeId)
+      .filter((nodeId): nodeId is string => Boolean(nodeId))
+
+    const runAll: TriggerOption | undefined = triggerNodeIds.length > 1 ? {
       id: 'run-all',
-      type: 'all',
+      type: TriggerType.All,
       name: t('workflow.common.runAllTriggers'),
       icon: (
         <div className="flex h-6 w-6 items-center justify-center rounded-lg border-[0.5px] border-white/2 bg-util-colors-purple-purple-500 text-white shadow-md">
           <TriggerAll className="h-4.5 w-4.5" />
         </div>
       ),
+      relatedNodeIds: triggerNodeIds,
       enabled: true,
     } : undefined
 

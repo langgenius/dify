@@ -10,7 +10,7 @@ import cn from '@/utils/classnames'
 import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
-import TestRunMenu, { type TestRunMenuRef, type TriggerOption } from './test-run-menu'
+import TestRunMenu, { type TestRunMenuRef, type TriggerOption, TriggerType } from './test-run-menu'
 
 type RunModeProps = {
   text?: string
@@ -25,6 +25,7 @@ const RunMode = ({
     handleWorkflowTriggerScheduleRunInWorkflow,
     handleWorkflowTriggerWebhookRunInWorkflow,
     handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow,
   } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
   const { validateBeforeRun } = useWorkflowRunValidation()
@@ -57,19 +58,24 @@ const RunMode = ({
     if (!validateBeforeRun())
       return
 
-    if (option.type === 'user_input') {
+    if (option.type === TriggerType.UserInput) {
       handleWorkflowStartRunInWorkflow()
     }
-    else if (option.type === 'schedule') {
+    else if (option.type === TriggerType.Schedule) {
       handleWorkflowTriggerScheduleRunInWorkflow(option.nodeId)
     }
-    else if (option.type === 'webhook') {
+    else if (option.type === TriggerType.Webhook) {
       if (option.nodeId)
         handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: option.nodeId })
     }
-    else if (option.type === 'plugin') {
+    else if (option.type === TriggerType.Plugin) {
       if (option.nodeId)
         handleWorkflowTriggerPluginRunInWorkflow(option.nodeId)
+    }
+    else if (option.type === TriggerType.All) {
+      const targetNodeIds = option.relatedNodeIds?.filter(Boolean)
+      if (targetNodeIds && targetNodeIds.length > 0)
+        handleWorkflowRunAllTriggersInWorkflow(targetNodeIds)
     }
     else {
       // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types
@@ -80,6 +86,8 @@ const RunMode = ({
     handleWorkflowStartRunInWorkflow,
     handleWorkflowTriggerScheduleRunInWorkflow,
     handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow,
   ])
 
   const { eventEmitter } = useEventEmitterContextContext()

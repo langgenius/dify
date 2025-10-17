@@ -19,12 +19,21 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import ShortcutsName from '../shortcuts-name'
 
+export enum TriggerType {
+  UserInput = 'user_input',
+  Schedule = 'schedule',
+  Webhook = 'webhook',
+  Plugin = 'plugin',
+  All = 'all',
+}
+
 export type TriggerOption = {
   id: string
-  type: 'user_input' | 'schedule' | 'webhook' | 'plugin' | 'all'
+  type: TriggerType
   name: string
   icon: React.ReactNode
   nodeId?: string
+  relatedNodeIds?: string[]
   enabled: boolean
 }
 

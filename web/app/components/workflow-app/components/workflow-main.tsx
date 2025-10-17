@@ -69,6 +69,7 @@ const WorkflowMain = ({
     handleWorkflowTriggerScheduleRunInWorkflow,
     handleWorkflowTriggerWebhookRunInWorkflow,
     handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow,
   } = useWorkflowStartRun()
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
@@ -114,6 +115,7 @@ const WorkflowMain = ({
       handleWorkflowTriggerScheduleRunInWorkflow,
       handleWorkflowTriggerWebhookRunInWorkflow,
       handleWorkflowTriggerPluginRunInWorkflow,
+      handleWorkflowRunAllTriggersInWorkflow,
       availableNodesMetaData,
       getWorkflowRunAndTraceUrl,
       exportCheck,
@@ -150,6 +152,7 @@ const WorkflowMain = ({
     handleWorkflowTriggerScheduleRunInWorkflow,
     handleWorkflowTriggerWebhookRunInWorkflow,
     handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow,
     availableNodesMetaData,
     getWorkflowRunAndTraceUrl,
     exportCheck,
