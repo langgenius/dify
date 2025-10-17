@@ -1,4 +1,3 @@
-import pytest
 
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 
