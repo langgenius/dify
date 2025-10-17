@@ -2,7 +2,7 @@ import logging
 
 from flask import request
 from flask_restx import Resource, fields, reqparse
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
 from controllers.console import api, console_ns
@@ -15,7 +15,7 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -151,13 +151,8 @@ class ChatMessageApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
+    @edit_permission_required
     def post(self, app_model):
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, location="json")
         parser.add_argument("query", type=str, required=True, location="json")
