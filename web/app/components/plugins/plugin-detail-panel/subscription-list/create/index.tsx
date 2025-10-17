@@ -100,7 +100,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
     ]
   }, [t, oauthConfig, supportedMethods, methodType])
 
-  const onChooseCreateType = (type: SupportedCreationMethods) => {
+  const onChooseCreateType = async (type: SupportedCreationMethods) => {
     if (type === SupportedCreationMethods.OAUTH) {
       if (oauthConfig?.configured) {
         initiateOAuth(detail?.provider || '', {
@@ -115,10 +115,10 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
               }
             })
           },
-          onError: (error: any) => {
+          onError: () => {
             Toast.notify({
               type: 'error',
-              message: error?.message || t('pluginTrigger.modal.errors.authFailed'),
+              message: t('pluginTrigger.modal.oauth.authorization.authFailed'),
             })
           },
         })

@@ -7,6 +7,7 @@ import Toast from '@/app/components/base/toast'
 import type { TriggerOAuthClientParams, TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { openOAuthPopup } from '@/hooks/use-oauth'
+import type { ConfigureTriggerOAuthPayload } from '@/service/use-triggers'
 import {
   useConfigureTriggerOAuth,
   useDeleteTriggerOAuth,
@@ -71,10 +72,11 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
           }
         })
       },
-      onError: (error: any) => {
+      onError: () => {
+        setAuthorizationStatus(AuthorizationStatusEnum.Failed)
         Toast.notify({
           type: 'error',
-          message: error?.message || t('pluginTrigger.modal.errors.authFailed'),
+          message: t('pluginTrigger.modal.oauth.authorization.authFailed'),
         })
       },
     })
@@ -125,28 +127,32 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
   }
 
   const handleSave = (needAuth: boolean) => {
-    const clientParams = clientFormRef.current?.getFormValues({})?.values || {}
-    if (clientParams.client_id === oauthConfig?.params.client_id)
-      clientParams.client_id = '[__HIDDEN__]'
-
-    if (clientParams.client_secret === oauthConfig?.params.client_secret)
-      clientParams.client_secret = '[__HIDDEN__]'
-
-    configureOAuth({
+    const isCustom = clientType === ClientTypeEnum.Custom
+    const params: ConfigureTriggerOAuthPayload = {
       provider: providerName,
-      client_params: clientParams as TriggerOAuthClientParams,
-      enabled: clientType === ClientTypeEnum.Custom,
-    }, {
+      enabled: isCustom,
+    }
+
+    if (isCustom) {
+      const clientFormValues = clientFormRef.current?.getFormValues({}) as { values: TriggerOAuthClientParams, isCheckValidated: boolean }
+      if (!clientFormValues.isCheckValidated)
+        return
+      const clientParams = clientFormValues.values
+      if (clientParams.client_id === oauthConfig?.params.client_id)
+        clientParams.client_id = '[__HIDDEN__]'
+
+      if (clientParams.client_secret === oauthConfig?.params.client_secret)
+        clientParams.client_secret = '[__HIDDEN__]'
+
+      params.client_params = clientParams
+    }
+
+    configureOAuth(params, {
       onSuccess: () => {
         if (needAuth)
           handleAuthorization()
         else
           onClose()
-
-        Toast.notify({
-          type: 'success',
-          message: t('pluginTrigger.modal.oauth.configuration.success'),
-        })
       },
       onError: (error: any) => {
         Toast.notify({

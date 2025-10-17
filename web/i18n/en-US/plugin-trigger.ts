@@ -116,7 +116,7 @@ const translation = {
         authorizeButton: 'Authorize with {{provider}}',
         waitingAuth: 'Waiting for authorization...',
         authSuccess: 'Authorization successful',
-        authFailed: 'Authorization failed',
+        authFailed: 'Failed to get OAuth authorization information',
         waitingJump: 'Authorized, waiting for jump',
       },
       configuration: {

@@ -116,7 +116,7 @@ const translation = {
         authorizeButton: '使用 {{provider}} 授权',
         waitingAuth: '等待授权中...',
         authSuccess: '授权成功',
-        authFailed: '授权失败',
+        authFailed: '获取 OAuth 授权信息失败',
         waitingJump: '已授权，待跳转',
       },
       configuration: {

@@ -233,14 +233,16 @@ export const useTriggerOAuthConfig = (provider: string, enabled = true) => {
   })
 }
 
+export type ConfigureTriggerOAuthPayload = {
+  provider: string
+  client_params?: TriggerOAuthClientParams
+  enabled: boolean
+}
+
 export const useConfigureTriggerOAuth = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'configure-oauth'],
-    mutationFn: (payload: {
-      provider: string
-      client_params: TriggerOAuthClientParams
-      enabled: boolean
-    }) => {
+    mutationFn: (payload: ConfigureTriggerOAuthPayload) => {
       const { provider, ...body } = payload
       return post<{ result: string }>(
         `/workspaces/current/trigger-provider/${provider}/oauth/client`,
@@ -267,6 +269,8 @@ export const useInitiateTriggerOAuth = () => {
     mutationFn: (provider: string) => {
       return get<{ authorization_url: string; subscription_builder: TriggerSubscriptionBuilder }>(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/oauth/authorize`,
+        {},
+        { silent: true },
       )
     },
   })
