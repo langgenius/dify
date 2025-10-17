@@ -941,13 +941,12 @@ class DraftWorkflowTriggerRunApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @edit_permission_required
     def post(self, app_model: App):
         """
         Poll for trigger events and execute full workflow when event arrives
         """
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
-            raise Forbidden()
-
+        current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("node_id", type=str, required=True, location="json", nullable=False)
         args = parser.parse_args()
@@ -1007,12 +1006,12 @@ class DraftWorkflowTriggerNodeApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
         Poll for trigger events and execute single node when event arrives
         """
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
 
         workflow_service = WorkflowService()
         draft_workflow = workflow_service.get_draft_workflow(app_model)
@@ -1097,12 +1096,12 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
+    @edit_permission_required
     def post(self, app_model: App):
         """
         Full workflow debug when the start node is a trigger
         """
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
         parser.add_argument("node_ids", type=list, required=True, location="json", nullable=False)
