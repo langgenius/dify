@@ -21,6 +21,8 @@ export type IGAProps = {
 const GA: FC<IGAProps> = ({
   gaType,
 }) => {
+  console.log('IS_CE_EDITION', IS_CE_EDITION)
+  console.log('process.env.NODE_ENV', process.env.NODE_ENV)
   if (IS_CE_EDITION)
     return null
 
