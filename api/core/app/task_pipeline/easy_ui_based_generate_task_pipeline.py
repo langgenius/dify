@@ -95,7 +95,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
         self._message_id = message.id
         self._message_created_at = int(message.created_at.timestamp())
-        
+
         self._show_reasoning = self._get_show_reasoning_config(conversation.app_id)
 
         self._task_state = EasyUITaskState(
@@ -113,7 +113,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         )
 
         self._conversation_name_generate_thread: Thread | None = None
-        
+
         self._think_buffer = ""
         self._in_think_tag = False
 
@@ -132,8 +132,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
     @staticmethod
     def _filter_think_tags(text: str) -> str:
         """Filter out <think> tags and their content from text."""
-        return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL | re.IGNORECASE)
-    
+        return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
+
     def _filter_think_tags_streaming(self, delta_text: str) -> str:
         """
         Filter out <think> tags in streaming mode.
@@ -142,16 +142,16 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         """
         if self._show_reasoning:
             return delta_text
-        
+
         result = ""
         self._think_buffer += delta_text
-        
+
         while self._think_buffer:
             if not self._in_think_tag:
-                think_start = self._think_buffer.lower().find('<think>')
+                think_start = self._think_buffer.lower().find("<think>")
                 if think_start == -1:
-                    if '<' in self._think_buffer:
-                        last_bracket = self._think_buffer.rfind('<')
+                    if "<" in self._think_buffer:
+                        last_bracket = self._think_buffer.rfind("<")
                         result += self._think_buffer[:last_bracket]
                         self._think_buffer = self._think_buffer[last_bracket:]
                     else:
@@ -160,20 +160,20 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                     break
                 else:
                     result += self._think_buffer[:think_start]
-                    self._think_buffer = self._think_buffer[think_start + 7:]
+                    self._think_buffer = self._think_buffer[think_start + 7 :]
                     self._in_think_tag = True
             else:
-                think_end = self._think_buffer.lower().find('</think>')
+                think_end = self._think_buffer.lower().find("</think>")
                 if think_end == -1:
-                    if '</' in self._think_buffer and len(self._think_buffer) < 10:
+                    if "</" in self._think_buffer and len(self._think_buffer) < 10:
                         break
                     else:
                         self._think_buffer = ""
                     break
                 else:
-                    self._think_buffer = self._think_buffer[think_end + 8:]
+                    self._think_buffer = self._think_buffer[think_end + 8 :]
                     self._in_think_tag = False
-        
+
         return result
 
     def process(
