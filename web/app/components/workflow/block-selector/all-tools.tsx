@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import type {
   BlockEnum,
   ToolWithProvider,
@@ -19,6 +20,8 @@ import Tools from './tools'
 import { useToolTabs } from './hooks'
 import ViewTypeSelect, { ViewType } from './view-type-select'
 import cn from '@/utils/classnames'
+import Button from '@/app/components/base/button'
+import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import { useGetLanguage } from '@/context/i18n'
 import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
@@ -26,6 +29,7 @@ import { PluginCategoryEnum } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import RAGToolSuggestions from './rag-tool-suggestions'
+import Link from 'next/link'
 
 type AllToolsProps = {
   className?: string
@@ -64,11 +68,15 @@ const AllTools = ({
   onTagsChange,
   isInRAGPipeline = false,
 }: AllToolsProps) => {
+  const { t } = useTranslation()
   const language = useGetLanguage()
   const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
   const [activeView, setActiveView] = useState<ViewType>(ViewType.flat)
-  const hasFilter = searchText || tags.length > 0
+  const trimmedSearchText = searchText.trim()
+  const hasSearchText = trimmedSearchText.length > 0
+  const hasTags = tags.length > 0
+  const hasFilter = hasSearchText || hasTags
   const isMatchingKeywords = (text: string, keywords: string) => {
     return text.toLowerCase().includes(keywords.toLowerCase())
   }
@@ -85,7 +93,7 @@ const AllTools = ({
     if (activeTab === ToolTypeEnum.MCP)
       mergedTools = mcpTools
 
-    const normalizedSearch = searchText.trim().toLowerCase()
+    const normalizedSearch = trimmedSearchText.toLowerCase()
 
     if (!hasFilter || !normalizedSearch)
       return mergedTools.filter(toolWithProvider => toolWithProvider.tools.length > 0)
@@ -120,7 +128,7 @@ const AllTools = ({
 
       return acc
     }, [])
-  }, [activeTab, buildInTools, customTools, workflowTools, mcpTools, searchText, language, hasFilter])
+  }, [activeTab, buildInTools, customTools, workflowTools, mcpTools, trimmedSearchText, language, hasFilter])
 
   const {
     queryPluginsWithDebounced: fetchPlugins,
@@ -130,20 +138,23 @@ const AllTools = ({
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   useEffect(() => {
     if (!enable_marketplace) return
-    if (searchText || tags.length > 0) {
+    if (hasFilter) {
       fetchPlugins({
         query: searchText,
         tags,
         category: PluginCategoryEnum.tool,
       })
     }
-  }, [searchText, tags, enable_marketplace])
+  }, [searchText, tags, enable_marketplace, hasFilter, fetchPlugins])
 
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
   const isSupportGroupView = [ToolTypeEnum.All, ToolTypeEnum.BuiltIn].includes(activeTab)
 
   const isShowRAGRecommendations = isInRAGPipeline && activeTab === ToolTypeEnum.All && !hasFilter
+  const hasToolsContent = tools.length > 0
+  const hasPluginContent = enable_marketplace && notInstalledPlugins.length > 0
+  const shouldShowEmptyState = hasFilter && !hasToolsContent && !hasPluginContent
 
   return (
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
@@ -171,39 +182,62 @@ const AllTools = ({
       </div>
       <div
         ref={wrapElemRef}
-        className='max-h-[464px] overflow-y-auto'
+        className='flex max-h-[464px] flex-col overflow-y-auto'
         onScroll={pluginRef.current?.handleScroll}
       >
-        {isShowRAGRecommendations && onTagsChange && (
-          <RAGToolSuggestions
-            viewType={isSupportGroupView ? activeView : ViewType.flat}
+        <div className={cn('flex-1', shouldShowEmptyState && 'hidden')}>
+          {isShowRAGRecommendations && onTagsChange && (
+            <RAGToolSuggestions
+              viewType={isSupportGroupView ? activeView : ViewType.flat}
+              onSelect={onSelect}
+              onTagsChange={onTagsChange}
+            />
+          )}
+          <Tools
+            className={toolContentClassName}
+            tools={tools}
             onSelect={onSelect}
-            onTagsChange={onTagsChange}
+            canNotSelectMultiple={canNotSelectMultiple}
+            onSelectMultiple={onSelectMultiple}
+            toolType={activeTab}
+            viewType={isSupportGroupView ? activeView : ViewType.flat}
+            hasSearchText={hasSearchText}
+            selectedTools={selectedTools}
+            canChooseMCPTool={canChooseMCPTool}
+            isShowRAGRecommendations={isShowRAGRecommendations}
           />
-        )}
-        <Tools
-          className={toolContentClassName}
-          tools={tools}
-          onSelect={onSelect}
-          canNotSelectMultiple={canNotSelectMultiple}
-          onSelectMultiple={onSelectMultiple}
-          toolType={activeTab}
-          viewType={isSupportGroupView ? activeView : ViewType.flat}
-          hasSearchText={!!searchText}
-          selectedTools={selectedTools}
-          canChooseMCPTool={canChooseMCPTool}
-          isShowRAGRecommendations={isShowRAGRecommendations}
-        />
-        {/* Plugins from marketplace */}
-        {enable_marketplace && (
-          <PluginList
-            ref={pluginRef}
-            wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
-            list={notInstalledPlugins}
-            searchText={searchText}
-            toolContentClassName={toolContentClassName}
-            tags={tags}
-          />
+          {/* Plugins from marketplace */}
+          {enable_marketplace && (
+            <PluginList
+              ref={pluginRef}
+              wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
+              list={notInstalledPlugins}
+              searchText={searchText}
+              toolContentClassName={toolContentClassName}
+              tags={tags}
+            />
+          )}
+        </div>
+
+        {shouldShowEmptyState && (
+          <div className='flex h-full flex-col items-center justify-center gap-3 py-12 text-center'>
+            <SearchMenu className='h-8 w-8 text-text-quaternary' />
+            <div className='text-sm font-medium text-text-secondary'>
+              {t('workflow.tabs.noPluginsFound')}
+            </div>
+            <Link
+              href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
+              target='_blank'
+            >
+              <Button
+                size='small'
+                variant='secondary-accent'
+                className='h-6 px-3 text-xs'
+              >
+                {t('workflow.tabs.requestToCommunity')}
+              </Button>
+            </Link>
+          </div>
         )}
       </div>
     </div>
