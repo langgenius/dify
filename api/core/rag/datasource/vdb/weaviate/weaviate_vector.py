@@ -347,7 +347,10 @@ class WeaviateVector(BaseVector):
         for obj in res.objects:
             properties = dict(obj.properties or {})
             text = properties.pop(Field.TEXT_KEY.value, "")
-            distance = (obj.metadata.distance if obj.metadata else None) or 1.0
+            if obj.metadata and obj.metadata.distance is not None:
+                distance = obj.metadata.distance
+            else:
+                distance = 1.0
             score = 1.0 - distance
 
             if score > score_threshold:
