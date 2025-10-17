@@ -441,7 +441,7 @@ def streamablehttp_client(
                 mcp_client = create_ssrf_proxy_mcp_http_client(headers=transport.request_headers, proxy=proxy)
             else:
                 mcp_client = create_ssrf_proxy_mcp_http_client(headers=transport.request_headers)
-                
+
             with mcp_client as client:
                 # Define callbacks that need access to thread pool
                 def start_get_stream():
