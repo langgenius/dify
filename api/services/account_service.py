@@ -1265,7 +1265,6 @@ class RegisterService:
         :param ip_address: ip address
         """
         try:
-            # Register
             account = AccountService.create_account(
                 email=email,
                 name=name,
