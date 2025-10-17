@@ -11,6 +11,7 @@ import {
   isSystemVar,
 } from '../utils'
 import { VarInInspectType } from '@/types/workflow'
+import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
 
 export const useVarIcon = (variables: string[], variableCategory?: VarInInspectType | string) => {
   if (variableCategory === 'loop')
@@ -53,6 +54,7 @@ export const useVarColor = (variables: string[], isExceptionVariable?: boolean, 
 }
 
 export const useVarName = (variables: string[], notShowFullPath?: boolean) => {
+  const showName = VAR_SHOW_NAME_MAP[variables.join('.')]
   let variableFullPathName = variables.slice(1).join('.')
 
   if (isRagVariableVar(variables))
@@ -65,6 +67,8 @@ export const useVarName = (variables: string[], notShowFullPath?: boolean) => {
     return `${isSystem ? 'sys.' : ''}${varName}`
   }, [variables, notShowFullPath])
 
+  if(showName)
+    return showName
   return varName
 }
 
