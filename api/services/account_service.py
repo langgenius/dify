@@ -1269,7 +1269,7 @@ class RegisterService:
             account = AccountService.create_account(
                 email=email,
                 name=name,
-                interface_language=language or languages[0],
+                interface_language=language if language and language in languages else languages[0],
                 password=password,
                 is_setup=True,
             )
