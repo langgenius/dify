@@ -20,7 +20,8 @@ from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatorUserRole
 from models.model import App, EndUser, Tenant
-from models.workflow import Workflow, WorkflowTriggerLog, WorkflowTriggerStatus
+from models.trigger import WorkflowTriggerLog, WorkflowTriggerStatus
+from models.workflow import Workflow
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.errors.app import WorkflowNotFoundError
 from services.workflow.entities import AsyncTriggerExecutionResult, AsyncTriggerStatus, TriggerData, WorkflowTaskData

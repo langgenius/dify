@@ -12,7 +12,8 @@ from events.event_handlers.sync_workflow_schedule_when_app_published import (
 )
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
-from models.workflow import Workflow, WorkflowSchedulePlan
+from models.trigger import WorkflowSchedulePlan
+from models.workflow import Workflow
 from services.trigger.schedule_service import ScheduleService
 
 

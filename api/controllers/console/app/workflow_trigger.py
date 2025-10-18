@@ -13,7 +13,7 @@ from extensions.ext_database import db
 from fields.workflow_trigger_fields import trigger_fields, triggers_list_fields, webhook_trigger_fields
 from libs.login import current_user, login_required
 from models.model import Account, AppMode
-from models.workflow import AppTrigger, AppTriggerStatus, WorkflowWebhookTrigger
+from models.trigger import AppTrigger, AppTriggerStatus, WorkflowWebhookTrigger
 
 logger = logging.getLogger(__name__)
 

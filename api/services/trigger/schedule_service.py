@@ -11,7 +11,8 @@ from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig, Schedu
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError, ScheduleNotFoundError
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
-from models.workflow import Workflow, WorkflowSchedulePlan
+from models.trigger import WorkflowSchedulePlan
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 

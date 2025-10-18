@@ -9,7 +9,7 @@ from typing import Any, Optional
 from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.orm import Session
 
-from models.workflow import WorkflowTriggerLog, WorkflowTriggerStatus
+from models.trigger import WorkflowTriggerLog, WorkflowTriggerStatus
 from repositories.workflow_trigger_log_repository import TriggerLogOrderBy, WorkflowTriggerLogRepository
 
 

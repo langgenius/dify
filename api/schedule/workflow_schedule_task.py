@@ -8,7 +8,7 @@ from configs import dify_config
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.schedule_utils import calculate_next_run_at
-from models.workflow import AppTrigger, AppTriggerStatus, AppTriggerType, WorkflowSchedulePlan
+from models.trigger import AppTrigger, AppTriggerStatus, AppTriggerType, WorkflowSchedulePlan
 from services.workflow.queue_dispatcher import QueueDispatcherManager
 from tasks.workflow_schedule_tasks import run_schedule_trigger
 
@@ -99,7 +99,7 @@ def _process_schedules(session: Session, schedules: list[WorkflowSchedulePlan]) 
         return 0, 0
 
     dispatcher_manager = QueueDispatcherManager()
-    tasks_to_dispatch = []
+    tasks_to_dispatch: list[str] = []
     rate_limited_count = 0
 
     for schedule in schedules:

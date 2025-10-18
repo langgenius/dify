@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 from core.workflow.nodes import NodeType
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
-from models import AppMode, AppTrigger, AppTriggerStatus, Workflow
+from models import AppMode
+from models.trigger import AppTrigger, AppTriggerStatus
+from models.workflow import Workflow
 
 
 @app_published_workflow_was_updated.connect

@@ -15,7 +15,7 @@ from core.workflow.nodes.trigger_schedule.exc import (
 )
 from extensions.ext_database import db
 from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import WorkflowSchedulePlan
+from models.trigger import WorkflowSchedulePlan
 from services.async_workflow_service import AsyncWorkflowService
 from services.trigger.schedule_service import ScheduleService
 from services.workflow.entities import TriggerData
