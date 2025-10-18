@@ -59,7 +59,7 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models.model import AppMode, Conversation, Message, MessageAgentThought, Site
+from models.model import AppMode, Conversation, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
 
@@ -100,10 +100,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         self._message_id = message.id
         self._message_created_at = int(message.created_at.timestamp())
 
-        if show_reasoning is not None:
-            self._show_reasoning = show_reasoning
-        else:
-            self._show_reasoning = self._get_show_reasoning_config(conversation.app_id)
+        self._show_reasoning = show_reasoning if show_reasoning is not None else True
 
         self._task_state = EasyUITaskState(
             llm_result=LLMResult(
@@ -123,18 +120,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
         self._think_buffer = ""
         self._in_think_tag = False
-
-    def _get_show_reasoning_config(self, app_id: str) -> bool:
-        """Get show_reasoning configuration from site."""
-        try:
-            with Session(db.engine) as session:
-                site = session.scalar(select(Site).where(Site.app_id == app_id))
-                if site:
-                    return site.show_reasoning
-                return True
-        except Exception:
-            logger.exception("Failed to get show_reasoning config")
-            return True
 
     @staticmethod
     def _filter_think_tags(text: str) -> str:
@@ -157,10 +142,15 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             if not self._in_think_tag:
                 think_start = self._think_buffer.lower().find(self.THINK_TAG.lower())
                 if think_start == -1:
-                    if "<" in self._think_buffer:
-                        last_bracket = self._think_buffer.rfind("<")
-                        result += self._think_buffer[:last_bracket]
-                        self._think_buffer = self._think_buffer[last_bracket:]
+                    last_lt = self._think_buffer.rfind("<")
+                    if last_lt != -1:
+                        suffix = self._think_buffer[last_lt + 1 :].lower()
+                        if self.THINK_TAG[1:].lower().startswith(suffix) and suffix:
+                            result += self._think_buffer[:last_lt]
+                            self._think_buffer = self._think_buffer[last_lt:]
+                        else:
+                            result += self._think_buffer
+                            self._think_buffer = ""
                     else:
                         result += self._think_buffer
                         self._think_buffer = ""
@@ -172,8 +162,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             else:
                 think_end = self._think_buffer.lower().find(self.END_THINK_TAG.lower())
                 if think_end == -1:
-                    if "</" in self._think_buffer and len(self._think_buffer) < 10:
-                        break
+                    last_lt = self._think_buffer.rfind("</")
+                    if last_lt != -1:
+                        suffix = self._think_buffer[last_lt + 2 :].lower()
+                        if self.END_THINK_TAG[2:].lower().startswith(suffix) and suffix:
+                            self._think_buffer = self._think_buffer[last_lt:]
+                        else:
+                            self._think_buffer = ""
                     else:
                         self._think_buffer = ""
                     break
