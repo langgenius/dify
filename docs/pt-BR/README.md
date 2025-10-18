@@ -125,7 +125,13 @@ Após a execução, você pode acessar o painel do Dify no navegador em [http://
 ## Próximos passos
 
 Se precisar personalizar a configuração, consulte os comentários no nosso arquivo [.env.example](../../docker/.env.example) e atualize os valores correspondentes no seu arquivo `.env`. Além disso, talvez seja necessário fazer ajustes no próprio arquivo `docker-compose.yaml`, como alterar versões de imagem, mapeamentos de portas ou montagens de volumes, com base no seu ambiente de implantação específico e nas suas necessidades. Após fazer quaisquer alterações, execute novamente `docker-compose up -d`. Você pode encontrar a lista completa de variáveis de ambiente disponíveis [aqui](https://docs.dify.ai/getting-started/install-self-hosted/environments).
+### Monitoramento de Métricas com Grafana
 
+Importe o dashboard para o Grafana, usando o banco de dados PostgreSQL do Dify como fonte de dados, para monitorar métricas na granularidade de aplicativos, inquilinos, mensagens e muito mais.
+
+- [Dashboard do Grafana por @bowenliang123](https://github.com/bowenliang123/dify-grafana-dashboard)
+
+### Implantação com Kubernetes
 Se deseja configurar uma instalação de alta disponibilidade, há [Helm Charts](https://helm.sh/) e arquivos YAML contribuídos pela comunidade que permitem a implantação do Dify no Kubernetes.
 
 - [Helm Chart de @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
