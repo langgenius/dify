@@ -136,11 +136,20 @@ class KnowledgeIndexNode(Node):
         document = db.session.query(Document).filter_by(id=document_id.value).first()
         if not document:
             raise KnowledgeIndexNodeError(f"Document {document_id.value} not found.")
+
+        # Eagerly load all attributes that will be needed later to avoid lazy loading issues
         doc_id_value = document.id
         ds_id_value = dataset.id
         dataset_name_value = dataset.name
         document_name_value = document.name
         created_at_value = document.created_at
+        # Force load created_by to avoid detached instance errors
+        _ = document.created_by
+        _ = dataset.tenant_id
+        _ = dataset.embedding_model_provider
+        _ = dataset.embedding_model
+        _ = dataset.indexing_technique
+
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
         index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
@@ -157,6 +166,21 @@ class KnowledgeIndexNode(Node):
                 for segment in segments:
                     db.session.delete(segment)
                 db.session.commit()
+                # Re-query objects after commit to ensure they're bound to the session
+                requeried_dataset = db.session.query(Dataset).filter_by(id=ds_id_value).first()
+                if not requeried_dataset:
+                    raise KnowledgeIndexNodeError(f"Dataset {ds_id_value} not found after commit.")
+                dataset = requeried_dataset
+                requeried_document = db.session.query(Document).filter_by(id=doc_id_value).first()
+                if not requeried_document:
+                    raise KnowledgeIndexNodeError(f"Document {doc_id_value} not found after commit.")
+                document = requeried_document
+                # Eagerly load attributes again
+                _ = document.created_by
+                _ = dataset.tenant_id
+                _ = dataset.embedding_model_provider
+                _ = dataset.embedding_model
+                _ = dataset.indexing_technique
         index_processor.index(dataset, document, chunks)
         indexing_end_at = time.perf_counter()
         document.indexing_latency = indexing_end_at - indexing_start_at
