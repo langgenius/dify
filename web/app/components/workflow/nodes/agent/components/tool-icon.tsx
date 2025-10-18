@@ -11,8 +11,8 @@ import AppIcon from '@/app/components/base/app-icon'
 type Status = 'not-installed' | 'not-authorized' | undefined
 
 export type ToolIconProps = {
-  id: string
-  providerName: string
+  readonly id: string
+  readonly providerName: string
 }
 
 export const ToolIcon = memo(({ providerName }: ToolIconProps) => {

@@ -29,8 +29,8 @@ import {
 } from '@/app/components/workflow/types'
 
 type AddBlockProps = {
-  renderTrigger?: (open: boolean) => React.ReactNode
-  offset?: OffsetOptions
+  readonly renderTrigger?: (open: boolean) => React.ReactNode
+  readonly offset?: OffsetOptions
 }
 const AddBlock = ({
   renderTrigger,

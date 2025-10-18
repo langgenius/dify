@@ -25,6 +25,7 @@ export function strategyParamToCredientialForm(param: StrategyParamItem): Creden
   }
 }
 
+// eslint-disable-next-line @eslint-react/prefer-read-only-props
 const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
   const {
     inputs,

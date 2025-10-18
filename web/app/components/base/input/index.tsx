@@ -21,7 +21,7 @@ export const inputVariants = cva(
   },
 )
 
-export type InputProps = {
+type BaseInputProps = {
   showLeftIcon?: boolean
   showClearIcon?: boolean
   onClear?: () => void
@@ -31,28 +31,31 @@ export type InputProps = {
   styleCss?: CSSProperties
   unit?: string
   ref?: React.Ref<HTMLInputElement>
-} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> & VariantProps<typeof inputVariants>
+}
+
+export type InputProps = Readonly<BaseInputProps> & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> & VariantProps<typeof inputVariants>
 
 const removeLeadingZeros = (value: string) => value.replace(/^(-?)0+(?=\d)/, '$1')
 
-const Input = ({
-  size,
-  disabled,
-  destructive,
-  showLeftIcon,
-  showClearIcon,
-  onClear,
-  wrapperClassName,
-  className,
-  styleCss,
-  value,
-  placeholder,
-  onChange = noop,
-  onBlur = noop,
-  unit,
-  ref,
-  ...props
-}: InputProps) => {
+const Input: React.FC<InputProps> = (props: Readonly<InputProps>) => {
+  const {
+    size,
+    disabled,
+    destructive,
+    showLeftIcon,
+    showClearIcon,
+    onClear,
+    wrapperClassName,
+    className,
+    styleCss,
+    value,
+    placeholder,
+    onChange = noop,
+    onBlur = noop,
+    unit,
+    ref,
+    ...restProps
+  } = props
   const { t } = useTranslation()
   const handleNumberChange: ChangeEventHandler<HTMLInputElement> = (e) => {
     if (value === 0) {
@@ -102,10 +105,10 @@ const Input = ({
           ? (t('common.operation.search') || '')
           : (t('common.placeholder.input') || ''))}
         value={value}
-        onChange={props.type === 'number' ? handleNumberChange : onChange}
-        onBlur={props.type === 'number' ? handleNumberBlur : onBlur}
+        onChange={restProps.type === 'number' ? handleNumberChange : onChange}
+        onBlur={restProps.type === 'number' ? handleNumberBlur : onBlur}
         disabled={disabled}
-        {...props}
+        {...restProps}
       />
       {showClearIcon && value && !disabled && !destructive && (
         <div className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')} onClick={onClear}>

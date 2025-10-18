@@ -9,10 +9,10 @@ import type { PlanRange } from './plan-range-switcher'
 import PlanRangeSwitcher from './plan-range-switcher'
 
 type PlanSwitcherProps = {
-  currentCategory: Category
-  currentPlanRange: PlanRange
-  onChangeCategory: (category: Category) => void
-  onChangePlanRange: (value: PlanRange) => void
+  readonly currentCategory: Category
+  readonly currentPlanRange: PlanRange
+  readonly onChangeCategory: (category: Category) => void
+  readonly onChangePlanRange: (value: PlanRange) => void
 }
 
 const PlanSwitcher: FC<PlanSwitcherProps> = ({

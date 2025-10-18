@@ -6,8 +6,8 @@ import { type Category, CategoryEnum } from '.'
 import cn from '@/utils/classnames'
 
 type FooterProps = {
-  pricingPageURL: string
-  currentCategory: Category
+  readonly pricingPageURL: string
+  readonly currentCategory: Category
 }
 
 const Footer = ({

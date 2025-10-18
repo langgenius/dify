@@ -5,9 +5,9 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Switch from '@/app/components/base/switch'
 
 type ReasoningFormatConfigProps = {
-  value?: 'tagged' | 'separated'
-  onChange: (value: 'tagged' | 'separated') => void
-  readonly?: boolean
+  readonly value?: 'tagged' | 'separated'
+  readonly onChange: (value: 'tagged' | 'separated') => void
+  readonly readonly?: boolean
 }
 
 const ReasoningFormatConfig: FC<ReasoningFormatConfigProps> = ({

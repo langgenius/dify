@@ -13,13 +13,13 @@ import AddField from './add-field'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 
 type SchemaNodeProps = {
-  name: string
-  required: boolean
-  schema: Field
-  path: string[]
-  parentPath?: string[]
-  depth: number
-  readOnly?: boolean
+  readonly name: string
+  readonly required: boolean
+  readonly schema: Field
+  readonly path: string[]
+  readonly parentPath?: string[]
+  readonly depth: number
+  readonly readOnly?: boolean
 }
 
 // Support 10 levels of indentation

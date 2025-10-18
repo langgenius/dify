@@ -10,8 +10,8 @@ export enum PlanRange {
 }
 
 type PlanRangeSwitcherProps = {
-  value: PlanRange
-  onChange: (value: PlanRange) => void
+  readonly value: PlanRange
+  readonly onChange: (value: PlanRange) => void
 }
 
 const PlanRangeSwitcher: FC<PlanRangeSwitcherProps> = ({

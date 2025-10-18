@@ -3,9 +3,9 @@ import ShortcutsName from '../shortcuts-name'
 import Tooltip from '@/app/components/base/tooltip'
 
 type TipPopupProps = {
-  title: string
-  children: React.ReactNode
-  shortcuts?: string[]
+  readonly title: string
+  readonly children: React.ReactNode
+  readonly shortcuts?: string[]
 }
 const TipPopup = ({
   title,

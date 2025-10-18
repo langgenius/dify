@@ -6,9 +6,9 @@ import Button from '@/app/components/base/button'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 
 type ISecretKeyButtonProps = {
-  className?: string
-  appId?: string
-  textCls?: string
+  readonly className?: string
+  readonly appId?: string
+  readonly textCls?: string
 }
 
 const SecretKeyButton = ({ className, appId, textCls }: ISecretKeyButtonProps) => {

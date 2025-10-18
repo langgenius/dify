@@ -10,8 +10,8 @@ import cn from '@/utils/classnames'
 import GridMask from '@/app/components/base/grid-mask'
 
 type Props = {
-  show: boolean
-  onHide: () => void
+  readonly show: boolean
+  readonly onHide: () => void
 }
 const AnnotationFullModal: FC<Props> = ({
   show,
