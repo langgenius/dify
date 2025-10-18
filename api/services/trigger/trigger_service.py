@@ -1,11 +1,11 @@
 import logging
+import secrets
 import time
-import uuid
 from collections.abc import Mapping
 from typing import Any
 
 from flask import Request, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
@@ -111,9 +111,15 @@ class TriggerService:
         )
 
         if dispatch_response.events:
-            request_id = f"trigger_request_{uuid.uuid4().hex}"
+            request_id = f"trigger_request_{timestamp}_{secrets.token_hex(6)}"
             serialized_request = serialize_request(request)
-            storage.save(f"triggers/{request_id}", serialized_request)
+
+            # save the request and payload to storage as persistent data
+            storage.save(f"triggers/{request_id}.raw", serialized_request)
+            storage.save(
+                f"triggers/{request_id}.payload",
+                TypeAdapter(Mapping[str, Any]).dump_json(dispatch_response.payload),
+            )
 
             # Validate event names
             for event_name in dispatch_response.events:

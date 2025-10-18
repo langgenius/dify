@@ -18,9 +18,9 @@ from core.plugin.impl.trigger import PluginTriggerManager
 from core.trigger.entities.entities import (
     EventEntity,
     Subscription,
-    Unsubscription,
+    UnsubscribeResult,
 )
-from core.trigger.errors import TriggerPluginInvokeError
+from core.trigger.errors import EventIgnoreError, TriggerPluginInvokeError
 from core.trigger.provider import PluginTriggerProviderController
 from models.provider_ids import TriggerProviderID
 
@@ -56,7 +56,7 @@ class TriggerManager:
         manager = PluginTriggerManager()
         provider_entities = manager.fetch_trigger_providers(tenant_id)
 
-        controllers = []
+        controllers: list[PluginTriggerProviderController] = []
         for provider in provider_entities:
             try:
                 controller = PluginTriggerProviderController(
@@ -158,6 +158,7 @@ class TriggerManager:
         credential_type: CredentialType,
         subscription: Subscription,
         request: Request,
+        payload: Mapping[str, Any],
     ) -> TriggerInvokeEventResponse:
         """
         Execute a trigger
@@ -171,6 +172,7 @@ class TriggerManager:
         :param credential_type: Credential type
         :param subscription: Subscription
         :param request: Request
+        :param payload: Payload
         :return: Trigger execution result
         """
         provider: PluginTriggerProviderController = cls.get_trigger_provider(
@@ -185,10 +187,11 @@ class TriggerManager:
                 credential_type=credential_type,
                 subscription=subscription,
                 request=request,
+                payload=payload,
             )
+        except EventIgnoreError as e:
+            return TriggerInvokeEventResponse(variables={}, cancelled=True)
         except PluginInvokeError as e:
-            if e.get_error_type() == "EventIgnoreError":
-                return TriggerInvokeEventResponse(variables={}, cancelled=True)
             logger.exception("Failed to invoke trigger event")
             raise TriggerPluginInvokeError(
                 description=e.to_user_friendly_error(plugin_name=provider.entity.identity.name)
@@ -237,7 +240,7 @@ class TriggerManager:
         subscription: Subscription,
         credentials: Mapping[str, str],
         credential_type: CredentialType,
-    ) -> Unsubscription:
+    ) -> UnsubscribeResult:
         """
         Unsubscribe from a trigger
 
@@ -283,7 +286,3 @@ class TriggerManager:
         return cls.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id).refresh_trigger(
             subscription=subscription, credentials=credentials, credential_type=credential_type
         )
-
-
-# Export
-__all__ = ["TriggerManager"]

@@ -7,8 +7,10 @@ to avoid blocking the main request thread.
 
 import logging
 from collections.abc import Mapping, Sequence
+from typing import Any
 
 from celery import shared_task
+from pydantic import TypeAdapter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -30,6 +32,7 @@ from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
 from models.workflow import Workflow, WorkflowPluginTrigger
 from services.async_workflow_service import AsyncWorkflowService
+from services.end_user_service import EndUserService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.workflow.entities import PluginTriggerData, PluginTriggerDispatchData
 
@@ -117,9 +120,13 @@ def dispatch_triggered_workflow(
         event: The trigger entity that was activated
         request_id: The ID of the stored request in storage system
     """
-    request = deserialize_request(storage.load_once(f"triggers/{request_id}"))
+    request = deserialize_request(storage.load_once(f"triggers/{request_id}.raw"))
     if not request:
         logger.error("Request not found for request_id %s", request_id)
+        return 0
+    payload = TypeAdapter(Mapping[str, Any]).validate_json(storage.load_once(f"triggers/{request_id}.payload"))
+    if not payload:
+        logger.error("Payload not found for request_id %s", request_id)
         return 0
 
     from services.trigger.trigger_service import TriggerService
@@ -141,10 +148,8 @@ def dispatch_triggered_workflow(
     )
     with Session(db.engine) as session:
         workflows: Mapping[str, Workflow] = _get_latest_workflows_by_app_ids(session, subscribers)
-        # Lazy import to avoid circular import during app initialization
-        from controllers.service_api.wraps import create_end_user_batch
 
-        end_users: Mapping[str, EndUser] = create_end_user_batch(
+        end_users: Mapping[str, EndUser] = EndUserService.create_end_user_batch(
             type=InvokeFrom.TRIGGER,
             tenant_id=subscription.tenant_id,
             app_ids=[plugin_trigger.app_id for plugin_trigger in subscribers],
@@ -185,6 +190,7 @@ def dispatch_triggered_workflow(
                 credential_type=CredentialType.of(subscription.credential_type),
                 subscription=subscription.to_entity(),
                 request=request,
+                payload=payload,
             )
             if invoke_response.cancelled:
                 logger.info(
@@ -265,8 +271,8 @@ def dispatch_triggered_workflows(
 
 @shared_task(queue=TRIGGER_QUEUE)
 def dispatch_triggered_workflows_async(
-    dispatch_data: dict,
-) -> dict:
+    dispatch_data: Mapping[str, Any],
+) -> Mapping[str, Any]:
     """
     Dispatch triggers asynchronously.
 
