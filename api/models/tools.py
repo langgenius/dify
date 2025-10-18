@@ -415,7 +415,7 @@ class MCPToolProvider(TypeBase):
 
             # First decrypt, then mask
             decrypted_headers = encrypter_instance.decrypt(headers_data)
-            result = encrypter_instance.mask_tool_credentials(decrypted_headers)
+            result = encrypter_instance.mask_plugin_credentials(decrypted_headers)
             return result
         except Exception:
             return {}

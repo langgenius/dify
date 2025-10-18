@@ -1,4 +1,5 @@
 import contextlib
+from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any, Optional, Protocol
 
@@ -11,7 +12,7 @@ class ProviderConfigCache(Protocol):
     Interface for provider configuration cache operations
     """
 
-    def get(self) -> Optional[dict]:
+    def get(self) -> Optional[dict[str, Any]]:
         """Get cached provider configuration"""
         ...
 
@@ -39,19 +40,19 @@ class ProviderConfigEncrypter:
         self.config = config
         self.provider_config_cache = provider_config_cache
 
-    def _deep_copy(self, data: dict[str, str]) -> dict[str, str]:
+    def _deep_copy(self, data: Mapping[str, Any]) -> Mapping[str, Any]:
         """
         deep copy data
         """
         return deepcopy(data)
 
-    def encrypt(self, data: dict[str, str]) -> dict[str, str]:
+    def encrypt(self, data: Mapping[str, Any]) -> Mapping[str, Any]:
         """
         encrypt tool credentials with tenant id
 
         return a deep copy of credentials with encrypted values
         """
-        data = self._deep_copy(data)
+        data = dict(self._deep_copy(data))
 
         # get fields need to be decrypted
         fields = dict[str, BasicProviderConfig]()
@@ -66,13 +67,13 @@ class ProviderConfigEncrypter:
 
         return data
 
-    def mask_credentials(self, data: dict[str, Any]) -> dict[str, Any]:
+    def mask_credentials(self, data: Mapping[str, Any]) -> Mapping[str, Any]:
         """
         mask credentials
 
         return a deep copy of credentials with masked values
         """
-        data = self._deep_copy(data)
+        data = dict(self._deep_copy(data))
 
         # get fields need to be decrypted
         fields = dict[str, BasicProviderConfig]()
@@ -91,10 +92,10 @@ class ProviderConfigEncrypter:
 
         return data
 
-    def mask_tool_credentials(self, data: dict[str, Any]) -> dict[str, Any]:
+    def mask_plugin_credentials(self, data: Mapping[str, Any]) -> Mapping[str, Any]:
         return self.mask_credentials(data)
 
-    def decrypt(self, data: dict[str, str]) -> dict[str, Any]:
+    def decrypt(self, data: Mapping[str, Any]) -> Mapping[str, Any]:
         """
         decrypt tool credentials with tenant id
 
@@ -104,7 +105,7 @@ class ProviderConfigEncrypter:
         if cached_credentials:
             return cached_credentials
 
-        data = self._deep_copy(data)
+        data = dict(self._deep_copy(data))
         # get fields need to be decrypted
         fields = dict[str, BasicProviderConfig]()
         for credential in self.config:
@@ -120,7 +121,7 @@ class ProviderConfigEncrypter:
 
                         data[field_name] = encrypter.decrypt_token(self.tenant_id, data[field_name])
 
-        self.provider_config_cache.set(data)
+        self.provider_config_cache.set(dict(data))
         return data
 
 

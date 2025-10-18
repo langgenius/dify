@@ -350,7 +350,7 @@ class BuiltinToolManageService:
                 encrypter, _ = BuiltinToolManageService.create_tool_encrypter(
                     tenant_id, provider, provider.provider, provider_controller
                 )
-                decrypt_credential = encrypter.mask_tool_credentials(encrypter.decrypt(provider.credentials))
+                decrypt_credential = encrypter.mask_plugin_credentials(encrypter.decrypt(provider.credentials))
                 credential_entity = ToolTransformService.convert_builtin_provider_to_credential_entity(
                     provider=provider,
                     credentials=decrypt_credential,
@@ -724,4 +724,4 @@ class BuiltinToolManageService:
                 cache=NoOpProviderCredentialCache(),
             )
 
-            return encrypter.mask_tool_credentials(encrypter.decrypt(custom_oauth_client_params.oauth_params))
+            return encrypter.mask_plugin_credentials(encrypter.decrypt(custom_oauth_client_params.oauth_params))

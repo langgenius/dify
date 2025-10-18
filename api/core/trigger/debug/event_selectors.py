@@ -110,9 +110,8 @@ class WebhookTriggerDebugEventPoller(TriggerDebugEventPoller):
             webhook_data = payload.get("webhook_data", {})
             workflow_inputs = WebhookService.build_workflow_inputs(webhook_data)
 
-        workflow_args = {
+        workflow_args: Mapping[str, Any] = {
             "inputs": workflow_inputs or {},
-            "query": "",
             "files": [],
         }
         return TriggerDebugEvent(workflow_args=workflow_args, node_id=self.node_id)

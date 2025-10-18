@@ -113,7 +113,7 @@ class TriggerProviderService:
         subscription_id: Optional[str] = None,
         credential_expires_at: int = -1,
         expires_at: int = -1,
-    ) -> dict:
+    ) -> Mapping[str, Any]:
         """
         Add a new trigger provider with credentials.
         Supports multiple credential instances per provider.
@@ -187,7 +187,10 @@ class TriggerProviderService:
                     session.add(subscription)
                     session.commit()
 
-                    return {"result": "success", "id": str(subscription.id)}
+                    return {
+                        "result": "success",
+                        "id": str(subscription.id),
+                    }
 
         except Exception as e:
             logger.exception("Failed to add trigger provider")
@@ -278,7 +281,7 @@ class TriggerProviderService:
         cls,
         tenant_id: str,
         subscription_id: str,
-    ) -> dict:
+    ) -> Mapping[str, Any]:
         """
         Refresh OAuth token for a trigger provider.
 
@@ -372,7 +375,7 @@ class TriggerProviderService:
                     config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
                     cache=NoOpProviderCredentialCache(),
                 )
-                oauth_params = encrypter.decrypt(tenant_client.oauth_params)
+                oauth_params = encrypter.decrypt(dict(tenant_client.oauth_params))
                 return oauth_params
 
             is_verified = PluginService.is_plugin_verified(tenant_id, provider_id.plugin_id)
@@ -399,9 +402,9 @@ class TriggerProviderService:
         cls,
         tenant_id: str,
         provider_id: TriggerProviderID,
-        client_params: Optional[dict] = None,
+        client_params: Optional[Mapping[str, Any]] = None,
         enabled: Optional[bool] = None,
-    ) -> dict:
+    ) -> Mapping[str, Any]:
         """
         Save or update custom OAuth client parameters for a trigger provider.
 
@@ -449,8 +452,8 @@ class TriggerProviderService:
                 )
 
                 # Handle hidden values
-                original_params = encrypter.decrypt(custom_client.oauth_params)
-                new_params: dict = {
+                original_params = encrypter.decrypt(dict(custom_client.oauth_params))
+                new_params: dict[str, Any] = {
                     key: value if value != HIDDEN_VALUE else original_params.get(key, UNKNOWN_VALUE)
                     for key, value in client_params.items()
                 }
@@ -466,7 +469,7 @@ class TriggerProviderService:
         return {"result": "success"}
 
     @classmethod
-    def get_custom_oauth_client_params(cls, tenant_id: str, provider_id: TriggerProviderID) -> dict:
+    def get_custom_oauth_client_params(cls, tenant_id: str, provider_id: TriggerProviderID) -> Mapping[str, Any]:
         """
         Get custom OAuth client parameters for a trigger provider.
 
@@ -500,10 +503,10 @@ class TriggerProviderService:
                 cache=NoOpProviderCredentialCache(),
             )
 
-            return encrypter.mask_tool_credentials(encrypter.decrypt(custom_client.oauth_params))
+            return encrypter.mask_plugin_credentials(encrypter.decrypt(dict(custom_client.oauth_params)))
 
     @classmethod
-    def delete_custom_oauth_client_params(cls, tenant_id: str, provider_id: TriggerProviderID) -> dict:
+    def delete_custom_oauth_client_params(cls, tenant_id: str, provider_id: TriggerProviderID) -> Mapping[str, Any]:
         """
         Delete custom OAuth client parameters for a trigger provider.
 

@@ -390,7 +390,7 @@ class DatasourceProviderService:
         if tenant_oauth_client_params:
             encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
             if mask:
-                return encrypter.mask_tool_credentials(encrypter.decrypt(tenant_oauth_client_params.client_params))
+                return encrypter.mask_plugin_credentials(encrypter.decrypt(tenant_oauth_client_params.client_params))
             else:
                 return encrypter.decrypt(tenant_oauth_client_params.client_params)
         return None

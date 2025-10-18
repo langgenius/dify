@@ -162,7 +162,7 @@ class ToolTransformService:
                 )
                 # decrypt the credentials and mask the credentials
                 decrypted_credentials = encrypter.decrypt(data=credentials)
-                masked_credentials = encrypter.mask_tool_credentials(data=decrypted_credentials)
+                masked_credentials = encrypter.mask_plugin_credentials(data=decrypted_credentials)
 
                 result.masked_credentials = masked_credentials
                 result.original_credentials = decrypted_credentials
@@ -316,7 +316,7 @@ class ToolTransformService:
 
             # decrypt the credentials and mask the credentials
             decrypted_credentials = encrypter.decrypt(data=credentials)
-            masked_credentials = encrypter.mask_tool_credentials(data=decrypted_credentials)
+            masked_credentials = encrypter.mask_plugin_credentials(data=decrypted_credentials)
 
             result.masked_credentials = masked_credentials
 

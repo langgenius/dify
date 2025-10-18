@@ -830,7 +830,7 @@ class ToolManager:
             controller=controller,
         )
 
-        masked_credentials = encrypter.mask_tool_credentials(encrypter.decrypt(credentials))
+        masked_credentials = encrypter.mask_plugin_credentials(encrypter.decrypt(credentials))
 
         try:
             icon = json.loads(provider_obj.icon)
