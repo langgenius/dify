@@ -1,6 +1,7 @@
 import json
 from collections.abc import Generator
 from contextlib import AbstractContextManager
+from urllib.parse import quote, urlparse, urlunparse
 
 import httpx
 import httpx_sse
@@ -15,9 +16,42 @@ HTTP_REQUEST_NODE_SSL_VERIFY = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
 
+def _build_proxy_url(host: str, username: str, password: str) -> str:
+    """Normalize and assemble a proxy URL with optional basic auth.
+
+    Args:
+        host: Proxy host, may or may not include scheme and port.
+        username: Optional username for basic auth.
+        password: Optional password for basic auth.
+
+    Returns:
+        A properly formatted proxy URL, defaulting to http scheme if missing.
+    """
+    parsed = urlparse(host if "://" in host else f"http://{host}")
+
+    hostname = parsed.hostname or ""
+    netloc = f"{hostname}:{parsed.port}" if parsed.port else hostname
+
+    if username or password:
+        u = quote(username or "", safe="")
+        p = quote(password or "", safe="")
+        netloc = f"{u}:{p}@{netloc}"
+
+    return urlunparse((parsed.scheme, netloc, parsed.path or "", parsed.params, parsed.query, parsed.fragment))
+
+
+def _build_proxy_mounts(proxy_url: str) -> dict[str, httpx.HTTPTransport]:
+    """Create HTTP/HTTPS transports that route through the given proxy URL."""
+    return {
+        "http://": httpx.HTTPTransport(proxy=proxy_url, verify=HTTP_REQUEST_NODE_SSL_VERIFY),
+        "https://": httpx.HTTPTransport(proxy=proxy_url, verify=HTTP_REQUEST_NODE_SSL_VERIFY),
+    }
+
+
 def create_ssrf_proxy_mcp_http_client(
     headers: dict[str, str] | None = None,
     timeout: httpx.Timeout | None = None,
+    proxy: dict[str, str] | None = None,
 ) -> httpx.Client:
     """Create an HTTPX client with SSRF proxy configuration for MCP connections.
 
@@ -28,6 +62,22 @@ def create_ssrf_proxy_mcp_http_client(
     Returns:
         Configured httpx.Client with proxy settings
     """
+    # Per-provider proxy overrides global SSRF proxy settings
+    if proxy and isinstance(proxy, dict) and proxy.get("host"):
+        proxy_url = _build_proxy_url(
+            str(proxy.get("host", "")).strip(),
+            str(proxy.get("username", "")).strip(),
+            str(proxy.get("password", "")).strip(),
+        )
+
+        return httpx.Client(
+            verify=HTTP_REQUEST_NODE_SSL_VERIFY,
+            headers=headers or {},
+            timeout=timeout,
+            follow_redirects=True,
+            mounts=_build_proxy_mounts(proxy_url),
+        )
+
     if dify_config.SSRF_PROXY_ALL_URL:
         return httpx.Client(
             verify=HTTP_REQUEST_NODE_SSL_VERIFY,
@@ -37,18 +87,19 @@ def create_ssrf_proxy_mcp_http_client(
             proxy=dify_config.SSRF_PROXY_ALL_URL,
         )
     elif dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
-        proxy_mounts = {
-            "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL, verify=HTTP_REQUEST_NODE_SSL_VERIFY),
-            "https://": httpx.HTTPTransport(
-                proxy=dify_config.SSRF_PROXY_HTTPS_URL, verify=HTTP_REQUEST_NODE_SSL_VERIFY
-            ),
-        }
         return httpx.Client(
             verify=HTTP_REQUEST_NODE_SSL_VERIFY,
             headers=headers or {},
             timeout=timeout,
             follow_redirects=True,
-            mounts=proxy_mounts,
+            mounts={
+                "http://": httpx.HTTPTransport(
+                    proxy=dify_config.SSRF_PROXY_HTTP_URL, verify=HTTP_REQUEST_NODE_SSL_VERIFY
+                ),
+                "https://": httpx.HTTPTransport(
+                    proxy=dify_config.SSRF_PROXY_HTTPS_URL, verify=HTTP_REQUEST_NODE_SSL_VERIFY
+                ),
+            },
         )
     else:
         return httpx.Client(

@@ -234,6 +234,11 @@ class ToolTransformService:
     @staticmethod
     def mcp_provider_to_user_provider(db_provider: MCPToolProvider, for_list: bool = False) -> ToolProviderApiEntity:
         user = db_provider.load_user()
+
+        # Normalize optional proxy fields to avoid passing Mock objects into pydantic model
+        def _as_optional_str(value: object) -> str | None:
+            return value if isinstance(value, str) and value else None
+
         return ToolProviderApiEntity(
             id=db_provider.server_identifier if not for_list else db_provider.id,
             author=user.name if user else "Anonymous",
@@ -253,6 +258,9 @@ class ToolTransformService:
             sse_read_timeout=db_provider.sse_read_timeout,
             masked_headers=db_provider.masked_headers,
             original_headers=db_provider.decrypted_headers,
+            proxy_host=_as_optional_str(getattr(db_provider, "proxy_host", None)),
+            proxy_username=_as_optional_str(getattr(db_provider, "proxy_username", None)),
+            masked_proxy_password=_as_optional_str(getattr(db_provider, "masked_proxy_password", None)),
         )
 
     @staticmethod

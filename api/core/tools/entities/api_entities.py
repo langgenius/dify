@@ -48,6 +48,9 @@ class ToolProviderApiEntity(BaseModel):
     sse_read_timeout: float | None = Field(default=300.0, description="The SSE read timeout of the MCP tool")
     masked_headers: dict[str, str] | None = Field(default=None, description="The masked headers of the MCP tool")
     original_headers: dict[str, str] | None = Field(default=None, description="The original headers of the MCP tool")
+    proxy_host: str | None = Field(default=None, description="Proxy host for MCP tool")
+    proxy_username: str | None = Field(default=None, description="Proxy username for MCP tool")
+    masked_proxy_password: str | None = Field(default=None, description="Masked proxy password for MCP tool")
 
     @field_validator("tools", mode="before")
     @classmethod
@@ -74,6 +77,9 @@ class ToolProviderApiEntity(BaseModel):
             optional_fields.update(self.optional_field("sse_read_timeout", self.sse_read_timeout))
             optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
             optional_fields.update(self.optional_field("original_headers", self.original_headers))
+            optional_fields.update(self.optional_field("proxy_host", self.proxy_host))
+            optional_fields.update(self.optional_field("proxy_username", self.proxy_username))
+            optional_fields.update(self.optional_field("masked_proxy_password", self.masked_proxy_password))
         return {
             "id": self.id,
             "author": self.author,

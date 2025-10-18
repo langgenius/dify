@@ -751,6 +751,11 @@ class ToolConfig(BaseSettings):
         default=3600,
     )
 
+    MCP_PROVIDER_PROXY_ENABLED: bool = Field(
+        description="Enable using configured proxy when connecting to MCP providers",
+        default=False,
+    )
+
 
 class TemplateMode(StrEnum):
     # unsafe mode allows flexible operations in templates, but may cause security vulnerabilities
