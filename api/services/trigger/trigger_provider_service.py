@@ -92,7 +92,7 @@ class TriggerProviderService:
                 controller=provider_controller,
                 subscription=subscription,
             )
-            subscription.credentials = encrypter.mask_credentials(subscription.credentials)
+            subscription.credentials = dict(encrypter.mask_credentials(dict(subscription.credentials)))
             count = workflows_in_use_map.get(subscription.id)
             subscription.workflows_in_use = count if count is not None else 0
 
@@ -218,13 +218,13 @@ class TriggerProviderService:
                     controller=provider_controller,
                     subscription=subscription,
                 )
-                subscription.credentials = encrypter.decrypt(subscription.credentials)
+                subscription.credentials = dict(encrypter.decrypt(subscription.credentials))
                 properties_encrypter, _ = create_trigger_provider_encrypter_for_properties(
                     tenant_id=subscription.tenant_id,
                     controller=provider_controller,
                     subscription=subscription,
                 )
-                subscription.properties = properties_encrypter.decrypt(subscription.properties)
+                subscription.properties = dict(properties_encrypter.decrypt(subscription.properties))
                 return subscription
             return None
 
@@ -331,7 +331,7 @@ class TriggerProviderService:
             )
 
             # Update credentials
-            subscription.credentials = encrypter.encrypt(dict(refreshed_credentials.credentials))
+            subscription.credentials = dict(encrypter.encrypt(dict(refreshed_credentials.credentials)))
             subscription.expires_at = refreshed_credentials.expires_at
             session.commit()
 
@@ -563,12 +563,12 @@ class TriggerProviderService:
                 controller=provider_controller,
                 subscription=subscription,
             )
-            subscription.credentials = credential_encrypter.decrypt(subscription.credentials)
+            subscription.credentials = dict(credential_encrypter.decrypt(subscription.credentials))
 
             properties_encrypter, _ = create_trigger_provider_encrypter_for_properties(
                 tenant_id=subscription.tenant_id,
                 controller=provider_controller,
                 subscription=subscription,
             )
-            subscription.properties = properties_encrypter.decrypt(subscription.properties)
+            subscription.properties = dict(properties_encrypter.decrypt(subscription.properties))
             return subscription
