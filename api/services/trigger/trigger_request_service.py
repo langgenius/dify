@@ -8,9 +8,9 @@ from core.plugin.utils.http_parser import deserialize_request, serialize_request
 from extensions.ext_storage import storage
 
 
-class TriggerRequestService:
+class TriggerHttpRequestCachingService:
     """
-    Service for handling trigger requests.
+    Service for caching trigger requests.
     """
 
     _TRIGGER_STORAGE_PATH = "triggers"

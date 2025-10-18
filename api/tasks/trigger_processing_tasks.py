@@ -31,7 +31,7 @@ from models.workflow import Workflow
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
 from services.trigger.trigger_provider_service import TriggerProviderService
-from services.trigger.trigger_request_service import TriggerRequestService
+from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.workflow.entities import PluginTriggerData, PluginTriggerDispatchData
 
 logger = logging.getLogger(__name__)
@@ -118,8 +118,8 @@ def dispatch_triggered_workflow(
         event: The trigger entity that was activated
         request_id: The ID of the stored request in storage system
     """
-    request = TriggerRequestService.get_request(request_id)
-    payload = TriggerRequestService.get_payload(request_id)
+    request = TriggerHttpRequestCachingService.get_request(request_id)
+    payload = TriggerHttpRequestCachingService.get_payload(request_id)
 
     from services.trigger.trigger_service import TriggerService
     # FIXME: we should avoid import modules inside methods

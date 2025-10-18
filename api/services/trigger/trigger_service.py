@@ -25,7 +25,7 @@ from models.provider_ids import TriggerProviderID
 from models.trigger import AppTrigger, AppTriggerStatus, TriggerSubscription, WorkflowPluginTrigger
 from models.workflow import Workflow
 from services.trigger.trigger_provider_service import TriggerProviderService
-from services.trigger.trigger_request_service import TriggerRequestService
+from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
 from services.workflow.entities import PluginTriggerDispatchData
 from tasks.trigger_processing_tasks import dispatch_triggered_workflows_async
 
@@ -51,8 +51,8 @@ class TriggerService:
         if not subscription:
             raise ValueError("Subscription not found")
         node_data: TriggerEventNodeData = TriggerEventNodeData.model_validate(node_config.get("data", {}))
-        request = TriggerRequestService.get_request(event.request_id)
-        payload = TriggerRequestService.get_payload(event.request_id)
+        request = TriggerHttpRequestCachingService.get_request(event.request_id)
+        payload = TriggerHttpRequestCachingService.get_payload(event.request_id)
         # invoke triger
         provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
             tenant_id, TriggerProviderID(subscription.provider_id)
@@ -113,8 +113,8 @@ class TriggerService:
             request_id = f"trigger_request_{timestamp}_{secrets.token_hex(6)}"
 
             # save the request and payload to storage as persistent data
-            TriggerRequestService.persist_request(request_id, request)
-            TriggerRequestService.persist_payload(request_id, dispatch_response.payload)
+            TriggerHttpRequestCachingService.persist_request(request_id, request)
+            TriggerHttpRequestCachingService.persist_payload(request_id, dispatch_response.payload)
 
             # Validate event names
             for event_name in dispatch_response.events:
