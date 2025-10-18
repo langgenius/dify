@@ -7,7 +7,7 @@ with support for different subscription tiers, rate limiting, and execution trac
 
 import json
 from datetime import UTC, datetime
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from celery.result import AsyncResult
 from sqlalchemy import select
@@ -152,7 +152,7 @@ class AsyncWorkflowService:
         # 9. Dispatch to appropriate queue
         task_data_dict = task_data.model_dump(mode="json")
 
-        task: AsyncResult | None = None
+        task: AsyncResult[Any] | None = None
         if queue_name == QueuePriority.PROFESSIONAL:
             task = execute_workflow_professional.delay(task_data_dict)  # type: ignore
         elif queue_name == QueuePriority.TEAM:
@@ -226,7 +226,7 @@ class AsyncWorkflowService:
         return cls.trigger_workflow_async(session, user, trigger_data)
 
     @classmethod
-    def get_trigger_log(cls, workflow_trigger_log_id: str, tenant_id: Optional[str] = None) -> Optional[dict]:
+    def get_trigger_log(cls, workflow_trigger_log_id: str, tenant_id: Optional[str] = None) -> Optional[dict[str, Any]]:
         """
         Get trigger log by ID
 
@@ -249,7 +249,7 @@ class AsyncWorkflowService:
     @classmethod
     def get_recent_logs(
         cls, tenant_id: str, app_id: str, hours: int = 24, limit: int = 100, offset: int = 0
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """
         Get recent trigger logs
 
@@ -272,7 +272,9 @@ class AsyncWorkflowService:
             return [log.to_dict() for log in logs]
 
     @classmethod
-    def get_failed_logs_for_retry(cls, tenant_id: str, max_retry_count: int = 3, limit: int = 100) -> list[dict]:
+    def get_failed_logs_for_retry(
+        cls, tenant_id: str, max_retry_count: int = 3, limit: int = 100
+    ) -> list[dict[str, Any]]:
         """
         Get failed logs eligible for retry
 

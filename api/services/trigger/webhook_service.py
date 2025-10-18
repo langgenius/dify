@@ -9,6 +9,7 @@ from flask import request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
@@ -324,7 +325,9 @@ class WebhookService:
         return body, {}
 
     @classmethod
-    def _process_file_uploads(cls, files, webhook_trigger: WorkflowWebhookTrigger) -> dict[str, Any]:
+    def _process_file_uploads(
+        cls, files: Mapping[str, FileStorage], webhook_trigger: WorkflowWebhookTrigger
+    ) -> dict[str, Any]:
         """Process file uploads using ToolFileManager.
 
         Args:
