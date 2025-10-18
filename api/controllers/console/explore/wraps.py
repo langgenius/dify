@@ -10,7 +10,6 @@ from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import InstalledApp
-from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
@@ -56,10 +55,9 @@ def user_allowed_to_access_app(view: Callable[Concatenate[InstalledApp, P], R] |
             feature = FeatureService.get_system_features()
             if feature.webapp_auth.enabled:
                 app_id = installed_app.app_id
-                app_code = AppService.get_app_code_by_id(app_id)
                 res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
                     user_id=str(current_user.id),
-                    app_code=app_code,
+                    app_id=app_id,
                 )
                 if not res:
                     raise AppAccessDeniedError()

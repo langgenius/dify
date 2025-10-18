@@ -7,11 +7,11 @@ import {
 } from '@remixicon/react'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import Avatar from '@/app/components/base/avatar'
-import { logout } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import PremiumBadge from '@/app/components/base/premium-badge'
+import { useLogout } from '@/service/use-common'
 
 export type IAppSelector = {
   isMobile: boolean
@@ -23,15 +23,12 @@ export default function AppSelector() {
   const { userProfile } = useAppContext()
   const { isEducationAccount } = useProviderContext()
 
+  const { mutateAsync: logout } = useLogout()
   const handleLogout = async () => {
-    await logout({
-      url: '/logout',
-      params: {},
-    })
+    await logout()
 
     localStorage.removeItem('setup_status')
-    localStorage.removeItem('console_token')
-    localStorage.removeItem('refresh_token')
+    // Tokens are now stored in cookies and cleared by backend
 
     router.push('/signin')
   }

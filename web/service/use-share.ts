@@ -8,6 +8,8 @@ export const useGetWebAppAccessModeByCode = (code: string | null) => {
     queryKey: [NAME_SPACE, 'appAccessMode', code],
     queryFn: () => getAppAccessModeByAppCode(code!),
     enabled: !!code,
+    staleTime: 0, // backend change the access mode may cause the logic error. Because /permission API is no cached.
+    gcTime: 0,
   })
 }
 
