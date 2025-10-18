@@ -30,7 +30,7 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.enums import CreatorUserRole
-from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
+from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile, Site
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
@@ -66,6 +66,13 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param stream: is stream
         :return:
         """
+        # Get show_reasoning configuration
+        show_reasoning = True
+        with Session(db.engine) as session:
+            site = session.scalar(select(Site).where(Site.app_id == conversation.app_id))
+            if site:
+                show_reasoning = site.show_reasoning
+
         # init generate task pipeline
         generate_task_pipeline = EasyUIBasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
@@ -73,6 +80,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             conversation=conversation,
             message=message,
             stream=stream,
+            show_reasoning=show_reasoning,
         )
 
         try:

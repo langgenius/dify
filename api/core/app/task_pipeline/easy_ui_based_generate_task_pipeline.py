@@ -69,6 +69,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
     EasyUIBasedGenerateTaskPipeline is a class that generate stream output and state management for Application.
     """
 
+    THINK_TAG = "<think>"
+    END_THINK_TAG = "</think>"
+
     _task_state: EasyUITaskState
     _application_generate_entity: Union[ChatAppGenerateEntity, CompletionAppGenerateEntity, AgentChatAppGenerateEntity]
 
@@ -81,6 +84,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         conversation: Conversation,
         message: Message,
         stream: bool,
+        show_reasoning: bool | None = None,
     ):
         super().__init__(
             application_generate_entity=application_generate_entity,
@@ -96,7 +100,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         self._message_id = message.id
         self._message_created_at = int(message.created_at.timestamp())
 
-        self._show_reasoning = self._get_show_reasoning_config(conversation.app_id)
+        if show_reasoning is not None:
+            self._show_reasoning = show_reasoning
+        else:
+            self._show_reasoning = self._get_show_reasoning_config(conversation.app_id)
 
         self._task_state = EasyUITaskState(
             llm_result=LLMResult(
@@ -146,46 +153,33 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         result = ""
         self._think_buffer += delta_text
 
-        THINK_TAG = "<think>"
-        END_THINK_TAG = "</think>"
-
         while self._think_buffer:
             if not self._in_think_tag:
-                think_start = self._think_buffer.lower().find(THINK_TAG)
-                if think_start != -1:
-                    result += self._think_buffer[:think_start]
-                    self._think_buffer = self._think_buffer[think_start + len(THINK_TAG) :]
-                    self._in_think_tag = True
-                else:
-                    last_lt_pos = self._think_buffer.rfind("<")
-                    if last_lt_pos != -1:
-                        suffix = self._think_buffer[last_lt_pos + 1 :]
-                        if THINK_TAG[1:].startswith(suffix.lower()):
-                            result += self._think_buffer[:last_lt_pos]
-                            self._think_buffer = self._think_buffer[last_lt_pos:]
-                        else:
-                            result += self._think_buffer
-                            self._think_buffer = ""
+                think_start = self._think_buffer.lower().find(self.THINK_TAG.lower())
+                if think_start == -1:
+                    if "<" in self._think_buffer:
+                        last_bracket = self._think_buffer.rfind("<")
+                        result += self._think_buffer[:last_bracket]
+                        self._think_buffer = self._think_buffer[last_bracket:]
                     else:
                         result += self._think_buffer
                         self._think_buffer = ""
                     break
-            else:
-                think_end = self._think_buffer.lower().find(END_THINK_TAG)
-                if think_end != -1:
-                    self._think_buffer = self._think_buffer[think_end + len(END_THINK_TAG) :]
-                    self._in_think_tag = False
                 else:
-                    last_lt_pos = self._think_buffer.rfind("</")
-                    if last_lt_pos != -1:
-                        suffix = self._think_buffer[last_lt_pos + 2 :]
-                        if END_THINK_TAG[2:].startswith(suffix.lower()):
-                            self._think_buffer = self._think_buffer[last_lt_pos:]
-                        else:
-                            self._think_buffer = ""
+                    result += self._think_buffer[:think_start]
+                    self._think_buffer = self._think_buffer[think_start + len(self.THINK_TAG) :]
+                    self._in_think_tag = True
+            else:
+                think_end = self._think_buffer.lower().find(self.END_THINK_TAG.lower())
+                if think_end == -1:
+                    if "</" in self._think_buffer and len(self._think_buffer) < 10:
+                        break
                     else:
                         self._think_buffer = ""
                     break
+                else:
+                    self._think_buffer = self._think_buffer[think_end + len(self.END_THINK_TAG) :]
+                    self._in_think_tag = False
 
         return result
 
