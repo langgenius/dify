@@ -73,9 +73,11 @@ class PassportResource(Resource):
                     tenant_id=app_model.tenant_id,
                     app_id=app_model.id,
                     type="browser",
-                    is_anonymous=True,
+                    external_user_id=None,
+                    name=None,
                     session_id=user_id,
                 )
+                end_user.is_anonymous = True
                 db.session.add(end_user)
                 db.session.commit()
         else:
@@ -83,9 +85,11 @@ class PassportResource(Resource):
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 type="browser",
-                is_anonymous=True,
+                external_user_id=None,
+                name=None,
                 session_id=generate_session_id(),
             )
+            end_user.is_anonymous = True
             db.session.add(end_user)
             db.session.commit()
 
@@ -166,9 +170,11 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type="browser",
-            is_anonymous=True,
+            external_user_id=None,
+            name=None,
             session_id=session_id,
         )
+        end_user.is_anonymous = True
         db.session.add(end_user)
         db.session.commit()
 
@@ -207,9 +213,11 @@ def _exchange_for_public_app_token(app_model, site, token_decoded):
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type="browser",
-            is_anonymous=True,
+            external_user_id=None,
+            name=None,
             session_id=generate_session_id(),
         )
+        end_user.is_anonymous = True
 
         db.session.add(end_user)
         db.session.commit()

@@ -213,9 +213,11 @@ class MCPAppApi(Resource):
             tenant_id=tenant_id,
             app_id=app_id,
             type="mcp",
+            external_user_id=None,
             name=client_name,
             session_id=mcp_server_id,
         )
+        end_user.is_anonymous = False
         session.add(end_user)
         session.flush()  # Use flush instead of commit to keep transaction open
         session.refresh(end_user)
