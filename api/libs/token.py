@@ -74,10 +74,6 @@ def extract_webapp_passport(app_code: str, request: Request) -> str | None:
     Webapp access token (part of passport) is only used for webapp session.
     """
 
-    def _try_extract_passport_token_from_query(request: Request) -> str | None:
-        # This is unsafe, leave it for backward compatibility
-        return request.args.get("web_app_access_token")
-
     def _try_extract_passport_token_from_cookie(request: Request) -> str | None:
         return request.cookies.get(COOKIE_NAME_PASSPORT + "-" + app_code)
 
@@ -87,7 +83,6 @@ def extract_webapp_passport(app_code: str, request: Request) -> str | None:
     ret = (
         _try_extract_passport_token_from_cookie(request)
         or _try_extract_passport_token_from_header(request)
-        or _try_extract_passport_token_from_query(request)
     )
     return ret
 
