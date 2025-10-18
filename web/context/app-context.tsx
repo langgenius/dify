@@ -23,6 +23,7 @@ export type AppContextValue = {
   langGeniusVersionInfo: LangGeniusVersionResponse
   useSelector: typeof useSelector
   isLoadingCurrentWorkspace: boolean
+  isValidatingCurrentWorkspace: boolean
 }
 
 const userProfilePlaceholder = {
@@ -52,6 +53,9 @@ const initialWorkspaceInfo: ICurrentWorkspace = {
   created_at: 0,
   role: 'normal',
   providers: [],
+  trial_credits: 200,
+  trial_credits_used: 0,
+  next_credit_reset_date: 0,
 }
 
 const AppContext = createContext<AppContextValue>({
@@ -66,6 +70,7 @@ const AppContext = createContext<AppContextValue>({
   langGeniusVersionInfo: initialLangGeniusVersionInfo,
   useSelector,
   isLoadingCurrentWorkspace: false,
+  isValidatingCurrentWorkspace: false,
 })
 
 export function useSelector<T>(selector: (value: AppContextValue) => T): T {
@@ -78,7 +83,7 @@ export type AppContextProviderProps = {
 
 export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
   const { data: userProfileResponse, mutate: mutateUserProfile, error: userProfileError } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
-  const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace, isLoading: isLoadingCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
+  const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace, isLoading: isLoadingCurrentWorkspace, isValidating: isValidatingCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
 
   const [userProfile, setUserProfile] = useState<UserProfileResponse>(userProfilePlaceholder)
   const [langGeniusVersionInfo, setLangGeniusVersionInfo] = useState<LangGeniusVersionResponse>(initialLangGeniusVersionInfo)
@@ -168,6 +173,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceDatasetOperator,
       mutateCurrentWorkspace,
       isLoadingCurrentWorkspace,
+      isValidatingCurrentWorkspace,
     }}>
       <div className='flex h-full flex-col overflow-y-auto'>
         {globalThis.document?.body?.getAttribute('data-public-maintenance-notice') && <MaintenanceNotice />}
