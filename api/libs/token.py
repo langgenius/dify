@@ -120,28 +120,33 @@ def set_csrf_token_to_cookie(request: Request, response: Response, token: str):
     )
 
 
-def _clear_cookie(request: Request, response: Response, cookie_name: str, samesite: str = "Lax"):
+def _clear_cookie(
+    response: Response,
+    cookie_name: str,
+    samesite: str = "Lax",
+    http_only: bool = True,
+):
     response.set_cookie(
         cookie_name,
         "",
         expires=0,
         path="/",
         secure=is_secure(),
-        httponly=True,
+        httponly=http_only,
         samesite=samesite,
     )
 
 
-def clear_access_token_from_cookie(request: Request, response: Response, samesite: str = "Lax"):
-    _clear_cookie(request, response, COOKIE_NAME_ACCESS_TOKEN, samesite)
+def clear_access_token_from_cookie(response: Response, samesite: str = "Lax"):
+    _clear_cookie(response, COOKIE_NAME_ACCESS_TOKEN, samesite)
 
 
-def clear_refresh_token_from_cookie(request: Request, response: Response):
-    _clear_cookie(request, response, COOKIE_NAME_REFRESH_TOKEN)
+def clear_refresh_token_from_cookie(response: Response):
+    _clear_cookie(response, COOKIE_NAME_REFRESH_TOKEN)
 
 
-def clear_csrf_token_from_cookie(request: Request, response: Response):
-    _clear_cookie(request, response, COOKIE_NAME_CSRF_TOKEN)
+def clear_csrf_token_from_cookie(response: Response):
+    _clear_cookie(response, COOKIE_NAME_CSRF_TOKEN, http_only=False)
 
 
 def check_csrf_token(request: Request):

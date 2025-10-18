@@ -124,9 +124,9 @@ class LogoutApi(Resource):
             response = make_response({"result": "success"})
 
         # Clear cookies on logout
-        clear_access_token_from_cookie(request, response)
-        clear_refresh_token_from_cookie(request, response)
-        clear_csrf_token_from_cookie(request, response)
+        clear_access_token_from_cookie(response)
+        clear_refresh_token_from_cookie(response)
+        clear_csrf_token_from_cookie(response)
 
         return response
 

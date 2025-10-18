@@ -124,7 +124,7 @@ class LogoutApi(Resource):
         response = make_response({"result": "success"})
         # enterprise SSO sets same site to None in https deployment
         # so we need to logout by calling api
-        clear_access_token_from_cookie(request, response, samesite="None")
+        clear_access_token_from_cookie(response, samesite="None")
         return response
 
 
