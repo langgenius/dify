@@ -163,7 +163,7 @@ const AppPublisher = ({
   }, [appDetail?.id])
 
   const handleAccessControlUpdate = useCallback(() => {
-    fetchAppDetail({ url: '/apps', id: appDetail!.id }).then((res) => {
+    fetchAppDetail({ url: '/apps', id: appDetail?.id || '' }).then((res) => {
       setAppDetail(res)
       setShowAppAccessControl(false)
     })
@@ -392,7 +392,7 @@ const AppPublisher = ({
           appBaseUrl={appBaseURL}
           accessToken={accessToken}
         />
-        {showAppAccessControl && <AccessControl app={appDetail!} onConfirm={handleAccessControlUpdate} onClose={() => { setShowAppAccessControl(false) }} />}
+        {showAppAccessControl && appDetail && <AccessControl app={appDetail} onConfirm={handleAccessControlUpdate} onClose={() => { setShowAppAccessControl(false) }} />}
       </PortalToFollowElem >
     </>)
 }

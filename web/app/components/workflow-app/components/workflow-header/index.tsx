@@ -30,9 +30,11 @@ const WorkflowHeader = () => {
   }, [setCurrentLogItem, setShowMessageLogModal])
 
   const viewHistoryProps = useMemo(() => {
+    if (!appDetail) return null
+
     return {
       onClearLogAndMessageModal: handleClearLogAndMessageModal,
-      historyUrl: isChatMode ? `/apps/${appDetail!.id}/advanced-chat/workflow-runs` : `/apps/${appDetail!.id}/workflow-runs`,
+      historyUrl: isChatMode ? `/apps/${appDetail.id}/advanced-chat/workflow-runs` : `/apps/${appDetail.id}/workflow-runs`,
       historyFetcher: fetchWorkflowRunHistory,
     }
   }, [appDetail, isChatMode, handleClearLogAndMessageModal])
