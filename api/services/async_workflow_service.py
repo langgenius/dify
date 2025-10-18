@@ -16,9 +16,9 @@ from sqlalchemy.orm import Session
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.account import Account
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, WorkflowTriggerStatus
 from models.model import App, EndUser
-from models.trigger import WorkflowTriggerLog, WorkflowTriggerStatus
+from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.errors.app import InvokeDailyRateLimitError, WorkflowNotFoundError

@@ -18,9 +18,9 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from models.account import Account
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
-from models.trigger import WorkflowTriggerLog, WorkflowTriggerStatus
+from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.errors.app import WorkflowNotFoundError

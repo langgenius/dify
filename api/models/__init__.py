@@ -26,7 +26,14 @@ from .dataset import (
     TidbAuthBinding,
     Whitelist,
 )
-from .enums import CreatorUserRole, UserFrom, WorkflowRunTriggeredFrom
+from .enums import (
+    AppTriggerStatus,
+    AppTriggerType,
+    CreatorUserRole,
+    UserFrom,
+    WorkflowRunTriggeredFrom,
+    WorkflowTriggerStatus,
+)
 from .model import (
     ApiRequest,
     ApiToken,
@@ -81,8 +88,6 @@ from .tools import (
 )
 from .trigger import (
     AppTrigger,
-    AppTriggerStatus,
-    AppTriggerType,
     TriggerOAuthSystemClient,
     TriggerOAuthTenantClient,
     TriggerSubscription,
@@ -196,5 +201,6 @@ __all__ = [
     "WorkflowRunTriggeredFrom",
     "WorkflowSchedulePlan",
     "WorkflowToolProvider",
+    "WorkflowTriggerStatus",
     "WorkflowType",
 ]

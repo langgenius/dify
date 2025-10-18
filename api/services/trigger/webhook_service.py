@@ -21,9 +21,9 @@ from core.workflow.enums import NodeType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import AppTriggerStatus, AppTriggerType, WorkflowRunTriggeredFrom
 from models.model import App
-from models.trigger import AppTrigger, AppTriggerStatus, AppTriggerType, WorkflowWebhookTrigger
+from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService

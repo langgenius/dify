@@ -2,7 +2,6 @@ import json
 import time
 from collections.abc import Mapping
 from datetime import datetime
-from enum import StrEnum
 from typing import Any, Optional, cast
 
 import sqlalchemy as sa
@@ -13,11 +12,10 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import Subscription
 from core.trigger.utils.endpoint import parse_endpoint_id
-from core.workflow.enums import NodeType
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.base import Base
-from models.enums import CreatorUserRole
+from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from models.model import Account
 from models.types import EnumText, StringUUID
 
@@ -147,18 +145,6 @@ class TriggerOAuthTenantClient(Base):
     @property
     def oauth_params(self) -> Mapping[str, Any]:
         return cast(Mapping[str, Any], json.loads(self.encrypted_oauth_params or "{}"))
-
-
-class WorkflowTriggerStatus(StrEnum):
-    """Workflow Trigger Execution Status"""
-
-    PENDING = "pending"
-    QUEUED = "queued"
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    RATE_LIMITED = "rate_limited"
-    RETRYING = "retrying"
 
 
 class WorkflowTriggerLog(Base):
@@ -347,22 +333,6 @@ class WorkflowPluginTrigger(Base):
         server_default=func.current_timestamp(),
         server_onupdate=func.current_timestamp(),
     )
-
-
-class AppTriggerType(StrEnum):
-    """App Trigger Type Enum"""
-
-    TRIGGER_WEBHOOK = NodeType.TRIGGER_WEBHOOK.value
-    TRIGGER_SCHEDULE = NodeType.TRIGGER_SCHEDULE.value
-    TRIGGER_PLUGIN = NodeType.TRIGGER_PLUGIN.value
-
-
-class AppTriggerStatus(StrEnum):
-    """App Trigger Status Enum"""
-
-    ENABLED = "enabled"
-    DISABLED = "disabled"
-    UNAUTHORIZED = "unauthorized"
 
 
 class AppTrigger(Base):

@@ -11,7 +11,8 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Optional, Protocol
 
-from models.trigger import WorkflowTriggerLog, WorkflowTriggerStatus
+from models.enums import WorkflowTriggerStatus
+from models.trigger import WorkflowTriggerLog
 
 
 class TriggerLogOrderBy(StrEnum):

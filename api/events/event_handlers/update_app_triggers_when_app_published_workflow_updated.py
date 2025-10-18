@@ -7,7 +7,8 @@ from core.workflow.nodes import NodeType
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
 from models import AppMode
-from models.trigger import AppTrigger, AppTriggerStatus
+from models.enums import AppTriggerStatus
+from models.trigger import AppTrigger
 from models.workflow import Workflow
 
 
