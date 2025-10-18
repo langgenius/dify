@@ -446,7 +446,7 @@ class LLMNode(Node):
             for result in invoke_result:
                 if isinstance(result, LLMResultChunkWithStructuredOutput):
                     # Collect structured_output from the chunk
-                    if result.structured_output:
+                    if result.structured_output is not None:
                         collected_structured_output = result.structured_output
                     yield result
                 if isinstance(result, LLMResultChunk):
