@@ -344,6 +344,7 @@ class LLMNode(Node):
                     inputs=node_inputs,
                     process_data=process_data,
                     error_type=type(e).__name__,
+                    llm_usage=usage,
                 )
             )
         except Exception as e:
@@ -354,6 +355,8 @@ class LLMNode(Node):
                     error=str(e),
                     inputs=node_inputs,
                     process_data=process_data,
+                    error_type=type(e).__name__,
+                    llm_usage=usage,
                 )
             )
 
