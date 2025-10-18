@@ -160,10 +160,7 @@ class ToolNode(Node):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
-                    error="An error occurred in the plugin, "
-                    f"please contact the author of {node_data.provider_name} for help, "
-                    f"error type: {e.get_error_type()}, "
-                    f"error details: {e.get_error_message()}",
+                    error=e.to_user_friendly_error(plugin_name=node_data.provider_name),
                     error_type=type(e).__name__,
                 )
             )

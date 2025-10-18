@@ -980,10 +980,8 @@ class DraftWorkflowTriggerRunApi(Resource):
             )
         except InvokeRateLimitError as ex:
             raise InvokeRateLimitHttpError(ex.description)
-        except ValueError as e:
-            raise e
         except PluginInvokeError as e:
-            raise e
+            raise ValueError(e.to_user_friendly_error())
         except Exception as e:
             logger.exception("Error polling trigger debug event")
             raise e
@@ -1040,11 +1038,8 @@ class DraftWorkflowTriggerNodeApi(Resource):
                     node_id=node_id,
                 )
                 event = poller.poll()
-            except ValueError as e:
-                logger.exception("Error polling trigger debug event")
-                raise e
             except PluginInvokeError as e:
-                raise e
+                raise ValueError(e.to_user_friendly_error())
             except Exception as e:
                 logger.exception("Error polling trigger debug event")
                 raise e
@@ -1119,10 +1114,8 @@ class DraftWorkflowTriggerRunAllApi(Resource):
                 user_id=current_user.id,
                 node_ids=node_ids,
             )
-        except ValueError as e:
-            raise e
         except PluginInvokeError as e:
-            raise e
+            raise ValueError(e.to_user_friendly_error())
         except Exception as e:
             logger.exception("Error polling trigger debug event")
             raise e

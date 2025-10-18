@@ -58,6 +58,20 @@ class PluginInvokeError(PluginDaemonClientSideError):
         except Exception:
             return self.description
 
+    def to_user_friendly_error(self, plugin_name: str = "currently running plugin") -> str:
+        """
+        Convert the error to a user-friendly error message.
+
+        :param plugin_name: The name of the plugin that caused the error.
+        :return: A user-friendly error message.
+        """
+        return (
+            f"An error occurred in the {plugin_name}, "
+            f"please contact the author of {plugin_name} for help, "
+            f"error type: {self.get_error_type()}, "
+            f"error details: {self.get_error_message()}"
+        )
+
 
 class PluginUniqueIdentifierError(PluginDaemonClientSideError):
     description: str = "Unique Identifier Error"
