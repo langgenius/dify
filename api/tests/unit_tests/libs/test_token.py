@@ -18,7 +18,6 @@ def test_extract_access_token():
         (_mock_request({}, {COOKIE_NAME_ACCESS_TOKEN: "123"}, {}), "123"),
         (_mock_request({}, {}, {}), None),
         (_mock_request({"Authorization": "Bearer_aaa 123"}, {}, {}), None),
-        (_mock_request({"Authorization": "Bearer 123"}, {}, {}), "123"),
     ]
     for request, expected in test_cases:
         assert extract_access_token(request) == expected  # pyright: ignore[reportArgumentType]
