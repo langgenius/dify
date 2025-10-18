@@ -24,7 +24,7 @@ class PluginTriggerManager(BasePluginClient):
         Fetch trigger providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
             for provider in json_response.get("data", []):
                 declaration = provider.get("declaration", {}) or {}
                 provider_id = provider.get("plugin_id") + "/" + provider.get("provider")
@@ -55,7 +55,7 @@ class PluginTriggerManager(BasePluginClient):
         Fetch trigger provider for the given tenant and plugin.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict:
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
             data = json_response.get("data")
             if data:
                 for event in data.get("declaration", {}).get("events", []):
@@ -90,6 +90,7 @@ class PluginTriggerManager(BasePluginClient):
         request: Request,
         parameters: Mapping[str, Any],
         subscription: Subscription,
+        payload: Mapping[str, Any],
     ) -> TriggerInvokeEventResponse:
         """
         Invoke a trigger with the given parameters.
@@ -109,6 +110,7 @@ class PluginTriggerManager(BasePluginClient):
                     "subscription": subscription.model_dump(),
                     "raw_http_request": binascii.hexlify(serialize_request(request)).decode(),
                     "parameters": parameters,
+                    "payload": payload,
                 },
             },
             headers={
@@ -166,25 +168,23 @@ class PluginTriggerManager(BasePluginClient):
         Dispatch an event to triggers.
         """
         provider_id = TriggerProviderID(provider)
-        response: Generator[PluginTriggerDispatchResponse, None, None] = (
-            self._request_with_plugin_daemon_response_stream(
-                method="POST",
-                path=f"plugin/{tenant_id}/dispatch/trigger/dispatch_event",
-                type_=PluginTriggerDispatchResponse,
-                data={
-                    "data": {
-                        "provider": provider_id.provider_name,
-                        "subscription": subscription,
-                        "credentials": credentials,
-                        "credential_type": credential_type,
-                        "raw_http_request": binascii.hexlify(serialize_request(request)).decode(),
-                    },
+        response = self._request_with_plugin_daemon_response_stream(
+            method="POST",
+            path=f"plugin/{tenant_id}/dispatch/trigger/dispatch_event",
+            type_=PluginTriggerDispatchResponse,
+            data={
+                "data": {
+                    "provider": provider_id.provider_name,
+                    "subscription": subscription,
+                    "credentials": credentials,
+                    "credential_type": credential_type,
+                    "raw_http_request": binascii.hexlify(serialize_request(request)).decode(),
                 },
-                headers={
-                    "X-Plugin-ID": provider_id.plugin_id,
-                    "Content-Type": "application/json",
-                },
-            )
+            },
+            headers={
+                "X-Plugin-ID": provider_id.plugin_id,
+                "Content-Type": "application/json",
+            },
         )
 
         for resp in response:
@@ -192,6 +192,7 @@ class PluginTriggerManager(BasePluginClient):
                 user_id=resp.user_id or "",
                 events=resp.events,
                 response=deserialize_response(binascii.unhexlify(resp.raw_http_response.encode())),
+                payload=resp.payload,
             )
 
         raise ValueError("No response received from plugin daemon for dispatch event")
