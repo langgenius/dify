@@ -44,6 +44,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.message.repositories.factory import get_message_repository
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
@@ -370,8 +371,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         llm_result = self._task_state.llm_result
         usage = llm_result.usage
 
-        message_stmt = select(Message).where(Message.id == self._message_id)
-        message = session.scalar(message_stmt)
+        message_repository = get_message_repository()
+        message = message_repository.get_by_id(self._message_id, session=session)
         if not message:
             raise ValueError(f"message {self._message_id} not found")
         conversation_stmt = select(Conversation).where(Conversation.id == self._conversation_id)

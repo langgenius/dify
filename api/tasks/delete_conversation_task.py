@@ -28,6 +28,7 @@ def delete_conversation_related_data(conversation_id: str):
     start_at = time.perf_counter()
 
     try:
+        # TODO(core-refactor): replace direct Message* deletions with repository abstractions.
         db.session.query(MessageAnnotation).where(MessageAnnotation.conversation_id == conversation_id).delete(
             synchronize_session=False
         )

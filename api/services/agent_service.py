@@ -35,6 +35,7 @@ class AgentService:
         if not conversation:
             raise ValueError(f"Conversation not found: {conversation_id}")
 
+        # TODO(core-refactor): replace direct Message lookup with MessageRepository usage.
         message: Message | None = (
             db.session.query(Message)
             .where(

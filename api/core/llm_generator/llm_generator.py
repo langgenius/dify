@@ -18,6 +18,7 @@ from core.llm_generator.prompts import (
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
+from core.message.repositories.factory import get_message_repository
 from core.model_manager import ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
@@ -388,9 +389,7 @@ class LLMGenerator:
     def instruction_modify_legacy(
         tenant_id: str, flow_id: str, current: str, instruction: str, model_config: dict, ideal_output: str | None
     ):
-        last_run: Message | None = (
-            db.session.query(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).first()
-        )
+        last_run: Message | None = get_message_repository().get_latest_for_app(flow_id)
         if not last_run:
             return LLMGenerator.__instruction_modify_common(
                 tenant_id=tenant_id,

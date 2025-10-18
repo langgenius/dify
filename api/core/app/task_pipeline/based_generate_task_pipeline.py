@@ -1,7 +1,6 @@
 import logging
 import time
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -16,10 +15,10 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
 )
 from core.errors.error import QuotaExceededError
+from core.message.repositories.factory import get_message_repository
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from models.enums import MessageStatus
-from models.model import Message
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +56,8 @@ class BasedGenerateTaskPipeline:
         if not message_id or not session:
             return err
 
-        stmt = select(Message).where(Message.id == message_id)
-        message = session.scalar(stmt)
+        message_repository = get_message_repository()
+        message = message_repository.get_by_id(message_id, session=session)
         if not message:
             return err
 

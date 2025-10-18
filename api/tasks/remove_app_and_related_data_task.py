@@ -271,6 +271,7 @@ def _delete_conversation_variables(*, app_id: str):
 
 def _delete_app_messages(tenant_id: str, app_id: str):
     def del_message(message_id: str):
+        # TODO(core-refactor): use MessageRepository (and related repositories) for cascading deletes.
         db.session.query(MessageFeedback).where(MessageFeedback.message_id == message_id).delete(
             synchronize_session=False
         )

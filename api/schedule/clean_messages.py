@@ -34,6 +34,7 @@ def clean_messages():
     while True:
         try:
             # Main query with join and filter
+            # TODO(core-refactor): migrate cleanup routines to MessageRepository instead of direct session usage.
             messages = (
                 db.session.query(Message)
                 .where(Message.created_at < plan_sandbox_clean_message_day)

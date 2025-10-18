@@ -11,6 +11,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from core.message.repositories.message_repository import MessageRepository
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from libs.module_loading import import_string
@@ -106,3 +107,15 @@ class DifyCoreRepositoryFactory:
             raise RepositoryImportError(
                 f"Failed to create WorkflowNodeExecutionRepository from '{class_path}': {e}"
             ) from e
+
+    @classmethod
+    def create_message_repository(cls, session_maker: sessionmaker) -> MessageRepository:
+        """Create a MessageRepository instance based on configuration."""
+
+        class_path = dify_config.CORE_MESSAGE_REPOSITORY
+
+        try:
+            repository_class = import_string(class_path)
+            return repository_class(session_maker=session_maker)  # type: ignore[no-any-return]
+        except (ImportError, Exception) as e:
+            raise RepositoryImportError(f"Failed to create MessageRepository from '{class_path}': {e}") from e

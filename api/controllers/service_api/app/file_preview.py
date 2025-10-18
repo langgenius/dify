@@ -99,6 +99,7 @@ class FilePreviewApi(Resource):
                 raise FileAccessDeniedError("Invalid file or app identifier")
 
             # First, find the MessageFile that references this upload file
+            # TODO(core-refactor): switch to MessageRepository/MessageFile repositories for ownership validation.
             message_file = db.session.query(MessageFile).where(MessageFile.upload_file_id == file_id).first()
 
             if not message_file:

@@ -3,10 +3,7 @@ from datetime import datetime
 from typing import Union
 from urllib.parse import urlparse
 
-from sqlalchemy import select
-
-from extensions.ext_database import db
-from models.model import Message
+from core.message.repositories.factory import get_message_repository
 
 
 def filter_none_values(data: dict):
@@ -22,7 +19,7 @@ def filter_none_values(data: dict):
 
 
 def get_message_data(message_id: str):
-    return db.session.scalar(select(Message).where(Message.id == message_id))
+    return get_message_repository().get_by_id(message_id)
 
 
 @contextmanager

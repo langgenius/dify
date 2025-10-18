@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
+from core.message.repositories.factory import get_message_repository
 from core.ops.entities.config_entity import (
     OPS_FILE_PATH,
     TracingProviderEnum,
@@ -33,7 +34,7 @@ from core.ops.entities.trace_entity import (
 from core.ops.utils import get_message_data
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
+from models.model import App, AppModelConfig, Conversation, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
 
@@ -312,8 +313,7 @@ class OpsTraceManager:
     @classmethod
     def get_app_config_through_message_id(cls, message_id: str):
         app_model_config = None
-        message_stmt = select(Message).where(Message.id == message_id)
-        message_data = db.session.scalar(message_stmt)
+        message_data = get_message_data(message_id)
         if not message_data:
             return None
         conversation_id = message_data.conversation_id
@@ -517,11 +517,13 @@ class TraceTask:
             # get message_id
             message_id = None
             if conversation_id:
-                message_data_stmt = select(Message.id).where(
-                    Message.conversation_id == conversation_id,
-                    Message.workflow_run_id == workflow_run_id,
+                message_repository = get_message_repository()
+                message_record = message_repository.get_by_conversation_and_workflow_run(
+                    conversation_id=conversation_id,
+                    workflow_run_id=workflow_run_id,
+                    session=session,
                 )
-                message_id = session.scalar(message_data_stmt)
+                message_id = message_record.id if message_record else None
 
             metadata = {
                 "workflow_id": workflow_id,

@@ -25,6 +25,7 @@ from core.app.entities.task_entities import (
     CompletionAppStreamResponse,
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
+from core.message.repositories.factory import get_message_repository
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -270,8 +271,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         :param message_id: message id
         :return: message
         """
-        with Session(db.engine, expire_on_commit=False) as session:
-            message = session.scalar(select(Message).where(Message.id == message_id))
+        message_repository = get_message_repository()
+        message = message_repository.get_by_id(message_id)
 
         if message is None:
             raise MessageNotExistsError("Message not exists")

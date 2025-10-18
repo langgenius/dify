@@ -18,6 +18,7 @@ from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackH
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.file import file_manager
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.message.repositories.factory import get_message_repository
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
     AssistantPromptMessage,
@@ -418,16 +419,10 @@ class BaseAgentRunner(AppRunner):
             if isinstance(prompt_message, SystemPromptMessage):
                 result.append(prompt_message)
 
-        messages = (
-            (
-                db.session.execute(
-                    select(Message)
-                    .where(Message.conversation_id == self.message.conversation_id)
-                    .order_by(Message.created_at.desc())
-                )
-            )
-            .scalars()
-            .all()
+        message_repository = get_message_repository()
+        messages = message_repository.get_conversation_messages(
+            conversation_id=self.message.conversation_id,
+            order="desc",
         )
 
         messages = list(reversed(extract_thread_messages(messages)))

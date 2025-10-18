@@ -6,7 +6,6 @@ from typing import Any, Literal, Union, overload
 
 from flask import Flask, copy_current_request_context, current_app
 from pydantic import ValidationError
-from sqlalchemy import select
 
 from configs import dify_config
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
@@ -19,11 +18,12 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
+from core.message.repositories.factory import get_message_repository
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
-from models import Account, App, EndUser, Message
+from models import Account, App, EndUser
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
 
@@ -249,14 +249,14 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         :param invoke_from: invoke from source
         :param stream: is stream
         """
-        stmt = select(Message).where(
-            Message.id == message_id,
-            Message.app_id == app_model.id,
-            Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
-            Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-            Message.from_account_id == (user.id if isinstance(user, Account) else None),
+        message_repository = get_message_repository()
+        message = message_repository.get_message_for_user(
+            app_id=app_model.id,
+            from_source="api" if isinstance(user, EndUser) else "console",
+            from_end_user_id=user.id if isinstance(user, EndUser) else None,
+            from_account_id=user.id if isinstance(user, Account) else None,
+            message_id=message_id,
         )
-        message = db.session.scalar(stmt)
 
         if not message:
             raise MessageNotExistsError()
