@@ -13,12 +13,13 @@ import I18NContext from '@/context/i18n'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 export default function CheckCode() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
   const token = decodeURIComponent(searchParams.get('token') as string)
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
+  const language = i18n.language
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
   const { locale } = useContext(I18NContext)
@@ -40,7 +41,7 @@ export default function CheckCode() {
         return
       }
       setIsLoading(true)
-      const ret = await emailLoginWithCode({ email, code, token })
+      const ret = await emailLoginWithCode({ email, code, token, language })
       if (ret.result === 'success') {
         localStorage.setItem('console_token', ret.data.access_token)
         localStorage.setItem('refresh_token', ret.data.refresh_token)
