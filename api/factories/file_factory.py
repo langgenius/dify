@@ -21,7 +21,7 @@ def build_from_message_files(
     *,
     message_files: Sequence["MessageFile"],
     tenant_id: str,
-    config: FileUploadConfig,
+    config: FileUploadConfig | None = None,
 ) -> Sequence[File]:
     results = [
         build_from_message_file(message_file=file, tenant_id=tenant_id, config=config)
@@ -35,14 +35,17 @@ def build_from_message_file(
     *,
     message_file: "MessageFile",
     tenant_id: str,
-    config: FileUploadConfig,
+    config: FileUploadConfig | None,
 ):
     mapping = {
         "transfer_method": message_file.transfer_method,
         "url": message_file.url,
-        "id": message_file.id,
         "type": message_file.type,
     }
+
+    # Only include id if it exists (message_file has been committed to DB)
+    if message_file.id:
+        mapping["id"] = message_file.id
 
     # Set the correct ID field based on transfer method
     if message_file.transfer_method == FileTransferMethod.TOOL_FILE:
