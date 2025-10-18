@@ -73,7 +73,6 @@ class APIBasedExtensionAPI(Resource):
         parser.add_argument("api_endpoint", type=str, required=True, location="json")
         parser.add_argument("api_key", type=str, required=True, location="json")
         args = parser.parse_args()
-        _, current_tenant_id = current_account_with_tenant()
 
         extension_data = APIBasedExtension(
             tenant_id=current_tenant_id,
