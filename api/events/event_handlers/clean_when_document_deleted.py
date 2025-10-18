@@ -8,6 +8,6 @@ def handle(sender, **kwargs):
     dataset_id = kwargs.get("dataset_id")
     doc_form = kwargs.get("doc_form")
     file_id = kwargs.get("file_id")
-    assert dataset_id is not None
-    assert doc_form is not None
+    if not dataset_id or not doc_form:
+        return
     clean_document_task.delay(document_id, dataset_id, doc_form, file_id)
