@@ -78,7 +78,6 @@ class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
         return TriggerDebugEvent(
             workflow_args={
                 "inputs": trigger_event_response.variables,
-                "query": "",
                 "files": [],
             },
             node_id=self.node_id,
