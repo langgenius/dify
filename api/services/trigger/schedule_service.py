@@ -257,7 +257,7 @@ class ScheduleService:
                 raise ScheduleConfigError("Monthly days are required for monthly schedules")
             hour, minute = convert_12h_to_24h(visual_config.time)
 
-            numeric_days = []
+            numeric_days: list[int] = []
             has_last = False
             for day in visual_config.monthly_days:
                 if day == "last":
