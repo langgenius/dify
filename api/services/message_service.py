@@ -27,9 +27,17 @@ class MessageService:
     def __init__(self, message_repository: MessageRepository):
         self._message_repository = message_repository
 
+    _session_maker: sessionmaker | None = None
+
+    @classmethod
+    def _get_session_maker(cls) -> sessionmaker:
+        if cls._session_maker is None:
+            cls._session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        return cls._session_maker
+
     @classmethod
     def create(cls) -> "MessageService":
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        session_maker = cls._get_session_maker()
         repository = DifyAPIRepositoryFactory.create_api_message_repository(session_maker)
         return cls(repository)
 
