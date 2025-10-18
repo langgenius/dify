@@ -46,7 +46,7 @@ class SSETransport:
         url: str,
         headers: dict[str, Any] | None = None,
         timeout: float = 5.0,
-        sse_read_timeout: float = 5 * 60,
+        sse_read_timeout: float = 1 * 60,
     ):
         """Initialize the SSE transport.
 
@@ -255,7 +255,7 @@ def sse_client(
     url: str,
     headers: dict[str, Any] | None = None,
     timeout: float = 5.0,
-    sse_read_timeout: float = 5 * 60,
+    sse_read_timeout: float = 1 * 60,
 ) -> Generator[tuple[ReadQueue, WriteQueue], None, None]:
     """
     Client transport for SSE.
@@ -276,31 +276,34 @@ def sse_client(
     read_queue: ReadQueue | None = None
     write_queue: WriteQueue | None = None
 
-    with ThreadPoolExecutor() as executor:
-        try:
-            with create_ssrf_proxy_mcp_http_client(headers=transport.headers) as client:
-                with ssrf_proxy_sse_connect(
-                    url, timeout=httpx.Timeout(timeout, read=sse_read_timeout), client=client
-                ) as event_source:
-                    event_source.response.raise_for_status()
+    executor = ThreadPoolExecutor()
+    try:
+        with create_ssrf_proxy_mcp_http_client(headers=transport.headers) as client:
+            with ssrf_proxy_sse_connect(
+                url, timeout=httpx.Timeout(timeout, read=sse_read_timeout), client=client
+            ) as event_source:
+                event_source.response.raise_for_status()
 
-                    read_queue, write_queue = transport.connect(executor, client, event_source)
+                read_queue, write_queue = transport.connect(executor, client, event_source)
 
-                    yield read_queue, write_queue
+                yield read_queue, write_queue
 
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code == 401:
-                raise MCPAuthError()
-            raise MCPConnectionError()
-        except Exception:
-            logger.exception("Error connecting to SSE endpoint")
-            raise
-        finally:
-            # Clean up queues
-            if read_queue:
-                read_queue.put(None)
-            if write_queue:
-                write_queue.put(None)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 401:
+            raise MCPAuthError()
+        raise MCPConnectionError()
+    except Exception:
+        logger.exception("Error connecting to SSE endpoint")
+        raise
+    finally:
+        # Clean up queues
+        if read_queue:
+            read_queue.put(None)
+        if write_queue:
+            write_queue.put(None)
+
+        # Shutdown executor without waiting to prevent hanging
+        executor.shutdown(wait=False)
 
 
 def send_message(http_client: httpx.Client, endpoint_url: str, session_message: SessionMessage):
