@@ -10,8 +10,7 @@ from core.plugin.entities.parameters import (
     PluginParameterAutoGenerate,
     PluginParameterOption,
     PluginParameterTemplate,
-    as_normal_type,
-    cast_parameter_value,
+    PluginParameterType,
 )
 from core.tools.entities.common_entities import I18nObject
 
@@ -19,24 +18,18 @@ from core.tools.entities.common_entities import I18nObject
 class EventParameterType(StrEnum):
     """The type of the parameter"""
 
-    STRING = "string"
-    NUMBER = "number"
-    BOOLEAN = "boolean"
-    SELECT = "select"
-    FILE = "file"
-    FILES = "files"
-    MODEL_SELECTOR = "model-selector"
-    APP_SELECTOR = "app-selector"
-    OBJECT = "object"
-    ARRAY = "array"
-    DYNAMIC_SELECT = "dynamic-select"
-    CHECKBOX = "checkbox"
-
-    def as_normal_type(self):
-        return as_normal_type(self)
-
-    def cast_value(self, value: Any):
-        return cast_parameter_value(self, value)
+    STRING = PluginParameterType.STRING
+    NUMBER = PluginParameterType.NUMBER
+    BOOLEAN = PluginParameterType.BOOLEAN
+    SELECT = PluginParameterType.SELECT
+    FILE = PluginParameterType.FILE
+    FILES = PluginParameterType.FILES
+    MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR
+    APP_SELECTOR = PluginParameterType.APP_SELECTOR
+    OBJECT = PluginParameterType.OBJECT
+    ARRAY = PluginParameterType.ARRAY
+    DYNAMIC_SELECT = PluginParameterType.DYNAMIC_SELECT
+    CHECKBOX = PluginParameterType.CHECKBOX
 
 
 class EventParameter(BaseModel):
@@ -57,7 +50,7 @@ class EventParameter(BaseModel):
         default=False,
         description="Whether the parameter is multiple select, only valid for select or dynamic-select type",
     )
-    default: Union[int, float, str, list, None] = None
+    default: Union[int, float, str, list[Any], None] = None
     min: Union[float, int, None] = None
     max: Union[float, int, None] = None
     precision: Optional[int] = None
@@ -96,7 +89,7 @@ class EventEntity(BaseModel):
     """
 
     identity: EventIdentity = Field(..., description="The identity of the event")
-    parameters: list[EventParameter] = Field(default=[], description="The parameters of the event")
+    parameters: list[EventParameter] = Field(default_factory=list, description="The parameters of the event")
     description: I18nObject = Field(..., description="The description of the event")
     output_schema: Optional[Mapping[str, Any]] = Field(
         default=None, description="The output schema that this event produces"
@@ -150,7 +143,7 @@ class TriggerProviderEntity(BaseModel):
         default=None,
         description="The subscription constructor of the trigger provider",
     )
-    events: list[EventEntity] = Field(default=[], description="The events of the trigger provider")
+    events: list[EventEntity] = Field(default_factory=list, description="The events of the trigger provider")
 
 
 class Subscription(BaseModel):
@@ -165,13 +158,15 @@ class Subscription(BaseModel):
     )
 
     endpoint: str = Field(..., description="The webhook endpoint URL allocated by Dify for receiving events")
-    parameters: Mapping[str, Any] = Field(default={}, description="The parameters of the subscription constructor")
+    parameters: Mapping[str, Any] = Field(
+        default_factory=dict, description="The parameters of the subscription constructor"
+    )
     properties: Mapping[str, Any] = Field(
         ..., description="Subscription data containing all properties and provider-specific information"
     )
 
 
-class Unsubscription(BaseModel):
+class UnsubscribeResult(BaseModel):
     """
     Result of a trigger unsubscription operation.
 
@@ -192,8 +187,8 @@ class Unsubscription(BaseModel):
 class RequestLog(BaseModel):
     id: str = Field(..., description="The id of the request log")
     endpoint: str = Field(..., description="The endpoint of the request log")
-    request: dict = Field(..., description="The request of the request log")
-    response: dict = Field(..., description="The response of the request log")
+    request: dict[str, Any] = Field(..., description="The request of the request log")
+    response: dict[str, Any] = Field(..., description="The response of the request log")
     created_at: datetime = Field(..., description="The created at of the request log")
 
 
@@ -282,5 +277,5 @@ __all__: list[str] = [
     "TriggerEventData",
     "TriggerProviderEntity",
     "TriggerProviderIdentity",
-    "Unsubscription",
+    "UnsubscribeResult",
 ]
