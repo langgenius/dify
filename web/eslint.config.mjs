@@ -3,7 +3,6 @@ import {
   stylistic, typescript, unicorn,
 } from '@antfu/eslint-config'
 import globals from 'globals'
-import storybook from 'eslint-plugin-storybook'
 // import { fixupConfigRules } from '@eslint/compat'
 import tailwind from 'eslint-plugin-tailwindcss'
 import reactHooks from 'eslint-plugin-react-hooks'
@@ -136,7 +135,6 @@ export default combine(
       },
     },
   },
-  storybook.configs['flat/recommended'],
   // reactRefresh.configs.recommended,
   {
     rules: reactHooks.configs.recommended.rules,
