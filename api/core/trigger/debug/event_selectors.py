@@ -51,7 +51,7 @@ class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
         provider_id = TriggerProviderID(plugin_trigger_data.provider_id)
         pool_key: str = PluginTriggerDebugEvent.build_pool_key(
             name=plugin_trigger_data.event_name,
-            provider_id=provider_id,
+            provider_id=str(provider_id),
             tenant_id=self.tenant_id,
             subscription_id=plugin_trigger_data.subscription_id,
         )
