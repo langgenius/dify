@@ -736,14 +736,11 @@ class ToolManager:
 
         :return: the provider controller, the credentials
         """
-        provider: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
-            .where(
-                ApiToolProvider.id == provider_id,
-                ApiToolProvider.tenant_id == tenant_id,
-            )
-            .first()
-        )
+        provider: ApiToolProvider | None = db.session.scalars(
+            select(ApiToolProvider)
+            .where(ApiToolProvider.id == provider_id, ApiToolProvider.tenant_id == tenant_id)
+            .limit(1)
+        ).first()
 
         if provider is None:
             raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
@@ -773,14 +770,11 @@ class ToolManager:
 
         :return: the provider controller, the credentials
         """
-        provider: MCPToolProvider | None = (
-            db.session.query(MCPToolProvider)
-            .where(
-                MCPToolProvider.server_identifier == provider_id,
-                MCPToolProvider.tenant_id == tenant_id,
-            )
-            .first()
-        )
+        provider: MCPToolProvider | None = db.session.scalars(
+            select(MCPToolProvider)
+            .where(MCPToolProvider.server_identifier == provider_id, MCPToolProvider.tenant_id == tenant_id)
+            .limit(1)
+        ).first()
 
         if provider is None:
             raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
@@ -795,14 +789,11 @@ class ToolManager:
         get api provider
         """
         provider_name = provider
-        provider_obj: ApiToolProvider | None = (
-            db.session.query(ApiToolProvider)
-            .where(
-                ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider,
-            )
-            .first()
-        )
+        provider_obj: ApiToolProvider | None = db.session.scalars(
+            select(ApiToolProvider)
+            .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == provider)
+            .limit(1)
+        ).first()
 
         if provider_obj is None:
             raise ValueError(f"you have not added provider {provider_name}")
@@ -887,11 +878,11 @@ class ToolManager:
     @classmethod
     def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str) -> Mapping[str, str]:
         try:
-            workflow_provider: WorkflowToolProvider | None = (
-                db.session.query(WorkflowToolProvider)
+            workflow_provider: WorkflowToolProvider | None = db.session.scalars(
+                select(WorkflowToolProvider)
                 .where(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
-                .first()
-            )
+                .limit(1)
+            ).first()
 
             if workflow_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
@@ -904,11 +895,11 @@ class ToolManager:
     @classmethod
     def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str) -> Mapping[str, str]:
         try:
-            api_provider: ApiToolProvider | None = (
-                db.session.query(ApiToolProvider)
+            api_provider: ApiToolProvider | None = db.session.scalars(
+                select(ApiToolProvider)
                 .where(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.id == provider_id)
-                .first()
-            )
+                .limit(1)
+            ).first()
 
             if api_provider is None:
                 raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
@@ -921,11 +912,11 @@ class ToolManager:
     @classmethod
     def generate_mcp_tool_icon_url(cls, tenant_id: str, provider_id: str) -> Mapping[str, str] | str:
         try:
-            mcp_provider: MCPToolProvider | None = (
-                db.session.query(MCPToolProvider)
+            mcp_provider: MCPToolProvider | None = db.session.scalars(
+                select(MCPToolProvider)
                 .where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == provider_id)
-                .first()
-            )
+                .limit(1)
+            ).first()
 
             if mcp_provider is None:
                 raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")

@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 import sqlalchemy as sa
 from deprecated import deprecated
-from sqlalchemy import ForeignKey, String, func
+from sqlalchemy import ForeignKey, String, func, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.helper import encrypter
@@ -183,11 +183,11 @@ class ApiToolProvider(TypeBase):
     def user(self) -> Account | None:
         if not self.user_id:
             return None
-        return db.session.query(Account).where(Account.id == self.user_id).first()
+        return db.session.scalars(select(Account).where(Account.id == self.user_id).limit(1)).first()
 
     @property
     def tenant(self) -> Tenant | None:
-        return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
+        return db.session.scalars(select(Tenant).where(Tenant.id == self.tenant_id).limit(1)).first()
 
 
 class ToolLabelBinding(TypeBase):
@@ -257,11 +257,11 @@ class WorkflowToolProvider(TypeBase):
 
     @property
     def user(self) -> Account | None:
-        return db.session.query(Account).where(Account.id == self.user_id).first()
+        return db.session.scalars(select(Account).where(Account.id == self.user_id).limit(1)).first()
 
     @property
     def tenant(self) -> Tenant | None:
-        return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
+        return db.session.scalars(select(Tenant).where(Tenant.id == self.tenant_id).limit(1)).first()
 
     @property
     def parameter_configurations(self) -> list["WorkflowToolParameterConfiguration"]:
@@ -274,7 +274,7 @@ class WorkflowToolProvider(TypeBase):
 
     @property
     def app(self) -> App | None:
-        return db.session.query(App).where(App.id == self.app_id).first()
+        return db.session.scalars(select(App).where(App.id == self.app_id).limit(1)).first()
 
 
 class MCPToolProvider(TypeBase):
@@ -329,11 +329,11 @@ class MCPToolProvider(TypeBase):
     encrypted_headers: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
 
     def load_user(self) -> Account | None:
-        return db.session.query(Account).where(Account.id == self.user_id).first()
+        return db.session.scalars(select(Account).where(Account.id == self.user_id).limit(1)).first()
 
     @property
     def tenant(self) -> Tenant | None:
-        return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
+        return db.session.scalars(select(Tenant).where(Tenant.id == self.tenant_id).limit(1)).first()
 
     @property
     def credentials(self) -> dict[str, Any]:

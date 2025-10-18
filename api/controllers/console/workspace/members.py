@@ -2,6 +2,7 @@ from urllib import parse
 
 from flask import abort, request
 from flask_restx import Resource, marshal_with, reqparse
+from sqlalchemy import select
 
 import services
 from configs import dify_config
@@ -120,7 +121,7 @@ class MemberCancelInviteApi(Resource):
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        member = db.session.query(Account).where(Account.id == str(member_id)).first()
+        member = db.session.scalars(select(Account).where(Account.id == str(member_id)).limit(1)).first()
         if member is None:
             abort(404)
         else:

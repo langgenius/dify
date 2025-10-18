@@ -187,7 +187,9 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     if self.return_resource:
                         for record in records:
                             segment = record.segment
-                            dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
+                            dataset = db.session.scalars(
+                                select(Dataset).filter_by(id=segment.dataset_id).limit(1)
+                            ).first()
                             dataset_document_stmt = select(DatasetDocument).where(
                                 DatasetDocument.id == segment.document_id,
                                 DatasetDocument.enabled == True,

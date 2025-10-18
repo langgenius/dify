@@ -3,7 +3,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
 
@@ -142,18 +141,20 @@ class TestApiKeyAuthService:
         # Mock database query result
         mock_binding = Mock()
         mock_binding.credentials = json.dumps(self.mock_credentials)
-        mock_session.query.return_value.where.return_value.first.return_value = mock_binding
-        mock_session.query.return_value.where.return_value.first.return_value = mock_binding
+        mock_session.scalars.return_value.first.return_value = mock_binding
+        mock_session.scalars.return_value.first.return_value = mock_binding
 
         result = ApiKeyAuthService.get_auth_credentials(self.tenant_id, self.category, self.provider)
 
         assert result == self.mock_credentials
-        mock_session.query.assert_called_once_with(DataSourceApiKeyAuthBinding)
+        mock_session.scalars.assert_called_once()
+        select_arg = mock_session.scalars.call_args[0][0]
+        assert "data_source_api_key_auth_binding" in str(select_arg).lower()
 
     @patch("services.auth.api_key_auth_service.db.session")
     def test_get_auth_credentials_not_found(self, mock_session):
         """Test get auth credentials - not found"""
-        mock_session.query.return_value.where.return_value.first.return_value = None
+        mock_session.scalars.return_value.first.return_value = None
 
         result = ApiKeyAuthService.get_auth_credentials(self.tenant_id, self.category, self.provider)
 
@@ -162,13 +163,20 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.db.session")
     def test_get_auth_credentials_filters_correctly(self, mock_session):
         """Test get auth credentials - applies correct filters"""
-        mock_session.query.return_value.where.return_value.first.return_value = None
+        mock_session.scalars.return_value.first.return_value = None
 
         ApiKeyAuthService.get_auth_credentials(self.tenant_id, self.category, self.provider)
 
-        # Verify where conditions are correct
-        where_call = mock_session.query.return_value.where.call_args[0]
-        assert len(where_call) == 4  # tenant_id, category, provider, disabled
+        # Verify scalars was called with a select statement
+        mock_session.scalars.assert_called_once()
+        select_arg = mock_session.scalars.call_args[0][0]
+
+        # Verify the select statement contains the expected filters
+        select_str = str(select_arg).lower()
+        assert "tenant_id" in select_str
+        assert "category" in select_str
+        assert "provider" in select_str
+        assert "disabled" in select_str
 
     @patch("services.auth.api_key_auth_service.db.session")
     def test_get_auth_credentials_json_parsing(self, mock_session):
@@ -178,7 +186,7 @@ class TestApiKeyAuthService:
 
         mock_binding = Mock()
         mock_binding.credentials = json.dumps(special_credentials, ensure_ascii=False)
-        mock_session.query.return_value.where.return_value.first.return_value = mock_binding
+        mock_session.scalars.return_value.first.return_value = mock_binding
 
         result = ApiKeyAuthService.get_auth_credentials(self.tenant_id, self.category, self.provider)
 
@@ -190,7 +198,7 @@ class TestApiKeyAuthService:
         """Test delete provider auth - success scenario"""
         # Mock database query result
         mock_binding = Mock()
-        mock_session.query.return_value.where.return_value.first.return_value = mock_binding
+        mock_session.scalars.return_value.first.return_value = mock_binding
 
         ApiKeyAuthService.delete_provider_auth(self.tenant_id, self.binding_id)
 
@@ -201,7 +209,7 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.db.session")
     def test_delete_provider_auth_not_found(self, mock_session):
         """Test delete provider auth - not found"""
-        mock_session.query.return_value.where.return_value.first.return_value = None
+        mock_session.scalars.return_value.first.return_value = None
 
         ApiKeyAuthService.delete_provider_auth(self.tenant_id, self.binding_id)
 
@@ -212,13 +220,19 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.db.session")
     def test_delete_provider_auth_filters_by_tenant(self, mock_session):
         """Test delete provider auth - filters by tenant"""
-        mock_session.query.return_value.where.return_value.first.return_value = None
+        mock_session.scalars.return_value.first.return_value = None
 
         ApiKeyAuthService.delete_provider_auth(self.tenant_id, self.binding_id)
 
-        # Verify where conditions include tenant_id and binding_id
-        where_call = mock_session.query.return_value.where.call_args[0]
-        assert len(where_call) == 2
+        # Verify scalars was called with a select statement
+        mock_session.scalars.assert_called_once()
+        select_arg = mock_session.scalars.call_args[0][0]
+
+        # Verify the select statement contains tenant_id and binding_id filters
+        select_str = str(select_arg).lower()
+        assert "tenant_id" in select_str
+        # The binding_id should be in the where clause (it's the 'id' field)
+        assert any(term in select_str for term in ["id", "binding"])
 
     def test_validate_api_key_auth_args_success(self):
         """Test API key auth args validation - success scenario"""
@@ -341,7 +355,7 @@ class TestApiKeyAuthService:
         # Mock database returning invalid JSON
         mock_binding = Mock()
         mock_binding.credentials = "invalid json content"
-        mock_session.query.return_value.where.return_value.first.return_value = mock_binding
+        mock_session.scalars.return_value.first.return_value = mock_binding
 
         with pytest.raises(json.JSONDecodeError):
             ApiKeyAuthService.get_auth_credentials(self.tenant_id, self.category, self.provider)

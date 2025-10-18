@@ -77,7 +77,7 @@ class TestAuthIntegration:
     @patch("services.auth.api_key_auth_service.db.session")
     def test_cross_tenant_access_prevention(self, mock_session):
         """Test prevention of cross-tenant credential access"""
-        mock_session.query.return_value.where.return_value.first.return_value = None
+        mock_session.scalars.return_value.first.return_value = None
 
         result = ApiKeyAuthService.get_auth_credentials(self.tenant_id_2, self.category, AuthType.FIRECRAWL)
 

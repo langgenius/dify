@@ -77,17 +77,15 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         :return:
         """
         # is in public recommended list
-        recommended_app = (
-            db.session.query(RecommendedApp)
-            .where(RecommendedApp.is_listed == True, RecommendedApp.app_id == app_id)
-            .first()
-        )
+        recommended_app = db.session.scalars(
+            select(RecommendedApp).where(RecommendedApp.is_listed == True, RecommendedApp.app_id == app_id).limit(1)
+        ).first()
 
         if not recommended_app:
             return None
 
         # get app detail
-        app_model = db.session.query(App).where(App.id == app_id).first()
+        app_model = db.session.scalars(select(App).where(App.id == app_id).limit(1)).first()
         if not app_model or not app_model.is_public:
             return None
 
