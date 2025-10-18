@@ -239,7 +239,7 @@ class TriggerService:
             subscription_id: str
 
         # Walk nodes to find plugin triggers
-        nodes_in_graph = []
+        nodes_in_graph: list[Mapping[str, Any]] = []
         for node_id, node_config in workflow.walk_nodes(NodeType.TRIGGER_PLUGIN):
             # Extract plugin trigger configuration from node
             plugin_id = node_config.get("plugin_id", "")
@@ -268,7 +268,7 @@ class TriggerService:
                 f"maximum allowed is {cls.MAX_PLUGIN_TRIGGER_NODES_PER_WORKFLOW}"
             )
 
-        not_found_in_cache: list[dict] = []
+        not_found_in_cache: list[Mapping[str, Any]] = []
         for node_info in nodes_in_graph:
             node_id = node_info["node_id"]
             # firstly check if the node exists in cache
