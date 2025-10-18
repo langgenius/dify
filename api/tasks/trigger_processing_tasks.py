@@ -10,14 +10,12 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from celery import shared_task
-from pydantic import TypeAdapter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeEventResponse
-from core.plugin.utils.http_parser import deserialize_request
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import PluginTriggerDebugEvent
 from core.trigger.provider import PluginTriggerProviderController
@@ -25,7 +23,6 @@ from core.trigger.trigger_manager import TriggerManager
 from core.workflow.enums import NodeType
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_database import db
-from extensions.ext_storage import storage
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.provider_ids import TriggerProviderID
@@ -34,6 +31,7 @@ from models.workflow import Workflow, WorkflowPluginTrigger
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
 from services.trigger.trigger_provider_service import TriggerProviderService
+from services.trigger.trigger_request_service import TriggerRequestService
 from services.workflow.entities import PluginTriggerData, PluginTriggerDispatchData
 
 logger = logging.getLogger(__name__)
@@ -120,16 +118,11 @@ def dispatch_triggered_workflow(
         event: The trigger entity that was activated
         request_id: The ID of the stored request in storage system
     """
-    request = deserialize_request(storage.load_once(f"triggers/{request_id}.raw"))
-    if not request:
-        logger.error("Request not found for request_id %s", request_id)
-        return 0
-    payload = TypeAdapter(Mapping[str, Any]).validate_json(storage.load_once(f"triggers/{request_id}.payload"))
-    if not payload:
-        logger.error("Payload not found for request_id %s", request_id)
-        return 0
+    request = TriggerRequestService.get_request(request_id)
+    payload = TriggerRequestService.get_payload(request_id)
 
     from services.trigger.trigger_service import TriggerService
+    # FIXME: we should avoid import modules inside methods
 
     subscribers: list[WorkflowPluginTrigger] = TriggerService.get_subscriber_triggers(
         tenant_id=subscription.tenant_id, subscription_id=subscription.id, event_name=event_name

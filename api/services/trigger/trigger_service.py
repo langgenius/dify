@@ -5,14 +5,13 @@ from collections.abc import Mapping
 from typing import Any
 
 from flask import Request, Response
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse, TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginNotFoundError
-from core.plugin.utils.http_parser import deserialize_request, serialize_request
 from core.trigger.debug.events import PluginTriggerDebugEvent
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
@@ -21,12 +20,12 @@ from core.workflow.enums import NodeType
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from extensions.ext_storage import storage
 from models.model import App
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription
 from models.workflow import AppTrigger, AppTriggerStatus, Workflow, WorkflowPluginTrigger
 from services.trigger.trigger_provider_service import TriggerProviderService
+from services.trigger.trigger_request_service import TriggerRequestService
 from services.workflow.entities import PluginTriggerDispatchData
 from tasks.trigger_processing_tasks import dispatch_triggered_workflows_async
 
@@ -52,9 +51,8 @@ class TriggerService:
         if not subscription:
             raise ValueError("Subscription not found")
         node_data: TriggerEventNodeData = TriggerEventNodeData.model_validate(node_config.get("data", {}))
-        request = deserialize_request(storage.load_once(f"triggers/{event.request_id}"))
-        if not request:
-            raise ValueError("Request not found")
+        request = TriggerRequestService.get_request(event.request_id)
+        payload = TriggerRequestService.get_payload(event.request_id)
         # invoke triger
         provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
             tenant_id, TriggerProviderID(subscription.provider_id)
@@ -71,6 +69,7 @@ class TriggerService:
             credential_type=CredentialType.of(subscription.credential_type),
             subscription=subscription.to_entity(),
             request=request,
+            payload=payload,
         )
 
     @classmethod
@@ -112,14 +111,10 @@ class TriggerService:
 
         if dispatch_response.events:
             request_id = f"trigger_request_{timestamp}_{secrets.token_hex(6)}"
-            serialized_request = serialize_request(request)
 
             # save the request and payload to storage as persistent data
-            storage.save(f"triggers/{request_id}.raw", serialized_request)
-            storage.save(
-                f"triggers/{request_id}.payload",
-                TypeAdapter(Mapping[str, Any]).dump_json(dispatch_response.payload),
-            )
+            TriggerRequestService.persist_request(request_id, request)
+            TriggerRequestService.persist_payload(request_id, dispatch_response.payload)
 
             # Validate event names
             for event_name in dispatch_response.events:
