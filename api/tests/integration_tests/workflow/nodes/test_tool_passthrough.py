@@ -16,7 +16,7 @@ from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 
 
-def init_tool_node_with_passthrough(config: dict, passthrough_value: str = None):
+def init_tool_node_with_passthrough(config: dict, passthrough_value: str | None = None):
     """Initialize a tool node with passthrough parameter"""
     graph_config = {
         "edges": [
