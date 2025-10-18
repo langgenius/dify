@@ -165,10 +165,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             else:
                 think_end = self._think_buffer.lower().find("</think>")
                 if think_end == -1:
-                    if "</" in self._think_buffer and len(self._think_buffer) < 10:
-                        break
-                    else:
-                        self._think_buffer = ""
+                    # The end tag is not in the buffer. The content is part of the thought.
+                    # We wait for the next chunk to arrive. Clearing the buffer here would
+                    # lead to data loss if the closing tag is in a subsequent chunk.
                     break
                 else:
                     self._think_buffer = self._think_buffer[think_end + 8 :]
