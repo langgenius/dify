@@ -7,7 +7,7 @@ from celery import shared_task
 from sqlalchemy.orm import sessionmaker
 
 from core.trigger.debug.event_bus import TriggerDebugEventBus
-from core.trigger.debug.events import ScheduleDebugEvent
+from core.trigger.debug.events import ScheduleDebugEvent, build_schedule_pool_key
 from core.workflow.nodes.trigger_schedule.exc import (
     ScheduleExecutionError,
     ScheduleNotFoundError,
@@ -74,7 +74,7 @@ def run_schedule_trigger(schedule_id: str) -> None:
                     node_id=schedule.node_id,
                     inputs=inputs,
                 )
-                pool_key = ScheduleDebugEvent.build_pool_key(
+                pool_key = build_schedule_pool_key(
                     tenant_id=schedule.tenant_id,
                     app_id=schedule.app_id,
                     node_id=schedule.node_id,

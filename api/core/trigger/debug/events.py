@@ -1,7 +1,16 @@
 from collections.abc import Mapping
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+
+class TriggerDebugPoolKey(StrEnum):
+    """Trigger debug pool key."""
+
+    SCHEDULE = "schedule_trigger_debug_waiting_pool"
+    WEBHOOK = "webhook_trigger_debug_waiting_pool"
+    PLUGIN = "plugin_trigger_debug_waiting_pool"
 
 
 class BaseDebugEvent(BaseModel):
@@ -16,16 +25,15 @@ class ScheduleDebugEvent(BaseDebugEvent):
     node_id: str
     inputs: Mapping[str, Any]
 
-    @classmethod
-    def build_pool_key(cls, tenant_id: str, app_id: str, node_id: str) -> str:
-        """Generate pool key for schedule events.
 
-        Args:
-            tenant_id: Tenant ID
-            app_id: App ID
-            node_id: Node ID
-        """
-        return f"schedule_trigger_debug_waiting_pool:{tenant_id}:{app_id}:{node_id}"
+def build_schedule_pool_key(tenant_id: str, app_id: str, node_id: str) -> str:
+    """Generate pool key for schedule events.
+    Args:
+        tenant_id: Tenant ID
+        app_id: App ID
+        node_id: Node ID
+    """
+    return f"{TriggerDebugPoolKey.SCHEDULE}:{tenant_id}:{app_id}:{node_id}"
 
 
 class WebhookDebugEvent(BaseDebugEvent):
@@ -35,16 +43,16 @@ class WebhookDebugEvent(BaseDebugEvent):
     node_id: str
     payload: dict[str, Any] = Field(default_factory=dict)
 
-    @classmethod
-    def build_pool_key(cls, tenant_id: str, app_id: str, node_id: str) -> str:
-        """Generate pool key for webhook events.
 
-        Args:
-            tenant_id: Tenant ID
-            app_id: App ID
-            node_id: Node ID
-        """
-        return f"webhook_trigger_debug_waiting_pool:{tenant_id}:{app_id}:{node_id}"
+def build_webhook_pool_key(tenant_id: str, app_id: str, node_id: str) -> str:
+    """Generate pool key for webhook events.
+
+    Args:
+        tenant_id: Tenant ID
+        app_id: App ID
+        node_id: Node ID
+    """
+    return f"{TriggerDebugPoolKey.WEBHOOK}:{tenant_id}:{app_id}:{node_id}"
 
 
 class PluginTriggerDebugEvent(BaseDebugEvent):
@@ -56,14 +64,14 @@ class PluginTriggerDebugEvent(BaseDebugEvent):
     subscription_id: str
     provider_id: str
 
-    @classmethod
-    def build_pool_key(cls, tenant_id: str, provider_id: str, subscription_id: str, name: str) -> str:
-        """Generate pool key for plugin trigger events.
 
-        Args:
-            name: Event name
-            tenant_id: Tenant ID
-            provider_id: Provider ID
-            subscription_id: Subscription ID
-        """
-        return f"plugin_trigger_debug_waiting_pool:{tenant_id}:{str(provider_id)}:{subscription_id}:{name}"
+def build_plugin_pool_key(tenant_id: str, provider_id: str, subscription_id: str, name: str) -> str:
+    """Generate pool key for plugin trigger events.
+
+    Args:
+        name: Event name
+        tenant_id: Tenant ID
+        provider_id: Provider ID
+        subscription_id: Subscription ID
+    """
+    return f"{TriggerDebugPoolKey.PLUGIN}:{tenant_id}:{str(provider_id)}:{subscription_id}:{name}"

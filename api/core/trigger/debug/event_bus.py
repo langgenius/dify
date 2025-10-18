@@ -61,7 +61,7 @@ class TriggerDebugEventBus:
         Args:
             tenant_id: Tenant ID for hash tag
             event: Event object to dispatch
-            pool_key: Pool key (generate using event_class.build_pool_key(...))
+            pool_key: Pool key (generate using build_{?}_pool_key(...))
 
         Returns:
             Number of addresses the event was dispatched to
@@ -98,7 +98,7 @@ class TriggerDebugEventBus:
 
         Args:
             event_class: Event class for deserialization and type safety
-            pool_key: Pool key (generate using event_class.build_pool_key(...))
+            pool_key: Pool key (generate using build_{?}_pool_key(...))
             tenant_id: Tenant ID
             user_id: User ID for address calculation
             app_id: App ID for address calculation

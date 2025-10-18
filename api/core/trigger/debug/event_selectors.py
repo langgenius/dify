@@ -9,7 +9,14 @@ from pydantic import BaseModel
 
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.debug.event_bus import TriggerDebugEventBus
-from core.trigger.debug.events import PluginTriggerDebugEvent, ScheduleDebugEvent, WebhookDebugEvent
+from core.trigger.debug.events import (
+    PluginTriggerDebugEvent,
+    ScheduleDebugEvent,
+    WebhookDebugEvent,
+    build_plugin_pool_key,
+    build_schedule_pool_key,
+    build_webhook_pool_key,
+)
 from core.workflow.enums import NodeType
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from models.model import App
@@ -49,7 +56,7 @@ class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
 
         plugin_trigger_data = TriggerEventNodeData.model_validate(self.node_config.get("data", {}))
         provider_id = TriggerProviderID(plugin_trigger_data.provider_id)
-        pool_key: str = PluginTriggerDebugEvent.build_pool_key(
+        pool_key: str = build_plugin_pool_key(
             name=plugin_trigger_data.event_name,
             provider_id=str(provider_id),
             tenant_id=self.tenant_id,
@@ -86,7 +93,7 @@ class PluginTriggerDebugEventPoller(TriggerDebugEventPoller):
 
 class WebhookTriggerDebugEventPoller(TriggerDebugEventPoller):
     def poll(self) -> TriggerDebugEvent | None:
-        pool_key = WebhookDebugEvent.build_pool_key(
+        pool_key = build_webhook_pool_key(
             tenant_id=self.tenant_id,
             app_id=self.app_id,
             node_id=self.node_id,
@@ -119,9 +126,7 @@ class WebhookTriggerDebugEventPoller(TriggerDebugEventPoller):
 
 class ScheduleTriggerDebugEventPoller(TriggerDebugEventPoller):
     def poll(self) -> TriggerDebugEvent | None:
-        pool_key: str = ScheduleDebugEvent.build_pool_key(
-            tenant_id=self.tenant_id, app_id=self.app_id, node_id=self.node_id
-        )
+        pool_key: str = build_schedule_pool_key(tenant_id=self.tenant_id, app_id=self.app_id, node_id=self.node_id)
         schedule_event: ScheduleDebugEvent | None = TriggerDebugEventBus.poll(
             event_type=ScheduleDebugEvent,
             pool_key=pool_key,

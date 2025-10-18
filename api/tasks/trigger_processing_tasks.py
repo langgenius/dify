@@ -17,7 +17,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.debug.event_bus import TriggerDebugEventBus
-from core.trigger.debug.events import PluginTriggerDebugEvent
+from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.enums import NodeType
@@ -50,7 +50,7 @@ def dispatch_trigger_debug_event(
     debug_dispatched = 0
     try:
         for event_name in events:
-            pool_key: str = PluginTriggerDebugEvent.build_pool_key(
+            pool_key: str = build_plugin_pool_key(
                 name=event_name,
                 tenant_id=subscription.tenant_id,
                 subscription_id=subscription.id,

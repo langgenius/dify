@@ -6,7 +6,7 @@ from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 
 from controllers.trigger import bp
 from core.trigger.debug.event_bus import TriggerDebugEventBus
-from core.trigger.debug.events import WebhookDebugEvent
+from core.trigger.debug.events import WebhookDebugEvent, build_webhook_pool_key
 from services.trigger.webhook_service import WebhookService
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ def handle_webhook_debug(webhook_id: str):
         workflow_inputs = WebhookService.build_workflow_inputs(webhook_data)
 
         # Generate pool key and dispatch debug event
-        pool_key: str = WebhookDebugEvent.build_pool_key(
+        pool_key: str = build_webhook_pool_key(
             tenant_id=webhook_trigger.tenant_id,
             app_id=webhook_trigger.app_id,
             node_id=webhook_trigger.node_id,
