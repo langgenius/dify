@@ -209,11 +209,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 extras = {"usage": self._task_state.llm_result.usage.model_dump()}
                 if self._task_state.metadata:
                     extras["metadata"] = self._task_state.metadata.model_dump()
-                
+
                 answer = cast(str, self._task_state.llm_result.message.content)
                 if not self._show_reasoning:
                     answer = self._filter_think_tags(answer)
-                
+
                 response: Union[ChatbotAppBlockingResponse, CompletionAppBlockingResponse]
                 if self._conversation_mode == AppMode.COMPLETION:
                     response = CompletionAppBlockingResponse(
