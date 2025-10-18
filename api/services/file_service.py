@@ -19,7 +19,7 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
-from models.account import Account
+from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 

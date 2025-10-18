@@ -244,6 +244,13 @@ x-shared-env: &shared-api-worker-env
   ORACLE_WALLET_LOCATION: ${ORACLE_WALLET_LOCATION:-/app/api/storage/wallet}
   ORACLE_WALLET_PASSWORD: ${ORACLE_WALLET_PASSWORD:-dify}
   ORACLE_IS_AUTONOMOUS: ${ORACLE_IS_AUTONOMOUS:-false}
+  ALIBABACLOUD_MYSQL_HOST: ${ALIBABACLOUD_MYSQL_HOST:-127.0.0.1}
+  ALIBABACLOUD_MYSQL_PORT: ${ALIBABACLOUD_MYSQL_PORT:-3306}
+  ALIBABACLOUD_MYSQL_USER: ${ALIBABACLOUD_MYSQL_USER:-root}
+  ALIBABACLOUD_MYSQL_PASSWORD: ${ALIBABACLOUD_MYSQL_PASSWORD:-difyai123456}
+  ALIBABACLOUD_MYSQL_DATABASE: ${ALIBABACLOUD_MYSQL_DATABASE:-dify}
+  ALIBABACLOUD_MYSQL_MAX_CONNECTION: ${ALIBABACLOUD_MYSQL_MAX_CONNECTION:-5}
+  ALIBABACLOUD_MYSQL_HNSW_M: ${ALIBABACLOUD_MYSQL_HNSW_M:-6}
   RELYT_HOST: ${RELYT_HOST:-db}
   RELYT_PORT: ${RELYT_PORT:-5432}
   RELYT_USER: ${RELYT_USER:-postgres}
@@ -635,6 +642,13 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+    # TODO: Remove this entrypoint override when weaviate-client 4.17.0 is included in the next Dify release
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        uv pip install --system weaviate-client==4.17.0
+        exec /bin/bash /app/api/docker/entrypoint.sh
     networks:
       - ssrf_proxy_network
       - default
@@ -662,6 +676,13 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+    # TODO: Remove this entrypoint override when weaviate-client 4.17.0 is included in the next Dify release
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        uv pip install --system weaviate-client==4.17.0
+        exec /bin/bash /app/api/docker/entrypoint.sh
     networks:
       - ssrf_proxy_network
       - default
@@ -940,9 +961,8 @@ services:
 
   # The Weaviate vector store.
   weaviate:
-    image: semitechnologies/weaviate:1.19.0
+    image: semitechnologies/weaviate:1.27.0
     profiles:
-      - ""
       - weaviate
     restart: always
     volumes:

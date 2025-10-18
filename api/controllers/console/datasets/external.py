@@ -1,7 +1,4 @@
-from typing import cast
-
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource, fields, marshal, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -10,8 +7,7 @@ from controllers.console import api, console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.dataset_fields import dataset_detail_fields
-from libs.login import login_required
-from models.account import Account
+from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
@@ -40,12 +36,13 @@ class ExternalApiTemplateListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        _, current_tenant_id = current_account_with_tenant()
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         search = request.args.get("keyword", default=None, type=str)
 
         external_knowledge_apis, total = ExternalDatasetService.get_external_knowledge_apis(
-            page, limit, current_user.current_tenant_id, search
+            page, limit, current_tenant_id, search
         )
         response = {
             "data": [item.to_dict() for item in external_knowledge_apis],
@@ -60,6 +57,7 @@ class ExternalApiTemplateListApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
+        current_user, current_tenant_id = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument(
             "name",
@@ -85,7 +83,7 @@ class ExternalApiTemplateListApi(Resource):
 
         try:
             external_knowledge_api = ExternalDatasetService.create_external_knowledge_api(
-                tenant_id=current_user.current_tenant_id, user_id=current_user.id, args=args
+                tenant_id=current_tenant_id, user_id=current_user.id, args=args
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
@@ -115,6 +113,7 @@ class ExternalApiTemplateApi(Resource):
     @login_required
     @account_initialization_required
     def patch(self, external_knowledge_api_id):
+        current_user, current_tenant_id = current_account_with_tenant()
         external_knowledge_api_id = str(external_knowledge_api_id)
 
         parser = reqparse.RequestParser()
@@ -136,7 +135,7 @@ class ExternalApiTemplateApi(Resource):
         ExternalDatasetService.validate_api_list(args["settings"])
 
         external_knowledge_api = ExternalDatasetService.update_external_knowledge_api(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             user_id=current_user.id,
             external_knowledge_api_id=external_knowledge_api_id,
             args=args,
@@ -148,13 +147,13 @@ class ExternalApiTemplateApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, external_knowledge_api_id):
+        current_user, current_tenant_id = current_account_with_tenant()
         external_knowledge_api_id = str(external_knowledge_api_id)
 
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not (current_user.is_editor or current_user.is_dataset_operator):
+        if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 
-        ExternalDatasetService.delete_external_knowledge_api(current_user.current_tenant_id, external_knowledge_api_id)
+        ExternalDatasetService.delete_external_knowledge_api(current_tenant_id, external_knowledge_api_id)
         return {"result": "success"}, 204
 
 
@@ -199,7 +198,8 @@ class ExternalDatasetCreateApi(Resource):
     @account_initialization_required
     def post(self):
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        current_user, current_tenant_id = current_account_with_tenant()
+        if not current_user.has_edit_permission:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -223,7 +223,7 @@ class ExternalDatasetCreateApi(Resource):
 
         try:
             dataset = ExternalDatasetService.create_external_dataset(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_tenant_id,
                 user_id=current_user.id,
                 args=args,
             )
@@ -255,6 +255,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, dataset_id):
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -277,7 +278,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
             response = HitTestingService.external_retrieve(
                 dataset=dataset,
                 query=args["query"],
-                account=cast(Account, current_user),
+                account=current_user,
                 external_retrieval_model=args["external_retrieval_model"],
                 metadata_filtering_conditions=args["metadata_filtering_conditions"],
             )

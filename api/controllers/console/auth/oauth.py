@@ -21,8 +21,7 @@ from libs.oauth import (
     MicrosoftOAuth,
     OAuthUserInfo,
 )
-from models import Account
-from models.account import AccountStatus
+from models import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
@@ -162,11 +161,11 @@ class OAuthCallback(Resource):
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
 
         # Check account status
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account is banned.")
 
-        if account.status == AccountStatus.PENDING.value:
-            account.status = AccountStatus.ACTIVE.value
+        if account.status == AccountStatus.PENDING:
+            account.status = AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
             db.session.commit()
 

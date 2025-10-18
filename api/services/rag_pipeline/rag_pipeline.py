@@ -54,7 +54,7 @@ from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.account import Account
+from models import Account
 from models.dataset import (  # type: ignore
     Dataset,
     Document,
@@ -873,7 +873,7 @@ class RagPipelineService:
             variable_pool = node_instance.graph_runtime_state.variable_pool
             invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
             if invoke_from:
-                if invoke_from.value == InvokeFrom.PUBLISHED.value:
+                if invoke_from.value == InvokeFrom.PUBLISHED:
                     document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
                     if document_id:
                         document = db.session.query(Document).where(Document.id == document_id.value).first()

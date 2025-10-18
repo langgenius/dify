@@ -1,7 +1,6 @@
 from typing import Any, cast
 
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource, fields, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
@@ -30,10 +29,9 @@ from extensions.ext_database import db
 from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
 from fields.document_fields import document_status_fields
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from libs.validators import validate_description_length
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
-from models.account import Account
 from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
@@ -43,6 +41,79 @@ def _validate_name(name: str) -> str:
     if not name or len(name) < 1 or len(name) > 40:
         raise ValueError("Name must be between 1 to 40 characters.")
     return name
+
+
+def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool = False) -> dict[str, list[str]]:
+    """
+    Get supported retrieval methods based on vector database type.
+
+    Args:
+        vector_type: Vector database type, can be None
+        is_mock: Whether this is a Mock API, affects MILVUS handling
+
+    Returns:
+        Dictionary containing supported retrieval methods
+
+    Raises:
+        ValueError: If vector_type is None or unsupported
+    """
+    if vector_type is None:
+        raise ValueError("Vector store type is not configured.")
+
+    # Define vector database types that only support semantic search
+    semantic_only_types = {
+        VectorType.RELYT,
+        VectorType.TIDB_VECTOR,
+        VectorType.CHROMA,
+        VectorType.PGVECTO_RS,
+        VectorType.VIKINGDB,
+        VectorType.UPSTASH,
+    }
+
+    # Define vector database types that support all retrieval methods
+    full_search_types = {
+        VectorType.QDRANT,
+        VectorType.WEAVIATE,
+        VectorType.OPENSEARCH,
+        VectorType.ANALYTICDB,
+        VectorType.MYSCALE,
+        VectorType.ORACLE,
+        VectorType.ELASTICSEARCH,
+        VectorType.ELASTICSEARCH_JA,
+        VectorType.PGVECTOR,
+        VectorType.VASTBASE,
+        VectorType.TIDB_ON_QDRANT,
+        VectorType.LINDORM,
+        VectorType.COUCHBASE,
+        VectorType.OPENGAUSS,
+        VectorType.OCEANBASE,
+        VectorType.TABLESTORE,
+        VectorType.HUAWEI_CLOUD,
+        VectorType.TENCENT,
+        VectorType.MATRIXONE,
+        VectorType.CLICKZETTA,
+        VectorType.BAIDU,
+        VectorType.ALIBABACLOUD_MYSQL,
+    }
+
+    semantic_methods = {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
+    full_methods = {
+        "retrieval_method": [
+            RetrievalMethod.SEMANTIC_SEARCH.value,
+            RetrievalMethod.FULL_TEXT_SEARCH.value,
+            RetrievalMethod.HYBRID_SEARCH.value,
+        ]
+    }
+
+    if vector_type == VectorType.MILVUS:
+        return semantic_methods if is_mock else full_methods
+
+    if vector_type in semantic_only_types:
+        return semantic_methods
+    elif vector_type in full_search_types:
+        return full_methods
+    else:
+        raise ValueError(f"Unsupported vector db type {vector_type}.")
 
 
 @console_ns.route("/datasets")
@@ -65,6 +136,7 @@ class DatasetListApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def get(self):
+        current_user, current_tenant_id = current_account_with_tenant()
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         ids = request.args.getlist("ids")
@@ -73,15 +145,15 @@ class DatasetListApi(Resource):
         tag_ids = request.args.getlist("tag_ids")
         include_all = request.args.get("include_all", default="false").lower() == "true"
         if ids:
-            datasets, total = DatasetService.get_datasets_by_ids(ids, current_user.current_tenant_id)
+            datasets, total = DatasetService.get_datasets_by_ids(ids, current_tenant_id)
         else:
             datasets, total = DatasetService.get_datasets(
-                page, limit, current_user.current_tenant_id, current_user, search, tag_ids, include_all
+                page, limit, current_tenant_id, current_user, search, tag_ids, include_all
             )
 
         # check embedding setting
         provider_manager = ProviderManager()
-        configurations = provider_manager.get_configurations(tenant_id=current_user.current_tenant_id)
+        configurations = provider_manager.get_configurations(tenant_id=current_tenant_id)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
 
@@ -178,6 +250,7 @@ class DatasetListApi(Resource):
             required=False,
         )
         args = parser.parse_args()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
@@ -185,11 +258,11 @@ class DatasetListApi(Resource):
 
         try:
             dataset = DatasetService.create_empty_dataset(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_tenant_id,
                 name=args["name"],
                 description=args["description"],
                 indexing_technique=args["indexing_technique"],
-                account=cast(Account, current_user),
+                account=current_user,
                 permission=DatasetPermissionEnum.ONLY_ME,
                 provider=args["provider"],
                 external_knowledge_api_id=args["external_knowledge_api_id"],
@@ -213,6 +286,7 @@ class DatasetApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, dataset_id):
+        current_user, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -232,7 +306,7 @@ class DatasetApi(Resource):
 
         # check embedding setting
         provider_manager = ProviderManager()
-        configurations = provider_manager.get_configurations(tenant_id=current_user.current_tenant_id)
+        configurations = provider_manager.get_configurations(tenant_id=current_tenant_id)
 
         embedding_models = configurations.get_models(model_type=ModelType.TEXT_EMBEDDING, only_active=True)
 
@@ -345,6 +419,7 @@ class DatasetApi(Resource):
         )
         args = parser.parse_args()
         data = request.get_json()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         # check embedding model setting
         if (
@@ -367,7 +442,7 @@ class DatasetApi(Resource):
             raise NotFound("Dataset not found.")
 
         result_data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
-        tenant_id = current_user.current_tenant_id
+        tenant_id = current_tenant_id
 
         if data.get("partial_member_list") and data.get("permission") == "partial_members":
             DatasetPermissionService.update_partial_member_list(
@@ -391,9 +466,9 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     def delete(self, dataset_id):
         dataset_id_str = str(dataset_id)
+        current_user, _ = current_account_with_tenant()
 
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not (current_user.is_editor or current_user.is_dataset_operator):
+        if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 
         try:
@@ -432,6 +507,7 @@ class DatasetQueryApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, dataset_id):
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -483,15 +559,14 @@ class DatasetIndexingEstimateApi(Resource):
             "doc_language", type=str, default="English", required=False, nullable=False, location="json"
         )
         args = parser.parse_args()
+        _, current_tenant_id = current_account_with_tenant()
         # validate args
         DocumentService.estimate_args_validate(args)
         extract_settings = []
         if args["info_list"]["data_source_type"] == "upload_file":
             file_ids = args["info_list"]["file_info_list"]["file_ids"]
             file_details = db.session.scalars(
-                select(UploadFile).where(
-                    UploadFile.tenant_id == current_user.current_tenant_id, UploadFile.id.in_(file_ids)
-                )
+                select(UploadFile).where(UploadFile.tenant_id == current_tenant_id, UploadFile.id.in_(file_ids))
             ).all()
 
             if file_details is None:
@@ -500,7 +575,7 @@ class DatasetIndexingEstimateApi(Resource):
             if file_details:
                 for file_detail in file_details:
                     extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.FILE.value,
+                        datasource_type=DatasourceType.FILE,
                         upload_file=file_detail,
                         document_model=args["doc_form"],
                     )
@@ -512,14 +587,14 @@ class DatasetIndexingEstimateApi(Resource):
                 credential_id = notion_info.get("credential_id")
                 for page in notion_info["pages"]:
                     extract_setting = ExtractSetting(
-                        datasource_type=DatasourceType.NOTION.value,
+                        datasource_type=DatasourceType.NOTION,
                         notion_info=NotionInfo.model_validate(
                             {
                                 "credential_id": credential_id,
                                 "notion_workspace_id": workspace_id,
                                 "notion_obj_id": page["page_id"],
                                 "notion_page_type": page["type"],
-                                "tenant_id": current_user.current_tenant_id,
+                                "tenant_id": current_tenant_id,
                             }
                         ),
                         document_model=args["doc_form"],
@@ -529,13 +604,13 @@ class DatasetIndexingEstimateApi(Resource):
             website_info_list = args["info_list"]["website_info_list"]
             for url in website_info_list["urls"]:
                 extract_setting = ExtractSetting(
-                    datasource_type=DatasourceType.WEBSITE.value,
+                    datasource_type=DatasourceType.WEBSITE,
                     website_info=WebsiteInfo.model_validate(
                         {
                             "provider": website_info_list["provider"],
                             "job_id": website_info_list["job_id"],
                             "url": url,
-                            "tenant_id": current_user.current_tenant_id,
+                            "tenant_id": current_tenant_id,
                             "mode": "crawl",
                             "only_main_content": website_info_list["only_main_content"],
                         }
@@ -548,7 +623,7 @@ class DatasetIndexingEstimateApi(Resource):
         indexing_runner = IndexingRunner()
         try:
             response = indexing_runner.indexing_estimate(
-                current_user.current_tenant_id,
+                current_tenant_id,
                 extract_settings,
                 args["process_rule"],
                 args["doc_form"],
@@ -579,6 +654,7 @@ class DatasetRelatedAppListApi(Resource):
     @account_initialization_required
     @marshal_with(related_app_list)
     def get(self, dataset_id):
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -610,11 +686,10 @@ class DatasetIndexingStatusApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, dataset_id):
+        _, current_tenant_id = current_account_with_tenant()
         dataset_id = str(dataset_id)
         documents = db.session.scalars(
-            select(Document).where(
-                Document.dataset_id == dataset_id, Document.tenant_id == current_user.current_tenant_id
-            )
+            select(Document).where(Document.dataset_id == dataset_id, Document.tenant_id == current_tenant_id)
         ).all()
         documents_status = []
         for document in documents:
@@ -666,10 +741,9 @@ class DatasetApiKeyApi(Resource):
     @account_initialization_required
     @marshal_with(api_key_list)
     def get(self):
+        _, current_tenant_id = current_account_with_tenant()
         keys = db.session.scalars(
-            select(ApiToken).where(
-                ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id
-            )
+            select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
         ).all()
         return {"items": keys}
 
@@ -679,12 +753,13 @@ class DatasetApiKeyApi(Resource):
     @marshal_with(api_key_fields)
     def post(self):
         # The role of the current user in the ta table must be admin or owner
+        current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         current_key_count = (
             db.session.query(ApiToken)
-            .where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id)
+            .where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
             .count()
         )
 
@@ -697,7 +772,7 @@ class DatasetApiKeyApi(Resource):
 
         key = ApiToken.generate_api_key(self.token_prefix, 24)
         api_token = ApiToken()
-        api_token.tenant_id = current_user.current_tenant_id
+        api_token.tenant_id = current_tenant_id
         api_token.token = key
         api_token.type = self.resource_type
         db.session.add(api_token)
@@ -717,6 +792,7 @@ class DatasetApiDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, api_key_id):
+        current_user, current_tenant_id = current_account_with_tenant()
         api_key_id = str(api_key_id)
 
         # The role of the current user in the ta table must be admin or owner
@@ -726,7 +802,7 @@ class DatasetApiDeleteApi(Resource):
         key = (
             db.session.query(ApiToken)
             .where(
-                ApiToken.tenant_id == current_user.current_tenant_id,
+                ApiToken.tenant_id == current_tenant_id,
                 ApiToken.type == self.resource_type,
                 ApiToken.id == api_key_id,
             )
@@ -777,49 +853,7 @@ class DatasetRetrievalSettingApi(Resource):
     @account_initialization_required
     def get(self):
         vector_type = dify_config.VECTOR_STORE
-        match vector_type:
-            case (
-                VectorType.RELYT
-                | VectorType.TIDB_VECTOR
-                | VectorType.CHROMA
-                | VectorType.PGVECTO_RS
-                | VectorType.VIKINGDB
-                | VectorType.UPSTASH
-            ):
-                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
-            case (
-                VectorType.QDRANT
-                | VectorType.WEAVIATE
-                | VectorType.OPENSEARCH
-                | VectorType.ANALYTICDB
-                | VectorType.MYSCALE
-                | VectorType.ORACLE
-                | VectorType.ELASTICSEARCH
-                | VectorType.ELASTICSEARCH_JA
-                | VectorType.PGVECTOR
-                | VectorType.VASTBASE
-                | VectorType.TIDB_ON_QDRANT
-                | VectorType.LINDORM
-                | VectorType.COUCHBASE
-                | VectorType.MILVUS
-                | VectorType.OPENGAUSS
-                | VectorType.OCEANBASE
-                | VectorType.TABLESTORE
-                | VectorType.HUAWEI_CLOUD
-                | VectorType.TENCENT
-                | VectorType.MATRIXONE
-                | VectorType.CLICKZETTA
-                | VectorType.BAIDU
-            ):
-                return {
-                    "retrieval_method": [
-                        RetrievalMethod.SEMANTIC_SEARCH.value,
-                        RetrievalMethod.FULL_TEXT_SEARCH.value,
-                        RetrievalMethod.HYBRID_SEARCH.value,
-                    ]
-                }
-            case _:
-                raise ValueError(f"Unsupported vector db type {vector_type}.")
+        return _get_retrieval_methods_by_vector_type(vector_type, is_mock=False)
 
 
 @console_ns.route("/datasets/retrieval-setting/<string:vector_type>")
@@ -832,48 +866,7 @@ class DatasetRetrievalSettingMockApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, vector_type):
-        match vector_type:
-            case (
-                VectorType.MILVUS
-                | VectorType.RELYT
-                | VectorType.TIDB_VECTOR
-                | VectorType.CHROMA
-                | VectorType.PGVECTO_RS
-                | VectorType.VIKINGDB
-                | VectorType.UPSTASH
-            ):
-                return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
-            case (
-                VectorType.QDRANT
-                | VectorType.WEAVIATE
-                | VectorType.OPENSEARCH
-                | VectorType.ANALYTICDB
-                | VectorType.MYSCALE
-                | VectorType.ORACLE
-                | VectorType.ELASTICSEARCH
-                | VectorType.ELASTICSEARCH_JA
-                | VectorType.COUCHBASE
-                | VectorType.PGVECTOR
-                | VectorType.VASTBASE
-                | VectorType.LINDORM
-                | VectorType.OPENGAUSS
-                | VectorType.OCEANBASE
-                | VectorType.TABLESTORE
-                | VectorType.TENCENT
-                | VectorType.HUAWEI_CLOUD
-                | VectorType.MATRIXONE
-                | VectorType.CLICKZETTA
-                | VectorType.BAIDU
-            ):
-                return {
-                    "retrieval_method": [
-                        RetrievalMethod.SEMANTIC_SEARCH.value,
-                        RetrievalMethod.FULL_TEXT_SEARCH.value,
-                        RetrievalMethod.HYBRID_SEARCH.value,
-                    ]
-                }
-            case _:
-                raise ValueError(f"Unsupported vector db type {vector_type}.")
+        return _get_retrieval_methods_by_vector_type(vector_type, is_mock=True)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/error-docs")
@@ -908,6 +901,7 @@ class DatasetPermissionUserListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, dataset_id):
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
