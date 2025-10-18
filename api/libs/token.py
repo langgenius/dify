@@ -80,10 +80,7 @@ def extract_webapp_passport(app_code: str, request: Request) -> str | None:
     def _try_extract_passport_token_from_header(request: Request) -> str | None:
         return request.headers.get(HEADER_NAME_PASSPORT)
 
-    ret = (
-        _try_extract_passport_token_from_cookie(request)
-        or _try_extract_passport_token_from_header(request)
-    )
+    ret = _try_extract_passport_token_from_cookie(request) or _try_extract_passport_token_from_header(request)
     return ret
 
 
