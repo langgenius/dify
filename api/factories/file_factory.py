@@ -166,7 +166,10 @@ def _build_from_local_file(
     if strict_type_validation and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
+    if specified_type and specified_type != "custom":
+        file_type = FileType(specified_type)
+    else:
+        file_type = detected_file_type
 
     return File(
         id=mapping.get("id"),
@@ -214,9 +217,10 @@ def _build_from_remote_url(
         if strict_type_validation and specified_type and detected_file_type.value != specified_type:
             raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-        file_type = (
-            FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
-        )
+        if specified_type and specified_type != "custom":
+            file_type = FileType(specified_type)
+        else:
+            file_type = detected_file_type
 
         return File(
             id=mapping.get("id"),
@@ -238,9 +242,16 @@ def _build_from_remote_url(
     mime_type, filename, file_size = _get_remote_file_info(url)
     extension = mimetypes.guess_extension(mime_type) or ("." + filename.split(".")[-1] if "." in filename else ".bin")
 
-    file_type = _standardize_file_type(extension=extension, mime_type=mime_type)
-    if file_type.value != mapping.get("type", "custom"):
+    detected_file_type = _standardize_file_type(extension=extension, mime_type=mime_type)
+    specified_type = mapping.get("type")
+
+    if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+
+    if specified_type and specified_type != "custom":
+        file_type = FileType(specified_type)
+    else:
+        file_type = detected_file_type
 
     return File(
         id=mapping.get("id"),
@@ -331,7 +342,10 @@ def _build_from_tool_file(
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
+    if specified_type and specified_type != "custom":
+        file_type = FileType(specified_type)
+    else:
+        file_type = detected_file_type
 
     return File(
         id=mapping.get("id"),
@@ -376,7 +390,10 @@ def _build_from_datasource_file(
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
+    if specified_type and specified_type != "custom":
+        file_type = FileType(specified_type)
+    else:
+        file_type = detected_file_type
 
     return File(
         id=mapping.get("datasource_file_id"),
