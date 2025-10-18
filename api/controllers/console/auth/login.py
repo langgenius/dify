@@ -5,7 +5,7 @@ from flask_restx import Resource, reqparse
 import services
 from configs import dify_config
 from constants.languages import languages
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
@@ -22,7 +22,6 @@ from controllers.console.error import (
     WorkspacesLimitExceeded,
 )
 from controllers.console.wraps import email_password_login_enabled, setup_required
-from controllers.console import console_ns
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
 from libs.login import current_account_with_tenant
@@ -109,6 +108,7 @@ class LoginApi(Resource):
         set_csrf_token_to_cookie(request, response, csrf_token)
 
         return response
+
 
 @console_ns.route("/logout")
 class LogoutApi(Resource):
@@ -288,4 +288,3 @@ class LoginStatus(Resource):
         token = extract_access_token(request)
         csrf_token = extract_csrf_token(request)
         return {"logged_in": bool(token) and bool(csrf_token)}
-
