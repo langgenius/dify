@@ -31,6 +31,50 @@ logger = logging.getLogger(__name__)
 
 
 class FunctionCallAgentRunner(BaseAgentRunner):
+    @staticmethod
+    def _get_indexed_tool_input_dict(tool_calls: list[tuple[str, str, dict[str, Any]]]) -> dict[str, dict[str, Any]]:
+        """
+        Generate indexed tool input dictionary to preserve duplicate tool calls.
+
+        Args:
+            tool_calls: List of (tool_call_id, tool_name, tool_args) tuples
+
+        Returns:
+            Dictionary with indexed keys: {"tool_name": args, "tool_name_1": args, ...}
+        """
+        tool_call_inputs_dict: dict[str, dict[str, Any]] = {}
+        tool_name_counts: dict[str, int] = {}
+        for tool_call in tool_calls:
+            tool_name = tool_call[1]
+            count = tool_name_counts.get(tool_name, 0)
+            key = f"{tool_name}_{count}" if count > 0 else tool_name
+            tool_call_inputs_dict[key] = tool_call[2]
+            tool_name_counts[tool_name] = count + 1
+        return tool_call_inputs_dict
+
+    @staticmethod
+    def _get_indexed_observation_dicts(tool_responses: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]]:
+        """
+        Generate indexed observation and metadata dictionaries to preserve duplicate tool calls.
+
+        Args:
+            tool_responses: List of tool response dicts with keys: tool_call_name, tool_response, meta
+
+        Returns:
+            Tuple of (observation_dict, tool_invoke_meta_dict) with indexed keys
+        """
+        tool_invoke_meta_dict: dict[str, Any] = {}
+        observation_dict: dict[str, Any] = {}
+        tool_name_counts: dict[str, int] = {}
+        for tool_response in tool_responses:
+            tool_name = tool_response["tool_call_name"]
+            count = tool_name_counts.get(tool_name, 0)
+            key = f"{tool_name}_{count}" if count > 0 else tool_name
+            tool_invoke_meta_dict[key] = tool_response["meta"]
+            observation_dict[key] = tool_response["tool_response"]
+            tool_name_counts[tool_name] = count + 1
+        return observation_dict, tool_invoke_meta_dict
+
     def run(self, message: Message, query: str, **kwargs: Any) -> Generator[LLMResultChunk, None, None]:
         """
         Run FunctionCall agent application
@@ -123,13 +167,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         function_call_state = True
                         tool_calls.extend(self.extract_tool_calls(chunk) or [])
                         tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
+                        # Use indexed keys to preserve all tool calls, including duplicates
+                        tool_call_inputs_dict = self._get_indexed_tool_input_dict(tool_calls)
                         try:
-                            tool_call_inputs = json.dumps(
-                                {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
-                            )
+                            tool_call_inputs = json.dumps(tool_call_inputs_dict, ensure_ascii=False)
                         except TypeError:
                             # fallback: force ASCII to handle non-serializable objects
-                            tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
+                            tool_call_inputs = json.dumps(tool_call_inputs_dict)
 
                     if chunk.delta.message and chunk.delta.message.content:
                         if isinstance(chunk.delta.message.content, list):
@@ -150,13 +194,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     function_call_state = True
                     tool_calls.extend(self.extract_blocking_tool_calls(result) or [])
                     tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
+                    # Use indexed keys to preserve all tool calls, including duplicates
+                    tool_call_inputs_dict = self._get_indexed_tool_input_dict(tool_calls)
                     try:
-                        tool_call_inputs = json.dumps(
-                            {tool_call[1]: tool_call[2] for tool_call in tool_calls}, ensure_ascii=False
-                        )
+                        tool_call_inputs = json.dumps(tool_call_inputs_dict, ensure_ascii=False)
                     except TypeError:
                         # fallback: force ASCII to handle non-serializable objects
-                        tool_call_inputs = json.dumps({tool_call[1]: tool_call[2] for tool_call in tool_calls})
+                        tool_call_inputs = json.dumps(tool_call_inputs_dict)
 
                 if result.usage:
                     increase_usage(llm_usage, result.usage)
@@ -275,19 +319,16 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     )
 
             if len(tool_responses) > 0:
-                # save agent thought
+                # save agent thought with indexed keys to preserve all tool calls
+                observation_dict, tool_invoke_meta_dict = self._get_indexed_observation_dicts(tool_responses)
+
                 self.save_agent_thought(
                     agent_thought_id=agent_thought_id,
                     tool_name="",
                     tool_input="",
                     thought="",
-                    tool_invoke_meta={
-                        tool_response["tool_call_name"]: tool_response["meta"] for tool_response in tool_responses
-                    },
-                    observation={
-                        tool_response["tool_call_name"]: tool_response["tool_response"]
-                        for tool_response in tool_responses
-                    },
+                    tool_invoke_meta=tool_invoke_meta_dict,
+                    observation=observation_dict,
                     answer="",
                     messages_ids=message_file_ids,
                 )
