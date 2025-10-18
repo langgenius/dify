@@ -26,8 +26,8 @@ from extensions.ext_database import db
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.provider_ids import TriggerProviderID
-from models.trigger import TriggerSubscription
-from models.workflow import Workflow, WorkflowPluginTrigger
+from models.trigger import TriggerSubscription, WorkflowPluginTrigger
+from models.workflow import Workflow
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
 from services.trigger.trigger_provider_service import TriggerProviderService

@@ -22,8 +22,8 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.model import App
 from models.provider_ids import TriggerProviderID
-from models.trigger import TriggerSubscription
-from models.workflow import AppTrigger, AppTriggerStatus, Workflow, WorkflowPluginTrigger
+from models.trigger import AppTrigger, AppTriggerStatus, TriggerSubscription, WorkflowPluginTrigger
+from models.workflow import Workflow
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_request_service import TriggerRequestService
 from services.workflow.entities import PluginTriggerDispatchData

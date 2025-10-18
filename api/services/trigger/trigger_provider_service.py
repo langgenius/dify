@@ -28,8 +28,12 @@ from core.trigger.utils.encryption import (
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.provider_ids import TriggerProviderID
-from models.trigger import TriggerOAuthSystemClient, TriggerOAuthTenantClient, TriggerSubscription
-from models.workflow import WorkflowPluginTrigger
+from models.trigger import (
+    TriggerOAuthSystemClient,
+    TriggerOAuthTenantClient,
+    TriggerSubscription,
+    WorkflowPluginTrigger,
+)
 from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
