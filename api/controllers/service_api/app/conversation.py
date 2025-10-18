@@ -75,7 +75,7 @@ conversation_variables_parser = (
 conversation_variable_update_parser = reqparse.RequestParser().add_argument(
     # using lambda is for passing the already-typed value without modification
     # if no lambda, it will be converted to string
-    # the string cannot be converted using json.loads.add_argument(
+    # the string cannot be converted using json.loads
     "value",
     required=True,
     location="json",
