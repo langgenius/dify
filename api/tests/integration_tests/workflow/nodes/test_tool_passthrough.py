@@ -50,7 +50,7 @@ def init_tool_node_with_passthrough(config: dict, passthrough_value: str | None 
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
     # Create node factory
-    node_factory = DifyNodeFactory()
+    node_factory = DifyNodeFactory(graph_init_params=init_params, graph_runtime_state=graph_runtime_state)
     graph = Graph(node_factory=node_factory, init_params=init_params)
     graph.init_graph()
 
@@ -160,9 +160,8 @@ class TestToolNodePassthrough:
 
     def test_workflow_service_passthrough_extraction(self):
         """Test that _setup_variable_pool correctly extracts passthrough from user_inputs"""
-        from core.services.workflow_service import _setup_variable_pool
-
         from core.workflow.enums import NodeType, WorkflowType
+        from services.workflow_service import _setup_variable_pool
 
         # Mock workflow
         mock_workflow = MagicMock()

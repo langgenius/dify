@@ -1,7 +1,3 @@
-"""
-Unit tests for Tool passthrough functionality
-"""
-
 from unittest.mock import MagicMock
 
 from core.tools.__base.tool import Tool
@@ -44,11 +40,7 @@ class TestToolPassthrough:
             author="test_author", name="test_tool", label=I18nObject(en_US="Test Tool"), provider="test_provider"
         )
         tool_entity = ToolEntity(
-<<<<<<< HEAD
-            identity=MagicMock(), parameters=[], description=None, output_schema={}, has_runtime_parameters=False
-=======
             identity=tool_identity, parameters=[], description=None, output_schema={}, has_runtime_parameters=False
->>>>>>> 64a63e4f1e (fix: add passthrough parameter to all tool classes)
         )
         tool_runtime = MagicMock()
         tool = MockTool(entity=tool_entity, runtime=tool_runtime)
@@ -75,11 +67,7 @@ class TestToolPassthrough:
             author="test_author", name="test_tool", label=I18nObject(en_US="Test Tool"), provider="test_provider"
         )
         tool_entity = ToolEntity(
-<<<<<<< HEAD
-            identity=MagicMock(), parameters=[], description=None, output_schema={}, has_runtime_parameters=False
-=======
             identity=tool_identity, parameters=[], description=None, output_schema={}, has_runtime_parameters=False
->>>>>>> 64a63e4f1e (fix: add passthrough parameter to all tool classes)
         )
         tool_runtime = MagicMock()
         tool = MockTool(entity=tool_entity, runtime=tool_runtime)
@@ -132,10 +120,7 @@ class TestToolPassthrough:
         signature = inspect.signature(Tool._invoke)
         params = list(signature.parameters.keys())
 
-<<<<<<< HEAD
-=======
         # Check that passthrough parameter is present
->>>>>>> 64a63e4f1e (fix: add passthrough parameter to all tool classes)
         assert "passthrough" in params
 
         # Check parameter type
