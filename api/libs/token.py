@@ -64,11 +64,7 @@ def extract_access_token(request: Request) -> str | None:
     def _try_extract_from_cookie(request: Request) -> str | None:
         return request.cookies.get(COOKIE_NAME_ACCESS_TOKEN)
 
-    def _try_extract_from_query(request: Request) -> str | None:
-        return request.args.get("_token")
-
-    ret = _try_extract_from_cookie(request) or _try_extract_from_header(request) or _try_extract_from_query(request)
-    return ret
+    return _try_extract_from_cookie(request) or _try_extract_from_header(request)
 
 
 def extract_webapp_passport(app_code: str, request: Request) -> str | None:
