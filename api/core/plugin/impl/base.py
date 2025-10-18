@@ -180,7 +180,7 @@ class BasePluginClient:
         Make a request to the plugin daemon inner API and return the response as a model.
         """
         response = self._request(method, path, headers, data, params, files)
-        return type_(**response.json())  # type: ignore
+        return type_(**response.json())  # type: ignore[return-value]
 
     def _request_with_plugin_daemon_response(
         self,

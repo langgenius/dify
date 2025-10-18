@@ -48,7 +48,7 @@ class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
 
         try:
             repository_class = import_string(class_path)
-            return repository_class(session_maker=session_maker)  # type: ignore[no-any-return]
+            return repository_class(session_maker=session_maker)
         except (ImportError, Exception) as e:
             raise RepositoryImportError(
                 f"Failed to create DifyAPIWorkflowNodeExecutionRepository from '{class_path}': {e}"
@@ -77,6 +77,6 @@ class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
 
         try:
             repository_class = import_string(class_path)
-            return repository_class(session_maker=session_maker)  # type: ignore[no-any-return]
+            return repository_class(session_maker=session_maker)
         except (ImportError, Exception) as e:
             raise RepositoryImportError(f"Failed to create APIWorkflowRunRepository from '{class_path}': {e}") from e
