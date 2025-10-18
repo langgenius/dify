@@ -45,21 +45,21 @@ SANDBOX_QUEUE = _sandbox_queue
 
 
 @shared_task(queue=PROFESSIONAL_QUEUE)
-def execute_workflow_professional(task_data_dict: dict) -> dict:
+def execute_workflow_professional(task_data_dict: dict[str, Any]) -> dict[str, Any]:
     """Execute workflow for professional tier with highest priority"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
     return _execute_workflow_common(task_data).model_dump()
 
 
 @shared_task(queue=TEAM_QUEUE)
-def execute_workflow_team(task_data_dict: dict) -> dict:
+def execute_workflow_team(task_data_dict: dict[str, Any]) -> dict[str, Any]:
     """Execute workflow for team tier"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
     return _execute_workflow_common(task_data).model_dump()
 
 
 @shared_task(queue=SANDBOX_QUEUE)
-def execute_workflow_sandbox(task_data_dict: dict) -> dict:
+def execute_workflow_sandbox(task_data_dict: dict[str, Any]) -> dict[str, Any]:
     """Execute workflow for free tier with lower retry limit"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
     return _execute_workflow_common(task_data).model_dump()
