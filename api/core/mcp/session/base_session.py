@@ -251,14 +251,7 @@ class BaseSession(
                     self.check_receiver_status()
                     continue
 
-            if response_or_error is None:
-                raise MCPConnectionError(
-                    ErrorData(
-                        code=500,
-                        message="No response received",
-                    )
-                )
-            elif isinstance(response_or_error, JSONRPCError):
+            if isinstance(response_or_error, JSONRPCError):
                 if response_or_error.error.code == 401:
                     raise MCPAuthError(
                         ErrorData(code=response_or_error.error.code, message=response_or_error.error.message)

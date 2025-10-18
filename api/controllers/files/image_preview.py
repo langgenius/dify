@@ -103,7 +103,7 @@ class WorkspaceWebappLogoApi(Resource):
         workspace_id = str(workspace_id)
 
         custom_config = TenantService.get_custom_config(workspace_id)
-        webapp_logo_file_id = custom_config.get("replace_webapp_logo") if custom_config is not None else None
+        webapp_logo_file_id = custom_config.get("replace_webapp_logo")
 
         if not webapp_logo_file_id:
             raise NotFound("webapp logo is not found")

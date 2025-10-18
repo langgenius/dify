@@ -555,8 +555,6 @@ class WorkflowAppGenerateTaskPipeline:
     ) -> Generator[StreamResponse, None, None]:
         """Handle text chunk events."""
         delta_text = event.text
-        if delta_text is None:
-            return
 
         # only publish tts message at text chunk streaming
         if tts_publisher and queue_message:
