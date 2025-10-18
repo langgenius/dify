@@ -18,19 +18,17 @@ from core.tools.tool_file_manager import ToolFileManager
 from fields.file_fields import build_file_model
 
 # Define parser for both documentation and validation
-upload_parser = reqparse.RequestParser()
-upload_parser.add_argument("file", location="files", type=FileStorage, required=True, help="File to upload")
-upload_parser.add_argument(
-    "timestamp", type=str, required=True, location="args", help="Unix timestamp for signature verification"
+upload_parser = (
+    reqparse.RequestParser()
+    .add_argument("file", location="files", type=FileStorage, required=True, help="File to upload")
+    .add_argument(
+        "timestamp", type=str, required=True, location="args", help="Unix timestamp for signature verification"
+    )
+    .add_argument("nonce", type=str, required=True, location="args", help="Random string for signature verification")
+    .add_argument("sign", type=str, required=True, location="args", help="HMAC signature for request validation")
+    .add_argument("tenant_id", type=str, required=True, location="args", help="Tenant identifier")
+    .add_argument("user_id", type=str, required=False, location="args", help="User identifier")
 )
-upload_parser.add_argument(
-    "nonce", type=str, required=True, location="args", help="Random string for signature verification"
-)
-upload_parser.add_argument(
-    "sign", type=str, required=True, location="args", help="HMAC signature for request validation"
-)
-upload_parser.add_argument("tenant_id", type=str, required=True, location="args", help="Tenant identifier")
-upload_parser.add_argument("user_id", type=str, required=False, location="args", help="User identifier")
 
 
 @files_ns.route("/upload/for-plugin")

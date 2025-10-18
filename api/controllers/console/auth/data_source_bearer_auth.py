@@ -45,10 +45,12 @@ class ApiKeyAuthDataSourceBinding(Resource):
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("category", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("provider", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("category", type=str, required=True, nullable=False, location="json")
+            .add_argument("provider", type=str, required=True, nullable=False, location="json")
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
         ApiKeyAuthService.validate_api_key_auth_args(args)
         try:

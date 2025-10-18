@@ -33,14 +33,12 @@ def int_or_str(value):
 
 
 # Define parser for both documentation and validation
-mcp_request_parser = reqparse.RequestParser()
-mcp_request_parser.add_argument(
-    "jsonrpc", type=str, required=True, location="json", help="JSON-RPC version (should be '2.0')"
-)
-mcp_request_parser.add_argument("method", type=str, required=True, location="json", help="The method to invoke")
-mcp_request_parser.add_argument("params", type=dict, required=False, location="json", help="Parameters for the method")
-mcp_request_parser.add_argument(
-    "id", type=int_or_str, required=False, location="json", help="Request ID for tracking responses"
+mcp_request_parser = (
+    reqparse.RequestParser()
+    .add_argument("jsonrpc", type=str, required=True, location="json", help="JSON-RPC version (should be '2.0')")
+    .add_argument("method", type=str, required=True, location="json", help="The method to invoke")
+    .add_argument("params", type=dict, required=False, location="json", help="Parameters for the method")
+    .add_argument("id", type=int_or_str, required=False, location="json", help="Request ID for tracking responses")
 )
 
 

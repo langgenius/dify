@@ -15,21 +15,17 @@ from services.entities.knowledge_entities.knowledge_entities import (
 from services.metadata_service import MetadataService
 
 # Define parsers for metadata APIs
-metadata_create_parser = reqparse.RequestParser()
-metadata_create_parser.add_argument(
-    "type", type=str, required=True, nullable=False, location="json", help="Metadata type"
-)
-metadata_create_parser.add_argument(
-    "name", type=str, required=True, nullable=False, location="json", help="Metadata name"
+metadata_create_parser = (
+    reqparse.RequestParser()
+    .add_argument("type", type=str, required=True, nullable=False, location="json", help="Metadata type")
+    .add_argument("name", type=str, required=True, nullable=False, location="json", help="Metadata name")
 )
 
-metadata_update_parser = reqparse.RequestParser()
-metadata_update_parser.add_argument(
+metadata_update_parser = reqparse.RequestParser().add_argument(
     "name", type=str, required=True, nullable=False, location="json", help="New metadata name"
 )
 
-document_metadata_parser = reqparse.RequestParser()
-document_metadata_parser.add_argument(
+document_metadata_parser = reqparse.RequestParser().add_argument(
     "operation_data", type=list, required=True, nullable=False, location="json", help="Metadata operation data"
 )
 

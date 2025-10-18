@@ -40,8 +40,7 @@ class RemoteFileInfoApi(Resource):
 class RemoteFileUploadApi(Resource):
     @marshal_with(file_fields_with_signed_url)
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("url", type=str, required=True, help="URL is required")
+        parser = reqparse.RequestParser().add_argument("url", type=str, required=True, help="URL is required")
         args = parser.parse_args()
 
         url = args["url"]

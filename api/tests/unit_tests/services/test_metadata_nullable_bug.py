@@ -54,9 +54,11 @@ class TestMetadataNullableBug:
     def test_api_parser_accepts_null_values(self, app):
         """Test that API parser configuration incorrectly accepts null values."""
         # Simulate the current API parser configuration
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=True, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=True, location="json")
+            .add_argument("name", type=str, required=True, nullable=True, location="json")
+        )
 
         # Simulate request data with null values
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
@@ -72,9 +74,11 @@ class TestMetadataNullableBug:
     def test_integration_bug_scenario(self, app):
         """Test the complete bug scenario from API to service layer."""
         # Step 1: API parser accepts null values (current buggy behavior)
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=True, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=True, location="json")
+            .add_argument("name", type=str, required=True, nullable=True, location="json")
+        )
 
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             args = parser.parse_args()
@@ -105,9 +109,11 @@ class TestMetadataNullableBug:
     def test_correct_nullable_false_configuration_works(self, app):
         """Test that the correct nullable=False configuration works as expected."""
         # This tests the FIXED configuration
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=False, location="json")
+            .add_argument("name", type=str, required=True, nullable=False, location="json")
+        )
 
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             # This should fail with BadRequest due to nullable=False

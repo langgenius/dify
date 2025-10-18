@@ -10,15 +10,11 @@ from libs.helper import StrLen, email, extract_remote_ip, timezone
 from models import AccountStatus
 from services.account_service import AccountService, RegisterService
 
-active_check_parser = reqparse.RequestParser()
-active_check_parser.add_argument(
-    "workspace_id", type=str, required=False, nullable=True, location="args", help="Workspace ID"
-)
-active_check_parser.add_argument(
-    "email", type=email, required=False, nullable=True, location="args", help="Email address"
-)
-active_check_parser.add_argument(
-    "token", type=str, required=True, nullable=False, location="args", help="Activation token"
+active_check_parser = (
+    reqparse.RequestParser()
+    .add_argument("workspace_id", type=str, required=False, nullable=True, location="args", help="Workspace ID")
+    .add_argument("email", type=email, required=False, nullable=True, location="args", help="Email address")
+    .add_argument("token", type=str, required=True, nullable=False, location="args", help="Activation token")
 )
 
 
@@ -60,15 +56,15 @@ class ActivateCheckApi(Resource):
             return {"is_valid": False}
 
 
-active_parser = reqparse.RequestParser()
-active_parser.add_argument("workspace_id", type=str, required=False, nullable=True, location="json")
-active_parser.add_argument("email", type=email, required=False, nullable=True, location="json")
-active_parser.add_argument("token", type=str, required=True, nullable=False, location="json")
-active_parser.add_argument("name", type=StrLen(30), required=True, nullable=False, location="json")
-active_parser.add_argument(
-    "interface_language", type=supported_language, required=True, nullable=False, location="json"
+active_parser = (
+    reqparse.RequestParser()
+    .add_argument("workspace_id", type=str, required=False, nullable=True, location="json")
+    .add_argument("email", type=email, required=False, nullable=True, location="json")
+    .add_argument("token", type=str, required=True, nullable=False, location="json")
+    .add_argument("name", type=StrLen(30), required=True, nullable=False, location="json")
+    .add_argument("interface_language", type=supported_language, required=True, nullable=False, location="json")
+    .add_argument("timezone", type=timezone, required=True, nullable=False, location="json")
 )
-active_parser.add_argument("timezone", type=timezone, required=True, nullable=False, location="json")
 
 
 @console_ns.route("/activate")

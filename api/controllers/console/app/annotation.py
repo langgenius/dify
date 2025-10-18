@@ -44,10 +44,12 @@ class AnnotationReplyActionApi(Resource):
     @edit_permission_required
     def post(self, app_id, action: Literal["enable", "disable"]):
         app_id = str(app_id)
-        parser = reqparse.RequestParser()
-        parser.add_argument("score_threshold", required=True, type=float, location="json")
-        parser.add_argument("embedding_provider_name", required=True, type=str, location="json")
-        parser.add_argument("embedding_model_name", required=True, type=str, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("score_threshold", required=True, type=float, location="json")
+            .add_argument("embedding_provider_name", required=True, type=str, location="json")
+            .add_argument("embedding_model_name", required=True, type=str, location="json")
+        )
         args = parser.parse_args()
         if action == "enable":
             result = AppAnnotationService.enable_app_annotation(args, app_id)
@@ -98,8 +100,7 @@ class AppAnnotationSettingUpdateApi(Resource):
         app_id = str(app_id)
         annotation_setting_id = str(annotation_setting_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("score_threshold", required=True, type=float, location="json")
+        parser = reqparse.RequestParser().add_argument("score_threshold", required=True, type=float, location="json")
         args = parser.parse_args()
 
         result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, args)
@@ -190,9 +191,11 @@ class AnnotationApi(Resource):
     @edit_permission_required
     def post(self, app_id):
         app_id = str(app_id)
-        parser = reqparse.RequestParser()
-        parser.add_argument("question", required=True, type=str, location="json")
-        parser.add_argument("answer", required=True, type=str, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("question", required=True, type=str, location="json")
+            .add_argument("answer", required=True, type=str, location="json")
+        )
         args = parser.parse_args()
         annotation = AppAnnotationService.insert_app_annotation_directly(args, app_id)
         return annotation
@@ -259,9 +262,11 @@ class AnnotationUpdateDeleteApi(Resource):
     def post(self, app_id, annotation_id):
         app_id = str(app_id)
         annotation_id = str(annotation_id)
-        parser = reqparse.RequestParser()
-        parser.add_argument("question", required=True, type=str, location="json")
-        parser.add_argument("answer", required=True, type=str, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("question", required=True, type=str, location="json")
+            .add_argument("answer", required=True, type=str, location="json")
+        )
         args = parser.parse_args()
         annotation = AppAnnotationService.update_app_annotation_directly(args, app_id, annotation_id)
         return annotation

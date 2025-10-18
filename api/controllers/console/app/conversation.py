@@ -59,15 +59,21 @@ class CompletionConversationApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("keyword", type=str, location="args")
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument(
-            "annotation_status", type=str, choices=["annotated", "not_annotated", "all"], default="all", location="args"
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("keyword", type=str, location="args")
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument(
+                "annotation_status",
+                type=str,
+                choices=["annotated", "not_annotated", "all"],
+                default="all",
+                location="args",
+            )
+            .add_argument("page", type=int_range(1, 99999), default=1, location="args")
+            .add_argument("limit", type=int_range(1, 100), default=20, location="args")
         )
-        parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
         query = sa.select(Conversation).where(
@@ -206,23 +212,29 @@ class ChatConversationApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("keyword", type=str, location="args")
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument(
-            "annotation_status", type=str, choices=["annotated", "not_annotated", "all"], default="all", location="args"
-        )
-        parser.add_argument("message_count_gte", type=int_range(1, 99999), required=False, location="args")
-        parser.add_argument("page", type=int_range(1, 99999), required=False, default=1, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument(
-            "sort_by",
-            type=str,
-            choices=["created_at", "-created_at", "updated_at", "-updated_at"],
-            required=False,
-            default="-updated_at",
-            location="args",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("keyword", type=str, location="args")
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument(
+                "annotation_status",
+                type=str,
+                choices=["annotated", "not_annotated", "all"],
+                default="all",
+                location="args",
+            )
+            .add_argument("message_count_gte", type=int_range(1, 99999), required=False, location="args")
+            .add_argument("page", type=int_range(1, 99999), required=False, default=1, location="args")
+            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+            .add_argument(
+                "sort_by",
+                type=str,
+                choices=["created_at", "-created_at", "updated_at", "-updated_at"],
+                required=False,
+                default="-updated_at",
+                location="args",
+            )
         )
         args = parser.parse_args()
 

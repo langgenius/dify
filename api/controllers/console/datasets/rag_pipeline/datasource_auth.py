@@ -130,11 +130,13 @@ class DatasourceAuth(Resource):
     def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name", type=StrLen(max_length=100), required=False, nullable=True, location="json", default=None
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(
+                "name", type=StrLen(max_length=100), required=False, nullable=True, location="json", default=None
+            )
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         )
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
@@ -179,8 +181,9 @@ class DatasourceAuthDeleteApi(Resource):
         plugin_id = datasource_provider_id.plugin_id
         provider_name = datasource_provider_id.provider_name
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "credential_id", type=str, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.remove_datasource_credentials(
@@ -202,10 +205,12 @@ class DatasourceAuthUpdateApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
 
         datasource_provider_id = DatasourceProviderID(provider_id)
-        parser = reqparse.RequestParser()
-        parser.add_argument("credentials", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("name", type=StrLen(max_length=100), required=False, nullable=True, location="json")
-        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("credentials", type=dict, required=False, nullable=True, location="json")
+            .add_argument("name", type=StrLen(max_length=100), required=False, nullable=True, location="json")
+            .add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         datasource_provider_service = DatasourceProviderService()
@@ -255,9 +260,11 @@ class DatasourceAuthOauthCustomClient(Resource):
     def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("client_params", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("enable_oauth_custom_client", type=bool, required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("client_params", type=dict, required=False, nullable=True, location="json")
+            .add_argument("enable_oauth_custom_client", type=bool, required=False, nullable=True, location="json")
+        )
         args = parser.parse_args()
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
@@ -293,8 +300,7 @@ class DatasourceAuthDefaultApi(Resource):
     def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("id", type=str, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument("id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
@@ -315,9 +321,11 @@ class DatasourceUpdateProviderNameApi(Resource):
     def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=StrLen(max_length=100), required=True, nullable=False, location="json")
-        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("name", type=StrLen(max_length=100), required=True, nullable=False, location="json")
+            .add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()

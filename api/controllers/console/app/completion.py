@@ -64,13 +64,15 @@ class CompletionMessageApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     def post(self, app_model):
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("query", type=str, location="json", default="")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, location="json")
-        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-        parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, location="json")
+            .add_argument("query", type=str, location="json", default="")
+            .add_argument("files", type=list, required=False, location="json")
+            .add_argument("model_config", type=dict, required=True, location="json")
+            .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+            .add_argument("retriever_from", type=str, required=False, default="dev", location="json")
+        )
         args = parser.parse_args()
 
         streaming = args["response_mode"] != "blocking"
@@ -153,15 +155,17 @@ class ChatMessageApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     @edit_permission_required
     def post(self, app_model):
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("query", type=str, required=True, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, location="json")
-        parser.add_argument("conversation_id", type=uuid_value, location="json")
-        parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
-        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-        parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, location="json")
+            .add_argument("query", type=str, required=True, location="json")
+            .add_argument("files", type=list, required=False, location="json")
+            .add_argument("model_config", type=dict, required=True, location="json")
+            .add_argument("conversation_id", type=uuid_value, location="json")
+            .add_argument("parent_message_id", type=uuid_value, required=False, location="json")
+            .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+            .add_argument("retriever_from", type=str, required=False, default="dev", location="json")
+        )
         args = parser.parse_args()
 
         streaming = args["response_mode"] != "blocking"

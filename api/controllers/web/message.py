@@ -93,10 +93,12 @@ class MessageListApi(WebApiResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("conversation_id", required=True, type=uuid_value, location="args")
-        parser.add_argument("first_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("conversation_id", required=True, type=uuid_value, location="args")
+            .add_argument("first_id", type=uuid_value, location="args")
+            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        )
         args = parser.parse_args()
 
         try:
@@ -143,9 +145,11 @@ class MessageFeedbackApi(WebApiResource):
     def post(self, app_model, end_user, message_id):
         message_id = str(message_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
-        parser.add_argument("content", type=str, location="json", default=None)
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
+            .add_argument("content", type=str, location="json", default=None)
+        )
         args = parser.parse_args()
 
         try:
@@ -193,8 +197,7 @@ class MessageMoreLikeThisApi(WebApiResource):
 
         message_id = str(message_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
+        parser = reqparse.RequestParser().add_argument(
             "response_mode", type=str, required=True, choices=["blocking", "streaming"], location="args"
         )
         args = parser.parse_args()

@@ -94,9 +94,11 @@ class AppAccessMode(Resource):
         }
     )
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("appId", type=str, required=False, location="args")
-        parser.add_argument("appCode", type=str, required=False, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("appId", type=str, required=False, location="args")
+            .add_argument("appCode", type=str, required=False, location="args")
+        )
         args = parser.parse_args()
 
         features = FeatureService.get_system_features()
@@ -155,8 +157,7 @@ class AppWebAuthPermission(Resource):
         if not features.webapp_auth.enabled:
             return {"result": True}
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("appId", type=str, required=True, location="args")
+        parser = reqparse.RequestParser().add_argument("appId", type=str, required=True, location="args")
         args = parser.parse_args()
 
         app_id = args["appId"]

@@ -24,48 +24,63 @@ from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
 
 # Define parsers for conversation APIs
-conversation_list_parser = reqparse.RequestParser()
-conversation_list_parser.add_argument(
-    "last_id", type=uuid_value, location="args", help="Last conversation ID for pagination"
-)
-conversation_list_parser.add_argument(
-    "limit",
-    type=int_range(1, 100),
-    required=False,
-    default=20,
-    location="args",
-    help="Number of conversations to return",
-)
-conversation_list_parser.add_argument(
-    "sort_by",
-    type=str,
-    choices=["created_at", "-created_at", "updated_at", "-updated_at"],
-    required=False,
-    default="-updated_at",
-    location="args",
-    help="Sort order for conversations",
-)
-
-conversation_rename_parser = reqparse.RequestParser()
-conversation_rename_parser.add_argument("name", type=str, required=False, location="json", help="New conversation name")
-conversation_rename_parser.add_argument(
-    "auto_generate", type=bool, required=False, default=False, location="json", help="Auto-generate conversation name"
+conversation_list_parser = (
+    reqparse.RequestParser()
+    .add_argument("last_id", type=uuid_value, location="args", help="Last conversation ID for pagination")
+    .add_argument(
+        "limit",
+        type=int_range(1, 100),
+        required=False,
+        default=20,
+        location="args",
+        help="Number of conversations to return",
+    )
+    .add_argument(
+        "sort_by",
+        type=str,
+        choices=["created_at", "-created_at", "updated_at", "-updated_at"],
+        required=False,
+        default="-updated_at",
+        location="args",
+        help="Sort order for conversations",
+    )
 )
 
-conversation_variables_parser = reqparse.RequestParser()
-conversation_variables_parser.add_argument(
-    "last_id", type=uuid_value, location="args", help="Last variable ID for pagination"
-)
-conversation_variables_parser.add_argument(
-    "limit", type=int_range(1, 100), required=False, default=20, location="args", help="Number of variables to return"
+conversation_rename_parser = (
+    reqparse.RequestParser()
+    .add_argument("name", type=str, required=False, location="json", help="New conversation name")
+    .add_argument(
+        "auto_generate",
+        type=bool,
+        required=False,
+        default=False,
+        location="json",
+        help="Auto-generate conversation name",
+    )
 )
 
-conversation_variable_update_parser = reqparse.RequestParser()
-# using lambda is for passing the already-typed value without modification
-# if no lambda, it will be converted to string
-# the string cannot be converted using json.loads
-conversation_variable_update_parser.add_argument(
-    "value", required=True, location="json", type=lambda x: x, help="New value for the conversation variable"
+conversation_variables_parser = (
+    reqparse.RequestParser()
+    .add_argument("last_id", type=uuid_value, location="args", help="Last variable ID for pagination")
+    .add_argument(
+        "limit",
+        type=int_range(1, 100),
+        required=False,
+        default=20,
+        location="args",
+        help="Number of variables to return",
+    )
+)
+
+conversation_variable_update_parser = reqparse.RequestParser().add_argument(
+    # using lambda is for passing the already-typed value without modification
+    # if no lambda, it will be converted to string
+    # the string cannot be converted using json.loads
+    "value",
+    required=True,
+    location="json",
+    type=lambda x: x,
+    help="New value for the conversation variable",
 )
 
 

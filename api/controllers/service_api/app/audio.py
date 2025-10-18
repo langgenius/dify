@@ -85,11 +85,13 @@ class AudioApi(Resource):
 
 
 # Define parser for text-to-audio API
-text_to_audio_parser = reqparse.RequestParser()
-text_to_audio_parser.add_argument("message_id", type=str, required=False, location="json", help="Message ID")
-text_to_audio_parser.add_argument("voice", type=str, location="json", help="Voice to use for TTS")
-text_to_audio_parser.add_argument("text", type=str, location="json", help="Text to convert to audio")
-text_to_audio_parser.add_argument("streaming", type=bool, location="json", help="Enable streaming response")
+text_to_audio_parser = (
+    reqparse.RequestParser()
+    .add_argument("message_id", type=str, required=False, location="json", help="Message ID")
+    .add_argument("voice", type=str, location="json", help="Voice to use for TTS")
+    .add_argument("text", type=str, location="json", help="Text to convert to audio")
+    .add_argument("streaming", type=bool, location="json", help="Enable streaming response")
+)
 
 
 @service_api_ns.route("/text-to-audio")

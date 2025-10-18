@@ -70,15 +70,17 @@ class InsertExploreAppListApi(Resource):
     @only_edition_cloud
     @admin_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("app_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("desc", type=str, location="json")
-        parser.add_argument("copyright", type=str, location="json")
-        parser.add_argument("privacy_policy", type=str, location="json")
-        parser.add_argument("custom_disclaimer", type=str, location="json")
-        parser.add_argument("language", type=supported_language, required=True, nullable=False, location="json")
-        parser.add_argument("category", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("position", type=int, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("app_id", type=str, required=True, nullable=False, location="json")
+            .add_argument("desc", type=str, location="json")
+            .add_argument("copyright", type=str, location="json")
+            .add_argument("privacy_policy", type=str, location="json")
+            .add_argument("custom_disclaimer", type=str, location="json")
+            .add_argument("language", type=supported_language, required=True, nullable=False, location="json")
+            .add_argument("category", type=str, required=True, nullable=False, location="json")
+            .add_argument("position", type=int, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         app = db.session.execute(select(App).where(App.id == args["app_id"])).scalar_one_or_none()

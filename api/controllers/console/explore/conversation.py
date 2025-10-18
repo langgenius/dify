@@ -31,10 +31,12 @@ class ConversationListApi(InstalledAppResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("last_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument("pinned", type=str, choices=["true", "false", None], location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("last_id", type=uuid_value, location="args")
+            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+            .add_argument("pinned", type=str, choices=["true", "false", None], location="args")
+        )
         args = parser.parse_args()
 
         pinned = None
@@ -94,9 +96,11 @@ class ConversationRenameApi(InstalledAppResource):
 
         conversation_id = str(c_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=False, location="json")
-        parser.add_argument("auto_generate", type=bool, required=False, default=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("name", type=str, required=False, location="json")
+            .add_argument("auto_generate", type=bool, required=False, default=False, location="json")
+        )
         args = parser.parse_args()
 
         try:

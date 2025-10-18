@@ -26,10 +26,12 @@ class DataSourceContentPreviewApi(Resource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("datasource_type", type=str, required=True, location="json")
-        parser.add_argument("credential_id", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+            .add_argument("datasource_type", type=str, required=True, location="json")
+            .add_argument("credential_id", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         inputs = args.get("inputs")

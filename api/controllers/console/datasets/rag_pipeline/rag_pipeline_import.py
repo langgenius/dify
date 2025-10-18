@@ -28,16 +28,18 @@ class RagPipelineImportApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("mode", type=str, required=True, location="json")
-        parser.add_argument("yaml_content", type=str, location="json")
-        parser.add_argument("yaml_url", type=str, location="json")
-        parser.add_argument("name", type=str, location="json")
-        parser.add_argument("description", type=str, location="json")
-        parser.add_argument("icon_type", type=str, location="json")
-        parser.add_argument("icon", type=str, location="json")
-        parser.add_argument("icon_background", type=str, location="json")
-        parser.add_argument("pipeline_id", type=str, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("mode", type=str, required=True, location="json")
+            .add_argument("yaml_content", type=str, location="json")
+            .add_argument("yaml_url", type=str, location="json")
+            .add_argument("name", type=str, location="json")
+            .add_argument("description", type=str, location="json")
+            .add_argument("icon_type", type=str, location="json")
+            .add_argument("icon", type=str, location="json")
+            .add_argument("icon_background", type=str, location="json")
+            .add_argument("pipeline_id", type=str, location="json")
+        )
         args = parser.parse_args()
 
         # Create service with session
@@ -121,8 +123,7 @@ class RagPipelineExportApi(Resource):
             raise Forbidden()
 
             # Add include_secret params
-        parser = reqparse.RequestParser()
-        parser.add_argument("include_secret", type=str, default="false", location="args")
+        parser = reqparse.RequestParser().add_argument("include_secret", type=str, default="false", location="args")
         args = parser.parse_args()
 
         with Session(db.engine) as session:

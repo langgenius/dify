@@ -111,8 +111,7 @@ class InstalledAppsListApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("apps")
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("app_id", type=str, required=True, help="Invalid app_id")
+        parser = reqparse.RequestParser().add_argument("app_id", type=str, required=True, help="Invalid app_id")
         args = parser.parse_args()
 
         recommended_app = db.session.query(RecommendedApp).where(RecommendedApp.app_id == args["app_id"]).first()
@@ -170,8 +169,7 @@ class InstalledAppApi(InstalledAppResource):
         return {"result": "success", "message": "App uninstalled successfully"}, 204
 
     def patch(self, installed_app):
-        parser = reqparse.RequestParser()
-        parser.add_argument("is_pinned", type=inputs.boolean)
+        parser = reqparse.RequestParser().add_argument("is_pinned", type=inputs.boolean)
         args = parser.parse_args()
 
         commit_args = False
