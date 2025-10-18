@@ -193,7 +193,7 @@ const TimePicker = ({
 
   const inputElem = (
     <input
-      className='system-xs-regular flex-1 cursor-pointer appearance-none truncate bg-transparent p-1
+      className='system-xs-regular flex-1 cursor-pointer select-none appearance-none truncate bg-transparent p-1
             text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder'
       readOnly
       value={isOpen ? '' : displayValue}
@@ -221,7 +221,7 @@ const TimePicker = ({
           >
             {inputElem}
             {showTimezone && timezone && (
-              <TimezoneLabel timezone={timezone} inline className="shrink-0 text-xs" />
+              <TimezoneLabel timezone={timezone} inline className='shrink-0 select-none text-xs' />
             )}
             <RiTimeLine className={cn(
               'h-4 w-4 shrink-0 text-text-quaternary',
