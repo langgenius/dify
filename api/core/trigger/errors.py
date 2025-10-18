@@ -9,9 +9,11 @@ class TriggerPluginInvokeError(PluginInvokeError):
     pass
 
 
-class TriggerInvokeError(Exception):
+class TriggerInvokeError(PluginInvokeError):
     pass
 
 
-class TriggerIgnoreEventError(TriggerInvokeError):
-    pass
+class EventIgnoreError(TriggerInvokeError):
+    """
+    Trigger event ignore error
+    """
