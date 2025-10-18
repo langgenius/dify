@@ -28,6 +28,7 @@ class PluginTool(Tool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        passthrough: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         manager = PluginToolManager()
 
@@ -44,6 +45,7 @@ class PluginTool(Tool):
             conversation_id=conversation_id,
             app_id=app_id,
             message_id=message_id,
+            passthrough=passthrough,
         )
 
     def fork_tool_runtime(self, runtime: ToolRuntime) -> "PluginTool":

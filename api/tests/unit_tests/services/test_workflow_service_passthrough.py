@@ -2,11 +2,11 @@
 Unit tests for workflow service passthrough functionality
 """
 
+import pytest
 from unittest.mock import MagicMock
 
-from core.services.workflow_service import _setup_variable_pool
-
 from core.workflow.enums import NodeType, WorkflowType
+from services.workflow_service import _setup_variable_pool
 
 
 class TestWorkflowServicePassthrough:
@@ -89,7 +89,7 @@ class TestWorkflowServicePassthrough:
         assert variable_pool.system_variables.passthrough is None
 
     def test_setup_variable_pool_with_none_user_inputs(self):
-        """Test _setup_variable_pool with None user_inputs"""
+        """Test _setup_variable_pool with None user_inputs - this should be handled gracefully"""
         # Mock workflow
         mock_workflow = MagicMock()
         mock_workflow.app_id = "test_app"
@@ -97,6 +97,7 @@ class TestWorkflowServicePassthrough:
         mock_workflow.type = WorkflowType.WORKFLOW
         mock_workflow.environment_variables = []
 
+<<<<<<< HEAD
         # Test with None user_inputs
         variable_pool = _setup_variable_pool(
             query="test query",
@@ -111,6 +112,21 @@ class TestWorkflowServicePassthrough:
 
         # Verify passthrough was None
         assert variable_pool.system_variables.passthrough is None
+=======
+        # Test with None user_inputs - this should raise a validation error
+        # since user_inputs is expected to be a Mapping[str, Any], not None
+        with pytest.raises(ValueError):  # Should raise validation error
+            _setup_variable_pool(
+                query="test query",
+                files=[],
+                user_id="test_user",
+                user_inputs=None,  # This should cause validation error
+                workflow=mock_workflow,
+                node_type=NodeType.START,
+                conversation_id="test_conversation",
+                conversation_variables=[],
+            )
+>>>>>>> 64a63e4f1e (fix: add passthrough parameter to all tool classes)
 
     def test_setup_variable_pool_non_start_node(self):
         """Test _setup_variable_pool with non-START node type"""

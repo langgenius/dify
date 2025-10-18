@@ -5,7 +5,8 @@ Unit tests for Tool passthrough functionality
 from unittest.mock import MagicMock
 
 from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
 from core.tools.tool_engine import ToolEngine
 
 
@@ -39,8 +40,15 @@ class TestToolPassthrough:
     def test_tool_invoke_with_passthrough(self):
         """Test tool invoke method with passthrough parameter"""
         # Create mock tool
+        tool_identity = ToolIdentity(
+            author="test_author", name="test_tool", label=I18nObject(en_US="Test Tool"), provider="test_provider"
+        )
         tool_entity = ToolEntity(
+<<<<<<< HEAD
             identity=MagicMock(), parameters=[], description=None, output_schema={}, has_runtime_parameters=False
+=======
+            identity=tool_identity, parameters=[], description=None, output_schema={}, has_runtime_parameters=False
+>>>>>>> 64a63e4f1e (fix: add passthrough parameter to all tool classes)
         )
         tool_runtime = MagicMock()
         tool = MockTool(entity=tool_entity, runtime=tool_runtime)
@@ -63,8 +71,15 @@ class TestToolPassthrough:
     def test_tool_invoke_without_passthrough(self):
         """Test tool invoke method without passthrough parameter"""
         # Create mock tool
+        tool_identity = ToolIdentity(
+            author="test_author", name="test_tool", label=I18nObject(en_US="Test Tool"), provider="test_provider"
+        )
         tool_entity = ToolEntity(
+<<<<<<< HEAD
             identity=MagicMock(), parameters=[], description=None, output_schema={}, has_runtime_parameters=False
+=======
+            identity=tool_identity, parameters=[], description=None, output_schema={}, has_runtime_parameters=False
+>>>>>>> 64a63e4f1e (fix: add passthrough parameter to all tool classes)
         )
         tool_runtime = MagicMock()
         tool = MockTool(entity=tool_entity, runtime=tool_runtime)
@@ -110,13 +125,17 @@ class TestToolPassthrough:
         passthrough_param = signature.parameters["passthrough"]
         assert passthrough_param.annotation == str | None
 
-    def test_tool_base_class_invoke_signature(self):
+    def test_tool_base_class_invoke_method_signature(self):
         """Test Tool base class _invoke method signature"""
         import inspect
 
         signature = inspect.signature(Tool._invoke)
         params = list(signature.parameters.keys())
 
+<<<<<<< HEAD
+=======
+        # Check that passthrough parameter is present
+>>>>>>> 64a63e4f1e (fix: add passthrough parameter to all tool classes)
         assert "passthrough" in params
 
         # Check parameter type
