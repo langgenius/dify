@@ -84,6 +84,7 @@ class AgentEntity(BaseModel):
     prompt: AgentPromptEntity | None = None
     tools: list[AgentToolEntity] | None = None
     max_iteration: int = 10
+    clear_history_tool_response: bool = False
 
 
 class AgentInvokeMessage(ToolInvokeMessage):

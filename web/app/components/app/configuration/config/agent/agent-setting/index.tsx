@@ -9,6 +9,7 @@ import Button from '@/app/components/base/button'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
 import Slider from '@/app/components/base/slider'
+import Switch from '@/app/components/base/switch'
 import type { AgentConfig } from '@/models/debug'
 import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
 
@@ -127,6 +128,24 @@ const AgentSetting: FC<Props> = ({
                   })
                 }} />
             </div>
+          </ItemPanel>
+
+          <ItemPanel
+            className='mb-4'
+            icon={ <CuteRobot className='h-4 w-4 text-indigo-600' /> }
+            name={t('appDebug.agent.setting.clearHistoryToolResponse.name')}
+            description={t('appDebug.agent.setting.clearHistoryToolResponse.description')}
+          >
+            <Switch
+              defaultValue={tempPayload.clear_history_tool_response}
+              size='md'
+              onChange={(value) => {
+                setTempPayload({
+                  ...tempPayload,
+                  clear_history_tool_response: value,
+                })
+              }}
+            />
           </ItemPanel>
 
           {!isFunctionCall && (
