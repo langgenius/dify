@@ -16,7 +16,7 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import type { ToolDefaultValue } from '../block-selector/types'
+import type { DataSourceDefaultValue, ToolDefaultValue } from '../block-selector/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
 import { BlockEnum } from '../types'
 import { useWorkflowStore } from '../store'
@@ -1286,7 +1286,7 @@ export const useNodesInteractions = () => {
       currentNodeId: string,
       nodeType: BlockEnum,
       sourceHandle: string,
-      toolDefaultValue?: ToolDefaultValue,
+      toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue,
     ) => {
       if (getNodesReadOnly()) return
 
