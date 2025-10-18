@@ -6,14 +6,13 @@ from flask import Request
 
 from core.plugin.entities.plugin_daemon import CredentialType, PluginTriggerProviderEntity
 from core.plugin.entities.request import (
-    PluginTriggerDispatchResponse,
     TriggerDispatchResponse,
     TriggerInvokeEventResponse,
     TriggerSubscriptionResponse,
     TriggerValidateProviderCredentialsResponse,
 )
 from core.plugin.impl.base import BasePluginClient
-from core.plugin.utils.http_parser import deserialize_response, serialize_request
+from core.plugin.utils.http_parser import serialize_request
 from core.trigger.entities.entities import Subscription
 from models.provider_ids import TriggerProviderID
 
@@ -171,7 +170,7 @@ class PluginTriggerClient(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/trigger/dispatch_event",
-            type_=PluginTriggerDispatchResponse,
+            type_=TriggerDispatchResponse,
             data={
                 "data": {
                     "provider": provider_id.provider_name,
@@ -188,12 +187,7 @@ class PluginTriggerClient(BasePluginClient):
         )
 
         for resp in response:
-            return TriggerDispatchResponse(
-                user_id=resp.user_id or "",
-                events=resp.events,
-                response=deserialize_response(binascii.unhexlify(resp.raw_http_response.encode())),
-                payload=resp.payload,
-            )
+            return resp
 
         raise ValueError("No response received from plugin daemon for dispatch event")
 
