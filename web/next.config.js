@@ -111,6 +111,7 @@ const nextConfig = {
     })),
   },
   experimental: {
+    turbopackFileSystemCacheForDev: true,
     optimizePackageImports: [
       '@remixicon/react',
       '@heroicons/react'
