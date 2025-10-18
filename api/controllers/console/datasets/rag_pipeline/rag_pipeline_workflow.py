@@ -315,8 +315,9 @@ class PublishedRagPipelineRunApi(Resource):
 #             raise Forbidden()
 #
 #         parser = (reqparse.RequestParser()
-# .add_argument("job_id", type=str, required=True, nullable=False, location="json")
-# .add_argument("datasource_type", type=str, required=True, location="json"))
+#             .add_argument("job_id", type=str, required=True, nullable=False, location="json")
+#             .add_argument("datasource_type", type=str, required=True, location="json")
+#         )
 #         args = parser.parse_args()
 #
 #         job_id = args.get("job_id")
