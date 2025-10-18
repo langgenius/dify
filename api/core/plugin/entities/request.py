@@ -247,9 +247,14 @@ class TriggerInvokeEventResponse(BaseModel):
 
 
 class PluginTriggerDispatchResponse(BaseModel):
+    """
+    Original response from plugin daemon
+    """
+
     user_id: str
     events: list[str]
     raw_http_response: str
+    payload: Mapping[str, Any] = Field(default_factory=dict)
 
 
 class TriggerSubscriptionResponse(BaseModel):
@@ -260,12 +265,10 @@ class TriggerValidateProviderCredentialsResponse(BaseModel):
     result: bool
 
 
-class TriggerDispatchResponse:
+class TriggerDispatchResponse(BaseModel):
     user_id: str
     events: list[str]
     response: Response
+    payload: Mapping[str, Any] = Field(default_factory=dict)
 
-    def __init__(self, user_id: str, events: list[str], response: Response):
-        self.user_id = user_id
-        self.events = events
-        self.response = response
+    model_config = ConfigDict(protected_namespaces=(), arbitrary_types_allowed=True)
