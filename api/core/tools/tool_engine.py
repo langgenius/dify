@@ -231,7 +231,7 @@ class ToolEngine:
         result = ""
         for response in tool_response:
             if response.type == ToolInvokeMessage.MessageType.TEXT:
-                result += cast(ToolInvokeMessage.TextMessage, response.message).text
+                continue
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 result += (
                     f"result link: {cast(ToolInvokeMessage.TextMessage, response.message).text}."
