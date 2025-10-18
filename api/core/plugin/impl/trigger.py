@@ -18,7 +18,7 @@ from core.trigger.entities.entities import Subscription
 from models.provider_ids import TriggerProviderID
 
 
-class PluginTriggerManager(BasePluginClient):
+class PluginTriggerClient(BasePluginClient):
     def fetch_trigger_providers(self, tenant_id: str) -> list[PluginTriggerProviderEntity]:
         """
         Fetch trigger providers for the given tenant.

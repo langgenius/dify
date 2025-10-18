@@ -15,7 +15,7 @@ from core.plugin.entities.request import (
     TriggerInvokeEventResponse,
     TriggerSubscriptionResponse,
 )
-from core.plugin.impl.trigger import PluginTriggerManager
+from core.plugin.impl.trigger import PluginTriggerClient
 from core.trigger.entities.api_entities import EventApiEntity, TriggerProviderApiEntity
 from core.trigger.entities.entities import (
     EventEntity,
@@ -171,7 +171,7 @@ class PluginTriggerProviderController:
                 raise TriggerProviderCredentialValidationError(f"Missing required credential field: {config.name}")
 
         # Then validate with the plugin daemon
-        manager = PluginTriggerManager()
+        manager = PluginTriggerClient()
         provider_id = self.get_provider_id()
         response = manager.validate_provider_credentials(
             tenant_id=self.tenant_id,
@@ -282,7 +282,7 @@ class PluginTriggerProviderController:
         :param credential_type: Credential type
         :return: Dispatch response with triggers and raw HTTP response
         """
-        manager = PluginTriggerManager()
+        manager = PluginTriggerClient()
         provider_id: TriggerProviderID = self.get_provider_id()
 
         response: TriggerDispatchResponse = manager.dispatch_event(
@@ -318,7 +318,7 @@ class PluginTriggerProviderController:
         :param payload: Payload
         :return: Trigger execution result
         """
-        manager = PluginTriggerManager()
+        manager = PluginTriggerClient()
         provider_id: TriggerProviderID = self.get_provider_id()
 
         return manager.invoke_trigger_event(
@@ -352,7 +352,7 @@ class PluginTriggerProviderController:
         :param credential_type: Credential type
         :return: Subscription result
         """
-        manager = PluginTriggerManager()
+        manager = PluginTriggerClient()
         provider_id: TriggerProviderID = self.get_provider_id()
 
         response: TriggerSubscriptionResponse = manager.subscribe(
@@ -379,7 +379,7 @@ class PluginTriggerProviderController:
         :param credential_type: Credential type
         :return: Unsubscribe result
         """
-        manager = PluginTriggerManager()
+        manager = PluginTriggerClient()
         provider_id: TriggerProviderID = self.get_provider_id()
 
         response: TriggerSubscriptionResponse = manager.unsubscribe(
@@ -403,7 +403,7 @@ class PluginTriggerProviderController:
         :param credentials: Provider credentials
         :return: Refreshed subscription result
         """
-        manager = PluginTriggerManager()
+        manager = PluginTriggerClient()
         provider_id: TriggerProviderID = self.get_provider_id()
 
         response: TriggerSubscriptionResponse = manager.refresh(

@@ -14,7 +14,7 @@ from configs import dify_config
 from core.plugin.entities.plugin_daemon import CredentialType, PluginTriggerProviderEntity
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.plugin.impl.exc import PluginDaemonError, PluginInvokeError, PluginNotFoundError
-from core.plugin.impl.trigger import PluginTriggerManager
+from core.plugin.impl.trigger import PluginTriggerClient
 from core.trigger.entities.entities import (
     EventEntity,
     Subscription,
@@ -37,7 +37,7 @@ class TriggerManager:
         """
         Get the icon of a trigger plugin
         """
-        manager = PluginTriggerManager()
+        manager = PluginTriggerClient()
         provider: PluginTriggerProviderEntity = manager.fetch_trigger_provider(
             tenant_id=tenant_id, provider_id=TriggerProviderID(provider_id)
         )
@@ -53,7 +53,7 @@ class TriggerManager:
         :param tenant_id: Tenant ID
         :return: List of trigger provider controllers
         """
-        manager = PluginTriggerManager()
+        manager = PluginTriggerClient()
         provider_entities = manager.fetch_trigger_providers(tenant_id)
 
         controllers: list[PluginTriggerProviderController] = []
@@ -101,7 +101,7 @@ class TriggerManager:
                 return plugin_trigger_providers[provider_id_str]
 
             try:
-                manager = PluginTriggerManager()
+                manager = PluginTriggerClient()
                 provider = manager.fetch_trigger_provider(tenant_id, provider_id)
 
                 if not provider:
