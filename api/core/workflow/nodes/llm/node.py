@@ -447,7 +447,7 @@ class LLMNode(Node):
                 if isinstance(result, LLMResultChunkWithStructuredOutput):
                     # Collect structured_output from the chunk
                     if result.structured_output is not None:
-                        collected_structured_output = result.structured_output
+                        collected_structured_output = dict(result.structured_output)
                     yield result
                 if isinstance(result, LLMResultChunk):
                     contents = result.delta.message.content
