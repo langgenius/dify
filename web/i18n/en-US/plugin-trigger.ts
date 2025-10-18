@@ -164,6 +164,7 @@ const translation = {
     actionNum: '{{num}} {{event}} INCLUDED',
     item: {
       parameters: '{{count}} parameters',
+      noParameters: 'No parameters',
     },
     output: 'Output',
   },

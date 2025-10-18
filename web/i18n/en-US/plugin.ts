@@ -64,6 +64,7 @@ const translation = {
       checkUpdate: 'Check Update',
       viewDetail: 'View Detail',
       remove: 'Remove',
+      back: 'Back',
     },
     actionNum: '{{num}} {{action}} INCLUDED',
     strategyNum: '{{num}} {{strategy}} INCLUDED',

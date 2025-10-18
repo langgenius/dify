@@ -164,6 +164,7 @@ const translation = {
     actionNum: '包含 {{num}} 个 {{event}}',
     item: {
       parameters: '{{count}}个参数',
+      noParameters: '暂无参数',
     },
     output: '输出',
   },

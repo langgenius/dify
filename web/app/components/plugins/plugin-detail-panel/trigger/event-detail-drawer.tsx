@@ -1,5 +1,6 @@
 'use client'
 import ActionButton from '@/app/components/base/action-button'
+import Divider from '@/app/components/base/divider'
 import Drawer from '@/app/components/base/drawer'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -7,8 +8,7 @@ import Description from '@/app/components/plugins/card/base/description'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import { triggerEventParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-// import Split from '@/app/components/workflow/nodes/_base/components/split'
+import Field from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show/field'
 import cn from '@/utils/classnames'
 import {
   RiArrowLeftLine,
@@ -37,16 +37,48 @@ const getType = (type: string, t: TFunction) => {
   return type
 }
 
+// Convert JSON Schema to StructuredOutput format
+const convertSchemaToField = (schema: any): any => {
+  const field: any = {
+    type: Array.isArray(schema.type) ? schema.type[0] : schema.type || 'string',
+  }
+
+  if (schema.description)
+    field.description = schema.description
+
+  if (schema.properties) {
+    field.properties = Object.entries(schema.properties).reduce((acc, [key, value]: [string, any]) => ({
+      ...acc,
+      [key]: convertSchemaToField(value),
+    }), {})
+  }
+
+  if (schema.required)
+    field.required = schema.required
+
+  if (schema.items)
+    field.items = convertSchemaToField(schema.items)
+
+  if (schema.enum)
+    field.enum = schema.enum
+
+  return field
+}
+
 export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
   const { eventInfo, providerInfo, onClose } = props
   const language = useLanguage()
   const { t } = useTranslation()
   const parametersSchemas = triggerEventParametersToFormSchemas(eventInfo.parameters)
-  const outputVars = Object.entries(eventInfo.output_schema?.properties || {}).map(([name, schema]: [string, any]) => ({
-    name,
-    type: schema.type || 'string',
-    description: schema.description || '',
-  }))
+
+  // Convert output_schema properties to array for direct rendering
+  const outputFields = eventInfo.output_schema?.properties
+    ? Object.entries(eventInfo.output_schema.properties).map(([name, schema]: [string, any]) => ({
+      name,
+      field: convertSchemaToField(schema),
+      required: eventInfo.output_schema.required?.includes(name) || false,
+    }))
+    : []
 
   return (
     <Drawer
@@ -69,7 +101,7 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
           onClick={onClose}
         >
           <RiArrowLeftLine className='h-4 w-4' />
-          BACK
+          {t('plugin.detailPanel.operation.back')}
         </div>
         <div className='flex items-center gap-1'>
           <Icon size='tiny' className='h-6 w-6' src={providerInfo.icon!} />
@@ -82,45 +114,43 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
         <div className='system-md-semibold mt-1 text-text-primary'>{eventInfo?.identity?.label[language]}</div>
         <Description className='mb-2 mt-3 h-auto' text={eventInfo.description[language]} descriptionLineRows={2}></Description>
       </div>
-      <div className='flex h-full flex-col'>
-        <div className='system-sm-semibold-uppercase p-4 pb-1 text-text-primary'>{t('tools.setBuiltInTools.parameters')}</div>
-        <div className='h-0 grow overflow-y-auto px-4'>
-          {parametersSchemas.length > 0 && (
-            <div className='space-y-1 py-2'>
-              {parametersSchemas.map((item, index) => (
-                <div key={index} className='py-1'>
-                  <div className='flex items-center gap-2'>
-                    <div className='code-sm-semibold text-text-secondary'>{item.label[language]}</div>
-                    <div className='system-xs-regular text-text-tertiary'>
-                      {getType(item.type, t)}
-                    </div>
-                    {item.required && (
-                      <div className='system-xs-medium text-text-warning-secondary'>{t('tools.setBuiltInTools.required')}</div>
-                    )}
-                  </div>
-                  {item.description && (
-                    <div className='system-xs-regular mt-0.5 text-text-tertiary'>
-                      {item.description?.[language]}
-                    </div>
-                  )}
+      <div className='flex h-full flex-col gap-2 overflow-y-auto px-4 pb-2 pt-4'>
+        <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.setBuiltInTools.parameters')}</div>
+        {parametersSchemas.length > 0 ? (
+          parametersSchemas.map((item, index) => (
+            <div key={index} className='py-1'>
+              <div className='flex items-center gap-2'>
+                <div className='code-sm-semibold text-text-secondary'>{item.label[language]}</div>
+                <div className='system-xs-regular text-text-tertiary'>
+                  {getType(item.type, t)}
                 </div>
-              ))}
+                {item.required && (
+                  <div className='system-xs-medium text-text-warning-secondary'>{t('tools.setBuiltInTools.required')}</div>
+                )}
+              </div>
+              {item.description && (
+                <div className='system-xs-regular mt-0.5 text-text-tertiary'>
+                  {item.description?.[language]}
+                </div>
+              )}
             </div>
-          )}
+          ))
+        ) : <div className='system-xs-regular text-text-tertiary'>{t('pluginTrigger.events.item.noParameters')}</div>}
+        <Divider className='mb-2 mt-1 h-px' />
+        <div className='flex flex-col gap-2'>
+          <div className='system-sm-semibold-uppercase text-text-secondary'>{t('pluginTrigger.events.output')}</div>
+          <div className='relative left-[-7px]'>
+            {outputFields.map(item => (
+              <Field
+                key={item.name}
+                name={item.name}
+                payload={item.field}
+                required={item.required}
+                rootClassName='code-sm-semibold text-text-secondary'
+              />
+            ))}
+          </div>
         </div>
-        {/* <Split /> */}
-        <div className='system-sm-semibold-uppercase p-4 pb-1 pt-0 text-text-primary'>{t('pluginTrigger.events.output')}</div>
-        <OutputVars collapsed={false}>
-          {outputVars.map(varItem => (
-            <VarItem
-              key={varItem.name}
-              name={varItem.name}
-              type={varItem.type}
-              description={varItem.description}
-            // isIndent={hasObjectOutput}
-            />
-          ))}
-        </OutputVars>
       </div>
     </Drawer>
   )

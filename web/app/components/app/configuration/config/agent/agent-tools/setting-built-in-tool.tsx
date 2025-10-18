@@ -193,7 +193,7 @@ const SettingBuiltInTool: FC<Props> = ({
                   onClick={onHide}
                 >
                   <RiArrowLeftLine className='h-4 w-4' />
-                  BACK
+                  {t('plugin.detailPanel.operation.back')}
                 </div>
               )}
               <div className='flex items-center gap-1'>
