@@ -16,7 +16,7 @@ import {
 const useConfig = (id: string, payload: HttpNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
 
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs?.[payload.type])
 
   const { inputs, setInputs } = useNodeCrud<HttpNodeType>(id, payload)
 

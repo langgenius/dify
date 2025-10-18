@@ -154,7 +154,6 @@ class ExternalApiTemplateApi(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
         external_knowledge_api_id = str(external_knowledge_api_id)
 
-        # The role of the current user in the ta table must be admin, owner, or editor
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 

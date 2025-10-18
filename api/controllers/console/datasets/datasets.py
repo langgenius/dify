@@ -472,7 +472,6 @@ class DatasetApi(Resource):
         dataset_id_str = str(dataset_id)
         current_user, _ = current_account_with_tenant()
 
-        # The role of the current user in the ta table must be admin, owner, or editor
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 

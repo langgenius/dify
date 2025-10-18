@@ -947,11 +947,10 @@ class RagPipelineTransformApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @edit_permission_required
     def post(self, dataset_id: str):
         current_user, _ = current_account_with_tenant()
 
-        if not current_user.is_dataset_operator:
+        if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 
         dataset_id = str(dataset_id)
