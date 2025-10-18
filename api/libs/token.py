@@ -160,7 +160,7 @@ def check_csrf_token(request: Request):
     csrf_token = extract_csrf_token(request)
 
     def _unauthorized():
-        raise Unauthorized("CSRF token is missing.")
+        raise Unauthorized("CSRF token is missing or invalid.")
 
     if not csrf_token:
         _unauthorized()
