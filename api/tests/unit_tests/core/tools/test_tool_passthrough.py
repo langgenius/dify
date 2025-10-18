@@ -16,8 +16,8 @@ class MockTool(Tool):
         from core.tools.entities.tool_entities import ToolProviderType
         return ToolProviderType.BUILT_IN
     
-    def _invoke(self, user_id: str, tool_parameters: dict, conversation_id: str = None, 
-                app_id: str = None, message_id: str = None, passthrough: str = None):
+    def _invoke(self, user_id: str, tool_parameters: dict, conversation_id: str | None= None, 
+                app_id: str | None = None, message_id: str | None = None, passthrough: str | None = None):
         """Mock invoke method"""
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.TEXT,
