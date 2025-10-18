@@ -4,7 +4,6 @@ from typing import Union
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.service_api.wraps import get_or_create_end_user
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
@@ -16,6 +15,7 @@ from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from extensions.ext_database import db
 from models import Account
 from models.model import App, AppMode, EndUser
+from services.end_user_service import EndUserService
 
 
 class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
@@ -64,7 +64,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         app = cls._get_app(app_id, tenant_id)
         if not user_id:
-            user = get_or_create_end_user(app)
+            user = EndUserService.get_or_create_end_user(app)
         else:
             user = cls._get_user(user_id)
 
