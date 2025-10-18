@@ -49,13 +49,24 @@ class IndexingRunner:
         self.storage = storage
         self.model_manager = ModelManager()
 
+    def _handle_indexing_error(self, document_id: str, error: Exception) -> None:
+        """Handle indexing errors by updating document status."""
+        logger.exception("consume document failed")
+        document = db.session.get(DatasetDocument, document_id)
+        if document:
+            document.indexing_status = "error"
+            error_message = getattr(error, "description", str(error))
+            document.error = str(error_message)
+            document.stopped_at = naive_utc_now()
+            db.session.commit()
+
     def run(self, dataset_documents: list[DatasetDocument]):
         """Run the indexing process."""
         for dataset_document in dataset_documents:
             document_id = dataset_document.id
             try:
                 # Re-query the document to ensure it's bound to the current session
-                requeried_document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
+                requeried_document = db.session.get(DatasetDocument, document_id)
                 if not requeried_document:
                     logger.warning("Document not found, skipping document id: %s", document_id)
                     continue
@@ -94,31 +105,21 @@ class IndexingRunner:
             except DocumentIsPausedError:
                 raise DocumentIsPausedError(f"Document paused, document id: {document_id}")
             except ProviderTokenNotInitError as e:
-                requeried_document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
-                if requeried_document:
-                    requeried_document.indexing_status = "error"
-                    requeried_document.error = str(e.description)
-                    requeried_document.stopped_at = naive_utc_now()
-                    db.session.commit()
+                self._handle_indexing_error(document_id, e)
             except ObjectDeletedError:
                 logger.warning("Document deleted, document id: %s", document_id)
             except Exception as e:
-                logger.exception("consume document failed")
-                requeried_document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
-                if requeried_document:
-                    requeried_document.indexing_status = "error"
-                    requeried_document.error = str(e)
-                    requeried_document.stopped_at = naive_utc_now()
-                    db.session.commit()
+                self._handle_indexing_error(document_id, e)
 
     def run_in_splitting_status(self, dataset_document: DatasetDocument):
         """Run the indexing process when the index_status is splitting."""
         document_id = dataset_document.id
         try:
             # Re-query the document to ensure it's bound to the current session
-            requeried_document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
+            requeried_document = db.session.get(DatasetDocument, document_id)
             if not requeried_document:
-                raise ValueError(f"Document not found: {document_id}")
+                logger.warning("Document not found: %s", document_id)
+                return
 
             # get dataset
             dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
@@ -167,29 +168,19 @@ class IndexingRunner:
         except DocumentIsPausedError:
             raise DocumentIsPausedError(f"Document paused, document id: {document_id}")
         except ProviderTokenNotInitError as e:
-            requeried_document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
-            if requeried_document:
-                requeried_document.indexing_status = "error"
-                requeried_document.error = str(e.description)
-                requeried_document.stopped_at = naive_utc_now()
-                db.session.commit()
+            self._handle_indexing_error(document_id, e)
         except Exception as e:
-            logger.exception("consume document failed")
-            requeried_document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
-            if requeried_document:
-                requeried_document.indexing_status = "error"
-                requeried_document.error = str(e)
-                requeried_document.stopped_at = naive_utc_now()
-                db.session.commit()
+            self._handle_indexing_error(document_id, e)
 
     def run_in_indexing_status(self, dataset_document: DatasetDocument):
         """Run the indexing process when the index_status is indexing."""
         document_id = dataset_document.id
         try:
             # Re-query the document to ensure it's bound to the current session
-            requeried_document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
+            requeried_document = db.session.get(DatasetDocument, document_id)
             if not requeried_document:
-                raise ValueError(f"Document not found: {document_id}")
+                logger.warning("Document not found: %s", document_id)
+                return
 
             # get dataset
             dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
@@ -247,20 +238,9 @@ class IndexingRunner:
         except DocumentIsPausedError:
             raise DocumentIsPausedError(f"Document paused, document id: {document_id}")
         except ProviderTokenNotInitError as e:
-            requeried_document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
-            if requeried_document:
-                requeried_document.indexing_status = "error"
-                requeried_document.error = str(e.description)
-                requeried_document.stopped_at = naive_utc_now()
-                db.session.commit()
+            self._handle_indexing_error(document_id, e)
         except Exception as e:
-            logger.exception("consume document failed")
-            requeried_document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
-            if requeried_document:
-                requeried_document.indexing_status = "error"
-                requeried_document.error = str(e)
-                requeried_document.stopped_at = naive_utc_now()
-                db.session.commit()
+            self._handle_indexing_error(document_id, e)
 
     def indexing_estimate(
         self,
