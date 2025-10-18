@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from configs import dify_config
-from controllers.service_api.wraps import get_or_create_end_user_by_type
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
@@ -25,6 +24,7 @@ from models.enums import WorkflowRunTriggeredFrom
 from models.model import App
 from models.workflow import AppTrigger, AppTriggerStatus, AppTriggerType, Workflow, WorkflowWebhookTrigger
 from services.async_workflow_service import AsyncWorkflowService
+from services.end_user_service import EndUserService
 from services.workflow.entities import TriggerData
 
 logger = logging.getLogger(__name__)
@@ -719,7 +719,7 @@ class WebhookService:
                     tenant_id=webhook_trigger.tenant_id,
                 )
 
-                end_user = get_or_create_end_user_by_type(
+                end_user = EndUserService.get_or_create_end_user_by_type(
                     type=InvokeFrom.TRIGGER,
                     tenant_id=webhook_trigger.tenant_id,
                     app_id=webhook_trigger.app_id,
