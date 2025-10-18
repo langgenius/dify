@@ -129,6 +129,7 @@ Star Dify auf GitHub und lassen Sie sich sofort über neue Releases benachrichti
 ## Erweiterte Einstellungen
 
 Falls Sie die Konfiguration anpassen müssen, lesen Sie bitte die Kommentare in unserer [.env.example](../../docker/.env.example)-Datei und aktualisieren Sie die entsprechenden Werte in Ihrer `.env`-Datei. Zusätzlich müssen Sie eventuell Anpassungen an der `docker-compose.yaml`-Datei vornehmen, wie zum Beispiel das Ändern von Image-Versionen, Portzuordnungen oder Volumen-Mounts, je nach Ihrer spezifischen Einsatzumgebung und Ihren Anforderungen. Nachdem Sie Änderungen vorgenommen haben, starten Sie `docker-compose up -d` erneut. Eine vollständige Liste der verfügbaren Umgebungsvariablen finden Sie [hier](https://docs.dify.ai/getting-started/install-self-hosted/environments).
+
 ### Metriküberwachung mit Grafana
 
 Importieren Sie das Dashboard in Grafana, wobei Sie die PostgreSQL-Datenbank von Dify als Datenquelle verwenden, um Metriken in der Granularität von Apps, Mandanten, Nachrichten und mehr zu überwachen.
@@ -136,6 +137,7 @@ Importieren Sie das Dashboard in Grafana, wobei Sie die PostgreSQL-Datenbank von
 - [Grafana-Dashboard von @bowenliang123](https://github.com/bowenliang123/dify-grafana-dashboard)
 
 ### Bereitstellung mit Kubernetes
+
 Falls Sie eine hochverfügbare Konfiguration einrichten möchten, gibt es von der Community bereitgestellte [Helm Charts](https://helm.sh/) und YAML-Dateien, die es ermöglichen, Dify auf Kubernetes bereitzustellen.
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)

@@ -128,6 +128,7 @@ Nhập bảng điều khiển vào Grafana, sử dụng cơ sở dữ liệu Pos
 - [Bảng điều khiển Grafana của @bowenliang123](https://github.com/bowenliang123/dify-grafana-dashboard)
 
 ### Triển khai với Kubernetes
+
 Nếu bạn muốn cấu hình một cài đặt có độ sẵn sàng cao, có các [Helm Charts](https://helm.sh/) và tệp YAML do cộng đồng đóng góp cho phép Dify được triển khai trên Kubernetes.
 
 - [Helm Chart bởi @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)

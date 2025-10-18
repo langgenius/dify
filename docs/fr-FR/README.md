@@ -133,6 +133,7 @@ Importez le tableau de bord dans Grafana, en utilisant la base de données Postg
 - [Tableau de bord Grafana par @bowenliang123](https://github.com/bowenliang123/dify-grafana-dashboard)
 
 ### Déploiement avec Kubernetes
+
 Si vous souhaitez configurer une configuration haute disponibilité, la communauté fournit des [Helm Charts](https://helm.sh/) et des fichiers YAML, à travers lesquels vous pouvez déployer Dify sur Kubernetes.
 
 - [Helm Chart par @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)

@@ -119,6 +119,7 @@ docker compose up -d
 ## 다음 단계
 
 구성을 사용자 정의해야 하는 경우 [.env.example](../../docker/.env.example) 파일의 주석을 참조하고 `.env` 파일에서 해당 값을 업데이트하십시오. 또한 특정 배포 환경 및 요구 사항에 따라 `docker-compose.yaml` 파일 자체를 조정해야 할 수도 있습니다. 예를 들어 이미지 버전, 포트 매핑 또는 볼륨 마운트를 변경합니다. 변경 한 후 `docker-compose up -d`를 다시 실행하십시오. 사용 가능한 환경 변수의 전체 목록은 [여기](https://docs.dify.ai/getting-started/install-self-hosted/environments)에서 찾을 수 있습니다.
+
 ### Grafana를 사용한 메트릭 모니터링
 
 Dify의 PostgreSQL 데이터베이스를 데이터 소스로 사용하여 앱, 테넌트, 메시지 등에 대한 세분화된 메트릭을 모니터링하기 위해 대시보드를 Grafana로 가져옵니다.
@@ -126,6 +127,7 @@ Dify의 PostgreSQL 데이터베이스를 데이터 소스로 사용하여 앱, �
 - [@bowenliang123의 Grafana 대시보드](https://github.com/bowenliang123/dify-grafana-dashboard)
 
 ### Kubernetes를 통한 배포
+
 Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했다는 커뮤니티가 제공하는 [Helm Charts](https://helm.sh/)와 YAML 파일이 존재합니다.
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
