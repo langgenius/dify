@@ -772,7 +772,7 @@ class AgentLogStreamResponse(StreamResponse):
         """
 
         node_execution_id: str
-        id: str
+        message_id: str
         label: str
         parent_id: str | None = None
         error: str | None = None
