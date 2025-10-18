@@ -59,7 +59,7 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models.model import AppMode, Conversation, Message, MessageAgentThought
+from models.model import AppMode, Conversation, Message, MessageAgentThought, Site
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +68,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
     """
     EasyUIBasedGenerateTaskPipeline is a class that generate stream output and state management for Application.
     """
-
-    THINK_TAG = "<think>"
-    END_THINK_TAG = "</think>"
 
     _task_state: EasyUITaskState
     _application_generate_entity: Union[ChatAppGenerateEntity, CompletionAppGenerateEntity, AgentChatAppGenerateEntity]
@@ -84,7 +81,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         conversation: Conversation,
         message: Message,
         stream: bool,
-        show_reasoning: bool | None = None,
     ):
         super().__init__(
             application_generate_entity=application_generate_entity,
@@ -100,7 +96,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         self._message_id = message.id
         self._message_created_at = int(message.created_at.timestamp())
 
-        self._show_reasoning = show_reasoning if show_reasoning is not None else True
+        self._show_reasoning = self._get_show_reasoning_config(conversation.app_id)
 
         self._task_state = EasyUITaskState(
             llm_result=LLMResult(
@@ -121,6 +117,18 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         self._think_buffer = ""
         self._in_think_tag = False
 
+    def _get_show_reasoning_config(self, app_id: str) -> bool:
+        """Get show_reasoning configuration from site."""
+        try:
+            with Session(db.engine) as session:
+                site = session.scalar(select(Site).where(Site.app_id == app_id))
+                if site:
+                    return site.show_reasoning
+                return True
+        except Exception:
+            logger.exception("Failed to get show_reasoning config")
+            return True
+
     @staticmethod
     def _filter_think_tags(text: str) -> str:
         """Filter out <think> tags and their content from text."""
@@ -140,40 +148,30 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
         while self._think_buffer:
             if not self._in_think_tag:
-                think_start = self._think_buffer.lower().find(self.THINK_TAG.lower())
+                think_start = self._think_buffer.lower().find("<think>")
                 if think_start == -1:
-                    last_lt = self._think_buffer.rfind("<")
-                    if last_lt != -1:
-                        suffix = self._think_buffer[last_lt + 1 :].lower()
-                        if self.THINK_TAG[1:].lower().startswith(suffix) and suffix:
-                            result += self._think_buffer[:last_lt]
-                            self._think_buffer = self._think_buffer[last_lt:]
-                        else:
-                            result += self._think_buffer
-                            self._think_buffer = ""
+                    if "<" in self._think_buffer:
+                        last_bracket = self._think_buffer.rfind("<")
+                        result += self._think_buffer[:last_bracket]
+                        self._think_buffer = self._think_buffer[last_bracket:]
                     else:
                         result += self._think_buffer
                         self._think_buffer = ""
                     break
                 else:
                     result += self._think_buffer[:think_start]
-                    self._think_buffer = self._think_buffer[think_start + len(self.THINK_TAG) :]
+                    self._think_buffer = self._think_buffer[think_start + 7 :]
                     self._in_think_tag = True
             else:
-                think_end = self._think_buffer.lower().find(self.END_THINK_TAG.lower())
+                think_end = self._think_buffer.lower().find("</think>")
                 if think_end == -1:
-                    last_lt = self._think_buffer.rfind("</")
-                    if last_lt != -1:
-                        suffix = self._think_buffer[last_lt + 2 :].lower()
-                        if self.END_THINK_TAG[2:].lower().startswith(suffix) and suffix:
-                            self._think_buffer = self._think_buffer[last_lt:]
-                        else:
-                            self._think_buffer = ""
+                    if "</" in self._think_buffer and len(self._think_buffer) < 10:
+                        break
                     else:
                         self._think_buffer = ""
                     break
                 else:
-                    self._think_buffer = self._think_buffer[think_end + len(self.END_THINK_TAG) :]
+                    self._think_buffer = self._think_buffer[think_end + 8 :]
                     self._in_think_tag = False
 
         return result
@@ -211,6 +209,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 extras = {"usage": self._task_state.llm_result.usage.model_dump()}
                 if self._task_state.metadata:
                     extras["metadata"] = self._task_state.metadata.model_dump()
+                
+                answer = cast(str, self._task_state.llm_result.message.content)
+                if not self._show_reasoning:
+                    answer = self._filter_think_tags(answer)
+                
                 response: Union[ChatbotAppBlockingResponse, CompletionAppBlockingResponse]
                 if self._conversation_mode == AppMode.COMPLETION:
                     response = CompletionAppBlockingResponse(
@@ -219,7 +222,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                             id=self._message_id,
                             mode=self._conversation_mode,
                             message_id=self._message_id,
-                            answer=cast(str, self._task_state.llm_result.message.content),
+                            answer=answer,
                             created_at=self._message_created_at,
                             **extras,
                         ),
@@ -232,7 +235,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                             mode=self._conversation_mode,
                             conversation_id=self._conversation_id,
                             message_id=self._message_id,
-                            answer=cast(str, self._task_state.llm_result.message.content),
+                            answer=answer,
                             created_at=self._message_created_at,
                             **extras,
                         ),
