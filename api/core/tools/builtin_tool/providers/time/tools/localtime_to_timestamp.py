@@ -17,6 +17,7 @@ class LocaltimeToTimestampTool(BuiltinTool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        passthrough: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Convert localtime to timestamp
