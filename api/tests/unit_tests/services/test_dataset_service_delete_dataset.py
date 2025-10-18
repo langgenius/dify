@@ -57,6 +57,8 @@ class TestDatasetServiceDeleteDataset:
     - Dataset deletion with missing indexing_technique
     - Permission checks
     - Event handling
+
+    This test suite provides regression protection for issue #27073.
     """
 
     @pytest.fixture
@@ -115,7 +117,8 @@ class TestDatasetServiceDeleteDataset:
         - Dataset is deleted from database
         - Method returns True
 
-        This is the fix for issue #27073 where deleting an empty dataset caused internal server error.
+        This is the primary test for issue #27073 where deleting an empty dataset
+        caused internal server error due to assertion failure in event handlers.
         """
         # Arrange
         dataset = DatasetDeleteTestDataFactory.create_dataset_mock(doc_form=None, indexing_technique=None)
@@ -126,7 +129,7 @@ class TestDatasetServiceDeleteDataset:
         # Act
         result = DatasetService.delete_dataset(dataset.id, user)
 
-        # Assert
+        # Assert - Verify complete deletion flow
         assert result is True
         mock_dataset_service_dependencies["get_dataset"].assert_called_once_with(dataset.id)
         mock_dataset_service_dependencies["check_permission"].assert_called_once_with(dataset, user)
@@ -136,12 +139,14 @@ class TestDatasetServiceDeleteDataset:
 
     def test_delete_dataset_with_partial_none_values(self, mock_dataset_service_dependencies):
         """
-        Test deletion of dataset with partial None values (e.g., doc_form exists but indexing_technique is None).
+        Test deletion of dataset with partial None values.
 
-        This test verifies that:
-        - Datasets with partial None values can be deleted
-        - dataset_was_deleted event is sent
-        - Event handler will skip cleanup if any required field is None
+        This test verifies that datasets with partial None values (e.g., doc_form exists
+        but indexing_technique is None) can be deleted successfully. The event handler
+        will skip cleanup if any required field is None.
+
+        Improvement based on Gemini Code Assist suggestion: Added comprehensive assertions
+        to verify all core deletion operations are performed, not just event sending.
         """
         # Arrange
         dataset = DatasetDeleteTestDataFactory.create_dataset_mock(doc_form="text_model", indexing_technique=None)
@@ -152,9 +157,37 @@ class TestDatasetServiceDeleteDataset:
         # Act
         result = DatasetService.delete_dataset(dataset.id, user)
 
-        # Assert
+        # Assert - Verify complete deletion flow (Gemini suggestion implemented)
         assert result is True
+        mock_dataset_service_dependencies["get_dataset"].assert_called_once_with(dataset.id)
+        mock_dataset_service_dependencies["check_permission"].assert_called_once_with(dataset, user)
         mock_dataset_service_dependencies["dataset_was_deleted"].send.assert_called_once_with(dataset)
+        mock_dataset_service_dependencies["db_session"].delete.assert_called_once_with(dataset)
+        mock_dataset_service_dependencies["db_session"].commit.assert_called_once()
+
+    def test_delete_dataset_with_doc_form_none_indexing_technique_exists(self, mock_dataset_service_dependencies):
+        """
+        Test deletion of dataset where doc_form is None but indexing_technique exists.
+
+        This edge case can occur in certain dataset configurations and should be handled
+        gracefully by the event handler's conditional check.
+        """
+        # Arrange
+        dataset = DatasetDeleteTestDataFactory.create_dataset_mock(doc_form=None, indexing_technique="high_quality")
+        user = DatasetDeleteTestDataFactory.create_user_mock()
+
+        mock_dataset_service_dependencies["get_dataset"].return_value = dataset
+
+        # Act
+        result = DatasetService.delete_dataset(dataset.id, user)
+
+        # Assert - Verify complete deletion flow
+        assert result is True
+        mock_dataset_service_dependencies["get_dataset"].assert_called_once_with(dataset.id)
+        mock_dataset_service_dependencies["check_permission"].assert_called_once_with(dataset, user)
+        mock_dataset_service_dependencies["dataset_was_deleted"].send.assert_called_once_with(dataset)
+        mock_dataset_service_dependencies["db_session"].delete.assert_called_once_with(dataset)
+        mock_dataset_service_dependencies["db_session"].commit.assert_called_once()
 
     def test_delete_dataset_not_found(self, mock_dataset_service_dependencies):
         """
@@ -163,6 +196,7 @@ class TestDatasetServiceDeleteDataset:
         This test verifies that:
         - Method returns False when dataset is not found
         - No deletion operations are performed
+        - No events are sent
         """
         # Arrange
         dataset_id = "non-existent-dataset"
