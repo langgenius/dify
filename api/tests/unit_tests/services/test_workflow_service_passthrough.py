@@ -2,9 +2,10 @@
 Unit tests for workflow service passthrough functionality
 """
 
-import pytest
 from unittest.mock import MagicMock
+
 from core.services.workflow_service import _setup_variable_pool
+
 from core.workflow.enums import NodeType, WorkflowType
 
 
@@ -19,13 +20,10 @@ class TestWorkflowServicePassthrough:
         mock_workflow.id = "test_workflow"
         mock_workflow.type = WorkflowType.WORKFLOW
         mock_workflow.environment_variables = []
-        
+
         # Test with passthrough in user_inputs
-        user_inputs_with_passthrough = {
-            "query": "test query",
-            "passthrough": "test_passthrough_data"
-        }
-        
+        user_inputs_with_passthrough = {"query": "test query", "passthrough": "test_passthrough_data"}
+
         variable_pool = _setup_variable_pool(
             query="test query",
             files=[],
@@ -34,9 +32,9 @@ class TestWorkflowServicePassthrough:
             workflow=mock_workflow,
             node_type=NodeType.START,
             conversation_id="test_conversation",
-            conversation_variables=[]
+            conversation_variables=[],
         )
-        
+
         # Verify passthrough was extracted
         assert variable_pool.system_variables.passthrough == "test_passthrough_data"
 
@@ -48,12 +46,10 @@ class TestWorkflowServicePassthrough:
         mock_workflow.id = "test_workflow"
         mock_workflow.type = WorkflowType.WORKFLOW
         mock_workflow.environment_variables = []
-        
+
         # Test without passthrough in user_inputs
-        user_inputs_without_passthrough = {
-            "query": "test query"
-        }
-        
+        user_inputs_without_passthrough = {"query": "test query"}
+
         variable_pool = _setup_variable_pool(
             query="test query",
             files=[],
@@ -62,9 +58,9 @@ class TestWorkflowServicePassthrough:
             workflow=mock_workflow,
             node_type=NodeType.START,
             conversation_id="test_conversation",
-            conversation_variables=[]
+            conversation_variables=[],
         )
-        
+
         # Verify passthrough was None
         assert variable_pool.system_variables.passthrough is None
 
@@ -76,7 +72,7 @@ class TestWorkflowServicePassthrough:
         mock_workflow.id = "test_workflow"
         mock_workflow.type = WorkflowType.WORKFLOW
         mock_workflow.environment_variables = []
-        
+
         # Test with empty user_inputs
         variable_pool = _setup_variable_pool(
             query="test query",
@@ -86,9 +82,9 @@ class TestWorkflowServicePassthrough:
             workflow=mock_workflow,
             node_type=NodeType.START,
             conversation_id="test_conversation",
-            conversation_variables=[]
+            conversation_variables=[],
         )
-        
+
         # Verify passthrough was None
         assert variable_pool.system_variables.passthrough is None
 
@@ -100,7 +96,7 @@ class TestWorkflowServicePassthrough:
         mock_workflow.id = "test_workflow"
         mock_workflow.type = WorkflowType.WORKFLOW
         mock_workflow.environment_variables = []
-        
+
         # Test with None user_inputs
         variable_pool = _setup_variable_pool(
             query="test query",
@@ -110,9 +106,9 @@ class TestWorkflowServicePassthrough:
             workflow=mock_workflow,
             node_type=NodeType.START,
             conversation_id="test_conversation",
-            conversation_variables=[]
+            conversation_variables=[],
         )
-        
+
         # Verify passthrough was None
         assert variable_pool.system_variables.passthrough is None
 
@@ -124,13 +120,10 @@ class TestWorkflowServicePassthrough:
         mock_workflow.id = "test_workflow"
         mock_workflow.type = WorkflowType.WORKFLOW
         mock_workflow.environment_variables = []
-        
+
         # Test with non-START node type
-        user_inputs_with_passthrough = {
-            "query": "test query",
-            "passthrough": "test_passthrough_data"
-        }
-        
+        user_inputs_with_passthrough = {"query": "test query", "passthrough": "test_passthrough_data"}
+
         variable_pool = _setup_variable_pool(
             query="test query",
             files=[],
@@ -139,8 +132,8 @@ class TestWorkflowServicePassthrough:
             workflow=mock_workflow,
             node_type=NodeType.LLM,  # Non-START node
             conversation_id="test_conversation",
-            conversation_variables=[]
+            conversation_variables=[],
         )
-        
+
         # Verify passthrough was None (non-START nodes don't extract passthrough)
         assert variable_pool.system_variables.passthrough is None

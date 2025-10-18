@@ -1,15 +1,10 @@
 import time
-import uuid
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
-from core.workflow.enums import SystemVariableKey, WorkflowNodeExecutionStatus
+from core.workflow.enums import SystemVariableKey
 from core.workflow.graph import Graph
-from core.workflow.node_events import StreamCompletedEvent
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.tool.tool_node import ToolNode
 from core.workflow.system_variable import SystemVariable
@@ -44,7 +39,7 @@ def init_tool_node_with_passthrough(config: dict, passthrough_value: str | None 
     system_variable = SystemVariable(user_id="aaa", files=[])
     if passthrough_value:
         system_variable.passthrough = passthrough_value
-    
+
     variable_pool = VariablePool(
         system_variables=system_variable,
         user_inputs={},
@@ -82,12 +77,7 @@ class TestToolNodePassthrough:
                 "provider_type": "builtin",
                 "provider_id": "test_provider",
                 "tool_name": "test_tool",
-                "tool_parameters": {
-                    "param1": {
-                        "type": "string",
-                        "value": "test_value"
-                    }
-                }
+                "tool_parameters": {"param1": {"type": "string", "value": "test_value"}},
             },
             "id": "1",
         }
@@ -97,7 +87,7 @@ class TestToolNodePassthrough:
         tool_node = init_tool_node_with_passthrough(tool_config, passthrough_value)
 
         # Mock the tool runtime and invoke method
-        with patch('core.tools.tool_engine.ToolEngine.generic_invoke') as mock_invoke:
+        with patch("core.tools.tool_engine.ToolEngine.generic_invoke") as mock_invoke:
             # Configure mock to return a generator
             mock_message = MagicMock()
             mock_message.type = "text"
@@ -110,10 +100,10 @@ class TestToolNodePassthrough:
             # Verify that generic_invoke was called with passthrough parameter
             mock_invoke.assert_called_once()
             call_args = mock_invoke.call_args
-            
+
             # Check that passthrough parameter was passed
-            assert 'passthrough' in call_args.kwargs
-            assert call_args.kwargs['passthrough'] == passthrough_value
+            assert "passthrough" in call_args.kwargs
+            assert call_args.kwargs["passthrough"] == passthrough_value
 
     def test_tool_node_without_passthrough_parameter(self):
         """Test that tool node works correctly when no passthrough parameter is provided"""
@@ -125,12 +115,7 @@ class TestToolNodePassthrough:
                 "provider_type": "builtin",
                 "provider_id": "test_provider",
                 "tool_name": "test_tool",
-                "tool_parameters": {
-                    "param1": {
-                        "type": "string",
-                        "value": "test_value"
-                    }
-                }
+                "tool_parameters": {"param1": {"type": "string", "value": "test_value"}},
             },
             "id": "1",
         }
@@ -139,7 +124,7 @@ class TestToolNodePassthrough:
         tool_node = init_tool_node_with_passthrough(tool_config, None)
 
         # Mock the tool runtime and invoke method
-        with patch('core.tools.tool_engine.ToolEngine.generic_invoke') as mock_invoke:
+        with patch("core.tools.tool_engine.ToolEngine.generic_invoke") as mock_invoke:
             # Configure mock to return a generator
             mock_message = MagicMock()
             mock_message.type = "text"
@@ -152,39 +137,32 @@ class TestToolNodePassthrough:
             # Verify that generic_invoke was called with None passthrough
             mock_invoke.assert_called_once()
             call_args = mock_invoke.call_args
-            
+
             # Check that passthrough parameter was None
-            assert 'passthrough' in call_args.kwargs
-            assert call_args.kwargs['passthrough'] is None
+            assert "passthrough" in call_args.kwargs
+            assert call_args.kwargs["passthrough"] is None
 
     def test_system_variable_passthrough_extraction(self):
         """Test that SystemVariable correctly handles passthrough parameter"""
         # Test with passthrough value
-        system_var_with_passthrough = SystemVariable(
-            user_id="test_user",
-            files=[],
-            passthrough="test_data"
-        )
-        
+        system_var_with_passthrough = SystemVariable(user_id="test_user", files=[], passthrough="test_data")
+
         # Test to_dict method includes passthrough
         var_dict = system_var_with_passthrough.to_dict()
         assert SystemVariableKey.PASSTHROUGH in var_dict
         assert var_dict[SystemVariableKey.PASSTHROUGH] == "test_data"
 
         # Test without passthrough value
-        system_var_without_passthrough = SystemVariable(
-            user_id="test_user",
-            files=[]
-        )
-        
+        system_var_without_passthrough = SystemVariable(user_id="test_user", files=[])
+
         var_dict = system_var_without_passthrough.to_dict()
         assert SystemVariableKey.PASSTHROUGH not in var_dict
 
     def test_workflow_service_passthrough_extraction(self):
         """Test that _setup_variable_pool correctly extracts passthrough from user_inputs"""
         from core.services.workflow_service import _setup_variable_pool
+
         from core.workflow.enums import NodeType, WorkflowType
-        from core.file.models import File
 
         # Mock workflow
         mock_workflow = MagicMock()
@@ -194,10 +172,7 @@ class TestToolNodePassthrough:
         mock_workflow.environment_variables = []
 
         # Test with passthrough in user_inputs
-        user_inputs_with_passthrough = {
-            "query": "test query",
-            "passthrough": "test_passthrough_data"
-        }
+        user_inputs_with_passthrough = {"query": "test query", "passthrough": "test_passthrough_data"}
 
         variable_pool = _setup_variable_pool(
             query="test query",
@@ -207,16 +182,14 @@ class TestToolNodePassthrough:
             workflow=mock_workflow,
             node_type=NodeType.START,
             conversation_id="test_conversation",
-            conversation_variables=[]
+            conversation_variables=[],
         )
 
         # Verify passthrough was extracted
         assert variable_pool.system_variables.passthrough == "test_passthrough_data"
 
         # Test without passthrough in user_inputs
-        user_inputs_without_passthrough = {
-            "query": "test query"
-        }
+        user_inputs_without_passthrough = {"query": "test query"}
 
         variable_pool = _setup_variable_pool(
             query="test query",
@@ -226,7 +199,7 @@ class TestToolNodePassthrough:
             workflow=mock_workflow,
             node_type=NodeType.START,
             conversation_id="test_conversation",
-            conversation_variables=[]
+            conversation_variables=[],
         )
 
         # Verify passthrough was None
@@ -241,7 +214,7 @@ class TestPluginToolManagerPassthrough:
         from core.plugin.impl.tool import PluginToolManager
 
         # Mock the plugin tool manager
-        with patch.object(PluginToolManager, '_request_with_plugin_daemon_response_stream') as mock_request:
+        with patch.object(PluginToolManager, "_request_with_plugin_daemon_response_stream") as mock_request:
             # Configure mock to return a generator
             mock_response = MagicMock()
             mock_request.return_value = iter([mock_response])
@@ -251,35 +224,37 @@ class TestPluginToolManagerPassthrough:
 
             # Test invoke with passthrough
             passthrough_value = "test_passthrough_data"
-            list(manager.invoke(
-                tenant_id="test_tenant",
-                user_id="test_user",
-                tool_provider="test_provider",
-                tool_name="test_tool",
-                credentials={},
-                credential_type="api-key",
-                tool_parameters={"param1": "value1"},
-                conversation_id="test_conversation",
-                app_id="test_app",
-                message_id="test_message",
-                passthrough=passthrough_value
-            ))
+            list(
+                manager.invoke(
+                    tenant_id="test_tenant",
+                    user_id="test_user",
+                    tool_provider="test_provider",
+                    tool_name="test_tool",
+                    credentials={},
+                    credential_type="api-key",
+                    tool_parameters={"param1": "value1"},
+                    conversation_id="test_conversation",
+                    app_id="test_app",
+                    message_id="test_message",
+                    passthrough=passthrough_value,
+                )
+            )
 
             # Verify that passthrough was included in the request data
             mock_request.assert_called_once()
             call_args = mock_request.call_args
-            
+
             # Check that passthrough was included in data
-            data = call_args.kwargs['data']
-            assert 'passthrough' in data
-            assert data['passthrough'] == passthrough_value
+            data = call_args.kwargs["data"]
+            assert "passthrough" in data
+            assert data["passthrough"] == passthrough_value
 
     def test_plugin_tool_manager_invoke_without_passthrough(self):
         """Test that PluginToolManager works correctly when no passthrough is provided"""
         from core.plugin.impl.tool import PluginToolManager
 
         # Mock the plugin tool manager
-        with patch.object(PluginToolManager, '_request_with_plugin_daemon_response_stream') as mock_request:
+        with patch.object(PluginToolManager, "_request_with_plugin_daemon_response_stream") as mock_request:
             # Configure mock to return a generator
             mock_response = MagicMock()
             mock_request.return_value = iter([mock_response])
@@ -288,25 +263,27 @@ class TestPluginToolManagerPassthrough:
             manager = PluginToolManager()
 
             # Test invoke without passthrough
-            list(manager.invoke(
-                tenant_id="test_tenant",
-                user_id="test_user",
-                tool_provider="test_provider",
-                tool_name="test_tool",
-                credentials={},
-                credential_type="api-key",
-                tool_parameters={"param1": "value1"},
-                conversation_id="test_conversation",
-                app_id="test_app",
-                message_id="test_message",
-                passthrough=None
-            ))
+            list(
+                manager.invoke(
+                    tenant_id="test_tenant",
+                    user_id="test_user",
+                    tool_provider="test_provider",
+                    tool_name="test_tool",
+                    credentials={},
+                    credential_type="api-key",
+                    tool_parameters={"param1": "value1"},
+                    conversation_id="test_conversation",
+                    app_id="test_app",
+                    message_id="test_message",
+                    passthrough=None,
+                )
+            )
 
             # Verify that passthrough was None in the request data
             mock_request.assert_called_once()
             call_args = mock_request.call_args
-            
+
             # Check that passthrough was None
-            data = call_args.kwargs['data']
-            assert 'passthrough' in data
-            assert data['passthrough'] is None
+            data = call_args.kwargs["data"]
+            assert "passthrough" in data
+            assert data["passthrough"] is None

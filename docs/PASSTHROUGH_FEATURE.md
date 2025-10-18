@@ -14,6 +14,7 @@ The Passthrough parameter feature allows users to pass custom data from web appl
 ## Use Cases
 
 ### 1. API Integration
+
 Pass API keys or authentication tokens to external service plugins:
 
 ```json
@@ -26,6 +27,7 @@ Pass API keys or authentication tokens to external service plugins:
 ```
 
 ### 2. User Preferences
+
 Pass user-specific configuration to plugins:
 
 ```json
@@ -38,6 +40,7 @@ Pass user-specific configuration to plugins:
 ```
 
 ### 3. Session Management
+
 Pass session tokens for authenticated API calls:
 
 ```json
@@ -50,6 +53,7 @@ Pass session tokens for authenticated API calls:
 ```
 
 ### 4. Custom Metadata
+
 Pass any custom data needed by plugins:
 
 ```json
@@ -145,12 +149,12 @@ passthrough → inputs → SystemVariable → ToolEngine → Plugin
 ### Detailed Flow
 
 1. **Web App**: Sends data through `inputs.passthrough`
-2. **API Layer**: Receives and passes to workflow service
-3. **Workflow Service**: Extracts passthrough parameter from `user_inputs`
-4. **SystemVariable**: Stores passthrough as system variable
-5. **Tool Node**: Gets passthrough parameter from variable pool
-6. **ToolEngine**: Passes passthrough to tool
-7. **Plugin**: Receives and uses passthrough data
+1. **API Layer**: Receives and passes to workflow service
+1. **Workflow Service**: Extracts passthrough parameter from `user_inputs`
+1. **SystemVariable**: Stores passthrough as system variable
+1. **Tool Node**: Gets passthrough parameter from variable pool
+1. **ToolEngine**: Passes passthrough to tool
+1. **Plugin**: Receives and uses passthrough data
 
 ## System Variables
 
@@ -229,21 +233,25 @@ def test_workflow_service_passthrough_extraction(self):
 ## Best Practices
 
 ### 1. Data Format
+
 - Use JSON strings to pass structured data
 - Keep data concise, avoid passing overly large data
 - Encode or encrypt sensitive data appropriately
 
 ### 2. Error Handling
+
 - Check if passthrough parameter exists in plugins
 - Provide reasonable default values
 - Log passthrough parameter usage
 
 ### 3. Security
+
 - Validate passthrough data format and content
 - Avoid passing sensitive information in passthrough
 - Use appropriate authentication and authorization mechanisms
 
 ### 4. Performance Considerations
+
 - Limit passthrough data size
 - Avoid passing large amounts of data in passthrough
 - Consider using caching mechanisms
@@ -263,6 +271,7 @@ def test_workflow_service_passthrough_extraction(self):
 ## Changelog
 
 ### v0.6.0
+
 - Added passthrough parameter feature
 - Support passing custom data from web apps to plugins
 - Complete workflow integration

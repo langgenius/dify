@@ -111,7 +111,7 @@ class ToolNode(Node):
         )
         # get conversation id
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
-        
+
         # get passthrough parameter
         passthrough = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.PASSTHROUGH])
 

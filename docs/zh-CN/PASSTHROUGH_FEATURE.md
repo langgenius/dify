@@ -14,6 +14,7 @@ Passthrough 参数功能允许用户通过 Dify 工作流系统将自定义数�
 ## 使用场景
 
 ### 1. API 集成
+
 传递 API 密钥或认证令牌到外部服务插件：
 
 ```json
@@ -26,6 +27,7 @@ Passthrough 参数功能允许用户通过 Dify 工作流系统将自定义数�
 ```
 
 ### 2. 用户偏好设置
+
 传递用户特定的配置到插件：
 
 ```json
@@ -38,6 +40,7 @@ Passthrough 参数功能允许用户通过 Dify 工作流系统将自定义数�
 ```
 
 ### 3. 会话管理
+
 传递会话令牌用于认证的 API 调用：
 
 ```json
@@ -50,6 +53,7 @@ Passthrough 参数功能允许用户通过 Dify 工作流系统将自定义数�
 ```
 
 ### 4. 自定义元数据
+
 传递插件需要的任何自定义数据：
 
 ```json
@@ -145,12 +149,12 @@ passthrough → inputs → SystemVariable → ToolEngine → Plugin
 ### 详细流程
 
 1. **Web 应用**：通过 `inputs.passthrough` 发送数据
-2. **API 层**：接收并传递给工作流服务
-3. **工作流服务**：从 `user_inputs` 中提取 passthrough 参数
-4. **SystemVariable**：将 passthrough 存储为系统变量
-5. **工具节点**：从变量池获取 passthrough 参数
-6. **ToolEngine**：将 passthrough 传递给工具
-7. **插件**：接收并使用 passthrough 数据
+1. **API 层**：接收并传递给工作流服务
+1. **工作流服务**：从 `user_inputs` 中提取 passthrough 参数
+1. **SystemVariable**：将 passthrough 存储为系统变量
+1. **工具节点**：从变量池获取 passthrough 参数
+1. **ToolEngine**：将 passthrough 传递给工具
+1. **插件**：接收并使用 passthrough 数据
 
 ## 系统变量
 
@@ -229,21 +233,25 @@ def test_workflow_service_passthrough_extraction(self):
 ## 最佳实践
 
 ### 1. 数据格式
+
 - 使用 JSON 字符串传递结构化数据
 - 保持数据简洁，避免传递过大的数据
 - 对敏感数据进行适当的编码或加密
 
 ### 2. 错误处理
+
 - 在插件中检查 passthrough 参数是否存在
 - 提供合理的默认值
 - 记录 passthrough 参数的使用情况
 
 ### 3. 安全性
+
 - 验证 passthrough 数据的格式和内容
 - 避免在 passthrough 中传递敏感信息
 - 使用适当的认证和授权机制
 
 ### 4. 性能考虑
+
 - 限制 passthrough 数据的大小
 - 避免在 passthrough 中传递大量数据
 - 考虑使用缓存机制
@@ -263,6 +271,7 @@ def test_workflow_service_passthrough_extraction(self):
 ## 更新日志
 
 ### v0.6.0
+
 - 添加 passthrough 参数功能
 - 支持从 Web 应用传递自定义数据到插件
 - 完整的工作流集成
