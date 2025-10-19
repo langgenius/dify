@@ -93,9 +93,9 @@ class Dataset(Base):
 
     @property
     def dataset_keyword_table(self):
-        dataset_keyword_table = (
-            db.session.query(DatasetKeywordTable).where(DatasetKeywordTable.dataset_id == self.id).first()
-        )
+        dataset_keyword_table = db.session.scalars(
+            select(DatasetKeywordTable).where(DatasetKeywordTable.dataset_id == self.id).limit(1)
+        ).first()
         if dataset_keyword_table:
             return dataset_keyword_table
 
@@ -212,9 +212,9 @@ class Dataset(Base):
     def external_knowledge_info(self):
         if self.provider != "external":
             return None
-        external_knowledge_binding = (
-            db.session.query(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.dataset_id == self.id).first()
-        )
+        external_knowledge_binding = db.session.scalars(
+            select(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.dataset_id == self.id).limit(1)
+        ).first()
         if not external_knowledge_binding:
             return None
         external_knowledge_api = db.session.scalar(
@@ -495,7 +495,7 @@ class Document(Base):
 
     @property
     def uploader(self):
-        user = db.session.query(Account).where(Account.id == self.created_by).first()
+        user = db.session.scalars(select(Account).where(Account.id == self.created_by).limit(1)).first()
         return user.name if user else None
 
     @property
@@ -889,15 +889,15 @@ class ChildChunk(Base):
 
     @property
     def dataset(self):
-        return db.session.query(Dataset).where(Dataset.id == self.dataset_id).first()
+        return db.session.scalars(select(Dataset).where(Dataset.id == self.dataset_id).limit(1)).first()
 
     @property
     def document(self):
-        return db.session.query(Document).where(Document.id == self.document_id).first()
+        return db.session.scalars(select(Document).where(Document.id == self.document_id).limit(1)).first()
 
     @property
     def segment(self):
-        return db.session.query(DocumentSegment).where(DocumentSegment.id == self.segment_id).first()
+        return db.session.scalars(select(DocumentSegment).where(DocumentSegment.id == self.segment_id).limit(1)).first()
 
 
 class AppDatasetJoin(Base):
@@ -967,7 +967,7 @@ class DatasetKeywordTable(Base):
                 super().__init__(object_hook=object_hook, *args, **kwargs)
 
         # get dataset
-        dataset = db.session.query(Dataset).filter_by(id=self.dataset_id).first()
+        dataset = db.session.scalars(select(Dataset).filter_by(id=self.dataset_id).limit(1)).first()
         if not dataset:
             return None
         if self.data_source_type == "database":

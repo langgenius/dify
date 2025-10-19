@@ -1,4 +1,5 @@
 from flask_restx import Resource, fields, marshal_with, reqparse
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
 from constants.languages import supported_language
@@ -87,7 +88,7 @@ class AppSite(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
+        site = db.session.scalars(select(Site).where(Site.app_id == app_model.id).limit(1)).first()
         if not site:
             raise NotFound
 
@@ -140,7 +141,7 @@ class AppSiteAccessTokenReset(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        site = db.session.query(Site).where(Site.app_id == app_model.id).first()
+        site = db.session.scalars(select(Site).where(Site.app_id == app_model.id).limit(1)).first()
 
         if not site:
             raise NotFound

@@ -2,6 +2,7 @@ import json
 from enum import StrEnum
 
 from flask_restx import Resource, fields, marshal_with, reqparse
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from controllers.console import api, console_ns
@@ -30,7 +31,7 @@ class AppMCPServerController(Resource):
     @get_app_model
     @marshal_with(app_server_fields)
     def get(self, app_model):
-        server = db.session.query(AppMCPServer).where(AppMCPServer.app_id == app_model.id).first()
+        server = db.session.scalars(select(AppMCPServer).where(AppMCPServer.app_id == app_model.id).limit(1)).first()
         return server
 
     @api.doc("create_app_mcp_server")
@@ -111,7 +112,7 @@ class AppMCPServerController(Resource):
             .add_argument("status", type=str, required=False, location="json")
         )
         args = parser.parse_args()
-        server = db.session.query(AppMCPServer).where(AppMCPServer.id == args["id"]).first()
+        server = db.session.scalars(select(AppMCPServer).where(AppMCPServer.id == args["id"]).limit(1)).first()
         if not server:
             raise NotFound()
 
