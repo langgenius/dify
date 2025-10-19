@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { useDocLink } from '@/context/i18n'
 import { useBoolean } from 'ahooks'
 import {
   RiAddLine,
@@ -20,8 +20,6 @@ import {
   useInvalidateEndpointList,
 } from '@/service/use-endpoints'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { LanguagesSupported } from '@/i18n/language'
-import I18n from '@/context/i18n'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -29,7 +27,7 @@ type Props = {
 }
 const EndpointList = ({ detail }: Props) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const docLink = useDocLink()
   const pluginUniqueID = detail.plugin_unique_identifier
   const declaration = detail.declaration.endpoint
   const showTopBorder = detail.declaration.tool
@@ -70,7 +68,6 @@ const EndpointList = ({ detail }: Props) => {
           {t('plugin.detailPanel.endpoints')}
           <Tooltip
             position='right'
-            needsDelay
             popupClassName='w-[240px] p-4 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border'
             popupContent={
               <div className='flex flex-col gap-2'>
@@ -79,7 +76,7 @@ const EndpointList = ({ detail }: Props) => {
                 </div>
                 <div className='system-xs-regular text-text-tertiary'>{t('plugin.detailPanel.endpointsTip')}</div>
                 <a
-                  href={`https://docs.dify.ai/${locale === LanguagesSupported[1] ? 'v/zh-hans/' : ''}plugins/schema-definition/endpoint`}
+                  href={docLink('/plugins/schema-definition/endpoint')}
                   target='_blank'
                   rel='noopener noreferrer'
                 >

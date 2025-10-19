@@ -1,10 +1,10 @@
 import { type FC, useEffect, useState } from 'react'
 import React from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
-import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
 import type { NodeProps } from '@/app/components/workflow/types'
 import type { DataSet } from '@/models/datasets'
 import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
+import AppIcon from '@/app/components/base/app-icon'
 
 const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
   data,
@@ -32,11 +32,16 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
   return (
     <div className='mb-1 px-3 py-1'>
       <div className='space-y-0.5'>
-        {selectedDatasets.map(({ id, name }) => (
-          <div key={id} className='flex h-[26px] items-center rounded-md bg-workflow-block-parma-bg  px-1 text-xs font-normal text-gray-700'>
-            <div className='mr-1 shrink-0 rounded-md border-[0.5px] border-[#E0EAFF] bg-[#F5F8FF] p-1'>
-              <Folder className='h-3 w-3 text-[#444CE7]' />
-            </div>
+        {selectedDatasets.map(({ id, name, icon_info }) => (
+          <div key={id} className='flex h-[26px] items-center gap-x-1 rounded-md bg-workflow-block-parma-bg px-1'>
+            <AppIcon
+              size='xs'
+              iconType={icon_info.icon_type}
+              icon={icon_info.icon}
+              background={icon_info.icon_type === 'image' ? undefined : icon_info.icon_background}
+              imageUrl={icon_info.icon_type === 'image' ? icon_info.icon_url : undefined}
+              className='shrink-0'
+            />
             <div className='system-xs-regular w-0 grow truncate text-text-secondary'>
               {name}
             </div>

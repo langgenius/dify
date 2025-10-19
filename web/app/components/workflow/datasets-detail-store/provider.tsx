@@ -21,7 +21,7 @@ const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({
   nodes,
   children,
 }) => {
-  const storeRef = useRef<DatasetsDetailStoreApi>()
+  const storeRef = useRef<DatasetsDetailStoreApi>(undefined)
 
   if (!storeRef.current)
     storeRef.current = createDatasetsDetailStore()
@@ -40,7 +40,6 @@ const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({
     }, [])
     if (allDatasetIds.length === 0) return
     updateDatasetsDetail(allDatasetIds)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

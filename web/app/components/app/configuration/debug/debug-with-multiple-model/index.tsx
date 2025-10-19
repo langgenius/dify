@@ -99,7 +99,15 @@ const DebugWithMultipleModel = () => {
   }, [twoLine, threeLine, fourLine])
 
   const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
-  const inputsForm = modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({ ...item, label: item.name, variable: item.key })) as InputForm[]
+  const inputsForm = modelConfig.configs.prompt_variables
+    .filter(item => item.type !== 'api')
+    .map(item => ({
+      ...item,
+      label: item.name,
+      variable: item.key,
+      hide: item.hide ?? false,
+      required: item.required ?? false,
+    })) as InputForm[]
 
   return (
     <div className='flex h-full flex-col'>
@@ -133,6 +141,7 @@ const DebugWithMultipleModel = () => {
       {isChatMode && (
         <div className='shrink-0 px-6 pb-0'>
           <ChatInputArea
+            botName='Bot'
             showFeatureBar
             showFileUpload={false}
             onFeatureBarClick={setShowAppConfigureFeaturesModal}

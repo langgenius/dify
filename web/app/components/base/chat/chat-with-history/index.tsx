@@ -1,9 +1,9 @@
+'use client'
 import type { FC } from 'react'
 import {
   useEffect,
   useState,
 } from 'react'
-import { useAsyncEffect } from 'ahooks'
 import { useThemeContext } from '../embedded-chatbot/theme/theme-context'
 import {
   ChatWithHistoryContext,
@@ -17,8 +17,6 @@ import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { checkOrSetAccessToken } from '@/app/components/share/utils'
-import AppUnavailable from '@/app/components/base/app-unavailable'
 import cn from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
 
@@ -29,10 +27,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   className,
 }) => {
   const {
-    userCanAccess,
-    appInfoError,
     appData,
-    appInfoLoading,
     appChatListDataLoading,
     chatShouldReloadKey,
     isMobile,
@@ -49,21 +44,12 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     themeBuilder?.buildTheme(site?.chat_color_theme, site?.chat_color_theme_inverted)
   }, [site, customConfig, themeBuilder])
 
+  useEffect(() => {
+    if (!isSidebarCollapsed)
+      setShowSidePanel(false)
+  }, [isSidebarCollapsed])
+
   useDocumentTitle(site?.title || 'Chat')
-
-  if (appInfoLoading) {
-    return (
-      <Loading type='app' />
-    )
-  }
-  if (!userCanAccess)
-    return <AppUnavailable code={403} unknownReason='no permission.' />
-
-  if (appInfoError) {
-    return (
-      <AppUnavailable />
-    )
-  }
 
   return (
     <div className={cn(
@@ -92,7 +78,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
             onMouseEnter={() => setShowSidePanel(true)}
             onMouseLeave={() => setShowSidePanel(false)}
           >
-            <Sidebar isPanel />
+            <Sidebar isPanel panelVisible={showSidePanel} />
           </div>
         )}
         <div className={cn('flex h-full flex-col overflow-hidden border-[0,5px] border-components-panel-border-subtle bg-chatbot-bg', isMobile ? 'rounded-t-2xl' : 'rounded-2xl')}>
@@ -122,10 +108,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   const themeBuilder = useThemeContext()
 
   const {
-    appInfoError,
-    appInfoLoading,
-    accessMode,
-    userCanAccess,
     appData,
     appParams,
     appMeta,
@@ -162,15 +144,12 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     currentConversationInputs,
     setCurrentConversationInputs,
     allInputsHidden,
+    initUserVariables,
   } = useChatWithHistory(installedAppInfo)
 
   return (
     <ChatWithHistoryContext.Provider value={{
-      appInfoError,
-      appInfoLoading,
       appData,
-      accessMode,
-      userCanAccess,
       appParams,
       appMeta,
       appChatListDataLoading,
@@ -208,6 +187,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       currentConversationInputs,
       setCurrentConversationInputs,
       allInputsHidden,
+      initUserVariables,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>
@@ -218,36 +198,6 @@ const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
   installedAppInfo,
   className,
 }) => {
-  const [initialized, setInitialized] = useState(false)
-  const [appUnavailable, setAppUnavailable] = useState<boolean>(false)
-  const [isUnknownReason, setIsUnknownReason] = useState<boolean>(false)
-
-  useAsyncEffect(async () => {
-    if (!initialized) {
-      if (!installedAppInfo) {
-        try {
-          await checkOrSetAccessToken()
-        }
-        catch (e: any) {
-          if (e.status === 404) {
-            setAppUnavailable(true)
-          }
-          else {
-            setIsUnknownReason(true)
-            setAppUnavailable(true)
-          }
-        }
-      }
-      setInitialized(true)
-    }
-  }, [])
-
-  if (!initialized)
-    return null
-
-  if (appUnavailable)
-    return <AppUnavailable isUnknownReason={isUnknownReason} />
-
   return (
     <ChatWithHistoryWrap
       installedAppInfo={installedAppInfo}

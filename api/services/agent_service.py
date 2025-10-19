@@ -1,8 +1,7 @@
 import threading
-from typing import Optional
+from typing import Any
 
 import pytz
-from flask_login import current_user
 
 import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
@@ -10,13 +9,14 @@ from core.plugin.impl.agent import PluginAgentClient
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
-from models.account import Account
+from libs.login import current_user
+from models import Account
 from models.model import App, Conversation, EndUser, Message, MessageAgentThought
 
 
 class AgentService:
     @classmethod
-    def get_agent_logs(cls, app_model: App, conversation_id: str, message_id: str) -> dict:
+    def get_agent_logs(cls, app_model: App, conversation_id: str, message_id: str):
         """
         Service to get agent logs
         """
@@ -25,7 +25,7 @@ class AgentService:
 
         conversation: Conversation | None = (
             db.session.query(Conversation)
-            .filter(
+            .where(
                 Conversation.id == conversation_id,
                 Conversation.app_id == app_model.id,
             )
@@ -35,9 +35,9 @@ class AgentService:
         if not conversation:
             raise ValueError(f"Conversation not found: {conversation_id}")
 
-        message: Optional[Message] = (
+        message: Message | None = (
             db.session.query(Message)
-            .filter(
+            .where(
                 Message.id == message_id,
                 Message.conversation_id == conversation_id,
             )
@@ -52,25 +52,24 @@ class AgentService:
         if conversation.from_end_user_id:
             # only select name field
             executor = (
-                db.session.query(EndUser, EndUser.name).filter(EndUser.id == conversation.from_end_user_id).first()
+                db.session.query(EndUser, EndUser.name).where(EndUser.id == conversation.from_end_user_id).first()
             )
         else:
-            executor = (
-                db.session.query(Account, Account.name).filter(Account.id == conversation.from_account_id).first()
-            )
+            executor = db.session.query(Account, Account.name).where(Account.id == conversation.from_account_id).first()
 
         if executor:
             executor = executor.name
         else:
             executor = "Unknown"
-
+        assert isinstance(current_user, Account)
+        assert current_user.timezone is not None
         timezone = pytz.timezone(current_user.timezone)
 
         app_model_config = app_model.app_model_config
         if not app_model_config:
             raise ValueError("App model config not found")
 
-        result = {
+        result: dict[str, Any] = {
             "meta": {
                 "status": "success",
                 "executor": executor,

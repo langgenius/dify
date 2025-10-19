@@ -25,6 +25,8 @@ import LLMParamsPanel from './llm-params-panel'
 import TTSParamsPanel from './tts-params-panel'
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
+import Toast from '@/app/components/base/toast'
+import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 
 export type ModelParameterModalProps = {
   popupClassName?: string
@@ -121,24 +123,50 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     return !isAPIKeySet || hasDeprecated || modelDisabled
   }, [hasDeprecated, isAPIKeySet, modelDisabled])
 
-  const handleChangeModel = ({ provider, model }: DefaultModel) => {
+  const handleChangeModel = async ({ provider, model }: DefaultModel) => {
     const targetProvider = scopedModelList.find(modelItem => modelItem.provider === provider)
     const targetModelItem = targetProvider?.models.find((modelItem: { model: string }) => modelItem.model === model)
     const model_type = targetModelItem?.model_type as string
+
+    let nextCompletionParams: FormValue = {}
+
+    if (model_type === ModelTypeEnum.textGeneration) {
+      try {
+        const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
+          provider,
+          model,
+          value?.completion_params,
+          isAdvancedMode,
+        )
+        nextCompletionParams = filtered
+
+        const keys = Object.keys(removedDetails || {})
+        if (keys.length) {
+          Toast.notify({
+            type: 'warning',
+            message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`,
+          })
+        }
+      }
+      catch {
+        Toast.notify({ type: 'error', message: t('common.error') })
+      }
+    }
+
     setModel({
       provider,
       model,
       model_type,
       ...(model_type === ModelTypeEnum.textGeneration ? {
         mode: targetModelItem?.model_properties.mode as string,
-        completion_params: {},
+        completion_params: nextCompletionParams,
       } : {}),
     })
   }
 
   const handleLLMParamsChange = (newParams: FormValue) => {
     const newValue = {
-      ...(value?.completionParams || {}),
+      ...value?.completionParams,
       completion_params: newParams,
     }
     setModel({
@@ -221,7 +249,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 />
               </div>
               {(currentModel?.model_type === ModelTypeEnum.textGeneration || currentModel?.model_type === ModelTypeEnum.tts) && (
-                <div className='my-3 h-[1px] bg-divider-subtle' />
+                <div className='my-3 h-px bg-divider-subtle' />
               )}
               {currentModel?.model_type === ModelTypeEnum.textGeneration && (
                 <LLMParamsPanel

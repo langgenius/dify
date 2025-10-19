@@ -1,11 +1,17 @@
 @import "preflight.css";
-@tailwind base;
-@tailwind components;
+
 
 @import '../../themes/light.css';
 @import '../../themes/dark.css';
 @import "../../themes/manual-light.css";
 @import "../../themes/manual-dark.css";
+
+@import "../components/base/button/index.css";
+@import "../components/base/action-button/index.css";
+@import "../components/base/modal/index.css";
+
+@tailwind base;
+@tailwind components;
 
 html {
   color-scheme: light;
@@ -680,10 +686,6 @@ button:focus-within {
   display: none;
 }
 
-@import "../components/base/button/index.css";
-@import "../components/base/action-button/index.css";
-@import "../components/base/modal/index.css";
-
 @tailwind utilities;
 
 @layer utilities {
@@ -696,5 +698,16 @@ button:focus-within {
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Hide arrows from number input */
+  .no-spinner::-webkit-outer-spin-button,
+  .no-spinner::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .no-spinner {
+    -moz-appearance: textfield;
   }
 }

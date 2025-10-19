@@ -42,6 +42,10 @@ const translation = {
     },
     change: 'Değiştir',
     changeRetrievalMethod: 'Geri alma yöntemini değiştir',
+    keyword_search: {
+      title: 'Ters Çevrilmiş İndeks',
+      description: 'Ters İndeks, verimli erişim için kullanılan bir yapıdır. Terimlere göre düzenlenen her terim, onu içeren belgelere veya web sayfalarına işaret eder.',
+    },
   },
   docsFailedNotice: 'belgeler dizine eklenemedi',
   retry: 'Yeniden Dene',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     general: 'Genel',
     parentChild: 'Ebeveyn-çocuk',
+    graph: 'Grafik',
+    qa: 'Soru-Cevap',
   },
   parentMode: {
     fullDoc: 'Tam doküman',
@@ -179,6 +185,7 @@ const translation = {
     checkName: {
       empty: 'Meta veri adı boş olamaz',
       invalid: 'Meta verisi adı yalnızca küçük harfler, sayılar ve alt çizgiler içerebilir ve küçük bir harfle başlamalıdır.',
+      tooLong: 'Meta veri adı {{max}} karakteri geçemez',
     },
     batchEditMetadata: {
       multipleValue: 'Birden Fazla Değer',
@@ -216,6 +223,20 @@ const translation = {
     chooseTime: 'Bir zaman seçin...',
   },
   embeddingModelNotAvailable: 'Gömme modeli mevcut değil.',
+  updated: 'Güncel -leştirilmiş',
+  createFromPipeline: 'Bilgi İşlem Hattından Oluşturun',
+  externalKnowledgeBase: 'Harici Bilgi Bankası',
+  serviceApi: {
+    card: {
+      apiReference: 'API Referansı',
+      title: 'Backend servis api',
+      apiKey: 'API Anahtarı',
+      endpoint: 'Hizmet API Uç Noktası',
+    },
+    disabled: 'Engelli',
+    enabled: 'Hizmette',
+    title: 'Servis API\'si',
+  },
 }
 
 export default translation

@@ -16,15 +16,10 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { noop } from 'lodash-es'
-import { AccessMode } from '@/models/access-control'
 
 export type ChatWithHistoryContextValue = {
-  appInfoError?: any
-  appInfoLoading?: boolean
-  appMeta?: AppMeta
-  appData?: AppData
-  accessMode?: AccessMode
-  userCanAccess?: boolean
+  appMeta?: AppMeta | null
+  appData?: AppData | null
   appParams?: ChatConfig
   appChatListDataLoading?: boolean
   currentConversationId: string
@@ -61,11 +56,13 @@ export type ChatWithHistoryContextValue = {
   currentConversationInputs: Record<string, any> | null,
   setCurrentConversationInputs: (v: Record<string, any>) => void,
   allInputsHidden: boolean,
+  initUserVariables?: {
+    name?: string
+    avatar_url?: string
+  }
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
-  accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-  userCanAccess: false,
   currentConversationId: '',
   appPrevChatTree: [],
   pinnedConversationList: [],
@@ -97,5 +94,6 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   currentConversationInputs: {},
   setCurrentConversationInputs: noop,
   allInputsHidden: false,
+  initUserVariables: {},
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

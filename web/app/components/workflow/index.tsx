@@ -5,7 +5,9 @@ import {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
+  useState,
 } from 'react'
 import { setAutoFreeze } from 'immer'
 import {
@@ -41,6 +43,7 @@ import {
   useNodesSyncDraft,
   usePanelInteractions,
   useSelectionInteractions,
+  useSetWorkflowVarsWithValue,
   useShortcuts,
   useWorkflow,
   useWorkflowReadOnly,
@@ -55,15 +58,20 @@ import CustomLoopStartNode from './nodes/loop-start'
 import { CUSTOM_LOOP_START_NODE } from './nodes/loop-start/constants'
 import CustomSimpleNode from './simple-node'
 import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
+import CustomDataSourceEmptyNode from './nodes/data-source-empty'
+import { CUSTOM_DATA_SOURCE_EMPTY_NODE } from './nodes/data-source-empty/constants'
 import Operator from './operator'
+import { useWorkflowSearch } from './hooks/use-workflow-search'
+import Control from './operator/control'
 import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
 import HelpLine from './help-line'
 import CandidateNode from './candidate-node'
 import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
+import SelectionContextmenu from './selection-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
-import LimitTips from './limit-tips'
+import { setupScrollToNodeListener } from './utils/node-navigation'
 import {
   useStore,
   useWorkflowStore,
@@ -76,10 +84,18 @@ import {
 } from './constants'
 import { WorkflowHistoryProvider } from './workflow-history-store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import Confirm from '@/app/components/base/confirm'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
-import { HooksStoreContextProvider } from './hooks-store'
+import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
 import type { Shape as HooksStoreShape } from './hooks-store'
+import dynamic from 'next/dynamic'
+import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
+import type { VarInInspect } from '@/types/workflow'
+import { fetchAllInspectVars } from '@/service/workflow'
+import cn from '@/utils/classnames'
+
+const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
+  ssr: false,
+})
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -87,6 +103,7 @@ const nodeTypes = {
   [CUSTOM_SIMPLE_NODE]: CustomSimpleNode,
   [CUSTOM_ITERATION_START_NODE]: CustomIterationStartNode,
   [CUSTOM_LOOP_START_NODE]: CustomLoopStartNode,
+  [CUSTOM_DATA_SOURCE_EMPTY_NODE]: CustomDataSourceEmptyNode,
 }
 const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
@@ -114,6 +131,32 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const showConfirm = useStore(s => s.showConfirm)
+  const workflowCanvasHeight = useStore(s => s.workflowCanvasHeight)
+  const bottomPanelHeight = useStore(s => s.bottomPanelHeight)
+  const setWorkflowCanvasWidth = useStore(s => s.setWorkflowCanvasWidth)
+  const setWorkflowCanvasHeight = useStore(s => s.setWorkflowCanvasHeight)
+  const controlHeight = useMemo(() => {
+    if (!workflowCanvasHeight)
+      return '100%'
+    return workflowCanvasHeight - bottomPanelHeight
+  }, [workflowCanvasHeight, bottomPanelHeight])
+
+  // update workflow Canvas width and height
+  useEffect(() => {
+    if (workflowContainerRef.current) {
+      const resizeContainerObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { inlineSize, blockSize } = entry.borderBoxSize[0]
+          setWorkflowCanvasWidth(inlineSize)
+          setWorkflowCanvasHeight(blockSize)
+        }
+      })
+      resizeContainerObserver.observe(workflowContainerRef.current)
+      return () => {
+        resizeContainerObserver.disconnect()
+      }
+    }
+  }, [setWorkflowCanvasHeight, setWorkflowCanvasWidth])
 
   const {
     setShowConfirm,
@@ -157,7 +200,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
     return () => {
       handleSyncWorkflowDraft(true, true)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
@@ -205,6 +247,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleFetchAllTools('builtin')
     handleFetchAllTools('custom')
     handleFetchAllTools('workflow')
+    handleFetchAllTools('mcp')
   }, [handleFetchAllTools])
 
   const {
@@ -230,6 +273,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleSelectionStart,
     handleSelectionChange,
     handleSelectionDrag,
+    handleSelectionContextMenu,
   } = useSelectionInteractions()
   const {
     handlePaneContextMenu,
@@ -245,6 +289,50 @@ export const Workflow: FC<WorkflowProps> = memo(({
   })
 
   useShortcuts()
+  // Initialize workflow node search functionality
+  useWorkflowSearch()
+
+  // Set up scroll to node event listener using the utility function
+  useEffect(() => {
+    return setupScrollToNodeListener(nodes, reactflow)
+  }, [nodes, reactflow])
+
+  const { schemaTypeDefinitions } = useMatchSchemaType()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
+  const buildInTools = useStore(s => s.buildInTools)
+  const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
+  const mcpTools = useStore(s => s.mcpTools)
+  const dataSourceList = useStore(s => s.dataSourceList)
+  // buildInTools, customTools, workflowTools, mcpTools, dataSourceList
+  const configsMap = useHooksStore(s => s.configsMap)
+  const [isLoadedVars, setIsLoadedVars] = useState(false)
+  const [vars, setVars] = useState<VarInInspect[]>([])
+  useEffect(() => {
+    (async () => {
+      if (!configsMap?.flowType || !configsMap?.flowId)
+        return
+      const data = await fetchAllInspectVars(configsMap.flowType, configsMap.flowId)
+      setVars(data)
+      setIsLoadedVars(true)
+    })()
+  }, [configsMap?.flowType, configsMap?.flowId])
+  useEffect(() => {
+    if (schemaTypeDefinitions && isLoadedVars) {
+      fetchInspectVars({
+        passInVars: true,
+        vars,
+        passedInAllPluginInfoList: {
+          buildInTools,
+          customTools,
+          workflowTools,
+          mcpTools,
+          dataSourceList: dataSourceList ?? [],
+        },
+        passedInSchemaTypeDefinitions: schemaTypeDefinitions,
+      })
+    }
+  }, [schemaTypeDefinitions, fetchInspectVars, isLoadedVars, vars, customTools, buildInTools, workflowTools, mcpTools, dataSourceList])
 
   const store = useStoreApi()
   if (process.env.NODE_ENV === 'development') {
@@ -258,18 +346,25 @@ export const Workflow: FC<WorkflowProps> = memo(({
   return (
     <div
       id='workflow-container'
-      className={`
-        relative h-full w-full min-w-[960px]
-        ${workflowReadOnly && 'workflow-panel-animation'}
-        ${nodeAnimation && 'workflow-node-animation'}
-      `}
+      className={cn(
+        'relative h-full w-full min-w-[960px]',
+        workflowReadOnly && 'workflow-panel-animation',
+        nodeAnimation && 'workflow-node-animation',
+      )}
       ref={workflowContainerRef}
     >
       <SyncingDataModal />
       <CandidateNode />
+      <div
+        className='pointer-events-none absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2'
+        style={{ height: controlHeight }}
+      >
+        <Control />
+      </div>
       <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
       <PanelContextmenu />
       <NodeContextmenu />
+      <SelectionContextmenu />
       <HelpLine />
       {
         !!showConfirm && (
@@ -282,7 +377,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
           />
         )
       }
-      <LimitTips />
       {children}
       <ReactFlow
         nodeTypes={nodeTypes}
@@ -306,6 +400,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onSelectionChange={handleSelectionChange}
         onSelectionDrag={handleSelectionDrag}
         onPaneContextMenu={handlePaneContextMenu}
+        onSelectionContextMenu={handleSelectionContextMenu}
         connectionLineComponent={CustomConnectionLine}
         // TODO: For LOOP node, how to distinguish between ITERATION and LOOP here? Maybe both are the same?
         connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
@@ -317,10 +412,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
         nodesFocusable={!nodesReadOnly}
         edgesFocusable={!nodesReadOnly}
         panOnScroll={false}
-        panOnDrag={controlMode === ControlMode.Hand && !workflowReadOnly}
-        zoomOnPinch={!workflowReadOnly}
-        zoomOnScroll={!workflowReadOnly}
-        zoomOnDoubleClick={!workflowReadOnly}
+        panOnDrag={controlMode === ControlMode.Hand}
+        zoomOnPinch={true}
+        zoomOnScroll={true}
+        zoomOnDoubleClick={true}
         isValidConnection={isValidConnection}
         selectionKeyCode={null}
         selectionMode={SelectionMode.Partial}
@@ -352,8 +447,8 @@ export const WorkflowWithInnerContext = memo(({
   )
 })
 
-type WorkflowWithDefaultContextProps =
-  Pick<WorkflowProps, 'edges' | 'nodes'>
+type WorkflowWithDefaultContextProps
+  = Pick<WorkflowProps, 'edges' | 'nodes'>
   & {
     children: React.ReactNode
   }

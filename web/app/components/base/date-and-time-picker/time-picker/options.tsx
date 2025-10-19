@@ -5,6 +5,7 @@ import OptionListItem from '../common/option-list-item'
 
 const Options: FC<TimeOptionsProps> = ({
   selectedTime,
+  minuteFilter,
   handleSelectHour,
   handleSelectMinute,
   handleSelectPeriod,
@@ -33,7 +34,7 @@ const Options: FC<TimeOptionsProps> = ({
       {/* Minute */}
       <ul className='no-scrollbar flex h-[208px] flex-col gap-y-0.5 overflow-y-auto pb-[184px]'>
         {
-          minuteOptions.map((minute) => {
+          (minuteFilter ? minuteFilter(minuteOptions) : minuteOptions).map((minute) => {
             const isSelected = selectedTime?.format('mm') === minute
             return (
               <OptionListItem
@@ -57,6 +58,7 @@ const Options: FC<TimeOptionsProps> = ({
                 key={period}
                 isSelected={isSelected}
                 onClick={handleSelectPeriod.bind(null, period)}
+                noAutoScroll // if choose PM which would hide(scrolled) AM that may make user confused that there's no am.
               >
                 {period}
               </OptionListItem>

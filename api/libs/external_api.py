@@ -1,119 +1,151 @@
 import re
 import sys
+from collections.abc import Mapping
 from typing import Any
 
-from flask import current_app, got_request_exception
-from flask_restful import Api, http_status_message
-from werkzeug.datastructures import Headers
+from flask import Blueprint, Flask, current_app, got_request_exception
+from flask_restx import Api
 from werkzeug.exceptions import HTTPException
+from werkzeug.http import HTTP_STATUS_CODES
 
+from configs import dify_config
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 from core.errors.error import AppInvokeQuotaExceededError
+from libs.token import is_secure
+
+
+def http_status_message(code):
+    return HTTP_STATUS_CODES.get(code, "")
+
+
+def register_external_error_handlers(api: Api):
+    @api.errorhandler(HTTPException)
+    def handle_http_exception(e: HTTPException):
+        got_request_exception.send(current_app, exception=e)
+
+        # If Werkzeug already prepared a Response, just use it.
+        if e.response is not None:
+            return e.response
+
+        status_code = getattr(e, "code", 500) or 500
+
+        # Build a safe, dict-like payload
+        default_data = {
+            "code": re.sub(r"(?<!^)(?=[A-Z])", "_", type(e).__name__).lower(),
+            "message": getattr(e, "description", http_status_message(status_code)),
+            "status": status_code,
+        }
+        if default_data["message"] == "Failed to decode JSON object: Expecting value: line 1 column 1 (char 0)":
+            default_data["message"] = "Invalid JSON payload received or JSON payload is empty."
+
+        # Use headers on the exception if present; otherwise none.
+        headers = {}
+        exc_headers = getattr(e, "headers", None)
+        if exc_headers:
+            headers.update(exc_headers)
+
+        # Payload per status
+        if status_code == 406 and api.default_mediatype is None:
+            data = {"code": "not_acceptable", "message": default_data["message"], "status": status_code}
+            return data, status_code, headers
+        elif status_code == 400:
+            msg = default_data["message"]
+            if isinstance(msg, Mapping) and msg:
+                # Convert param errors like {"field": "reason"} into a friendly shape
+                param_key, param_value = next(iter(msg.items()))
+                data = {
+                    "code": "invalid_param",
+                    "message": str(param_value),
+                    "params": param_key,
+                    "status": status_code,
+                }
+            else:
+                data = {**default_data}
+                data.setdefault("code", "unknown")
+            return data, status_code, headers
+        else:
+            data = {**default_data}
+            data.setdefault("code", "unknown")
+            # If you need WWW-Authenticate for 401, add it to headers
+            if status_code == 401:
+                headers["WWW-Authenticate"] = 'Bearer realm="api"'
+                # Check if this is a forced logout error - clear cookies
+                error_code = getattr(e, "error_code", None)
+                if error_code == "unauthorized_and_force_logout":
+                    # Add Set-Cookie headers to clear auth cookies
+
+                    secure = is_secure()
+                    # response is not accessible, so we need to do it ugly
+                    common_part = "Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly"
+                    headers["Set-Cookie"] = [
+                        f'{COOKIE_NAME_ACCESS_TOKEN}=""; {common_part}{"; Secure" if secure else ""}; SameSite=Lax',
+                        f'{COOKIE_NAME_CSRF_TOKEN}=""; {common_part}{"; Secure" if secure else ""}; SameSite=Lax',
+                        f'{COOKIE_NAME_REFRESH_TOKEN}=""; {common_part}{"; Secure" if secure else ""}; SameSite=Lax',
+                    ]
+            return data, status_code, headers
+
+    _ = handle_http_exception
+
+    @api.errorhandler(ValueError)
+    def handle_value_error(e: ValueError):
+        got_request_exception.send(current_app, exception=e)
+        status_code = 400
+        data = {"code": "invalid_param", "message": str(e), "status": status_code}
+        return data, status_code
+
+    _ = handle_value_error
+
+    @api.errorhandler(AppInvokeQuotaExceededError)
+    def handle_quota_exceeded(e: AppInvokeQuotaExceededError):
+        got_request_exception.send(current_app, exception=e)
+        status_code = 429
+        data = {"code": "too_many_requests", "message": str(e), "status": status_code}
+        return data, status_code
+
+    _ = handle_quota_exceeded
+
+    @api.errorhandler(Exception)
+    def handle_general_exception(e: Exception):
+        got_request_exception.send(current_app, exception=e)
+
+        status_code = 500
+        data: dict[str, Any] = getattr(e, "data", {"message": http_status_message(status_code)})
+
+        # 🔒 Normalize non-mapping data (e.g., if someone set e.data = Response)
+        if not isinstance(data, dict):
+            data = {"message": str(e)}
+
+        data.setdefault("code", "unknown")
+        data.setdefault("status", status_code)
+
+        # Log stack
+        exc_info: Any = sys.exc_info()
+        if exc_info[1] is None:
+            exc_info = (None, None, None)
+        current_app.log_exception(exc_info)
+
+        return data, status_code
+
+    _ = handle_general_exception
 
 
 class ExternalApi(Api):
-    def handle_error(self, e):
-        """Error handler for the API transforms a raised exception into a Flask
-        response, with the appropriate HTTP status code and body.
+    _authorizations = {
+        "Bearer": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": "Type: Bearer {your-api-key}",
+        }
+    }
 
-        :param e: the raised Exception object
-        :type e: Exception
+    def __init__(self, app: Blueprint | Flask, *args, **kwargs):
+        kwargs.setdefault("authorizations", self._authorizations)
+        kwargs.setdefault("security", "Bearer")
+        kwargs["add_specs"] = dify_config.SWAGGER_UI_ENABLED
+        kwargs["doc"] = dify_config.SWAGGER_UI_PATH if dify_config.SWAGGER_UI_ENABLED else False
 
-        """
-        got_request_exception.send(current_app, exception=e)
-
-        headers = Headers()
-        if isinstance(e, HTTPException):
-            if e.response is not None:
-                resp = e.get_response()
-                return resp
-
-            status_code = e.code
-            default_data = {
-                "code": re.sub(r"(?<!^)(?=[A-Z])", "_", type(e).__name__).lower(),
-                "message": getattr(e, "description", http_status_message(status_code)),
-                "status": status_code,
-            }
-
-            if (
-                default_data["message"]
-                and default_data["message"] == "Failed to decode JSON object: Expecting value: line 1 column 1 (char 0)"
-            ):
-                default_data["message"] = "Invalid JSON payload received or JSON payload is empty."
-
-            headers = e.get_response().headers
-        elif isinstance(e, ValueError):
-            status_code = 400
-            default_data = {
-                "code": "invalid_param",
-                "message": str(e),
-                "status": status_code,
-            }
-        elif isinstance(e, AppInvokeQuotaExceededError):
-            status_code = 429
-            default_data = {
-                "code": "too_many_requests",
-                "message": str(e),
-                "status": status_code,
-            }
-        else:
-            status_code = 500
-            default_data = {
-                "message": http_status_message(status_code),
-            }
-
-        # Werkzeug exceptions generate a content-length header which is added
-        # to the response in addition to the actual content-length header
-        # https://github.com/flask-restful/flask-restful/issues/534
-        remove_headers = ("Content-Length",)
-
-        for header in remove_headers:
-            headers.pop(header, None)
-
-        data = getattr(e, "data", default_data)
-
-        error_cls_name = type(e).__name__
-        if error_cls_name in self.errors:
-            custom_data = self.errors.get(error_cls_name, {})
-            custom_data = custom_data.copy()
-            status_code = custom_data.get("status", 500)
-
-            if "message" in custom_data:
-                custom_data["message"] = custom_data["message"].format(
-                    message=str(e.description if hasattr(e, "description") else e)
-                )
-            data.update(custom_data)
-
-        # record the exception in the logs when we have a server error of status code: 500
-        if status_code and status_code >= 500:
-            exc_info: Any = sys.exc_info()
-            if exc_info[1] is None:
-                exc_info = None
-            current_app.log_exception(exc_info)
-
-        if status_code == 406 and self.default_mediatype is None:
-            # if we are handling NotAcceptable (406), make sure that
-            # make_response uses a representation we support as the
-            # default mediatype (so that make_response doesn't throw
-            # another NotAcceptable error).
-            supported_mediatypes = list(self.representations.keys())  # only supported application/json
-            fallback_mediatype = supported_mediatypes[0] if supported_mediatypes else "text/plain"
-            data = {"code": "not_acceptable", "message": data.get("message")}
-            resp = self.make_response(data, status_code, headers, fallback_mediatype=fallback_mediatype)
-        elif status_code == 400:
-            if isinstance(data.get("message"), dict):
-                param_key, param_value = list(data.get("message", {}).items())[0]
-                data = {"code": "invalid_param", "message": param_value, "params": param_key}
-            else:
-                if "code" not in data:
-                    data["code"] = "unknown"
-
-            resp = self.make_response(data, status_code, headers)
-        else:
-            if "code" not in data:
-                data["code"] = "unknown"
-
-            resp = self.make_response(data, status_code, headers)
-
-        if status_code == 401:
-            resp = self.unauthorized(resp)
-        return resp
+        # manual separate call on construction and init_app to ensure configs in kwargs effective
+        super().__init__(app=None, *args, **kwargs)  # type: ignore
+        self.init_app(app, **kwargs)
+        register_external_error_handlers(self)

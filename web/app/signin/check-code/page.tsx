@@ -10,6 +10,7 @@ import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import I18NContext from '@/context/i18n'
+import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -41,9 +42,13 @@ export default function CheckCode() {
       setIsLoading(true)
       const ret = await emailLoginWithCode({ email, code, token })
       if (ret.result === 'success') {
-        localStorage.setItem('console_token', ret.data.access_token)
-        localStorage.setItem('refresh_token', ret.data.refresh_token)
-        router.replace(invite_token ? `/signin/invite-settings?${searchParams.toString()}` : '/apps')
+        if (invite_token) {
+          router.replace(`/signin/invite-settings?${searchParams.toString()}`)
+        }
+        else {
+          const redirectUrl = resolvePostLoginRedirect(searchParams)
+          router.replace(redirectUrl || '/apps')
+        }
       }
     }
     catch (error) { console.error(error) }
@@ -71,7 +76,10 @@ export default function CheckCode() {
     <div className='pb-4 pt-2'>
       <h2 className='title-4xl-semi-bold text-text-primary'>{t('login.checkCode.checkYourEmail')}</h2>
       <p className='body-md-regular mt-2 text-text-secondary'>
-        <span dangerouslySetInnerHTML={{ __html: t('login.checkCode.tips', { email }) as string }}></span>
+        <span>
+          {t('login.checkCode.tipsPrefix')}
+          <strong>{email}</strong>
+        </span>
         <br />
         {t('login.checkCode.validTime')}
       </p>
@@ -79,7 +87,7 @@ export default function CheckCode() {
 
     <form action="">
       <label htmlFor="code" className='system-md-semibold mb-1 text-text-secondary'>{t('login.checkCode.verificationCode')}</label>
-      <Input value={code} onChange={e => setVerifyCode(e.target.value)} max-length={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
+      <Input value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
       <Button loading={loading} disabled={loading} className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>
       <Countdown onResend={resendCode} />
     </form>
@@ -87,7 +95,7 @@ export default function CheckCode() {
       <div className='h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent'></div>
     </div>
     <div onClick={() => router.back()} className='flex h-9 cursor-pointer items-center justify-center text-text-tertiary'>
-      <div className='bg-background-default-dimm inline-block rounded-full p-1'>
+      <div className='inline-block rounded-full bg-background-default-dimmed p-1'>
         <RiArrowLeftLine size={12} />
       </div>
       <span className='system-xs-regular ml-2'>{t('login.back')}</span>

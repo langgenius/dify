@@ -42,19 +42,41 @@ export const fileUpload: FileUpload = ({
     })
 }
 
+const additionalExtensionMap = new Map<string, string[]>([
+  ['text/x-markdown', ['md']],
+])
+
 export const getFileExtension = (fileName: string, fileMimetype: string, isRemote?: boolean) => {
   let extension = ''
-  if (fileMimetype)
-    extension = mime.getExtension(fileMimetype) || ''
+  let extensions = new Set<string>()
+  if (fileMimetype) {
+    const extensionsFromMimeType = mime.getAllExtensions(fileMimetype) || new Set<string>()
+    const additionalExtensions = additionalExtensionMap.get(fileMimetype) || []
+    extensions = new Set<string>([
+      ...extensionsFromMimeType,
+      ...additionalExtensions,
+    ])
+  }
 
-  if (fileName && !extension) {
+  let extensionInFileName = ''
+  if (fileName) {
     const fileNamePair = fileName.split('.')
     const fileNamePairLength = fileNamePair.length
 
-    if (fileNamePairLength > 1)
-      extension = fileNamePair[fileNamePairLength - 1]
-    else
-      extension = ''
+    if (fileNamePairLength > 1) {
+      extensionInFileName = fileNamePair[fileNamePairLength - 1].toLowerCase()
+      if (extensions.has(extensionInFileName))
+        extension = extensionInFileName
+    }
+  }
+  if (!extension) {
+    if (extensions.size > 0) {
+      const firstExtension = extensions.values().next().value
+      extension = firstExtension ? firstExtension.toLowerCase() : ''
+    }
+    else {
+      extension = extensionInFileName
+    }
   }
 
   if (isRemote)
@@ -126,6 +148,19 @@ export const getProcessedFiles = (files: FileEntity[]) => {
 
 export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
   return files.map((fileItem) => {
+    let supportFileType = fileItem.type
+
+    if (fileItem.filename && fileItem.mime_type) {
+      const detectedTypeFromFileName = getSupportFileType(fileItem.filename, '')
+      const detectedTypeFromMime = getSupportFileType('', fileItem.mime_type)
+
+      if (detectedTypeFromFileName
+          && detectedTypeFromMime
+          && detectedTypeFromFileName === detectedTypeFromMime
+          && detectedTypeFromFileName !== fileItem.type)
+        supportFileType = detectedTypeFromFileName
+    }
+
     return {
       id: fileItem.related_id,
       name: fileItem.filename,
@@ -133,9 +168,9 @@ export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
       type: fileItem.mime_type,
       progress: 100,
       transferMethod: fileItem.transfer_method,
-      supportFileType: fileItem.type,
+      supportFileType,
       uploadedId: fileItem.upload_file_id || fileItem.related_id,
-      url: fileItem.url,
+      url: fileItem.url || fileItem.remote_url,
     }
   })
 }

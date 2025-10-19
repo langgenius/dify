@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -13,13 +12,13 @@ from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegm
 from models.dataset import Document as DatasetDocument
 from services.entities.knowledge_entities.knowledge_entities import ParentMode
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class VectorService:
     @classmethod
     def create_segments_vector(
-        cls, keywords_list: Optional[list[list[str]]], segments: list[DocumentSegment], dataset: Dataset, doc_form: str
+        cls, keywords_list: list[list[str]] | None, segments: list[DocumentSegment], dataset: Dataset, doc_form: str
     ):
         documents: list[Document] = []
 
@@ -27,7 +26,7 @@ class VectorService:
             if doc_form == IndexType.PARENT_CHILD_INDEX:
                 dataset_document = db.session.query(DatasetDocument).filter_by(id=segment.document_id).first()
                 if not dataset_document:
-                    _logger.warning(
+                    logger.warning(
                         "Expected DatasetDocument record to exist, but none was found, document_id=%s, segment_id=%s",
                         segment.document_id,
                         segment.id,
@@ -36,7 +35,7 @@ class VectorService:
                 # get the process rule
                 processing_rule = (
                     db.session.query(DatasetProcessRule)
-                    .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
+                    .where(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
                     .first()
                 )
                 if not processing_rule:
@@ -79,7 +78,7 @@ class VectorService:
             index_processor.load(dataset, documents, with_keywords=True, keywords_list=keywords_list)
 
     @classmethod
-    def update_segment_vector(cls, keywords: Optional[list[str]], segment: DocumentSegment, dataset: Dataset):
+    def update_segment_vector(cls, keywords: list[str] | None, segment: DocumentSegment, dataset: Dataset):
         # update segment index task
 
         # format new index
@@ -97,16 +96,16 @@ class VectorService:
             vector = Vector(dataset=dataset)
             vector.delete_by_ids([segment.index_node_id])
             vector.add_texts([document], duplicate_check=True)
-
-        # update keyword index
-        keyword = Keyword(dataset)
-        keyword.delete_by_ids([segment.index_node_id])
-
-        # save keyword index
-        if keywords and len(keywords) > 0:
-            keyword.add_texts([document], keywords_list=[keywords])
         else:
-            keyword.add_texts([document])
+            # update keyword index
+            keyword = Keyword(dataset)
+            keyword.delete_by_ids([segment.index_node_id])
+
+            # save keyword index
+            if keywords and len(keywords) > 0:
+                keyword.add_texts([document], keywords_list=[keywords])
+            else:
+                keyword.add_texts([document])
 
     @classmethod
     def generate_child_chunks(
@@ -135,7 +134,7 @@ class VectorService:
         )
         # use full doc mode to generate segment's child chunk
         processing_rule_dict = processing_rule.to_dict()
-        processing_rule_dict["rules"]["parent_mode"] = ParentMode.FULL_DOC.value
+        processing_rule_dict["rules"]["parent_mode"] = ParentMode.FULL_DOC
         documents = index_processor.transform(
             [document],
             embedding_model_instance=embedding_model_instance,

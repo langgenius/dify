@@ -14,7 +14,7 @@ import { upload } from '@/service/base'
 import { fetchFileUploadConfig } from '@/service/common'
 import { fetchSupportFileTypes } from '@/service/datasets'
 import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
+import { LanguagesSupported } from '@/i18n-config/language'
 import { IS_CE_EDITION } from '@/config'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
@@ -185,7 +185,8 @@ const FileUploader = ({
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    e.target !== dragRef.current && setDragging(true)
+    if (e.target !== dragRef.current)
+      setDragging(true)
   }
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault()
@@ -194,7 +195,8 @@ const FileUploader = ({
   const handleDragLeave = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    e.target === dragRef.current && setDragging(false)
+    if (e.target === dragRef.current)
+      setDragging(false)
   }
   type FileWithPath = {
     relativePath?: string
@@ -313,7 +315,7 @@ const FileUploader = ({
             <RiUploadCloud2Line className='mr-2 size-5' />
 
             <span>
-              {t('datasetCreation.stepOne.uploader.button')}
+              {notSupportBatchUpload ? t('datasetCreation.stepOne.uploader.buttonSingleFile') : t('datasetCreation.stepOne.uploader.button')}
               {supportTypes.length > 0 && (
                 <label className="ml-1 cursor-pointer text-text-accent" onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
               )}
@@ -322,6 +324,7 @@ const FileUploader = ({
           <div>{t('datasetCreation.stepOne.uploader.tip', {
             size: fileUploadConfig.file_size_limit,
             supportTypes: supportTypesShowNames,
+            batchCount: fileUploadConfig.batch_count_limit,
           })}</div>
           {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
         </div>
@@ -339,7 +342,8 @@ const FileUploader = ({
           >
             <div className="flex w-12 shrink-0 items-center justify-center">
               <DocumentFileIcon
-                className="size-6 shrink-0"
+                size='xl'
+                className="shrink-0"
                 name={fileItem.file.name}
                 extension={getFileType(fileItem.file)}
               />

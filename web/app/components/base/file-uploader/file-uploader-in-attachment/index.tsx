@@ -26,9 +26,11 @@ type Option = {
   icon: React.JSX.Element
 }
 type FileUploaderInAttachmentProps = {
+  isDisabled?: boolean
   fileConfig: FileUpload
 }
 const FileUploaderInAttachment = ({
+  isDisabled,
   fileConfig,
 }: FileUploaderInAttachmentProps) => {
   const { t } = useTranslation()
@@ -89,19 +91,23 @@ const FileUploaderInAttachment = ({
 
   return (
     <div>
-      <div className='flex items-center space-x-1'>
-        {options.map(renderOption)}
-      </div>
+      {!isDisabled && (
+        <div className='flex items-center space-x-1'>
+          {options.map(renderOption)}
+        </div>
+      )}
       <div className='mt-1 space-y-1'>
         {
           files.map(file => (
             <FileItem
               key={file.id}
               file={file}
-              showDeleteAction
+              showDeleteAction={!isDisabled}
               showDownloadAction={false}
               onRemove={() => handleRemoveFile(file.id)}
               onReUpload={() => handleReUploadFile(file.id)}
+              canPreview={fileConfig.preview_config?.file_type_list?.includes(file.type)}
+              previewMode={fileConfig.preview_config?.mode}
             />
           ))
         }
@@ -110,22 +116,24 @@ const FileUploaderInAttachment = ({
   )
 }
 
-type FileUploaderInAttachmentWrapperProps = {
+export type FileUploaderInAttachmentWrapperProps = {
   value?: FileEntity[]
   onChange: (files: FileEntity[]) => void
   fileConfig: FileUpload
+  isDisabled?: boolean
 }
 const FileUploaderInAttachmentWrapper = ({
   value,
   onChange,
   fileConfig,
+  isDisabled,
 }: FileUploaderInAttachmentWrapperProps) => {
   return (
     <FileContextProvider
       value={value}
       onChange={onChange}
     >
-      <FileUploaderInAttachment fileConfig={fileConfig} />
+      <FileUploaderInAttachment isDisabled={isDisabled} fileConfig={fileConfig} />
     </FileContextProvider>
   )
 }

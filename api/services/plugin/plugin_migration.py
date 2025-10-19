@@ -5,25 +5,28 @@ import time
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 import click
+import sqlalchemy as sa
 import tqdm
 from flask import Flask, current_app
 from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
-from core.plugin.entities.plugin import ModelProviderID, PluginInstallationSource, ToolProviderID
+from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ToolProviderType
+from extensions.ext_database import db
 from models.account import Tenant
-from models.engine import db
 from models.model import App, AppMode, AppModelConfig
+from models.provider_ids import ModelProviderID, ToolProviderID
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow
+from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +35,7 @@ excluded_providers = ["time", "audio", "code", "webscraper"]
 
 class PluginMigration:
     @classmethod
-    def extract_plugins(cls, filepath: str, workers: int) -> None:
+    def extract_plugins(cls, filepath: str, workers: int):
         """
         Migrate plugin.
         """
@@ -54,7 +57,7 @@ class PluginMigration:
 
         thread_pool = ThreadPoolExecutor(max_workers=workers)
 
-        def process_tenant(flask_app: Flask, tenant_id: str) -> None:
+        def process_tenant(flask_app: Flask, tenant_id: str):
             with flask_app.app_context():
                 nonlocal handled_tenant_count
                 try:
@@ -78,7 +81,7 @@ class PluginMigration:
                             )
                         )
                 except Exception:
-                    logger.exception(f"Failed to process tenant {tenant_id}")
+                    logger.exception("Failed to process tenant %s", tenant_id)
 
         futures = []
 
@@ -98,10 +101,11 @@ class PluginMigration:
                     datetime.timedelta(hours=1),
                 ]
 
+                tenant_count = 0
                 for test_interval in test_intervals:
                     tenant_count = (
                         session.query(Tenant.id)
-                        .filter(Tenant.created_at.between(current_time, current_time + test_interval))
+                        .where(Tenant.created_at.between(current_time, current_time + test_interval))
                         .count()
                     )
                     if tenant_count <= 100:
@@ -126,7 +130,7 @@ class PluginMigration:
 
                 rs = (
                     session.query(Tenant.id)
-                    .filter(Tenant.created_at.between(current_time, batch_end))
+                    .where(Tenant.created_at.between(current_time, batch_end))
                     .order_by(Tenant.created_at)
                 )
 
@@ -136,7 +140,7 @@ class PluginMigration:
                     try:
                         tenants.append(tenant_id)
                     except Exception:
-                        logger.exception(f"Failed to process tenant {tenant_id}")
+                        logger.exception("Failed to process tenant %s", tenant_id)
                         continue
 
                     futures.append(
@@ -197,7 +201,7 @@ class PluginMigration:
         """
         with Session(db.engine) as session:
             rs = session.execute(
-                db.text(f"SELECT DISTINCT {column} FROM {table} WHERE tenant_id = :tenant_id"), {"tenant_id": tenant_id}
+                sa.text(f"SELECT DISTINCT {column} FROM {table} WHERE tenant_id = :tenant_id"), {"tenant_id": tenant_id}
             )
             result = []
             for row in rs:
@@ -212,7 +216,7 @@ class PluginMigration:
         Extract tool tables.
         """
         with Session(db.engine) as session:
-            rs = session.query(BuiltinToolProvider).filter(BuiltinToolProvider.tenant_id == tenant_id).all()
+            rs = session.query(BuiltinToolProvider).where(BuiltinToolProvider.tenant_id == tenant_id).all()
             result = []
             for row in rs:
                 result.append(ToolProviderID(row.provider).plugin_id)
@@ -226,7 +230,7 @@ class PluginMigration:
         """
 
         with Session(db.engine) as session:
-            rs = session.query(Workflow).filter(Workflow.tenant_id == tenant_id).all()
+            rs = session.query(Workflow).where(Workflow.tenant_id == tenant_id).all()
             result = []
             for row in rs:
                 graph = row.graph_dict
@@ -238,7 +242,7 @@ class PluginMigration:
                     if data.get("type") == "tool":
                         provider_name = data.get("provider_name")
                         provider_type = data.get("provider_type")
-                        if provider_name not in excluded_providers and provider_type == ToolProviderType.BUILT_IN.value:
+                        if provider_name not in excluded_providers and provider_type == ToolProviderType.BUILT_IN:
                             result.append(ToolProviderID(provider_name).plugin_id)
 
             return result
@@ -249,15 +253,15 @@ class PluginMigration:
         Extract app tables.
         """
         with Session(db.engine) as session:
-            apps = session.query(App).filter(App.tenant_id == tenant_id).all()
+            apps = session.query(App).where(App.tenant_id == tenant_id).all()
             if not apps:
                 return []
 
             agent_app_model_config_ids = [
-                app.app_model_config_id for app in apps if app.is_agent or app.mode == AppMode.AGENT_CHAT.value
+                app.app_model_config_id for app in apps if app.is_agent or app.mode == AppMode.AGENT_CHAT
             ]
 
-            rs = session.query(AppModelConfig).filter(AppModelConfig.id.in_(agent_app_model_config_ids)).all()
+            rs = session.query(AppModelConfig).where(AppModelConfig.id.in_(agent_app_model_config_ids)).all()
             result = []
             for row in rs:
                 agent_config = row.agent_mode_dict
@@ -265,21 +269,21 @@ class PluginMigration:
                     for tool in agent_config["tools"]:
                         if isinstance(tool, dict):
                             try:
-                                tool_entity = AgentToolEntity(**tool)
+                                tool_entity = AgentToolEntity.model_validate(tool)
                                 if (
-                                    tool_entity.provider_type == ToolProviderType.BUILT_IN.value
+                                    tool_entity.provider_type == ToolProviderType.BUILT_IN
                                     and tool_entity.provider_id not in excluded_providers
                                 ):
                                     result.append(ToolProviderID(tool_entity.provider_id).plugin_id)
 
                             except Exception:
-                                logger.exception(f"Failed to process tool {tool}")
+                                logger.exception("Failed to process tool %s", tool)
                                 continue
 
             return result
 
     @classmethod
-    def _fetch_plugin_unique_identifier(cls, plugin_id: str) -> Optional[str]:
+    def _fetch_plugin_unique_identifier(cls, plugin_id: str) -> str | None:
         """
         Fetch plugin unique identifier using plugin id.
         """
@@ -290,7 +294,7 @@ class PluginMigration:
         return plugin_manifest[0].latest_package_identifier
 
     @classmethod
-    def extract_unique_plugins_to_file(cls, extracted_plugins: str, output_file: str) -> None:
+    def extract_unique_plugins_to_file(cls, extracted_plugins: str, output_file: str):
         """
         Extract unique plugins.
         """
@@ -301,7 +305,7 @@ class PluginMigration:
         plugins: dict[str, str] = {}
         plugin_ids = []
         plugin_not_exist = []
-        logger.info(f"Extracting unique plugins from {extracted_plugins}")
+        logger.info("Extracting unique plugins from %s", extracted_plugins)
         with open(extracted_plugins) as f:
             for line in f:
                 data = json.loads(line)
@@ -318,7 +322,7 @@ class PluginMigration:
                 else:
                     plugin_not_exist.append(plugin_id)
             except Exception:
-                logger.exception(f"Failed to fetch plugin unique identifier for {plugin_id}")
+                logger.exception("Failed to fetch plugin unique identifier for %s", plugin_id)
                 plugin_not_exist.append(plugin_id)
 
         with ThreadPoolExecutor(max_workers=10) as executor:
@@ -327,7 +331,7 @@ class PluginMigration:
         return {"plugins": plugins, "plugin_not_exist": plugin_not_exist}
 
     @classmethod
-    def install_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100) -> None:
+    def install_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100):
         """
         Install plugins.
         """
@@ -339,7 +343,7 @@ class PluginMigration:
 
         # use a fake tenant id to install all the plugins
         fake_tenant_id = uuid4().hex
-        logger.info(f"Installing {len(plugins['plugins'])} plugin instances for fake tenant {fake_tenant_id}")
+        logger.info("Installing %s plugin instances for fake tenant %s", len(plugins["plugins"]), fake_tenant_id)
 
         thread_pool = ThreadPoolExecutor(max_workers=workers)
 
@@ -347,8 +351,8 @@ class PluginMigration:
         if response.get("failed"):
             plugin_install_failed.extend(response.get("failed", []))
 
-        def install(tenant_id: str, plugin_ids: list[str]) -> None:
-            logger.info(f"Installing {len(plugin_ids)} plugins for tenant {tenant_id}")
+        def install(tenant_id: str, plugin_ids: list[str]):
+            logger.info("Installing %s plugins for tenant %s", len(plugin_ids), tenant_id)
             # fetch plugin already installed
             installed_plugins = manager.list_plugins(tenant_id)
             installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
@@ -408,12 +412,100 @@ class PluginMigration:
 
                 installation = manager.list_plugins(fake_tenant_id)
         except Exception:
-            logger.exception(f"Failed to get installation for tenant {fake_tenant_id}")
+            logger.exception("Failed to get installation for tenant %s", fake_tenant_id)
 
         Path(output_file).write_text(
             json.dumps(
                 {
                     "not_installed": not_installed,
+                    "plugin_install_failed": plugin_install_failed,
+                }
+            )
+        )
+
+    @classmethod
+    def install_rag_pipeline_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100) -> None:
+        """
+        Install rag pipeline plugins.
+        """
+        manager = PluginInstaller()
+
+        plugins = cls.extract_unique_plugins(extracted_plugins)
+        plugin_install_failed = []
+
+        # use a fake tenant id to install all the plugins
+        fake_tenant_id = uuid4().hex
+        logger.info("Installing %s plugin instances for fake tenant %s", len(plugins["plugins"]), fake_tenant_id)
+
+        thread_pool = ThreadPoolExecutor(max_workers=workers)
+
+        response = cls.handle_plugin_instance_install(fake_tenant_id, plugins["plugins"])
+        if response.get("failed"):
+            plugin_install_failed.extend(response.get("failed", []))
+
+        def install(
+            tenant_id: str, plugin_ids: dict[str, str], total_success_tenant: int, total_failed_tenant: int
+        ) -> None:
+            logger.info("Installing %s plugins for tenant %s", len(plugin_ids), tenant_id)
+            try:
+                # fetch plugin already installed
+                installed_plugins = manager.list_plugins(tenant_id)
+                installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+                # at most 64 plugins one batch
+                for i in range(0, len(plugin_ids), 64):
+                    batch_plugin_ids = list(plugin_ids.keys())[i : i + 64]
+                    batch_plugin_identifiers = [
+                        plugin_ids[plugin_id]
+                        for plugin_id in batch_plugin_ids
+                        if plugin_id not in installed_plugins_ids and plugin_id in plugin_ids
+                    ]
+                    PluginService.install_from_marketplace_pkg(tenant_id, batch_plugin_identifiers)
+
+                total_success_tenant += 1
+            except Exception:
+                logger.exception("Failed to install plugins for tenant %s", tenant_id)
+                total_failed_tenant += 1
+
+        page = 1
+        total_success_tenant = 0
+        total_failed_tenant = 0
+        while True:
+            # paginate
+            tenants = db.paginate(sa.select(Tenant).order_by(Tenant.created_at.desc()), page=page, per_page=100)
+            if tenants.items is None or len(tenants.items) == 0:
+                break
+
+            for tenant in tenants:
+                tenant_id = tenant.id
+                # get plugin unique identifier
+                thread_pool.submit(
+                    install,
+                    tenant_id,
+                    plugins.get("plugins", {}),
+                    total_success_tenant,
+                    total_failed_tenant,
+                )
+
+            page += 1
+
+        thread_pool.shutdown(wait=True)
+
+        # uninstall all the plugins for fake tenant
+        try:
+            installation = manager.list_plugins(fake_tenant_id)
+            while installation:
+                for plugin in installation:
+                    manager.uninstall(fake_tenant_id, plugin.installation_id)
+
+                installation = manager.list_plugins(fake_tenant_id)
+        except Exception:
+            logger.exception("Failed to get installation for tenant %s", fake_tenant_id)
+
+        Path(output_file).write_text(
+            json.dumps(
+                {
+                    "total_success_tenant": total_success_tenant,
+                    "total_failed_tenant": total_failed_tenant,
                     "plugin_install_failed": plugin_install_failed,
                 }
             )
@@ -491,7 +583,9 @@ class PluginMigration:
                         else:
                             failed.append(reverse_map[plugin.plugin_unique_identifier])
                             logger.error(
-                                f"Failed to install plugin {plugin.plugin_unique_identifier}, error: {plugin.message}"
+                                "Failed to install plugin %s, error: %s",
+                                plugin.plugin_unique_identifier,
+                                plugin.message,
                             )
 
                     done = True

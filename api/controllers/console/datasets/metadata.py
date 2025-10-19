@@ -1,11 +1,12 @@
-from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
+from typing import Literal
+
+from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import NotFound
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from fields.dataset_fields import dataset_metadata_fields
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
@@ -14,6 +15,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 from services.metadata_service import MetadataService
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/metadata")
 class DatasetMetadataCreateApi(Resource):
     @setup_required
     @login_required
@@ -21,11 +23,14 @@ class DatasetMetadataCreateApi(Resource):
     @enterprise_license_required
     @marshal_with(dataset_metadata_fields)
     def post(self, dataset_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=True, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=True, location="json")
+        current_user, _ = current_account_with_tenant()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=False, location="json")
+            .add_argument("name", type=str, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
-        metadata_args = MetadataArgs(**args)
+        metadata_args = MetadataArgs.model_validate(args)
 
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -48,6 +53,7 @@ class DatasetMetadataCreateApi(Resource):
         return MetadataService.get_dataset_metadatas(dataset), 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
 class DatasetMetadataApi(Resource):
     @setup_required
     @login_required
@@ -55,9 +61,10 @@ class DatasetMetadataApi(Resource):
     @enterprise_license_required
     @marshal_with(dataset_metadata_fields)
     def patch(self, dataset_id, metadata_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, nullable=True, location="json")
+        current_user, _ = current_account_with_tenant()
+        parser = reqparse.RequestParser().add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
+        name = args["name"]
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
@@ -66,7 +73,7 @@ class DatasetMetadataApi(Resource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, args.get("name"))
+        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, name)
         return metadata, 200
 
     @setup_required
@@ -74,6 +81,7 @@ class DatasetMetadataApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def delete(self, dataset_id, metadata_id):
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -85,6 +93,7 @@ class DatasetMetadataApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/datasets/metadata/built-in")
 class DatasetMetadataBuiltInFieldApi(Resource):
     @setup_required
     @login_required
@@ -95,12 +104,14 @@ class DatasetMetadataBuiltInFieldApi(Resource):
         return {"fields": built_in_fields}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>")
 class DatasetMetadataBuiltInFieldActionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    def post(self, dataset_id, action):
+    def post(self, dataset_id, action: Literal["enable", "disable"]):
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -111,33 +122,29 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
             MetadataService.enable_built_in_field(dataset)
         elif action == "disable":
             MetadataService.disable_built_in_field(dataset)
-        return 200
+        return {"result": "success"}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/documents/metadata")
 class DocumentMetadataEditApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @enterprise_license_required
     def post(self, dataset_id):
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("operation_data", type=list, required=True, nullable=True, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "operation_data", type=list, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
-        metadata_args = MetadataOperationData(**args)
+        metadata_args = MetadataOperationData.model_validate(args)
 
         MetadataService.update_documents_metadata(dataset, metadata_args)
 
-        return 200
-
-
-api.add_resource(DatasetMetadataCreateApi, "/datasets/<uuid:dataset_id>/metadata")
-api.add_resource(DatasetMetadataApi, "/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
-api.add_resource(DatasetMetadataBuiltInFieldApi, "/datasets/metadata/built-in")
-api.add_resource(DatasetMetadataBuiltInFieldActionApi, "/datasets/<uuid:dataset_id>/metadata/built-in/<string:action>")
-api.add_resource(DocumentMetadataEditApi, "/datasets/<uuid:dataset_id>/documents/metadata")
+        return {"result": "success"}, 200

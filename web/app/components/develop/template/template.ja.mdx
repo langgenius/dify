@@ -3,28 +3,20 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
 # Completion アプリ API
 
-テキスト生成アプリケーションはセッションレスをサポートし、翻訳、記事作成、要約AI等に最適です。
+テキスト生成アプリケーションはセッションレスをサポートし、翻訳、記事作成、要約 AI 等に最適です。
 
 <div>
-  ### ベースURL
-  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url}>
-    ```javascript
-    ```
-  </CodeGroup>
+  ### ベース URL
+  <CodeGroup title="コード" targetCode={props.appDetail.api_base_url} />
 
   ### 認証
 
-  サービスAPIは`API-Key`認証を使用します。
-  <i>**APIキーの漏洩による重大な結果を避けるため、APIキーはサーバーサイドに保存し、クライアントサイドでは共有や保存しないことを強く推奨します。**</i>
+  サービス API は `API-Key` 認証を使用します。
+  <i>**API キーの漏洩による重大な結果を避けるため、API キーはサーバーサイドに保存し、クライアントサイドでは共有や保存しないことを強く推奨します。**</i>
 
-  すべてのAPIリクエストで、以下のように`Authorization` HTTPヘッダーにAPIキーを含めてください：
+  すべての API リクエストで、以下のように `Authorization` HTTP ヘッダーに API キーを含めてください：
 
-  <CodeGroup title="Code">
-    ```javascript
-      Authorization: Bearer {API_KEY}
-
-    ```
-  </CodeGroup>
+  <CodeGroup title="コード" targetCode='Authorization: Bearer {API_KEY}' />
 </div>
 
 ---
@@ -42,7 +34,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### リクエストボディ
 
     <Properties>
-      
+
       <Property name='inputs' type='object' key='inputs'>
           アプリで定義された各種変数値を入力できます。
           `inputs`パラメータには複数のキー/値ペアが含まれ、各キーは特定の変数に対応し、各値はその変数の具体的な値となります。
@@ -61,11 +53,18 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           アプリケーション内で開発者が一意に定義する必要があります。
       </Property>
       <Property name='files' type='array[object]' key='files'>
-          ファイルリスト、モデルがVision機能をサポートしている場合のみ、テキスト理解と質問応答を組み合わせたファイル（画像）の入力に適しています。
-          - `type` (string) サポートされるタイプ：`image`（現在は画像タイプのみサポート）
-          - `transfer_method` (string) 転送方法、画像URLの場合は`remote_url` / ファイルアップロードの場合は`local_file`
-          - `url` (string) 画像URL（転送方法が`remote_url`の場合）
-          - `upload_file_id` (string) アップロードされたファイルID、事前にファイルアップロードAPIを通じてアップロードする必要があります（転送方法が`local_file`の場合）
+          ファイルリスト、モデルが Vision/Video 機能をサポートしている場合に限り、ファイルをテキスト理解および質問応答に組み合わせて入力するのに適しています。
+          - `type` (string) サポートされるタイプ：
+            - `document` サポートされるタイプには以下が含まれます：'TXT', 'MD', 'MARKDOWN', 'MDX', 'PDF', 'HTML', 'XLSX', 'XLS', 'VTT', 'PROPERTIES', 'DOC', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
+            - `image` サポートされるタイプには以下が含まれます：'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
+            - `audio` サポートされるタイプには以下が含まれます：'MP3', 'M4A', 'WAV', 'WEBM', 'MPGA'
+            - `video` サポートされるタイプには以下が含まれます：'MP4', 'MOV', 'MPEG', 'WEBM'
+            - `custom` サポートされるタイプには以下が含まれます：その他のファイルタイプ
+          - `transfer_method` (string) 転送方法:
+            - `remote_url`: ファイルのURL。
+            - `local_file`: ファイルをアップロード。
+          - `url` ファイルのURL。（転送方法が `remote_url` の場合のみ）。
+          - `upload_file_id` アップロードされたファイルID。（転送方法が `local_file` の場合のみ）。
       </Property>
     </Properties>
 
@@ -141,22 +140,19 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl -X POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": {"query": "Hello, world!"},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/completion-messages' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "inputs": {
-          "query": "Hello, world!"
-        },
-        "response_mode": "streaming",
-        "user": "abc-123"
-    }'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/completion-messages"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/completion-messages' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "inputs": {"query": "Hello, world!"},
+    "response_mode": "streaming",
+    "user": "abc-123"
+}'`}
+    />
     ### ブロッキングモード
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -212,7 +208,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Row>
   <Col>
   メッセージ送信時に使用するファイル（現在は画像のみ対応）をアップロードし、画像とテキストのマルチモーダルな理解を可能にします。
-  png、jpg、jpeg、webp、gif形式に対応しています。
+  png、jpg、jpeg、webp、gif 形式に対応しています。
   <i>アップロードされたファイルは、現在のエンドユーザーのみが使用できます。</i>
 
   ### リクエストボディ
@@ -220,42 +216,42 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   - `file` (File) 必須
     アップロードするファイル。
   - `user` (string) 必須
-    開発者のルールで定義されたユーザー識別子。アプリケーション内で一意である必要があります。
+    開発者のルールで定義されたユーザー識別子。アプリケーション内で一意である必要があります。サービス API は WebApp によって作成された会話を共有しません。
 
   ### レスポンス
-  アップロードが成功すると、サーバーはファイルのIDと関連情報を返します。
+  アップロードが成功すると、サーバーはファイルの ID と関連情報を返します。
   - `id` (uuid) ID
   - `name` (string) ファイル名
   - `size` (int) ファイルサイズ（バイト）
   - `extension` (string) ファイル拡張子
-  - `mime_type` (string) ファイルのMIMEタイプ
+  - `mime_type` (string) ファイルの MIME タイプ
   - `created_by` (uuid) エンドユーザーID
   - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
 
   ### エラー
   - 400, `no_file_uploaded`, ファイルを提供する必要があります
-  - 400, `too_many_files`, 現在は1つのファイルのみ受け付けています
+  - 400, `too_many_files`, 現在は 1 つのファイルのみ受け付けています
   - 400, `unsupported_preview`, ファイルがプレビューに対応していません
   - 400, `unsupported_estimate`, ファイルが推定に対応していません
   - 413, `file_too_large`, ファイルが大きすぎます
   - 415, `unsupported_file_type`, サポートされていない拡張子です。現在はドキュメントファイルのみ受け付けています
-  - 503, `s3_connection_failed`, S3サービスに接続できません
-  - 503, `s3_permission_denied`, S3へのファイルアップロード権限がありません
-  - 503, `s3_file_too_large`, ファイルがS3のサイズ制限を超えています
+  - 503, `s3_connection_failed`, S3 サービスに接続できません
+  - 503, `s3_permission_denied`, S3 へのファイルアップロード権限がありません
+  - 503, `s3_file_too_large`, ファイルが S3 のサイズ制限を超えています
   - 500, 内部サーバーエラー
 
   </Col>
   <Col sticky>
   ### リクエスト例
-  <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\\n--form 'user=abc-123'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/files/upload' \
-    --header 'Authorization: Bearer {api_key}' \
-    --form 'file=@"/path/to/file"'
-    ```
-
-    </CodeGroup>
+  <CodeGroup
+    title="Request"
+    tag="POST"
+    label="/files/upload"
+    targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\
+--header 'Authorization: Bearer {api_key}' \\
+--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\
+--form 'user=abc-123'`}
+  />
 
 
   ### レスポンス例
@@ -277,6 +273,83 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
+  url='/files/:file_id/preview'
+  method='GET'
+  title='ファイルプレビュー'
+  name='#file-preview'
+/>
+<Row>
+  <Col>
+    アップロードされたファイルをプレビューまたはダウンロードします。このエンドポイントを使用すると、以前にファイルアップロード API でアップロードされたファイルにアクセスできます。
+
+    <i>ファイルは、リクエストしているアプリケーションのメッセージ範囲内にある場合のみアクセス可能です。</i>
+
+    ### パスパラメータ
+    - `file_id` (string) 必須
+      プレビューするファイルの一意識別子。ファイルアップロード API レスポンスから取得します。
+
+    ### クエリパラメータ
+    - `as_attachment` (boolean) オプション
+      ファイルを添付ファイルとして強制ダウンロードするかどうか。デフォルトは `false`（ブラウザでプレビュー）。
+
+    ### レスポンス
+    ブラウザ表示またはダウンロード用の適切なヘッダー付きでファイル内容を返します。
+    - `Content-Type` ファイル MIME タイプに基づいて設定
+    - `Content-Length` ファイルサイズ（バイト、利用可能な場合）
+    - `Content-Disposition` `as_attachment=true` の場合は "attachment" に設定
+    - `Cache-Control` パフォーマンス向上のためのキャッシュヘッダー
+    - `Accept-Ranges` 音声/動画ファイルの場合は "bytes" に設定
+
+    ### エラー
+    - 400, `invalid_param`, パラメータ入力異常
+    - 403, `file_access_denied`, ファイルアクセス拒否またはファイルが現在のアプリケーションに属していません
+    - 404, `file_not_found`, ファイルが見つからないか削除されています
+    - 500, サーバー内部エラー
+
+  </Col>
+  <Col sticky>
+    ### リクエスト例
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/files/:file_id/preview"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    ### 添付ファイルとしてダウンロード
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/files/:file_id/preview"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \\
+--header 'Authorization: Bearer {api_key}' \\
+--output downloaded_file.png`}
+    />
+
+    ### レスポンスヘッダー例
+    <CodeGroup title="Response Headers">
+    ```http {{ title: 'ヘッダー - 画像プレビュー' }}
+    Content-Type: image/png
+    Content-Length: 1024
+    Cache-Control: public, max-age=3600
+    ```
+    </CodeGroup>
+
+    ### ファイルダウンロードレスポンスヘッダー
+    <CodeGroup title="Response Headers">
+    ```http {{ title: 'ヘッダー - ファイルダウンロード' }}
+    Content-Type: image/png
+    Content-Length: 1024
+    Content-Disposition: attachment; filename*=UTF-8''example.png
+    Cache-Control: public, max-age=3600
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
   url='/completion-messages/:task_id/stop'
   method='POST'
   title='生成の停止'
@@ -286,25 +359,24 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
   ストリーミングモードでのみサポートされています。
   ### パス
-  - `task_id` (string) タスクID、ストリーミングチャンクの返信から取得可能
+  - `task_id` (string) タスク ID、ストリーミングチャンクの返信から取得可能
   リクエストボディ
   - `user` (string) 必須
-    ユーザー識別子。エンドユーザーの身元を定義するために使用され、メッセージ送信インターフェースで渡されたユーザーと一致する必要があります。
+    ユーザー識別子。エンドユーザーの身元を定義するために使用され、メッセージ送信インターフェースで渡されたユーザーと一致する必要があります。サービス API は WebApp によって作成された会話を共有しません。
   ### レスポンス
   - `result` (string) 常に"success"を返します
   </Col>
   <Col sticky>
-  ### リクエスト例
-  <CodeGroup title="Request" tag="POST" label="/completion-messages/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/completion-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{ "user": "abc-123"}'`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/completion-messages/:task_id/stop' \
-    -H 'Authorization: Bearer {api_key}' \
-    -H 'Content-Type: application/json' \
-    --data-raw '{
-        "user": "abc-123"
-    }'
-    ```
-    </CodeGroup>
+    ### リクエスト例
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/completion-messages/:task_id/stop"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/completion-messages/:task_id/stop' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json' \\
+--data-raw '{ "user": "abc-123"}'`}
+    />
 
     ### レスポンス例
     <CodeGroup title="Response">
@@ -355,20 +427,19 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123",\n    "content": "message feedback information"\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "rating": "like",
-        "user": "abc-123",
-        "content": "message feedback information"
-    }'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/messages/:message_id/feedbacks"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "rating": "like",
+    "user": "abc-123",
+    "content": "message feedback information"
+}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -409,15 +480,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/app/feedbacks" targetCode={`curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/app/feedbacks"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -448,7 +516,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   url='/text-to-audio'
   method='POST'
   title='テキストから音声'
-  name='#audio'
+  name='#text-to-audio'
 />
 <Row>
   <Col>
@@ -470,20 +538,19 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",\n    "text": "Hello Dify",\n    "user": "abc-123"\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
-        "text": "Hello Dify",
-        "user": "abc-123"
-    }'
-    ```
-    
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/text-to-audio"
+      targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
+    "text": "Hello Dify",
+    "user": "abc-123"
+}'`}
+    />
 
     <CodeGroup title="headers">
     ```json {{ title: 'headers' }}
@@ -510,14 +577,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   - `name` (string) アプリケーションの名前
   - `description` (string) アプリケーションの説明
   - `tags` (array[string]) アプリケーションのタグ
+  - `mode` (string) アプリケーションのモード
+  - `author_name` (string) 作者の名前
   </Col>
   <Col>
-    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
-      ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/info' \
-      -H 'Authorization: Bearer {api_key}'
-      ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/info"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
@@ -526,7 +596,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "chat",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>
@@ -574,11 +646,30 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - `default` (string) デフォルト値
         - `options` (array[string]) オプション値
     - `file_upload` (object) ファイルアップロード設定
-      - `image` (object) 画像設定
-        現在は画像タイプのみ対応：`png`、`jpg`、`jpeg`、`webp`、`gif`
+      - `document` (object) ドキュメント設定
+        現在サポートされているドキュメントタイプ：`txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`。
         - `enabled` (bool) 有効かどうか
-        - `number_limits` (int) 画像数制限、デフォルトは3
-        - `transfer_methods` (array[string]) 転送方法リスト、remote_url、local_file、いずれかを選択
+        - `number_limits` (int) ドキュメント数の上限。デフォルトは 3
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。
+      - `image` (object) 画像設定
+        現在サポートされている画像タイプ：`png`, `jpg`, `jpeg`, `webp`, `gif`。
+        - `enabled` (bool) 有効かどうか
+        - `number_limits` (int) 画像数の上限。デフォルトは 3
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。
+      - `audio` (object) オーディオ設定
+        現在サポートされているオーディオタイプ：`mp3`, `m4a`, `wav`, `webm`, `amr`。
+        - `enabled` (bool) 有効かどうか
+        - `number_limits` (int) オーディオ数の上限。デフォルトは 3
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。
+      - `video` (object) ビデオ設定
+        現在サポートされているビデオタイプ：`mp4`, `mov`, `mpeg`, `mpga`。
+        - `enabled` (bool) 有効かどうか
+        - `number_limits` (int) ビデオ数の上限。デフォルトは 3
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。
+      - `custom` (object) カスタム設定
+        - `enabled` (bool) 有効かどうか
+        - `number_limits` (int) カスタム数の上限。デフォルトは 3
+        - `transfer_methods` (array[string]) 転送方法リスト：`remote_url`, `local_file`。いずれかを選択する必要があります。
     - `system_parameters` (object) システムパラメータ
       - `file_size_limit` (int) ドキュメントアップロードサイズ制限（MB）
       - `image_file_size_limit` (int) 画像ファイルアップロードサイズ制限（MB）
@@ -588,14 +679,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/parameters"
+      targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -655,31 +744,31 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-  アプリのWebApp設定を取得するために使用します。
+  アプリの WebApp 設定を取得するために使用します。
   ### レスポンス
-  - `title` (string) WebApp名
-  - `chat_color_theme` (string) チャットの色テーマ、16進数形式
+  - `title` (string) WebApp 名
+  - `chat_color_theme` (string) チャットの色テーマ、16 進数形式
   - `chat_color_theme_inverted` (bool) チャットの色テーマを反転するかどうか
   - `icon_type` (string) アイコンタイプ、`emoji`-絵文字、`image`-画像
-  - `icon` (string) アイコン。`emoji`タイプの場合は絵文字、`image`タイプの場合は画像URL
-  - `icon_background` (string) 16進数形式の背景色
-  - `icon_url` (string) アイコンのURL
+  - `icon` (string) アイコン。`emoji`タイプの場合は絵文字、`image`タイプの場合は画像 URL
+  - `icon_background` (string) 16 進数形式の背景色
+  - `icon_url` (string) アイコンの URL
   - `description` (string) 説明
   - `copyright` (string) 著作権情報
   - `privacy_policy` (string) プライバシーポリシーのリンク
   - `custom_disclaimer` (string) カスタム免責事項
   - `default_language` (string) デフォルト言語
   - `show_workflow_steps` (bool) ワークフローの詳細を表示するかどうか
-  - `use_icon_as_answer_icon` (bool) WebAppのアイコンをチャット内の🤖に置き換えるかどうか
+  - `use_icon_as_answer_icon` (bool) WebApp のアイコンをチャット内の🤖に置き換えるかどうか
   </Col>
   <Col>
-  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\\n-H 'Authorization: Bearer {api_key}'`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/site' \
-    -H 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/site"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\
+  -H 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}

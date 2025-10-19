@@ -19,7 +19,7 @@ const ScoreSlider: FC<Props> = ({
 
   return (
     <div className={className}>
-      <div className='mt-[14px] h-[1px]'>
+      <div className='mt-[14px] h-px'>
         <Slider
           max={100}
           min={80}

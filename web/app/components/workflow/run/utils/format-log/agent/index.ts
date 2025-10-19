@@ -9,10 +9,16 @@ const remove = (node: AgentLogItemWithChildren, removeId: string) => {
   if (!children || children.length === 0)
     return
 
-  const hasCircle = !!children.find(c => c.id === removeId)
+  const hasCircle = !!children.find((c) => {
+    const childId = c.message_id || (c as any).id
+    return childId === removeId
+  })
   if (hasCircle) {
     node.hasCircle = true
-    node.children = node.children.filter(c => c.id !== removeId)
+    node.children = node.children.filter((c) => {
+      const childId = c.message_id || (c as any).id
+      return childId !== removeId
+    })
     children = node.children
   }
 
@@ -28,9 +34,10 @@ const removeRepeatedSiblings = (list: AgentLogItemWithChildren[]) => {
   const result: AgentLogItemWithChildren[] = []
   const addedItemIds: string[] = []
   list.forEach((item) => {
-    if (!addedItemIds.includes(item.id)) {
+    const itemId = item.message_id || (item as any).id
+    if (itemId && !addedItemIds.includes(itemId)) {
       result.push(item)
-      addedItemIds.push(item.id)
+      addedItemIds.push(itemId)
     }
   })
   return result
@@ -38,16 +45,26 @@ const removeRepeatedSiblings = (list: AgentLogItemWithChildren[]) => {
 
 const removeCircleLogItem = (log: AgentLogItemWithChildren) => {
   const newLog = cloneDeep(log)
+
+  // If no children, return as is
+  if (!newLog.children || newLog.children.length === 0)
+    return newLog
+
   newLog.children = removeRepeatedSiblings(newLog.children)
-  let { id, children } = newLog
-  if (!children || children.length === 0)
-    return log
+  const id = newLog.message_id || (newLog as any).id
+  let { children } = newLog
 
   // check one step circle
-  const hasOneStepCircle = !!children.find(c => c.id === id)
+  const hasOneStepCircle = !!children.find((c) => {
+    const childId = c.message_id || (c as any).id
+    return childId === id
+  })
   if (hasOneStepCircle) {
     newLog.hasCircle = true
-    newLog.children = newLog.children.filter(c => c.id !== id)
+    newLog.children = newLog.children.filter((c) => {
+      const childId = c.message_id || (c as any).id
+      return childId !== id
+    })
     children = newLog.children
   }
 
@@ -62,21 +79,54 @@ const listToTree = (logs: AgentLogItem[]) => {
   if (!logs || logs.length === 0)
     return []
 
-  const tree: AgentLogItemWithChildren[] = []
-  logs.forEach((log) => {
-    const hasParent = !!log.parent_id
-    if (hasParent) {
-      const parent = logs.find(item => item.id === log.parent_id) as AgentLogItemWithChildren
-      if (parent) {
-        if (!parent.children)
-          parent.children = []
-        parent.children.push(log as AgentLogItemWithChildren)
-      }
-    }
-    else {
-      tree.push(log as AgentLogItemWithChildren)
+  // First pass: identify all unique items and track parent-child relationships
+  const itemsById = new Map<string, any>()
+  const childrenById = new Map<string, any[]>()
+
+  logs.forEach((item) => {
+    const itemId = item.message_id || (item as any).id
+
+    // Only add to itemsById if not already there (keep first occurrence)
+    if (itemId && !itemsById.has(itemId))
+      itemsById.set(itemId, item)
+
+    // Initialize children array for this ID if needed
+    if (itemId && !childrenById.has(itemId))
+      childrenById.set(itemId, [])
+
+    // If this item has a parent, add it to parent's children list
+    if (item.parent_id) {
+      if (!childrenById.has(item.parent_id))
+        childrenById.set(item.parent_id, [])
+
+      childrenById.get(item.parent_id)!.push(item)
     }
   })
+
+  // Second pass: build tree structure
+  const tree: AgentLogItemWithChildren[] = []
+
+  // Find root nodes (items without parents)
+  itemsById.forEach((item) => {
+    const hasParent = !!item.parent_id
+    if (!hasParent) {
+      const itemId = item.message_id || (item as any).id
+      const children = childrenById.get(itemId)
+      if (children && children.length > 0)
+        item.children = children
+
+      tree.push(item as AgentLogItemWithChildren)
+    }
+  })
+
+  // Add children property to all items that have children
+  itemsById.forEach((item) => {
+    const itemId = item.message_id || (item as any).id
+    const children = childrenById.get(itemId)
+    if (children && children.length > 0)
+      item.children = children
+  })
+
   return tree
 }
 

@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import {
   RiExternalLinkLine,
 } from '@remixicon/react'
 import Button from '@/app/components/base/button'
-import { getLocaleOnClient } from '@/i18n'
+import { useDocLink } from '@/context/i18n'
 
 export type IConfirm = {
   className?: string
@@ -30,20 +30,13 @@ function Confirm({
   email,
 }: IConfirm) {
   const { t } = useTranslation()
-  const locale = getLocaleOnClient()
+  const docLink = useDocLink()
   const dialogRef = useRef<HTMLDivElement>(null)
   const [isVisible, setIsVisible] = useState(isShow)
-
-  const docLink = useMemo(() => {
-    if (locale === 'zh-Hans')
-      return 'https://docs.dify.ai/zh-hans/getting-started/dify-for-education'
-    if (locale === 'ja-JP')
-      return 'https://docs.dify.ai/ja-jp/getting-started/dify-for-education'
-    return 'https://docs.dify.ai/getting-started/dify-for-education'
-  }, [locale])
+  const eduDocLink = docLink('/getting-started/dify-for-education')
 
   const handleClick = () => {
-    window.open(docLink, '_blank', 'noopener,noreferrer')
+    window.open(eduDocLink, '_blank', 'noopener,noreferrer')
   }
 
   useEffect(() => {
@@ -106,7 +99,7 @@ function Confirm({
             <div className='flex items-center gap-1'>
               {showLink && (
                 <>
-                  <a onClick={handleClick} href={docLink} target='_blank' className='system-xs-regular cursor-pointer text-text-accent'>{t('education.learn')}</a>
+                  <a onClick={handleClick} href={eduDocLink} target='_blank' className='system-xs-regular cursor-pointer text-text-accent'>{t('education.learn')}</a>
                   <RiExternalLinkLine className='h-3 w-3 text-text-accent' />
                 </>
               )}

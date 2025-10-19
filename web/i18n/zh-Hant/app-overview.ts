@@ -1,6 +1,6 @@
 const translation = {
   welcome: {
-    firstStepTip: '開始之前,',
+    firstStepTip: '開始之前，',
     enterKeyTip: '請先在下方輸入你的 OpenAI API Key',
     getKeyTip: '從 OpenAI 獲取你的 API Key',
     placeholder: '你的 OpenAI API Key（例如 sk-xxxx）',
@@ -9,11 +9,11 @@ const translation = {
     cloud: {
       trial: {
         title: '您正在使用 {{providerName}} 的試用配額。',
-        description: '試用配額僅供您測試使用。 在試用配額用完之前，請自行設定模型提供商或購買額外配額。',
+        description: '試用配額僅供您測試使用。在試用配額用完之前，請自行設定模型提供商或購買額外配額。',
       },
       exhausted: {
-        title: '您的試用額度已用完，請設定您的APIKey。',
-        description: '您的試用配額已用完。 請設定您自己的模型提供商或購買額外配額。',
+        title: '您的試用額度已用完，請設定您的 APIKey。',
+        description: '您的試用配額已用完。請設定您自己的模型提供商或購買額外配額。',
       },
     },
     selfHost: {
@@ -136,11 +136,11 @@ const translation = {
     },
     activeUsers: {
       title: '活躍使用者數',
-      explanation: '每日AI互動次數。',
+      explanation: '每日 AI 互動次數。',
     },
     totalConversations: {
       title: '總對話數',
-      explanation: '每日AI對話次數；不包括提示工程/調試。',
+      explanation: '每日 AI 對話次數；不包括提示工程/調試。',
     },
     tokenUsage: {
       title: '費用消耗',

@@ -8,6 +8,10 @@ import pytesseract
 from PIL import Image
 import io
 import datetime
+"""Abstract interface for document loader implementations."""
+
+import contextlib
+from collections.abc import Iterator
 
 from configs import dify_config
 from core.rag.extractor.blob.blob import Blob
@@ -39,13 +43,10 @@ class PdfExtractor(BaseExtractor):
         """Extract text from PDF with caching support."""
         plaintext_file_exists = False
         if self._file_cache_key:
-            try:
-                text = cast(bytes, storage.load(self._file_cache_key)).decode("utf-8")
+            with contextlib.suppress(FileNotFoundError):
+                text = storage.load(self._file_cache_key).decode("utf-8")
                 plaintext_file_exists = True
                 return [Document(page_content=text)]
-            except FileNotFoundError:
-                pass
-
         documents = list(self.load())
         text_list = []
         for document in documents:

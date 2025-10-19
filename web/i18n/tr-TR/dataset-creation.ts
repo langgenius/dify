@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: 'Bilgi Oluştur',
-      update: 'Veri ekle',
       fallbackRoute: 'Bilgi',
     },
     one: 'Veri kaynağı seçin',
@@ -28,6 +26,7 @@ const translation = {
     uploader: {
       title: 'Dosya yükle',
       button: 'Dosyaları veya klasörleri sürükleyip bırakın veya',
+      buttonSingleFile: 'Dosyayı sürükleyip bırakın veya',
       browse: 'Göz atın',
       tip: 'Destekler {{supportTypes}}. Her biri en fazla {{size}}MB.',
       validation: {
@@ -63,7 +62,6 @@ const translation = {
       run: 'Çalıştır',
       firecrawlTitle: '🔥Firecrawl ile web içeriğini çıkarın',
       firecrawlDoc: 'Firecrawl dokümanları',
-      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       options: 'Seçenekler',
       crawlSubPage: 'Alt sayfaları tarayın',
       limit: 'Sınır',
@@ -93,8 +91,8 @@ const translation = {
       waterCrawlNotConfigured: 'Watercrawl yapılandırılmamış',
       watercrawlTitle: 'Watercrawl ile web içeriğini çıkar',
       configureJinaReader: 'Jina Okuyucusunu Yapılandır',
-      watercrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       configureWatercrawl: 'Watercrawl\'ı yapılandır',
+      running: 'Koşarak',
     },
     cancel: 'İptal',
   },
@@ -180,6 +178,7 @@ const translation = {
     highQualityTip: 'Yüksek Kalite modunda yerleştirme işlemi tamamlandıktan sonra, Ekonomik moda geri dönülemez.',
     childChunkForRetrieval: 'Alma için alt yığın',
     parentChunkForContext: 'Bağlam için üst yığın',
+    qaTip: 'Yapılandırılmış Soru-Cevap verilerini kullanırken, soruları yanıtlarla eşleştiren belgeler oluşturabilirsiniz. Bu belgeler, soru bölümüne göre dizine eklenir ve sistemin sorgu benzerliğine dayalı olarak ilgili yanıtları almasına olanak tanır.',
   },
   stepThree: {
     creationTitle: '🎉 Bilgi oluşturuldu',

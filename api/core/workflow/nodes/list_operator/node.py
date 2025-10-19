@@ -1,47 +1,97 @@
-from collections.abc import Callable, Sequence
-from typing import Any, Literal, Union
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, TypeAlias, TypeVar
 
 from core.file import File
 from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.enums import NodeType
-from models.workflow import WorkflowNodeExecutionStatus
+from core.variables.segments import ArrayAnySegment, ArrayBooleanSegment, ArraySegment
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.base.node import Node
 
-from .entities import ListOperatorNodeData
+from .entities import FilterOperator, ListOperatorNodeData, Order
 from .exc import InvalidConditionError, InvalidFilterValueError, InvalidKeyError, ListOperatorError
 
+_SUPPORTED_TYPES_TUPLE = (
+    ArrayFileSegment,
+    ArrayNumberSegment,
+    ArrayStringSegment,
+    ArrayBooleanSegment,
+)
+_SUPPORTED_TYPES_ALIAS: TypeAlias = ArrayFileSegment | ArrayNumberSegment | ArrayStringSegment | ArrayBooleanSegment
 
-class ListOperatorNode(BaseNode[ListOperatorNodeData]):
-    _node_data_cls = ListOperatorNodeData
-    _node_type = NodeType.LIST_OPERATOR
+
+_T = TypeVar("_T")
+
+
+def _negation(filter_: Callable[[_T], bool]) -> Callable[[_T], bool]:
+    """Returns the negation of a given filter function. If the original filter
+    returns `True` for a value, the negated filter will return `False`, and vice versa.
+    """
+
+    def wrapper(value: _T) -> bool:
+        return not filter_(value)
+
+    return wrapper
+
+
+class ListOperatorNode(Node):
+    node_type = NodeType.LIST_OPERATOR
+
+    _node_data: ListOperatorNodeData
+
+    def init_node_data(self, data: Mapping[str, Any]):
+        self._node_data = ListOperatorNodeData.model_validate(data)
+
+    def _get_error_strategy(self) -> ErrorStrategy | None:
+        return self._node_data.error_strategy
+
+    def _get_retry_config(self) -> RetryConfig:
+        return self._node_data.retry_config
+
+    def _get_title(self) -> str:
+        return self._node_data.title
+
+    def _get_description(self) -> str | None:
+        return self._node_data.desc
+
+    def _get_default_value_dict(self) -> dict[str, Any]:
+        return self._node_data.default_value_dict
+
+    def get_base_node_data(self) -> BaseNodeData:
+        return self._node_data
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self):
-        inputs: dict[str, list] = {}
-        process_data: dict[str, list] = {}
+        inputs: dict[str, Sequence[object]] = {}
+        process_data: dict[str, Sequence[object]] = {}
         outputs: dict[str, Any] = {}
 
-        variable = self.graph_runtime_state.variable_pool.get(self.node_data.variable)
+        variable = self.graph_runtime_state.variable_pool.get(self._node_data.variable)
         if variable is None:
-            error_message = f"Variable not found for selector: {self.node_data.variable}"
+            error_message = f"Variable not found for selector: {self._node_data.variable}"
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
             )
         if not variable.value:
             inputs = {"variable": []}
             process_data = {"variable": []}
-            outputs = {"result": [], "first_record": None, "last_record": None}
+            if isinstance(variable, ArraySegment):
+                result = variable.model_copy(update={"value": []})
+            else:
+                result = ArrayAnySegment(value=[])
+            outputs = {"result": result, "first_record": None, "last_record": None}
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=inputs,
                 process_data=process_data,
                 outputs=outputs,
             )
-        if not isinstance(variable, ArrayFileSegment | ArrayNumberSegment | ArrayStringSegment):
-            error_message = (
-                f"Variable {self.node_data.variable} is not an ArrayFileSegment, ArrayNumberSegment "
-                "or ArrayStringSegment"
-            )
+        if not isinstance(variable, _SUPPORTED_TYPES_TUPLE):
+            error_message = f"Variable {self._node_data.variable} is not an array type, actual type: {type(variable)}"
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
             )
@@ -55,23 +105,23 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
 
         try:
             # Filter
-            if self.node_data.filter_by.enabled:
+            if self._node_data.filter_by.enabled:
                 variable = self._apply_filter(variable)
 
             # Extract
-            if self.node_data.extract_by.enabled:
+            if self._node_data.extract_by.enabled:
                 variable = self._extract_slice(variable)
 
             # Order
-            if self.node_data.order_by.enabled:
+            if self._node_data.order_by.enabled:
                 variable = self._apply_order(variable)
 
             # Slice
-            if self.node_data.limit.enabled:
+            if self._node_data.limit.enabled:
                 variable = self._apply_slice(variable)
 
             outputs = {
-                "result": variable.value,
+                "result": variable,
                 "first_record": variable.value[0] if variable.value else None,
                 "last_record": variable.value[-1] if variable.value else None,
             }
@@ -90,12 +140,10 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
                 outputs=outputs,
             )
 
-    def _apply_filter(
-        self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
-    ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
+    def _apply_filter(self, variable: _SUPPORTED_TYPES_ALIAS) -> _SUPPORTED_TYPES_ALIAS:
         filter_func: Callable[[Any], bool]
         result: list[Any] = []
-        for condition in self.node_data.filter_by.conditions:
+        for condition in self._node_data.filter_by.conditions:
             if isinstance(variable, ArrayStringSegment):
                 if not isinstance(condition.value, str):
                     raise InvalidFilterValueError(f"Invalid filter value: {condition.value}")
@@ -113,6 +161,8 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
             elif isinstance(variable, ArrayFileSegment):
                 if isinstance(condition.value, str):
                     value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
+                elif isinstance(condition.value, bool):
+                    raise ValueError(f"File filter expects a string value, got {type(condition.value)}")
                 else:
                     value = condition.value
                 filter_func = _get_file_filter_func(
@@ -122,41 +172,38 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
                 )
                 result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
+            else:
+                if not isinstance(condition.value, bool):
+                    raise ValueError(f"Boolean filter expects a boolean value, got {type(condition.value)}")
+                filter_func = _get_boolean_filter_func(condition=condition.comparison_operator, value=condition.value)
+                result = list(filter(filter_func, variable.value))
+                variable = variable.model_copy(update={"value": result})
         return variable
 
-    def _apply_order(
-        self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
-    ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
-        if isinstance(variable, ArrayStringSegment):
-            result = _order_string(order=self.node_data.order_by.value, array=variable.value)
+    def _apply_order(self, variable: _SUPPORTED_TYPES_ALIAS) -> _SUPPORTED_TYPES_ALIAS:
+        if isinstance(variable, (ArrayStringSegment, ArrayNumberSegment, ArrayBooleanSegment)):
+            result = sorted(variable.value, reverse=self._node_data.order_by.value == Order.DESC)
             variable = variable.model_copy(update={"value": result})
-        elif isinstance(variable, ArrayNumberSegment):
-            result = _order_number(order=self.node_data.order_by.value, array=variable.value)
-            variable = variable.model_copy(update={"value": result})
-        elif isinstance(variable, ArrayFileSegment):
+        else:
             result = _order_file(
-                order=self.node_data.order_by.value, order_by=self.node_data.order_by.key, array=variable.value
+                order=self._node_data.order_by.value, order_by=self._node_data.order_by.key, array=variable.value
             )
             variable = variable.model_copy(update={"value": result})
+
         return variable
 
-    def _apply_slice(
-        self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
-    ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
-        result = variable.value[: self.node_data.limit.size]
+    def _apply_slice(self, variable: _SUPPORTED_TYPES_ALIAS) -> _SUPPORTED_TYPES_ALIAS:
+        result = variable.value[: self._node_data.limit.size]
         return variable.model_copy(update={"value": result})
 
-    def _extract_slice(
-        self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
-    ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
-        value = int(self.graph_runtime_state.variable_pool.convert_template(self.node_data.extract_by.serial).text)
+    def _extract_slice(self, variable: _SUPPORTED_TYPES_ALIAS) -> _SUPPORTED_TYPES_ALIAS:
+        value = int(self.graph_runtime_state.variable_pool.convert_template(self._node_data.extract_by.serial).text)
         if value < 1:
             raise ValueError(f"Invalid serial index: must be >= 1, got {value}")
+        if value > len(variable.value):
+            raise InvalidKeyError(f"Invalid serial index: must be <= {len(variable.value)}, got {value}")
         value -= 1
-        if len(variable.value) > int(value):
-            result = variable.value[value]
-        else:
-            result = ""
+        result = variable.value[value]
         return variable.model_copy(update={"value": [result]})
 
 
@@ -201,11 +248,11 @@ def _get_string_filter_func(*, condition: str, value: str) -> Callable[[str], bo
         case "empty":
             return lambda x: x == ""
         case "not contains":
-            return lambda x: not _contains(value)(x)
+            return _negation(_contains(value))
         case "is not":
-            return lambda x: not _is(value)(x)
+            return _negation(_is(value))
         case "not in":
-            return lambda x: not _in(value)(x)
+            return _negation(_in(value))
         case "not empty":
             return lambda x: x != ""
         case _:
@@ -217,7 +264,7 @@ def _get_sequence_filter_func(*, condition: str, value: Sequence[str]) -> Callab
         case "in":
             return _in(value)
         case "not in":
-            return lambda x: not _in(value)(x)
+            return _negation(_in(value))
         case _:
             raise InvalidConditionError(f"Invalid condition: {condition}")
 
@@ -240,12 +287,22 @@ def _get_number_filter_func(*, condition: str, value: int | float) -> Callable[[
             raise InvalidConditionError(f"Invalid condition: {condition}")
 
 
+def _get_boolean_filter_func(*, condition: FilterOperator, value: bool) -> Callable[[bool], bool]:
+    match condition:
+        case FilterOperator.IS:
+            return _is(value)
+        case FilterOperator.IS_NOT:
+            return _negation(_is(value))
+        case _:
+            raise InvalidConditionError(f"Invalid condition: {condition}")
+
+
 def _get_file_filter_func(*, key: str, condition: str, value: str | Sequence[str]) -> Callable[[File], bool]:
     extract_func: Callable[[File], Any]
     if key in {"name", "extension", "mime_type", "url"} and isinstance(value, str):
         extract_func = _get_file_extract_string_func(key=key)
         return lambda x: _get_string_filter_func(condition=condition, value=value)(extract_func(x))
-    if key in {"type", "transfer_method"} and isinstance(value, Sequence):
+    if key in {"type", "transfer_method"}:
         extract_func = _get_file_extract_string_func(key=key)
         return lambda x: _get_sequence_filter_func(condition=condition, value=value)(extract_func(x))
     elif key == "size" and isinstance(value, str):
@@ -267,8 +324,8 @@ def _endswith(value: str) -> Callable[[str], bool]:
     return lambda x: x.endswith(value)
 
 
-def _is(value: str) -> Callable[[str], bool]:
-    return lambda x: x is value
+def _is(value: _T) -> Callable[[_T], bool]:
+    return lambda x: x == value
 
 
 def _in(value: str | Sequence[str]) -> Callable[[str], bool]:
@@ -299,21 +356,13 @@ def _ge(value: int | float) -> Callable[[int | float], bool]:
     return lambda x: x >= value
 
 
-def _order_number(*, order: Literal["asc", "desc"], array: Sequence[int | float]):
-    return sorted(array, key=lambda x: x, reverse=order == "desc")
-
-
-def _order_string(*, order: Literal["asc", "desc"], array: Sequence[str]):
-    return sorted(array, key=lambda x: x, reverse=order == "desc")
-
-
-def _order_file(*, order: Literal["asc", "desc"], order_by: str = "", array: Sequence[File]):
+def _order_file(*, order: Order, order_by: str = "", array: Sequence[File]):
     extract_func: Callable[[File], Any]
     if order_by in {"name", "type", "extension", "mime_type", "transfer_method", "url"}:
         extract_func = _get_file_extract_string_func(key=order_by)
-        return sorted(array, key=lambda x: extract_func(x), reverse=order == "desc")
+        return sorted(array, key=lambda x: extract_func(x), reverse=order == Order.DESC)
     elif order_by == "size":
         extract_func = _get_file_extract_number_func(key=order_by)
-        return sorted(array, key=lambda x: extract_func(x), reverse=order == "desc")
+        return sorted(array, key=lambda x: extract_func(x), reverse=order == Order.DESC)
     else:
         raise InvalidKeyError(f"Invalid order key: {order_by}")

@@ -1,5 +1,6 @@
 import { del, get, patch, post } from './base'
 import type { App, AppCategory } from '@/models/explore'
+import type { AccessMode } from '@/models/access-control'
 
 export const fetchAppList = () => {
   return get<{
@@ -38,4 +39,8 @@ export const updatePinStatus = (id: string, isPinned: boolean) => {
 
 export const getToolProviders = () => {
   return get('/workspaces/current/tool-providers')
+}
+
+export const getAppAccessModeByAppId = (appId: string) => {
+  return get<{ accessMode: AccessMode }>(`/enterprise/webapp/app/access-mode?appId=${appId}`)
 }

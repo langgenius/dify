@@ -18,7 +18,7 @@ type Props = {
   onChange: (value: string) => void
 }
 
-const TYPES = [VarType.string, VarType.number, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject, VarType.object]
+const TYPES = [VarType.string, VarType.number, VarType.boolean, VarType.arrayNumber, VarType.arrayString, VarType.arrayBoolean, VarType.arrayObject, VarType.object]
 const VarReferencePicker: FC<Props> = ({
   readonly,
   className,
@@ -43,7 +43,7 @@ const VarReferencePicker: FC<Props> = ({
         offset={4}
       >
         <PortalToFollowElemTrigger onClick={() => setOpen(!open)} className='w-[120px] cursor-pointer'>
-          <div className='flex h-8 items-center justify-between rounded-lg border-0 bg-components-button-secondary-bg px-2.5 text-[13px] text-text-primary'>
+          <div className='flex h-8 items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2.5 text-[13px] text-text-primary'>
             <div className='w-0 grow truncate capitalize' title={value}>{value}</div>
             <RiArrowDownSLine className='h-3.5 w-3.5 shrink-0 text-text-secondary' />
           </div>

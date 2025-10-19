@@ -18,6 +18,7 @@ const translation = {
       bulkImport: 'Masowy import',
       bulkExport: 'Masowy eksport',
       clearAll: 'Wyczyść wszystkie adnotacje',
+      clearAllConfirm: 'Usunąć wszystkie adnotacje?',
     },
   },
   editModal: {
@@ -84,6 +85,16 @@ const translation = {
   },
   embeddingModelSwitchTip:
     'Model wektoryzacji tekstu adnotacji, przełączanie modeli spowoduje ponowne osadzenie, co wiąże się z dodatkowymi kosztami.',
+  list: {
+    delete: {
+      title: 'Czy na pewno chcesz usunąć?',
+    },
+  },
+  batchAction: {
+    selected: 'Wybrany',
+    delete: 'Usuń',
+    cancel: 'Anuluj',
+  },
 }
 
 export default translation

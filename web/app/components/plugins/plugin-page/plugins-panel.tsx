@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { FilterState } from './filter-management'
 import FilterManagement from './filter-management'
 import List from './list'
-import { useInstalledLatestVersion, useInstalledPluginListWithPagination, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useInstalledLatestVersion, useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { usePluginPageContext } from './context'
 import { useDebounceFn } from 'ahooks'
@@ -17,7 +17,7 @@ const PluginsPanel = () => {
   const { t } = useTranslation()
   const filters = usePluginPageContext(v => v.filters) as FilterState
   const setFilters = usePluginPageContext(v => v.setFilters)
-  const { data: pluginList, isLoading: isPluginListLoading, isFetching, isLastPage, loadNextPage } = useInstalledPluginListWithPagination()
+  const { data: pluginList, isLoading: isPluginListLoading, isFetching, isLastPage, loadNextPage } = useInstalledPluginList()
   const { data: installedLatestVersion } = useInstalledLatestVersion(
     pluginList?.plugins
       .filter(plugin => plugin.source === PluginSource.marketplace)
@@ -36,6 +36,9 @@ const PluginsPanel = () => {
       ...plugin,
       latest_version: installedLatestVersion?.versions[plugin.plugin_id]?.version ?? '',
       latest_unique_identifier: installedLatestVersion?.versions[plugin.plugin_id]?.unique_identifier ?? '',
+      status: installedLatestVersion?.versions[plugin.plugin_id]?.status ?? 'active',
+      deprecated_reason: installedLatestVersion?.versions[plugin.plugin_id]?.deprecated_reason ?? '',
+      alternative_plugin_id: installedLatestVersion?.versions[plugin.plugin_id]?.alternative_plugin_id ?? '',
     })) || []
   }, [pluginList, installedLatestVersion])
 
@@ -66,20 +69,25 @@ const PluginsPanel = () => {
           onFilterChange={handleFilterChange}
         />
       </div>
-      {isPluginListLoading ? <Loading type='app' /> : (filteredList?.length ?? 0) > 0 ? (
-        <div className='flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch px-12'>
-          <div className='w-full'>
-            <List pluginList={filteredList || []} />
-          </div>
-          {!isLastPage && !isFetching && (
-            <Button onClick={loadNextPage}>
-              {t('workflow.common.loadMore')}
-            </Button>
+      {isPluginListLoading && <Loading type='app' />}
+      {!isPluginListLoading && (
+        <>
+          {(filteredList?.length ?? 0) > 0 ? (
+            <div className='flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch overflow-y-auto px-12'>
+              <div className='w-full'>
+                <List pluginList={filteredList || []} />
+              </div>
+              {!isLastPage && !isFetching && (
+                <Button onClick={loadNextPage}>
+                  {t('workflow.common.loadMore')}
+                </Button>
+              )}
+              {isFetching && <div className='system-md-semibold text-text-secondary'>{t('appLog.detail.loading')}</div>}
+            </div>
+          ) : (
+            <Empty />
           )}
-          {isFetching && <div className='system-md-semibold text-text-secondary'>{t('appLog.detail.loading')}</div>}
-        </div>
-      ) : (
-        <Empty />
+        </>
       )}
       <PluginDetailPanel
         detail={currentPluginDetail}

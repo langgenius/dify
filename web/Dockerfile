@@ -5,10 +5,14 @@ LABEL maintainer="takatost@gmail.com"
 # if you located in China, you can use aliyun mirror to speed up
 # RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
+# if you located in China, you can use taobao registry to speed up
+# RUN npm config set registry https://registry.npmmirror.com
+
 RUN apk add --no-cache tzdata
-RUN npm install -g pnpm@10.8.0
+RUN corepack enable
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+ENV NEXT_PUBLIC_BASE_PATH=
 
 
 # install packages
@@ -19,8 +23,8 @@ WORKDIR /app/web
 COPY package.json .
 COPY pnpm-lock.yaml .
 
-# if you located in China, you can use taobao registry to speed up
-# RUN pnpm install --frozen-lockfile --registry https://registry.npmmirror.com/
+# Use packageManager from package.json
+RUN corepack install
 
 RUN pnpm install --frozen-lockfile
 
@@ -31,7 +35,7 @@ COPY --from=packages /app/web/ .
 COPY . .
 
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-RUN pnpm build
+RUN pnpm build:docker
 
 
 # production stage

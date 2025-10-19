@@ -3,6 +3,7 @@ import { Fragment, cloneElement, useRef } from 'react'
 import cn from '@/utils/classnames'
 
 export type HtmlContentProps = {
+  open?: boolean
   onClose?: () => void
   onClick?: () => void
 }
@@ -36,13 +37,16 @@ export default function CustomPopover({
   const timeOutRef = useRef<number | null>(null)
 
   const onMouseEnter = (isOpen: boolean) => {
-    timeOutRef.current && window.clearTimeout(timeOutRef.current)
-    !isOpen && buttonRef.current?.click()
+    if (timeOutRef.current != null)
+      window.clearTimeout(timeOutRef.current)
+    if (!isOpen)
+      buttonRef.current?.click()
   }
 
   const onMouseLeave = (isOpen: boolean) => {
     timeOutRef.current = window.setTimeout(() => {
-      isOpen && buttonRef.current?.click()
+      if (isOpen)
+        buttonRef.current?.click()
     }, timeoutDuration)
   }
 
@@ -100,7 +104,8 @@ export default function CustomPopover({
                       }
                     >
                       {cloneElement(htmlContent as React.ReactElement, {
-                        onClose: () => onMouseLeave(open),
+                        open,
+                        onClose: close,
                         ...(manualClose
                           ? {
                             onClick: close,

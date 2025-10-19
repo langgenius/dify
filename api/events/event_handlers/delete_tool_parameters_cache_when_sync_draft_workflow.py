@@ -12,14 +12,15 @@ def handle(sender, **kwargs):
     if synced_draft_workflow is None:
         return
     for node_data in synced_draft_workflow.graph_dict.get("nodes", []):
-        if node_data.get("data", {}).get("type") == NodeType.TOOL.value:
+        if node_data.get("data", {}).get("type") == NodeType.TOOL:
             try:
-                tool_entity = ToolEntity(**node_data["data"])
+                tool_entity = ToolEntity.model_validate(node_data["data"])
                 tool_runtime = ToolManager.get_tool_runtime(
                     provider_type=tool_entity.provider_type,
                     provider_id=tool_entity.provider_id,
                     tool_name=tool_entity.tool_name,
                     tenant_id=app.tenant_id,
+                    credential_id=tool_entity.credential_id,
                 )
                 manager = ToolParameterConfigurationManager(
                     tenant_id=app.tenant_id,

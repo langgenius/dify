@@ -10,6 +10,9 @@ import type {
   LoopVariable,
   LoopVariablesComponentShape,
 } from '@/app/components/workflow/nodes/loop/types'
+import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
+import Toast from '@/app/components/base/toast'
+import { ValueType, VarType } from '@/app/components/workflow/types'
 
 type ItemProps = {
   item: LoopVariable
@@ -21,16 +24,44 @@ const Item = ({
   handleUpdateLoopVariable,
 }: ItemProps) => {
   const { t } = useTranslation()
+
+  const checkVariableName = (value: string) => {
+    const { isValid, errorMessageKey } = checkKeys([value], false)
+    if (!isValid) {
+      Toast.notify({
+        type: 'error',
+        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: t('workflow.env.modal.name') }),
+      })
+      return false
+    }
+    return true
+  }
   const handleUpdateItemLabel = useCallback((e: any) => {
+    replaceSpaceWithUnderscoreInVarNameInput(e.target)
+    if (!!e.target.value && !checkVariableName(e.target.value))
+      return
     handleUpdateLoopVariable(item.id, { label: e.target.value })
   }, [item.id, handleUpdateLoopVariable])
 
+  const getDefaultValue = useCallback((varType: VarType, valueType: ValueType) => {
+    if(valueType === ValueType.variable)
+      return undefined
+    switch (varType) {
+      case VarType.boolean:
+        return false
+      case VarType.arrayBoolean:
+        return [false]
+      default:
+        return undefined
+    }
+  }, [])
+
   const handleUpdateItemVarType = useCallback((value: any) => {
-    handleUpdateLoopVariable(item.id, { var_type: value, value: undefined })
+    handleUpdateLoopVariable(item.id, { var_type: value, value: getDefaultValue(value, item.value_type) })
   }, [item.id, handleUpdateLoopVariable])
 
   const handleUpdateItemValueType = useCallback((value: any) => {
-    handleUpdateLoopVariable(item.id, { value_type: value, value: undefined })
+    handleUpdateLoopVariable(item.id, { value_type: value, value: getDefaultValue(item.var_type, value) })
   }, [item.id, handleUpdateLoopVariable])
 
   const handleUpdateItemValue = useCallback((value: any) => {
@@ -44,6 +75,7 @@ const Item = ({
           <Input
             value={item.label}
             onChange={handleUpdateItemLabel}
+            onBlur={e => checkVariableName(e.target.value)}
             autoFocus={!item.label}
             placeholder={t('workflow.nodes.loop.variableName')}
           />

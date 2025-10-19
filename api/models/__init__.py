@@ -26,7 +26,6 @@ from .dataset import (
     TidbAuthBinding,
     Whitelist,
 )
-from .engine import db
 from .enums import CreatorUserRole, UserFrom, WorkflowRunTriggeredFrom
 from .model import (
     ApiRequest,
@@ -34,6 +33,7 @@ from .model import (
     App,
     AppAnnotationHitHistory,
     AppAnnotationSetting,
+    AppMCPServer,
     AppMode,
     AppModelConfig,
     Conversation,
@@ -56,6 +56,7 @@ from .model import (
     TraceAppConfig,
     UploadFile,
 )
+from .oauth import DatasourceOauthParamConfig, DatasourceProvider
 from .provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -84,11 +85,10 @@ from .workflow import (
     Workflow,
     WorkflowAppLog,
     WorkflowAppLogCreatedFrom,
-    WorkflowNodeExecution,
-    WorkflowNodeExecutionStatus,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
-    WorkflowRunStatus,
     WorkflowType,
 )
 
@@ -100,14 +100,15 @@ __all__ = [
     "AccountStatus",
     "ApiRequest",
     "ApiToken",
-    "ApiToolProvider",  # Added
+    "ApiToolProvider",
     "App",
     "AppAnnotationHitHistory",
     "AppAnnotationSetting",
     "AppDatasetJoin",
+    "AppMCPServer",  # Added
     "AppMode",
     "AppModelConfig",
-    "BuiltinToolProvider",  # Added
+    "BuiltinToolProvider",
     "CeleryTask",
     "CeleryTaskSet",
     "Conversation",
@@ -123,6 +124,8 @@ __all__ = [
     "DatasetProcessRule",
     "DatasetQuery",
     "DatasetRetrieverResource",
+    "DatasourceOauthParamConfig",
+    "DatasourceProvider",
     "DifySetup",
     "Document",
     "DocumentSegment",
@@ -171,13 +174,11 @@ __all__ = [
     "Workflow",
     "WorkflowAppLog",
     "WorkflowAppLogCreatedFrom",
-    "WorkflowNodeExecution",
-    "WorkflowNodeExecutionStatus",
+    "WorkflowNodeExecutionModel",
+    "WorkflowNodeExecutionOffload",
     "WorkflowNodeExecutionTriggeredFrom",
     "WorkflowRun",
-    "WorkflowRunStatus",
     "WorkflowRunTriggeredFrom",
     "WorkflowToolProvider",
     "WorkflowType",
-    "db",
 ]

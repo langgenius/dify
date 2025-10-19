@@ -2,6 +2,7 @@ from enum import StrEnum
 
 
 class VectorType(StrEnum):
+    ALIBABACLOUD_MYSQL = "alibabacloud_mysql"
     ANALYTICDB = "analyticdb"
     CHROMA = "chroma"
     MILVUS = "milvus"
@@ -29,3 +30,5 @@ class VectorType(StrEnum):
     OPENGAUSS = "opengauss"
     TABLESTORE = "tablestore"
     HUAWEI_CLOUD = "huawei_cloud"
+    MATRIXONE = "matrixone"
+    CLICKZETTA = "clickzetta"

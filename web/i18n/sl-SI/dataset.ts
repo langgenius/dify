@@ -114,6 +114,10 @@ const translation = {
     },
     change: 'Spremeni',
     changeRetrievalMethod: 'Spremeni metodo pridobivanja',
+    keyword_search: {
+      title: 'Obrnjeni indeks',
+      description: 'Obrnjeni indeks je struktura, ki se uporablja za učinkovito iskanje. Vsak izraz, organiziran po izrazih, kaže na dokumente ali spletne strani, ki ga vsebujejo.',
+    },
   },
   docsFailedNotice: 'dokumentov ni bilo mogoče indeksirati',
   retry: 'Poskusi znova',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     general: 'Splošno',
     parentChild: 'Starš-otrok',
+    graph: 'Graf',
+    qa: 'Vprašanja in odgovori',
   },
   parentMode: {
     fullDoc: 'Celoten dokument',
@@ -179,6 +185,7 @@ const translation = {
     checkName: {
       empty: 'Ime metapodatkov ne more biti prazno',
       invalid: 'Ime metapodatkov lahko vsebuje samo male črke, številke in podčrtaje ter se mora začeti z malo črko.',
+      tooLong: 'Ime metapodatkov ne sme presegati {{max}} znakov',
     },
     batchEditMetadata: {
       editMetadata: 'Uredi metapodatke',
@@ -216,6 +223,20 @@ const translation = {
     addMetadata: 'Dodaj metapodatke',
   },
   embeddingModelNotAvailable: 'Model za zajemanje ni na voljo.',
+  createFromPipeline: 'Ustvarjanje iz cevovoda znanja',
+  updated: 'Posodobljene',
+  externalKnowledgeBase: 'Zunanja baza znanja',
+  serviceApi: {
+    card: {
+      apiKey: 'API ključ',
+      endpoint: 'Vhodna točka API storitve',
+      title: 'API storitev za zaledje',
+      apiReference: 'API Referenca',
+    },
+    title: 'Storitveni API',
+    disabled: 'Onemogočeno',
+    enabled: 'V storitvi',
+  },
 }
 
 export default translation

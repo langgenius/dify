@@ -1,5 +1,6 @@
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../types'
 import type { GitHubUrlInfo } from '@/app/components/plugins/types'
+import { isEmpty } from 'lodash-es'
 
 export const pluginManifestToCardPluginProps = (pluginManifest: PluginDeclaration): Plugin => {
   return {
@@ -47,11 +48,12 @@ export const pluginManifestInMarketToPluginProps = (pluginManifest: PluginManife
     },
     tags: [],
     badges: pluginManifest.badges,
+    verification: isEmpty(pluginManifest.verification) ? { authorized_category: 'langgenius' } : pluginManifest.verification,
   }
 }
 
 export const parseGitHubUrl = (url: string): GitHubUrlInfo => {
-  const match = url.match(/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/?$/)
+  const match = url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/?$/)
   return match ? { isValid: true, owner: match[1], repo: match[2] } : { isValid: false }
 }
 
