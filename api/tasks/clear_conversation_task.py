@@ -1,6 +1,5 @@
 import logging
 import time
-from typing import Optional
 
 from celery import shared_task  # type: ignore
 from sqlalchemy.orm import sessionmaker
