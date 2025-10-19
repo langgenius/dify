@@ -13,6 +13,7 @@ The codebase is split into:
 ## Backend Workflow
 
 - Run backend CLI commands through `uv run --project api <command>`.
+- All backend modifications must pass `make lint` and `make type-check` locally before submission.
 
 - Backend QA gate requires passing `make lint`, `make type-check`, and `uv run --project api --dev dev/pytest/pytest_unit_tests.sh` before review.
 
