@@ -37,10 +37,12 @@ class EndpointCreateApi(Resource):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifier", type=str, required=True)
-        parser.add_argument("settings", type=dict, required=True)
-        parser.add_argument("name", type=str, required=True)
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("plugin_unique_identifier", type=str, required=True)
+            .add_argument("settings", type=dict, required=True)
+            .add_argument("name", type=str, required=True)
+        )
         args = parser.parse_args()
 
         plugin_unique_identifier = args["plugin_unique_identifier"]
@@ -81,9 +83,11 @@ class EndpointListApi(Resource):
     def get(self):
         user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=int, required=True, location="args")
-        parser.add_argument("page_size", type=int, required=True, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("page", type=int, required=True, location="args")
+            .add_argument("page_size", type=int, required=True, location="args")
+        )
         args = parser.parse_args()
 
         page = args["page"]
@@ -124,10 +128,12 @@ class EndpointListForSinglePluginApi(Resource):
     def get(self):
         user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=int, required=True, location="args")
-        parser.add_argument("page_size", type=int, required=True, location="args")
-        parser.add_argument("plugin_id", type=str, required=True, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("page", type=int, required=True, location="args")
+            .add_argument("page_size", type=int, required=True, location="args")
+            .add_argument("plugin_id", type=str, required=True, location="args")
+        )
         args = parser.parse_args()
 
         page = args["page"]
@@ -166,8 +172,7 @@ class EndpointDeleteApi(Resource):
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("endpoint_id", type=str, required=True)
+        parser = reqparse.RequestParser().add_argument("endpoint_id", type=str, required=True)
         args = parser.parse_args()
 
         if not user.is_admin_or_owner:
@@ -206,10 +211,12 @@ class EndpointUpdateApi(Resource):
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("endpoint_id", type=str, required=True)
-        parser.add_argument("settings", type=dict, required=True)
-        parser.add_argument("name", type=str, required=True)
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("endpoint_id", type=str, required=True)
+            .add_argument("settings", type=dict, required=True)
+            .add_argument("name", type=str, required=True)
+        )
         args = parser.parse_args()
 
         endpoint_id = args["endpoint_id"]
@@ -249,8 +256,7 @@ class EndpointEnableApi(Resource):
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("endpoint_id", type=str, required=True)
+        parser = reqparse.RequestParser().add_argument("endpoint_id", type=str, required=True)
         args = parser.parse_args()
 
         endpoint_id = args["endpoint_id"]
@@ -282,8 +288,7 @@ class EndpointDisableApi(Resource):
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("endpoint_id", type=str, required=True)
+        parser = reqparse.RequestParser().add_argument("endpoint_id", type=str, required=True)
         args = parser.parse_args()
 
         endpoint_id = args["endpoint_id"]
