@@ -82,9 +82,11 @@ def get_user_tenant(
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             # fetch json body
-            parser = reqparse.RequestParser()
-            parser.add_argument("tenant_id", type=str, required=True, location="json")
-            parser.add_argument("user_id", type=str, required=True, location="json")
+            parser = (
+                reqparse.RequestParser()
+                .add_argument("tenant_id", type=str, required=True, location="json")
+                .add_argument("user_id", type=str, required=True, location="json")
+            )
 
             p = parser.parse_args()
 
