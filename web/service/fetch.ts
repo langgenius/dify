@@ -71,7 +71,7 @@ const beforeErrorToast = (otherOptions: IOtherOptions): BeforeErrorHook => {
 
 const beforeRequestPublicWithCode = (request: Request) => {
   request.headers.set('Authorization', `Bearer ${getWebAppAccessToken()}`)
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
+  const shareCode = globalThis.location.pathname.split('/').filter(Boolean).pop() || ''
   // some pages does not end with share code, so we need to check it
   // TODO: maybe find a better way to access app code?
   if (shareCode === 'webapp-signin' || shareCode === 'check-code')
@@ -129,7 +129,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
 
   const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
   if (!isMarketplaceAPI)
-    (headers as any).set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME) || '')
+    (headers as any).set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
 
   if (deleteContentType)
     (headers as any).delete('Content-Type')

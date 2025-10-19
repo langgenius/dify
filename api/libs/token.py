@@ -29,6 +29,13 @@ def is_secure() -> bool:
     return dify_config.CONSOLE_WEB_URL.startswith("https") and dify_config.CONSOLE_API_URL.startswith("https")
 
 
+def _real_cookie_name(cookie_name: str) -> str:
+    if is_secure():
+        return '__Host-' + cookie_name
+    else:
+        return cookie_name
+
+
 def _try_extract_from_header(request: Request) -> str | None:
     """
     Try to extract access token from header
@@ -54,6 +61,13 @@ def extract_csrf_token(request: Request) -> str | None:
     return request.headers.get(HEADER_NAME_CSRF_TOKEN)
 
 
+def extract_csrf_token_from_cookie(request: Request) -> str | None:
+    """
+    Try to extract CSRF token from cookie.
+    """
+    return request.cookies.get(_real_cookie_name(COOKIE_NAME_CSRF_TOKEN))
+
+
 def extract_access_token(request: Request) -> str | None:
     """
     Try to extract access token from cookie, header or params.
@@ -62,7 +76,7 @@ def extract_access_token(request: Request) -> str | None:
     """
 
     def _try_extract_from_cookie(request: Request) -> str | None:
-        return request.cookies.get(COOKIE_NAME_ACCESS_TOKEN)
+        return request.cookies.get(_real_cookie_name(COOKIE_NAME_ACCESS_TOKEN))
 
     return _try_extract_from_cookie(request) or _try_extract_from_header(request)
 
@@ -75,7 +89,7 @@ def extract_webapp_passport(app_code: str, request: Request) -> str | None:
     """
 
     def _try_extract_passport_token_from_cookie(request: Request) -> str | None:
-        return request.cookies.get(COOKIE_NAME_PASSPORT + "-" + app_code)
+        return request.cookies.get(_real_cookie_name(COOKIE_NAME_PASSPORT + "-" + app_code))
 
     def _try_extract_passport_token_from_header(request: Request) -> str | None:
         return request.headers.get(HEADER_NAME_PASSPORT)
@@ -86,7 +100,7 @@ def extract_webapp_passport(app_code: str, request: Request) -> str | None:
 
 def set_access_token_to_cookie(request: Request, response: Response, token: str, samesite: str = "Lax"):
     response.set_cookie(
-        COOKIE_NAME_ACCESS_TOKEN,
+        _real_cookie_name(COOKIE_NAME_ACCESS_TOKEN),
         value=token,
         httponly=True,
         secure=is_secure(),
@@ -98,7 +112,7 @@ def set_access_token_to_cookie(request: Request, response: Response, token: str,
 
 def set_refresh_token_to_cookie(request: Request, response: Response, token: str):
     response.set_cookie(
-        COOKIE_NAME_REFRESH_TOKEN,
+        _real_cookie_name(COOKIE_NAME_REFRESH_TOKEN),
         value=token,
         httponly=True,
         secure=is_secure(),
@@ -110,7 +124,7 @@ def set_refresh_token_to_cookie(request: Request, response: Response, token: str
 
 def set_csrf_token_to_cookie(request: Request, response: Response, token: str):
     response.set_cookie(
-        COOKIE_NAME_CSRF_TOKEN,
+        _real_cookie_name(COOKIE_NAME_CSRF_TOKEN),
         value=token,
         httponly=False,
         secure=is_secure(),
@@ -127,7 +141,7 @@ def _clear_cookie(
     http_only: bool = True,
 ):
     response.set_cookie(
-        cookie_name,
+        _real_cookie_name(cookie_name),
         "",
         expires=0,
         path="/",
@@ -149,18 +163,21 @@ def clear_csrf_token_from_cookie(response: Response):
     _clear_cookie(response, COOKIE_NAME_CSRF_TOKEN, http_only=False)
 
 
-def check_csrf_token(request: Request):
+def check_csrf_token(request: Request, user_id: str):
     # some apis are sent by beacon, so we need to bypass csrf token check
     # since these APIs are post, they are already protected by SameSite: Lax, so csrf is not required.
+    def _unauthorized():
+        raise Unauthorized("CSRF token is missing or invalid.")
 
     for pattern in CSRF_WHITE_LIST:
         if pattern.match(request.path):
             return
 
     csrf_token = extract_csrf_token(request)
+    csrf_token_from_cookie = extract_csrf_token_from_cookie(request)
 
-    def _unauthorized():
-        raise Unauthorized("CSRF token is missing or invalid.")
+    if csrf_token != csrf_token_from_cookie:
+        _unauthorized()
 
     if not csrf_token:
         _unauthorized()
@@ -168,6 +185,9 @@ def check_csrf_token(request: Request):
     try:
         verified = PassportService().verify(csrf_token)
     except:
+        _unauthorized()
+
+    if verified.get("user_id") != user_id:
         _unauthorized()
 
     exp: int | None = verified.get("exp")
@@ -179,9 +199,10 @@ def check_csrf_token(request: Request):
             _unauthorized()
 
 
-def generate_csrf_token() -> str:
+def generate_csrf_token(user_id: str) -> str:
     exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "exp": int(exp_dt.timestamp()),
+        "user_id": user_id,
     }
     return PassportService().issue(payload)

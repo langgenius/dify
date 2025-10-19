@@ -349,7 +349,7 @@ export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
     headers: {
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME) || '',
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
       [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
       [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
     },
@@ -429,7 +429,7 @@ export const ssePost = async (
     method: 'POST',
     signal: abortController.signal,
     headers: new Headers({
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME) || '',
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
       [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
       [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
     }),

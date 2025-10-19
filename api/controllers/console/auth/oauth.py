@@ -15,7 +15,6 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from libs.token import (
-    generate_csrf_token,
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
@@ -162,7 +161,7 @@ class OAuthCallback(Resource):
 
         set_access_token_to_cookie(request, response, token_pair.access_token)
         set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
-        set_csrf_token_to_cookie(request, response, generate_csrf_token())
+        set_csrf_token_to_cookie(request, response, token_pair.csrf_token)
         return response
 
 
