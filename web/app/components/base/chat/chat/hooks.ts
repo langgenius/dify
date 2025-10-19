@@ -34,6 +34,7 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
+import { noop } from 'lodash-es'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -51,6 +52,8 @@ export const useChat = (
   },
   prevChatTree?: ChatItemInTree[],
   stopChat?: (taskId: string) => void,
+  clearChatList?: boolean,
+  clearChatListCallback?: (state: boolean) => void,
 ) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -80,21 +83,20 @@ export const useChat = (
     const ret = [...threadMessages]
     if (config?.opening_statement) {
       const index = threadMessages.findIndex(item => item.isOpeningStatement)
-
       if (index > -1) {
         ret[index] = {
           ...ret[index],
           content: getIntroduction(config.opening_statement),
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map(item => getIntroduction(item)),
         }
       }
       else {
         ret.unshift({
-          id: `${Date.now()}`,
+          id: 'opening-statement',
           content: getIntroduction(config.opening_statement),
           isAnswer: true,
           isOpeningStatement: true,
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map(item => getIntroduction(item)),
         })
       }
     }
@@ -163,12 +165,13 @@ export const useChat = (
       suggestedQuestionsAbortControllerRef.current.abort()
   }, [stopChat, handleResponding])
 
-  const handleRestart = useCallback(() => {
+  const handleRestart = useCallback((cb?: any) => {
     conversationId.current = ''
     taskIdRef.current = ''
     handleStop()
     setChatTree([])
     setSuggestQuestions([])
+    cb?.()
   }, [handleStop])
 
   const updateCurrentQAOnTree = useCallback(({
@@ -305,7 +308,7 @@ export const useChat = (
       else
         ttsUrl = `/apps/${params.appId}/text-to-audio`
     }
-    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => {})
+    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
     ssePost(
       url,
       {
@@ -362,8 +365,9 @@ export const useChat = (
             if (!newResponseItem)
               return
 
+            const isUseAgentThought = newResponseItem.agent_thoughts?.length > 0 && newResponseItem.agent_thoughts[newResponseItem.agent_thoughts?.length - 1].thought === newResponseItem.answer
             updateChatTreeNode(responseItem.id, {
-              content: newResponseItem.answer,
+              content: isUseAgentThought ? '' : newResponseItem.answer,
               log: [
                 ...newResponseItem.message,
                 ...(newResponseItem.message[newResponseItem.message.length - 1].role !== 'assistant'
@@ -397,6 +401,7 @@ export const useChat = (
               )
               setSuggestQuestions(data)
             }
+            // eslint-disable-next-line unused-imports/no-unused-vars
             catch (e) {
               setSuggestQuestions([])
             }
@@ -419,6 +424,8 @@ export const useChat = (
           const response = responseItem as any
           if (thought.message_id && !hasSetResponseId)
             response.id = thought.message_id
+          if (thought.conversation_id)
+            response.conversationId = thought.conversation_id
 
           if (response.agent_thoughts.length === 0) {
             response.agent_thoughts.push(thought)
@@ -507,7 +514,7 @@ export const useChat = (
           responseItem.workflowProcess!.tracing!.push({
             ...iterationStartedData,
             status: WorkflowRunningStatus.Running,
-          } as any)
+          })
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -523,7 +530,7 @@ export const useChat = (
             ...tracing[iterationIndex],
             ...iterationFinishedData,
             status: WorkflowRunningStatus.Succeeded,
-          } as any
+          }
 
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -536,10 +543,13 @@ export const useChat = (
           if (nodeStartedData.iteration_id)
             return
 
+          if (data.loop_id)
+            return
+
           responseItem.workflowProcess!.tracing!.push({
             ...nodeStartedData,
             status: WorkflowRunningStatus.Running,
-          } as any)
+          })
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -551,11 +561,14 @@ export const useChat = (
           if (nodeFinishedData.iteration_id)
             return
 
+          if (data.loop_id)
+            return
+
           const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
             if (!item.execution_metadata?.parallel_id)
               return item.node_id === nodeFinishedData.node_id
 
-            return item.node_id === nodeFinishedData.node_id && (item.execution_metadata?.parallel_id === nodeFinishedData.execution_metadata.parallel_id)
+            return item.node_id === nodeFinishedData.node_id && (item.execution_metadata?.parallel_id === nodeFinishedData.execution_metadata?.parallel_id)
           })
           responseItem.workflowProcess!.tracing[currentIndex] = nodeFinishedData as any
 
@@ -574,6 +587,35 @@ export const useChat = (
         },
         onTTSEnd: (messageId: string, audio: string) => {
           player.playAudioWithAudio(audio, false)
+        },
+        onLoopStart: ({ data: loopStartedData }) => {
+          responseItem.workflowProcess!.tracing!.push({
+            ...loopStartedData,
+            status: WorkflowRunningStatus.Running,
+          })
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
+        },
+        onLoopFinish: ({ data: loopFinishedData }) => {
+          const tracing = responseItem.workflowProcess!.tracing!
+          const loopIndex = tracing.findIndex(item => item.node_id === loopFinishedData.node_id
+            && (item.execution_metadata?.parallel_id === loopFinishedData.execution_metadata?.parallel_id || item.parallel_id === loopFinishedData.execution_metadata?.parallel_id))!
+          tracing[loopIndex] = {
+            ...tracing[loopIndex],
+            ...loopFinishedData,
+            status: WorkflowRunningStatus.Succeeded,
+          }
+
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
         },
       })
     return true
@@ -640,11 +682,16 @@ export const useChat = (
     updateChatTreeNode(targetAnswerId, {
       content: chatList[index].content,
       annotation: {
-        ...(chatList[index].annotation || {}),
+        ...chatList[index].annotation,
         id: '',
       } as Annotation,
     })
   }, [chatList, updateChatTreeNode])
+
+  useEffect(() => {
+    if (clearChatList)
+      handleRestart(() => clearChatListCallback?.(false))
+  }, [clearChatList, clearChatListCallback, handleRestart])
 
   return {
     chatList,

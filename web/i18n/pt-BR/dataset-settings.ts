@@ -25,6 +25,7 @@ const translation = {
       learnMore: 'Saiba mais',
       description: ' sobre o método de recuperação.',
       longDescription: ' sobre o método de recuperação, você pode alterar isso a qualquer momento nas configurações do conhecimento.',
+      method: 'Método de Recuperação',
     },
     save: 'Salvar',
     permissionsInvitedMembers: 'Membros parciais da equipe',
@@ -35,6 +36,15 @@ const translation = {
     indexMethodChangeToEconomyDisabledTip: 'Não disponível para rebaixamento de HQ para ECO',
     helpText: 'Aprenda a escrever uma boa descrição do conjunto de dados.',
     upgradeHighQualityTip: 'Depois de atualizar para o modo de alta qualidade, reverter para o modo econômico não está disponível',
+    searchModel: 'Pesquisar modelo',
+    chunkStructure: {
+      description: 'sobre a estrutura do pedaço.',
+      learnMore: 'Saiba Mais',
+      title: 'Estrutura de Chunk',
+    },
+    numberOfKeywords: 'Número de palavras-chave',
+    onSearchResults: 'Nenhum membro corresponde à sua consulta de pesquisa.\nTente sua pesquisa novamente.',
+    nameAndIcon: 'Nome & Ícone',
   },
 }
 

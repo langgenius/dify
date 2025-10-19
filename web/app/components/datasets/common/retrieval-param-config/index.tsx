@@ -38,7 +38,7 @@ const RetrievalParamConfig: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
-  const isEconomical = type === RETRIEVE_METHOD.invertedIndex
+  const isEconomical = type === RETRIEVE_METHOD.keywordSearch
   const isHybridSearch = type === RETRIEVE_METHOD.hybrid
   const {
     modelList: rerankModelList,
@@ -54,14 +54,13 @@ const RetrievalParamConfig: FC<Props> = ({
     },
   )
 
-  const handleDisabledSwitchClick = useCallback((enable: boolean) => {
+  const handleToggleRerankEnable = useCallback((enable: boolean) => {
     if (enable && !currentModel)
       Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
     onChange({
       ...value,
       reranking_enable: enable,
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentModel, onChange, value])
 
   const rerankModel = useMemo(() => {
@@ -115,16 +114,16 @@ const RetrievalParamConfig: FC<Props> = ({
     <div>
       {!isEconomical && !isHybridSearch && (
         <div>
-          <div className='flex items-center space-x-2 mb-2'>
+          <div className='mb-2 flex items-center space-x-2'>
             {canToggleRerankModalEnable && (
               <Switch
                 size='md'
                 defaultValue={value.reranking_enable}
-                onChange={handleDisabledSwitchClick}
+                onChange={handleToggleRerankEnable}
               />
             )}
             <div className='flex items-center'>
-              <span className='mr-0.5 system-sm-semibold text-text-secondary'>{t('common.modelProvider.rerankModel.key')}</span>
+              <span className='system-sm-semibold mr-0.5 text-text-secondary'>{t('common.modelProvider.rerankModel.key')}</span>
               <Tooltip
                 popupContent={
                   <div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>
@@ -153,7 +152,7 @@ const RetrievalParamConfig: FC<Props> = ({
       )}
       {
         !isHybridSearch && (
-          <div className={cn(!isEconomical && 'mt-4', 'flex space-between space-x-4')}>
+          <div className={cn(!isEconomical && 'mt-4', 'space-between flex space-x-4')}>
             <TopKItem
               className='grow'
               value={value.top_k}
@@ -191,7 +190,7 @@ const RetrievalParamConfig: FC<Props> = ({
       {
         isHybridSearch && (
           <>
-            <div className='flex gap-2 mb-4'>
+            <div className='mb-4 flex gap-2'>
               {
                 rerankingModeOptions.map(option => (
                   <RadioCard
@@ -202,7 +201,7 @@ const RetrievalParamConfig: FC<Props> = ({
                       option.value === RerankingModeEnum.WeightedScore
                         ? ProgressIndicator
                         : Reranking
-                    } alt=''/>}
+                    } alt='' />}
                     title={option.label}
                     description={option.tips}
                     className='flex-1'
@@ -255,7 +254,7 @@ const RetrievalParamConfig: FC<Props> = ({
                 />
               )
             }
-            <div className={cn(!isEconomical && 'mt-4', 'flex space-between space-x-6')}>
+            <div className={cn(!isEconomical && 'mt-4', 'space-between flex space-x-6')}>
               <TopKItem
                 className='grow'
                 value={value.top_k}

@@ -3,6 +3,10 @@ import { SupportUploadFileTypes, type ValueSelector } from '../../workflow/types
 export const CONTEXT_PLACEHOLDER_TEXT = '{{#context#}}'
 export const HISTORY_PLACEHOLDER_TEXT = '{{#histories#}}'
 export const QUERY_PLACEHOLDER_TEXT = '{{#query#}}'
+export const CURRENT_PLACEHOLDER_TEXT = '{{#current#}}'
+export const ERROR_MESSAGE_PLACEHOLDER_TEXT = '{{#error_message#}}'
+export const LAST_RUN_PLACEHOLDER_TEXT = '{{#last_run#}}'
+
 export const PRE_PROMPT_PLACEHOLDER_TEXT = '{{#pre_prompt#}}'
 export const UPDATE_DATASETS_EVENT_EMITTER = 'prompt-editor-context-block-update-datasets'
 export const UPDATE_HISTORY_EVENT_EMITTER = 'prompt-editor-history-block-update-role'
@@ -30,7 +34,7 @@ export const checkHasQueryBlock = (text: string) => {
 * {{#1711617514996.sys.query#}} => [sys, query]
 */
 export const getInputVars = (text: string): ValueSelector[] => {
-  if (!text)
+  if (!text || typeof text !== 'string')
     return []
 
   const allVars = text.match(/{{#([^#]*)#}}/g)
@@ -53,6 +57,6 @@ export const getInputVars = (text: string): ValueSelector[] => {
 export const FILE_EXTS: Record<string, string[]> = {
   [SupportUploadFileTypes.image]: ['JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'],
   [SupportUploadFileTypes.document]: ['TXT', 'MD', 'MDX', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOC', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'],
-  [SupportUploadFileTypes.audio]: ['MP3', 'M4A', 'WAV', 'WEBM', 'AMR', 'MPGA'],
-  [SupportUploadFileTypes.video]: ['MP4', 'MOV', 'MPEG', 'MPGA'],
+  [SupportUploadFileTypes.audio]: ['MP3', 'M4A', 'WAV', 'AMR', 'MPGA'],
+  [SupportUploadFileTypes.video]: ['MP4', 'MOV', 'MPEG', 'WEBM'],
 }

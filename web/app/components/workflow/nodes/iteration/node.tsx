@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import {
   memo,
   useEffect,
+  useState,
 } from 'react'
 import {
   Background,
@@ -27,27 +28,28 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
   const nodesInitialized = useNodesInitialized()
   const { handleNodeIterationRerender } = useNodeIterationInteractions()
   const { t } = useTranslation()
+  const [showTips, setShowTips] = useState(data._isShowTips)
 
   useEffect(() => {
     if (nodesInitialized)
       handleNodeIterationRerender(id)
-    if (data.is_parallel && data._isShowTips) {
+    if (data.is_parallel && showTips) {
       Toast.notify({
         type: 'warning',
         message: t(`${i18nPrefix}.answerNodeWarningDesc`),
         duration: 5000,
       })
-      data._isShowTips = false
+      setShowTips(false)
     }
-  }, [nodesInitialized, id, handleNodeIterationRerender, data, t])
+  }, [nodesInitialized, id, handleNodeIterationRerender, data.is_parallel, showTips, t])
 
   return (
     <div className={cn(
-      'relative min-w-[240px] min-h-[90px] w-full h-full rounded-2xl bg-workflow-canvas-workflow-bg',
+      'relative h-full min-h-[90px] w-full min-w-[240px] rounded-2xl bg-workflow-canvas-workflow-bg',
     )}>
       <Background
         id={`iteration-background-${id}`}
-        className='rounded-2xl !z-0'
+        className='!z-0 rounded-2xl'
         gap={[14 / zoom, 14 / zoom]}
         size={2 / zoom}
         color='var(--color-workflow-canvas-workflow-dot-color)'

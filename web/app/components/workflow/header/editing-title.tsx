@@ -1,19 +1,19 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWorkflow } from '../hooks'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useStore } from '@/app/components/workflow/store'
 import useTimestamp from '@/hooks/use-timestamp'
 
 const EditingTitle = () => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const { formatTimeFromNow } = useWorkflow()
+  const { formatTimeFromNow } = useFormatTimeFromNow()
   const draftUpdatedAt = useStore(state => state.draftUpdatedAt)
   const publishedAt = useStore(state => state.publishedAt)
   const isSyncingWorkflowDraft = useStore(s => s.isSyncingWorkflowDraft)
 
   return (
-    <div className='flex items-center h-[18px] system-xs-regular text-text-tertiary'>
+    <div className='system-xs-regular flex h-[18px] items-center text-text-tertiary'>
       {
         !!draftUpdatedAt && (
           <>
@@ -21,7 +21,7 @@ const EditingTitle = () => {
           </>
         )
       }
-      <span className='flex items-center mx-1'>·</span>
+      <span className='mx-1 flex items-center'>·</span>
       {
         publishedAt
           ? `${t('workflow.common.published')} ${formatTimeFromNow(publishedAt)}`
@@ -30,7 +30,7 @@ const EditingTitle = () => {
       {
         isSyncingWorkflowDraft && (
           <>
-            <span className='flex items-center mx-1'>·</span>
+            <span className='mx-1 flex items-center'>·</span>
             {t('workflow.common.syncingData')}
           </>
         )

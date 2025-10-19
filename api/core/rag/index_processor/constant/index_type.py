@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class IndexType(str, Enum):
+class IndexType(StrEnum):
     PARAGRAPH_INDEX = "text_model"
     QA_INDEX = "qa_model"
     PARENT_CHILD_INDEX = "hierarchical_model"

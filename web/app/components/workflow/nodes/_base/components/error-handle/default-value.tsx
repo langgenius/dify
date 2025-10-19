@@ -5,6 +5,7 @@ import Input from '@/app/components/base/input'
 import { VarType } from '@/app/components/workflow/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { useDocLink } from '@/context/i18n'
 
 type DefaultValueProps = {
   forms: DefaultValueForm[]
@@ -15,6 +16,7 @@ const DefaultValue = ({
   onFormChange,
 }: DefaultValueProps) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const getFormChangeHandler = useCallback(({ key, type }: DefaultValueForm) => {
     return (payload: any) => {
       let value
@@ -30,11 +32,13 @@ const DefaultValue = ({
 
   return (
     <div className='px-4 pt-2'>
-      <div className='mb-2 body-xs-regular text-text-tertiary'>
+      <div className='body-xs-regular mb-2 text-text-tertiary'>
         {t('workflow.nodes.common.errorHandle.defaultValue.desc')}
         &nbsp;
         <a
-          href='https://docs.dify.ai/guides/workflow/error-handling'
+          href={docLink('/guides/workflow/error-handling/README', {
+            'zh-Hans': '/guides/workflow/error-handling/readme',
+          })}
           target='_blank'
           className='text-text-accent'
         >
@@ -49,8 +53,8 @@ const DefaultValue = ({
                 key={index}
                 className='py-1'
               >
-                <div className='flex items-center mb-1'>
-                  <div className='mr-1 system-sm-medium text-text-primary'>{form.key}</div>
+                <div className='mb-1 flex items-center'>
+                  <div className='system-sm-medium mr-1 text-text-primary'>{form.key}</div>
                   <div className='system-xs-regular text-text-tertiary'>{form.type}</div>
                 </div>
                 {

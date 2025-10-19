@@ -29,7 +29,7 @@ const AudioBtn = ({
 
   const params = useParams()
   const pathname = usePathname()
-  const audio_finished_call = (event: string): any => {
+  const audio_finished_call = (event: string): void => {
     switch (event) {
       case 'ended':
         setAudioState('ended')
@@ -85,20 +85,20 @@ const AudioBtn = ({
       <Tooltip
         popupContent={tooltipContent}
       >
-        <button
+        <button type="button"
           disabled={audioState === 'loading'}
-          className={`box-border w-6 h-6 flex items-center justify-center cursor-pointer ${isAudition ? 'p-0.5' : 'p-0 rounded-md bg-white'}`}
+          className={`box-border flex h-6 w-6 cursor-pointer items-center justify-center ${isAudition ? 'p-0.5' : 'rounded-md bg-white p-0'}`}
           onClick={handleToggle}
         >
           {audioState === 'loading'
             ? (
-              <div className='w-full h-full rounded-md flex items-center justify-center'>
+              <div className='flex h-full w-full items-center justify-center rounded-md'>
                 <Loading />
               </div>
             )
             : (
-              <div className={`w-full h-full rounded-md flex items-center justify-center ${!isAudition ? 'hover:bg-gray-50' : 'hover:bg-gray-50'}`}>
-                <div className={`w-4 h-4 ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>
+              <div className={'flex h-full w-full items-center justify-center rounded-md hover:bg-gray-50'}>
+                <div className={`h-4 w-4 ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>
               </div>
             )}
         </button>

@@ -33,28 +33,28 @@ const VariableTypeSelector = ({
     >
       <PortalToFollowElemTrigger className='w-full' onClick={() => setOpen(v => !v)}>
         <div className={cn(
-          'flex items-center w-full px-2 cursor-pointer',
-          !inCell && 'py-1 bg-components-input-bg-normal hover:bg-state-base-hover-alt radius-md',
+          'flex w-full cursor-pointer items-center px-2',
+          !inCell && 'radius-md bg-components-input-bg-normal py-1 hover:bg-state-base-hover-alt',
           inCell && 'py-0.5 hover:bg-state-base-hover',
           open && !inCell && 'bg-state-base-hover-alt hover:bg-state-base-hover-alt',
           open && inCell && 'bg-state-base-hover hover:bg-state-base-hover',
         )}>
           <div className={cn(
-            'grow p-1 system-sm-regular text-components-input-text-filled truncate',
+            'system-sm-regular grow truncate p-1 text-components-input-text-filled',
             inCell && 'system-xs-regular text-text-secondary',
           )}>{value}</div>
-          <RiArrowDownSLine className='ml-0.5 w-4 h-4 text-text-quaternary' />
+          <RiArrowDownSLine className='ml-0.5 h-4 w-4 text-text-quaternary' />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className={cn('w-full z-[11]', popupClassName)}>
-        <div className='p-1 bg-components-panel-bg-blur border-[0.5px] border-components-panel-border radius-xl shadow-lg'>
+      <PortalToFollowElemContent className={cn('z-[11] w-full', popupClassName)}>
+        <div className='radius-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
           {list.map((item: any) => (
-            <div key={item} className='flex items-center gap-2 pl-3 pr-2 py-[6px] radius-md cursor-pointer hover:bg-state-base-hover' onClick={() => {
+            <div key={item} className='radius-md flex cursor-pointer items-center gap-2 py-[6px] pl-3 pr-2 hover:bg-state-base-hover' onClick={() => {
               onSelect(item)
               setOpen(false)
             }}>
-              <div className='grow system-md-regular text-text-secondary truncate'>{item}</div>
-              {value === item && <RiCheckLine className='w-4 h-4 text-text-accent' />}
+              <div className='system-md-regular grow truncate text-text-secondary'>{item}</div>
+              {value === item && <RiCheckLine className='h-4 w-4 text-text-accent' />}
             </div>
           ))}
         </div>

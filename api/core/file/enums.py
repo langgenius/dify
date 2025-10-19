@@ -20,6 +20,7 @@ class FileTransferMethod(StrEnum):
     REMOTE_URL = "remote_url"
     LOCAL_FILE = "local_file"
     TOOL_FILE = "tool_file"
+    DATASOURCE_FILE = "datasource_file"
 
     @staticmethod
     def value_of(value):
@@ -49,6 +50,7 @@ class FileAttribute(StrEnum):
     TRANSFER_METHOD = "transfer_method"
     URL = "url"
     EXTENSION = "extension"
+    RELATED_ID = "related_id"
 
 
 class ArrayFileAttribute(StrEnum):

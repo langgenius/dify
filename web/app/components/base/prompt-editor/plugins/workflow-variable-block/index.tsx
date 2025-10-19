@@ -9,7 +9,7 @@ import {
 } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { WorkflowVariableBlockType } from '../../types'
+import type { GetVarType, WorkflowVariableBlockType } from '../../types'
 import {
   $createWorkflowVariableBlockNode,
   WorkflowVariableBlockNode,
@@ -25,11 +25,13 @@ export type WorkflowVariableBlockProps = {
   getWorkflowNode: (nodeId: string) => Node
   onInsert?: () => void
   onDelete?: () => void
+  getVarType: GetVarType
 }
 const WorkflowVariableBlock = memo(({
   workflowNodesMap,
   onInsert,
   onDelete,
+  getVarType,
 }: WorkflowVariableBlockType) => {
   const [editor] = useLexicalComposerContext()
 
@@ -48,7 +50,7 @@ const WorkflowVariableBlock = memo(({
         INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
         (variables: string[]) => {
           editor.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)
-          const workflowVariableBlockNode = $createWorkflowVariableBlockNode(variables, workflowNodesMap)
+          const workflowVariableBlockNode = $createWorkflowVariableBlockNode(variables, workflowNodesMap, getVarType)
 
           $insertNodes([workflowVariableBlockNode])
           if (onInsert)
@@ -69,7 +71,7 @@ const WorkflowVariableBlock = memo(({
         COMMAND_PRIORITY_EDITOR,
       ),
     )
-  }, [editor, onInsert, onDelete, workflowNodesMap])
+  }, [editor, onInsert, onDelete, workflowNodesMap, getVarType])
 
   return null
 })

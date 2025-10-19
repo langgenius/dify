@@ -24,6 +24,8 @@ const translation = {
     link: 'विवरण पैनल',
     tipRight: ' देखें।',
   },
+  actionLogs: 'क्रिया लॉग',
+  circularInvocationTip: 'वर्तमान कार्यप्रवाह में उपकरणों/नोड्स का वृत्ताकार आह्वान है।',
 }
 
 export default translation

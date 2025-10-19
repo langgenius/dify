@@ -12,7 +12,7 @@ type Props = {
 }
 
 const maxTopK = (() => {
-  const configValue = parseInt(globalThis.document?.body?.getAttribute('data-public-top-k-max-value') || '', 10)
+  const configValue = Number.parseInt(globalThis.document?.body?.getAttribute('data-public-top-k-max-value') || '', 10)
   if (configValue && !isNaN(configValue))
     return configValue
   return 10
@@ -24,7 +24,6 @@ const VALUE_LIMIT = {
   max: maxTopK,
 }
 
-const key = 'top_k'
 const TopKItem: FC<Props> = ({
   className,
   value,
@@ -33,7 +32,7 @@ const TopKItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const handleParamChange = (key: string, value: number) => {
-    let notOutRangeValue = parseFloat(value.toFixed(2))
+    let notOutRangeValue = Number.parseInt(value.toFixed(0))
     notOutRangeValue = Math.max(VALUE_LIMIT.min, notOutRangeValue)
     notOutRangeValue = Math.min(VALUE_LIMIT.max, notOutRangeValue)
     onChange(key, notOutRangeValue)
@@ -41,9 +40,9 @@ const TopKItem: FC<Props> = ({
   return (
     <ParamItem
       className={className}
-      id={key}
-      name={t(`appDebug.datasetConfig.${key}`)}
-      tip={t(`appDebug.datasetConfig.${key}Tip`) as string}
+      id='top_k'
+      name={t('appDebug.datasetConfig.top_k')}
+      tip={t('appDebug.datasetConfig.top_kTip') as string}
       {...VALUE_LIMIT}
       value={value}
       enable={enable}

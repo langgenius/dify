@@ -1,4 +1,5 @@
 import type { TypeWithI18N } from '../header/account-setting/model-provider-page/declarations'
+
 export enum LOC {
   tools = 'tools',
   app = 'app',
@@ -6,7 +7,8 @@ export enum LOC {
 
 export enum AuthType {
   none = 'none',
-  apiKey = 'api_key',
+  apiKeyHeader = 'api_key_header',
+  apiKeyQuery = 'api_key_query',
 }
 
 export enum AuthHeaderPrefix {
@@ -16,10 +18,11 @@ export enum AuthHeaderPrefix {
 }
 
 export type Credential = {
-  'auth_type': AuthType
-  'api_key_header'?: string
-  'api_key_value'?: string
-  'api_key_header_prefix'?: AuthHeaderPrefix
+  auth_type: AuthType
+  api_key_header?: string
+  api_key_value?: string
+  api_key_header_prefix?: AuthHeaderPrefix
+  api_key_query_param?: string
 }
 
 export enum CollectionType {
@@ -28,6 +31,8 @@ export enum CollectionType {
   custom = 'api',
   model = 'model',
   workflow = 'workflow',
+  mcp = 'mcp',
+  datasource = 'datasource',
 }
 
 export type Emoji = {
@@ -42,11 +47,23 @@ export type Collection = {
   description: TypeWithI18N
   icon: string | Emoji
   label: TypeWithI18N
-  type: CollectionType
+  type: CollectionType | string
   team_credentials: Record<string, any>
   is_team_authorization: boolean
   allow_delete: boolean
   labels: string[]
+  plugin_id?: string
+  letter?: string
+  // MCP Server
+  server_url?: string
+  updated_at?: number
+  server_identifier?: string
+  timeout?: number
+  sse_read_timeout?: number
+  headers?: Record<string, string>
+  masked_headers?: Record<string, string>
+  is_authorized?: boolean
+  provider?: string
 }
 
 export type ToolParameter = {
@@ -66,6 +83,7 @@ export type ToolParameter = {
   max?: number
 }
 
+// Action
 export type Tool = {
   name: string
   author: string
@@ -73,12 +91,13 @@ export type Tool = {
   description: any
   parameters: ToolParameter[]
   labels: string[]
+  output_schema: Record<string, any>
 }
 
 export type ToolCredential = {
   name: string
   label: TypeWithI18N
-  help: TypeWithI18N
+  help: TypeWithI18N | null
   placeholder: TypeWithI18N
   type: string
   required: boolean
@@ -162,4 +181,13 @@ export type WorkflowToolProviderResponse = {
     parameters: ParamItem[]
   }
   privacy_policy: string
+}
+
+export type MCPServerDetail = {
+  id: string
+  server_code: string
+  description: string
+  status: string
+  parameters?: Record<string, string>
+  headers?: Record<string, string>
 }

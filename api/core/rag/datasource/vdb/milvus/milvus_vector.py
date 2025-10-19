@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from packaging import version
 from pydantic import BaseModel, model_validator
@@ -26,26 +26,28 @@ class MilvusConfig(BaseModel):
     """
 
     uri: str  # Milvus server URI
-    token: Optional[str] = None  # Optional token for authentication
-    user: str  # Username for authentication
-    password: str  # Password for authentication
+    token: str | None = None  # Optional token for authentication
+    user: str | None = None  # Username for authentication
+    password: str | None = None  # Password for authentication
     batch_size: int = 100  # Batch size for operations
     database: str = "default"  # Database name
     enable_hybrid_search: bool = False  # Flag to enable hybrid search
+    analyzer_params: str | None = None  # Analyzer params
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         """
         Validate the configuration values.
         Raises ValueError if required fields are missing.
         """
         if not values.get("uri"):
             raise ValueError("config MILVUS_URI is required")
-        if not values.get("user"):
-            raise ValueError("config MILVUS_USER is required")
-        if not values.get("password"):
-            raise ValueError("config MILVUS_PASSWORD is required")
+        if not values.get("token"):
+            if not values.get("user"):
+                raise ValueError("config MILVUS_USER is required")
+            if not values.get("password"):
+                raise ValueError("config MILVUS_PASSWORD is required")
         return values
 
     def to_milvus_params(self):
@@ -58,6 +60,7 @@ class MilvusConfig(BaseModel):
             "user": self.user,
             "password": self.password,
             "db_name": self.database,
+            "analyzer_params": self.analyzer_params,
         }
 
 
@@ -72,7 +75,17 @@ class MilvusVector(BaseVector):
         self._client = self._init_client(config)
         self._consistency_level = "Session"  # Consistency level for Milvus operations
         self._fields: list[str] = []  # List of fields in the collection
+        if self._client.has_collection(collection_name):
+            self._load_collection_fields()
         self._hybrid_search_enabled = self._check_hybrid_search_support()  # Check if hybrid search is supported
+
+    def _load_collection_fields(self, fields: list[str] | None = None):
+        if fields is None:
+            # Load collection fields from remote server
+            collection_info = self._client.describe_collection(self._collection_name)
+            fields = [field["name"] for field in collection_info["fields"]]
+        # Since primary field is auto-id, no need to track it
+        self._fields = [f for f in fields if f != Field.PRIMARY_KEY]
 
     def _check_hybrid_search_support(self) -> bool:
         """
@@ -84,9 +97,13 @@ class MilvusVector(BaseVector):
 
         try:
             milvus_version = self._client.get_server_version()
-            return version.parse(milvus_version).base_version >= version.parse("2.5.0").base_version
+            # Check if it's Zilliz Cloud - it supports full-text search with Milvus 2.5 compatibility
+            if "Zilliz Cloud" in milvus_version:
+                return True
+            # For standard Milvus installations, check version number
+            return version.parse(milvus_version) >= version.parse("2.5.0")
         except Exception as e:
-            logger.warning(f"Failed to check Milvus version: {str(e)}. Disabling hybrid search.")
+            logger.warning("Failed to check Milvus version: %s. Disabling hybrid search.", str(e))
             return False
 
     def get_type(self) -> str:
@@ -113,9 +130,9 @@ class MilvusVector(BaseVector):
             insert_dict = {
                 # Do not need to insert the sparse_vector field separately, as the text_bm25_emb
                 # function will automatically convert the native text into a sparse vector for us.
-                Field.CONTENT_KEY.value: documents[i].page_content,
-                Field.VECTOR.value: embeddings[i],
-                Field.METADATA_KEY.value: documents[i].metadata,
+                Field.CONTENT_KEY: documents[i].page_content,
+                Field.VECTOR: embeddings[i],
+                Field.METADATA_KEY: documents[i].metadata,
             }
             insert_dict_list.append(insert_dict)
         # Total insert count
@@ -154,7 +171,7 @@ class MilvusVector(BaseVector):
             if ids:
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         """
         Delete documents by their IDs.
         """
@@ -166,7 +183,7 @@ class MilvusVector(BaseVector):
                 ids = [item["id"] for item in result]
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
-    def delete(self) -> None:
+    def delete(self):
         """
         Delete the entire collection.
         """
@@ -218,17 +235,23 @@ class MilvusVector(BaseVector):
         """
         Search for documents by vector similarity.
         """
+        document_ids_filter = kwargs.get("document_ids_filter")
+        filter = ""
+        if document_ids_filter:
+            document_ids = ", ".join(f'"{id}"' for id in document_ids_filter)
+            filter = f'metadata["document_id"] in [{document_ids}]'
         results = self._client.search(
             collection_name=self._collection_name,
             data=[query_vector],
-            anns_field=Field.VECTOR.value,
+            anns_field=Field.VECTOR,
             limit=kwargs.get("top_k", 4),
-            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
+            output_fields=[Field.CONTENT_KEY, Field.METADATA_KEY],
+            filter=filter,
         )
 
         return self._process_search_results(
             results,
-            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
+            output_fields=[Field.CONTENT_KEY, Field.METADATA_KEY],
             score_threshold=float(kwargs.get("score_threshold") or 0.0),
         )
 
@@ -236,33 +259,47 @@ class MilvusVector(BaseVector):
         """
         Search for documents by full-text search (if hybrid search is enabled).
         """
-        if not self._hybrid_search_enabled or not self.field_exists(Field.SPARSE_VECTOR.value):
-            logger.warning("Full-text search is not supported in current Milvus version (requires >= 2.5.0)")
+        if not self._hybrid_search_enabled:
+            logger.warning(
+                "Full-text search is disabled: set MILVUS_ENABLE_HYBRID_SEARCH=true (requires Milvus >= 2.5.0)."
+            )
             return []
+        if not self.field_exists(Field.SPARSE_VECTOR):
+            logger.warning(
+                "Full-text search unavailable: collection missing 'sparse_vector' field; "
+                "recreate the collection after enabling MILVUS_ENABLE_HYBRID_SEARCH to add BM25 sparse index."
+            )
+            return []
+        document_ids_filter = kwargs.get("document_ids_filter")
+        filter = ""
+        if document_ids_filter:
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            filter = f'metadata["document_id"] in [{document_ids}]'
 
         results = self._client.search(
             collection_name=self._collection_name,
             data=[query],
-            anns_field=Field.SPARSE_VECTOR.value,
+            anns_field=Field.SPARSE_VECTOR,
             limit=kwargs.get("top_k", 4),
-            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
+            output_fields=[Field.CONTENT_KEY, Field.METADATA_KEY],
+            filter=filter,
         )
 
         return self._process_search_results(
             results,
-            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
+            output_fields=[Field.CONTENT_KEY, Field.METADATA_KEY],
             score_threshold=float(kwargs.get("score_threshold") or 0.0),
         )
 
     def create_collection(
-        self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
+        self, embeddings: list, metadatas: list[dict] | None = None, index_params: dict | None = None
     ):
         """
         Create a new collection in Milvus with the specified schema and index parameters.
         """
-        lock_name = "vector_indexing_lock_{}".format(self._collection_name)
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
             # Grab the existing collection if it exists
@@ -274,25 +311,30 @@ class MilvusVector(BaseVector):
                 dim = len(embeddings[0])
                 fields = []
                 if metadatas:
-                    fields.append(FieldSchema(Field.METADATA_KEY.value, DataType.JSON, max_length=65_535))
+                    fields.append(FieldSchema(Field.METADATA_KEY, DataType.JSON, max_length=65_535))
 
                 # Create the text field, enable_analyzer will be set True to support milvus automatically
                 # transfer text to sparse_vector, reference: https://milvus.io/docs/full-text-search.md
-                fields.append(
-                    FieldSchema(
-                        Field.CONTENT_KEY.value,
-                        DataType.VARCHAR,
-                        max_length=65_535,
-                        enable_analyzer=self._hybrid_search_enabled,
-                    )
-                )
+                content_field_kwargs: dict[str, Any] = {
+                    "max_length": 65_535,
+                    "enable_analyzer": self._hybrid_search_enabled,
+                }
+                if (
+                    self._hybrid_search_enabled
+                    and self._client_config.analyzer_params is not None
+                    and self._client_config.analyzer_params.strip()
+                ):
+                    content_field_kwargs["analyzer_params"] = self._client_config.analyzer_params
+
+                fields.append(FieldSchema(Field.CONTENT_KEY, DataType.VARCHAR, **content_field_kwargs))
+
                 # Create the primary key field
-                fields.append(FieldSchema(Field.PRIMARY_KEY.value, DataType.INT64, is_primary=True, auto_id=True))
+                fields.append(FieldSchema(Field.PRIMARY_KEY, DataType.INT64, is_primary=True, auto_id=True))
                 # Create the vector field, supports binary or float vectors
-                fields.append(FieldSchema(Field.VECTOR.value, infer_dtype_bydata(embeddings[0]), dim=dim))
+                fields.append(FieldSchema(Field.VECTOR, infer_dtype_bydata(embeddings[0]), dim=dim))
                 # Create Sparse Vector Index for the collection
                 if self._hybrid_search_enabled:
-                    fields.append(FieldSchema(Field.SPARSE_VECTOR.value, DataType.SPARSE_FLOAT_VECTOR))
+                    fields.append(FieldSchema(Field.SPARSE_VECTOR, DataType.SPARSE_FLOAT_VECTOR))
 
                 schema = CollectionSchema(fields)
 
@@ -300,25 +342,22 @@ class MilvusVector(BaseVector):
                 if self._hybrid_search_enabled:
                     bm25_function = Function(
                         name="text_bm25_emb",
-                        input_field_names=[Field.CONTENT_KEY.value],
-                        output_field_names=[Field.SPARSE_VECTOR.value],
+                        input_field_names=[Field.CONTENT_KEY],
+                        output_field_names=[Field.SPARSE_VECTOR],
                         function_type=FunctionType.BM25,
                     )
                     schema.add_function(bm25_function)
 
-                for x in schema.fields:
-                    self._fields.append(x.name)
-                # Since primary field is auto-id, no need to track it
-                self._fields.remove(Field.PRIMARY_KEY.value)
+                self._load_collection_fields([f.name for f in schema.fields])
 
                 # Create Index params for the collection
                 index_params_obj = IndexParams()
-                index_params_obj.add_index(field_name=Field.VECTOR.value, **index_params)
+                index_params_obj.add_index(field_name=Field.VECTOR, **index_params)
 
                 # Create Sparse Vector Index for the collection
                 if self._hybrid_search_enabled:
                     index_params_obj.add_index(
-                        field_name=Field.SPARSE_VECTOR.value, index_type="AUTOINDEX", metric_type="BM25"
+                        field_name=Field.SPARSE_VECTOR, index_type="AUTOINDEX", metric_type="BM25"
                     )
 
                 # Create the collection
@@ -330,11 +369,19 @@ class MilvusVector(BaseVector):
                 )
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
-    def _init_client(self, config) -> MilvusClient:
+    def _init_client(self, config: MilvusConfig) -> MilvusClient:
         """
         Initialize and return a Milvus client.
         """
-        client = MilvusClient(uri=config.uri, user=config.user, password=config.password, db_name=config.database)
+        if config.token:
+            client = MilvusClient(uri=config.uri, token=config.token, db_name=config.database)
+        else:
+            client = MilvusClient(
+                uri=config.uri,
+                user=config.user or "",
+                password=config.password or "",
+                db_name=config.database,
+            )
         return client
 
 
@@ -364,5 +411,6 @@ class MilvusVectorFactory(AbstractVectorFactory):
                 password=dify_config.MILVUS_PASSWORD or "",
                 database=dify_config.MILVUS_DATABASE or "",
                 enable_hybrid_search=dify_config.MILVUS_ENABLE_HYBRID_SEARCH or False,
+                analyzer_params=dify_config.MILVUS_ANALYZER_PARAMS or "",
             ),
         )

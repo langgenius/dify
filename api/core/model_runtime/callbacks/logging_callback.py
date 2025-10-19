@@ -2,7 +2,7 @@ import json
 import logging
 import sys
 from collections.abc import Sequence
-from typing import Optional, cast
+from typing import cast
 
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
@@ -20,11 +20,11 @@ class LoggingCallback(Callback):
         credentials: dict,
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-    ) -> None:
+        user: str | None = None,
+    ):
         """
         Before invoke callback
 
@@ -74,12 +74,12 @@ class LoggingCallback(Callback):
         chunk: LLMResultChunk,
         model: str,
         credentials: dict,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
+        user: str | None = None,
     ):
         """
         On new chunk callback
@@ -104,13 +104,13 @@ class LoggingCallback(Callback):
         result: LLMResult,
         model: str,
         credentials: dict,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-    ) -> None:
+        user: str | None = None,
+    ):
         """
         After invoke callback
 
@@ -147,11 +147,11 @@ class LoggingCallback(Callback):
         credentials: dict,
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        tools: list[PromptMessageTool] | None = None,
+        stop: Sequence[str] | None = None,
         stream: bool = True,
-        user: Optional[str] = None,
-    ) -> None:
+        user: str | None = None,
+    ):
         """
         Invoke error callback
 

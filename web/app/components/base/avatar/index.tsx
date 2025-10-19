@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import cn from '@/utils/classnames'
 
 export type AvatarProps = {
@@ -8,6 +8,7 @@ export type AvatarProps = {
   size?: number
   className?: string
   textClassName?: string
+  onError?: (x: boolean) => void
 }
 const Avatar = ({
   name,
@@ -15,6 +16,7 @@ const Avatar = ({
   size = 30,
   className,
   textClassName,
+  onError,
 }: AvatarProps) => {
   const avatarClassName = 'shrink-0 flex items-center rounded-full bg-primary-600'
   const style = { width: `${size}px`, height: `${size}px`, fontSize: `${size}px`, lineHeight: `${size}px` }
@@ -22,7 +24,14 @@ const Avatar = ({
 
   const handleError = () => {
     setImgError(true)
+    onError?.(true)
   }
+
+  // after uploaded, api would first return error imgs url: '.../files//file-preview/...'. Then return the right url, Which caused not show the avatar
+  useEffect(() => {
+    if(avatar && imgError)
+      setImgError(false)
+  }, [avatar])
 
   if (avatar && !imgError) {
     return (
@@ -32,6 +41,7 @@ const Avatar = ({
         alt={name}
         src={avatar}
         onError={handleError}
+        onLoad={() => onError?.(false)}
       />
     )
   }
@@ -42,10 +52,10 @@ const Avatar = ({
       style={style}
     >
       <div
-        className={cn(textClassName, 'text-center text-white scale-[0.4]')}
+        className={cn(textClassName, 'scale-[0.4] text-center text-white')}
         style={style}
       >
-        {name[0].toLocaleUpperCase()}
+        {name && name[0].toLocaleUpperCase()}
       </div>
     </div>
   )

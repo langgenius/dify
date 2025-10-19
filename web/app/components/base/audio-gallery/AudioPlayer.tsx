@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { t } from 'i18next'
-import styles from './AudioPlayer.module.css'
+import {
+  RiPauseCircleFill,
+  RiPlayLargeFill,
+} from '@remixicon/react'
 import Toast from '@/app/components/base/toast'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
+import cn from '@/utils/classnames'
 
 type AudioPlayerProps = {
   src: string
@@ -18,6 +24,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
   const [hasStartedPlaying, setHasStartedPlaying] = useState(false)
   const [hoverTime, setHoverTime] = useState(0)
   const [isAudioAvailable, setIsAudioAvailable] = useState(true)
+  const { theme } = useTheme()
 
   useEffect(() => {
     const audio = audioRef.current
@@ -55,7 +62,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
     audio.load()
 
     // Delayed generation of waveform data
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     const timer = setTimeout(() => generateWaveformData(src), 1000)
 
     return () => {
@@ -117,7 +124,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
       setWaveformData(normalizedWaveform)
       setIsAudioAvailable(true)
     }
-    catch (error) {
+    catch {
       const waveform: number[] = []
       let prevValue = Math.random()
 
@@ -230,11 +237,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
       let color
 
       if (index * barWidth <= playedWidth)
-        color = '#296DFF'
+        color = theme === Theme.light ? '#296DFF' : '#84ABFF'
       else if ((index * barWidth / width) * duration <= hoverTime)
-        color = 'rgba(21,90,239,.40)'
+        color = theme === Theme.light ? 'rgba(21,90,239,.40)' : 'rgba(200, 206, 218, 0.28)'
       else
-        color = 'rgba(21,90,239,.20)'
+        color = theme === Theme.light ? 'rgba(21,90,239,.20)' : 'rgba(200, 206, 218, 0.14)'
 
       const barHeight = value * height
       const rectX = index * barWidth
@@ -253,7 +260,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
         ctx.fillRect(rectX, rectY, rectWidth, rectHeight)
       }
     })
-  }, [currentTime, duration, hoverTime, waveformData])
+  }, [currentTime, duration, hoverTime, theme, waveformData])
 
   useEffect(() => {
     drawWaveform()
@@ -279,40 +286,32 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
   }, [duration])
 
   return (
-    <div className={styles.audioPlayer}>
+    <div className='flex h-9 min-w-[240px] max-w-[420px] items-end gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-sm'>
       <audio ref={audioRef} src={src} preload="auto"/>
-      <button className={styles.playButton} onClick={togglePlay} disabled={!isAudioAvailable}>
+      <button type="button" className='inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled' onClick={togglePlay} disabled={!isAudioAvailable}>
         {isPlaying
           ? (
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <rect x="7" y="6" width="3" height="12" rx="1.5" ry="1.5"/>
-              <rect x="15" y="6" width="3" height="12" rx="1.5" ry="1.5"/>
-            </svg>
+            <RiPauseCircleFill className='h-5 w-5' />
           )
           : (
-            <svg viewBox="0 0 24 24" width="16" height="16">
-              <path d="M8 5v14l11-7z" fill="currentColor"/>
-            </svg>
+            <RiPlayLargeFill className='h-5 w-5' />
           )}
       </button>
-      <div className={isAudioAvailable ? styles.audioControls : styles.audioControls_disabled} hidden={!isAudioAvailable}>
-        <div className={styles.progressBarContainer}>
+      <div className={cn(isAudioAvailable && 'grow')} hidden={!isAudioAvailable}>
+        <div className='flex h-8 items-center justify-center'>
           <canvas
             ref={canvasRef}
-            className={styles.waveform}
+            className='relative flex h-6 w-full grow cursor-pointer items-center justify-center'
             onClick={handleCanvasInteraction}
             onMouseMove={handleMouseMove}
             onMouseDown={handleCanvasInteraction}
           />
-          {/* <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 81}%`, bottom: '29px' }}>
-            {formatTime(currentTime)}
-          </div> */}
-          <div className={styles.timeDisplay}>
-            <span className={styles.duration}>{formatTime(duration)}</span>
+          <div className='system-xs-medium inline-flex min-w-[50px] items-center justify-center text-text-accent-secondary'>
+            <span className='rounded-[10px] px-0.5 py-1'>{formatTime(duration)}</span>
           </div>
         </div>
       </div>
-      <div className={styles.source_unavailable} hidden={isAudioAvailable}>{t('common.operation.audioSourceUnavailable')}</div>
+      <div className='absolute left-0 top-0 flex h-full w-full items-center justify-center text-text-quaternary' hidden={isAudioAvailable}>{t('common.operation.audioSourceUnavailable')}</div>
     </div>
   )
 }

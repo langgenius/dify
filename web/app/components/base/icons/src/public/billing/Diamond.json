@@ -1,0 +1,39 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "29",
+			"height": "28",
+			"viewBox": "0 0 29 28",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "diamond"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector",
+							"d": "M10.2499 9.04167L7.62486 11.6667L10.2499 14.2917M15.9831 22.8501L25.4978 13.3353C26.4164 12.4168 26.408 10.925 25.4791 10.017L20.3883 5.03988C19.9523 4.61365 19.3668 4.375 18.7571 4.375H9.90929C9.29958 4.375 8.71408 4.61365 8.27811 5.03988L3.18727 10.017C2.25844 10.925 2.25002 12.4168 3.16852 13.3353L12.6833 22.8501C13.5945 23.7613 15.0719 23.7613 15.9831 22.8501Z",
+							"stroke": "#DC6803",
+							"stroke-width": "1.5",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					}
+				]
+			}
+		]
+	},
+	"name": "Diamond"
+}

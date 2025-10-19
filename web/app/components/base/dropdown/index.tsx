@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useState } from 'react'
+import cn from '@/utils/classnames'
 import {
   RiMoreFill,
 } from '@remixicon/react'
@@ -8,24 +9,32 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import ActionButton from '@/app/components/base/action-button'
+import type { ActionButtonProps } from '@/app/components/base/action-button'
 
 export type Item = {
   value: string | number
-  text: string | JSX.Element
+  text: string | React.JSX.Element
 }
 type DropdownProps = {
   items: Item[]
   secondItems?: Item[]
   onSelect: (item: Item) => void
   renderTrigger?: (open: boolean) => React.ReactNode
+  triggerProps?: ActionButtonProps
   popupClassName?: string
+  itemClassName?: string
+  secondItemClassName?: string
 }
 const Dropdown: FC<DropdownProps> = ({
   items,
   onSelect,
   secondItems,
   renderTrigger,
+  triggerProps,
   popupClassName,
+  itemClassName,
+  secondItemClassName,
 }) => {
   const [open, setOpen] = useState(false)
 
@@ -45,19 +54,20 @@ const Dropdown: FC<DropdownProps> = ({
           renderTrigger
             ? renderTrigger(open)
             : (
-              <div
-                className={`
-                  flex items-center justify-center w-6 h-6 cursor-pointer rounded-md
-                  ${open && 'bg-black/5'}
-                `}
+              <ActionButton
+                {...triggerProps}
+                className={cn(
+                  open && 'bg-divider-regular',
+                  triggerProps?.className,
+                )}
               >
-                <RiMoreFill className='w-4 h-4 text-gray-500' />
-              </div>
+                <RiMoreFill className='h-4 w-4 text-text-tertiary' />
+              </ActionButton>
             )
         }
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={popupClassName}>
-        <div className='rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg text-sm text-gray-700'>
+        <div className='rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg text-sm text-text-secondary shadow-lg'>
           {
             !!items.length && (
               <div className='p-1'>
@@ -65,7 +75,10 @@ const Dropdown: FC<DropdownProps> = ({
                   items.map(item => (
                     <div
                       key={item.value}
-                      className='flex items-center px-3 h-8 rounded-lg cursor-pointer hover:bg-gray-100'
+                      className={cn(
+                        'flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-components-panel-on-panel-item-bg-hover',
+                        itemClassName,
+                      )}
                       onClick={() => handleSelect(item)}
                     >
                       {item.text}
@@ -77,7 +90,7 @@ const Dropdown: FC<DropdownProps> = ({
           }
           {
             (!!items.length && !!secondItems?.length) && (
-              <div className='h-[1px] bg-gray-100' />
+              <div className='h-px bg-divider-regular' />
             )
           }
           {
@@ -87,7 +100,10 @@ const Dropdown: FC<DropdownProps> = ({
                   secondItems.map(item => (
                     <div
                       key={item.value}
-                      className='flex items-center px-3 h-8 rounded-lg cursor-pointer hover:bg-gray-100'
+                      className={cn(
+                        'flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-components-panel-on-panel-item-bg-hover',
+                        secondItemClassName,
+                      )}
                       onClick={() => handleSelect(item)}
                     >
                       {item.text}

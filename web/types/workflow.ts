@@ -1,18 +1,51 @@
 import type { Viewport } from 'reactflow'
-import type { BlockEnum, ConversationVariable, Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
+import type { BlockEnum, CommonNodeType, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, ValueSelector, VarType, Variable } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { RAGPipelineVariables } from '@/models/pipeline'
+import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
+import type { RefObject } from 'react'
+
+export type AgentLogItem = {
+  node_execution_id: string,
+  message_id: string,
+  node_id: string,
+  parent_id?: string,
+  label: string,
+  data: object, // debug data
+  error?: string,
+  status: string,
+  metadata?: {
+    elapsed_time?: number
+    provider?: string
+    icon?: string
+  },
+}
+
+export type AgentLogItemWithChildren = AgentLogItem & {
+  hasCircle?: boolean
+  children: AgentLogItemWithChildren[]
+}
 
 export type NodeTracing = {
   id: string
   index: number
   predecessor_node_id: string
   node_id: string
+  iteration_id?: string
+  loop_id?: string
   node_type: BlockEnum
   title: string
   inputs: any
+  inputs_truncated: boolean
   process_data: any
-  outputs?: any
+  process_data_truncated: boolean
+  outputs?: Record<string, any>
+  outputs_truncated: boolean
+  outputs_full_content?: {
+    download_url: string
+  }
   status: string
   parallel_run_id?: string
   error?: string
@@ -23,17 +56,28 @@ export type NodeTracing = {
     currency: string
     iteration_id?: string
     iteration_index?: number
+    loop_id?: string
+    loop_index?: number
     parallel_id?: string
     parallel_start_node_id?: string
     parent_parallel_id?: string
     parent_parallel_start_node_id?: string
     parallel_mode_run_id?: string
     iteration_duration_map?: IterationDurationMap
+    loop_duration_map?: LoopDurationMap
     error_strategy?: ErrorHandleTypeEnum
+    agent_log?: AgentLogItem[]
+    tool_info?: {
+      agent_strategy?: string
+      icon?: string
+    }
+    loop_variable_map?: Record<string, any>
   }
   metadata: {
     iterator_length: number
     iterator_index: number
+    loop_length: number
+    loop_index: number
   }
   created_at: number
   created_by: {
@@ -42,16 +86,24 @@ export type NodeTracing = {
     email: string
   }
   iterDurationMap?: IterationDurationMap
+  loopDurationMap?: LoopDurationMap
   finished_at: number
   extras?: any
   expand?: boolean // for UI
-  details?: NodeTracing[][] // iteration detail
+  details?: NodeTracing[][] // iteration or loop detail
   retryDetail?: NodeTracing[] // retry detail
+  retry_index?: number
+  parallelDetail?: { // parallel detail. if is in parallel, this field will be set
+    isParallelStartNode?: boolean
+    parallelTitle?: string
+    branchTitle?: string
+    children?: NodeTracing[]
+  }
   parallel_id?: string
   parallel_start_node_id?: string
   parent_parallel_id?: string
   parent_parallel_start_node_id?: string
-  retry_index?: number
+  agentLog?: AgentLogItemWithChildren[] // agent log
 }
 
 export type FetchWorkflowDraftResponse = {
@@ -70,13 +122,29 @@ export type FetchWorkflowDraftResponse = {
   }
   hash: string
   updated_at: number
+  updated_by: {
+    id: string
+    name: string
+    email: string
+  },
   tool_published: boolean
   environment_variables?: EnvironmentVariable[]
   conversation_variables?: ConversationVariable[]
+  rag_pipeline_variables?: RAGPipelineVariables
   version: string
+  marked_name: string
+  marked_comment: string
 }
 
 export type VersionHistory = FetchWorkflowDraftResponse
+
+export type FetchWorkflowDraftPageParams = {
+  url: string
+  initialPage: number
+  limit: number
+  userId?: string
+  namedOnly?: boolean
+}
 
 export type FetchWorkflowDraftPageResponse = {
   items: VersionHistory[]
@@ -95,7 +163,6 @@ export type WorkflowStartedResponse = {
   data: {
     id: string
     workflow_id: string
-    sequence_number: number
     created_at: number
   }
 }
@@ -128,18 +195,7 @@ export type NodeStartedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    id: string
-    node_id: string
-    iteration_id?: string
-    parallel_run_id?: string
-    node_type: string
-    index: number
-    predecessor_node_id?: string
-    inputs: any
-    created_at: number
-    extras?: any
-  }
+  data: NodeTracing
 }
 
 export type FileResponse = {
@@ -151,126 +207,71 @@ export type FileResponse = {
   transfer_method: TransferMethod
   type: string
   url: string
+  upload_file_id: string
+  remote_url: string
 }
 
 export type NodeFinishedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    id: string
-    node_id: string
-    iteration_id?: string
-    node_type: string
-    index: number
-    predecessor_node_id?: string
-    inputs: any
-    process_data: any
-    outputs: any
-    status: string
-    error: string
-    elapsed_time: number
-    execution_metadata: {
-      total_tokens: number
-      total_price: number
-      currency: string
-      parallel_id?: string
-      parallel_start_node_id?: string
-      iteration_index?: number
-      iteration_id?: string
-      parallel_mode_run_id: string
-      error_strategy?: ErrorHandleTypeEnum
-    }
-    created_at: number
-    files?: FileResponse[]
-    retry_index?: number
-  }
+  data: NodeTracing
 }
 
 export type IterationStartedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    id: string
-    node_id: string
-    metadata: {
-      iterator_length: number
-      iteration_id: string
-      iteration_index: number
-    }
-    created_at: number
-    extras?: any
-  }
+  data: NodeTracing
 }
 
 export type IterationNextResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    id: string
-    node_id: string
-    index: number
-    output: any
-    extras?: any
-    created_at: number
-    parallel_mode_run_id: string
-    execution_metadata: {
-      parallel_id?: string
-      iteration_index: number
-      parallel_mode_run_id?: string
-    }
-    duration?: number
-  }
+  data: NodeTracing
 }
 
 export type IterationFinishedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    id: string
-    node_id: string
-    outputs: any
-    extras?: any
-    status: string
-    created_at: number
-    error: string
-    execution_metadata: {
-      parallel_id?: string
-    }
-  }
+  data: NodeTracing
+}
+
+export type LoopStartedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: NodeTracing
+}
+
+export type LoopNextResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: NodeTracing
+}
+
+export type LoopFinishedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: NodeTracing
 }
 
 export type ParallelBranchStartedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    parallel_id: string
-    parallel_start_node_id: string
-    parent_parallel_id: string
-    parent_parallel_start_node_id: string
-    iteration_id?: string
-    created_at: number
-  }
+  data: NodeTracing
 }
 
 export type ParallelBranchFinishedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: {
-    parallel_id: string
-    parallel_start_node_id: string
-    parent_parallel_id: string
-    parent_parallel_start_node_id: string
-    iteration_id?: string
-    status: string
-    created_at: number
-    error: string
-  }
+  data: NodeTracing
 }
 
 export type TextChunkResponse = {
@@ -291,9 +292,14 @@ export type TextReplaceResponse = {
   }
 }
 
+export type AgentLogResponse = {
+  task_id: string
+  event: string
+  data: AgentLogItemWithChildren
+}
+
 export type WorkflowRunHistory = {
   id: string
-  sequence_number: number
   version: string
   conversation_id?: string
   message_id?: string
@@ -339,7 +345,74 @@ export type ConversationVariableResponse = {
 }
 
 export type IterationDurationMap = Record<string, number>
+export type LoopDurationMap = Record<string, number>
+export type LoopVariableMap = Record<string, any>
 
 export type WorkflowConfigResponse = {
   parallel_depth_limit: number
+}
+
+export type PublishWorkflowParams = {
+  url: string
+  title: string
+  releaseNotes: string
+}
+
+export type UpdateWorkflowParams = {
+  url: string
+  title: string
+  releaseNotes: string
+}
+
+export type PanelExposedType = {
+  singleRunParams: Pick<BeforeRunFormProps, 'forms'> & Partial<SpecialResultPanelProps>
+}
+
+export type PanelProps = {
+  getInputVars: (textList: string[]) => InputVar[]
+  toVarInputs: (variables: Variable[]) => InputVar[]
+  runInputData: Record<string, any>
+  runInputDataRef: RefObject<Record<string, any>>
+  setRunInputData: (data: Record<string, any>) => void
+  runResult: any
+}
+
+export type NodeRunResult = NodeTracing
+
+// Var Inspect
+export enum VarInInspectType {
+  conversation = 'conversation',
+  environment = 'env',
+  node = 'node',
+  system = 'sys',
+}
+
+export type FullContent = {
+  size_bytes: number
+  download_url: string
+}
+
+export type VarInInspect = {
+  id: string
+  type: VarInInspectType
+  name: string
+  description: string
+  selector: ValueSelector // can get node id from selector[0]
+  value_type: VarType
+  value: any
+  edited: boolean
+  visible: boolean
+  is_truncated: boolean
+  full_content: FullContent
+  schemaType?: string
+}
+
+export type NodeWithVar = {
+  nodeId: string
+  nodePayload: CommonNodeType
+  nodeType: BlockEnum
+  title: string
+  vars: VarInInspect[]
+  isSingRunRunning?: boolean
+  isValueFetched?: boolean
 }

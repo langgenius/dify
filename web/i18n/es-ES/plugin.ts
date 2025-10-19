@@ -1,0 +1,345 @@
+const translation = {
+  category: {
+    bundles: 'Paquetes',
+    all: 'Todo',
+    extensions: 'Extensiones',
+    tools: 'Herramientas',
+    agents: 'Estrategias de los agentes',
+    models: 'Modelos',
+    datasources: 'Fuentes de datos',
+  },
+  categorySingle: {
+    bundle: 'Haz',
+    extension: 'Extensión',
+    tool: 'Herramienta',
+    model: 'Modelo',
+    agent: 'Estrategia del agente',
+    datasource: 'Fuente de datos',
+  },
+  list: {
+    source: {
+      marketplace: 'Instalar desde Marketplace',
+      github: 'Instalar desde GitHub',
+      local: 'Instalar desde el archivo de paquete local',
+    },
+    noInstalled: 'No hay plugins instalados',
+    notFound: 'No se han encontrado plugins',
+  },
+  source: {
+    marketplace: 'Mercado',
+    local: 'Archivo de paquete local',
+    github: 'GitHub (en inglés)',
+  },
+  detailPanel: {
+    categoryTip: {
+      local: 'Plugin Local',
+      marketplace: 'Instalado desde Marketplace',
+      github: 'Instalado desde Github',
+      debugging: 'Complemento de depuración',
+    },
+    operation: {
+      viewDetail: 'Ver Detalle',
+      detail: 'Detalles',
+      checkUpdate: 'Comprobar actualización',
+      install: 'Instalar',
+      remove: 'Eliminar',
+      info: 'Información del plugin',
+      update: 'Actualizar',
+    },
+    toolSelector: {
+      toolLabel: 'Herramienta',
+      paramsTip1: 'Controla los parámetros de inferencia de LLM.',
+      settings: 'CONFIGURACIÓN DEL USUARIO',
+      unsupportedContent2: 'Haga clic para cambiar de versión.',
+      descriptionPlaceholder:
+        'Breve descripción del propósito de la herramienta, por ejemplo, obtener la temperatura para una ubicación específica.',
+      empty:
+        'Haga clic en el botón \'+\' para agregar herramientas. Puede agregar varias herramientas.',
+      paramsTip2:
+        'Cuando \'Auto\' está desactivado, se utiliza el valor predeterminado.',
+      uninstalledTitle: 'Herramienta no instalada',
+      descriptionLabel: 'Descripción de la herramienta',
+      unsupportedContent:
+        'La versión del plugin instalado no proporciona esta acción.',
+      auto: 'Auto',
+      title: 'Agregar herramienta',
+      placeholder: 'Seleccione una herramienta...',
+      uninstalledContent:
+        'Este plugin se instala desde el repositorio local/GitHub. Úselo después de la instalación.',
+      unsupportedTitle: 'Acción no admitida',
+      params: 'CONFIGURACIÓN DE RAZONAMIENTO',
+      uninstalledLink: 'Administrar en Plugins',
+      toolSetting: 'Configuraciones de la herramienta',
+      unsupportedMCPTool:
+        'La versión actual del plugin de estrategia del agente seleccionado no es compatible con las herramientas MCP.',
+    },
+    endpointDeleteContent: '¿Te gustaría eliminar {{nombre}}?',
+    endpointDisableTip: 'Deshabilitar punto de conexión',
+    endpointDeleteTip: 'Eliminar punto de conexión',
+    strategyNum: '{{num}} {{estrategia}} INCLUIDO',
+    disabled: 'Deshabilitado',
+    serviceOk: 'Servicio OK',
+    endpointDisableContent: '¿Te gustaría desactivar {{name}}?',
+    switchVersion: 'Versión del interruptor',
+    endpointsTip:
+      'Este complemento proporciona funcionalidades específicas a través de puntos finales, y puede configurar varios conjuntos de puntos finales para el espacio de trabajo actual.',
+    configureModel: 'Configurar modelo',
+    actionNum: '{{num}} {{acción}} INCLUIDO',
+    configureTool: 'Herramienta de configuración',
+    endpointModalDesc:
+      'Una vez configurado, se pueden utilizar las funciones proporcionadas por el complemento a través de los puntos finales de la API.',
+    modelNum: '{{num}} MODELOS INCLUIDOS',
+    endpoints: 'Extremos',
+    endpointModalTitle: 'Punto de conexión de configuración',
+    endpointsDocLink: 'Ver el documento',
+    endpointsEmpty:
+      'Haga clic en el botón \'+\' para agregar un punto de conexión',
+    configureApp: 'Configurar la aplicación',
+    deprecation: {
+      reason: {
+        ownershipTransferred: 'propiedad transferida',
+        noMaintainer: 'sin mantenedor',
+        businessAdjustments: 'ajustes comerciales',
+      },
+      noReason:
+        'Este complemento ha sido descontinuado y ya no se actualizará.',
+      onlyReason:
+        'Este complemento ha sido desaprobado debido a {{deprecatedReason}} y ya no se actualizará.',
+      fullMessage:
+        'Este complemento ha sido descontinuado debido a {{deprecatedReason}}, y ya no será actualizado. Por favor, utilice <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> en su lugar.',
+    },
+  },
+  debugInfo: {
+    title: 'Depuración',
+    viewDocs: 'Ver documentos',
+  },
+  privilege: {
+    everyone: 'Todos',
+    title: 'Preferencias del plugin',
+    whoCanDebug: '¿Quién puede depurar plugins?',
+    admins: 'Administradores',
+    whoCanInstall: '¿Quién puede instalar y administrar complementos?',
+    noone: 'Nadie',
+  },
+  pluginInfoModal: {
+    repository: 'Depósito',
+    title: 'Información del plugin',
+    packageName: 'Paquete',
+    release: 'Lanzamiento',
+  },
+  action: {
+    checkForUpdates: 'Buscar actualizaciones',
+    deleteContentLeft: '¿Le gustaría eliminar',
+    deleteContentRight: '¿Complemento?',
+    usedInApps: 'Este plugin se está utilizando en las aplicaciones {{num}}.',
+    delete: 'Eliminar plugin',
+    pluginInfo: 'Información del plugin',
+  },
+  installModal: {
+    labels: {
+      repository: 'Depósito',
+      version: 'Versión',
+      package: 'Paquete',
+    },
+    installPlugin: 'Instalar plugin',
+    close: 'Cerrar',
+    uploadingPackage: 'Subiendo {{packageName}}...',
+    installComplete: 'Instalación completa',
+    installFailed: 'Error de instalación',
+    fromTrustSource:
+      'Por favor, asegúrate de que sólo instalas plugins de una <trustSource>fuente de confianza</trustSource>.',
+    installedSuccessfullyDesc: 'El plugin se ha instalado correctamente.',
+    back: 'Atrás',
+    installFailedDesc: 'El plugin ha fallado en la instalación.',
+    installing: 'Instalar...',
+    next: 'Próximo',
+    readyToInstallPackages:
+      'A punto de instalar los siguientes plugins {{num}}',
+    cancel: 'Cancelar',
+    uploadFailed: 'Error de carga',
+    install: 'Instalar',
+    pluginLoadError: 'Error de carga del plugin',
+    pluginLoadErrorDesc: 'Este plugin no se instalará',
+    readyToInstall: 'A punto de instalar el siguiente plugin',
+    dropPluginToInstall:
+      'Suelte el paquete del complemento aquí para instalarlo',
+    readyToInstallPackage: 'A punto de instalar el siguiente plugin',
+    installedSuccessfully: 'Instalación exitosa',
+    installWarning: 'Este plugin no está permitido para instalar.',
+  },
+  installFromGitHub: {
+    uploadFailed: 'Error de carga',
+    updatePlugin: 'Actualizar plugin desde GitHub',
+    selectPackagePlaceholder: 'Por favor, seleccione un paquete',
+    installedSuccessfully: 'Instalación exitosa',
+    installNote:
+      'Por favor, asegúrate de que sólo instalas plugins de una fuente de confianza.',
+    gitHubRepo: 'Repositorio de GitHub',
+    selectPackage: 'Seleccionar paquete',
+    selectVersion: 'Seleccionar versión',
+    selectVersionPlaceholder: 'Por favor, seleccione una versión',
+    installPlugin: 'Instalar plugin desde GitHub',
+    installFailed: 'Error de instalación',
+  },
+  upgrade: {
+    upgrading: 'Instalar...',
+    close: 'Cerrar',
+    description: 'A punto de instalar el siguiente plugin',
+    upgrade: 'Instalar',
+    title: 'Instalar plugin',
+    successfulTitle: 'Instalación correcta',
+    usedInApps: 'Usado en aplicaciones {{num}}',
+  },
+  error: {
+    fetchReleasesError:
+      'No se pueden recuperar las versiones. Por favor, inténtelo de nuevo más tarde.',
+    noReleasesFound:
+      'No se han encontrado versiones. Compruebe el repositorio de GitHub o la URL de entrada.',
+    inValidGitHubUrl:
+      'URL de GitHub no válida. Introduzca una URL válida en el formato: https://github.com/owner/repo',
+  },
+  marketplace: {
+    sortOption: {
+      recentlyUpdated: 'Actualizado recientemente',
+      newlyReleased: 'Recién estrenado',
+      firstReleased: 'Lanzado por primera vez',
+      mostPopular: 'Lo más popular',
+    },
+    empower: 'Potencie su desarrollo de IA',
+    moreFrom: 'Más de Marketplace',
+    viewMore: 'Ver más',
+    sortBy: 'Ordenar por',
+    noPluginFound: 'No se ha encontrado ningún plugin',
+    pluginsResult: '{{num}} resultados',
+    discover: 'Descubrir',
+    and: 'y',
+    difyMarketplace: 'Mercado de Dify',
+    verifiedTip: 'Verificado por Dify',
+    partnerTip: 'Verificado por un socio de Dify',
+  },
+  task: {
+    installing: 'Instalando plugins {{installingLength}}, 0 hecho.',
+    clearAll: 'Borrar todo',
+    installingWithSuccess:
+      'Instalando plugins {{installingLength}}, {{successLength}} éxito.',
+    installedError: 'Los complementos {{errorLength}} no se pudieron instalar',
+    installError:
+      'Los complementos {{errorLength}} no se pudieron instalar, haga clic para ver',
+    installingWithError:
+      'Instalando plugins {{installingLength}}, {{successLength}} éxito, {{errorLength}} fallido',
+  },
+  fromMarketplace: 'De Marketplace',
+  endpointsEnabled: '{{num}} conjuntos de puntos finales habilitados',
+  from: 'De',
+  installAction: 'Instalar',
+  install: '{{num}} instalaciones',
+  allCategories: 'Todas las categorías',
+  searchCategories: 'Categorías de búsqueda',
+  installFrom: 'INSTALAR DESDE',
+  search: 'Buscar',
+  searchInMarketplace: 'Buscar en Marketplace',
+  searchTools: 'Herramientas de búsqueda...',
+  findMoreInMarketplace: 'Más información en Marketplace',
+  installPlugin: 'Instalar plugin',
+  searchPlugins: 'Plugins de búsqueda',
+  metadata: {
+    title: 'Complementos',
+  },
+  difyVersionNotCompatible:
+    'La versión actual de Dify no es compatible con este plugin, por favor actualiza a la versión mínima requerida: {{minimalDifyVersion}}',
+  requestAPlugin: 'Solicitar un plugin',
+  publishPlugins: 'Publicar plugins',
+  auth: {
+    oauthClient: 'Cliente OAuth',
+    authorizationName: 'Nombre de autorización',
+    authorization: 'Autorización',
+    addApi: 'Agregar clave API',
+    useApiAuth: 'Configuración de Autorización de Clave API',
+    addOAuth: 'Agregar OAuth',
+    authorizations: 'Autorizaciones',
+    authRemoved: 'Autorización retirada',
+    useOAuthAuth: 'Usar autorización OAuth',
+    setupOAuth: 'Configurar el cliente OAuth',
+    saveAndAuth: 'Guardar y autorizar',
+    useApi: 'Usa la clave de API',
+    workspaceDefault: 'Espacio de trabajo predeterminado',
+    custom: 'Personalizado',
+    useOAuth: 'Usa OAuth',
+    setDefault: 'Establecer como predeterminado',
+    useApiAuthDesc:
+      'Después de configurar las credenciales, todos los miembros dentro del espacio de trabajo pueden usar esta herramienta al orquestar aplicaciones.',
+    saveOnly: 'Guardar solo',
+    clientInfo:
+      'Como no se encontraron secretos de cliente del sistema para este proveedor de herramientas, se requiere configurarlo manualmente. Para redirect_uri, por favor utiliza',
+    oauthClientSettings: 'Configuración del cliente OAuth',
+    default: 'Predeterminado',
+    customCredentialUnavailable:
+      'Las credenciales personalizadas no están disponibles actualmente.',
+    unavailable: 'No disponible',
+    credentialUnavailable:
+      'Credenciales actualmente no disponibles. Por favor, contacte al administrador.',
+    credentialUnavailableInButton: 'Credencial no disponible',
+    emptyAuth: 'Configure la autenticación',
+    connectedWorkspace: 'Espacio de trabajo conectado',
+  },
+  deprecated: 'Obsoleto',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        description: 'Los plugins no se actualizarán automáticamente',
+        name: 'Discapacitado',
+      },
+      fixOnly: {
+        name: 'Arreglar Solo',
+        selectedDescription:
+          'Actualización automática solo para versiones de parches',
+        description:
+          'Actualización automática solo para versiones de parche (por ejemplo, 1.0.1 → 1.0.2). Los cambios de versión menor no activarán actualizaciones.',
+      },
+      latest: {
+        selectedDescription: 'Siempre actualiza a la última versión',
+        description: 'Siempre actualiza a la última versión',
+        name: 'último',
+      },
+    },
+    upgradeMode: {
+      partial: 'Solo seleccionado',
+      all: 'Actualizar todo',
+      exclude: 'Excluir seleccionado',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'Los plugins seleccionados no se actualizarán automáticamente',
+      partial:
+        'Solo los plugins seleccionados se actualizarán automáticamente. Actualmente no hay plugins seleccionados, por lo que no se actualizarán automáticamente.',
+    },
+    operation: {
+      clearAll: 'Borrar todo',
+      select: 'Seleccionar complementos',
+    },
+    pluginDowngradeWarning: {
+      title: 'Degradar plugin',
+      exclude: 'Excluir de la actualización automática',
+      downgrade: 'De todas formas, degradar',
+      description:
+        'La actualización automática está actualmente habilitada para este complemento. Downgradear la versión puede hacer que tus cambios se sobrescriban durante la próxima actualización automática.',
+    },
+    noPluginPlaceholder: {
+      noFound: 'No se encontraron complementos',
+      noInstalled: 'No hay plugins instalados',
+    },
+    updateTimeTitle: 'Hora de actualización',
+    nextUpdateTime: 'Próxima autoactualización: {{time}}',
+    specifyPluginsToUpdate: 'Especifique qué complementos actualizar',
+    updateTime: 'Actualizar tiempo',
+    updateSettings: 'Actualizar configuraciones',
+    excludeUpdate:
+      'Los siguientes {{num}} complementos no se actualizarán automáticamente',
+    partialUPdate:
+      'Solo los siguientes {{num}} complementos se actualizarán automáticamente',
+    changeTimezone:
+      'Para cambiar la zona horaria, ve a <setTimezone>Configuración</setTimezone>.',
+    automaticUpdates: 'Actualizaciones automáticas',
+  },
+}
+
+export default translation

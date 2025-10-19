@@ -1,3 +1,3 @@
 #!/bin/bash
 
-cd api && poetry install
+cd api && uv sync

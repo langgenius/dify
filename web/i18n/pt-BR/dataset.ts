@@ -41,6 +41,10 @@ const translation = {
     },
     change: 'Alterar',
     changeRetrievalMethod: 'Alterar método de recuperação',
+    keyword_search: {
+      title: 'Índice invertido',
+      description: 'O Índice Invertido é uma estrutura usada para recuperação eficiente. Organizado por termos, cada termo aponta para documentos ou páginas da web que o contêm.',
+    },
   },
   docsFailedNotice: 'documentos falharam ao serem indexados',
   retry: 'Tentar novamente',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     parentChild: 'Pai-filho',
     general: 'Geral',
+    graph: 'Gráfico',
+    qa: 'Perguntas e respostas',
   },
   parentMode: {
     fullDoc: 'Documento completo',
@@ -168,6 +174,69 @@ const translation = {
   localDocs: 'Documentos locais',
   allKnowledgeDescription: 'Selecione para exibir todo o conhecimento neste espaço de trabalho. Somente o proprietário do espaço de trabalho pode gerenciar todo o conhecimento.',
   allKnowledge: 'Todo o conhecimento',
+  metadata: {
+    createMetadata: {
+      name: 'Nome',
+      title: 'Nova Metadata',
+      type: 'Tipo',
+      namePlaceholder: 'Adicionar nome de metadados',
+      back: 'Voltar',
+    },
+    checkName: {
+      empty: 'O nome dos metadados não pode estar vazio',
+      invalid: 'O nome de metadata só pode conter letras minúsculas, números e sublinhados e deve começar com uma letra minúscula.',
+      tooLong: 'O nome dos metadados não pode exceder {{max}} caracteres.',
+    },
+    batchEditMetadata: {
+      editDocumentsNum: 'Editando {{num}} documentos',
+      applyToAllSelectDocument: 'Aplicar a todos os documentos selecionados',
+      editMetadata: 'Editar Metadados',
+      multipleValue: 'Múltiplos Valores',
+      applyToAllSelectDocumentTip: 'Crie automaticamente todos os metadados editados e novos mencionados acima para todos os documentos selecionados, caso contrário, a edição de metadados só se aplicará aos documentos que já os possuem.',
+    },
+    selectMetadata: {
+      manageAction: 'Gerenciar',
+      search: 'Pesquisar metadados',
+      newAction: 'Nova Metadados',
+    },
+    datasetMetadata: {
+      addMetaData: 'Adicionar Metadados',
+      namePlaceholder: 'Nome da metadata',
+      description: 'Você pode gerenciar todos os metadados neste conhecimento aqui. As modificações serão sincronizadas em todos os documentos.',
+      deleteTitle: 'Confirme para deletar',
+      deleteContent: 'Você tem certeza de que deseja excluir os metadados "{{name}}"?',
+      name: 'Nome',
+      builtInDescription: 'Os metadados incorporados são extraídos e gerados automaticamente. Eles devem ser ativados antes do uso e não podem ser editados.',
+      disabled: 'Desativado',
+      builtIn: 'Integrado',
+      rename: 'Renomear',
+      values: '{{num}} Valores',
+    },
+    documentMetadata: {
+      metadataToolTip: 'Os metadados servem como um filtro crítico que aprimora a precisão e a relevância da recuperação de informações. Você pode modificar e adicionar metadados para este documento aqui.',
+      technicalParameters: 'Parâmetros Técnicos',
+      documentInformation: 'Informações do Documento',
+      startLabeling: 'Comece a rotular',
+    },
+    addMetadata: 'Adicionar Metadados',
+    chooseTime: 'Escolha um horário...',
+    metadata: 'Metadados',
+  },
+  embeddingModelNotAvailable: 'O modelo de incorporação não está disponível.',
+  updated: 'Atualizado',
+  externalKnowledgeBase: 'Base de conhecimento externa',
+  createFromPipeline: 'Criar a partir do pipeline de conhecimento',
+  serviceApi: {
+    card: {
+      apiKey: 'Chave de API',
+      apiReference: 'Referência da API',
+      title: 'API de serviço de backend',
+      endpoint: 'Endpoint da API de Serviço',
+    },
+    enabled: 'Em serviço',
+    title: 'API de Serviço',
+    disabled: 'Desativado',
+  },
 }
 
 export default translation

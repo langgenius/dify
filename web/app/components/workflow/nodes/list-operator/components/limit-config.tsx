@@ -45,7 +45,7 @@ const LimitConfig: FC<Props> = ({
   const handleLimitSizeChange = useCallback((size: number | string) => {
     onChange({
       ...config,
-      size: parseInt(size as string),
+      size: Number.parseInt(size as string),
     })
   }, [onChange, config])
 

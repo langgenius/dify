@@ -11,9 +11,8 @@ import {
 import {
   useNodeDataUpdate,
   useNodesInteractions,
-  useNodesSyncDraft,
 } from '../../../hooks'
-import type { Node } from '../../../types'
+import { type Node, NodeRunningStatus } from '../../../types'
 import { canRunBySingle } from '../../../utils'
 import PanelOperator from './panel-operator'
 import {
@@ -30,49 +29,51 @@ const NodeControl: FC<NodeControlProps> = ({
   const [open, setOpen] = useState(false)
   const { handleNodeDataUpdate } = useNodeDataUpdate()
   const { handleNodeSelect } = useNodesInteractions()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-
+  const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setOpen(newOpen)
   }, [])
 
+  const isChildNode = !!(data.isInIteration || data.isInLoop)
   return (
     <div
       className={`
-      hidden group-hover:flex pb-1 absolute right-0 -top-7 h-7
+      absolute -top-7 right-0 hidden h-7 pb-1 group-hover:flex
       ${data.selected && '!flex'}
       ${open && '!flex'}
       `}
     >
       <div
-        className='flex items-center px-0.5 h-6 bg-components-actionbar-bg rounded-lg border-[0.5px] border-components-actionbar-border backdrop-blur-[5px] shadow-md text-text-tertiary'
+        className='flex h-6 items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg px-0.5 text-text-tertiary shadow-md backdrop-blur-[5px]'
         onClick={e => e.stopPropagation()}
       >
         {
-          canRunBySingle(data.type) && (
+          canRunBySingle(data.type, isChildNode) && (
             <div
-              className='flex items-center justify-center w-5 h-5 rounded-md cursor-pointer hover:bg-state-base-hover'
+              className='flex h-5 w-5 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
               onClick={() => {
+                const nextData: Record<string, any> = {
+                  _isSingleRun: !isSingleRunning,
+                }
+                if(isSingleRunning)
+                  nextData._singleRunningStatus = undefined
+
                 handleNodeDataUpdate({
                   id,
-                  data: {
-                    _isSingleRun: !data._isSingleRun,
-                  },
+                  data: nextData,
                 })
                 handleNodeSelect(id)
-                if (!data._isSingleRun)
-                  handleSyncWorkflowDraft(true)
               }}
             >
               {
-                data._isSingleRun
-                  ? <Stop className='w-3 h-3' />
+                isSingleRunning
+                  ? <Stop className='h-3 w-3' />
                   : (
                     <Tooltip
                       popupContent={t('workflow.panel.runThisStep')}
                       asChild={false}
                     >
-                      <RiPlayLargeLine className='w-3 h-3' />
+                      <RiPlayLargeLine className='h-3 w-3' />
                     </Tooltip>
                   )
               }

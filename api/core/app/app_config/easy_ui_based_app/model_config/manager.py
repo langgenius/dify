@@ -3,8 +3,9 @@ from typing import Any
 
 from core.app.app_config.entities import ModelConfigEntity
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from core.model_runtime.model_providers import model_provider_factory
+from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.provider_manager import ProviderManager
+from models.provider_ids import ModelProviderID
 
 
 class ModelConfigManager:
@@ -53,9 +54,16 @@ class ModelConfigManager:
             raise ValueError("model must be of object type")
 
         # model.provider
+        model_provider_factory = ModelProviderFactory(tenant_id)
         provider_entities = model_provider_factory.get_providers()
         model_provider_names = [provider.provider for provider in provider_entities]
-        if "provider" not in config["model"] or config["model"]["provider"] not in model_provider_names:
+        if "provider" not in config["model"]:
+            raise ValueError(f"model.provider is required and must be in {str(model_provider_names)}")
+
+        if "/" not in config["model"]["provider"]:
+            config["model"]["provider"] = str(ModelProviderID(config["model"]["provider"]))
+
+        if config["model"]["provider"] not in model_provider_names:
             raise ValueError(f"model.provider is required and must be in {str(model_provider_names)}")
 
         # model.name
@@ -97,7 +105,7 @@ class ModelConfigManager:
         return dict(config), ["model"]
 
     @classmethod
-    def validate_model_completion_params(cls, cp: dict) -> dict:
+    def validate_model_completion_params(cls, cp: dict):
         # model.completion_params
         if not isinstance(cp, dict):
             raise ValueError("model.completion_params must be of object type")

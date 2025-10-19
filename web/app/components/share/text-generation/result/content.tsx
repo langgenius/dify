@@ -17,10 +17,10 @@ const Result: FC<IResultProps> = ({
   onFeedback,
 }) => {
   return (
-    <div className='basis-3/4 h-max'>
+    <div className='h-max basis-3/4'>
       <Header result={content} showFeedback={showFeedback} feedback={feedback} onFeedback={onFeedback} />
       <div
-        className='mt-4 w-full flex text-sm leading-5 overflow-scroll font-normal text-gray-900'
+        className='mt-4 flex w-full overflow-scroll text-sm font-normal leading-5 text-gray-900'
         style={{
           maxHeight: '70vh',
         }}

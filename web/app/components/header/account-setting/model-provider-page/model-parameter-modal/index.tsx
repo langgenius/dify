@@ -29,7 +29,7 @@ import {
 import { fetchModelParameterRules } from '@/service/common'
 import Loading from '@/app/components/base/loading'
 import { useProviderContext } from '@/context/provider-context'
-import { TONE_LIST } from '@/config'
+import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type ModelParameterModalProps = {
@@ -48,27 +48,9 @@ export type ModelParameterModalProps = {
   renderTrigger?: (v: TriggerProps) => ReactNode
   readonly?: boolean
   isInWorkflow?: boolean
-}
-const stopParameterRule: ModelParameterRule = {
-  default: [],
-  help: {
-    en_US: 'Up to four sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.',
-    zh_Hans: '最多四个序列，API 将停止生成更多的 token。返回的文本将不包含停止序列。',
-  },
-  label: {
-    en_US: 'Stop sequences',
-    zh_Hans: '停止序列',
-  },
-  name: 'stop',
-  required: false,
-  type: 'tag',
-  tagPlaceholder: {
-    en_US: 'Enter sequence and press Tab',
-    zh_Hans: '输入序列并按 Tab 键',
-  },
+  scope?: string
 }
 
-const PROVIDER_WITH_PRESET_TONE = ['openai', 'azure_openai']
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   popupClassName,
   portalToFollowElemContentClassName,
@@ -190,26 +172,22 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className={cn(portalToFollowElemContentClassName, 'z-[60]')}>
-          <div className={cn(popupClassName, 'w-[496px] rounded-xl border border-gray-100 bg-white shadow-xl')}>
-            <div className={cn(
-              'max-h-[480px]  overflow-y-auto',
-              !isInWorkflow && 'px-10 pt-6 pb-8',
-              isInWorkflow && 'p-4')}>
-              <div className='flex items-center justify-between h-8'>
-                <div className={cn('font-semibold text-gray-900 shrink-0', isInWorkflow && 'text-[13px]')}>
+        <PortalToFollowElemContent className={cn('z-[60]', portalToFollowElemContentClassName)}>
+          <div className={cn(popupClassName, 'w-[389px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg')}>
+            <div className={cn('max-h-[420px] overflow-y-auto p-4 pt-3')}>
+              <div className='relative'>
+                <div className={cn('system-sm-semibold mb-1 flex h-6 items-center text-text-secondary')}>
                   {t('common.modelProvider.model').toLocaleUpperCase()}
                 </div>
                 <ModelSelector
                   defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
                   modelList={activeTextGenerationModelList}
                   onSelect={handleChangeModel}
-                  triggerClassName='max-w-[295px]'
                 />
               </div>
               {
                 !!parameterRules.length && (
-                  <div className='my-5 h-[1px] bg-gray-100' />
+                  <div className='my-3 h-px bg-divider-subtle' />
                 )
               }
               {
@@ -219,8 +197,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               }
               {
                 !isLoading && !!parameterRules.length && (
-                  <div className='flex items-center justify-between mb-4'>
-                    <div className={cn('font-semibold text-gray-900', isInWorkflow && 'text-[13px]')}>{t('common.modelProvider.parameters')}</div>
+                  <div className='mb-2 flex items-center justify-between'>
+                    <div className={cn('system-sm-semibold flex h-6 items-center text-text-secondary')}>{t('common.modelProvider.parameters')}</div>
                     {
                       PROVIDER_WITH_PRESET_TONE.includes(provider) && (
                         <PresetsParameter onSelect={handleSelectPresetParameter} />
@@ -233,11 +211,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 !isLoading && !!parameterRules.length && (
                   [
                     ...parameterRules,
-                    ...(isAdvancedMode ? [stopParameterRule] : []),
+                    ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : []),
                   ].map(parameter => (
                     <ParameterItem
                       key={`${modelId}-${parameter.name}`}
-                      className='mb-4'
                       parameterRule={parameter}
                       value={completionParams?.[parameter.name]}
                       onChange={v => handleParamChange(parameter.name, v)}
@@ -250,7 +227,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             </div>
             {!hideDebugWithMultipleModel && (
               <div
-                className='flex items-center justify-between px-6 h-[50px] bg-gray-50 border-t border-t-gray-100 text-xs font-medium text-primary-600 cursor-pointer rounded-b-xl'
+                className='bg-components-section-burn system-sm-regular flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 text-text-accent'
                 onClick={() => onDebugWithMultipleModelChange?.()}
               >
                 {
@@ -258,7 +235,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                     ? t('appDebug.debugAsSingleModel')
                     : t('appDebug.debugAsMultipleModel')
                 }
-                <ArrowNarrowLeft className='w-3 h-3 rotate-180' />
+                <ArrowNarrowLeft className='h-3 w-3 rotate-180' />
               </div>
             )}
           </div>

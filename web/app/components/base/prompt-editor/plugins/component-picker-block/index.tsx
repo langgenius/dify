@@ -17,8 +17,11 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import type {
   ContextBlockType,
+  CurrentBlockType,
+  ErrorMessageBlockType,
   ExternalToolBlockType,
   HistoryBlockType,
+  LastRunBlockType,
   QueryBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
@@ -31,6 +34,11 @@ import { useOptions } from './hooks'
 import type { PickerBlockMenuOption } from './menu'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { KEY_ESCAPE_COMMAND } from 'lexical'
+import { INSERT_CURRENT_BLOCK_COMMAND } from '../current-block'
+import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../error-message-block'
+import { INSERT_LAST_RUN_BLOCK_COMMAND } from '../last-run-block'
 
 type ComponentPickerProps = {
   triggerString: string
@@ -40,6 +48,9 @@ type ComponentPickerProps = {
   variableBlock?: VariableBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  currentBlock?: CurrentBlockType
+  errorMessageBlock?: ErrorMessageBlockType
+  lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
 }
 const ComponentPicker = ({
@@ -50,6 +61,9 @@ const ComponentPicker = ({
   variableBlock,
   externalToolBlock,
   workflowVariableBlock,
+  currentBlock,
+  errorMessageBlock,
+  lastRunBlock,
   isSupportFileVar,
 }: ComponentPickerProps) => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -86,6 +100,9 @@ const ComponentPicker = ({
     variableBlock,
     externalToolBlock,
     workflowVariableBlock,
+    currentBlock,
+    errorMessageBlock,
+    lastRunBlock,
   )
 
   const onSelectOption = useCallback(
@@ -111,12 +128,28 @@ const ComponentPicker = ({
       if (needRemove)
         needRemove.remove()
     })
-
-    if (variables[1] === 'sys.query' || variables[1] === 'sys.files')
+    const isFlat = variables.length === 1
+    if (isFlat) {
+      const varName = variables[0]
+      if (varName === 'current')
+        editor.dispatchCommand(INSERT_CURRENT_BLOCK_COMMAND, currentBlock?.generatorType)
+      else if (varName === 'error_message')
+        editor.dispatchCommand(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, null)
+      else if (varName === 'last_run')
+        editor.dispatchCommand(INSERT_LAST_RUN_BLOCK_COMMAND, null)
+    }
+    else if (variables[1] === 'sys.query' || variables[1] === 'sys.files') {
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [variables[1]])
-    else
+    }
+    else {
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
-  }, [editor, checkForTriggerMatch, triggerString])
+    }
+  }, [editor, currentBlock?.generatorType, checkForTriggerMatch, triggerString])
+
+  const handleClose = useCallback(() => {
+    const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' })
+    editor.dispatchCommand(KEY_ESCAPE_COMMAND, escapeEvent)
+  }, [editor])
 
   const renderMenu = useCallback<MenuRenderFn<PickerBlockMenuOption>>((
     anchorElementRef,
@@ -124,7 +157,11 @@ const ComponentPicker = ({
   ) => {
     if (!(anchorElementRef.current && (allFlattenOptions.length || workflowVariableBlock?.show)))
       return null
-    refs.setReference(anchorElementRef.current)
+
+    setTimeout(() => {
+      if (anchorElementRef.current)
+        refs.setReference(anchorElementRef.current)
+    }, 0)
 
     return (
       <>
@@ -133,9 +170,9 @@ const ComponentPicker = ({
             // The `LexicalMenu` will try to calculate the position of the floating menu based on the first child.
             // Since we use floating ui, we need to wrap it with a div to prevent the position calculation being affected.
             // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
-            <div className='w-0 h-0'>
+            <div className='h-0 w-0'>
               <div
-                className='p-1 w-[260px] bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg'
+                className='w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'
                 style={{
                   ...floatingStyles,
                   visibility: isPositioned ? 'visible' : 'hidden',
@@ -143,49 +180,55 @@ const ComponentPicker = ({
                 ref={refs.setFloating}
               >
                 {
-                  options.map((option, index) => (
-                    <Fragment key={option.key}>
-                      {
-                        // Divider
-                        index !== 0 && options.at(index - 1)?.group !== option.group && (
-                          <div className='h-px bg-divider-subtle my-1 w-full -translate-x-1'></div>
-                        )
-                      }
-                      {option.renderMenuOption({
-                        queryString,
-                        isSelected: selectedIndex === index,
-                        onSelect: () => {
-                          selectOptionAndCleanUp(option)
-                        },
-                        onSetHighlight: () => {
-                          setHighlightedIndex(index)
-                        },
-                      })}
-                    </Fragment>
-                  ))
-                }
-                {
                   workflowVariableBlock?.show && (
-                    <>
-                      {
-                        (!!options.length) && (
-                          <div className='h-px bg-divider-subtle my-1 w-full -translate-x-1'></div>
-                        )
-                      }
-                      <div className='p-1'>
-                        <VarReferenceVars
-                          hideSearch
-                          vars={workflowVariableOptions}
-                          onChange={(variables: string[]) => {
-                            handleSelectWorkflowVariable(variables)
-                          }}
-                          maxHeightClass='max-h-[34vh]'
-                          isSupportFileVar={isSupportFileVar}
-                        />
-                      </div>
-                    </>
+                    <div className='p-1'>
+                      <VarReferenceVars
+                        searchBoxClassName='mt-1'
+                        vars={workflowVariableOptions}
+                        onChange={(variables: string[]) => {
+                          handleSelectWorkflowVariable(variables)
+                        }}
+                        maxHeightClass='max-h-[34vh]'
+                        isSupportFileVar={isSupportFileVar}
+                        onClose={handleClose}
+                        onBlur={handleClose}
+                        showManageInputField={workflowVariableBlock.showManageInputField}
+                        onManageInputField={workflowVariableBlock.onManageInputField}
+                        autoFocus={false}
+                        isInCodeGeneratorInstructionEditor={currentBlock?.generatorType === GeneratorType.code}
+                      />
+                    </div>
                   )
                 }
+                {
+                  workflowVariableBlock?.show && !!options.length && (
+                    <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
+                  )
+                }
+                <div>
+                  {
+                    options.map((option, index) => (
+                      <Fragment key={option.key}>
+                        {
+                          // Divider
+                          index !== 0 && options.at(index - 1)?.group !== option.group && (
+                            <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
+                          )
+                        }
+                        {option.renderMenuOption({
+                          queryString,
+                          isSelected: selectedIndex === index,
+                          onSelect: () => {
+                            selectOptionAndCleanUp(option)
+                          },
+                          onSetHighlight: () => {
+                            setHighlightedIndex(index)
+                          },
+                        })}
+                      </Fragment>
+                    ))
+                  }
+                </div>
               </div>
             </div>,
             anchorElementRef.current,
@@ -193,7 +236,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [allFlattenOptions.length, workflowVariableBlock?.show, refs, isPositioned, floatingStyles, queryString, workflowVariableOptions, handleSelectWorkflowVariable])
+  }, [allFlattenOptions.length, workflowVariableBlock?.show, floatingStyles, isPositioned, refs, workflowVariableOptions, isSupportFileVar, handleClose, currentBlock?.generatorType, handleSelectWorkflowVariable, queryString, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
 
   return (
     <LexicalTypeaheadMenuPlugin

@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
@@ -10,6 +11,7 @@ import {
   updateApiBasedExtension,
 } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
+import { noop } from 'lodash-es'
 
 export type ApiBasedExtensionData = {
   name?: string
@@ -28,6 +30,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const [localeData, setLocaleData] = useState(data)
   const [loading, setLoading] = useState(false)
   const { notify } = useToastContext()
@@ -74,10 +77,10 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
   return (
     <Modal
       isShow
-      onClose={() => { }}
-      className='!p-8 !pb-6 !max-w-none !w-[640px]'
+      onClose={noop}
+      className='!w-[640px] !max-w-none !p-8 !pb-6'
     >
-      <div className='mb-2 text-xl font-semibold text-gray-900'>
+      <div className='mb-2 text-xl font-semibold text-text-primary'>
         {
           data.name
             ? t('common.apiBasedExtension.modal.editTitle')
@@ -85,49 +88,49 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
         }
       </div>
       <div className='py-2'>
-        <div className='leading-9 text-sm font-medium text-gray-900'>
+        <div className='text-sm font-medium leading-9 text-text-primary'>
           {t('common.apiBasedExtension.modal.name.title')}
         </div>
         <input
           value={localeData.name || ''}
           onChange={e => handleDataChange('name', e.target.value)}
-          className='block px-3 w-full h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
+          className='block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-none'
           placeholder={t('common.apiBasedExtension.modal.name.placeholder') || ''}
         />
       </div>
       <div className='py-2'>
-        <div className='flex justify-between items-center h-9 text-sm font-medium text-gray-900'>
+        <div className='flex h-9 items-center justify-between text-sm font-medium text-text-primary'>
           {t('common.apiBasedExtension.modal.apiEndpoint.title')}
           <a
-            href={t('common.apiBasedExtension.linkUrl') || '/'}
+            href={docLink('/guides/extension/api-based-extension/README')}
             target='_blank' rel='noopener noreferrer'
-            className='group flex items-center text-xs text-gray-500 font-normal hover:text-primary-600'
+            className='group flex items-center text-xs font-normal text-text-accent'
           >
-            <BookOpen01 className='mr-1 w-3 h-3 text-gray-500 group-hover:text-primary-600' />
+            <BookOpen01 className='mr-1 h-3 w-3' />
             {t('common.apiBasedExtension.link')}
           </a>
         </div>
         <input
           value={localeData.api_endpoint || ''}
           onChange={e => handleDataChange('api_endpoint', e.target.value)}
-          className='block px-3 w-full h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
+          className='block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-none'
           placeholder={t('common.apiBasedExtension.modal.apiEndpoint.placeholder') || ''}
         />
       </div>
       <div className='py-2'>
-        <div className='leading-9 text-sm font-medium text-gray-900'>
+        <div className='text-sm font-medium leading-9 text-text-primary'>
           {t('common.apiBasedExtension.modal.apiKey.title')}
         </div>
         <div className='flex items-center'>
           <input
             value={localeData.api_key || ''}
             onChange={e => handleDataChange('api_key', e.target.value)}
-            className='block grow mr-2 px-3 h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
+            className='mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-none'
             placeholder={t('common.apiBasedExtension.modal.apiKey.placeholder') || ''}
           />
         </div>
       </div>
-      <div className='flex items-center justify-end mt-6'>
+      <div className='mt-6 flex items-center justify-end'>
         <Button
           onClick={onCancel}
           className='mr-2'

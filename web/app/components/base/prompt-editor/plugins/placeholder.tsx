@@ -8,16 +8,16 @@ const Placeholder = ({
   className,
 }: {
   compact?: boolean
-  value?: string
+  value?: string | JSX.Element
   className?: string
 }) => {
   const { t } = useTranslation()
 
   return (
     <div className={cn(
+      'pointer-events-none absolute left-0 top-0 h-full w-full select-none text-sm text-components-input-text-placeholder',
+      compact ? 'text-[13px] leading-5' : 'text-sm leading-6',
       className,
-      'absolute top-0 left-0 h-full w-full text-sm text-components-input-text-placeholder select-none pointer-events-none',
-      compact ? 'leading-5 text-[13px]' : 'leading-6 text-sm',
     )}>
       {value || t('common.promptEditor.placeholder')}
     </div>

@@ -1,4 +1,5 @@
-import { usePathname, useSearchParams } from 'next/navigation'
+'use client'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
 type UseTabSearchParamsOptions = {
@@ -24,11 +25,14 @@ export const useTabSearchParams = ({
   searchParamName = 'category',
   disableSearchParams = false,
 }: UseTabSearchParamsOptions) => {
-  const pathName = usePathname()
+  const pathnameFromHook = usePathname()
+  const router = useRouter()
+  const pathName = pathnameFromHook || window?.location?.pathname
   const searchParams = useSearchParams()
+  const searchParamValue = searchParams.has(searchParamName) ? decodeURIComponent(searchParams.get(searchParamName)!) : defaultTab
   const [activeTab, setTab] = useState<string>(
     !disableSearchParams
-      ? (searchParams.get(searchParamName) || defaultTab)
+      ? searchParamValue
       : defaultTab,
   )
 
@@ -36,7 +40,7 @@ export const useTabSearchParams = ({
     setTab(newActiveTab)
     if (disableSearchParams)
       return
-    history[`${routingBehavior}State`](null, '', `${pathName}?${searchParamName}=${newActiveTab}`)
+    router[`${routingBehavior}`](`${pathName}?${searchParamName}=${encodeURIComponent(newActiveTab)}`)
   }
 
   return [activeTab, setActiveTab] as const

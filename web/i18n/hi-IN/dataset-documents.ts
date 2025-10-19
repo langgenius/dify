@@ -29,6 +29,8 @@ const translation = {
       delete: 'हटाएँ',
       enableWarning: 'संग्रहित फाइल को सक्रिय नहीं किया जा सकता',
       sync: 'सिंक्रोनाइज़ करें',
+      resume: 'रिज़्यूमे',
+      pause: 'रोकें',
     },
     index: {
       enable: 'सक्रिय करें',
@@ -98,6 +100,9 @@ const translation = {
       upload_file: 'फाइल अपलोड करें',
       notion: 'नोशन से सिंक करें',
       github: 'गिटहब से सिंक करें',
+      local_file: 'स्थानीय फ़ाइल',
+      online_document: 'ऑनलाइन दस्तावेज़',
+      website_crawl: 'वेबसाइट क्रॉल',
     },
     type: {
       book: 'पुस्तक',
@@ -335,13 +340,13 @@ const translation = {
     pause: 'रुकना',
     hierarchical: 'माता-पिता का बच्चा',
     childMaxTokens: 'बच्चा',
+    waiting: 'इनपुट की प्रतीक्षा कर रहा हूं...',
   },
   segment: {
     paragraphs: 'पैराग्राफ',
     keywords: 'कीवर्ड',
     addKeyWord: 'कीवर्ड जोड़ें',
     keywordError: 'कीवर्ड की अधिकतम लंबाई 20 अक्षर हो सकती है',
-    characters: 'अक्षर',
     hitCount: 'पुनर्प्राप्ति गणना',
     vectorHash: 'वेक्टर हैश: ',
     questionPlaceholder: 'यहाँ प्रश्न जोड़ें',
@@ -371,6 +376,7 @@ const translation = {
     addChunk: 'चंक जोड़ें',
     editChildChunk: 'संपादित करें बाल चंक',
     editedAt: 'पर संपादित',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     childChunk: 'चाइल्ड-चंक',
     parentChunk: 'माता-पिता-चंक',
     empty: 'कोई हिस्सा नहीं मिला',
@@ -390,6 +396,8 @@ const translation = {
     chunkAdded: '1 हिस्सा जोड़ा गया',
     chunkDetail: 'चंक विवरण',
     regenerationConfirmMessage: 'चाइल्ड चंक्स को रीजनरेट करने से वर्तमान चाइल्ड चंक्स ओवरराइट हो जाएंगे, जिसमें संपादित चंक्स और नए जोड़े गए चंक्स शामिल हैं। पुनरुत्थान को पूर्ववत नहीं किया जा सकता है।',
+    keywordDuplicate: 'कीवर्ड पहले से मौजूद है',
+    keywordEmpty: 'कीवर्ड ख़ाली नहीं हो सकता',
   },
 }
 

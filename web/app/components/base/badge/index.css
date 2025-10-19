@@ -1,0 +1,28 @@
+@tailwind components;
+
+@layer components {
+    .badge {
+        @apply inline-flex justify-center items-center text-text-tertiary border border-divider-deep
+    }
+
+    .badge-l {
+        @apply rounded-md gap-1 min-w-6
+    }
+
+    /* m is for the regular button */
+    .badge-m {
+        @apply rounded-md gap-[3px] min-w-5
+    }
+
+    .badge-s {
+        @apply rounded-[5px] gap-0.5 min-w-[18px]
+    }
+
+    .badge.badge-warning {
+        @apply text-text-warning border border-text-warning
+    }
+
+    .badge.badge-accent {
+        @apply text-text-accent-secondary border border-text-accent-secondary
+    }
+}

@@ -43,15 +43,15 @@ const BulkEdit: FC<Props> = ({
         onChange={handleChange}
         onBlur={handleBlur}
         headerRight={
-          <div className='flex items-center h-[18px]'>
+          <div className='flex h-[18px] items-center'>
             <div
-              className='flex items-center space-x-1 cursor-pointer'
+              className='flex cursor-pointer items-center space-x-1'
               onClick={handleSwitchToKeyValueEdit}
             >
-              <LayoutGrid02 className='w-3 h-3 text-gray-500' />
-              <div className='leading-[18px] text-xs font-normal text-gray-500'>{t(`${i18nPrefix}.keyValueEdit`)}</div>
+              <LayoutGrid02 className='h-3 w-3 text-gray-500' />
+              <div className='text-xs font-normal leading-[18px] text-gray-500'>{t(`${i18nPrefix}.keyValueEdit`)}</div>
             </div>
-            <div className='ml-3 mr-1.5 w-px h-3 bg-gray-200'></div>
+            <div className='ml-3 mr-1.5 h-3 w-px bg-gray-200'></div>
           </div>
         }
         minHeight={150}

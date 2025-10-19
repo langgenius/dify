@@ -8,27 +8,23 @@ from core.app.entities.task_entities import AppBlockingResponse, AppStreamRespon
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 
+logger = logging.getLogger(__name__)
+
 
 class AppGenerateResponseConverter(ABC):
     _blocking_response_type: type[AppBlockingResponse]
 
     @classmethod
     def convert(
-        cls,
-        response: Union[AppBlockingResponse, Generator[AppStreamResponse, Any, None]],
-        invoke_from: InvokeFrom,
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+        cls, response: Union[AppBlockingResponse, Generator[AppStreamResponse, Any, None]], invoke_from: InvokeFrom
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API}:
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_full_response(response)
             else:
 
-                def _generate_full_response() -> Generator[str, Any, None]:
-                    for chunk in cls.convert_stream_full_response(response):
-                        if chunk == "ping":
-                            yield f"event: {chunk}\n\n"
-                        else:
-                            yield f"data: {chunk}\n\n"
+                def _generate_full_response() -> Generator[dict | str, Any, None]:
+                    yield from cls.convert_stream_full_response(response)
 
                 return _generate_full_response()
         else:
@@ -36,12 +32,8 @@ class AppGenerateResponseConverter(ABC):
                 return cls.convert_blocking_simple_response(response)
             else:
 
-                def _generate_simple_response() -> Generator[str, Any, None]:
-                    for chunk in cls.convert_stream_simple_response(response):
-                        if chunk == "ping":
-                            yield f"event: {chunk}\n\n"
-                        else:
-                            yield f"data: {chunk}\n\n"
+                def _generate_simple_response() -> Generator[dict | str, Any, None]:
+                    yield from cls.convert_stream_simple_response(response)
 
                 return _generate_simple_response()
 
@@ -59,14 +51,14 @@ class AppGenerateResponseConverter(ABC):
     @abstractmethod
     def convert_stream_full_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[str, None, None]:
+    ) -> Generator[dict | str, None, None]:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def convert_stream_simple_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[str, None, None]:
+    ) -> Generator[dict | str, None, None]:
         raise NotImplementedError
 
     @classmethod
@@ -102,7 +94,7 @@ class AppGenerateResponseConverter(ABC):
         return metadata
 
     @classmethod
-    def _error_to_stream_response(cls, e: Exception) -> dict:
+    def _error_to_stream_response(cls, e: Exception):
         """
         Error to stream response.
         :param e: exception
@@ -130,7 +122,7 @@ class AppGenerateResponseConverter(ABC):
         if data:
             data.setdefault("message", getattr(e, "description", str(e)))
         else:
-            logging.error(e)
+            logger.error(e)
             data = {
                 "code": "internal_server_error",
                 "message": "Internal Server Error, please contact support.",

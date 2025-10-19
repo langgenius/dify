@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - "main"
-      - "deploy/dev"
-  release:
-    types: [published]
+      - "deploy/**"
+      - "build/**"
+      - "release/e-*"
+      - "hotfix/**"
+    tags:
+      - "*"
 
 concurrency:
   group: build-push-${{ github.head_ref || github.run_id }}

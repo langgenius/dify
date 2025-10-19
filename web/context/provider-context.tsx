@@ -17,19 +17,27 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import type { BasicPlan } from '@/app/components/billing/type'
 import { Plan, type UsagePlanInfo } from '@/app/components/billing/type'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
 import { defaultPlan } from '@/app/components/billing/config'
 import Toast from '@/app/components/base/toast'
+import {
+  useEducationStatus,
+} from '@/service/use-education'
+import { noop } from 'lodash-es'
+import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { ZENDESK_FIELD_IDS } from '@/config'
 
 type ProviderContextState = {
   modelProviders: ModelProvider[]
+  refreshModelProviders: () => void
   textGenerationModelList: Model[]
   supportRetrievalMethods: RETRIEVE_METHOD[]
   isAPIKeySet: boolean
   plan: {
-    type: Plan
+    type: BasicPlan
     usage: UsagePlanInfo
     total: UsagePlanInfo
   }
@@ -39,9 +47,27 @@ type ProviderContextState = {
   enableReplaceWebAppLogo: boolean
   modelLoadBalancingEnabled: boolean
   datasetOperatorEnabled: boolean
+  enableEducationPlan: boolean
+  isEducationWorkspace: boolean
+  isEducationAccount: boolean
+  allowRefreshEducationVerify: boolean
+  educationAccountExpireAt: number | null
+  isLoadingEducationAccountInfo: boolean
+  isFetchingEducationAccountInfo: boolean
+  webappCopyrightEnabled: boolean
+  licenseLimit: {
+    workspace_members: {
+      size: number
+      limit: number
+    }
+  },
+  refreshLicenseLimit: () => void
+  isAllowTransferWorkspace: boolean
+  isAllowPublishAsCustomKnowledgePipelineTemplate: boolean
 }
 const ProviderContext = createContext<ProviderContextState>({
   modelProviders: [],
+  refreshModelProviders: noop,
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: true,
@@ -64,17 +90,33 @@ const ProviderContext = createContext<ProviderContextState>({
   },
   isFetchedPlan: false,
   enableBilling: false,
-  onPlanInfoChanged: () => { },
+  onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
   datasetOperatorEnabled: false,
+  enableEducationPlan: false,
+  isEducationWorkspace: false,
+  isEducationAccount: false,
+  allowRefreshEducationVerify: false,
+  educationAccountExpireAt: null,
+  isLoadingEducationAccountInfo: false,
+  isFetchingEducationAccountInfo: false,
+  webappCopyrightEnabled: false,
+  licenseLimit: {
+    workspace_members: {
+      size: 0,
+      limit: 0,
+    },
+  },
+  refreshLicenseLimit: noop,
+  isAllowTransferWorkspace: false,
+  isAllowPublishAsCustomKnowledgePipelineTemplate: false,
 })
 
 export const useProviderContext = () => useContext(ProviderContext)
 
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713
-// eslint-disable-next-line @typescript-eslint/comma-dangle
 export const useProviderContextSelector = <T,>(selector: (state: ProviderContextState) => T): T =>
   useContextSelector(ProviderContext, selector)
 
@@ -84,7 +126,7 @@ type ProviderContextProviderProps = {
 export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
-  const { data: providersData } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
+  const { data: providersData, mutate: refreshModelProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const fetchModelListUrlPrefix = '/workspaces/current/models/model-types/'
   const { data: textGenerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelTypeEnum.textGeneration}`, fetchModelList)
   const { data: supportRetrievalMethods } = useSWR('/datasets/retrieval-setting', fetchSupportRetrievalMethods)
@@ -95,31 +137,82 @@ export const ProviderContextProvider = ({
   const [enableReplaceWebAppLogo, setEnableReplaceWebAppLogo] = useState(false)
   const [modelLoadBalancingEnabled, setModelLoadBalancingEnabled] = useState(false)
   const [datasetOperatorEnabled, setDatasetOperatorEnabled] = useState(false)
+  const [webappCopyrightEnabled, setWebappCopyrightEnabled] = useState(false)
+  const [licenseLimit, setLicenseLimit] = useState({
+    workspace_members: {
+      size: 0,
+      limit: 0,
+    },
+  })
+
+  const [enableEducationPlan, setEnableEducationPlan] = useState(false)
+  const [isEducationWorkspace, setIsEducationWorkspace] = useState(false)
+  const { data: educationAccountInfo, isLoading: isLoadingEducationAccountInfo, isFetching: isFetchingEducationAccountInfo } = useEducationStatus(!enableEducationPlan)
+  const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
+  const [isAllowPublishAsCustomKnowledgePipelineTemplate, setIsAllowPublishAsCustomKnowledgePipelineTemplate] = useState(false)
 
   const fetchPlan = async () => {
-    const data = await fetchCurrentPlanInfo()
-    const enabled = data.billing.enabled
-    setEnableBilling(enabled)
-    setEnableReplaceWebAppLogo(data.can_replace_logo)
-    if (enabled) {
-      setPlan(parseCurrentPlan(data))
-      setIsFetchedPlan(true)
+    try {
+      const data = await fetchCurrentPlanInfo()
+      if (!data) {
+        console.error('Failed to fetch plan info: data is undefined')
+        return
+      }
+
+      // set default value to avoid undefined error
+      setEnableBilling(data.billing?.enabled ?? false)
+      setEnableEducationPlan(data.education?.enabled ?? false)
+      setIsEducationWorkspace(data.education?.activated ?? false)
+      setEnableReplaceWebAppLogo(data.can_replace_logo ?? false)
+
+      if (data.billing?.enabled) {
+        setPlan(parseCurrentPlan(data) as any)
+        setIsFetchedPlan(true)
+      }
+
+      if (data.model_load_balancing_enabled)
+        setModelLoadBalancingEnabled(true)
+      if (data.dataset_operator_enabled)
+        setDatasetOperatorEnabled(true)
+      if (data.webapp_copyright_enabled)
+        setWebappCopyrightEnabled(true)
+      if (data.workspace_members)
+        setLicenseLimit({ workspace_members: data.workspace_members })
+      if (data.is_allow_transfer_workspace)
+        setIsAllowTransferWorkspace(data.is_allow_transfer_workspace)
+      if (data.knowledge_pipeline?.publish_enabled)
+        setIsAllowPublishAsCustomKnowledgePipelineTemplate(data.knowledge_pipeline?.publish_enabled)
     }
-    if (data.model_load_balancing_enabled)
-      setModelLoadBalancingEnabled(true)
-    if (data.dataset_operator_enabled)
-      setDatasetOperatorEnabled(true)
+    catch (error) {
+      console.error('Failed to fetch plan info:', error)
+      // set default value to avoid undefined error
+      setEnableBilling(false)
+      setEnableEducationPlan(false)
+      setIsEducationWorkspace(false)
+      setEnableReplaceWebAppLogo(false)
+    }
   }
   useEffect(() => {
     fetchPlan()
   }, [])
+
+  // #region Zendesk conversation fields
+  useEffect(() => {
+    if (ZENDESK_FIELD_IDS.PLAN && plan.type) {
+      setZendeskConversationFields([{
+        id: ZENDESK_FIELD_IDS.PLAN,
+        value: `${plan.type}-plan`,
+      }])
+    }
+  }, [plan.type])
+  // #endregion Zendesk conversation fields
 
   const { t } = useTranslation()
   useEffect(() => {
     if (localStorage.getItem('anthropic_quota_notice') === 'true')
       return
 
-    if (dayjs().isAfter(dayjs('2025-03-11')))
+    if (dayjs().isAfter(dayjs('2025-03-17')))
       return
 
     if (providersData?.data && providersData.data.length > 0) {
@@ -143,6 +236,7 @@ export const ProviderContextProvider = ({
   return (
     <ProviderContext.Provider value={{
       modelProviders: providersData?.data || [],
+      refreshModelProviders,
       textGenerationModelList: textGenerationModelList?.data || [],
       isAPIKeySet: !!textGenerationModelList?.data.some(model => model.status === ModelStatusEnum.active),
       supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
@@ -153,6 +247,18 @@ export const ProviderContextProvider = ({
       enableReplaceWebAppLogo,
       modelLoadBalancingEnabled,
       datasetOperatorEnabled,
+      enableEducationPlan,
+      isEducationWorkspace,
+      isEducationAccount: educationAccountInfo?.is_student || false,
+      allowRefreshEducationVerify: educationAccountInfo?.allow_refresh || false,
+      educationAccountExpireAt: educationAccountInfo?.expire_at || null,
+      isLoadingEducationAccountInfo,
+      isFetchingEducationAccountInfo,
+      webappCopyrightEnabled,
+      licenseLimit,
+      refreshLicenseLimit: fetchPlan,
+      isAllowTransferWorkspace,
+      isAllowPublishAsCustomKnowledgePipelineTemplate,
     }}>
       {children}
     </ProviderContext.Provider>

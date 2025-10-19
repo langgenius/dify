@@ -19,13 +19,15 @@ const NoteEditorContext = createContext<NoteEditorStore | null>(null)
 
 type NoteEditorContextProviderProps = {
   value: string
-  children: JSX.Element | string | (JSX.Element | string)[]
+  children: React.JSX.Element | string | (React.JSX.Element | string)[]
+  editable?: boolean
 }
 export const NoteEditorContextProvider = memo(({
   value,
   children,
+  editable = true,
 }: NoteEditorContextProviderProps) => {
-  const storeRef = useRef<NoteEditorStore>()
+  const storeRef = useRef<NoteEditorStore | undefined>(undefined)
 
   if (!storeRef.current)
     storeRef.current = createNoteEditorStore()
@@ -34,7 +36,7 @@ export const NoteEditorContextProvider = memo(({
   try {
     initialValue = JSON.parse(value)
   }
-  catch (e) {
+  catch {
 
   }
 
@@ -50,6 +52,7 @@ export const NoteEditorContextProvider = memo(({
       throw error
     },
     theme,
+    editable,
   }
 
   return (

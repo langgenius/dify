@@ -7,8 +7,8 @@ import Base from './base'
 type Props = {
   value: string
   onChange: (value: string) => void
-  title: JSX.Element | string
-  headerRight?: JSX.Element
+  title: React.JSX.Element | string
+  headerRight?: React.JSX.Element
   minHeight?: number
   onBlur?: () => void
   placeholder?: string
@@ -52,7 +52,7 @@ const TextEditor: FC<Props> = ({
           onChange={e => onChange(e.target.value)}
           onFocus={setIsFocus}
           onBlur={handleBlur}
-          className='w-full h-full px-3 resize-none bg-transparent border-none focus:outline-none leading-[18px] text-[13px] font-normal text-gray-900 placeholder:text-gray-300'
+          className='h-full w-full resize-none border-none bg-transparent px-3 text-[13px] font-normal leading-[18px] text-gray-900 placeholder:text-gray-300 focus:outline-none'
           placeholder={placeholder}
           readOnly={readonly}
         />

@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
 import type { NodeProps } from 'reactflow'
 import NodeResizer from '../nodes/_base/components/node-resizer'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
 import {
   useNodeDataUpdate,
   useNodesInteractions,
@@ -58,10 +59,12 @@ const NoteNode = ({
     handleNodeDataUpdateWithSyncDraft({ id, data: { selected: false } })
   }, ref)
 
+  const { setShortcutsEnabled } = useWorkflowHistoryStore()
+
   return (
     <div
       className={cn(
-        'flex flex-col relative rounded-md shadow-xs border hover:shadow-md',
+        'relative flex flex-col rounded-md border shadow-xs hover:shadow-md',
         THEME_MAP[theme].bg,
         data.selected ? THEME_MAP[theme].border : 'border-black/5',
       )}
@@ -74,23 +77,28 @@ const NoteNode = ({
       <NoteEditorContextProvider
         key={controlPromptEditorRerenderKey}
         value={data.text}
+        editable={!data._isTempNode}
       >
         <>
-          <NodeResizer
-            nodeId={id}
-            nodeData={data}
-            icon={<Icon />}
-            minWidth={240}
-            minHeight={88}
-          />
+          {
+            !data._isTempNode && (
+              <NodeResizer
+                nodeId={id}
+                nodeData={data}
+                icon={<Icon />}
+                minWidth={240}
+                minHeight={88}
+              />
+            )
+          }
           <div
             className={cn(
-              'shrink-0 h-2 opacity-50 rounded-t-md',
+              'h-2 shrink-0 rounded-t-md opacity-50',
               THEME_MAP[theme].title,
             )}></div>
           {
-            data.selected && (
-              <div className='absolute -top-[41px] left-1/2 -translate-x-1/2'>
+            data.selected && !data._isTempNode && (
+              <div className='absolute left-1/2 top-[-41px] -translate-x-1/2'>
                 <NoteEditorToolbar
                   theme={theme}
                   onThemeChange={handleThemeChange}
@@ -103,7 +111,7 @@ const NoteNode = ({
               </div>
             )
           }
-          <div className='grow px-3 py-2.5 overflow-y-auto'>
+          <div className='grow overflow-y-auto px-3 py-2.5'>
             <div className={cn(
               data.selected && 'nodrag nopan nowheel cursor-text',
             )}>
@@ -111,6 +119,7 @@ const NoteNode = ({
                 containerElement={ref.current}
                 placeholder={t('workflow.nodes.note.editor.placeholder') || ''}
                 onChange={handleEditorChange}
+                setShortcutsEnabled={setShortcutsEnabled}
               />
             </div>
           </div>

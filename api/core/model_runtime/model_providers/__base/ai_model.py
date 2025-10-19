@@ -1,53 +1,48 @@
 import decimal
-import os
-from abc import ABC, abstractmethod
-from typing import Optional
+import hashlib
+from threading import Lock
 
-from pydantic import ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-from core.helper.position_helper import get_position_map, sort_by_position_map
+import contexts
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
     DefaultParameterName,
-    FetchFrom,
     ModelType,
     PriceConfig,
     PriceInfo,
     PriceType,
 )
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
-from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
-from core.tools.utils.yaml_utils import load_yaml_file
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
+from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 
 
-class AIModel(ABC):
+class AIModel(BaseModel):
     """
     Base class for all models.
     """
 
-    model_type: ModelType
-    model_schemas: Optional[list[AIModelEntity]] = None
-    started_at: float = 0
+    tenant_id: str = Field(description="Tenant ID")
+    model_type: ModelType = Field(description="Model type")
+    plugin_id: str = Field(description="Plugin ID")
+    provider_name: str = Field(description="Provider")
+    plugin_model_provider: PluginModelProviderEntity = Field(description="Plugin model provider")
+    started_at: float = Field(description="Invoke start time", default=0)
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    @abstractmethod
-    def validate_credentials(self, model: str, credentials: dict) -> None:
-        """
-        Validate model credentials
-
-        :param model: model name
-        :param credentials: model credentials
-        :return:
-        """
-        raise NotImplementedError
-
     @property
-    @abstractmethod
-    def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
+    def _invoke_error_mapping(self) -> dict[type[Exception], list[type[Exception]]]:
         """
         Map model invoke error to unified error
         The key is the error type thrown to the caller
@@ -56,29 +51,39 @@ class AIModel(ABC):
 
         :return: Invoke error mapping
         """
-        raise NotImplementedError
+        from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
 
-    def _transform_invoke_error(self, error: Exception) -> InvokeError:
+        return {
+            InvokeConnectionError: [InvokeConnectionError],
+            InvokeServerUnavailableError: [InvokeServerUnavailableError],
+            InvokeRateLimitError: [InvokeRateLimitError],
+            InvokeAuthorizationError: [InvokeAuthorizationError],
+            InvokeBadRequestError: [InvokeBadRequestError],
+            PluginDaemonInnerError: [PluginDaemonInnerError],
+            ValueError: [ValueError],
+        }
+
+    def _transform_invoke_error(self, error: Exception) -> Exception:
         """
         Transform invoke error to unified error
 
         :param error: model invoke error
         :return: unified error
         """
-        provider_name = self.__class__.__module__.split(".")[-3]
-
         for invoke_error, model_errors in self._invoke_error_mapping.items():
             if isinstance(error, tuple(model_errors)):
                 if invoke_error == InvokeAuthorizationError:
-                    return invoke_error(
+                    return InvokeAuthorizationError(
                         description=(
-                            f"[{provider_name}] Incorrect model credentials provided, please check and try again."
+                            f"[{self.provider_name}] Incorrect model credentials provided, please check and try again."
                         )
                     )
+                elif isinstance(invoke_error, InvokeError):
+                    return InvokeError(description=f"[{self.provider_name}] {invoke_error.description}, {str(error)}")
+                else:
+                    return error
 
-                return invoke_error(description=f"[{provider_name}] {invoke_error.description}, {str(error)}")
-
-        return InvokeError(description=f"[{provider_name}] Error: {str(error)}")
+        return InvokeError(description=f"[{self.provider_name}] Error: {str(error)}")
 
     def get_price(self, model: str, credentials: dict, price_type: PriceType, tokens: int) -> PriceInfo:
         """
@@ -94,7 +99,7 @@ class AIModel(ABC):
         model_schema = self.get_model_schema(model, credentials)
 
         # get price info from predefined model schema
-        price_config: Optional[PriceConfig] = None
+        price_config: PriceConfig | None = None
         if model_schema and model_schema.pricing:
             price_config = model_schema.pricing
 
@@ -127,93 +132,7 @@ class AIModel(ABC):
             currency=price_config.currency,
         )
 
-    def predefined_models(self) -> list[AIModelEntity]:
-        """
-        Get all predefined models for given provider.
-
-        :return:
-        """
-        if self.model_schemas:
-            return self.model_schemas
-
-        model_schemas = []
-
-        # get module name
-        model_type = self.__class__.__module__.split(".")[-1]
-
-        # get provider name
-        provider_name = self.__class__.__module__.split(".")[-3]
-
-        # get the path of current classes
-        current_path = os.path.abspath(__file__)
-        # get parent path of the current path
-        provider_model_type_path = os.path.join(
-            os.path.dirname(os.path.dirname(current_path)), provider_name, model_type
-        )
-
-        # get all yaml files path under provider_model_type_path that do not start with __
-        model_schema_yaml_paths = [
-            os.path.join(provider_model_type_path, model_schema_yaml)
-            for model_schema_yaml in os.listdir(provider_model_type_path)
-            if not model_schema_yaml.startswith("__")
-            and not model_schema_yaml.startswith("_")
-            and os.path.isfile(os.path.join(provider_model_type_path, model_schema_yaml))
-            and model_schema_yaml.endswith(".yaml")
-        ]
-
-        # get _position.yaml file path
-        position_map = get_position_map(provider_model_type_path)
-
-        # traverse all model_schema_yaml_paths
-        for model_schema_yaml_path in model_schema_yaml_paths:
-            # read yaml data from yaml file
-            yaml_data = load_yaml_file(model_schema_yaml_path)
-
-            new_parameter_rules = []
-            for parameter_rule in yaml_data.get("parameter_rules", []):
-                if "use_template" in parameter_rule:
-                    try:
-                        default_parameter_name = DefaultParameterName.value_of(parameter_rule["use_template"])
-                        default_parameter_rule = self._get_default_parameter_rule_variable_map(default_parameter_name)
-                        copy_default_parameter_rule = default_parameter_rule.copy()
-                        copy_default_parameter_rule.update(parameter_rule)
-                        parameter_rule = copy_default_parameter_rule
-                    except ValueError:
-                        pass
-
-                if "label" not in parameter_rule:
-                    parameter_rule["label"] = {"zh_Hans": parameter_rule["name"], "en_US": parameter_rule["name"]}
-
-                new_parameter_rules.append(parameter_rule)
-
-            yaml_data["parameter_rules"] = new_parameter_rules
-
-            if "label" not in yaml_data:
-                yaml_data["label"] = {"zh_Hans": yaml_data["model"], "en_US": yaml_data["model"]}
-
-            yaml_data["fetch_from"] = FetchFrom.PREDEFINED_MODEL.value
-
-            try:
-                # yaml_data to entity
-                model_schema = AIModelEntity(**yaml_data)
-            except Exception as e:
-                model_schema_yaml_file_name = os.path.basename(model_schema_yaml_path).rstrip(".yaml")
-                raise Exception(
-                    f"Invalid model schema for {provider_name}.{model_type}.{model_schema_yaml_file_name}: {str(e)}"
-                )
-
-            # cache model schema
-            model_schemas.append(model_schema)
-
-        # resort model schemas by position
-        model_schemas = sort_by_position_map(position_map, model_schemas, lambda x: x.model)
-
-        # cache model schemas
-        self.model_schemas = model_schemas
-
-        return model_schemas
-
-    def get_model_schema(self, model: str, credentials: Optional[dict] = None) -> Optional[AIModelEntity]:
+    def get_model_schema(self, model: str, credentials: dict | None = None) -> AIModelEntity | None:
         """
         Get model schema by model name and credentials
 
@@ -221,20 +140,40 @@ class AIModel(ABC):
         :param credentials: model credentials
         :return: model schema
         """
-        # Try to get model schema from predefined models
-        for predefined_model in self.predefined_models():
-            if model == predefined_model.model:
-                return predefined_model
+        from core.plugin.impl.model import PluginModelClient
 
-        # Try to get model schema from credentials
-        if credentials:
-            model_schema = self.get_customizable_model_schema_from_credentials(model, credentials)
-            if model_schema:
-                return model_schema
+        plugin_model_manager = PluginModelClient()
+        cache_key = f"{self.tenant_id}:{self.plugin_id}:{self.provider_name}:{self.model_type.value}:{model}"
+        # sort credentials
+        sorted_credentials = sorted(credentials.items()) if credentials else []
+        cache_key += ":".join([hashlib.md5(f"{k}:{v}".encode()).hexdigest() for k, v in sorted_credentials])
 
-        return None
+        try:
+            contexts.plugin_model_schemas.get()
+        except LookupError:
+            contexts.plugin_model_schemas.set({})
+            contexts.plugin_model_schema_lock.set(Lock())
 
-    def get_customizable_model_schema_from_credentials(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+        with contexts.plugin_model_schema_lock.get():
+            if cache_key in contexts.plugin_model_schemas.get():
+                return contexts.plugin_model_schemas.get()[cache_key]
+
+            schema = plugin_model_manager.get_model_schema(
+                tenant_id=self.tenant_id,
+                user_id="unknown",
+                plugin_id=self.plugin_id,
+                provider=self.provider_name,
+                model_type=self.model_type.value,
+                model=model,
+                credentials=credentials or {},
+            )
+
+            if schema:
+                contexts.plugin_model_schemas.get()[cache_key] = schema
+
+            return schema
+
+    def get_customizable_model_schema_from_credentials(self, model: str, credentials: dict) -> AIModelEntity | None:
         """
         Get customizable model schema from credentials
 
@@ -242,14 +181,9 @@ class AIModel(ABC):
         :param credentials: model credentials
         :return: model schema
         """
-        return self._get_customizable_model_schema(model, credentials)
 
-    def _get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
-        """
-        Get customizable model schema and fill in the template
-        """
+        # get customizable model schema
         schema = self.get_customizable_model_schema(model, credentials)
-
         if not schema:
             return None
 
@@ -297,7 +231,7 @@ class AIModel(ABC):
 
         return schema
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
         """
         Get customizable model schema
 
@@ -307,7 +241,7 @@ class AIModel(ABC):
         """
         return None
 
-    def _get_default_parameter_rule_variable_map(self, name: DefaultParameterName) -> dict:
+    def _get_default_parameter_rule_variable_map(self, name: DefaultParameterName):
         """
         Get default parameter rule for given name
 
@@ -320,15 +254,3 @@ class AIModel(ABC):
             raise Exception(f"Invalid model parameter rule name {name}")
 
         return default_parameter_rule
-
-    def _get_num_tokens_by_gpt2(self, text: str) -> int:
-        """
-        Get number of tokens for given prompt messages by gpt2
-        Some provider models do not provide an interface for obtaining the number of tokens.
-        Here, the gpt2 tokenizer is used to calculate the number of tokens.
-        This method can be executed offline, and the gpt2 tokenizer has been cached in the project.
-
-        :param text: plain text of prompt. You need to convert the original message to plain text
-        :return: number of tokens
-        """
-        return GPT2Tokenizer.get_num_tokens(text)

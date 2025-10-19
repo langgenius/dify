@@ -7,15 +7,16 @@ from core.model_runtime.entities import (
     AudioPromptMessageContent,
     DocumentPromptMessageContent,
     ImagePromptMessageContent,
-    MultiModalPromptMessageContent,
+    TextPromptMessageContent,
     VideoPromptMessageContent,
 )
+from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from core.tools.signature import sign_tool_file
 from extensions.ext_storage import storage
 
 from . import helpers
 from .enums import FileAttribute
 from .models import File, FileTransferMethod, FileType
-from .tool_file_parser import ToolFileParser
 
 
 def get_attr(*, file: File, attr: FileAttribute):
@@ -31,9 +32,11 @@ def get_attr(*, file: File, attr: FileAttribute):
         case FileAttribute.TRANSFER_METHOD:
             return file.transfer_method.value
         case FileAttribute.URL:
-            return file.remote_url
+            return _to_url(file)
         case FileAttribute.EXTENSION:
             return file.extension
+        case FileAttribute.RELATED_ID:
+            return file.related_id
 
 
 def to_prompt_message_content(
@@ -41,37 +44,65 @@ def to_prompt_message_content(
     /,
     *,
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
-) -> MultiModalPromptMessageContent:
+) -> PromptMessageContentUnionTypes:
+    """
+    Convert a file to prompt message content.
+
+    This function converts files to their appropriate prompt message content types.
+    For supported file types (IMAGE, AUDIO, VIDEO, DOCUMENT), it creates the
+    corresponding message content with proper encoding/URL.
+
+    For unsupported file types, instead of raising an error, it returns a
+    TextPromptMessageContent with a descriptive message about the file.
+
+    Args:
+        f: The file to convert
+        image_detail_config: Optional detail configuration for image files
+
+    Returns:
+        PromptMessageContentUnionTypes: The appropriate message content type
+
+    Raises:
+        ValueError: If file extension or mime_type is missing
+    """
     if f.extension is None:
         raise ValueError("Missing file extension")
     if f.mime_type is None:
         raise ValueError("Missing file mime_type")
 
-    params = {
-        "base64_data": _get_encoded_string(f) if dify_config.MULTIMODAL_SEND_FORMAT == "base64" else "",
-        "url": _to_url(f) if dify_config.MULTIMODAL_SEND_FORMAT == "url" else "",
-        "format": f.extension.removeprefix("."),
-        "mime_type": f.mime_type,
-    }
-    if f.type == FileType.IMAGE:
-        params["detail"] = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
-
-    prompt_class_map: Mapping[FileType, type[MultiModalPromptMessageContent]] = {
+    prompt_class_map: Mapping[FileType, type[PromptMessageContentUnionTypes]] = {
         FileType.IMAGE: ImagePromptMessageContent,
         FileType.AUDIO: AudioPromptMessageContent,
         FileType.VIDEO: VideoPromptMessageContent,
         FileType.DOCUMENT: DocumentPromptMessageContent,
     }
 
-    try:
-        return prompt_class_map[f.type].model_validate(params)
-    except KeyError:
-        raise ValueError(f"file type {f.type} is not supported")
+    # Check if file type is supported
+    if f.type not in prompt_class_map:
+        # For unsupported file types, return a text description
+        return TextPromptMessageContent(data=f"[Unsupported file type: {f.filename} ({f.type.value})]")
+
+    # Process supported file types
+    params = {
+        "base64_data": _get_encoded_string(f) if dify_config.MULTIMODAL_SEND_FORMAT == "base64" else "",
+        "url": _to_url(f) if dify_config.MULTIMODAL_SEND_FORMAT == "url" else "",
+        "format": f.extension.removeprefix("."),
+        "mime_type": f.mime_type,
+        "filename": f.filename or "",
+    }
+    if f.type == FileType.IMAGE:
+        params["detail"] = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
+
+    return prompt_class_map[f.type].model_validate(params)
 
 
 def download(f: File, /):
-    if f.transfer_method in (FileTransferMethod.TOOL_FILE, FileTransferMethod.LOCAL_FILE):
-        return _download_file_content(f._storage_key)
+    if f.transfer_method in (
+        FileTransferMethod.TOOL_FILE,
+        FileTransferMethod.LOCAL_FILE,
+        FileTransferMethod.DATASOURCE_FILE,
+    ):
+        return _download_file_content(f.storage_key)
     elif f.transfer_method == FileTransferMethod.REMOTE_URL:
         response = ssrf_proxy.get(f.remote_url, follow_redirects=True)
         response.raise_for_status()
@@ -107,9 +138,11 @@ def _get_encoded_string(f: File, /):
             response.raise_for_status()
             data = response.content
         case FileTransferMethod.LOCAL_FILE:
-            data = _download_file_content(f._storage_key)
+            data = _download_file_content(f.storage_key)
         case FileTransferMethod.TOOL_FILE:
-            data = _download_file_content(f._storage_key)
+            data = _download_file_content(f.storage_key)
+        case FileTransferMethod.DATASOURCE_FILE:
+            data = _download_file_content(f.storage_key)
 
     encoded_string = base64.b64encode(data).decode("utf-8")
     return encoded_string
@@ -128,6 +161,6 @@ def _to_url(f: File, /):
         # add sign url
         if f.related_id is None or f.extension is None:
             raise ValueError("Missing file related_id or extension")
-        return ToolFileParser.get_tool_file_manager().sign_file(tool_file_id=f.related_id, extension=f.extension)
+        return sign_tool_file(tool_file_id=f.related_id, extension=f.extension)
     else:
         raise ValueError(f"Unsupported transfer method: {f.transfer_method}")

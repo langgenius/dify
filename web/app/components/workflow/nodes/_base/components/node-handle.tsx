@@ -16,13 +16,12 @@ import {
 } from '../../../types'
 import type { Node } from '../../../types'
 import BlockSelector from '../../../block-selector'
-import type { ToolDefaultValue } from '../../../block-selector/types'
+import type { DataSourceDefaultValue, ToolDefaultValue } from '../../../block-selector/types'
 import {
   useAvailableBlocks,
   useIsChatMode,
   useNodesInteractions,
   useNodesReadOnly,
-  useWorkflow,
 } from '../../../hooks'
 import {
   useStore,
@@ -47,7 +46,7 @@ export const NodeTargetHandle = memo(({
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
   const connected = data._connectedTargetHandleIds?.includes(handleId)
-  const { availablePrevBlocks } = useAvailableBlocks(data.type, data.isInIteration)
+  const { availablePrevBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
   const isConnectable = !!availablePrevBlocks.length
 
   const handleOpenChange = useCallback((v: boolean) => {
@@ -58,7 +57,7 @@ export const NodeTargetHandle = memo(({
     if (!connected)
       setOpen(v => !v)
   }, [connected])
-  const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
+  const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,
@@ -78,9 +77,9 @@ export const NodeTargetHandle = memo(({
         type='target'
         position={Position.Left}
         className={cn(
-          '!w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none z-[1]',
-          'after:absolute after:w-0.5 after:h-2 after:left-1.5 after:top-1 after:bg-workflow-link-line-handle',
-          'hover:scale-125 transition-all',
+          'z-[1] !h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none',
+          'after:absolute after:left-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
+          'transition-all hover:scale-125',
           data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
           data._runningStatus === NodeRunningStatus.Failed && 'after:bg-workflow-link-line-error-handle',
           data._runningStatus === NodeRunningStatus.Exception && 'after:bg-workflow-link-line-failure-handle',
@@ -129,10 +128,9 @@ export const NodeSourceHandle = memo(({
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration)
+  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
   const isConnectable = !!availableNextBlocks.length
   const isChatMode = useIsChatMode()
-  const { checkParallelLimit } = useWorkflow()
 
   const connected = data._connectedSourceHandleIds?.includes(handleId)
   const handleOpenChange = useCallback((v: boolean) => {
@@ -140,10 +138,9 @@ export const NodeSourceHandle = memo(({
   }, [])
   const handleHandleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation()
-    if (checkParallelLimit(id, handleId))
-      setOpen(v => !v)
-  }, [checkParallelLimit, id, handleId])
-  const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
+    setOpen(v => !v)
+  }, [])
+  const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,
@@ -167,9 +164,9 @@ export const NodeSourceHandle = memo(({
       type='source'
       position={Position.Right}
       className={cn(
-        'group/handle !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none z-[1]',
-        'after:absolute after:w-0.5 after:h-2 after:right-1.5 after:top-1 after:bg-workflow-link-line-handle',
-        'hover:scale-125 transition-all',
+        'group/handle z-[1] !h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none',
+        'after:absolute after:right-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
+        'transition-all hover:scale-125',
         data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
         data._runningStatus === NodeRunningStatus.Failed && 'after:bg-workflow-link-line-error-handle',
         showExceptionStatus && data._runningStatus === NodeRunningStatus.Exception && 'after:bg-workflow-link-line-failure-handle',
@@ -179,7 +176,7 @@ export const NodeSourceHandle = memo(({
       isConnectable={isConnectable}
       onClick={handleHandleClick}
     >
-      <div className='hidden group-hover/handle:block absolute left-1/2 -top-1 -translate-y-full -translate-x-1/2 p-1.5 border-[0.5px] border-components-panel-border bg-components-tooltip-bg rounded-lg shadow-lg'>
+      <div className='absolute -top-1 left-1/2 hidden -translate-x-1/2 -translate-y-full rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 shadow-lg group-hover/handle:block'>
         <div className='system-xs-regular text-text-tertiary'>
           <div className=' whitespace-nowrap'>
             <span className='system-xs-medium text-text-secondary'>{t('workflow.common.parallelTip.click.title')}</span>
@@ -199,7 +196,7 @@ export const NodeSourceHandle = memo(({
             onSelect={handleSelect}
             asChild
             triggerClassName={open => `
-              hidden absolute top-0 left-0 pointer-events-none 
+              hidden absolute top-0 left-0 pointer-events-none
               ${nodeSelectorClassName}
               group-hover:!flex
               ${data.selected && '!flex'}

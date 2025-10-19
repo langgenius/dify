@@ -56,7 +56,6 @@ provider_credential_schema:
   credential_form_schemas:
 ```
 
-
 Then, we need to determine what credentials are required to define a model in Xinference.
 
 - Since it supports three different types of models, we need to specify the model_type to denote the model type. Here is how we can define it:
@@ -102,12 +101,12 @@ provider_credential_schema:
 ```yaml
   - variable: server_url
     label:
-      zh_Hans: 服务器URL
+      zh_Hans: 服务器 URL
       en_US: Server url
     type: text-input
     required: true
     placeholder:
-      zh_Hans: 在此输入Xinference的服务器地址，如 https://example.com/xxx
+      zh_Hans: 在此输入 Xinference 的服务器地址，如 https://example.com/xxx
       en_US: Enter the url of your Xinference, for example https://example.com/xxx
 ```
 
@@ -116,12 +115,12 @@ provider_credential_schema:
 ```yaml
   - variable: model_uid
     label:
-      zh_Hans: 模型UID
+      zh_Hans: 模型 UID
       en_US: Model uid
     type: text-input
     required: true
     placeholder:
-      zh_Hans: 在此输入您的Model UID
+      zh_Hans: 在此输入您的 Model UID
       en_US: Enter the model uid
 ```
 
@@ -191,8 +190,7 @@ def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[Pr
   """
 ```
 
-
-Sometimes, you might not want to return 0 directly. In such cases, you can use `self._get_num_tokens_by_gpt2(text: str)` to get pre-computed tokens. This method is provided by the `AIModel` base class, and it uses GPT2's Tokenizer for calculation. However, it should be noted that this is only a substitute and may not be fully accurate.
+Sometimes, you might not want to return 0 directly. In such cases, you can use `self._get_num_tokens_by_gpt2(text: str)` to get pre-computed tokens and ensure environment variable `PLUGIN_BASED_TOKEN_COUNTING_ENABLED` is set to `true`, This method is provided by the `AIModel` base class, and it uses GPT2's Tokenizer for calculation. However, it should be noted that this is only a substitute and may not be fully accurate.
 
 - Model Credentials Validation
 

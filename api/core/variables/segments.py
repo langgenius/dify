@@ -1,9 +1,9 @@
 import json
 import sys
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Annotated, Any, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, Tag, field_validator
 
 from core.file import File
 
@@ -11,10 +11,15 @@ from .types import SegmentType
 
 
 class Segment(BaseModel):
+    """Segment is runtime type used during the execution of workflow.
+
+    Note: this class is abstract, you should use subclasses of this class instead.
+    """
+
     model_config = ConfigDict(frozen=True)
 
     value_type: SegmentType
-    value: Any
+    value: Any = None
 
     @field_validator("value_type")
     @classmethod
@@ -46,7 +51,7 @@ class Segment(BaseModel):
         """
         return sys.getsizeof(self.value)
 
-    def to_object(self) -> Any:
+    def to_object(self):
         return self.value
 
 
@@ -69,22 +74,36 @@ class NoneSegment(Segment):
 
 class StringSegment(Segment):
     value_type: SegmentType = SegmentType.STRING
-    value: str
+    value: str = None  # type: ignore
 
 
 class FloatSegment(Segment):
-    value_type: SegmentType = SegmentType.NUMBER
-    value: float
+    value_type: SegmentType = SegmentType.FLOAT
+    value: float = None  # type: ignore
+    # NOTE(QuantumGhost): seems that the equality for FloatSegment with `NaN` value has some problems.
+    # The following tests cannot pass.
+    #
+    #     def test_float_segment_and_nan():
+    #         nan = float("nan")
+    #         assert nan != nan
+    #
+    #         f1 = FloatSegment(value=float("nan"))
+    #         f2 = FloatSegment(value=float("nan"))
+    #         assert f1 != f2
+    #
+    #         f3 = FloatSegment(value=nan)
+    #         f4 = FloatSegment(value=nan)
+    #         assert f3 != f4
 
 
 class IntegerSegment(Segment):
-    value_type: SegmentType = SegmentType.NUMBER
-    value: int
+    value_type: SegmentType = SegmentType.INTEGER
+    value: int = None  # type: ignore
 
 
 class ObjectSegment(Segment):
     value_type: SegmentType = SegmentType.OBJECT
-    value: Mapping[str, Any]
+    value: Mapping[str, Any] = None  # type: ignore
 
     @property
     def text(self) -> str:
@@ -101,16 +120,23 @@ class ObjectSegment(Segment):
 
 class ArraySegment(Segment):
     @property
+    def text(self) -> str:
+        # Return empty string for empty arrays instead of "[]"
+        if not self.value:
+            return ""
+        return super().text
+
+    @property
     def markdown(self) -> str:
         items = []
         for item in self.value:
-            items.append(str(item))
+            items.append(f"- {item}")
         return "\n".join(items)
 
 
 class FileSegment(Segment):
     value_type: SegmentType = SegmentType.FILE
-    value: File
+    value: File = None  # type: ignore
 
     @property
     def markdown(self) -> str:
@@ -125,33 +151,41 @@ class FileSegment(Segment):
         return ""
 
 
+class BooleanSegment(Segment):
+    value_type: SegmentType = SegmentType.BOOLEAN
+    value: bool = None  # type: ignore
+
+
 class ArrayAnySegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_ANY
-    value: Sequence[Any]
+    value: Sequence[Any] = None  # type: ignore
 
 
 class ArrayStringSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_STRING
-    value: Sequence[str]
+    value: Sequence[str] = None  # type: ignore
 
     @property
     def text(self) -> str:
-        return json.dumps(self.value)
+        # Return empty string for empty arrays instead of "[]"
+        if not self.value:
+            return ""
+        return json.dumps(self.value, ensure_ascii=False)
 
 
 class ArrayNumberSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_NUMBER
-    value: Sequence[float | int]
+    value: Sequence[float | int] = None  # type: ignore
 
 
 class ArrayObjectSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_OBJECT
-    value: Sequence[Mapping[str, Any]]
+    value: Sequence[Mapping[str, Any]] = None  # type: ignore
 
 
 class ArrayFileSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_FILE
-    value: Sequence[File]
+    value: Sequence[File] = None  # type: ignore
 
     @property
     def markdown(self) -> str:
@@ -167,3 +201,53 @@ class ArrayFileSegment(ArraySegment):
     @property
     def text(self) -> str:
         return ""
+
+
+class ArrayBooleanSegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_BOOLEAN
+    value: Sequence[bool] = None  # type: ignore
+
+
+def get_segment_discriminator(v: Any) -> SegmentType | None:
+    if isinstance(v, Segment):
+        return v.value_type
+    elif isinstance(v, dict):
+        value_type = v.get("value_type")
+        if value_type is None:
+            return None
+        try:
+            seg_type = SegmentType(value_type)
+        except ValueError:
+            return None
+        return seg_type
+    else:
+        # return None if the discriminator value isn't found
+        return None
+
+
+# The `SegmentUnion`` type is used to enable serialization and deserialization with Pydantic.
+# Use `Segment` for type hinting when serialization is not required.
+#
+# Note:
+# - All variants in `SegmentUnion` must inherit from the `Segment` class.
+# - The union must include all non-abstract subclasses of `Segment`, except:
+#   - `SegmentGroup`, which is not added to the variable pool.
+#   - `Variable` and its subclasses, which are handled by `VariableUnion`.
+SegmentUnion: TypeAlias = Annotated[
+    (
+        Annotated[NoneSegment, Tag(SegmentType.NONE)]
+        | Annotated[StringSegment, Tag(SegmentType.STRING)]
+        | Annotated[FloatSegment, Tag(SegmentType.FLOAT)]
+        | Annotated[IntegerSegment, Tag(SegmentType.INTEGER)]
+        | Annotated[ObjectSegment, Tag(SegmentType.OBJECT)]
+        | Annotated[FileSegment, Tag(SegmentType.FILE)]
+        | Annotated[BooleanSegment, Tag(SegmentType.BOOLEAN)]
+        | Annotated[ArrayAnySegment, Tag(SegmentType.ARRAY_ANY)]
+        | Annotated[ArrayStringSegment, Tag(SegmentType.ARRAY_STRING)]
+        | Annotated[ArrayNumberSegment, Tag(SegmentType.ARRAY_NUMBER)]
+        | Annotated[ArrayObjectSegment, Tag(SegmentType.ARRAY_OBJECT)]
+        | Annotated[ArrayFileSegment, Tag(SegmentType.ARRAY_FILE)]
+        | Annotated[ArrayBooleanSegment, Tag(SegmentType.ARRAY_BOOLEAN)]
+    ),
+    Discriminator(get_segment_discriminator),
+]

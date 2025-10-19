@@ -13,6 +13,7 @@ type InputProps = {
   min?: number
   max?: number
 }
+
 const Input: FC<InputProps> = ({
   value,
   onChange,
@@ -26,28 +27,29 @@ const Input: FC<InputProps> = ({
   max,
 }) => {
   const toLimit = (v: string) => {
-    const minNum = parseFloat(`${min}`)
-    const maxNum = parseFloat(`${max}`)
-    if (!isNaN(minNum) && parseFloat(v) < minNum) {
+    const minNum = Number.parseFloat(`${min}`)
+    const maxNum = Number.parseFloat(`${max}`)
+    if (!isNaN(minNum) && Number.parseFloat(v) < minNum) {
       onChange(`${min}`)
       return
     }
-
-    if (!isNaN(maxNum) && parseFloat(v) > maxNum)
+    if (!isNaN(maxNum) && Number.parseFloat(v) > maxNum)
       onChange(`${max}`)
   }
+
   return (
     <div className='relative'>
       <input
         tabIndex={0}
+        // Do not set autoComplete for security - prevents browser from storing sensitive API keys
         className={`
-          block px-3 w-full h-9 bg-gray-100 text-sm rounded-lg border border-transparent
-          appearance-none outline-none caret-primary-600
-          hover:border-[rgba(0,0,0,0.08)] hover:bg-gray-50
-          focus:bg-white focus:border-gray-300 focus:shadow-xs
-          placeholder:text-sm placeholder:text-gray-400
-          ${validated && 'pr-[30px]'}
-          ${className}
+          block h-8 w-full appearance-none rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-sm
+          text-components-input-text-filled caret-primary-600 outline-none
+          placeholder:text-sm placeholder:text-text-tertiary
+          hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active
+          focus:bg-components-input-bg-active focus:shadow-xs
+          ${validated ? 'pr-[30px]' : ''}
+          ${className || ''}
         `}
         placeholder={placeholder || ''}
         onChange={e => onChange(e.target.value)}
@@ -59,13 +61,11 @@ const Input: FC<InputProps> = ({
         min={min}
         max={max}
       />
-      {
-        validated && (
-          <div className='absolute top-2.5 right-2.5'>
-            <CheckCircle className='w-4 h-4 text-[#039855]' />
-          </div>
-        )
-      }
+      {validated && (
+        <div className='absolute right-2.5 top-2.5'>
+          <CheckCircle className='h-4 w-4 text-[#039855]' />
+        </div>
+      )}
     </div>
   )
 }

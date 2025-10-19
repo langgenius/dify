@@ -1,9 +1,9 @@
 export function hexToRGBA(hex: string, opacity: number): string {
   hex = hex.replace('#', '')
 
-  const r = parseInt(hex.slice(0, 2), 16)
-  const g = parseInt(hex.slice(2, 4), 16)
-  const b = parseInt(hex.slice(4, 6), 16)
+  const r = Number.parseInt(hex.slice(0, 2), 16)
+  const g = Number.parseInt(hex.slice(2, 4), 16)
+  const b = Number.parseInt(hex.slice(4, 6), 16)
 
   // Returning an RGB color object
   return `rgba(${r},${g},${b},${opacity.toString()})`

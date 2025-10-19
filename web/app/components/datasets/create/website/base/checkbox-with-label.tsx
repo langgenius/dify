@@ -23,9 +23,9 @@ const CheckboxWithLabel: FC<Props> = ({
   tooltip,
 }) => {
   return (
-    <label className={cn(className, 'flex items-center h-7 space-x-2')}>
+    <label className={cn(className, 'flex h-7 items-center space-x-2')}>
       <Checkbox checked={isChecked} onCheck={() => onChange(!isChecked)} />
-      <div className={cn(labelClassName, 'text-sm font-normal text-gray-800')}>{label}</div>
+      <div className={cn('text-sm font-normal text-text-secondary', labelClassName)}>{label}</div>
       {tooltip && (
         <Tooltip
           popupContent={

@@ -7,10 +7,7 @@ Workflow applications offers non-session support and is ideal for translation, a
 
 <div>
   ### Base URL
-  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url}>
-    ```javascript
-    ```
-  </CodeGroup>
+  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url} />
 
   ### Authentication
 
@@ -19,12 +16,7 @@ Workflow applications offers non-session support and is ideal for translation, a
 
   For all API requests, include your API Key in the `Authorization` HTTP Header, as shown below:
 
-  <CodeGroup title="Code">
-    ```javascript
-      Authorization: Bearer {API_KEY}
-
-    ```
-  </CodeGroup>
+  <CodeGroup title="Code" targetCode='Authorization: Bearer {API_KEY}' />
 </div>
 
 ---
@@ -43,8 +35,21 @@ Workflow applications offers non-session support and is ideal for translation, a
       - `inputs` (object) Required
         Allows the entry of various variable values defined by the App.
         The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
-        The workflow application requires at least one key/value pair to be inputted.
-        If the variable is of File type, specify an object that has the keys described in `files` below.
+        The workflow application requires at least one key/value pair to be inputted. The variable can be of File Array type.
+        File Array type variable is suitable for inputting files combined with text understanding and answering questions, available only when the model supports file parsing and understanding capability.
+        If the variable is of File Array type, the corresponding value should be a list whose elements contain following attributions:
+          - `type` (string) Supported type:
+            - `document` Supported types include: 'TXT', 'MD', 'MARKDOWN', 'MDX', 'PDF', 'HTML', 'XLSX', 'XLS', 'VTT', 'PROPERTIES', 'DOC', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
+            - `image` Supported types include: 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
+            - `audio` Supported types include: 'MP3', 'M4A', 'WAV', 'WEBM', 'MPGA'
+            - `video` Supported types include: 'MP4', 'MOV', 'MPEG', 'WEBM'
+            - `custom` Supported types include: other file types
+          - `transfer_method` (string) Transfer method:
+            - `remote_url`: File URL.
+            - `local_file`: Upload file.
+          - `url` File URL. (Only when transfer method is `remote_url`).
+          - `upload_file_id` Upload file ID. (Only when transfer method is `local_file`).
+
       - `response_mode` (string) Required
         The mode of response return, supporting:
         - `streaming` Streaming mode (recommended), implements a typewriter-like output through SSE ([Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)).
@@ -53,17 +58,14 @@ Workflow applications offers non-session support and is ideal for translation, a
       - `user` (string) Required
         User identifier, used to define the identity of the end-user for retrieval and statistics.
         Should be uniquely defined by the developer within the application.
+        <br/>
+        <i>The user identifier should be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.</i>
       - `files` (array[object]) Optional
-        File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports file parsing and understanding capability.
-          - `type` (string) Supported type: 
-            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
-            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
-            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
-            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
-            - `custom` (Other file types)
-          - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
-          - `url` (string) Image URL (when the transfer method is `remote_url`)
-          - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
+      - `trace_id` (string) Optional
+        Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:
+        1. Header: via HTTP Header `X-Trace-Id`, highest priority.
+        2. Query parameter: via URL query parameter `trace_id`.
+        3. Request Body: via request body field `trace_id` (i.e., this field).
 
     ### Response
     When `response_mode` is `blocking`, return a CompletionResponse object.
@@ -90,7 +92,7 @@ Workflow applications offers non-session support and is ideal for translation, a
     Each streaming chunk starts with `data:`, separated by two newline characters `\n\n`, as shown below:
     <CodeGroup>
     ```streaming {{ title: 'Response' }}
-    data: {"event": "message", "task_id": "900bbd43-dc0b-4383-a372-aa6e6c414227", "id": "663c5084-a254-4040-8ad3-51f2a3c1a77c", "answer": "Hi", "created_at": 1705398420}\n\n
+    data: {"event": "text_chunk", "workflow_run_id": "b85e5fc5-751b-454d-b14e-dc5f240b0a31", "task_id": "bd029338-b068-4d34-a331-fc85478922c2", "data": {"text": "\u4e3a\u4e86", "from_variable_selector": ["1745912968134", "text"]}}\n\n
     ```
     </CodeGroup>
     The structure of the streaming chunks varies depending on the `event`:
@@ -101,7 +103,6 @@ Workflow applications offers non-session support and is ideal for translation, a
       - `data` (object) detail
         - `id` (string) Unique ID of workflow execution
         - `workflow_id` (string) ID of related workflow
-        - `sequence_number` (int) Self-increasing serial number, self-increasing in the App, starting from 1
         - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
     - `event: node_started` node execution started
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
@@ -116,6 +117,13 @@ Workflow applications offers non-session support and is ideal for translation, a
         - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
         - `inputs` (object) Contents of all preceding node variables used in the node
         - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: text_chunk` Text fragment
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `text_chunk`
+      - `data` (object) detail
+        - `text` (string) Text content
+        - `from_variable_selector` (array) Text source path, helping developers understand which node and variable generated the text
     - `event: node_finished` node execution ends, success or failure in different states in the same event
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
       - `workflow_run_id` (string) Unique ID of workflow execution
@@ -176,29 +184,31 @@ Workflow applications offers non-session support and is ideal for translation, a
 
   </Col>
   <Col sticky>
-     <CodeGroup title="Request" tag="POST" label="/workflows/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/workflows/run' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "inputs": {},
-        "response_mode": "streaming",
-        "user": "abc-123"
-    }'
-    ```
-
-    </CodeGroup>
-    <CodeGroup title="File variable example">
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/run"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "inputs": ${JSON.stringify(props.inputs)},
+    "response_mode": "streaming",
+    "user": "abc-123"
+}'`}
+    />
+    <CodeGroup title="Example: file array as an input variable">
       ```json {{ title: 'File variable example' }}
       {
         "inputs": {
-          "{variable_name}": {
+          "{variable_name}":
+          [
+            {
             "transfer_method": "local_file",
             "upload_file_id": "{upload_file_id}",
             "type": "{document_type}"
-          }
+            }
+          ]
         }
       }
       ```
@@ -229,7 +239,7 @@ Workflow applications offers non-session support and is ideal for translation, a
     ### Streaming Mode
     <CodeGroup title="Response">
     ```streaming {{ title: 'Response' }}
-      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "sequence_number": 1, "created_at": 1679586595}}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "created_at": 1679586595}}
       data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
       data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
       data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
@@ -247,7 +257,7 @@ Workflow applications offers non-session support and is ideal for translation, a
           headers = {
               "Authorization": "Bearer app-xxxxxxxx",
           }
-          
+
           try:
               print("Upload file...")
               with open(file_path, 'rb') as file:
@@ -258,7 +268,7 @@ Workflow applications offers non-session support and is ideal for translation, a
                       "user": user,
                       "type": "TXT"  # Set the file type to TXT
                   }
-                  
+
                   response = requests.post(upload_url, headers=headers, files=files, data=data)
                   if response.status_code == 201:  # 201 means creation is successful
                       print("File uploaded successfully")
@@ -279,11 +289,11 @@ Workflow applications offers non-session support and is ideal for translation, a
 
           data = {
               "inputs": {
-                  "orig_mail": {
+                  "orig_mail": [{
                       "transfer_method": "local_file",
                       "upload_file_id": file_id,
                       "type": "document"
-                  }
+                  }]
               },
               "response_mode": response_mode,
               "user": user
@@ -322,7 +332,242 @@ Workflow applications offers non-session support and is ideal for translation, a
 ---
 
 <Heading
-  url='/workflows/run/:workflow_id'
+  url='/workflows/:workflow_id/run'
+  method='POST'
+  title='Execute Specific Workflow'
+  name='#Execute-Specific-Workflow'
+/>
+<Row>
+  <Col>
+    Execute a specific version of workflow by specifying the workflow ID in the path parameter.
+
+    ### Path
+          - `workflow_id` (string) Required Workflow ID to specify a specific version of workflow
+
+      How to obtain: In the version history interface, click the copy icon on the right side of each version entry to copy the complete workflow ID. Each version entry contains a copyable ID field.
+
+    ### Request Body
+      - `inputs` (object) Required
+        Allows the entry of various variable values defined by the App.
+        The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
+        The workflow application requires at least one key/value pair to be inputted. The variable can be of File Array type.
+        File Array type variable is suitable for inputting files combined with text understanding and answering questions, available only when the model supports file parsing and understanding capability.
+        If the variable is of File Array type, the corresponding value should be a list whose elements contain following attributions:
+          - `type` (string) Supported type:
+            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
+            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
+            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
+            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
+            - `custom` (Other file types)
+          - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
+          - `url` (string) Image URL (when the transfer method is `remote_url`)
+          - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
+
+      - `response_mode` (string) Required
+        The mode of response return, supporting:
+        - `streaming` Streaming mode (recommended), implements a typewriter-like output through SSE ([Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)).
+        - `blocking` Blocking mode, returns result after execution is complete. (Requests may be interrupted if the process is long)
+        <i>Due to Cloudflare restrictions, the request will be interrupted without a return after 100 seconds.</i>
+      - `user` (string) Required
+        User identifier, used to define the identity of the end-user for retrieval and statistics.
+        Should be uniquely defined by the developer within the application.
+        <br/>
+        <i>The user identifier should be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.</i>
+      - `files` (array[object]) Optional
+      - `trace_id` (string) Optional
+        Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:
+        1. Header: via HTTP Header `X-Trace-Id`, highest priority.
+        2. Query parameter: via URL query parameter `trace_id`.
+        3. Request Body: via request body field `trace_id` (i.e., this field).
+
+    ### Response
+    When `response_mode` is `blocking`, return a CompletionResponse object.
+    When `response_mode` is `streaming`, return a ChunkCompletionResponse stream.
+
+    ### CompletionResponse
+    Returns the App result, `Content-Type` is `application/json`.
+    - `workflow_run_id` (string) Unique ID of workflow execution
+    - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+    - `data` (object) detail of result
+      - `id` (string) ID of workflow execution
+      - `workflow_id` (string) ID of related workflow
+      - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
+      - `outputs` (json) Optional content of output
+      - `error` (string) Optional reason of error
+      - `elapsed_time` (float) Optional total seconds to be used
+      - `total_tokens` (int) Optional tokens to be used
+      - `total_steps` (int) default 0
+      - `created_at` (timestamp) start time
+      - `finished_at` (timestamp) end time
+
+    ### ChunkCompletionResponse
+    Returns the stream chunks outputted by the App, `Content-Type` is `text/event-stream`.
+    Each streaming chunk starts with `data:`, separated by two newline characters `\n\n`, as shown below:
+    <CodeGroup>
+    ```streaming {{ title: 'Response' }}
+    data: {"event": "text_chunk", "workflow_run_id": "b85e5fc5-751b-454d-b14e-dc5f240b0a31", "task_id": "bd029338-b068-4d34-a331-fc85478922c2", "data": {"text": "\u4e3a\u4e86", "from_variable_selector": ["1745912968134", "text"]}}\n\n
+    ```
+    </CodeGroup>
+    The structure of the streaming chunks varies depending on the `event`:
+    - `event: workflow_started` workflow starts execution
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `workflow_started`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `workflow_id` (string) ID of related workflow
+        - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
+    - `event: node_started` node execution started
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `node_started`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `node_id` (string) ID of node
+        - `node_type` (string) type of node
+        - `title` (string) name of node
+        - `index` (int) Execution sequence number, used to display Tracing Node sequence
+        - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
+        - `inputs` (object) Contents of all preceding node variables used in the node
+        - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: text_chunk` Text fragment
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `text_chunk`
+      - `data` (object) detail
+        - `text` (string) Text content
+        - `from_variable_selector` (array) Text source path, helps developers understand which variable of which node the text is generated from
+    - `event: node_finished` node execution finished, success and failure are different states in the same event
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `node_finished`
+      - `data` (object) detail
+        - `id` (string) Unique ID of node execution
+        - `node_id` (string) ID of node
+        - `index` (int) Execution sequence number, used to display Tracing Node sequence
+        - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
+        - `inputs` (object) Contents of all preceding node variables used in the node
+        - `process_data` (json) Optional Process data of node
+        - `outputs` (json) Optional content of output
+        - `status` (string) status of execution `running` / `succeeded` / `failed` / `stopped`
+        - `error` (string) Optional reason of error
+        - `elapsed_time` (float) Optional total seconds to be used
+        - `execution_metadata` (json) metadata
+          - `total_tokens` (int) optional tokens to be used
+          - `total_price` (decimal) optional total cost
+          - `currency` (string) optional currency, such as `USD` / `RMB`
+        - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: workflow_finished` workflow execution finished, success and failure are different states in the same event
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `workflow_finished`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `workflow_id` (string) ID of related workflow
+        - `status` (string) status of execution `running` / `succeeded` / `failed` / `stopped`
+        - `outputs` (json) Optional content of output
+        - `error` (string) Optional reason of error
+        - `elapsed_time` (float) Optional total seconds to be used
+        - `total_tokens` (int) Optional tokens to be used
+        - `total_steps` (int) default 0
+        - `created_at` (timestamp) start time
+        - `finished_at` (timestamp) end time
+    - `event: tts_message` TTS audio stream event, i.e., speech synthesis output. The content is an audio block in Mp3 format, encoded as a base64 string, which can be decoded directly when playing. (Only available when auto-play is enabled)
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `message_id` (string) Unique message ID
+      - `audio` (string) The audio block after speech synthesis is encoded as base64 text content, which can be directly base64 decoded and sent to the player when playing
+      - `created_at` (int) Creation timestamp, e.g., 1705395332
+    - `event: tts_message_end` TTS audio stream end event, receiving this event indicates the end of audio stream return.
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `message_id` (string) Unique message ID
+      - `audio` (string) The end event has no audio, so this is an empty string
+      - `created_at` (int) Creation timestamp, e.g., 1705395332
+    - `event: ping` Ping event every 10s to keep the connection alive.
+
+    ### Errors
+    - 400, `invalid_param`, Invalid input parameters
+    - 400, `app_unavailable`, App configuration unavailable
+    - 400, `provider_not_initialize`, No available model credentials configured
+    - 400, `provider_quota_exceeded`, Insufficient model call quota
+    - 400, `model_currently_not_support`, Current model unavailable
+    - 400, `workflow_not_found`, Specified workflow version not found
+    - 400, `draft_workflow_error`, Cannot use draft workflow version
+    - 400, `workflow_id_format_error`, Workflow ID format error, UUID format required
+    - 400, `workflow_request_error`, Workflow execution failed
+    - 500, Internal service error
+
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/:workflow_id/run"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "inputs": ${JSON.stringify(props.inputs)},
+    "response_mode": "streaming",
+    "user": "abc-123"
+}'`}
+    />
+    <CodeGroup title="Example: file array as an input variable">
+      ```json {{ title: 'File variable example' }}
+      {
+        "inputs": {
+          "{variable_name}":
+          [
+            {
+            "transfer_method": "local_file",
+            "upload_file_id": "{upload_file_id}",
+            "type": "{document_type}"
+            }
+          ]
+        }
+      }
+      ```
+    </CodeGroup>
+    ### Blocking Mode
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "workflow_run_id": "djflajgkldjgd",
+        "task_id": "9da23599-e713-473b-982c-4328d4f5c78a",
+        "data": {
+            "id": "fdlsjfjejkghjda",
+            "workflow_id": "fldjaslkfjlsda",
+            "status": "succeeded",
+            "outputs": {
+              "text": "Nice to meet you."
+            },
+            "error": null,
+            "elapsed_time": 0.875,
+            "total_tokens": 3562,
+            "total_steps": 8,
+            "created_at": 1705407629,
+            "finished_at": 1727807631
+        }
+    }
+    ```
+    </CodeGroup>
+    ### Streaming Mode
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "created_at": 1679586595}}
+      data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
+      data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
+      data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
+      data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
+      data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflows/run/:workflow_run_id'
   method='GET'
   title='Get Workflow Run Detail'
   name='#get-workflow-run-detail'
@@ -331,7 +576,7 @@ Workflow applications offers non-session support and is ideal for translation, a
   <Col>
     Retrieve the current execution results of a workflow task based on the workflow execution ID.
     ### Path
-    - `workflow_id` (string) Workflow ID, can be obtained from the streaming chunk return
+    - `workflow_run_id` (string) Workflow run ID, can be obtained from the streaming chunk return
     ### Response
     - `id` (string) ID of workflow execution
     - `workflow_id` (string) ID of related workflow
@@ -347,13 +592,14 @@ Workflow applications offers non-session support and is ideal for translation, a
   </Col>
   <Col sticky>
     ### Request Example
-    <CodeGroup title="Request" tag="GET" label="/workflows/run/:workflow_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
-      ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \
-      -H 'Authorization: Bearer {api_key}' \
-      -H 'Content-Type: application/json'
-      ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflows/run/:workflow_run_id"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json'`}
+    />
 
     ### Response Example
     <CodeGroup title="Response">
@@ -367,8 +613,8 @@ Workflow applications offers non-session support and is ideal for translation, a
         "error": null,
         "total_steps": 3,
         "total_tokens": 0,
-        "created_at": "Thu, 18 Jul 2024 03:17:40 -0000",
-        "finished_at": "Thu, 18 Jul 2024 03:18:10 -0000",
+        "created_at": 1705407629,
+        "finished_at": 1727807631,
         "elapsed_time": 30.098514399956912
     }
     ```
@@ -391,22 +637,21 @@ Workflow applications offers non-session support and is ideal for translation, a
   - `task_id` (string) Task ID, can be obtained from the streaming chunk return
   ### Request Body
   - `user` (string) Required
-    User identifier, used to define the identity of the end-user, must be consistent with the user passed in the send message interface.
+    User identifier, used to define the identity of the end-user, must be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.
   ### Response
   - `result` (string) Always returns "success"
   </Col>
   <Col sticky>
-  ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/workflows/tasks/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{"user": "abc-123"}'`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \
-    -H 'Authorization: Bearer {api_key}' \
-    -H 'Content-Type: application/json' \
-    --data-raw '{
-        "user": "abc-123"
-    }'
-    ```
-    </CodeGroup>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/tasks/:task_id/stop"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json' \\
+--data-raw '{"user": "abc-123"}'`}
+    />
 
     ### Response Example
     <CodeGroup title="Response">
@@ -438,7 +683,7 @@ Workflow applications offers non-session support and is ideal for translation, a
   - `file` (File) Required
     The file to be uploaded.
   - `user` (string) Required
-    User identifier, defined by the developer's rules, must be unique within the application.
+    User identifier, defined by the developer's rules, must be unique within the application. The Service API does not share conversations created by the WebApp.
 
   ### Response
   After a successful upload, the server will return the file's ID and related information.
@@ -466,16 +711,15 @@ Workflow applications offers non-session support and is ideal for translation, a
   </Col>
   <Col sticky>
   ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/files/upload' \
-    --header 'Authorization: Bearer {api_key}' \
-    --form 'file=@"/path/to/file"'
-    ```
-
-    </CodeGroup>
-
+  <CodeGroup
+    title="Request"
+    tag="POST"
+    label="/files/upload"
+    targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\
+--header 'Authorization: Bearer {api_key}' \\
+--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\
+--form 'user=abc-123'`}
+  />
 
   ### Response Example
   <CodeGroup title="Response">
@@ -521,6 +765,12 @@ Workflow applications offers non-session support and is ideal for translation, a
       <Property name='limit' type='int' key='limit'>
           How many chat history messages to return in one request, default is 20.
       </Property>
+      <Property name='created_by_end_user_session_id' type='str' key='created_by_end_user_session_id'>
+          Created by which endUser, for example, `abc-123`.
+      </Property>
+      <Property name='created_by_account' type='str' key='created_by_account'>
+          Created by which email account, for example, lizb@test.com.
+      </Property>
     </Properties>
 
     ### Response
@@ -552,14 +802,13 @@ Workflow applications offers non-session support and is ideal for translation, a
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/workflows/logs" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/logs'\\\n --header 'Authorization: Bearer {api_key}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/workflows/logs?limit=1'
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflows/logs"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/logs'\\
+--header 'Authorization: Bearer {api_key}'`}
+    />
     ### Response Example
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -615,14 +864,17 @@ Workflow applications offers non-session support and is ideal for translation, a
   - `name` (string) application name
   - `description` (string) application description
   - `tags` (array[string]) application tags
+  - `mode` (string) application mode
+  - `author_name` (string) application author name
   </Col>
   <Col>
-    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
-      ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/info' \
-      -H 'Authorization: Bearer {api_key}'
-      ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/info"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
@@ -631,7 +883,9 @@ Workflow applications offers non-session support and is ideal for translation, a
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "workflow",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>
@@ -669,11 +923,30 @@ Workflow applications offers non-session support and is ideal for translation, a
         - `default` (string) Default value
         - `options` (array[string]) Option values
     - `file_upload` (object) File upload configuration
+      - `document` (object) Document settings
+        Currently only supports document types: `txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Document number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
       - `image` (object) Image settings
-        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`
+        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`.
         - `enabled` (bool) Whether it is enabled
         - `number_limits` (int) Image number limit, default is 3
-        - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `audio` (object) Audio settings
+        Currently only supports audio types: `mp3`, `m4a`, `wav`, `webm`, `amr`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Audio number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `video` (object) Video settings
+        Currently only supports video types: `mp4`, `mov`, `mpeg`, `mpga`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Video number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `custom` (object) Custom settings
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Custom number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
     - `system_parameters` (object) System parameters
       - `file_size_limit` (int) Document upload size limit (MB)
       - `image_file_size_limit` (int) Image file upload size limit (MB)
@@ -683,14 +956,12 @@ Workflow applications offers non-session support and is ideal for translation, a
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/parameters"
+      targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -727,3 +998,56 @@ Workflow applications offers non-session support and is ideal for translation, a
     </CodeGroup>
   </Col>
 </Row>
+---
+
+<Heading
+  url='/site'
+  method='GET'
+  title='Get Application WebApp Settings'
+  name='#site'
+/>
+<Row>
+  <Col>
+  Used to get the WebApp settings of the application.
+  ### Response
+  - `title` (string) WebApp name
+  - `icon_type` (string) Icon type, `emoji` - emoji, `image` - picture
+  - `icon` (string) Icon. If it's `emoji` type, it's an emoji symbol; if it's `image` type, it's an image URL.
+  - `icon_background` (string) Background color in hex format
+  - `icon_url` (string) Icon URL
+  - `description` (string) Description
+  - `copyright` (string) Copyright information
+  - `privacy_policy` (string) Privacy policy link
+  - `custom_disclaimer` (string) Custom disclaimer
+  - `default_language` (string) Default language
+  - `show_workflow_steps` (bool) Whether to show workflow details
+  </Col>
+  <Col>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/site"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "title": "My App",
+      "icon_type": "emoji",
+      "icon": "😄",
+      "icon_background": "#FFEAD5",
+      "icon_url": null,
+      "description": "This is my app.",
+      "copyright": "all rights reserved",
+      "privacy_policy": "",
+      "custom_disclaimer": "All generated by AI",
+      "default_language": "en-US",
+      "show_workflow_steps": false,
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+___

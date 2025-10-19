@@ -30,6 +30,8 @@ const translation = {
       delete: 'Delete',
       enableWarning: 'Archived file cannot be enabled',
       sync: 'Sync',
+      pause: 'Pause',
+      resume: 'Resume',
     },
     index: {
       enable: 'Enable',
@@ -51,7 +53,7 @@ const translation = {
     empty: {
       title: 'There is no documentation yet',
       upload: {
-        tip: 'You can upload files, sync from the website, or from webb apps like Notion, GitHub, etc.',
+        tip: 'You can upload files, sync from the website, or from web apps like Notion, GitHub, etc.',
       },
       sync: {
         tip: 'Dify will periodically download files from your Notion and complete processing.',
@@ -97,6 +99,9 @@ const translation = {
       upload_file: 'Upload File',
       notion: 'Sync form Notion',
       github: 'Sync form Github',
+      local_file: 'Local File',
+      website_crawl: 'Website Crawl',
+      online_document: 'Online Document',
     },
     type: {
       book: 'Book',
@@ -313,6 +318,7 @@ const translation = {
     },
   },
   embedding: {
+    waiting: 'Embedding waiting...',
     processing: 'Embedding processing...',
     paused: 'Embedding paused',
     completed: 'Embedding completed',
@@ -355,7 +361,9 @@ const translation = {
     newChildChunk: 'New Child Chunk',
     keywords: 'KEYWORDS',
     addKeyWord: 'Add keyword',
+    keywordEmpty: 'The keyword cannot be empty',
     keywordError: 'The maximum length of keyword is 20',
+    keywordDuplicate: 'The keyword already exists',
     characters_one: 'character',
     characters_other: 'characters',
     hitCount: 'Retrieval count',
@@ -386,6 +394,7 @@ const translation = {
     regenerationSuccessMessage: 'You can close this window.',
     edited: 'EDITED',
     editedAt: 'Edited at',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     expandChunks: 'Expand chunks',
     collapseChunks: 'Collapse chunks',
   },

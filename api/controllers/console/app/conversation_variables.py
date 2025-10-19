@@ -1,8 +1,8 @@
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
@@ -12,15 +12,24 @@ from models import ConversationVariable
 from models.model import AppMode
 
 
+@console_ns.route("/apps/<uuid:app_id>/conversation-variables")
 class ConversationVariablesApi(Resource):
+    @api.doc("get_conversation_variables")
+    @api.doc(description="Get conversation variables for an application")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser().add_argument(
+            "conversation_id", type=str, location="args", help="Conversation ID to filter variables"
+        )
+    )
+    @api.response(200, "Conversation variables retrieved successfully", paginated_conversation_variable_fields)
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
     @marshal_with(paginated_conversation_variable_fields)
     def get(self, app_model):
-        parser = reqparse.RequestParser()
-        parser.add_argument("conversation_id", type=str, location="args")
+        parser = reqparse.RequestParser().add_argument("conversation_id", type=str, location="args")
         args = parser.parse_args()
 
         stmt = (
@@ -55,6 +64,3 @@ class ConversationVariablesApi(Resource):
                 for row in rows
             ],
         }
-
-
-api.add_resource(ConversationVariablesApi, "/apps/<uuid:app_id>/conversation-variables")

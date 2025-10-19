@@ -1,54 +1,61 @@
-import datetime
 import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
+from sqlalchemy import select
 
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
 def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_id: str):
     """
     Async enable segments to index
-    :param segment_ids:
+    :param segment_ids: list of segment ids
+    :param dataset_id: dataset id
+    :param document_id: document id
 
-    Usage: enable_segments_to_index_task.delay(segment_ids)
+    Usage: enable_segments_to_index_task.delay(segment_ids, dataset_id, document_id)
     """
     start_at = time.perf_counter()
-    dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+    dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
     if not dataset:
-        logging.info(click.style("Dataset {} not found, pass.".format(dataset_id), fg="cyan"))
+        logger.info(click.style(f"Dataset {dataset_id} not found, pass.", fg="cyan"))
         return
 
-    dataset_document = db.session.query(DatasetDocument).filter(DatasetDocument.id == document_id).first()
+    dataset_document = db.session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
 
     if not dataset_document:
-        logging.info(click.style("Document {} not found, pass.".format(document_id), fg="cyan"))
+        logger.info(click.style(f"Document {document_id} not found, pass.", fg="cyan"))
+        db.session.close()
         return
     if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
-        logging.info(click.style("Document {} status is invalid, pass.".format(document_id), fg="cyan"))
+        logger.info(click.style(f"Document {document_id} status is invalid, pass.", fg="cyan"))
+        db.session.close()
         return
     # sync index processor
     index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
 
-    segments = (
-        db.session.query(DocumentSegment)
-        .filter(
+    segments = db.session.scalars(
+        select(DocumentSegment).where(
             DocumentSegment.id.in_(segment_ids),
             DocumentSegment.dataset_id == dataset_id,
             DocumentSegment.document_id == document_id,
         )
-        .all()
-    )
+    ).all()
     if not segments:
+        logger.info(click.style(f"Segments not found: {segment_ids}", fg="cyan"))
+        db.session.close()
         return
 
     try:
@@ -65,7 +72,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
             )
 
             if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                child_chunks = segment.child_chunks
+                child_chunks = segment.get_child_chunks()
                 if child_chunks:
                     child_documents = []
                     for child_chunk in child_chunks:
@@ -85,11 +92,11 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
         index_processor.load(dataset, documents)
 
         end_at = time.perf_counter()
-        logging.info(click.style("Segments enabled to index latency: {}".format(end_at - start_at), fg="green"))
+        logger.info(click.style(f"Segments enabled to index latency: {end_at - start_at}", fg="green"))
     except Exception as e:
-        logging.exception("enable segments to index failed")
+        logger.exception("enable segments to index failed")
         # update segment error msg
-        db.session.query(DocumentSegment).filter(
+        db.session.query(DocumentSegment).where(
             DocumentSegment.id.in_(segment_ids),
             DocumentSegment.dataset_id == dataset_id,
             DocumentSegment.document_id == document_id,
@@ -97,12 +104,13 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
             {
                 "error": str(e),
                 "status": "error",
-                "disabled_at": datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                "disabled_at": naive_utc_now(),
                 "enabled": False,
             }
         )
         db.session.commit()
     finally:
         for segment in segments:
-            indexing_cache_key = "segment_{}_indexing".format(segment.id)
+            indexing_cache_key = f"segment_{segment.id}_indexing"
             redis_client.delete(indexing_cache_key)
+        db.session.close()

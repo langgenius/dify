@@ -1,4 +1,0 @@
-model: mxbai-rerank-large-v1
-model_type: rerank
-model_properties:
-  context_size: 512

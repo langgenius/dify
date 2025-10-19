@@ -1,7 +1,20 @@
-import type { I18nText } from '@/i18n/language'
+import type { I18nText } from '@/i18n-config/language'
+import type { Model } from '@/types/app'
 
 export type CommonResponse = {
   result: 'success' | 'fail'
+}
+
+export type FileDownloadResponse = {
+  id: string
+  name: string
+  size: number
+  extension: string
+  url: string
+  download_url: string
+  mime_type: string
+  created_by: string
+  created_at: number
 }
 
 export type OauthResponse = {
@@ -129,7 +142,6 @@ export type IWorkspace = {
 export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
   role: 'owner' | 'admin' | 'editor' | 'dataset_operator' | 'normal'
   providers: Provider[]
-  in_trail: boolean
   trial_end_reason?: string
   custom_config?: {
     remove_webapp_brand?: boolean
@@ -179,9 +191,15 @@ export enum DataSourceCategory {
 export enum DataSourceProvider {
   fireCrawl = 'firecrawl',
   jinaReader = 'jinareader',
+  waterCrawl = 'watercrawl',
 }
 
 export type FirecrawlConfig = {
+  api_key: string
+  base_url: string
+}
+
+export type WatercrawlConfig = {
   api_key: string
   base_url: string
 }
@@ -286,3 +304,13 @@ export type ModerationService = (
     text: string
   }
 ) => Promise<ModerateResponse>
+
+export type StructuredOutputRulesRequestBody = {
+  instruction: string
+  model_config: Model
+}
+
+export type StructuredOutputRulesResponse = {
+  output: string
+  error?: string
+}

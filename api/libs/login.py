@@ -1,22 +1,40 @@
+from collections.abc import Callable
 from functools import wraps
 from typing import Any
 
 from flask import current_app, g, has_request_context, request
-from flask_login import user_logged_in  # type: ignore
 from flask_login.config import EXEMPT_METHODS  # type: ignore
-from werkzeug.exceptions import Unauthorized
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
-from extensions.ext_database import db
-from models.account import Account, Tenant, TenantAccountJoin
-
-#: A proxy for the current user. If no user is logged in, this will be an
-#: anonymous user
-current_user: Any = LocalProxy(lambda: _get_user())
+from libs.token import check_csrf_token
+from models import Account
+from models.model import EndUser
 
 
-def login_required(func):
+def current_account_with_tenant():
+    """
+    Resolve the underlying account for the current user proxy and ensure tenant context exists.
+    Allows tests to supply plain Account mocks without the LocalProxy helper.
+    """
+    user_proxy = current_user
+
+    get_current_object = getattr(user_proxy, "_get_current_object", None)
+    user = get_current_object() if callable(get_current_object) else user_proxy  # type: ignore
+
+    if not isinstance(user, Account):
+        raise ValueError("current_user must be an Account instance")
+    assert user.current_tenant_id is not None, "The tenant information should be loaded."
+    return user, user.current_tenant_id
+
+
+from typing import ParamSpec, TypeVar
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def login_required(func: Callable[P, R]):
     """
     If you decorate a view with this, it will ensure that the current user is
     logged in and authenticated before calling the actual view. (If they are
@@ -51,56 +69,30 @@ def login_required(func):
     """
 
     @wraps(func)
-    def decorated_view(*args, **kwargs):
-        auth_header = request.headers.get("Authorization")
-        if dify_config.ADMIN_API_KEY_ENABLE:
-            if auth_header:
-                if " " not in auth_header:
-                    raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-                auth_scheme, auth_token = auth_header.split(None, 1)
-                auth_scheme = auth_scheme.lower()
-                if auth_scheme != "bearer":
-                    raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
-                admin_api_key = dify_config.ADMIN_API_KEY
-                if admin_api_key:
-                    if admin_api_key == auth_token:
-                        workspace_id = request.headers.get("X-WORKSPACE-ID")
-                        if workspace_id:
-                            tenant_account_join = (
-                                db.session.query(Tenant, TenantAccountJoin)
-                                .filter(Tenant.id == workspace_id)
-                                .filter(TenantAccountJoin.tenant_id == Tenant.id)
-                                .filter(TenantAccountJoin.role == "owner")
-                                .one_or_none()
-                            )
-                            if tenant_account_join:
-                                tenant, ta = tenant_account_join
-                                account = Account.query.filter_by(id=ta.account_id).first()
-                                # Login admin
-                                if account:
-                                    account.current_tenant = tenant
-                                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
-                                    user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
+    def decorated_view(*args: P.args, **kwargs: P.kwargs):
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
             pass
-        elif not current_user.is_authenticated:
+        elif current_user is not None and not current_user.is_authenticated:
             return current_app.login_manager.unauthorized()  # type: ignore
-
-        # flask 1.x compatibility
-        # current_app.ensure_sync is only available in Flask >= 2.0
-        if callable(getattr(current_app, "ensure_sync", None)):
-            return current_app.ensure_sync(func)(*args, **kwargs)
-        return func(*args, **kwargs)
+        # we put csrf validation here for less conflicts
+        # TODO: maybe find a better place for it.
+        check_csrf_token(request, current_user.id)
+        return current_app.ensure_sync(func)(*args, **kwargs)
 
     return decorated_view
 
 
-def _get_user():
+def _get_user() -> EndUser | Account | None:
     if has_request_context():
         if "_login_user" not in g:
             current_app.login_manager._load_user()  # type: ignore
 
-        return g._login_user
+        return g._login_user  # type: ignore
 
     return None
+
+
+#: A proxy for the current user. If no user is logged in, this will be an
+#: anonymous user
+# NOTE: Any here, but use _get_current_object to check the fields
+current_user: Any = LocalProxy(lambda: _get_user())

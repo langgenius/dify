@@ -1,5 +1,0 @@
-model: NV-Embed-QA
-model_type: text-embedding
-model_properties:
-  context_size: 512
-  max_chunks: 1

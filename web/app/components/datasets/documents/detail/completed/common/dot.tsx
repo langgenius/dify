@@ -2,7 +2,7 @@ import React from 'react'
 
 const Dot = () => {
   return (
-    <div className='text-text-quaternary system-xs-medium'>·</div>
+    <div className='system-xs-medium text-text-quaternary'>·</div>
   )
 }
 

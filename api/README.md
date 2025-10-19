@@ -3,7 +3,10 @@
 ## Usage
 
 > [!IMPORTANT]
-> In the v0.6.12 release, we deprecated `pip` as the package management tool for Dify API Backend service and replaced it with `poetry`.
+>
+> In the v1.3.0 release, `poetry` has been replaced with
+> [`uv`](https://docs.astral.sh/uv/) as the package manager
+> for Dify API backend service.
 
 1. Start the docker-compose stack
 
@@ -17,73 +20,93 @@
    cd ../api
    ```
 
-2. Copy `.env.example` to `.env`
+1. Copy `.env.example` to `.env`
 
    ```cli
-   cp .env.example .env 
+   cp .env.example .env
    ```
-3. Generate a `SECRET_KEY` in the `.env` file.
+
+1. Generate a `SECRET_KEY` in the `.env` file.
 
    bash for Linux
+
    ```bash for Linux
    sed -i "/^SECRET_KEY=/c\SECRET_KEY=$(openssl rand -base64 42)" .env
    ```
+
    bash for Mac
+
    ```bash for Mac
    secret_key=$(openssl rand -base64 42)
    sed -i '' "/^SECRET_KEY=/c\\
    SECRET_KEY=${secret_key}" .env
    ```
 
-4. Create environment.
+1. Create environment.
 
-   Dify API service uses [Poetry](https://python-poetry.org/docs/) to manage dependencies. First, you need to add the poetry shell plugin, if you don't have it already, in order to run in a virtual environment. [Note: Poetry shell is no longer a native command so you need to install the poetry plugin beforehand]
-
-   ```bash
-   poetry self add poetry-plugin-shell
-   ```
-   
-   Then, You can execute `poetry shell` to activate the environment.
-
-5. Install dependencies
+   Dify API service uses [UV](https://docs.astral.sh/uv/) to manage dependencies.
+   First, you need to add the uv package manager, if you don't have it already.
 
    ```bash
-   poetry env use 3.12
-   poetry install
+   pip install uv
+   # Or on macOS
+   brew install uv
    ```
 
-6. Run migrate
+1. Install dependencies
+
+   ```bash
+   uv sync --dev
+   ```
+
+1. Run migrate
 
    Before the first launch, migrate the database to the latest version.
 
    ```bash
-   poetry run python -m flask db upgrade
+   uv run flask db upgrade
    ```
 
-7. Start backend
+1. Start backend
 
    ```bash
-   poetry run python -m flask run --host 0.0.0.0 --port=5001 --debug
+   uv run flask run --host 0.0.0.0 --port=5001 --debug
    ```
 
-8. Start Dify [web](../web) service.
-9. Setup your application by visiting `http://localhost:3000`...
-10. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
+1. Start Dify [web](../web) service.
 
-   ```bash
-   poetry run python -m celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion
-   ```
+1. Setup your application by visiting `http://localhost:3000`.
+
+1. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
+
+```bash
+uv run celery -A app.celery worker -P gevent -c 2 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation
+```
+
+Additionally, if you want to debug the celery scheduled tasks, you can run the following command in another terminal to start the beat service:
+
+```bash
+uv run celery -A app.celery beat
+```
 
 ## Testing
 
 1. Install dependencies for both the backend and the test environment
 
    ```bash
-   poetry install -C api --with dev
+   uv sync --dev
    ```
 
-2. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`
+1. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`, more can check [Claude.md](../CLAUDE.md)
 
    ```bash
-   poetry run -P api bash dev/pytest/pytest_all_tests.sh
+   uv run pytest                           # Run all tests
+   uv run pytest tests/unit_tests/         # Unit tests only
+   uv run pytest tests/integration_tests/  # Integration tests
+
+   # Code quality
+   ../dev/reformat               # Run all formatters and linters
+   uv run ruff check --fix ./    # Fix linting issues
+   uv run ruff format ./         # Format code
+   uv run basedpyright .         # Type checking
    ```

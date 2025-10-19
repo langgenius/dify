@@ -1,8 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import {
+  RiHardDrive3Line,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { ArtificialBrain } from '../../base/icons/src/vender/line/development'
 import UsageInfo from '../usage-info'
 import { useProviderContext } from '@/context/provider-context'
 
@@ -22,9 +24,9 @@ const VectorSpaceInfo: FC<Props> = ({
   return (
     <UsageInfo
       className={className}
-      Icon={ArtificialBrain}
-      name={t('billing.plansCommon.vectorSpace')}
-      tooltip={t('billing.plansCommon.vectorSpaceTooltip') as string}
+      Icon={RiHardDrive3Line}
+      name={t('billing.usagePage.vectorSpace')}
+      tooltip={t('billing.usagePage.vectorSpaceTooltip') as string}
       usage={usage.vectorSpace}
       total={total.vectorSpace}
       unit='MB'

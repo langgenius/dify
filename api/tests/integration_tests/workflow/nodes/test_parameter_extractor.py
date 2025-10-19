@@ -1,68 +1,23 @@
 import os
 import time
 import uuid
-from typing import Optional
 from unittest.mock import MagicMock
 
-import pytest
-
-from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
-from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
-from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
-from core.model_manager import ModelInstance
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariableKey
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.model_runtime.entities import AssistantPromptMessage
+from core.workflow.entities import GraphInitParams
+from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.graph import Graph
+from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
+from core.workflow.runtime import GraphRuntimeState, VariablePool
+from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
-from models.provider import ProviderType
+from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_config
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
-from tests.integration_tests.model_runtime.__mock.anthropic import setup_anthropic_mock
-from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
-
-
-def get_mocked_fetch_model_config(
-    provider: str,
-    model: str,
-    mode: str,
-    credentials: dict,
-):
-    provider_instance = ModelProviderFactory().get_provider_instance(provider)
-    model_type_instance = provider_instance.get_model_instance(ModelType.LLM)
-    provider_model_bundle = ProviderModelBundle(
-        configuration=ProviderConfiguration(
-            tenant_id="1",
-            provider=provider_instance.get_provider_schema(),
-            preferred_provider_type=ProviderType.CUSTOM,
-            using_provider_type=ProviderType.CUSTOM,
-            system_configuration=SystemConfiguration(enabled=False),
-            custom_configuration=CustomConfiguration(provider=CustomProviderConfiguration(credentials=credentials)),
-            model_settings=[],
-        ),
-        provider_instance=provider_instance,
-        model_type_instance=model_type_instance,
-    )
-    model_instance = ModelInstance(provider_model_bundle=provider_model_bundle, model=model)
-    model_schema = model_type_instance.get_model_schema(model)
-    assert model_schema is not None
-    model_config = ModelConfigWithCredentialsEntity(
-        model=model,
-        provider=provider,
-        mode=mode,
-        credentials=credentials,
-        parameters={},
-        model_schema=model_schema,
-        provider_model_bundle=provider_model_bundle,
-    )
-
-    return MagicMock(return_value=(model_instance, model_config))
+from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock
 
 
 def get_mocked_fetch_memory(memory_text: str):
@@ -72,7 +27,7 @@ def get_mocked_fetch_memory(memory_text: str):
             human_prefix: str = "Human",
             ai_prefix: str = "Assistant",
             max_token_limit: int = 2000,
-            message_limit: Optional[int] = None,
+            message_limit: int | None = None,
         ):
             return memory_text
 
@@ -88,15 +43,12 @@ def init_parameter_extractor_node(config: dict):
                 "target": "llm",
             },
         ],
-        "nodes": [{"data": {"type": "start"}, "id": "start"}, config],
+        "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}, config],
     }
-
-    graph = Graph.init(graph_config=graph_config)
 
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config=graph_config,
         user_id="1",
@@ -107,30 +59,37 @@ def init_parameter_extractor_node(config: dict):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "what's the weather in SF",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "aaa",
-        },
+        system_variables=SystemVariable(
+            user_id="aaa", files=[], query="what's the weather in SF", conversation_id="abababa"
+        ),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
     )
-    variable_pool.add(["a", "b123", "args1"], 1)
-    variable_pool.add(["a", "b123", "args2"], 2)
+    variable_pool.add(["a", "args1"], 1)
+    variable_pool.add(["a", "args2"], 2)
 
-    return ParameterExtractorNode(
-        id=str(uuid.uuid4()),
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+    # Create node factory
+    node_factory = DifyNodeFactory(
         graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
-        config=config,
+        graph_runtime_state=graph_runtime_state,
     )
 
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
-@pytest.mark.parametrize("setup_openai_mock", [["chat"]], indirect=True)
-def test_function_calling_parameter_extractor(setup_openai_mock):
+    node = ParameterExtractorNode(
+        id=str(uuid.uuid4()),
+        config=config,
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+    node.init_node_data(config.get("data", {}))
+    return node
+
+
+def test_function_calling_parameter_extractor(setup_model_mock):
     """
     Test function calling for parameter extractor.
     """
@@ -140,7 +99,12 @@ def test_function_calling_parameter_extractor(setup_openai_mock):
             "data": {
                 "title": "123",
                 "type": "parameter-extractor",
-                "model": {"provider": "openai", "name": "gpt-3.5-turbo", "mode": "chat", "completion_params": {}},
+                "model": {
+                    "provider": "langgenius/openai/openai",
+                    "name": "gpt-3.5-turbo",
+                    "mode": "chat",
+                    "completion_params": {},
+                },
                 "query": ["sys", "query"],
                 "parameters": [{"name": "location", "type": "string", "description": "location", "required": True}],
                 "instruction": "",
@@ -151,24 +115,12 @@ def test_function_calling_parameter_extractor(setup_openai_mock):
     )
 
     node._fetch_model_config = get_mocked_fetch_model_config(
-        provider="openai",
+        provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
     )
     db.session.close = MagicMock()
-
-    # construct variable pool
-    pool = VariablePool(
-        system_variables={
-            SystemVariableKey.QUERY: "what's the weather in SF",
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.CONVERSATION_ID: "abababa",
-            SystemVariableKey.USER_ID: "aaa",
-        },
-        user_inputs={},
-        environment_variables=[],
-    )
 
     result = node._run()
 
@@ -178,8 +130,7 @@ def test_function_calling_parameter_extractor(setup_openai_mock):
     assert result.outputs.get("__reason") == None
 
 
-@pytest.mark.parametrize("setup_openai_mock", [["chat"]], indirect=True)
-def test_instructions(setup_openai_mock):
+def test_instructions(setup_model_mock):
     """
     Test chat parameter extractor.
     """
@@ -189,7 +140,12 @@ def test_instructions(setup_openai_mock):
             "data": {
                 "title": "123",
                 "type": "parameter-extractor",
-                "model": {"provider": "openai", "name": "gpt-3.5-turbo", "mode": "chat", "completion_params": {}},
+                "model": {
+                    "provider": "langgenius/openai/openai",
+                    "name": "gpt-3.5-turbo",
+                    "mode": "chat",
+                    "completion_params": {},
+                },
                 "query": ["sys", "query"],
                 "parameters": [{"name": "location", "type": "string", "description": "location", "required": True}],
                 "reasoning_mode": "function_call",
@@ -200,7 +156,7 @@ def test_instructions(setup_openai_mock):
     )
 
     node._fetch_model_config = get_mocked_fetch_model_config(
-        provider="openai",
+        provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
         mode="chat",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
@@ -224,8 +180,7 @@ def test_instructions(setup_openai_mock):
             assert "what's the weather in SF" in prompt.get("text")
 
 
-@pytest.mark.parametrize("setup_anthropic_mock", [["none"]], indirect=True)
-def test_chat_parameter_extractor(setup_anthropic_mock):
+def test_chat_parameter_extractor(setup_model_mock):
     """
     Test chat parameter extractor.
     """
@@ -235,7 +190,12 @@ def test_chat_parameter_extractor(setup_anthropic_mock):
             "data": {
                 "title": "123",
                 "type": "parameter-extractor",
-                "model": {"provider": "anthropic", "name": "claude-2", "mode": "chat", "completion_params": {}},
+                "model": {
+                    "provider": "langgenius/openai/openai",
+                    "name": "gpt-3.5-turbo",
+                    "mode": "chat",
+                    "completion_params": {},
+                },
                 "query": ["sys", "query"],
                 "parameters": [{"name": "location", "type": "string", "description": "location", "required": True}],
                 "reasoning_mode": "prompt",
@@ -246,10 +206,10 @@ def test_chat_parameter_extractor(setup_anthropic_mock):
     )
 
     node._fetch_model_config = get_mocked_fetch_model_config(
-        provider="anthropic",
-        model="claude-2",
+        provider="langgenius/openai/openai",
+        model="gpt-3.5-turbo",
         mode="chat",
-        credentials={"anthropic_api_key": os.environ.get("ANTHROPIC_API_KEY")},
+        credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
     )
     db.session.close = MagicMock()
 
@@ -271,8 +231,7 @@ def test_chat_parameter_extractor(setup_anthropic_mock):
                 assert '<structure>\n{"type": "object"' in prompt.get("text")
 
 
-@pytest.mark.parametrize("setup_openai_mock", [["completion"]], indirect=True)
-def test_completion_parameter_extractor(setup_openai_mock):
+def test_completion_parameter_extractor(setup_model_mock):
     """
     Test completion parameter extractor.
     """
@@ -283,7 +242,7 @@ def test_completion_parameter_extractor(setup_openai_mock):
                 "title": "123",
                 "type": "parameter-extractor",
                 "model": {
-                    "provider": "openai",
+                    "provider": "langgenius/openai/openai",
                     "name": "gpt-3.5-turbo-instruct",
                     "mode": "completion",
                     "completion_params": {},
@@ -298,7 +257,7 @@ def test_completion_parameter_extractor(setup_openai_mock):
     )
 
     node._fetch_model_config = get_mocked_fetch_model_config(
-        provider="openai",
+        provider="langgenius/openai/openai",
         model="gpt-3.5-turbo-instruct",
         mode="completion",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
@@ -331,7 +290,7 @@ def test_extract_json_response():
                 "title": "123",
                 "type": "parameter-extractor",
                 "model": {
-                    "provider": "openai",
+                    "provider": "langgenius/openai/openai",
                     "name": "gpt-3.5-turbo-instruct",
                     "mode": "completion",
                     "completion_params": {},
@@ -357,8 +316,47 @@ def test_extract_json_response():
     assert result["location"] == "kawaii"
 
 
-@pytest.mark.parametrize("setup_anthropic_mock", [["none"]], indirect=True)
-def test_chat_parameter_extractor_with_memory(setup_anthropic_mock):
+def test_extract_json_from_tool_call():
+    """
+    Test extract json response.
+    """
+
+    node = init_parameter_extractor_node(
+        config={
+            "id": "llm",
+            "data": {
+                "title": "123",
+                "type": "parameter-extractor",
+                "model": {
+                    "provider": "langgenius/openai/openai",
+                    "name": "gpt-3.5-turbo-instruct",
+                    "mode": "completion",
+                    "completion_params": {},
+                },
+                "query": ["sys", "query"],
+                "parameters": [{"name": "location", "type": "string", "description": "location", "required": True}],
+                "reasoning_mode": "prompt",
+                "instruction": "{{#sys.query#}}",
+                "memory": None,
+            },
+        },
+    )
+
+    result = node._extract_json_from_tool_call(
+        AssistantPromptMessage.ToolCall(
+            id="llm",
+            type="parameter-extractor",
+            function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                name="foo", arguments="""{"location":"kawaii"}{"location": 1}"""
+            ),
+        )
+    )
+
+    assert result is not None
+    assert result["location"] == "kawaii"
+
+
+def test_chat_parameter_extractor_with_memory(setup_model_mock, monkeypatch):
     """
     Test chat parameter extractor with memory.
     """
@@ -368,7 +366,12 @@ def test_chat_parameter_extractor_with_memory(setup_anthropic_mock):
             "data": {
                 "title": "123",
                 "type": "parameter-extractor",
-                "model": {"provider": "anthropic", "name": "claude-2", "mode": "chat", "completion_params": {}},
+                "model": {
+                    "provider": "langgenius/openai/openai",
+                    "name": "gpt-3.5-turbo",
+                    "mode": "chat",
+                    "completion_params": {},
+                },
                 "query": ["sys", "query"],
                 "parameters": [{"name": "location", "type": "string", "description": "location", "required": True}],
                 "reasoning_mode": "prompt",
@@ -379,12 +382,13 @@ def test_chat_parameter_extractor_with_memory(setup_anthropic_mock):
     )
 
     node._fetch_model_config = get_mocked_fetch_model_config(
-        provider="anthropic",
-        model="claude-2",
+        provider="langgenius/openai/openai",
+        model="gpt-3.5-turbo",
         mode="chat",
-        credentials={"anthropic_api_key": os.environ.get("ANTHROPIC_API_KEY")},
+        credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
     )
-    node._fetch_memory = get_mocked_fetch_memory("customized memory")
+    # Test the mock before running the actual test
+    monkeypatch.setattr("core.workflow.nodes.llm.llm_utils.fetch_memory", get_mocked_fetch_memory("customized memory"))
     db.session.close = MagicMock()
 
     result = node._run()

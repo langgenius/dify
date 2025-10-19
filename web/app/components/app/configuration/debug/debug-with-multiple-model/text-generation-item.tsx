@@ -14,6 +14,7 @@ import { TransferMethod } from '@/app/components/base/chat/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import { noop } from 'lodash-es'
 
 type TextGenerationItemProps = {
   modelAndParameter: ModelAndParameter
@@ -124,18 +125,9 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
       doSend(v.payload.message, v.payload.files)
   })
 
-  const varList = modelConfig.configs.prompt_variables.map((item: any) => {
-    return {
-      label: item.key,
-      value: inputs[item.key],
-    }
-  })
-
   return (
     <TextGeneration
-      className='flex flex-col h-full overflow-y-auto border-none'
-      innerClassName='grow flex flex-col'
-      contentClassName='grow'
+      className='flex h-full flex-col overflow-y-auto border-none'
       content={completion}
       isLoading={!completion && isResponding}
       isResponding={isResponding}
@@ -143,9 +135,8 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
       siteInfo={null}
       messageId={messageId}
       isError={false}
-      onRetry={() => { }}
-      appId={appId}
-      varList={varList}
+      onRetry={noop}
+      inSidePanel
     />
   )
 }

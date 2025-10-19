@@ -1,12 +1,10 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import useSWR from 'swr'
 import { useDebounceFn } from 'ahooks'
-import Toast from '../../base/toast'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import ExploreContext from '@/context/explore-context'
@@ -14,20 +12,18 @@ import type { App } from '@/models/explore'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
 import { fetchAppDetail, fetchAppList } from '@/service/explore'
-import { importDSL } from '@/service/apps'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
-import AppTypeSelector from '@/app/components/app/type-selector'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useAppContext } from '@/context/app-context'
-import { getRedirection } from '@/utils/app-redirection'
 import Input from '@/app/components/base/input'
-import { DSLImportMode } from '@/models/app'
+import {
+  DSLImportMode,
+} from '@/models/app'
+import { useImportDSL } from '@/hooks/use-import-dsl'
+import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 
 type AppsProps = {
-  pageType?: PageType
   onSuccess?: () => void
 }
 
@@ -37,12 +33,9 @@ export enum PageType {
 }
 
 const Apps = ({
-  pageType = PageType.EXPLORE,
   onSuccess,
 }: AppsProps) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceEditor } = useAppContext()
-  const { push } = useRouter()
   const { hasEditPermission } = useContext(ExploreContext)
   const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
 
@@ -58,10 +51,9 @@ const Apps = ({
     handleSearch()
   }
 
-  const [currentType, setCurrentType] = useState<string>('')
   const [currCategory, setCurrCategory] = useTabSearchParams({
     defaultTab: allCategoriesEn,
-    disableSearchParams: pageType !== PageType.EXPLORE,
+    disableSearchParams: false,
   })
 
   const {
@@ -81,28 +73,7 @@ const Apps = ({
     },
   )
 
-  const filteredList = useMemo(() => {
-    if (currCategory === allCategoriesEn) {
-      if (!currentType)
-        return allList
-      else if (currentType === 'chatbot')
-        return allList.filter(item => (item.app.mode === 'chat' || item.app.mode === 'advanced-chat'))
-      else if (currentType === 'agent')
-        return allList.filter(item => (item.app.mode === 'agent-chat'))
-      else
-        return allList.filter(item => (item.app.mode === 'workflow'))
-    }
-    else {
-      if (!currentType)
-        return allList.filter(item => item.category === currCategory)
-      else if (currentType === 'chatbot')
-        return allList.filter(item => (item.app.mode === 'chat' || item.app.mode === 'advanced-chat') && item.category === currCategory)
-      else if (currentType === 'agent')
-        return allList.filter(item => (item.app.mode === 'agent-chat') && item.category === currCategory)
-      else
-        return allList.filter(item => (item.app.mode === 'workflow') && item.category === currCategory)
-    }
-  }, [currentType, currCategory, allCategoriesEn, allList])
+  const filteredList = allList.filter(item => currCategory === allCategoriesEn || item.category === currCategory)
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0)
@@ -117,6 +88,14 @@ const Apps = ({
 
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
+
+  const {
+    handleImportDSL,
+    handleImportDSLConfirm,
+    versions,
+    isFetching,
+  } = useImportDSL()
+  const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
   const onCreate: CreateAppModalProps['onConfirm'] = async ({
     name,
     icon_type,
@@ -127,30 +106,30 @@ const Apps = ({
     const { export_data } = await fetchAppDetail(
       currApp?.app.id as string,
     )
-    try {
-      const app = await importDSL({
-        mode: DSLImportMode.YAML_CONTENT,
-        yaml_content: export_data,
-        name,
-        icon_type,
-        icon,
-        icon_background,
-        description,
-      })
-      setIsShowCreateModal(false)
-      Toast.notify({
-        type: 'success',
-        message: t('app.newApp.appCreated'),
-      })
-      if (onSuccess)
-        onSuccess()
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      getRedirection(isCurrentWorkspaceEditor, { id: app.app_id }, push)
+    const payload = {
+      mode: DSLImportMode.YAML_CONTENT,
+      yaml_content: export_data,
+      name,
+      icon_type,
+      icon,
+      icon_background,
+      description,
     }
-    catch (e) {
-      Toast.notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
-    }
+    await handleImportDSL(payload, {
+      onSuccess: () => {
+        setIsShowCreateModal(false)
+      },
+      onPending: () => {
+        setShowDSLConfirmModal(true)
+      },
+    })
   }
+
+  const onConfirmDSL = useCallback(async () => {
+    await handleImportDSLConfirm({
+      onSuccess,
+    })
+  }, [handleImportDSLConfirm, onSuccess])
 
   if (!categories || categories.length === 0) {
     return (
@@ -162,58 +141,45 @@ const Apps = ({
 
   return (
     <div className={cn(
-      'flex flex-col',
-      pageType === PageType.EXPLORE ? 'h-full border-l border-gray-200' : 'h-[calc(100%-56px)]',
+      'flex h-full flex-col border-l-[0.5px] border-divider-regular',
     )}>
-      {pageType === PageType.EXPLORE && (
-        <div className='shrink-0 pt-6 px-12'>
-          <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
-          <div className='text-gray-500 text-sm'>{t('explore.apps.description')}</div>
-        </div>
-      )}
+
+      <div className='shrink-0 px-12 pt-6'>
+        <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
+        <div className='text-sm text-text-tertiary'>{t('explore.apps.description')}</div>
+      </div>
+
       <div className={cn(
-        'flex items-center justify-between mt-6',
-        pageType === PageType.EXPLORE ? 'px-12' : 'px-8',
+        'mt-6 flex items-center justify-between px-12',
       )}>
-        <>
-          {pageType !== PageType.EXPLORE && (
-            <>
-              <AppTypeSelector value={currentType} onChange={setCurrentType}/>
-              <div className='mx-2 w-[1px] h-3.5 bg-gray-200'/>
-            </>
-          )}
-          <Category
-            list={categories}
-            value={currCategory}
-            onChange={setCurrCategory}
-            allCategoriesEn={allCategoriesEn}
-          />
-        </>
+        <Category
+          list={categories}
+          value={currCategory}
+          onChange={setCurrCategory}
+          allCategoriesEn={allCategoriesEn}
+        />
         <Input
           showLeftIcon
           showClearIcon
-          wrapperClassName='w-[200px]'
+          wrapperClassName='w-[200px] self-start'
           value={keywords}
           onChange={e => handleKeywordsChange(e.target.value)}
           onClear={() => handleKeywordsChange('')}
         />
-
       </div>
 
       <div className={cn(
-        'relative flex flex-1 pb-6 flex-col overflow-auto bg-gray-100 shrink-0 grow',
-        pageType === PageType.EXPLORE ? 'mt-4' : 'mt-0 pt-2',
+        'relative mt-4 flex flex-1 shrink-0 grow flex-col overflow-auto pb-6',
       )}>
         <nav
           className={cn(
             s.appList,
-            'grid content-start shrink-0',
-            pageType === PageType.EXPLORE ? 'gap-4 px-6 sm:px-12' : 'gap-3 px-8  sm:!grid-cols-2 md:!grid-cols-3 lg:!grid-cols-4',
+            'grid shrink-0 content-start gap-4 px-6 sm:px-12',
           )}>
           {searchFilteredList.map(app => (
             <AppCard
               key={app.app_id}
-              isExplore={pageType === PageType.EXPLORE}
+              isExplore
               app={app}
               canCreate={hasEditPermission}
               onCreate={() => {
@@ -234,9 +200,20 @@ const Apps = ({
           appDescription={currApp?.app.description || ''}
           show={isShowCreateModal}
           onConfirm={onCreate}
+          confirmDisabled={isFetching}
           onHide={() => setIsShowCreateModal(false)}
         />
       )}
+      {
+        showDSLConfirmModal && (
+          <DSLConfirmModal
+            versions={versions}
+            onCancel={() => setShowDSLConfirmModal(false)}
+            onConfirm={onConfirmDSL}
+            confirmDisabled={isFetching}
+          />
+        )
+      }
     </div>
   )
 }

@@ -7,10 +7,12 @@ import { VarType } from '../../types'
 type Params = {
   nodeId: string
   isInIteration: boolean
+  isInLoop: boolean
 }
 const useIsVarFileAttribute = ({
   nodeId,
   isInIteration,
+  isInLoop,
 }: Params) => {
   const isChatMode = useIsChatMode()
   const store = useStoreApi()
@@ -20,6 +22,7 @@ const useIsVarFileAttribute = ({
   } = store.getState()
   const currentNode = getNodes().find(n => n.id === nodeId)
   const iterationNode = isInIteration ? getNodes().find(n => n.id === currentNode!.parentId) : null
+  const loopNode = isInLoop ? getNodes().find(n => n.id === currentNode!.parentId) : null
   const availableNodes = useMemo(() => {
     return getBeforeNodesInSameBranch(nodeId)
   }, [getBeforeNodesInSameBranch, nodeId])
@@ -29,7 +32,7 @@ const useIsVarFileAttribute = ({
       return false
     const parentVariable = variable.slice(0, 2)
     const varType = getCurrentVariableType({
-      parentNode: iterationNode,
+      parentNode: isInIteration ? iterationNode : loopNode,
       valueSelector: parentVariable,
       availableNodes,
       isChatMode,

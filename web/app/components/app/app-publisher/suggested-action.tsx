@@ -1,6 +1,6 @@
 import type { HTMLProps, PropsWithChildren } from 'react'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import classNames from '@/utils/classnames'
-import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type SuggestedActionProps = PropsWithChildren<HTMLProps<HTMLAnchorElement> & {
   icon?: React.ReactNode
@@ -8,22 +8,30 @@ export type SuggestedActionProps = PropsWithChildren<HTMLProps<HTMLAnchorElement
   disabled?: boolean
 }>
 
-const SuggestedAction = ({ icon, link, disabled, children, className, ...props }: SuggestedActionProps) => (
-  <a
-    href={disabled ? undefined : link}
-    target='_blank'
-    rel='noreferrer'
-    className={classNames(
-      'flex justify-start items-center gap-2 h-[34px] px-2.5 bg-gray-100 rounded-lg transition-colors [&:not(:first-child)]:mt-1',
-      disabled ? 'shadow-xs opacity-30 cursor-not-allowed' : 'hover:bg-primary-50 hover:text-primary-600 cursor-pointer',
-      className,
-    )}
-    {...props}
-  >
-    <div className='relative w-4 h-4'>{icon}</div>
-    <div className='grow shrink basis-0 text-[13px] font-medium leading-[18px]'>{children}</div>
-    <ArrowUpRight />
-  </a>
-)
+const SuggestedAction = ({ icon, link, disabled, children, className, onClick, ...props }: SuggestedActionProps) => {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (disabled)
+      return
+    onClick?.(e)
+  }
+  return (
+    <a
+      href={disabled ? undefined : link}
+      target='_blank'
+      rel='noreferrer'
+      className={classNames(
+        'flex items-center justify-start gap-2 rounded-lg bg-background-section-burn px-2.5 py-2 text-text-secondary transition-colors [&:not(:first-child)]:mt-1',
+        disabled ? 'cursor-not-allowed opacity-30 shadow-xs' : 'cursor-pointer text-text-secondary hover:bg-state-accent-hover hover:text-text-accent',
+        className,
+      )}
+      onClick={handleClick}
+      {...props}
+    >
+      <div className='relative h-4 w-4'>{icon}</div>
+      <div className='system-sm-medium shrink grow basis-0'>{children}</div>
+      <RiArrowRightUpLine className='h-3.5 w-3.5' />
+    </a>
+  )
+}
 
 export default SuggestedAction

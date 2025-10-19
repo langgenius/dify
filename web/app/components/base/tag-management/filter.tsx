@@ -33,6 +33,7 @@ const TagFilter: FC<TagFilterProps> = ({
 
   const tagList = useTagStore(s => s.tagList)
   const setTagList = useTagStore(s => s.setTagList)
+  const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -78,7 +79,7 @@ const TagFilter: FC<TagFilterProps> = ({
           className='block'
         >
           <div className={cn(
-            'flex items-center gap-1 px-2 h-8 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal cursor-pointer',
+            'flex h-8 cursor-pointer select-none items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2',
             !open && !!value.length && 'shadow-xs',
             open && !!value.length && 'shadow-xs',
           )}>
@@ -98,7 +99,7 @@ const TagFilter: FC<TagFilterProps> = ({
               </div>
             )}
             {!!value.length && (
-              <div className='p-[1px] cursor-pointer group/clear' onClick={(e) => {
+              <div className='group/clear cursor-pointer p-[1px]' onClick={(e) => {
                 e.stopPropagation()
                 onChange([])
               }}>
@@ -108,7 +109,7 @@ const TagFilter: FC<TagFilterProps> = ({
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
-          <div className='relative w-[240px] bg-components-panel-bg-blur backdrop-blur-[5px] rounded-lg border-[0.5px] border-components-panel-border shadow-lg'>
+          <div className='relative w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
             <div className='p-2'>
               <Input
                 showLeftIcon
@@ -118,23 +119,35 @@ const TagFilter: FC<TagFilterProps> = ({
                 onClear={() => handleKeywordsChange('')}
               />
             </div>
-            <div className='p-1 max-h-72 overflow-auto'>
+            <div className='max-h-72 overflow-auto p-1'>
               {filteredTagList.map(tag => (
                 <div
                   key={tag.id}
-                  className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-state-base-hover'
+                  className='flex cursor-pointer select-none items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover'
                   onClick={() => selectTag(tag)}
                 >
-                  <div title={tag.name} className='grow text-sm text-text-tertiary leading-5 truncate'>{tag.name}</div>
-                  {value.includes(tag.id) && <Check className='shrink-0 w-4 h-4 text-text-secondary' />}
+                  <div title={tag.name} className='grow truncate text-sm leading-5 text-text-tertiary'>{tag.name}</div>
+                  {value.includes(tag.id) && <Check className='h-4 w-4 shrink-0 text-text-secondary' />}
                 </div>
               ))}
               {!filteredTagList.length && (
-                <div className='p-3 flex flex-col items-center gap-1'>
+                <div className='flex flex-col items-center gap-1 p-3'>
                   <Tag03 className='h-6 w-6 text-text-tertiary' />
-                  <div className='text-text-tertiary text-xs leading-[14px]'>{t('common.tag.noTag')}</div>
+                  <div className='text-xs leading-[14px] text-text-tertiary'>{t('common.tag.noTag')}</div>
                 </div>
               )}
+            </div>
+            <div className='border-t-[0.5px] border-divider-regular' />
+            <div className='p-1'>
+              <div className='flex cursor-pointer select-none items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover' onClick={() => {
+                setShowTagManagementModal(true)
+                setOpen(false)
+              }}>
+                <Tag03 className='h-4 w-4 text-text-tertiary' />
+                <div className='grow truncate text-sm leading-5 text-text-secondary'>
+                  {t('common.tag.manageTags')}
+                </div>
+              </div>
             </div>
           </div>
         </PortalToFollowElemContent>

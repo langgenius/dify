@@ -1,41 +1,33 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import {
+  RiArrowDownDoubleLine,
+  RiEqualizer2Line,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
 import { useBoolean } from 'ahooks'
-import type { LangFuseConfig, LangSmithConfig } from './type'
+import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ConfigButton from './config-button'
 import cn from '@/utils/classnames'
-import { LangfuseIcon, LangsmithIcon, OpikIcon } from '@/app/components/base/icons/src/public/tracing'
+import { AliyunIcon, ArizeIcon, LangfuseIcon, LangsmithIcon, OpikIcon, PhoenixIcon, TencentIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import type { TracingStatus } from '@/models/app'
 import Toast from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
+import Divider from '@/app/components/base/divider'
 
 const I18N_PREFIX = 'app.tracing'
 
-const Title = ({
-  className,
-}: {
-  className?: string
-}) => {
-  const { t } = useTranslation()
-
-  return (
-    <div className={cn(className, 'flex items-center text-lg font-semibold text-gray-900')}>
-      {t('common.appMenus.overview')}
-    </div>
-  )
-}
 const Panel: FC = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const matched = pathname.match(/\/app\/([^/]+)/)
+  const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const { isCurrentWorkspaceEditor } = useAppContext()
   const readOnly = !isCurrentWorkspaceEditor
@@ -71,50 +63,119 @@ const Panel: FC = () => {
   }
   const inUseTracingProvider: TracingProvider | null = tracingStatus?.tracing_provider || null
 
-  const InUseProviderIcon
-    = inUseTracingProvider === TracingProvider.langSmith
-      ? LangsmithIcon
-      : inUseTracingProvider === TracingProvider.langfuse
-        ? LangfuseIcon
-        : inUseTracingProvider === TracingProvider.opik
-          ? OpikIcon
-          : null
+  const providerIconMap: Record<TracingProvider, React.FC<{ className?: string }>> = {
+    [TracingProvider.arize]: ArizeIcon,
+    [TracingProvider.phoenix]: PhoenixIcon,
+    [TracingProvider.langSmith]: LangsmithIcon,
+    [TracingProvider.langfuse]: LangfuseIcon,
+    [TracingProvider.opik]: OpikIcon,
+    [TracingProvider.weave]: WeaveIcon,
+    [TracingProvider.aliyun]: AliyunIcon,
+    [TracingProvider.tencent]: TencentIcon,
+  }
+  const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
 
+  const [arizeConfig, setArizeConfig] = useState<ArizeConfig | null>(null)
+  const [phoenixConfig, setPhoenixConfig] = useState<PhoenixConfig | null>(null)
   const [langSmithConfig, setLangSmithConfig] = useState<LangSmithConfig | null>(null)
   const [langFuseConfig, setLangFuseConfig] = useState<LangFuseConfig | null>(null)
   const [opikConfig, setOpikConfig] = useState<OpikConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig)
+  const [weaveConfig, setWeaveConfig] = useState<WeaveConfig | null>(null)
+  const [aliyunConfig, setAliyunConfig] = useState<AliyunConfig | null>(null)
+  const [tencentConfig, setTencentConfig] = useState<TencentConfig | null>(null)
+  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig || tencentConfig)
 
   const fetchTracingConfig = async () => {
-    const { tracing_config: langSmithConfig, has_not_configured: langSmithHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
-    if (!langSmithHasNotConfig)
-      setLangSmithConfig(langSmithConfig as LangSmithConfig)
-    const { tracing_config: langFuseConfig, has_not_configured: langFuseHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langfuse })
-    if (!langFuseHasNotConfig)
-      setLangFuseConfig(langFuseConfig as LangFuseConfig)
-    const { tracing_config: opikConfig, has_not_configured: OpikHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.opik })
-    if (!OpikHasNotConfig)
-      setOpikConfig(opikConfig as OpikConfig)
+    const getArizeConfig = async () => {
+      const { tracing_config: arizeConfig, has_not_configured: arizeHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.arize })
+      if (!arizeHasNotConfig)
+        setArizeConfig(arizeConfig as ArizeConfig)
+    }
+    const getPhoenixConfig = async () => {
+      const { tracing_config: phoenixConfig, has_not_configured: phoenixHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.phoenix })
+      if (!phoenixHasNotConfig)
+        setPhoenixConfig(phoenixConfig as PhoenixConfig)
+    }
+    const getLangSmithConfig = async () => {
+      const { tracing_config: langSmithConfig, has_not_configured: langSmithHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
+      if (!langSmithHasNotConfig)
+        setLangSmithConfig(langSmithConfig as LangSmithConfig)
+    }
+    const getLangFuseConfig = async () => {
+      const { tracing_config: langFuseConfig, has_not_configured: langFuseHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langfuse })
+      if (!langFuseHasNotConfig)
+        setLangFuseConfig(langFuseConfig as LangFuseConfig)
+    }
+    const getOpikConfig = async () => {
+      const { tracing_config: opikConfig, has_not_configured: OpikHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.opik })
+      if (!OpikHasNotConfig)
+        setOpikConfig(opikConfig as OpikConfig)
+    }
+    const getWeaveConfig = async () => {
+      const { tracing_config: weaveConfig, has_not_configured: weaveHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.weave })
+      if (!weaveHasNotConfig)
+        setWeaveConfig(weaveConfig as WeaveConfig)
+    }
+    const getAliyunConfig = async () => {
+      const { tracing_config: aliyunConfig, has_not_configured: aliyunHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.aliyun })
+      if (!aliyunHasNotConfig)
+        setAliyunConfig(aliyunConfig as AliyunConfig)
+    }
+    const getTencentConfig = async () => {
+      const { tracing_config: tencentConfig, has_not_configured: tencentHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.tencent })
+      if (!tencentHasNotConfig)
+        setTencentConfig(tencentConfig as TencentConfig)
+    }
+    Promise.all([
+      getArizeConfig(),
+      getPhoenixConfig(),
+      getLangSmithConfig(),
+      getLangFuseConfig(),
+      getOpikConfig(),
+      getWeaveConfig(),
+      getAliyunConfig(),
+      getTencentConfig(),
+    ])
   }
 
   const handleTracingConfigUpdated = async (provider: TracingProvider) => {
     // call api to hide secret key value
     const { tracing_config } = await doFetchTracingConfig({ appId, provider })
-    if (provider === TracingProvider.langSmith)
-      setLangSmithConfig(tracing_config as LangSmithConfig)
+    if (provider === TracingProvider.arize)
+      setArizeConfig(tracing_config as ArizeConfig)
+    else if (provider === TracingProvider.phoenix)
+      setPhoenixConfig(tracing_config as PhoenixConfig)
     else if (provider === TracingProvider.langSmith)
+      setLangSmithConfig(tracing_config as LangSmithConfig)
+    else if (provider === TracingProvider.langfuse)
       setLangFuseConfig(tracing_config as LangFuseConfig)
     else if (provider === TracingProvider.opik)
       setOpikConfig(tracing_config as OpikConfig)
+    else if (provider === TracingProvider.weave)
+      setWeaveConfig(tracing_config as WeaveConfig)
+    else if (provider === TracingProvider.aliyun)
+      setAliyunConfig(tracing_config as AliyunConfig)
+    else if (provider === TracingProvider.tencent)
+      setTencentConfig(tracing_config as TencentConfig)
   }
 
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
-    if (provider === TracingProvider.langSmith)
-      setLangSmithConfig(null)
+    if (provider === TracingProvider.arize)
+      setArizeConfig(null)
+    else if (provider === TracingProvider.phoenix)
+      setPhoenixConfig(null)
     else if (provider === TracingProvider.langSmith)
+      setLangSmithConfig(null)
+    else if (provider === TracingProvider.langfuse)
       setLangFuseConfig(null)
     else if (provider === TracingProvider.opik)
       setOpikConfig(null)
+    else if (provider === TracingProvider.weave)
+      setWeaveConfig(null)
+    else if (provider === TracingProvider.aliyun)
+      setAliyunConfig(null)
+    else if (provider === TracingProvider.tencent)
+      setTencentConfig(null)
     if (provider === inUseTracingProvider) {
       handleTracingStatusChange({
         enabled: false,
@@ -130,17 +191,11 @@ const Panel: FC = () => {
       await fetchTracingConfig()
       setLoaded()
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const [controlShowPopup, setControlShowPopup] = useState<number>(0)
-  const showPopup = useCallback(() => {
-    setControlShowPopup(Date.now())
-  }, [setControlShowPopup])
   if (!isLoaded) {
     return (
-      <div className='flex items-center justify-between mb-3'>
-        <Title className='h-[41px]' />
+      <div className='mb-3 flex items-center justify-between'>
         <div className='w-[200px]'>
           <Loading />
         </div>
@@ -149,47 +204,83 @@ const Panel: FC = () => {
   }
 
   return (
-    <div className={cn('mb-3 flex justify-between items-center')}>
-      <Title className='h-[41px]' />
-      <div className='flex items-center p-2 rounded-xl border-[0.5px] border-gray-200 shadow-xs cursor-pointer hover:bg-gray-100' onClick={showPopup}>
-        {!inUseTracingProvider
-          ? <>
-            <TracingIcon size='md' className='mr-2' />
-            <div className='leading-5 text-sm font-semibold text-gray-700'>{t(`${I18N_PREFIX}.title`)}</div>
-          </>
-          : <InUseProviderIcon className='ml-1 h-4' />}
-
-        {hasConfiguredTracing && (
-          <div className='ml-4 mr-1 flex items-center'>
-            <Indicator color={enabled ? 'green' : 'gray'} />
-            <div className='ml-1.5 text-xs font-semibold text-gray-500 uppercase'>
-              {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`)}
+    <div className={cn('flex items-center justify-between')}>
+      {!inUseTracingProvider && (
+        <ConfigButton
+          appId={appId}
+          readOnly={readOnly}
+          hasConfigured={false}
+          enabled={enabled}
+          onStatusChange={handleTracingEnabledChange}
+          chosenProvider={inUseTracingProvider}
+          onChooseProvider={handleChooseProvider}
+          arizeConfig={arizeConfig}
+          phoenixConfig={phoenixConfig}
+          langSmithConfig={langSmithConfig}
+          langFuseConfig={langFuseConfig}
+          opikConfig={opikConfig}
+          weaveConfig={weaveConfig}
+          aliyunConfig={aliyunConfig}
+          tencentConfig={tencentConfig}
+          onConfigUpdated={handleTracingConfigUpdated}
+          onConfigRemoved={handleTracingConfigRemoved}
+        >
+          <div
+            className={cn(
+              'flex cursor-pointer select-none items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
+            )}
+          >
+            <TracingIcon size='md' />
+            <div className='system-sm-semibold mx-2 text-text-secondary'>{t(`${I18N_PREFIX}.title`)}</div>
+            <div className='rounded-md p-1'>
+              <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+            </div>
+            <Divider type='vertical' className='h-3.5' />
+            <div className='rounded-md p-1'>
+              <RiArrowDownDoubleLine className='h-4 w-4 text-text-tertiary' />
             </div>
           </div>
-        )}
-
-        {hasConfiguredTracing && (
-          <div className='ml-2 w-px h-3.5 bg-gray-200'></div>
-        )}
-        <div className='flex items-center' onClick={e => e.stopPropagation()}>
-          <ConfigButton
-            appId={appId}
-            readOnly={readOnly}
-            hasConfigured
-            className='ml-2'
-            enabled={enabled}
-            onStatusChange={handleTracingEnabledChange}
-            chosenProvider={inUseTracingProvider}
-            onChooseProvider={handleChooseProvider}
-            langSmithConfig={langSmithConfig}
-            langFuseConfig={langFuseConfig}
-            opikConfig={opikConfig}
-            onConfigUpdated={handleTracingConfigUpdated}
-            onConfigRemoved={handleTracingConfigRemoved}
-            controlShowPopup={controlShowPopup}
-          />
-        </div>
-      </div>
+        </ConfigButton>
+      )}
+      {hasConfiguredTracing && (
+        <ConfigButton
+          appId={appId}
+          readOnly={readOnly}
+          hasConfigured
+          enabled={enabled}
+          onStatusChange={handleTracingEnabledChange}
+          chosenProvider={inUseTracingProvider}
+          onChooseProvider={handleChooseProvider}
+          arizeConfig={arizeConfig}
+          phoenixConfig={phoenixConfig}
+          langSmithConfig={langSmithConfig}
+          langFuseConfig={langFuseConfig}
+          opikConfig={opikConfig}
+          weaveConfig={weaveConfig}
+          aliyunConfig={aliyunConfig}
+          tencentConfig={tencentConfig}
+          onConfigUpdated={handleTracingConfigUpdated}
+          onConfigRemoved={handleTracingConfigRemoved}
+        >
+          <div
+            className={cn(
+              'flex cursor-pointer select-none items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
+            )}
+          >
+            <div className='ml-4 mr-1 flex items-center'>
+              <Indicator color={enabled ? 'green' : 'gray'} />
+              <div className='system-xs-semibold-uppercase ml-1.5 text-text-tertiary'>
+                {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`)}
+              </div>
+            </div>
+            {InUseProviderIcon && <InUseProviderIcon className='ml-1 h-4' />}
+            <div className='ml-2 rounded-md p-1'>
+              <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+            </div>
+            <Divider type='vertical' className='h-3.5' />
+          </div>
+        </ConfigButton>
+      )}
     </div>
   )
 }

@@ -28,6 +28,7 @@ import type { FileUpload } from '@/app/components/base/features/types'
 import { formatFileSize } from '@/utils/format'
 import { uploadRemoteFileInfo } from '@/service/common'
 import type { FileUploadConfigResponse } from '@/models/common'
+import { noop } from 'lodash-es'
 
 export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) => {
   const imgSizeLimit = Number(fileUploadConfig?.image_file_size_limit) * 1024 * 1024 || IMG_SIZE_LIMIT
@@ -67,6 +68,7 @@ export const useFile = (fileConfig: FileUpload) => {
         }
         return true
       }
+      case SupportUploadFileTypes.custom:
       case SupportUploadFileTypes.document: {
         if (fileSize > docSizeLimit) {
           notify({
@@ -100,19 +102,6 @@ export const useFile = (fileConfig: FileUpload) => {
             message: t('common.fileUploader.uploadFromComputerLimit', {
               type: SupportUploadFileTypes.video,
               size: formatFileSize(videoSizeLimit),
-            }),
-          })
-          return false
-        }
-        return true
-      }
-      case SupportUploadFileTypes.custom: {
-        if (fileSize > docSizeLimit) {
-          notify({
-            type: 'error',
-            message: t('common.fileUploader.uploadFromComputerLimit', {
-              type: SupportUploadFileTypes.document,
-              size: formatFileSize(docSizeLimit),
             }),
           })
           return false
@@ -230,7 +219,7 @@ export const useFile = (fileConfig: FileUpload) => {
         url: res.url,
       }
       if (!isAllowedFileExtension(res.name, res.mime_type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
-        notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
+        notify({ type: 'error', message: `${t('common.fileUploader.fileExtensionNotSupport')} ${newFile.type}` })
         handleRemoveFile(uploadingFile.id)
       }
       if (!checkSizeLimit(newFile.supportFileType, newFile.size))
@@ -243,9 +232,9 @@ export const useFile = (fileConfig: FileUpload) => {
     })
   }, [checkSizeLimit, handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig.allowed_file_extensions, startProgressTimer, params.token])
 
-  const handleLoadFileFromLinkSuccess = useCallback(() => { }, [])
+  const handleLoadFileFromLinkSuccess = useCallback(noop, [])
 
-  const handleLoadFileFromLinkError = useCallback(() => { }, [])
+  const handleLoadFileFromLinkError = useCallback(noop, [])
 
   const handleClearFiles = useCallback(() => {
     const {
@@ -256,7 +245,7 @@ export const useFile = (fileConfig: FileUpload) => {
 
   const handleLocalFileUpload = useCallback((file: File) => {
     if (!isAllowedFileExtension(file.name, file.type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
-      notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
+      notify({ type: 'error', message: `${t('common.fileUploader.fileExtensionNotSupport')} ${file.type}` })
       return
     }
     const allowedFileTypes = fileConfig.allowed_file_types
@@ -310,7 +299,8 @@ export const useFile = (fileConfig: FileUpload) => {
 
   const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = e.clipboardData?.files[0]
-    if (file) {
+    const text = e.clipboardData?.getData('text/plain')
+    if (file && !text) {
       e.preventDefault()
       handleLocalFileUpload(file)
     }

@@ -5,7 +5,6 @@ import type {
   CreateDocumentReq,
   DataSet,
   DataSetListResponse,
-  DocumentListResponse,
   ErrorDocsResponse,
   ExternalAPIDeleteResponse,
   ExternalAPIItem,
@@ -58,7 +57,7 @@ export const fetchDatasetDetail: Fetcher<DataSet, string> = (datasetId: string) 
 export const updateDatasetSetting: Fetcher<DataSet, {
   datasetId: string
   body: Partial<Pick<DataSet,
-    'name' | 'description' | 'permission' | 'partial_member_list' | 'indexing_technique' | 'retrieval_model' | 'embedding_model' | 'embedding_model_provider'
+    'name' | 'description' | 'permission' | 'partial_member_list' | 'indexing_technique' | 'retrieval_model' | 'embedding_model' | 'embedding_model_provider' | 'icon_info' | 'doc_form'
   >>
 }> = ({ datasetId, body }) => {
   return patch<DataSet>(`/datasets/${datasetId}`, { body })
@@ -120,10 +119,6 @@ export const fetchDefaultProcessRule: Fetcher<ProcessRuleResponse, { url: string
 }
 export const fetchProcessRule: Fetcher<ProcessRuleResponse, { params: { documentId: string } }> = ({ params: { documentId } }) => {
   return get<ProcessRuleResponse>('/datasets/process-rule', { params: { document_id: documentId } })
-}
-
-export const fetchDocuments: Fetcher<DocumentListResponse, { datasetId: string; params: { keyword: string; page: number; limit: number; sort?: SortType } }> = ({ datasetId, params }) => {
-  return get<DocumentListResponse>(`/datasets/${datasetId}/documents`, { params })
 }
 
 export const createFirstDocument: Fetcher<createDocumentResponse, { body: CreateDocumentReq }> = ({ body }) => {
@@ -188,8 +183,12 @@ export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, In
   return post<FileIndexingEstimateResponse>('/datasets/indexing-estimate', { body })
 }
 
-export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string; pageType: string }> = ({ workspaceID, pageID, pageType }) => {
-  return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`)
+export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string; pageType: string; credentialID: string; }> = ({ workspaceID, pageID, pageType, credentialID }) => {
+  return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`, {
+    params: {
+      credential_id: credentialID,
+    },
+  })
 }
 
 export const fetchApiKeysList: Fetcher<ApiKeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
@@ -202,10 +201,6 @@ export const delApikey: Fetcher<CommonResponse, { url: string; params: Record<st
 
 export const createApikey: Fetcher<CreateApiKeyResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post<CreateApiKeyResponse>(url, body)
-}
-
-export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> = (url) => {
-  return get<{ api_base_url: string }>(url)
 }
 
 export const fetchDataSources = () => {
@@ -258,7 +253,26 @@ export const checkJinaReaderTaskStatus: Fetcher<CommonResponse, string> = (jobId
   })
 }
 
-type FileTypesRes = {
+export const createWatercrawlTask: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('website/crawl', {
+    body: {
+      ...body,
+      provider: DataSourceProvider.waterCrawl,
+    },
+  })
+}
+
+export const checkWatercrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
+  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
+    params: {
+      provider: DataSourceProvider.waterCrawl,
+    },
+  }, {
+    silent: true,
+  })
+}
+
+export type FileTypesRes = {
   allowed_extensions: string[]
 }
 

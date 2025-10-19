@@ -62,7 +62,7 @@ pricing:  # 价格信息
 
 建议将所有模型配置都准备完毕后再开始模型代码的实现。
 
-同样，也可以参考  `model_providers` 目录下其他供应商对应模型类型目录下的 YAML 配置信息，完整的 YAML 规则见：[Schema](schema.md#aimodelentity)。
+同样，也可以参考 `model_providers` 目录下其他供应商对应模型类型目录下的 YAML 配置信息，完整的 YAML 规则见：[Schema](schema.md#aimodelentity)。
 
 ### 实现模型调用代码
 
@@ -82,7 +82,7 @@ pricing:  # 价格信息
           -> Union[LLMResult, Generator]:
       """
       Invoke large language model
-  
+
       :param model: model name
       :param credentials: model credentials
       :param prompt_messages: prompt messages
@@ -95,7 +95,7 @@ pricing:  # 价格信息
       """
   ```
 
-  在实现时，需要注意使用两个函数来返回数据，分别用于处理同步返回和流式返回，因为Python会将函数中包含 `yield` 关键字的函数识别为生成器函数，返回的数据类型固定为 `Generator`，因此同步和流式返回需要分别实现，就像下面这样（注意下面例子使用了简化参数，实际实现时需要按照上面的参数列表进行实现）：
+  在实现时，需要注意使用两个函数来返回数据，分别用于处理同步返回和流式返回，因为 Python 会将函数中包含 `yield` 关键字的函数识别为生成器函数，返回的数据类型固定为 `Generator`，因此同步和流式返回需要分别实现，就像下面这样（注意下面例子使用了简化参数，实际实现时需要按照上面的参数列表进行实现）：
 
   ```python
   def _invoke(self, stream: bool, **kwargs) \
@@ -137,7 +137,7 @@ pricing:  # 价格信息
   def validate_credentials(self, model: str, credentials: dict) -> None:
       """
       Validate model credentials
-  
+
       :param model: model name
       :param credentials: model credentials
       :return:
@@ -153,7 +153,7 @@ pricing:  # 价格信息
   - `InvokeConnectionError` 调用连接错误
   - `InvokeServerUnavailableError ` 调用服务方不可用
   - `InvokeRateLimitError ` 调用达到限额
-  - `InvokeAuthorizationError`  调用鉴权失败
+  - `InvokeAuthorizationError` 调用鉴权失败
   - `InvokeBadRequestError ` 调用传参有误
 
   ```python
@@ -164,7 +164,7 @@ pricing:  # 价格信息
       The key is the error type thrown to the caller
       The value is the error type thrown by the model,
       which needs to be converted into a unified error type for the caller.
-  
+
       :return: Invoke error mapping
       """
   ```

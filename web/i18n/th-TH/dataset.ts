@@ -113,6 +113,10 @@ const translation = {
     },
     change: 'เปลี่ยน',
     changeRetrievalMethod: 'วิธีการเรียกดูการเปลี่ยนแปลง',
+    keyword_search: {
+      title: 'ดัชนีกลับด้าน',
+      description: 'Inverted Index เป็นโครงสร้างที่ใช้สําหรับการดึงข้อมูลอย่างมีประสิทธิภาพ จัดเรียงตามคําศัพท์ แต่ละคําชี้ไปที่เอกสารหรือหน้าเว็บที่มีคําดังกล่าว',
+    },
   },
   docsFailedNotice: 'เอกสารไม่สามารถจัดทําดัชนีได้',
   retry: 'ลอง',
@@ -148,6 +152,8 @@ const translation = {
   chunkingMode: {
     general: 'ทั่วไป',
     parentChild: 'พ่อแม่ลูก',
+    graph: 'กราฟ',
+    qa: 'ถาม & ตอบ',
   },
   parentMode: {
     paragraph: 'วรรค',
@@ -167,6 +173,69 @@ const translation = {
   enable: 'เปิด',
   allKnowledge: 'ความรู้ทั้งหมด',
   allKnowledgeDescription: 'เลือกเพื่อแสดงความรู้ทั้งหมดในพื้นที่ทํางานนี้ เฉพาะเจ้าของพื้นที่ทํางานเท่านั้นที่สามารถจัดการความรู้ทั้งหมดได้',
+  metadata: {
+    createMetadata: {
+      back: 'กลับ',
+      title: 'ข้อมูลเมตาใหม่',
+      namePlaceholder: 'เพิ่มชื่อข้อมูลเมตา',
+      name: 'ชื่อ',
+      type: 'ประเภท',
+    },
+    checkName: {
+      invalid: 'ชื่อเมตาดาต้าต้องประกอบด้วยตัวอักษรตัวเล็กเท่านั้น เลข และขีดล่าง และต้องเริ่มต้นด้วยตัวอักษรตัวเล็ก',
+      empty: 'ชื่อข้อมูลเมตาไม่สามารถเป็นค่าแEmpty',
+      tooLong: 'ชื่อเมตาดาต้าไม่สามารถเกิน {{max}} ตัวอักษร',
+    },
+    batchEditMetadata: {
+      multipleValue: 'หลายค่า',
+      applyToAllSelectDocument: 'ใช้กับเอกสารที่เลือกทั้งหมด',
+      editMetadata: 'แก้ไขข้อมูลเมตา',
+      editDocumentsNum: 'การแก้ไขเอกสาร {{num}} ฉบับ',
+      applyToAllSelectDocumentTip: 'สร้างข้อมูลเมตาใหม่และแก้ไขทั้งหมดข้างต้นโดยอัตโนมัติสำหรับเอกสารที่เลือกทั้งหมด มิฉะนั้นการแก้ไขข้อมูลเมตาจะใช้ได้เฉพาะกับเอกสารที่มีข้อมูลเมตานั้นเท่านั้น.',
+    },
+    selectMetadata: {
+      manageAction: 'จัดการ',
+      search: 'ค้นหาข้อมูลเมตา',
+      newAction: 'ข้อมูลเมตาใหม่',
+    },
+    datasetMetadata: {
+      deleteTitle: 'ยืนยันเพื่อทำการลบ',
+      values: '{{num}} ค่า',
+      disabled: 'คนพิการ',
+      builtInDescription: 'ข้อมูลเมตาที่สร้างขึ้นในตัวจะถูกดึงออกและสร้างโดยอัตโนมัติ ต้องเปิดใช้งานก่อนใช้งานและไม่สามารถแก้ไขได้',
+      rename: 'เปลี่ยนชื่อ',
+      description: 'คุณสามารถจัดการข้อมูลเมตาทั้งหมดในความรู้นี้ได้ที่นี่ การปรับเปลี่ยนจะถูกซิงโครไนซ์ไปยังเอกสารทุกฉบับ',
+      deleteContent: 'คุณแน่ใจหรือว่าต้องการลบข้อมูลเมตา "{{name}}"',
+      name: 'ชื่อ',
+      addMetaData: 'เพิ่มข้อมูลเมตา',
+      builtIn: 'แบบในตัว',
+      namePlaceholder: 'ชื่อเมทาดาทา',
+    },
+    documentMetadata: {
+      technicalParameters: 'พารามิเตอร์ทางเทคนิค',
+      startLabeling: 'เริ่มการติดป้าย',
+      metadataToolTip: 'ข้อมูลเมตาเป็นตัวกรองที่สำคัญซึ่งช่วยเพิ่มความถูกต้องและความเกี่ยวข้องของการดึงข้อมูล คุณสามารถปรับแก้และเพิ่มข้อมูลเมตาสำหรับเอกสารนี้ได้ที่นี่',
+      documentInformation: 'ข้อมูลเอกสาร',
+    },
+    metadata: 'ข้อมูลเมตา',
+    addMetadata: 'เพิ่มข้อมูลเมตา',
+    chooseTime: 'เลือกเวลา...',
+  },
+  embeddingModelNotAvailable: 'โมเดลฝังตัวไม่สามารถใช้งานได้.',
+  updated: 'ปรับ ปรุง',
+  externalKnowledgeBase: 'ฐานความรู้ภายนอก',
+  createFromPipeline: 'สร้างจากไปป์ไลน์ความรู้',
+  serviceApi: {
+    card: {
+      title: 'บริการแบ็กเอนด์ API',
+      apiReference: 'เอกสารอ้างอิง API',
+      apiKey: 'กุญแจ API',
+      endpoint: 'จุดเชื่อมต่อ API บริการ',
+    },
+    enabled: 'ให้บริการ',
+    disabled: 'ถูกปิดใช้งาน',
+    title: 'บริการ API',
+  },
 }
 
 export default translation

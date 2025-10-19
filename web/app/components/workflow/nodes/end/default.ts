@@ -1,31 +1,22 @@
-import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
-import { type EndNodeType } from './types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+import type { EndNodeType } from './types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { BlockEnum } from '@/app/components/workflow/types'
 
+const metaData = genNodeMetaData({
+  sort: 2.1,
+  type: BlockEnum.End,
+  isRequired: true,
+})
 const nodeDefault: NodeDefault<EndNodeType> = {
+  metaData,
   defaultValue: {
     outputs: [],
   },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes
-  },
-  getAvailableNextNodes() {
-    return []
-  },
-  checkValid(payload: EndNodeType) {
-    let isValid = true
-    let errorMessages = ''
-    if (payload.type) {
-      isValid = true
-      errorMessages = ''
-    }
+  checkValid() {
     return {
-      isValid,
-      errorMessage: errorMessages,
+      isValid: true,
+      errorMessage: '',
     }
   },
 }

@@ -5,7 +5,7 @@ import { useContext } from 'use-context-selector'
 import { useParams } from 'next/navigation'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
 import { useShallow } from 'zustand/react/shallow'
-import { useDocumentContext } from '../index'
+import { useDocumentContext } from '../context'
 import { SegmentIndexTag } from './common/segment-index-tag'
 import ActionButtons from './common/action-buttons'
 import ChunkContent from './common/chunk-content'
@@ -53,10 +53,10 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   }, [parentMode])
 
   const CustomButton = <>
-    <Divider type='vertical' className='h-3 mx-1 bg-divider-regular' />
+    <Divider type='vertical' className='mx-1 h-3 bg-divider-regular' />
     <button
       type='button'
-      className='text-text-accent system-xs-semibold'
+      className='system-xs-semibold text-text-accent'
       onClick={() => {
         clearTimeout(refreshTimer.current)
         viewNewlyAddedChildChunk?.()
@@ -68,7 +68,6 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   const handleCancel = (actionType: 'esc' | 'add' = 'esc') => {
     if (actionType === 'esc' || !addAnother)
       onCancel()
-    setContent('')
   }
 
   const { mutateAsync: addChildSegment } = useAddChildSegment()
@@ -92,6 +91,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
           customComponent: isFullDocMode && CustomButton,
         })
         handleCancel('add')
+        setContent('')
         if (isFullDocMode) {
           refreshTimer.current = setTimeout(() => {
             onSave()
@@ -110,18 +110,17 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
   const wordCountText = useMemo(() => {
     const count = content.length
     return `${formatNumber(count)} ${t('datasetDocuments.segment.characters', { count })}`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content.length])
 
   return (
-    <div className={'flex flex-col h-full'}>
-      <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
+    <div className={'flex h-full flex-col'}>
+      <div className={classNames('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}>
         <div className='flex flex-col'>
-          <div className='text-text-primary system-xl-semibold'>{t('datasetDocuments.segment.addChildChunk')}</div>
+          <div className='system-xl-semibold text-text-primary'>{t('datasetDocuments.segment.addChildChunk')}</div>
           <div className='flex items-center gap-x-2'>
             <SegmentIndexTag label={t('datasetDocuments.segment.newChildChunk') as string} />
             <Dot />
-            <span className='text-text-tertiary system-xs-medium'>{wordCountText}</span>
+            <span className='system-xs-medium text-text-tertiary'>{wordCountText}</span>
           </div>
         </div>
         <div className='flex items-center'>
@@ -135,19 +134,19 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
                 actionType='add'
                 isChildChunk={true}
               />
-              <Divider type='vertical' className='h-3.5 bg-divider-regular ml-4 mr-2' />
+              <Divider type='vertical' className='ml-4 mr-2 h-3.5 bg-divider-regular' />
             </>
           )}
-          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer mr-1' onClick={toggleFullScreen}>
-            <RiExpandDiagonalLine className='w-4 h-4 text-text-tertiary' />
+          <div className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={toggleFullScreen}>
+            <RiExpandDiagonalLine className='h-4 w-4 text-text-tertiary' />
           </div>
-          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer' onClick={handleCancel.bind(null, 'esc')}>
-            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+          <div className='flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={handleCancel.bind(null, 'esc')}>
+            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
           </div>
         </div>
       </div>
-      <div className={classNames('flex grow w-full', fullScreen ? 'flex-row justify-center px-6 pt-6' : 'py-3 px-4')}>
-        <div className={classNames('break-all overflow-hidden whitespace-pre-line h-full', fullScreen ? 'w-1/2' : 'w-full')}>
+      <div className={classNames('flex w-full grow', fullScreen ? 'flex-row justify-center px-6 pt-6' : 'px-4 py-3')}>
+        <div className={classNames('h-full overflow-hidden whitespace-pre-line break-all', fullScreen ? 'w-1/2' : 'w-full')}>
           <ChunkContent
             docForm={ChunkingMode.parentChild}
             question={content}
@@ -157,7 +156,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
         </div>
       </div>
       {!fullScreen && (
-        <div className='flex items-center justify-between p-4 pt-3 border-t-[1px] border-t-divider-subtle'>
+        <div className='flex items-center justify-between border-t-[1px] border-t-divider-subtle p-4 pt-3'>
           <AddAnother isChecked={addAnother} onCheck={() => setAddAnother(!addAnother)} />
           <ActionButtons
             handleCancel={handleCancel.bind(null, 'esc')}

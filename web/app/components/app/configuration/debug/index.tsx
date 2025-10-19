@@ -34,7 +34,7 @@ import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows
 import TooltipPlus from '@/app/components/base/tooltip'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
-import { promptVariablesToUserInputsForm } from '@/utils/model-config'
+import { formatBooleanInputs, promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
 import type { Inputs } from '@/models/debug'
@@ -47,6 +47,7 @@ import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
+import { noop } from 'lodash-es'
 
 type IDebug = {
   isAPIKeySet: boolean
@@ -155,12 +156,11 @@ const Debug: FC<IDebug> = ({
     }
     let hasEmptyInput = ''
     const requiredVars = modelConfig.configs.prompt_variables.filter(({ key, name, required, type }) => {
-      if (type !== 'string' && type !== 'paragraph' && type !== 'select')
+      if (type !== 'string' && type !== 'paragraph' && type !== 'select' && type !== 'number')
         return false
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
     }) // compatible with old version
-    // debugger
     requiredVars.forEach(({ key, name }) => {
       if (hasEmptyInput)
         return
@@ -259,7 +259,7 @@ const Debug: FC<IDebug> = ({
     }
 
     const data: Record<string, any> = {
-      inputs,
+      inputs: formatBooleanInputs(modelConfig.configs.prompt_variables, inputs),
       model_config: postModelConfig,
     }
 
@@ -391,8 +391,8 @@ const Debug: FC<IDebug> = ({
   return (
     <>
       <div className="shrink-0">
-        <div className='flex items-center justify-between px-4 pt-3 pb-2'>
-          <div className='text-text-primary system-xl-semibold'>{t('appDebug.inputs.title')}</div>
+        <div className='flex items-center justify-between px-4 pb-2 pt-3'>
+          <div className='system-xl-semibold text-text-primary'>{t('appDebug.inputs.title')}</div>
           <div className='flex items-center'>
             {
               debugWithMultipleModel
@@ -403,10 +403,10 @@ const Debug: FC<IDebug> = ({
                       onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
                       disabled={multipleModelConfigs.length >= 4}
                     >
-                      <RiAddLine className='mr-1 w-3.5 h-3.5' />
+                      <RiAddLine className='mr-1 h-3.5 w-3.5' />
                       {t('common.modelProvider.addModel')}({multipleModelConfigs.length}/4)
                     </Button>
-                    <div className='mx-2 w-[1px] h-[14px] bg-divider-regular' />
+                    <div className='mx-2 h-[14px] w-[1px] bg-divider-regular' />
                   </>
                 )
                 : null
@@ -417,7 +417,7 @@ const Debug: FC<IDebug> = ({
                   popupContent={t('common.operation.refresh')}
                 >
                   <ActionButton onClick={clearConversation}>
-                    <RefreshCcw01 className='w-4 h-4' />
+                    <RefreshCcw01 className='h-4 w-4' />
                   </ActionButton>
                 </TooltipPlus>
                 {varList.length > 0 && (
@@ -426,10 +426,10 @@ const Debug: FC<IDebug> = ({
                       popupContent={t('workflow.panel.userInputField')}
                     >
                       <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
-                        <RiEqualizer2Line className='w-4 h-4' />
+                        <RiEqualizer2Line className='h-4 w-4' />
                       </ActionButton>
                     </TooltipPlus>
-                    {expanded && <div className='absolute z-10 bottom-[-14px] right-[5px] w-3 h-3 bg-components-panel-on-panel-item-bg border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle rotate-45' />}
+                    {expanded && <div className='absolute bottom-[-14px] right-[5px] z-10 h-3 w-3 rotate-45 border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg' />}
                   </div>
                 )}
               </>
@@ -457,7 +457,7 @@ const Debug: FC<IDebug> = ({
       </div>
       {
         debugWithMultipleModel && (
-          <div className='grow mt-3 overflow-hidden' ref={ref}>
+          <div className='mt-3 grow overflow-hidden' ref={ref}>
             <DebugWithMultipleModel
               multipleModelConfigs={multipleModelConfigs}
               onMultipleModelConfigsChange={onMultipleModelConfigsChange}
@@ -489,10 +489,10 @@ const Debug: FC<IDebug> = ({
       }
       {
         !debugWithMultipleModel && (
-          <div className="flex flex-col grow" ref={ref}>
+          <div className="flex grow flex-col" ref={ref}>
             {/* Chat */}
             {mode !== AppType.completion && (
-              <div className='grow h-0 overflow-hidden'>
+              <div className='h-0 grow overflow-hidden'>
                 <DebugWithSingleModel
                   ref={debugWithSingleModelRef}
                   checkCanSend={checkCanSend}
@@ -515,19 +515,16 @@ const Debug: FC<IDebug> = ({
                         isInstalledApp={false}
                         messageId={messageId}
                         isError={false}
-                        onRetry={() => { }}
-                        supportAnnotation
-                        appId={appId}
-                        varList={varList}
+                        onRetry={noop}
                         siteInfo={null}
                       />
                     </div>
                   </>
                 )}
                 {!completionRes && !isResponding && (
-                  <div className='grow flex flex-col items-center justify-center gap-2'>
-                    <RiSparklingFill className='w-12 h-12 text-text-empty-state-icon' />
-                    <div className='text-text-quaternary system-sm-regular'>{t('appDebug.noResult')}</div>
+                  <div className='flex grow flex-col items-center justify-center gap-2'>
+                    <RiSparklingFill className='h-12 w-12 text-text-empty-state-icon' />
+                    <div className='system-sm-regular text-text-quaternary'>{t('appDebug.noResult')}</div>
                   </div>
                 )}
               </>

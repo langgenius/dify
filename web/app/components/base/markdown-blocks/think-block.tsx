@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useChatContext } from '../chat/chat/context'
 
 const hasEndThink = (children: any): boolean => {
   if (typeof children === 'string')
@@ -35,15 +36,17 @@ const removeEndThink = (children: any): any => {
 }
 
 const useThinkTimer = (children: any) => {
-  const [startTime] = useState(Date.now())
+  const { isResponding } = useChatContext()
+  const [startTime] = useState(() => Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
   const timerRef = useRef<NodeJS.Timeout>()
 
   useEffect(() => {
+    if (isComplete) return
+
     timerRef.current = setInterval(() => {
-      if (!isComplete)
-        setElapsedTime(Math.floor((Date.now() - startTime) / 100) / 10)
+      setElapsedTime(Math.floor((Date.now() - startTime) / 100) / 10)
     }, 100)
 
     return () => {
@@ -53,27 +56,27 @@ const useThinkTimer = (children: any) => {
   }, [startTime, isComplete])
 
   useEffect(() => {
-    if (hasEndThink(children)) {
+    if (hasEndThink(children) || !isResponding)
       setIsComplete(true)
-      if (timerRef.current)
-        clearInterval(timerRef.current)
-    }
-  }, [children])
+  }, [children, isResponding])
 
   return { elapsedTime, isComplete }
 }
 
-export const ThinkBlock = ({ children, ...props }: any) => {
+const ThinkBlock = ({ children, ...props }: React.ComponentProps<'details'>) => {
   const { elapsedTime, isComplete } = useThinkTimer(children)
   const displayContent = removeEndThink(children)
   const { t } = useTranslation()
 
+  if (!(props['data-think'] ?? false))
+    return (<details {...props}>{children}</details>)
+
   return (
     <details {...(!isComplete && { open: true })} className="group">
-      <summary className="text-gray-500 font-bold list-none pl-2 flex items-center cursor-pointer select-none whitespace-nowrap">
-        <div className="flex-shrink-0 flex items-center">
+      <summary className="flex cursor-pointer select-none list-none items-center whitespace-nowrap pl-2 font-bold text-text-secondary">
+        <div className="flex shrink-0 items-center">
           <svg
-            className="w-3 h-3 mr-2 transform transition-transform duration-500 group-open:rotate-90"
+            className="mr-2 h-3 w-3 transition-transform duration-500 group-open:rotate-90"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -88,7 +91,7 @@ export const ThinkBlock = ({ children, ...props }: any) => {
           {isComplete ? `${t('common.chat.thought')}(${elapsedTime.toFixed(1)}s)` : `${t('common.chat.thinking')}(${elapsedTime.toFixed(1)}s)`}
         </div>
       </summary>
-      <div className="text-gray-500 p-3 ml-2 bg-gray-50 border-l border-gray-300">
+      <div className="ml-2 border-l border-components-panel-border bg-components-panel-bg-alt p-3 text-text-secondary">
         {displayContent}
       </div>
     </details>

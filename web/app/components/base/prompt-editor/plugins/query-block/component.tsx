@@ -17,12 +17,12 @@ const QueryBlockComponent: FC<QueryBlockComponentProps> = ({
   return (
     <div
       className={`
-        inline-flex items-center pl-1 pr-0.5 h-6 bg-[#FFF6ED] border border-transparent rounded-[5px] hover:bg-[#FFEAD5]
+        inline-flex h-6 items-center rounded-[5px] border border-transparent bg-[#FFF6ED] pl-1 pr-0.5 hover:bg-[#FFEAD5]
         ${isSelected && '!border-[#FD853A]'}
       `}
       ref={ref}
     >
-      <UserEdit02 className='mr-1 w-[14px] h-[14px] text-[#FD853A]' />
+      <UserEdit02 className='mr-1 h-[14px] w-[14px] text-[#FD853A]' />
       <div className='text-xs font-medium text-[#EC4A0A] opacity-60'>{'{{'}</div>
       <div className='text-xs font-medium text-[#EC4A0A]'>{t('common.promptEditor.query.item.title')}</div>
       <div className='text-xs font-medium text-[#EC4A0A] opacity-60'>{'}}'}</div>

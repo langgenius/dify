@@ -1,9 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { intersectionBy } from 'lodash-es'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
+import { v4 as uuid4 } from 'uuid'
 import { useFormattingChangedDispatcher } from '../debug/hooks'
 import FeaturePanel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
@@ -21,13 +23,19 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { hasEditPermissionForDataset } from '@/utils/permission'
-
-const Icon = (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path fillRule="evenodd" clipRule="evenodd" d="M12.6667 5.34368C12.6667 5.32614 12.6667 5.31738 12.6659 5.30147C12.6502 4.97229 12.3607 4.68295 12.0315 4.66737C12.0156 4.66662 12.0104 4.66662 12 4.66663H9.8391C9.30248 4.66662 8.85957 4.66661 8.49878 4.69609C8.12405 4.72671 7.77958 4.79242 7.45603 4.95728C6.95426 5.21294 6.54631 5.62089 6.29065 6.12265C6.12579 6.44621 6.06008 6.79068 6.02946 7.16541C5.99999 7.5262 5.99999 7.96911 6 8.50574V15.4942C5.99999 16.0308 5.99999 16.4737 6.02946 16.8345C6.06008 17.2092 6.12579 17.5537 6.29065 17.8773C6.54631 18.379 6.95426 18.787 7.45603 19.0426C7.77958 19.2075 8.12405 19.2732 8.49878 19.3038C8.85958 19.3333 9.30248 19.3333 9.83912 19.3333H14.1609C14.6975 19.3333 15.1404 19.3333 15.5012 19.3038C15.8759 19.2732 16.2204 19.2075 16.544 19.0426C17.0457 18.787 17.4537 18.379 17.7093 17.8773C17.8742 17.5537 17.9399 17.2092 17.9705 16.8345C18 16.4737 18 16.0308 18 15.4942V10.6666C18 10.6562 18 10.6511 17.9993 10.6352C17.9837 10.306 17.6943 10.0164 17.3651 10.0007C17.3492 9.99997 17.3405 9.99997 17.323 9.99997L14.3787 9.99997C14.2105 9.99999 14.0466 10 13.9078 9.98867C13.7555 9.97622 13.5756 9.94684 13.3947 9.85464C13.1438 9.72681 12.9398 9.52284 12.812 9.27195C12.7198 9.09101 12.6904 8.91118 12.678 8.75879C12.6666 8.62001 12.6666 8.45615 12.6667 8.2879L12.6667 5.34368ZM9.33333 12.6666C8.96514 12.6666 8.66667 12.9651 8.66667 13.3333C8.66667 13.7015 8.96514 14 9.33333 14H14.6667C15.0349 14 15.3333 13.7015 15.3333 13.3333C15.3333 12.9651 15.0349 12.6666 14.6667 12.6666H9.33333ZM9.33333 15.3333C8.96514 15.3333 8.66667 15.6318 8.66667 16C8.66667 16.3681 8.96514 16.6666 9.33333 16.6666H13.3333C13.7015 16.6666 14 16.3681 14 16C14 15.6318 13.7015 15.3333 13.3333 15.3333H9.33333Z" fill="#6938EF" />
-    <path d="M16.6053 8.66662C16.8011 8.66662 16.8989 8.66663 16.9791 8.61747C17.0923 8.54806 17.16 8.38452 17.129 8.25538C17.107 8.16394 17.0432 8.10018 16.9155 7.97265L14.694 5.75111C14.5664 5.62345 14.5027 5.55962 14.4112 5.53764C14.2821 5.5066 14.1186 5.57429 14.0492 5.68752C14 5.7677 14 5.86557 14 6.06132L14 8.13327C14 8.31994 14 8.41328 14.0363 8.48459C14.0683 8.54731 14.1193 8.5983 14.182 8.63026C14.2533 8.66659 14.3466 8.66659 14.5333 8.66659L16.6053 8.66662Z" fill="#6938EF" />
-  </svg>
-)
+import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
+import type {
+  HandleAddCondition,
+  HandleRemoveCondition,
+  HandleToggleConditionLogicalOperator,
+  HandleUpdateCondition,
+  MetadataFilteringModeEnum,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import {
+  ComparisonOperator,
+  LogicalOperator,
+  MetadataFilteringVariableType,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 const DatasetConfig: FC = () => {
   const { t } = useTranslation()
@@ -41,6 +49,7 @@ const DatasetConfig: FC = () => {
     showSelectDataSet,
     isAgent,
     datasetConfigs,
+    datasetConfigsRef,
     setDatasetConfigs,
     setRerankSettingModalOpen,
   } = useContext(ConfigContext)
@@ -56,13 +65,40 @@ const DatasetConfig: FC = () => {
   const onRemove = (id: string) => {
     const filteredDataSets = dataSet.filter(item => item.id !== id)
     setDataSet(filteredDataSets)
-    const retrievalConfig = getMultipleRetrievalConfig(datasetConfigs as any, filteredDataSets, dataSet, {
+    const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
+    const {
+      top_k,
+      score_threshold,
+      reranking_model,
+      reranking_mode,
+      weights,
+      reranking_enable,
+    } = restConfigs
+    const oldRetrievalConfig = {
+      top_k,
+      score_threshold,
+      reranking_model: (reranking_model.reranking_provider_name && reranking_model.reranking_model_name) ? {
+        provider: reranking_model.reranking_provider_name,
+        model: reranking_model.reranking_model_name,
+      } : undefined,
+      reranking_mode,
+      weights,
+      reranking_enable,
+    }
+    const retrievalConfig = getMultipleRetrievalConfig(oldRetrievalConfig, filteredDataSets, dataSet, {
       provider: currentRerankProvider?.provider,
       model: currentRerankModel?.model,
     })
     setDatasetConfigs({
-      ...(datasetConfigs as any),
+      ...datasetConfigsRef.current,
       ...retrievalConfig,
+      reranking_model: {
+        reranking_provider_name: retrievalConfig?.reranking_model?.provider || '',
+        reranking_model_name: retrievalConfig?.reranking_model?.model || '',
+      },
+      retrieval_model,
+      score_threshold_enabled,
+      datasets,
     })
     const {
       allExternal,
@@ -122,10 +158,100 @@ const DatasetConfig: FC = () => {
     })
   }, [dataSet, userProfile?.id])
 
+  const metadataList = useMemo(() => {
+    return intersectionBy(...formattedDataset.filter((dataset) => {
+      return !!dataset.doc_metadata
+    }).map((dataset) => {
+      return dataset.doc_metadata!
+    }), 'name')
+  }, [formattedDataset])
+
+  const handleMetadataFilterModeChange = useCallback((newMode: MetadataFilteringModeEnum) => {
+    setDatasetConfigs(produce(datasetConfigsRef.current!, (draft) => {
+      draft.metadata_filtering_mode = newMode
+    }))
+  }, [setDatasetConfigs, datasetConfigsRef])
+
+  const handleAddCondition = useCallback<HandleAddCondition>(({ name, type }) => {
+    let operator: ComparisonOperator = ComparisonOperator.is
+
+    if (type === MetadataFilteringVariableType.number)
+      operator = ComparisonOperator.equal
+
+    const newCondition = {
+      id: uuid4(),
+      name,
+      comparison_operator: operator,
+    }
+
+    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+      if (draft.metadata_filtering_conditions) {
+        draft.metadata_filtering_conditions.conditions.push(newCondition)
+      }
+      else {
+        draft.metadata_filtering_conditions = {
+          logical_operator: LogicalOperator.and,
+          conditions: [newCondition],
+        }
+      }
+    })
+    setDatasetConfigs(newInputs)
+  }, [setDatasetConfigs, datasetConfigsRef])
+
+  const handleRemoveCondition = useCallback<HandleRemoveCondition>((id) => {
+    const conditions = datasetConfigsRef.current!.metadata_filtering_conditions?.conditions || []
+    const index = conditions.findIndex(c => c.id === id)
+    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+      if (index > -1)
+        draft.metadata_filtering_conditions?.conditions.splice(index, 1)
+    })
+    setDatasetConfigs(newInputs)
+  }, [setDatasetConfigs, datasetConfigsRef])
+
+  const handleUpdateCondition = useCallback<HandleUpdateCondition>((id, newCondition) => {
+    const conditions = datasetConfigsRef.current!.metadata_filtering_conditions?.conditions || []
+    const index = conditions.findIndex(c => c.id === id)
+    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+      if (index > -1)
+        draft.metadata_filtering_conditions!.conditions[index] = newCondition
+    })
+    setDatasetConfigs(newInputs)
+  }, [setDatasetConfigs, datasetConfigsRef])
+
+  const handleToggleConditionLogicalOperator = useCallback<HandleToggleConditionLogicalOperator>(() => {
+    const oldLogicalOperator = datasetConfigsRef.current!.metadata_filtering_conditions?.logical_operator
+    const newLogicalOperator = oldLogicalOperator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
+    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+      draft.metadata_filtering_conditions!.logical_operator = newLogicalOperator
+    })
+    setDatasetConfigs(newInputs)
+  }, [setDatasetConfigs, datasetConfigsRef])
+
+  const handleMetadataModelChange = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+      draft.metadata_model_config = {
+        provider: model.provider,
+        name: model.modelId,
+        mode: model.mode || 'chat',
+        completion_params: draft.metadata_model_config?.completion_params || { temperature: 0.7 },
+      }
+    })
+    setDatasetConfigs(newInputs)
+  }, [setDatasetConfigs, datasetConfigsRef])
+
+  const handleMetadataCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
+    const newInputs = produce(datasetConfigsRef.current!, (draft) => {
+      draft.metadata_model_config = {
+        ...draft.metadata_model_config!,
+        completion_params: newParams,
+      }
+    })
+    setDatasetConfigs(newInputs)
+  }, [setDatasetConfigs, datasetConfigsRef])
+
   return (
     <FeaturePanel
       className='mt-2'
-      headerIcon={Icon}
       title={t('appDebug.feature.dataSet.title')}
       headerRight={
         <div className='flex items-center gap-1'>
@@ -138,7 +264,7 @@ const DatasetConfig: FC = () => {
     >
       {hasData
         ? (
-          <div className='flex flex-wrap mt-1 px-3 pb-3 justify-between'>
+          <div className='mt-1 flex flex-wrap justify-between px-3 pb-3'>
             {formattedDataset.map(item => (
               <CardItem
                 key={item.id}
@@ -152,9 +278,29 @@ const DatasetConfig: FC = () => {
         )
         : (
           <div className='mt-1 px-3 pb-3'>
-            <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.feature.dataSet.noData')}</div>
+            <div className='pb-1 pt-2 text-xs text-text-tertiary'>{t('appDebug.feature.dataSet.noData')}</div>
           </div>
         )}
+
+      <div className='border-t border-t-divider-subtle py-2'>
+        <MetadataFilter
+          metadataList={metadataList}
+          selectedDatasetsLoaded
+          metadataFilterMode={datasetConfigs.metadata_filtering_mode}
+          metadataFilteringConditions={datasetConfigs.metadata_filtering_conditions}
+          handleAddCondition={handleAddCondition}
+          handleMetadataFilterModeChange={handleMetadataFilterModeChange}
+          handleRemoveCondition={handleRemoveCondition}
+          handleToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
+          handleUpdateCondition={handleUpdateCondition}
+          metadataModelConfig={datasetConfigs.metadata_model_config}
+          handleMetadataModelChange={handleMetadataModelChange}
+          handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
+          isCommonVariable
+          availableCommonStringVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.string || item.type === MetadataFilteringVariableType.select)}
+          availableCommonNumberVars={promptVariablesToSelect.filter(item => item.type === MetadataFilteringVariableType.number)}
+        />
+      </div>
 
       {mode === AppType.completion && dataSet.length > 0 && (
         <ContextVar

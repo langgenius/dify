@@ -1,17 +1,20 @@
-import datetime
 import logging
 import time
 
 import click
-from celery import shared_task  # type: ignore
-from werkzeug.exceptions import NotFound
+import sqlalchemy as sa
+from celery import shared_task
+from sqlalchemy import select
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
 from models.source import DataSourceOauthBinding
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
@@ -23,13 +26,15 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
 
     Usage: document_indexing_sync_task.delay(dataset_id, document_id)
     """
-    logging.info(click.style("Start sync document: {}".format(document_id), fg="green"))
+    logger.info(click.style(f"Start sync document: {document_id}", fg="green"))
     start_at = time.perf_counter()
 
-    document = db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+    document = db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
 
     if not document:
-        raise NotFound("Document not found")
+        logger.info(click.style(f"Document not found: {document_id}", fg="red"))
+        db.session.close()
+        return
 
     data_source_info = document.data_source_info_dict
     if document.data_source_type == "notion_import":
@@ -43,14 +48,19 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         page_id = data_source_info["notion_page_id"]
         page_type = data_source_info["type"]
         page_edited_time = data_source_info["last_edited_time"]
-        data_source_binding = DataSourceOauthBinding.query.filter(
-            db.and_(
-                DataSourceOauthBinding.tenant_id == document.tenant_id,
-                DataSourceOauthBinding.provider == "notion",
-                DataSourceOauthBinding.disabled == False,
-                DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+
+        data_source_binding = (
+            db.session.query(DataSourceOauthBinding)
+            .where(
+                sa.and_(
+                    DataSourceOauthBinding.tenant_id == document.tenant_id,
+                    DataSourceOauthBinding.provider == "notion",
+                    DataSourceOauthBinding.disabled == False,
+                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+                )
             )
-        ).first()
+            .first()
+        )
         if not data_source_binding:
             raise ValueError("Data source binding not found.")
 
@@ -67,18 +77,20 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         # check the page is updated
         if last_edited_time != page_edited_time:
             document.indexing_status = "parsing"
-            document.processing_started_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            document.processing_started_at = naive_utc_now()
             db.session.commit()
 
             # delete all document segment and index
             try:
-                dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+                dataset = db.session.query(Dataset).where(Dataset.id == dataset_id).first()
                 if not dataset:
                     raise Exception("Dataset not found")
                 index_type = document.doc_form
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
-                segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
+                segments = db.session.scalars(
+                    select(DocumentSegment).where(DocumentSegment.document_id == document_id)
+                ).all()
                 index_node_ids = [segment.index_node_id for segment in segments]
 
                 # delete from vector index
@@ -88,7 +100,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                     db.session.delete(segment)
 
                 end_at = time.perf_counter()
-                logging.info(
+                logger.info(
                     click.style(
                         "Cleaned document when document update data source or process rule: {} latency: {}".format(
                             document_id, end_at - start_at
@@ -97,16 +109,16 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                     )
                 )
             except Exception:
-                logging.exception("Cleaned document when document update data source or process rule failed")
+                logger.exception("Cleaned document when document update data source or process rule failed")
 
             try:
                 indexing_runner = IndexingRunner()
                 indexing_runner.run([document])
                 end_at = time.perf_counter()
-                logging.info(
-                    click.style("update document: {} latency: {}".format(document.id, end_at - start_at), fg="green")
-                )
+                logger.info(click.style(f"update document: {document.id} latency: {end_at - start_at}", fg="green"))
             except DocumentIsPausedError as ex:
-                logging.info(click.style(str(ex), fg="yellow"))
+                logger.info(click.style(str(ex), fg="yellow"))
             except Exception:
-                pass
+                logger.exception("document_indexing_sync_task failed, document_id: %s", document_id)
+            finally:
+                db.session.close()

@@ -1,77 +1,71 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
-import { Plan } from '../type'
-import SelectPlanRange, { PlanRange } from './select-plan-range'
-import PlanItem from './plan-item'
+import Header from './header'
+import PlanSwitcher from './plan-switcher'
+import Plans from './plans'
+import Footer from './footer'
+import { PlanRange } from './plan-switcher/plan-range-switcher'
+import { useKeyPress } from 'ahooks'
 import { useProviderContext } from '@/context/provider-context'
-import GridMask from '@/app/components/base/grid-mask'
 import { useAppContext } from '@/context/app-context'
+import { useGetPricingPageLanguage } from '@/context/i18n'
+import { NoiseBottom, NoiseTop } from './assets'
 
-type Props = {
+export enum CategoryEnum {
+  CLOUD = 'cloud',
+  SELF = 'self',
+}
+
+export type Category = CategoryEnum.CLOUD | CategoryEnum.SELF
+
+type PricingProps = {
   onCancel: () => void
 }
 
-const Pricing: FC<Props> = ({
+const Pricing: FC<PricingProps> = ({
   onCancel,
 }) => {
-  const { t } = useTranslation()
   const { plan } = useProviderContext()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const canPay = isCurrentWorkspaceManager
   const [planRange, setPlanRange] = React.useState<PlanRange>(PlanRange.monthly)
+  const [currentCategory, setCurrentCategory] = useState<Category>(CategoryEnum.CLOUD)
+  const canPay = isCurrentWorkspaceManager
+
+  useKeyPress(['esc'], onCancel)
+
+  const pricingPageLanguage = useGetPricingPageLanguage()
+  const pricingPageURL = pricingPageLanguage
+    ? `https://dify.ai/${pricingPageLanguage}/pricing#plans-and-features`
+    : 'https://dify.ai/pricing#plans-and-features'
 
   return createPortal(
     <div
-      className='fixed inset-0 flex bg-white z-[1000] overflow-auto'
+      className='fixed inset-0 bottom-0 left-0 right-0 top-0 z-[1000] overflow-auto bg-saas-background'
       onClick={e => e.stopPropagation()}
     >
-      <GridMask wrapperClassName='grow'>
-        <div className='grow width-[0] mt-6 p-6 flex flex-col items-center'>
-          <div className='mb-3 leading-[38px] text-[30px] font-semibold text-gray-900'>
-            {t('billing.plansCommon.title')}
-          </div>
-          <SelectPlanRange
-            value={planRange}
-            onChange={setPlanRange}
-          />
-          <div className='mt-8 pb-6 w-full justify-center flex-nowrap flex space-x-3'>
-            <PlanItem
-              currentPlan={plan.type}
-              plan={Plan.sandbox}
-              planRange={planRange}
-              canPay={canPay}
-            />
-            <PlanItem
-              currentPlan={plan.type}
-              plan={Plan.professional}
-              planRange={planRange}
-              canPay={canPay}
-            />
-            <PlanItem
-              currentPlan={plan.type}
-              plan={Plan.team}
-              planRange={planRange}
-              canPay={canPay}
-            />
-            <PlanItem
-              currentPlan={plan.type}
-              plan={Plan.enterprise}
-              planRange={planRange}
-              canPay={canPay}
-            />
-          </div>
+      <div className='relative grid min-h-full min-w-[1200px] grid-rows-[1fr_auto_auto_1fr] overflow-hidden'>
+        <div className='absolute -top-12 left-0 right-0 -z-10'>
+          <NoiseTop />
         </div>
-      </GridMask>
-
-      <div
-        className='fixed top-6 right-6 flex items-center justify-center w-10 h-10 bg-black/[0.05] rounded-full backdrop-blur-[2px] cursor-pointer z-[1001]'
-        onClick={onCancel}
-      >
-        <RiCloseLine className='w-4 h-4 text-gray-900' />
+        <Header onClose={onCancel} />
+        <PlanSwitcher
+          currentCategory={currentCategory}
+          onChangeCategory={setCurrentCategory}
+          currentPlanRange={planRange}
+          onChangePlanRange={setPlanRange}
+        />
+        <Plans
+          plan={plan}
+          currentPlan={currentCategory}
+          planRange={planRange}
+          canPay={canPay}
+        />
+        <Footer pricingPageURL={pricingPageURL} currentCategory={currentCategory}/>
+        <div className='absolute -bottom-12 left-0 right-0 -z-10'>
+          <NoiseBottom />
+        </div>
       </div>
     </div>,
     document.body,

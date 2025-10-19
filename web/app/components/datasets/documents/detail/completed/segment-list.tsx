@@ -1,11 +1,11 @@
-import React, { type ForwardedRef, useMemo } from 'react'
-import { useDocumentContext } from '../index'
+import React, { useMemo } from 'react'
+import { useDocumentContext } from '../context'
 import SegmentCard from './segment-card'
 import Empty from './common/empty'
 import GeneralListSkeleton from './skeleton/general-list-skeleton'
 import ParagraphListSkeleton from './skeleton/paragraph-list-skeleton'
 import { useSegmentListContext } from './index'
-import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
+import { type ChildChunkDetail, ChunkingMode, type SegmentDetailModel } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 
@@ -25,31 +25,34 @@ type ISegmentListProps = {
   onClearFilter: () => void
 }
 
-const SegmentList = React.forwardRef(({
-  isLoading,
-  items,
-  selectedSegmentIds,
-  onSelected,
-  onClick: onClickCard,
-  onChangeSwitch,
-  onDelete,
-  onDeleteChildChunk,
-  handleAddNewChildChunk,
-  onClickSlice,
-  archived,
-  embeddingAvailable,
-  onClearFilter,
-}: ISegmentListProps,
-ref: ForwardedRef<HTMLDivElement>,
+const SegmentList = (
+  {
+    ref,
+    isLoading,
+    items,
+    selectedSegmentIds,
+    onSelected,
+    onClick: onClickCard,
+    onChangeSwitch,
+    onDelete,
+    onDeleteChildChunk,
+    handleAddNewChildChunk,
+    onClickSlice,
+    archived,
+    embeddingAvailable,
+    onClearFilter,
+  }: ISegmentListProps & {
+    ref: React.LegacyRef<HTMLDivElement>
+  },
 ) => {
-  const mode = useDocumentContext(s => s.mode)
+  const docForm = useDocumentContext(s => s.docForm)
   const parentMode = useDocumentContext(s => s.parentMode)
   const currSegment = useSegmentListContext(s => s.currSegment)
   const currChildChunk = useSegmentListContext(s => s.currChildChunk)
 
   const Skeleton = useMemo(() => {
-    return (mode === 'hierarchical' && parentMode === 'paragraph') ? ParagraphListSkeleton : GeneralListSkeleton
-  }, [mode, parentMode])
+    return (docForm === ChunkingMode.parentChild && parentMode === 'paragraph') ? ParagraphListSkeleton : GeneralListSkeleton
+  }, [docForm, parentMode])
 
   // Loading skeleton
   if (isLoading)
@@ -63,7 +66,7 @@ ref: ForwardedRef<HTMLDivElement>,
     )
   }
   return (
-    <div ref={ref} className={'flex flex-col grow overflow-y-auto'}>
+    <div ref={ref} className={'flex grow flex-col overflow-y-auto'}>
       {
         items.map((segItem) => {
           const isLast = items[items.length - 1].id === segItem.id
@@ -76,11 +79,11 @@ ref: ForwardedRef<HTMLDivElement>,
             <div key={segItem.id} className='flex items-start gap-x-2'>
               <Checkbox
                 key={`${segItem.id}-checkbox`}
-                className='shrink-0 mt-3.5'
+                className='mt-3.5 shrink-0'
                 checked={selectedSegmentIds.includes(segItem.id)}
                 onCheck={() => onSelected(segItem.id)}
               />
-              <div className='grow min-w-0'>
+              <div className='min-w-0 grow'>
                 <SegmentCard
                   key={`${segItem.id}-card`}
                   detail={segItem}
@@ -100,7 +103,7 @@ ref: ForwardedRef<HTMLDivElement>,
                   }}
                 />
                 {!isLast && <div className='w-full px-3'>
-                  <Divider type='horizontal' className='bg-divider-subtle my-1' />
+                  <Divider type='horizontal' className='my-1 bg-divider-subtle' />
                 </div>}
               </div>
             </div>
@@ -109,7 +112,7 @@ ref: ForwardedRef<HTMLDivElement>,
       }
     </div>
   )
-})
+}
 
 SegmentList.displayName = 'SegmentList'
 

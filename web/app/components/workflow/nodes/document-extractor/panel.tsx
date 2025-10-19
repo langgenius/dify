@@ -11,11 +11,9 @@ import useConfig from './use-config'
 import type { DocExtractorNodeType } from './types'
 import { fetchSupportFileTypes } from '@/service/datasets'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { BlockEnum, InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
+import { BlockEnum, type NodePanelProps } from '@/app/components/workflow/types'
 import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
+import { LanguagesSupported } from '@/i18n-config/language'
 
 const i18nPrefix = 'workflow.nodes.docExtractor'
 
@@ -48,22 +46,14 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
     inputs,
     handleVarChanges,
     filterVar,
-    // single run
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runResult,
-    files,
-    setFiles,
   } = useConfig(id, data)
 
   return (
     <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.inputVar`)}
+          required
         >
           <>
             <VarReferencePicker
@@ -75,7 +65,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
               filterVar={filterVar}
               typePlaceHolder='File | Array[File]'
             />
-            <div className='mt-1 py-0.5 text-text-tertiary body-xs-regular'>
+            <div className='body-xs-regular mt-1 py-0.5 text-text-tertiary'>
               {t(`${i18nPrefix}.supportFileTypes`, { types: supportTypesShowNames })}
               <a className='text-text-accent' href={link} target='_blank'>{t(`${i18nPrefix}.learnMore`)}</a>
             </div>
@@ -92,30 +82,6 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
           />
         </OutputVars>
       </div>
-      {
-        isShowSingleRun && (
-          <BeforeRunForm
-            nodeName={inputs.title}
-            onHide={hideSingleRun}
-            forms={[
-              {
-                inputs: [{
-                  label: t(`${i18nPrefix}.inputVar`)!,
-                  variable: 'files',
-                  type: InputVarType.multiFiles,
-                  required: true,
-                }],
-                values: { files },
-                onChange: keyValue => setFiles((keyValue as any).files),
-              },
-            ]}
-            runningStatus={runningStatus}
-            onRun={handleRun}
-            onStop={handleStop}
-            result={<ResultPanel {...runResult} showSteps={false} />}
-          />
-        )
-      }
     </div>
   )
 }

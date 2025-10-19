@@ -8,10 +8,13 @@ import {
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
 import { uniqBy } from 'lodash-es'
-import { useWorkflowRun } from '../../hooks'
+import {
+  useSetWorkflowVarsWithValue,
+  useWorkflowRun,
+} from '../../hooks'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 import { useWorkflowStore } from '../../store'
-import { DEFAULT_ITER_TIMES } from '../../constants'
+import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
 import type {
   ChatItem,
   ChatItemInTree,
@@ -30,7 +33,8 @@ import {
 } from '@/app/components/base/file-uploader/utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
-import type { NodeTracing } from '@/types/workflow'
+import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { useHooksStore } from '../../hooks-store'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -54,10 +58,14 @@ export const useChat = (
   const taskIdRef = useRef('')
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
+  const configsMap = useHooksStore(s => s.configsMap)
+  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
   const {
     setIterTimes,
+    setLoopTimes,
   } = workflowStore.getState()
 
   const handleResponding = useCallback((isResponding: boolean) => {
@@ -84,7 +92,7 @@ export const useChat = (
         ret[index] = {
           ...ret[index],
           content: getIntroduction(config.opening_statement),
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map((item: string) => getIntroduction(item)),
         }
       }
       else {
@@ -93,7 +101,7 @@ export const useChat = (
           content: getIntroduction(config.opening_statement),
           isAnswer: true,
           isOpeningStatement: true,
-          suggestedQuestions: config.suggested_questions,
+          suggestedQuestions: config.suggested_questions?.map((item: string) => getIntroduction(item)),
         })
       }
     }
@@ -129,20 +137,23 @@ export const useChat = (
     if (stopChat && taskIdRef.current)
       stopChat(taskIdRef.current)
     setIterTimes(DEFAULT_ITER_TIMES)
+    setLoopTimes(DEFAULT_LOOP_TIMES)
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
-  }, [handleResponding, setIterTimes, stopChat])
+  }, [handleResponding, setIterTimes, setLoopTimes, stopChat])
 
   const handleRestart = useCallback(() => {
     conversationId.current = ''
     taskIdRef.current = ''
     handleStop()
     setIterTimes(DEFAULT_ITER_TIMES)
+    setLoopTimes(DEFAULT_LOOP_TIMES)
     setChatTree([])
     setSuggestQuestions([])
   }, [
     handleStop,
     setIterTimes,
+    setLoopTimes,
   ])
 
   const updateCurrentQAOnTree = useCallback(({
@@ -285,6 +296,8 @@ export const useChat = (
         },
         async onCompleted(hasError?: boolean, errorMessage?: string) {
           handleResponding(false)
+          fetchInspectVars({})
+          invalidAllLastRun()
 
           if (hasError) {
             if (errorMessage) {
@@ -308,6 +321,7 @@ export const useChat = (
               )
               setSuggestQuestions(data)
             }
+            // eslint-disable-next-line unused-imports/no-unused-vars
             catch (error) {
               setSuggestQuestions([])
             }
@@ -358,21 +372,7 @@ export const useChat = (
           responseItem.workflowProcess!.tracing!.push({
             ...data,
             status: NodeRunningStatus.Running,
-            details: [],
-          } as any)
-          updateCurrentQAOnTree({
-            placeholderQuestionId,
-            questionItem,
-            responseItem,
-            parentId: params.parent_message_id,
           })
-        },
-        onIterationNext: ({ data }) => {
-          const tracing = responseItem.workflowProcess!.tracing!
-          const iterations = tracing.find(item => item.node_id === data.node_id
-            && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-          iterations.details!.push([])
-
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -381,14 +381,25 @@ export const useChat = (
           })
         },
         onIterationFinish: ({ data }) => {
-          const tracing = responseItem.workflowProcess!.tracing!
-          const iterationsIndex = tracing.findIndex(item => item.node_id === data.node_id
-            && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
-          tracing[iterationsIndex] = {
-            ...tracing[iterationsIndex],
+          const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
+          if (currentTracingIndex > -1) {
+            responseItem.workflowProcess!.tracing[currentTracingIndex] = {
+              ...responseItem.workflowProcess!.tracing[currentTracingIndex],
+              ...data,
+            }
+            updateCurrentQAOnTree({
+              placeholderQuestionId,
+              questionItem,
+              responseItem,
+              parentId: params.parent_message_id,
+            })
+          }
+        },
+        onLoopStart: ({ data }) => {
+          responseItem.workflowProcess!.tracing!.push({
             ...data,
-            status: NodeRunningStatus.Succeeded,
-          } as any
+            status: NodeRunningStatus.Running,
+          })
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -396,10 +407,22 @@ export const useChat = (
             parentId: params.parent_message_id,
           })
         },
+        onLoopFinish: ({ data }) => {
+          const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
+          if (currentTracingIndex > -1) {
+            responseItem.workflowProcess!.tracing[currentTracingIndex] = {
+              ...responseItem.workflowProcess!.tracing[currentTracingIndex],
+              ...data,
+            }
+            updateCurrentQAOnTree({
+              placeholderQuestionId,
+              questionItem,
+              responseItem,
+              parentId: params.parent_message_id,
+            })
+          }
+        },
         onNodeStarted: ({ data }) => {
-          if (data.iteration_id)
-            return
-
           responseItem.workflowProcess!.tracing!.push({
             ...data,
             status: NodeRunningStatus.Running,
@@ -412,18 +435,7 @@ export const useChat = (
           })
         },
         onNodeRetry: ({ data }) => {
-          if (data.iteration_id)
-            return
-
-          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
-            if (!item.execution_metadata?.parallel_id)
-              return item.node_id === data.node_id
-            return item.node_id === data.node_id && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id)
-          })
-          if (responseItem.workflowProcess!.tracing[currentIndex].retryDetail)
-            responseItem.workflowProcess!.tracing[currentIndex].retryDetail?.push(data as NodeTracing)
-          else
-            responseItem.workflowProcess!.tracing[currentIndex].retryDetail = [data as NodeTracing]
+          responseItem.workflowProcess!.tracing!.push(data)
 
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -433,33 +445,63 @@ export const useChat = (
           })
         },
         onNodeFinished: ({ data }) => {
-          if (data.iteration_id)
-            return
+          const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.id === data.id)
+          if (currentTracingIndex > -1) {
+            responseItem.workflowProcess!.tracing[currentTracingIndex] = {
+              ...responseItem.workflowProcess!.tracing[currentTracingIndex],
+              ...data,
+            }
+            updateCurrentQAOnTree({
+              placeholderQuestionId,
+              questionItem,
+              responseItem,
+              parentId: params.parent_message_id,
+            })
+          }
+        },
+        onAgentLog: ({ data }) => {
+          const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
+          if (currentNodeIndex > -1) {
+            const current = responseItem.workflowProcess!.tracing![currentNodeIndex]
 
-          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
-            if (!item.execution_metadata?.parallel_id)
-              return item.node_id === data.node_id
-            return item.node_id === data.node_id && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id)
-          })
-          responseItem.workflowProcess!.tracing[currentIndex] = {
-            ...(responseItem.workflowProcess!.tracing[currentIndex]?.extras
-              ? { extras: responseItem.workflowProcess!.tracing[currentIndex].extras }
-              : {}),
-            ...(responseItem.workflowProcess!.tracing[currentIndex]?.retryDetail
-              ? { retryDetail: responseItem.workflowProcess!.tracing[currentIndex].retryDetail }
-              : {}),
-            ...data,
-          } as any
-          updateCurrentQAOnTree({
-            placeholderQuestionId,
-            questionItem,
-            responseItem,
-            parentId: params.parent_message_id,
-          })
+            if (current.execution_metadata) {
+              if (current.execution_metadata.agent_log) {
+                const currentLogIndex = current.execution_metadata.agent_log.findIndex(log => log.message_id === data.message_id)
+                if (currentLogIndex > -1) {
+                  current.execution_metadata.agent_log[currentLogIndex] = {
+                    ...current.execution_metadata.agent_log[currentLogIndex],
+                    ...data,
+                  }
+                }
+                else {
+                  current.execution_metadata.agent_log.push(data)
+                }
+              }
+              else {
+                current.execution_metadata.agent_log = [data]
+              }
+            }
+            else {
+              current.execution_metadata = {
+                agent_log: [data],
+              } as any
+            }
+
+            responseItem.workflowProcess!.tracing[currentNodeIndex] = {
+              ...current,
+            }
+
+            updateCurrentQAOnTree({
+              placeholderQuestionId,
+              questionItem,
+              responseItem,
+              parentId: params.parent_message_id,
+            })
+          }
         },
       },
     )
-  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, notify, t, config?.suggested_questions_after_answer?.enabled])
+  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, notify, t, config?.suggested_questions_after_answer?.enabled, fetchInspectVars, invalidAllLastRun])
 
   return {
     conversationId: conversationId.current,

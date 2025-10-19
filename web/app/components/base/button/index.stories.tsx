@@ -99,7 +99,7 @@ export const WithIcon: Story = {
     variant: 'primary',
     children: (
       <>
-        <RocketLaunchIcon className="h-4 w-4 mr-1.5 stroke-[1.8px]" />
+        <RocketLaunchIcon className="mr-1.5 h-4 w-4 stroke-[1.8px]" />
         Launch
       </>
     ),

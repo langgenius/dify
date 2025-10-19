@@ -1,26 +1,44 @@
 from collections.abc import Mapping, Sequence
-from enum import Enum
-from typing import Any, Optional
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+
+if TYPE_CHECKING:
+    from core.ops.ops_trace_manager import TraceQueueManager
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
-from core.ops.ops_trace_manager import TraceQueueManager
 
 
-class InvokeFrom(Enum):
+class InvokeFrom(StrEnum):
     """
     Invoke From.
     """
 
+    # SERVICE_API indicates that this invocation is from an API call to Dify app.
+    #
+    # Description of service api in Dify docs:
+    # https://docs.dify.ai/en/guides/application-publishing/developing-with-apis
     SERVICE_API = "service-api"
+
+    # WEB_APP indicates that this invocation is from
+    # the web app of the workflow (or chatflow).
+    #
+    # Description of web app in Dify docs:
+    # https://docs.dify.ai/en/guides/application-publishing/launch-your-webapp-quickly/README
     WEB_APP = "web-app"
+
+    # EXPLORE indicates that this invocation is from
+    # the workflow (or chatflow) explore page.
     EXPLORE = "explore"
+    # DEBUGGER indicates that this invocation is from
+    # the workflow (or chatflow) edit page.
     DEBUGGER = "debugger"
+    PUBLISHED = "published"
 
     @classmethod
     def value_of(cls, value: str):
@@ -63,9 +81,9 @@ class ModelConfigWithCredentialsEntity(BaseModel):
     model_schema: AIModelEntity
     mode: str
     provider_model_bundle: ProviderModelBundle
-    credentials: dict[str, Any] = {}
-    parameters: dict[str, Any] = {}
-    stop: list[str] = []
+    credentials: dict[str, Any] = Field(default_factory=dict)
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    stop: list[str] = Field(default_factory=list)
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -76,11 +94,13 @@ class AppGenerateEntity(BaseModel):
     App Generate Entity.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     task_id: str
 
     # app config
-    app_config: Any
-    file_upload_config: Optional[FileUploadConfig] = None
+    app_config: Any = None
+    file_upload_config: FileUploadConfig | None = None
 
     inputs: Mapping[str, Any]
     files: Sequence[File]
@@ -94,13 +114,10 @@ class AppGenerateEntity(BaseModel):
     call_depth: int = 0
 
     # extra parameters, like: auto_generate_conversation_name
-    extras: dict[str, Any] = {}
+    extras: dict[str, Any] = Field(default_factory=dict)
 
     # tracing instance
-    trace_manager: Optional[TraceQueueManager] = None
-
-    class Config:
-        arbitrary_types_allowed = True
+    trace_manager: Optional["TraceQueueManager"] = None
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -109,10 +126,10 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     """
 
     # app config
-    app_config: EasyUIBasedAppConfig
+    app_config: EasyUIBasedAppConfig = None  # type: ignore
     model_conf: ModelConfigWithCredentialsEntity
 
-    query: Optional[str] = None
+    query: str | None = None
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -123,8 +140,8 @@ class ConversationAppGenerateEntity(AppGenerateEntity):
     Base entity for conversation-based app generation.
     """
 
-    conversation_id: Optional[str] = None
-    parent_message_id: Optional[str] = Field(
+    conversation_id: str | None = None
+    parent_message_id: str | None = Field(
         default=None,
         description=(
             "Starting from v0.9.0, parent_message_id is used to support message regeneration for internal chat API."
@@ -172,9 +189,9 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     """
 
     # app config
-    app_config: WorkflowUIBasedAppConfig
+    app_config: WorkflowUIBasedAppConfig = None  # type: ignore
 
-    workflow_run_id: Optional[str] = None
+    workflow_run_id: str | None = None
     query: str
 
     class SingleIterationRunEntity(BaseModel):
@@ -183,9 +200,19 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
         """
 
         node_id: str
-        inputs: dict
+        inputs: Mapping
 
-    single_iteration_run: Optional[SingleIterationRunEntity] = None
+    single_iteration_run: SingleIterationRunEntity | None = None
+
+    class SingleLoopRunEntity(BaseModel):
+        """
+        Single Loop Run Entity.
+        """
+
+        node_id: str
+        inputs: Mapping
+
+    single_loop_run: SingleLoopRunEntity | None = None
 
 
 class WorkflowAppGenerateEntity(AppGenerateEntity):
@@ -194,8 +221,8 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
 
     # app config
-    app_config: WorkflowUIBasedAppConfig
-    workflow_run_id: str
+    app_config: WorkflowUIBasedAppConfig = None  # type: ignore
+    workflow_execution_id: str
 
     class SingleIterationRunEntity(BaseModel):
         """
@@ -205,4 +232,45 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         node_id: str
         inputs: dict
 
-    single_iteration_run: Optional[SingleIterationRunEntity] = None
+    single_iteration_run: SingleIterationRunEntity | None = None
+
+    class SingleLoopRunEntity(BaseModel):
+        """
+        Single Loop Run Entity.
+        """
+
+        node_id: str
+        inputs: dict
+
+    single_loop_run: SingleLoopRunEntity | None = None
+
+
+class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
+    """
+    RAG Pipeline Application Generate Entity.
+    """
+
+    # pipeline config
+    pipeline_config: WorkflowUIBasedAppConfig
+    datasource_type: str
+    datasource_info: Mapping[str, Any]
+    dataset_id: str
+    batch: str
+    document_id: str | None = None
+    original_document_id: str | None = None
+    start_node_id: str | None = None
+
+
+# Import TraceQueueManager at runtime to resolve forward references
+from core.ops.ops_trace_manager import TraceQueueManager
+
+# Rebuild models that use forward references
+AppGenerateEntity.model_rebuild()
+EasyUIBasedAppGenerateEntity.model_rebuild()
+ConversationAppGenerateEntity.model_rebuild()
+ChatAppGenerateEntity.model_rebuild()
+CompletionAppGenerateEntity.model_rebuild()
+AgentChatAppGenerateEntity.model_rebuild()
+AdvancedChatAppGenerateEntity.model_rebuild()
+WorkflowAppGenerateEntity.model_rebuild()
+RagPipelineGenerateEntity.model_rebuild()

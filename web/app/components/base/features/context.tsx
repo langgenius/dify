@@ -14,7 +14,7 @@ type FeaturesProviderProps = {
   children: React.ReactNode
 } & Partial<FeaturesState>
 export const FeaturesProvider = ({ children, ...props }: FeaturesProviderProps) => {
-  const storeRef = useRef<FeaturesStore>()
+  const storeRef = useRef<FeaturesStore | undefined>(undefined)
 
   if (!storeRef.current)
     storeRef.current = createFeaturesStore(props)

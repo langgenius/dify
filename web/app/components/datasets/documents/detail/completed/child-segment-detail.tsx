@@ -2,6 +2,7 @@ import React, { type FC, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiCloseLine,
+  RiCollapseDiagonalLine,
   RiExpandDiagonalLine,
 } from '@remixicon/react'
 import ActionButtons from './common/action-buttons'
@@ -50,7 +51,6 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
 
   const handleCancel = () => {
     onCancel()
-    setContent(childChunkInfo?.content || '')
   }
 
   const handleSave = () => {
@@ -60,29 +60,27 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
   const wordCountText = useMemo(() => {
     const count = content.length
     return `${formatNumber(count)} ${t('datasetDocuments.segment.characters', { count })}`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content.length])
 
   const EditTimeText = useMemo(() => {
     const timeText = formatTime({
       date: (childChunkInfo?.updated_at ?? 0) * 1000,
-      dateFormat: 'MM/DD/YYYY h:mm:ss',
+      dateFormat: `${t('datasetDocuments.segment.dateTimeFormat')}`,
     })
     return `${t('datasetDocuments.segment.editedAt')} ${timeText}`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childChunkInfo?.updated_at])
 
   return (
-    <div className={'flex flex-col h-full'}>
-      <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
+    <div className={'flex h-full flex-col'}>
+      <div className={classNames('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}>
         <div className='flex flex-col'>
-          <div className='text-text-primary system-xl-semibold'>{t('datasetDocuments.segment.editChildChunk')}</div>
+          <div className='system-xl-semibold text-text-primary'>{t('datasetDocuments.segment.editChildChunk')}</div>
           <div className='flex items-center gap-x-2'>
             <SegmentIndexTag positionId={childChunkInfo?.position || ''} labelPrefix={t('datasetDocuments.segment.childChunk') as string} />
             <Dot />
-            <span className='text-text-tertiary system-xs-medium'>{wordCountText}</span>
+            <span className='system-xs-medium text-text-tertiary'>{wordCountText}</span>
             <Dot />
-            <span className='text-text-tertiary system-xs-medium'>
+            <span className='system-xs-medium text-text-tertiary'>
               {EditTimeText}
             </span>
           </div>
@@ -96,19 +94,19 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
                 loading={loading}
                 isChildChunk={true}
               />
-              <Divider type='vertical' className='h-3.5 bg-divider-regular ml-4 mr-2' />
+              <Divider type='vertical' className='ml-4 mr-2 h-3.5 bg-divider-regular' />
             </>
           )}
-          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer mr-1' onClick={toggleFullScreen}>
-            <RiExpandDiagonalLine className='w-4 h-4 text-text-tertiary' />
+          <div className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={toggleFullScreen}>
+            {fullScreen ? <RiCollapseDiagonalLine className='h-4 w-4 text-text-tertiary' /> : <RiExpandDiagonalLine className='h-4 w-4 text-text-tertiary' />}
           </div>
-          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer' onClick={onCancel}>
-            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+          <div className='flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={onCancel}>
+            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
           </div>
         </div>
       </div>
-      <div className={classNames('flex grow w-full', fullScreen ? 'flex-row justify-center px-6 pt-6' : 'py-3 px-4')}>
-        <div className={classNames('break-all overflow-hidden whitespace-pre-line h-full', fullScreen ? 'w-1/2' : 'w-full')}>
+      <div className={classNames('flex w-full grow', fullScreen ? 'flex-row justify-center px-6 pt-6' : 'px-4 py-3')}>
+        <div className={classNames('h-full overflow-hidden whitespace-pre-line break-all', fullScreen ? 'w-1/2' : 'w-full')}>
           <ChunkContent
             docForm={docForm}
             question={content}
@@ -118,7 +116,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
         </div>
       </div>
       {!fullScreen && (
-        <div className='flex items-center justify-end p-4 pt-3 border-t-[1px] border-t-divider-subtle'>
+        <div className='flex items-center justify-end border-t-[1px] border-t-divider-subtle p-4 pt-3'>
           <ActionButtons
             handleCancel={handleCancel}
             handleSave={handleSave}

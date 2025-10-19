@@ -27,6 +27,8 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
   const currentNode = getNodes().find(n => n.id === id)
   const isInIteration = payload.isInIteration
   const iterationNode = isInIteration ? getNodes().find(n => n.id === currentNode!.parentId) : null
+  const isInLoop = payload.isInLoop
+  const loopNode = isInLoop ? getNodes().find(n => n.id === currentNode!.parentId) : null
   const availableNodes = useMemo(() => {
     return getBeforeNodesInSameBranch(id)
   }, [getBeforeNodesInSameBranch, id])
@@ -34,15 +36,16 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
   const { inputs, setInputs } = useNodeCrud<ListFilterNodeType>(id, payload)
 
   const { getCurrentVariableType } = useWorkflowVariables()
+
   const getType = useCallback((variable?: ValueSelector) => {
     const varType = getCurrentVariableType({
-      parentNode: iterationNode,
+      parentNode: isInIteration ? iterationNode : loopNode,
       valueSelector: variable || inputs.variable || [],
       availableNodes,
       isChatMode,
       isConstant: false,
     })
-    let itemVarType = VarType.string
+    let itemVarType
     switch (varType) {
       case VarType.arrayNumber:
         itemVarType = VarType.number
@@ -56,11 +59,14 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
       case VarType.arrayObject:
         itemVarType = VarType.object
         break
+      case VarType.arrayBoolean:
+        itemVarType = VarType.boolean
+        break
       default:
         itemVarType = varType
     }
     return { varType, itemVarType }
-  }, [availableNodes, getCurrentVariableType, inputs.variable, isChatMode, iterationNode])
+  }, [availableNodes, getCurrentVariableType, inputs.variable, isChatMode, isInIteration, iterationNode, loopNode])
 
   const { varType, itemVarType } = getType()
 
@@ -83,7 +89,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
       draft.filter_by.conditions = [{
         key: (isFileArray && !draft.filter_by.conditions[0]?.key) ? 'name' : '',
         comparison_operator: getOperators(itemVarType, isFileArray ? { key: 'name' } : undefined)[0],
-        value: '',
+        value: itemVarType === VarType.boolean ? false : '',
       }]
       if (isFileArray && draft.order_by.enabled && !draft.order_by.key)
         draft.order_by.key = 'name'
@@ -93,7 +99,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
 
   const filterVar = useCallback((varPayload: Var) => {
     // Don't know the item struct of VarType.arrayObject, so not support it
-    return [VarType.arrayNumber, VarType.arrayString, VarType.arrayFile].includes(varPayload.type)
+    return [VarType.arrayNumber, VarType.arrayString, VarType.arrayBoolean, VarType.arrayFile].includes(varPayload.type)
   }, [])
 
   const handleFilterEnabledChange = useCallback((enabled: boolean) => {

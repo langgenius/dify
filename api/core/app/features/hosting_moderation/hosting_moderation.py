@@ -24,6 +24,8 @@ class HostingModerationFeature:
             if isinstance(prompt_message.content, str):
                 text += prompt_message.content + "\n"
 
-        moderation_result = moderation.check_moderation(model_config, text)
+        moderation_result = moderation.check_moderation(
+            tenant_id=application_generate_entity.app_config.tenant_id, model_config=model_config, text=text
+        )
 
         return moderation_result

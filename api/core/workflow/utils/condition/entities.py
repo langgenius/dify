@@ -39,11 +39,11 @@ class SubCondition(BaseModel):
 
 class SubVariableCondition(BaseModel):
     logical_operator: Literal["and", "or"]
-    conditions: list[SubCondition] = Field(default=list)
+    conditions: list[SubCondition] = Field(default_factory=list)
 
 
 class Condition(BaseModel):
     variable_selector: list[str]
     comparison_operator: SupportedComparisonOperator
-    value: str | Sequence[str] | None = None
+    value: str | Sequence[str] | bool | None = None
     sub_variable_condition: SubVariableCondition | None = None

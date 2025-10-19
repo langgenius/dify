@@ -4,6 +4,7 @@ import type { ChangeEvent, FC } from 'react'
 import { createRef, useEffect, useState } from 'react'
 import Cropper, { type Area, type CropperProps } from 'react-easy-crop'
 import classNames from 'classnames'
+import { useTranslation } from 'react-i18next'
 
 import { ImagePlus } from '../icons/src/vender/line/images'
 import { useDraggableUploader } from './hooks'
@@ -26,6 +27,7 @@ const ImageInput: FC<UploaderProps> = ({
   cropShape,
   onImageInput,
 }) => {
+  const { t } = useTranslation()
   const [inputImage, setInputImage] = useState<{ file: File; url: string }>()
   const [isAnimatedImage, setIsAnimatedImage] = useState<boolean>(false)
   useEffect(() => {
@@ -92,7 +94,7 @@ const ImageInput: FC<UploaderProps> = ({
       <div
         className={classNames(
           isDragActive && 'border-primary-600',
-          'relative aspect-square bg-gray-50 border-[1.5px] border-gray-200 border-dashed rounded-lg flex flex-col justify-center items-center text-gray-500')}
+          'relative flex aspect-square flex-col items-center justify-center rounded-lg border-[1.5px] border-dashed text-gray-500')}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -101,10 +103,10 @@ const ImageInput: FC<UploaderProps> = ({
         {
           !inputImage
             ? <>
-              <ImagePlus className="w-[30px] h-[30px] mb-3 pointer-events-none" />
-              <div className="text-sm font-medium mb-[2px]">
-                <span className="pointer-events-none">Drop your image here, or&nbsp;</span>
-                <button className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>browse</button>
+              <ImagePlus className="pointer-events-none mb-3 h-[30px] w-[30px]" />
+              <div className="mb-[2px] text-sm font-medium">
+                <span className="pointer-events-none">{t('common.imageInput.dropImageHere')}&nbsp;</span>
+                <button type="button" className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>{t('common.imageInput.browse')}</button>
                 <input
                   ref={inputRef} type="file" className="hidden"
                   onClick={e => ((e.target as HTMLInputElement).value = '')}
@@ -112,7 +114,7 @@ const ImageInput: FC<UploaderProps> = ({
                   onChange={handleLocalFileInput}
                 />
               </div>
-              <div className="text-xs pointer-events-none">Supports PNG, JPG, JPEG, WEBP and GIF</div>
+              <div className="pointer-events-none">{t('common.imageInput.supportedFormats')}</div>
             </>
             : handleShowImage()
         }

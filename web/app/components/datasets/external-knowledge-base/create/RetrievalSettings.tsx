@@ -30,8 +30,8 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
 
   return (
     <div className={cn('flex flex-col gap-2 self-stretch', isInRetrievalSetting && 'w-full max-w-[480px]')}>
-      {!isInHitTesting && !isInRetrievalSetting && <div className='flex h-7 pt-1 flex-col gap-2 self-stretch'>
-        <label className='text-text-secondary system-sm-semibold'>{t('dataset.retrievalSettings')}</label>
+      {!isInHitTesting && !isInRetrievalSetting && <div className='flex h-7 flex-col gap-2 self-stretch pt-1'>
+        <label className='system-sm-semibold text-text-secondary'>{t('dataset.retrievalSettings')}</label>
       </div>}
       <div className={cn(
         'flex gap-4 self-stretch',
@@ -41,7 +41,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
           'flex-col sm:flex-row': !isInHitTesting && !isInRetrievalSetting,
         },
       )}>
-        <div className='flex flex-col gap-1 flex-grow'>
+        <div className='flex grow flex-col gap-1'>
           <TopKItem
             className='grow'
             value={topK}
@@ -49,7 +49,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
             enable={true}
           />
         </div>
-        <div className='flex flex-col gap-1 flex-grow'>
+        <div className='flex grow flex-col gap-1'>
           <ScoreThresholdItem
             className='grow'
             value={scoreThreshold}

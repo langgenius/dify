@@ -23,12 +23,14 @@ import { TransferMethod } from '@/types/app'
 type Option = {
   value: string
   label: string
-  icon: JSX.Element
+  icon: React.JSX.Element
 }
 type FileUploaderInAttachmentProps = {
+  isDisabled?: boolean
   fileConfig: FileUpload
 }
 const FileUploaderInAttachment = ({
+  isDisabled,
   fileConfig,
 }: FileUploaderInAttachmentProps) => {
   const { t } = useTranslation()
@@ -41,12 +43,12 @@ const FileUploaderInAttachment = ({
     {
       value: TransferMethod.local_file,
       label: t('common.fileUploader.uploadFromComputer'),
-      icon: <RiUploadCloud2Line className='w-4 h-4' />,
+      icon: <RiUploadCloud2Line className='h-4 w-4' />,
     },
     {
       value: TransferMethod.remote_url,
       label: t('common.fileUploader.pasteFileLink'),
-      icon: <RiLink className='w-4 h-4' />,
+      icon: <RiLink className='h-4 w-4' />,
     },
   ]
 
@@ -55,7 +57,7 @@ const FileUploaderInAttachment = ({
       <Button
         key={option.value}
         variant='tertiary'
-        className={cn('grow relative', open && 'bg-components-button-tertiary-bg-hover')}
+        className={cn('relative grow', open && 'bg-components-button-tertiary-bg-hover')}
         disabled={!!(fileConfig.number_limits && files.length >= fileConfig.number_limits)}
       >
         {option.icon}
@@ -89,19 +91,23 @@ const FileUploaderInAttachment = ({
 
   return (
     <div>
-      <div className='flex items-center space-x-1'>
-        {options.map(renderOption)}
-      </div>
+      {!isDisabled && (
+        <div className='flex items-center space-x-1'>
+          {options.map(renderOption)}
+        </div>
+      )}
       <div className='mt-1 space-y-1'>
         {
           files.map(file => (
             <FileItem
               key={file.id}
               file={file}
-              showDeleteAction
+              showDeleteAction={!isDisabled}
               showDownloadAction={false}
               onRemove={() => handleRemoveFile(file.id)}
               onReUpload={() => handleReUploadFile(file.id)}
+              canPreview={fileConfig.preview_config?.file_type_list?.includes(file.type)}
+              previewMode={fileConfig.preview_config?.mode}
             />
           ))
         }
@@ -110,22 +116,24 @@ const FileUploaderInAttachment = ({
   )
 }
 
-type FileUploaderInAttachmentWrapperProps = {
+export type FileUploaderInAttachmentWrapperProps = {
   value?: FileEntity[]
   onChange: (files: FileEntity[]) => void
   fileConfig: FileUpload
+  isDisabled?: boolean
 }
 const FileUploaderInAttachmentWrapper = ({
   value,
   onChange,
   fileConfig,
+  isDisabled,
 }: FileUploaderInAttachmentWrapperProps) => {
   return (
     <FileContextProvider
       value={value}
       onChange={onChange}
     >
-      <FileUploaderInAttachment fileConfig={fileConfig} />
+      <FileUploaderInAttachment isDisabled={isDisabled} fileConfig={fileConfig} />
     </FileContextProvider>
   )
 }

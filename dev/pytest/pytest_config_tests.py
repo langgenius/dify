@@ -1,6 +1,7 @@
+from pathlib import Path
+
 import yaml  # type: ignore
 from dotenv import dotenv_values
-from pathlib import Path
 
 BASE_API_AND_DOCKER_CONFIG_SET_DIFF = {
     "APP_MAX_EXECUTION_TIME",
@@ -10,6 +11,8 @@ BASE_API_AND_DOCKER_CONFIG_SET_DIFF = {
     "HTTP_REQUEST_MAX_CONNECT_TIMEOUT",
     "HTTP_REQUEST_MAX_READ_TIMEOUT",
     "HTTP_REQUEST_MAX_WRITE_TIMEOUT",
+    "INNER_API_KEY",
+    "INNER_API_KEY_FOR_PLUGIN",
     "KEYWORD_DATA_SOURCE_TYPE",
     "LOGIN_LOCKOUT_DURATION",
     "LOG_FORMAT",
@@ -18,6 +21,10 @@ BASE_API_AND_DOCKER_CONFIG_SET_DIFF = {
     "OCI_ENDPOINT",
     "OCI_REGION",
     "OCI_SECRET_KEY",
+    "PLUGIN_DAEMON_KEY",
+    "PLUGIN_DAEMON_URL",
+    "PLUGIN_REMOTE_INSTALL_HOST",
+    "PLUGIN_REMOTE_INSTALL_PORT",
     "REDIS_DB",
     "RESEND_API_URL",
     "RESPECT_XFORWARD_HEADERS_ENABLED",
@@ -40,6 +47,8 @@ BASE_API_AND_DOCKER_COMPOSE_CONFIG_SET_DIFF = {
     "HTTP_REQUEST_MAX_CONNECT_TIMEOUT",
     "HTTP_REQUEST_MAX_READ_TIMEOUT",
     "HTTP_REQUEST_MAX_WRITE_TIMEOUT",
+    "INNER_API_KEY",
+    "INNER_API_KEY_FOR_PLUGIN",
     "KEYWORD_DATA_SOURCE_TYPE",
     "LOGIN_LOCKOUT_DURATION",
     "LOG_FORMAT",
@@ -58,6 +67,10 @@ BASE_API_AND_DOCKER_COMPOSE_CONFIG_SET_DIFF = {
     "PGVECTO_RS_PASSWORD",
     "PGVECTO_RS_PORT",
     "PGVECTO_RS_USER",
+    "PLUGIN_DAEMON_KEY",
+    "PLUGIN_DAEMON_URL",
+    "PLUGIN_REMOTE_INSTALL_HOST",
+    "PLUGIN_REMOTE_INSTALL_PORT",
     "RESPECT_XFORWARD_HEADERS_ENABLED",
     "SCARF_NO_ANALYTICS",
     "SSRF_DEFAULT_CONNECT_TIME_OUT",
@@ -86,23 +99,15 @@ with open(Path("docker") / Path("docker-compose.yaml")) as f:
 
 def test_yaml_config():
     # python set == operator is used to compare two sets
-    DIFF_API_WITH_DOCKER = (
-        API_CONFIG_SET - DOCKER_CONFIG_SET - BASE_API_AND_DOCKER_CONFIG_SET_DIFF
-    )
+    DIFF_API_WITH_DOCKER = API_CONFIG_SET - DOCKER_CONFIG_SET - BASE_API_AND_DOCKER_CONFIG_SET_DIFF
     if DIFF_API_WITH_DOCKER:
-        print(
-            f"API and Docker config sets are different with key: {DIFF_API_WITH_DOCKER}"
-        )
+        print(f"API and Docker config sets are different with key: {DIFF_API_WITH_DOCKER}")
         raise Exception("API and Docker config sets are different")
     DIFF_API_WITH_DOCKER_COMPOSE = (
-        API_CONFIG_SET
-        - DOCKER_COMPOSE_CONFIG_SET
-        - BASE_API_AND_DOCKER_COMPOSE_CONFIG_SET_DIFF
+        API_CONFIG_SET - DOCKER_COMPOSE_CONFIG_SET - BASE_API_AND_DOCKER_COMPOSE_CONFIG_SET_DIFF
     )
     if DIFF_API_WITH_DOCKER_COMPOSE:
-        print(
-            f"API and Docker Compose config sets are different with key: {DIFF_API_WITH_DOCKER_COMPOSE}"
-        )
+        print(f"API and Docker Compose config sets are different with key: {DIFF_API_WITH_DOCKER_COMPOSE}")
         raise Exception("API and Docker Compose config sets are different")
     print("All tests passed!")
 

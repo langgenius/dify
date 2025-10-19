@@ -2,8 +2,8 @@ import { memo } from 'react'
 
 type VariableMenuItemProps = {
   title: string
-  icon?: JSX.Element
-  extraElement?: JSX.Element
+  icon?: React.JSX.Element
+  extraElement?: React.JSX.Element
   isSelected: boolean
   queryString: string | null
   onClick: () => void
@@ -38,17 +38,21 @@ export const VariableMenuItem = memo(({
   return (
     <div
       className={`
-        flex items-center px-3 h-6 rounded-md hover:bg-state-base-hover cursor-pointer
+        flex h-6 cursor-pointer items-center rounded-md px-3 hover:bg-state-base-hover
         ${isSelected && 'bg-state-base-hover'}
       `}
       tabIndex={-1}
       ref={setRefElement}
       onMouseEnter={onMouseEnter}
+      onMouseDown={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
       onClick={onClick}>
       <div className='mr-2'>
         {icon}
       </div>
-      <div className='grow text-[13px] text-text-secondary truncate' title={title}>
+      <div className='grow truncate text-[13px] text-text-secondary' title={title}>
         {before}
         <span className='text-text-accent'>{middle}</span>
         {after}

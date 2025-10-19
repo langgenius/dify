@@ -179,15 +179,17 @@ const ConfigPrompt: FC<Props> = ({
                       return true
                     })()
                     return (
-                      <div key={item.id || index} className='relative group'>
-                        {canDrag && <DragHandle className='group-hover:block hidden absolute left-[-14px] top-2 w-3.5 h-3.5 text-gray-400' />}
+                      <div key={item.id || index} className='group relative'>
+                        {canDrag && <DragHandle className='absolute left-[-14px] top-2 hidden h-3.5 w-3.5 text-text-quaternary group-hover:block' />}
                         <ConfigPromptItem
+                          instanceId={item.role === PromptRole.system ? `${nodeId}-chat-workflow-llm-prompt-editor` : `${nodeId}-chat-workflow-llm-prompt-editor-${index}`}
                           className={cn(canDrag && 'handle')}
                           headerClassName={cn(canDrag && 'cursor-grab')}
                           canNotChooseSystemRole={!canChooseSystemRole}
                           canRemove={payload.length > 1 && !(index === 0 && item.role === PromptRole.system)}
                           readOnly={readOnly}
                           id={item.id!}
+                          nodeId={nodeId}
                           handleChatModeMessageRoleChange={handleChatModeMessageRoleChange(index)}
                           isChatModel={isChatModel}
                           isChatApp={isChatApp}

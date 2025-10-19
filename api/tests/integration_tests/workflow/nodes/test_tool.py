@@ -1,16 +1,18 @@
 import time
 import uuid
+from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariableKey
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.tools.utils.configuration import ToolParameterConfigurationManager
+from core.workflow.entities import GraphInitParams
+from core.workflow.enums import WorkflowNodeExecutionStatus
+from core.workflow.graph import Graph
+from core.workflow.node_events import StreamCompletedEvent
+from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.tool.tool_node import ToolNode
+from core.workflow.runtime import GraphRuntimeState, VariablePool
+from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 
 
 def init_tool_node(config: dict):
@@ -22,15 +24,12 @@ def init_tool_node(config: dict):
                 "target": "1",
             },
         ],
-        "nodes": [{"data": {"type": "start"}, "id": "start"}, config],
+        "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}, config],
     }
-
-    graph = Graph.init(graph_config=graph_config)
 
     init_params = GraphInitParams(
         tenant_id="1",
         app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config=graph_config,
         user_id="1",
@@ -41,19 +40,30 @@ def init_tool_node(config: dict):
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"},
+        system_variables=SystemVariable(user_id="aaa", files=[]),
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
     )
 
-    return ToolNode(
-        id=str(uuid.uuid4()),
+    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
+    # Create node factory
+    node_factory = DifyNodeFactory(
         graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
-        config=config,
+        graph_runtime_state=graph_runtime_state,
     )
+
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+
+    node = ToolNode(
+        id=str(uuid.uuid4()),
+        config=config,
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+    node.init_node_data(config.get("data", {}))
+    return node
 
 
 def test_tool_variable_invoke():
@@ -61,33 +71,31 @@ def test_tool_variable_invoke():
         config={
             "id": "1",
             "data": {
+                "type": "tool",
                 "title": "a",
                 "desc": "a",
-                "provider_id": "maths",
+                "provider_id": "time",
                 "provider_type": "builtin",
-                "provider_name": "maths",
-                "tool_name": "eval_expression",
-                "tool_label": "eval_expression",
+                "provider_name": "time",
+                "tool_name": "current_time",
+                "tool_label": "current_time",
                 "tool_configurations": {},
-                "tool_parameters": {
-                    "expression": {
-                        "type": "variable",
-                        "value": ["1", "123", "args1"],
-                    }
-                },
+                "tool_parameters": {},
             },
         }
     )
 
-    node.graph_runtime_state.variable_pool.add(["1", "123", "args1"], "1+1")
+    ToolParameterConfigurationManager.decrypt_tool_parameters = MagicMock(return_value={"format": "%Y-%m-%d %H:%M:%S"})
+
+    node.graph_runtime_state.variable_pool.add(["1", "args1"], "1+1")
 
     # execute node
     result = node._run()
-    assert isinstance(result, NodeRunResult)
-    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert result.outputs is not None
-    assert "2" in result.outputs["text"]
-    assert result.outputs["files"] == []
+    for item in result:
+        if isinstance(item, StreamCompletedEvent):
+            assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+            assert item.node_run_result.outputs is not None
+            assert item.node_run_result.outputs.get("text") is not None
 
 
 def test_tool_mixed_invoke():
@@ -95,30 +103,28 @@ def test_tool_mixed_invoke():
         config={
             "id": "1",
             "data": {
+                "type": "tool",
                 "title": "a",
                 "desc": "a",
-                "provider_id": "maths",
+                "provider_id": "time",
                 "provider_type": "builtin",
-                "provider_name": "maths",
-                "tool_name": "eval_expression",
-                "tool_label": "eval_expression",
-                "tool_configurations": {},
-                "tool_parameters": {
-                    "expression": {
-                        "type": "mixed",
-                        "value": "{{#1.args1#}}",
-                    }
+                "provider_name": "time",
+                "tool_name": "current_time",
+                "tool_label": "current_time",
+                "tool_configurations": {
+                    "format": "%Y-%m-%d %H:%M:%S",
                 },
+                "tool_parameters": {},
             },
         }
     )
 
-    node.graph_runtime_state.variable_pool.add(["1", "args1"], "1+1")
+    ToolParameterConfigurationManager.decrypt_tool_parameters = MagicMock(return_value={"format": "%Y-%m-%d %H:%M:%S"})
 
     # execute node
     result = node._run()
-    assert isinstance(result, NodeRunResult)
-    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert result.outputs is not None
-    assert "2" in result.outputs["text"]
-    assert result.outputs["files"] == []
+    for item in result:
+        if isinstance(item, StreamCompletedEvent):
+            assert item.node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+            assert item.node_run_result.outputs is not None
+            assert item.node_run_result.outputs.get("text") is not None

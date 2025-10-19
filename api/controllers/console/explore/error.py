@@ -23,3 +23,9 @@ class AppSuggestedQuestionsAfterAnswerDisabledError(BaseHTTPException):
     error_code = "app_suggested_questions_after_answer_disabled"
     description = "Function Suggested questions after answer disabled."
     code = 403
+
+
+class AppAccessDeniedError(BaseHTTPException):
+    error_code = "access_denied"
+    description = "App access denied."
+    code = 403

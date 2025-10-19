@@ -1,4 +1,4 @@
-from flask_restful import fields  # type: ignore
+from flask_restx import Api, Namespace, fields
 
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
@@ -17,9 +17,13 @@ workflow_run_for_log_fields = {
     "exceptions_count": fields.Integer,
 }
 
+
+def build_workflow_run_for_log_model(api_or_ns: Api | Namespace):
+    return api_or_ns.model("WorkflowRunForLog", workflow_run_for_log_fields)
+
+
 workflow_run_for_list_fields = {
     "id": fields.String,
-    "sequence_number": fields.Integer,
     "version": fields.String,
     "status": fields.String,
     "elapsed_time": fields.Float,
@@ -36,7 +40,6 @@ advanced_chat_workflow_run_for_list_fields = {
     "id": fields.String,
     "conversation_id": fields.String,
     "message_id": fields.String,
-    "sequence_number": fields.Integer,
     "version": fields.String,
     "status": fields.String,
     "elapsed_time": fields.Float,
@@ -61,9 +64,17 @@ workflow_run_pagination_fields = {
     "data": fields.List(fields.Nested(workflow_run_for_list_fields), attribute="data"),
 }
 
+workflow_run_count_fields = {
+    "total": fields.Integer,
+    "running": fields.Integer,
+    "succeeded": fields.Integer,
+    "failed": fields.Integer,
+    "stopped": fields.Integer,
+    "partial_succeeded": fields.Integer(attribute="partial-succeeded"),
+}
+
 workflow_run_detail_fields = {
     "id": fields.String,
-    "sequence_number": fields.Integer,
     "version": fields.String,
     "graph": fields.Raw(attribute="graph_dict"),
     "inputs": fields.Raw(attribute="inputs_dict"),
@@ -114,6 +125,9 @@ workflow_run_node_execution_fields = {
     "created_by_account": fields.Nested(simple_account_fields, attribute="created_by_account", allow_null=True),
     "created_by_end_user": fields.Nested(simple_end_user_fields, attribute="created_by_end_user", allow_null=True),
     "finished_at": TimestampField,
+    "inputs_truncated": fields.Boolean,
+    "outputs_truncated": fields.Boolean,
+    "process_data_truncated": fields.Boolean,
 }
 
 workflow_run_node_execution_list_fields = {

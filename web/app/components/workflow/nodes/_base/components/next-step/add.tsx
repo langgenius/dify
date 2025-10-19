@@ -12,7 +12,6 @@ import {
   useAvailableBlocks,
   useNodesInteractions,
   useNodesReadOnly,
-  useWorkflow,
 } from '@/app/components/workflow/hooks'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import type {
@@ -38,8 +37,7 @@ const Add = ({
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(nodeData.type, nodeData.isInIteration)
-  const { checkParallelLimit } = useWorkflow()
+  const { availableNextBlocks } = useAvailableBlocks(nodeData.type, nodeData.isInIteration || nodeData.isInLoop)
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleNodeAdd(
@@ -52,14 +50,11 @@ const Add = ({
         prevNodeSourceHandle: sourceHandle,
       },
     )
-  }, [nodeId, sourceHandle, handleNodeAdd])
+  }, [handleNodeAdd])
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
-    if (newOpen && !checkParallelLimit(nodeId, sourceHandle))
-      return
-
     setOpen(newOpen)
-  }, [checkParallelLimit, nodeId, sourceHandle])
+  }, [])
 
   const tip = useMemo(() => {
     if (isFailBranch)
@@ -74,14 +69,14 @@ const Add = ({
     return (
       <div
         className={`
-          relative flex items-center px-2 h-9 rounded-lg border border-dashed border-divider-regular bg-dropzone-bg
-          hover:bg-dropzone-bg-hover text-xs text-text-placeholder cursor-pointer
+          bg-dropzone-bg hover:bg-dropzone-bg-hover relative flex h-9 cursor-pointer items-center rounded-lg border border-dashed
+          border-divider-regular px-2 text-xs text-text-placeholder
           ${open && '!bg-components-dropzone-bg-alt'}
           ${nodesReadOnly && '!cursor-not-allowed'}
         `}
       >
-        <div className='flex items-center justify-center mr-1.5 w-5 h-5 rounded-[5px] bg-background-default-dimm'>
-          <RiAddLine className='w-3 h-3' />
+        <div className='mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed'>
+          <RiAddLine className='h-3 w-3' />
         </div>
         <div className='flex items-center uppercase'>
           {tip}

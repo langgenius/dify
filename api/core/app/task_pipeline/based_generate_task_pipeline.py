@@ -1,6 +1,5 @@
 import logging
 import time
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -19,6 +18,7 @@ from core.app.entities.task_entities import (
 from core.errors.error import QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.moderation.output_moderation import ModerationRule, OutputModeration
+from models.enums import MessageStatus
 from models.model import Message
 
 logger = logging.getLogger(__name__)
@@ -34,14 +34,14 @@ class BasedGenerateTaskPipeline:
         application_generate_entity: AppGenerateEntity,
         queue_manager: AppQueueManager,
         stream: bool,
-    ) -> None:
+    ):
         self._application_generate_entity = application_generate_entity
-        self._queue_manager = queue_manager
-        self._start_at = time.perf_counter()
-        self._output_moderation_handler = self._init_output_moderation()
-        self._stream = stream
+        self.queue_manager = queue_manager
+        self.start_at = time.perf_counter()
+        self.output_moderation_handler = self._init_output_moderation()
+        self.stream = stream
 
-    def _handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
+    def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -49,9 +49,10 @@ class BasedGenerateTaskPipeline:
         if isinstance(e, InvokeAuthorizationError):
             err = InvokeAuthorizationError("Incorrect API key provided")
         elif isinstance(e, InvokeError | ValueError):
-            err = e
+            err = e  # ty: ignore [invalid-assignment]
         else:
-            err = Exception(e.description if getattr(e, "description", None) is not None else str(e))
+            description = getattr(e, "description", None)
+            err = Exception(description if description is not None else str(e))
 
         if not message_id or not session:
             return err
@@ -62,7 +63,7 @@ class BasedGenerateTaskPipeline:
             return err
 
         err_desc = self._error_to_desc(err)
-        message.status = "error"
+        message.status = MessageStatus.ERROR
         message.error = err_desc
         return err
 
@@ -84,7 +85,7 @@ class BasedGenerateTaskPipeline:
 
         return message
 
-    def _error_to_stream_response(self, e: Exception):
+    def error_to_stream_response(self, e: Exception):
         """
         Error to stream response.
         :param e: exception
@@ -92,14 +93,14 @@ class BasedGenerateTaskPipeline:
         """
         return ErrorStreamResponse(task_id=self._application_generate_entity.task_id, err=e)
 
-    def _ping_stream_response(self) -> PingStreamResponse:
+    def ping_stream_response(self) -> PingStreamResponse:
         """
         Ping stream response.
         :return:
         """
         return PingStreamResponse(task_id=self._application_generate_entity.task_id)
 
-    def _init_output_moderation(self) -> Optional[OutputModeration]:
+    def _init_output_moderation(self) -> OutputModeration | None:
         """
         Init output moderation.
         :return:
@@ -112,26 +113,26 @@ class BasedGenerateTaskPipeline:
                 tenant_id=app_config.tenant_id,
                 app_id=app_config.app_id,
                 rule=ModerationRule(type=sensitive_word_avoidance.type, config=sensitive_word_avoidance.config),
-                queue_manager=self._queue_manager,
+                queue_manager=self.queue_manager,
             )
         return None
 
-    def _handle_output_moderation_when_task_finished(self, completion: str) -> Optional[str]:
+    def handle_output_moderation_when_task_finished(self, completion: str) -> str | None:
         """
         Handle output moderation when task finished.
         :param completion: completion
         :return:
         """
         # response moderation
-        if self._output_moderation_handler:
-            self._output_moderation_handler.stop_thread()
+        if self.output_moderation_handler:
+            self.output_moderation_handler.stop_thread()
 
-            completion = self._output_moderation_handler.moderation_completion(
+            completion, flagged = self.output_moderation_handler.moderation_completion(
                 completion=completion, public_event=False
             )
 
-            self._output_moderation_handler = None
-
-            return completion
+            self.output_moderation_handler = None
+            if flagged:
+                return completion
 
         return None

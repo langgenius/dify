@@ -19,7 +19,7 @@ const Icon = () => {
 type NodeResizerProps = {
   nodeId: string
   nodeData: CommonNodeType
-  icon?: JSX.Element
+  icon?: React.JSX.Element
   minWidth?: number
   minHeight?: number
   maxWidth?: number

@@ -5,7 +5,7 @@ import React, { Fragment } from 'react'
 import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
-import { Listbox, Transition } from '@headlessui/react'
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { Item } from '@/app/components/base/select'
@@ -13,7 +13,7 @@ import { fetchAppVoices } from '@/service/apps'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
 import AudioBtn from '@/app/components/base/audio-btn'
-import { languages } from '@/i18n/language'
+import { languages } from '@/i18n-config/language'
 import { TtsAutoPlay } from '@/types/app'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import classNames from '@/utils/classnames'
@@ -66,11 +66,11 @@ const VoiceParamConfig = ({
   return (
     <>
       <div className='mb-4 flex items-center justify-between'>
-        <div className='text-text-primary system-xl-semibold'>{t('appDebug.voice.voiceSettings.title')}</div>
-        <div className='p-1 cursor-pointer' onClick={onClose}><RiCloseLine className='w-4 h-4 text-text-tertiary'/></div>
+        <div className='system-xl-semibold text-text-primary'>{t('appDebug.voice.voiceSettings.title')}</div>
+        <div className='cursor-pointer p-1' onClick={onClose}><RiCloseLine className='h-4 w-4 text-text-tertiary' /></div>
       </div>
       <div className='mb-3'>
-        <div className='mb-1 py-1 flex items-center text-text-secondary system-sm-semibold'>
+        <div className='system-sm-semibold mb-1 flex items-center py-1 text-text-secondary'>
           {t('appDebug.voice.voiceSettings.language')}
           <Tooltip
             popupContent={
@@ -92,18 +92,18 @@ const VoiceParamConfig = ({
           }}
         >
           <div className='relative h-8'>
-            <Listbox.Button
-              className={'w-full h-full rounded-lg border-0 bg-gray-100 py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-pointer'}>
-              <span className={classNames('block truncate text-left', !languageItem?.name && 'text-gray-400')}>
+            <ListboxButton
+              className={'h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6'}>
+              <span className={classNames('block truncate text-left text-text-secondary', !languageItem?.name && 'text-text-tertiary')}>
                 {languageItem?.name ? t(`common.voice.language.${languageItem?.value.replace('-', '')}`) : localLanguagePlaceholder}
               </span>
               <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                 <ChevronDownIcon
-                  className="h-5 w-5 text-gray-400"
+                  className="h-4 w-4 text-text-tertiary"
                   aria-hidden="true"
                 />
               </span>
-            </Listbox.Button>
+            </ListboxButton>
             <Transition
               as={Fragment}
               leave="transition ease-in duration-100"
@@ -111,14 +111,13 @@ const VoiceParamConfig = ({
               leaveTo="opacity-0"
             >
 
-              <Listbox.Options
-                className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
+              <ListboxOptions
+                className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm">
                 {languages.map((item: Item) => (
-                  <Listbox.Option
+                  <ListboxOption
                     key={item.value}
-                    className={({ active }) =>
-                      `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 ${active ? 'bg-gray-100' : ''
-                      }`
+                    className={
+                      'relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover data-[active]:bg-state-base-active'
                     }
                     value={item}
                     disabled={false}
@@ -130,23 +129,23 @@ const VoiceParamConfig = ({
                         {(selected || item.value === text2speech?.language) && (
                           <span
                             className={classNames(
-                              'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
+                              'absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary',
                             )}
                           >
-                            <CheckIcon className="h-5 w-5" aria-hidden="true"/>
+                            <CheckIcon className="h-4 w-4" aria-hidden="true" />
                           </span>
                         )}
                       </>
                     )}
-                  </Listbox.Option>
+                  </ListboxOption>
                 ))}
-              </Listbox.Options>
+              </ListboxOptions>
             </Transition>
           </div>
         </Listbox>
       </div>
       <div className='mb-3'>
-        <div className='mb-1 py-1 text-text-secondary system-sm-semibold'>
+        <div className='system-sm-semibold mb-1 py-1 text-text-secondary'>
           {t('appDebug.voice.voiceSettings.voice')}
         </div>
         <div className='flex items-center gap-1'>
@@ -159,18 +158,18 @@ const VoiceParamConfig = ({
               })
             }}
           >
-            <div className={'grow relative h-8'}>
-              <Listbox.Button
-                className={'w-full h-full rounded-lg border-0 bg-gray-100 py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-pointer'}>
+            <div className={'relative h-8 grow'}>
+              <ListboxButton
+                className={'h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6'}>
                 <span
-                  className={classNames('block truncate text-left', !voiceItem?.name && 'text-gray-400')}>{voiceItem?.name ?? localVoicePlaceholder}</span>
+                  className={classNames('block truncate text-left text-text-secondary', !voiceItem?.name && 'text-text-tertiary')}>{voiceItem?.name ?? localVoicePlaceholder}</span>
                 <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                   <ChevronDownIcon
-                    className="h-5 w-5 text-gray-400"
+                    className="h-4 w-4 text-text-tertiary"
                     aria-hidden="true"
                   />
                 </span>
-              </Listbox.Button>
+              </ListboxButton>
               <Transition
                 as={Fragment}
                 leave="transition ease-in duration-100"
@@ -178,14 +177,13 @@ const VoiceParamConfig = ({
                 leaveTo="opacity-0"
               >
 
-                <Listbox.Options
-                  className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
+                <ListboxOptions
+                  className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm">
                   {voiceItems?.map((item: Item) => (
-                    <Listbox.Option
+                    <ListboxOption
                       key={item.value}
-                      className={({ active }) =>
-                        `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 ${active ? 'bg-gray-100' : ''
-                        }`
+                      className={
+                        'relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover data-[active]:bg-state-base-active'
                       }
                       value={item}
                       disabled={false}
@@ -196,22 +194,22 @@ const VoiceParamConfig = ({
                           {(selected || item.value === text2speech?.voice) && (
                             <span
                               className={classNames(
-                                'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
+                                'absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary',
                               )}
                             >
-                              <CheckIcon className="h-5 w-5" aria-hidden="true"/>
+                              <CheckIcon className="h-4 w-4" aria-hidden="true" />
                             </span>
                           )}
                         </>
                       )}
-                    </Listbox.Option>
+                    </ListboxOption>
                   ))}
-                </Listbox.Options>
+                </ListboxOptions>
               </Transition>
             </div>
           </Listbox>
           {languageItem?.example && (
-            <div className='shrink-0 h-8 p-1 rounded-lg bg-components-button-tertiary-bg'>
+            <div className='h-8 shrink-0 rounded-lg bg-components-button-tertiary-bg p-1'>
               <AudioBtn
                 value={languageItem?.example}
                 isAudition
@@ -223,7 +221,7 @@ const VoiceParamConfig = ({
         </div>
       </div>
       <div>
-        <div className='mb-1 py-1 text-text-secondary system-sm-semibold'>
+        <div className='system-sm-semibold mb-1 py-1 text-text-secondary'>
           {t('appDebug.voice.voiceSettings.autoPlay')}
         </div>
         <Switch className='shrink-0'

@@ -8,6 +8,7 @@ import {
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import SimplePromptInput from './simple-prompt-input'
+import Button from '@/app/components/base/button'
 import AdvancedMessageInput from '@/app/components/app/configuration/config-prompt/advanced-prompt-input'
 import { PromptRole } from '@/models/debug'
 import type { PromptItem, PromptVariable } from '@/models/debug'
@@ -155,12 +156,12 @@ const Prompt: FC<IPromptProps> = ({
         }
       </div>
       {(modelModeType === ModelModeType.chat && (currentAdvancedPrompt as PromptItem[]).length < MAX_PROMPT_MESSAGE_LENGTH) && (
-        <div
+        <Button
           onClick={handleAddMessage}
-          className='mt-3 flex items-center h-8 justify-center bg-gray-50 rounded-lg cursor-pointer text-[13px] font-medium text-gray-700 space-x-2'>
-          <RiAddLine className='w-4 h-4' />
+          className='mt-3 w-full'>
+          <RiAddLine className='mr-2 h-4 w-4' />
           <div>{t('appDebug.promptMode.operation.addMessage')}</div>
-        </div>
+        </Button>
       )}
     </div>
   )

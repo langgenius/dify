@@ -76,18 +76,18 @@ const Citation: FC<CitationProps> = ({
   const resourcesLength = resources.length
 
   return (
-    <div className='mt-3 -mb-1'>
-      <div className='flex items-center mb-2 text-xs font-medium text-gray-500'>
+    <div className='-mb-1 mt-3'>
+      <div className='system-xs-medium mb-2 flex items-center text-text-tertiary'>
         {t('common.chat.citation.title')}
-        <div className='grow ml-2 h-[1px] bg-black/5' />
+        <div className='ml-2 h-px grow bg-divider-regular' />
       </div>
       <div className='relative flex flex-wrap'>
         {
           resources.map((res, index) => (
             <div
               key={index}
-              className='absolute top-0 left-0 w-auto mr-1 mb-1 pl-7 pr-2 max-w-[240px] h-7 text-xs whitespace-nowrap opacity-0 -z-10'
-              ref={ele => (elesRef.current[index] = ele!)}
+              className='absolute left-0 top-0 -z-10 mb-1 mr-1 h-7 w-auto max-w-[240px] whitespace-nowrap pl-7 pr-2 text-xs opacity-0'
+              ref={(ele: any) => (elesRef.current[index] = ele!)}
             >
               {res.documentName}
             </div>
@@ -95,7 +95,7 @@ const Citation: FC<CitationProps> = ({
         }
         {
           resources.slice(0, showMore ? resourcesLength : limitNumberInOneLine).map((res, index) => (
-            <div key={index} className='mr-1 mb-1 cursor-pointer'>
+            <div key={index} className='mb-1 mr-1 cursor-pointer'>
               <Popup
                 data={res}
                 showHitInfo={showHitInfo}
@@ -106,13 +106,13 @@ const Citation: FC<CitationProps> = ({
         {
           limitNumberInOneLine < resourcesLength && (
             <div
-              className='flex items-center px-2 h-7 bg-white rounded-lg text-xs font-medium text-gray-500 cursor-pointer'
+              className='system-xs-medium flex h-7 cursor-pointer items-center rounded-lg bg-components-panel-bg px-2 text-text-tertiary'
               onClick={() => setShowMore(v => !v)}
             >
               {
                 !showMore
                   ? `+ ${resourcesLength - limitNumberInOneLine}`
-                  : <RiArrowDownSLine className='w-4 h-4 text-gray-600 rotate-180' />
+                  : <RiArrowDownSLine className='h-4 w-4 rotate-180 text-text-tertiary' />
               }
             </div>
           )

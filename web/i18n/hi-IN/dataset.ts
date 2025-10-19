@@ -49,6 +49,10 @@ const translation = {
     },
     change: 'बदलें',
     changeRetrievalMethod: 'पुनर्प्राप्ति विधि बदलें',
+    keyword_search: {
+      title: 'इनवर्टेड अनुक्रमणिका',
+      description: 'इनवर्टेड इंडेक्स एक संरचना है जो कुशल पुनर्प्राप्ति के लिए उपयोग की जाती है। यह शर्तों द्वारा व्यवस्थित होती है, प्रत्येक शर्त उन दस्तावेजों या वेब पृष्ठों की ओर इशारा करती है जिनमें यह मौजूद होती है।',
+    },
   },
   docsFailedNotice: 'दस्तावेज़ों को अनुक्रमित करने में विफल',
   retry: 'पुनः प्रयास करें',
@@ -156,6 +160,8 @@ const translation = {
   chunkingMode: {
     parentChild: 'माता-पिता का बच्चा',
     general: 'सामान्य',
+    graph: 'ग्राफ',
+    qa: 'प्रश्न और उत्तर',
   },
   parentMode: {
     fullDoc: 'पूर्ण-दस्तावेज़',
@@ -175,6 +181,69 @@ const translation = {
   documentsDisabled: '{{num}} दस्तावेज़ अक्षम - 30 दिनों से अधिक समय से निष्क्रिय',
   allKnowledge: 'सर्व ज्ञान',
   allKnowledgeDescription: 'इस कार्यस्थान में सभी ज्ञान प्रदर्शित करने के लिए चयन करें. केवल कार्यस्थान स्वामी ही सभी ज्ञान का प्रबंधन कर सकता है.',
+  metadata: {
+    createMetadata: {
+      type: 'टाइप करें',
+      name: 'नाम',
+      namePlaceholder: 'ध्यानक का नाम जोड़ें',
+      title: 'नया मेटाडेटा',
+      back: 'पीछे',
+    },
+    checkName: {
+      empty: 'मेटाडाटा का नाम खाली नहीं हो सकता',
+      invalid: 'मेटाडेटा नाम में केवल छोटे अक्षर, संख्या और अंडरस्कोर शामिल हो सकते हैं और इसे छोटे अक्षर से शुरू होना चाहिए।',
+      tooLong: 'मेटाडेटा नाम {{max}} वर्णों से अधिक नहीं हो सकता',
+    },
+    batchEditMetadata: {
+      editMetadata: 'मेटाडेटा संपादित करें',
+      multipleValue: 'कई मान',
+      applyToAllSelectDocument: 'चुने गए सभी दस्तावेज़ों पर लागू करें',
+      editDocumentsNum: 'संपादित कर रहे हैं {{num}} दस्तावेज़',
+      applyToAllSelectDocumentTip: 'सभी चयनित दस्तावेज़ों के लिए ऊपर दिए गए संपादित और नए मेटाडेटा को स्वचालित रूप से बनाएं, अन्यथा मेटाडेटा का संपादन केवल उन दस्तावेज़ों पर लागू होगा जिनमें यह मौजूद है।',
+    },
+    selectMetadata: {
+      manageAction: 'प्रबंधित करें',
+      search: 'खोज मेटाडेटा',
+      newAction: 'नया मेटाडेटा',
+    },
+    datasetMetadata: {
+      addMetaData: 'मेटाडेटा जोड़ें',
+      rename: 'नाम बदलें',
+      name: 'नाम',
+      values: '{{num}} मान',
+      namePlaceholder: 'मेटाडेटा नाम',
+      deleteContent: 'क्या आप सुनिश्चित हैं कि आप मेटाडेटा "{{name}}" को हटाना चाहते हैं?',
+      deleteTitle: 'हटाने की पुष्टि करें',
+      description: 'आप इस ज्ञान में सभी मेटाडेटा प्रबंधित कर सकते हैं। संशोधन हर दस्तावेज़ में समन्वयित किए जाएंगे।',
+      disabled: 'अक्षम',
+      builtInDescription: 'बिल्ट-इन मेटाडेटा स्वचालित रूप से निकाला और उत्पन्न होता है। इसे उपयोग से पहले सक्षम करना आवश्यक है और इसे संपादित नहीं किया जा सकता है।',
+      builtIn: 'बिल्ट-इन',
+    },
+    documentMetadata: {
+      documentInformation: 'दस्तावेज़ जानकारी',
+      technicalParameters: 'तकनीकी पैरामीटर',
+      startLabeling: 'लेबलिंग शुरू करें',
+      metadataToolTip: 'मेटाडेटा एक महत्वपूर्ण फ़िल्टर के रूप में कार्य करता है जो जानकारी प्राप्त करने की सटीकता और प्रासंगिकता को बढ़ाता है। आप इस दस्तावेज़ के लिए मेटाडेटा को यहाँ संशोधित और जोड़ सकते हैं।',
+    },
+    chooseTime: 'एक समय चुनें...',
+    addMetadata: 'मेटाडेटा जोड़ें',
+    metadata: 'मेटाडेटा',
+  },
+  embeddingModelNotAvailable: 'एम्बेडिंग मॉडल उपलब्ध नहीं है।',
+  updated: 'अपडेट किया गया',
+  externalKnowledgeBase: 'बाहरी ज्ञान आधार',
+  createFromPipeline: 'ज्ञान पाइपलाइन से बनाएं',
+  serviceApi: {
+    card: {
+      apiReference: 'एपीआई संदर्भ',
+      apiKey: 'एपीआई कुंजी',
+      title: 'बैकएंड सेवा एपीआई',
+      endpoint: 'सेवा एपीआई एंडपॉइंट',
+    },
+    enabled: 'सेवा में',
+    disabled: 'अक्षम',
+    title: 'सेवा एपीआई',
+  },
 }
 
 export default translation

@@ -1,29 +1,49 @@
+import base64
+import hashlib
 import logging
 import uuid
+from collections.abc import Mapping
 from enum import StrEnum
-from typing import Optional
 from urllib.parse import urlparse
 from uuid import uuid4
 
 import yaml  # type: ignore
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
 from packaging import version
-from pydantic import BaseModel
+from packaging.version import parse as parse_version
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.helper import ssrf_proxy
+from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.entities.plugin import PluginDependency
+from core.workflow.enums import NodeType
+from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from core.workflow.nodes.llm.entities import LLMNodeData
+from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
+from core.workflow.nodes.tool.entities import ToolNodeData
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
+from libs.datetime_utils import naive_utc_now
 from models import Account, App, AppMode
 from models.model import AppModelConfig
+from models.workflow import Workflow
+from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
 IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
-IMPORT_INFO_REDIS_EXPIRY = 180  # 3 minutes
-CURRENT_DSL_VERSION = "0.1.5"
+CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
+IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
+DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
+CURRENT_DSL_VERSION = "0.4.0"
 
 
 class ImportMode(StrEnum):
@@ -41,10 +61,15 @@ class ImportStatus(StrEnum):
 class Import(BaseModel):
     id: str
     status: ImportStatus
-    app_id: Optional[str] = None
+    app_id: str | None = None
+    app_mode: str | None = None
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
+
+
+class CheckDependenciesResult(BaseModel):
+    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
 
 
 def _check_version_compatibility(imported_version: str) -> ImportStatus:
@@ -55,25 +80,36 @@ def _check_version_compatibility(imported_version: str) -> ImportStatus:
     except version.InvalidVersion:
         return ImportStatus.FAILED
 
-    # Compare major version and minor version
-    if current_ver.major != imported_ver.major or current_ver.minor != imported_ver.minor:
+    # If imported version is newer than current, always return PENDING
+    if imported_ver > current_ver:
         return ImportStatus.PENDING
 
-    if current_ver.micro != imported_ver.micro:
+    # If imported version is older than current's major, return PENDING
+    if imported_ver.major < current_ver.major:
+        return ImportStatus.PENDING
+
+    # If imported version is older than current's minor, return COMPLETED_WITH_WARNINGS
+    if imported_ver.minor < current_ver.minor:
         return ImportStatus.COMPLETED_WITH_WARNINGS
 
+    # If imported version equals or is older than current's micro, return COMPLETED
     return ImportStatus.COMPLETED
 
 
 class PendingData(BaseModel):
     import_mode: str
     yaml_content: str
-    name: str | None
-    description: str | None
-    icon_type: str | None
-    icon: str | None
-    icon_background: str | None
-    app_id: str | None
+    name: str | None = None
+    description: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    app_id: str | None = None
+
+
+class CheckDependenciesPendingData(BaseModel):
+    dependencies: list[PluginDependency]
+    app_id: str | None = None
 
 
 class AppDslService:
@@ -85,14 +121,14 @@ class AppDslService:
         *,
         account: Account,
         import_mode: str,
-        yaml_content: Optional[str] = None,
-        yaml_url: Optional[str] = None,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        icon_type: Optional[str] = None,
-        icon: Optional[str] = None,
-        icon_background: Optional[str] = None,
-        app_id: Optional[str] = None,
+        yaml_content: str | None = None,
+        yaml_url: str | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+        app_id: str | None = None,
     ) -> Import:
         """Import an app from YAML content or URL."""
         import_id = str(uuid.uuid4())
@@ -113,7 +149,6 @@ class AppDslService:
                     error="yaml_url is required when import_mode is yaml-url",
                 )
             try:
-                max_size = 10 * 1024 * 1024  # 10MB
                 parsed_url = urlparse(yaml_url)
                 if (
                     parsed_url.scheme == "https"
@@ -126,7 +161,7 @@ class AppDslService:
                 response.raise_for_status()
                 content = response.content.decode()
 
-                if len(content) > max_size:
+                if len(content) > DSL_MAX_SIZE:
                     return Import(
                         id=import_id,
                         status=ImportStatus.FAILED,
@@ -199,7 +234,7 @@ class AppDslService:
                         error="App not found",
                     )
 
-                if app.mode not in [AppMode.WORKFLOW.value, AppMode.ADVANCED_CHAT.value]:
+                if app.mode not in [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]:
                     return Import(
                         id=import_id,
                         status=ImportStatus.FAILED,
@@ -208,7 +243,7 @@ class AppDslService:
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
-                panding_data = PendingData(
+                pending_data = PendingData(
                     import_mode=import_mode,
                     yaml_content=content,
                     name=name,
@@ -221,7 +256,7 @@ class AppDslService:
                 redis_client.setex(
                     f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}",
                     IMPORT_INFO_REDIS_EXPIRY,
-                    panding_data.model_dump_json(),
+                    pending_data.model_dump_json(),
                 )
 
                 return Import(
@@ -229,6 +264,22 @@ class AppDslService:
                     status=status,
                     app_id=app_id,
                     imported_dsl_version=imported_version,
+                )
+
+            # Extract dependencies
+            dependencies = data.get("dependencies", [])
+            check_dependencies_pending_data = None
+            if dependencies:
+                check_dependencies_pending_data = [PluginDependency.model_validate(d) for d in dependencies]
+            elif parse_version(imported_version) <= parse_version("0.1.5"):
+                if "workflow" in data:
+                    graph = data.get("workflow", {}).get("graph", {})
+                    dependencies_list = self._extract_dependencies_from_workflow_graph(graph)
+                else:
+                    dependencies_list = self._extract_dependencies_from_model_config(data.get("model_config", {}))
+
+                check_dependencies_pending_data = DependenciesAnalysisService.generate_latest_dependencies(
+                    dependencies_list
                 )
 
             # Create or update app
@@ -241,12 +292,16 @@ class AppDslService:
                 icon_type=icon_type,
                 icon=icon,
                 icon_background=icon_background,
+                dependencies=check_dependencies_pending_data,
             )
 
+            draft_var_srv = WorkflowDraftVariableService(session=self._session)
+            draft_var_srv.delete_workflow_variables(app_id=app.id)
             return Import(
                 id=import_id,
                 status=status,
                 app_id=app.id,
+                app_mode=app.mode,
                 imported_dsl_version=imported_version,
             )
 
@@ -313,6 +368,7 @@ class AppDslService:
                 id=import_id,
                 status=ImportStatus.COMPLETED,
                 app_id=app.id,
+                app_mode=app.mode,
                 current_dsl_version=CURRENT_DSL_VERSION,
                 imported_dsl_version=data.get("version", "0.1.0"),
             )
@@ -325,17 +381,41 @@ class AppDslService:
                 error=str(e),
             )
 
+    def check_dependencies(
+        self,
+        *,
+        app_model: App,
+    ) -> CheckDependenciesResult:
+        """Check dependencies"""
+        # Get dependencies from Redis
+        redis_key = f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app_model.id}"
+        dependencies = redis_client.get(redis_key)
+        if not dependencies:
+            return CheckDependenciesResult()
+
+        # Extract dependencies
+        dependencies = CheckDependenciesPendingData.model_validate_json(dependencies)
+
+        # Get leaked dependencies
+        leaked_dependencies = DependenciesAnalysisService.get_leaked_dependencies(
+            tenant_id=app_model.tenant_id, dependencies=dependencies.dependencies
+        )
+        return CheckDependenciesResult(
+            leaked_dependencies=leaked_dependencies,
+        )
+
     def _create_or_update_app(
         self,
         *,
-        app: Optional[App],
+        app: App | None,
         data: dict,
         account: Account,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        icon_type: Optional[str] = None,
-        icon: Optional[str] = None,
-        icon_background: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+        dependencies: list[PluginDependency] | None = None,
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
@@ -346,7 +426,7 @@ class AppDslService:
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
-        if icon_type_value in ["emoji", "link"]:
+        if icon_type_value in ["emoji", "link", "image"]:
             icon_type = icon_type_value
         else:
             icon_type = "emoji"
@@ -360,6 +440,7 @@ class AppDslService:
             app.icon = icon
             app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
             app.updated_by = account.id
+            app.updated_at = naive_utc_now()
         else:
             if account.current_tenant_id is None:
                 raise ValueError("Current tenant is not set")
@@ -384,6 +465,14 @@ class AppDslService:
             self._session.commit()
             app_was_created.send(app, account=account)
 
+        # save dependencies
+        if dependencies:
+            redis_client.setex(
+                f"{CHECK_DEPENDENCIES_REDIS_KEY_PREFIX}{app.id}",
+                IMPORT_INFO_REDIS_EXPIRY,
+                CheckDependenciesPendingData(app_id=app.id, dependencies=dependencies).model_dump_json(),
+            )
+
         # Initialize app based on mode
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow_data = data.get("workflow")
@@ -405,6 +494,15 @@ class AppDslService:
                 unique_hash = current_draft_workflow.unique_hash
             else:
                 unique_hash = None
+            graph = workflow_data.get("graph", {})
+            for node in graph.get("nodes", []):
+                if node.get("data", {}).get("type", "") == NodeType.KNOWLEDGE_RETRIEVAL:
+                    dataset_ids = node["data"].get("dataset_ids", [])
+                    node["data"]["dataset_ids"] = [
+                        decrypted_id
+                        for dataset_id in dataset_ids
+                        if (decrypted_id := self.decrypt_dataset_id(encrypted_data=dataset_id, tenant_id=app.tenant_id))
+                    ]
             workflow_service.sync_draft_workflow(
                 app_model=app,
                 graph=workflow_data.get("graph", {}),
@@ -436,10 +534,11 @@ class AppDslService:
         return app
 
     @classmethod
-    def export_dsl(cls, app_model: App, include_secret: bool = False) -> str:
+    def export_dsl(cls, app_model: App, include_secret: bool = False, workflow_id: str | None = None) -> str:
         """
         Export app
         :param app_model: App instance
+        :param include_secret: Whether include secret variable
         :return:
         """
         app_mode = AppMode.value_of(app_model.mode)
@@ -459,7 +558,7 @@ class AppDslService:
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             cls._append_workflow_export_data(
-                export_data=export_data, app_model=app_model, include_secret=include_secret
+                export_data=export_data, app_model=app_model, include_secret=include_secret, workflow_id=workflow_id
             )
         else:
             cls._append_model_config_export_data(export_data, app_model)
@@ -467,21 +566,51 @@ class AppDslService:
         return yaml.dump(export_data, allow_unicode=True)  # type: ignore
 
     @classmethod
-    def _append_workflow_export_data(cls, *, export_data: dict, app_model: App, include_secret: bool) -> None:
+    def _append_workflow_export_data(
+        cls, *, export_data: dict, app_model: App, include_secret: bool, workflow_id: str | None = None
+    ):
         """
         Append workflow export data
         :param export_data: export data
         :param app_model: App instance
         """
         workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model)
+        workflow = workflow_service.get_draft_workflow(app_model, workflow_id)
         if not workflow:
             raise ValueError("Missing draft workflow configuration, please check.")
 
-        export_data["workflow"] = workflow.to_dict(include_secret=include_secret)
+        workflow_dict = workflow.to_dict(include_secret=include_secret)
+        # TODO: refactor: we need a better way to filter workspace related data from nodes
+        for node in workflow_dict.get("graph", {}).get("nodes", []):
+            node_data = node.get("data", {})
+            if not node_data:
+                continue
+            data_type = node_data.get("type", "")
+            if data_type == NodeType.KNOWLEDGE_RETRIEVAL:
+                dataset_ids = node_data.get("dataset_ids", [])
+                node_data["dataset_ids"] = [
+                    cls.encrypt_dataset_id(dataset_id=dataset_id, tenant_id=app_model.tenant_id)
+                    for dataset_id in dataset_ids
+                ]
+            # filter credential id from tool node
+            if not include_secret and data_type == NodeType.TOOL:
+                node_data.pop("credential_id", None)
+            # filter credential id from agent node
+            if not include_secret and data_type == NodeType.AGENT:
+                for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
+                    tool.pop("credential_id", None)
+
+        export_data["workflow"] = workflow_dict
+        dependencies = cls._extract_dependencies_from_workflow(workflow)
+        export_data["dependencies"] = [
+            jsonable_encoder(d.model_dump())
+            for d in DependenciesAnalysisService.generate_dependencies(
+                tenant_id=app_model.tenant_id, dependencies=dependencies
+            )
+        ]
 
     @classmethod
-    def _append_model_config_export_data(cls, export_data: dict, app_model: App) -> None:
+    def _append_model_config_export_data(cls, export_data: dict, app_model: App):
         """
         Append model config export data
         :param export_data: export data
@@ -491,4 +620,214 @@ class AppDslService:
         if not app_model_config:
             raise ValueError("Missing app configuration, please check.")
 
-        export_data["model_config"] = app_model_config.to_dict()
+        model_config = app_model_config.to_dict()
+
+        # TODO: refactor: we need a better way to filter workspace related data from model config
+        # filter credential id from model config
+        for tool in model_config.get("agent_mode", {}).get("tools", []):
+            tool.pop("credential_id", None)
+
+        export_data["model_config"] = model_config
+
+        dependencies = cls._extract_dependencies_from_model_config(app_model_config.to_dict())
+        export_data["dependencies"] = [
+            jsonable_encoder(d.model_dump())
+            for d in DependenciesAnalysisService.generate_dependencies(
+                tenant_id=app_model.tenant_id, dependencies=dependencies
+            )
+        ]
+
+    @classmethod
+    def _extract_dependencies_from_workflow(cls, workflow: Workflow) -> list[str]:
+        """
+        Extract dependencies from workflow
+        :param workflow: Workflow instance
+        :return: dependencies list format like ["langgenius/google"]
+        """
+        graph = workflow.graph_dict
+        dependencies = cls._extract_dependencies_from_workflow_graph(graph)
+        return dependencies
+
+    @classmethod
+    def _extract_dependencies_from_workflow_graph(cls, graph: Mapping) -> list[str]:
+        """
+        Extract dependencies from workflow graph
+        :param graph: Workflow graph
+        :return: dependencies list format like ["langgenius/google"]
+        """
+        dependencies = []
+        for node in graph.get("nodes", []):
+            try:
+                typ = node.get("data", {}).get("type")
+                match typ:
+                    case NodeType.TOOL:
+                        tool_entity = ToolNodeData.model_validate(node["data"])
+                        dependencies.append(
+                            DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
+                        )
+                    case NodeType.LLM:
+                        llm_entity = LLMNodeData.model_validate(node["data"])
+                        dependencies.append(
+                            DependenciesAnalysisService.analyze_model_provider_dependency(llm_entity.model.provider),
+                        )
+                    case NodeType.QUESTION_CLASSIFIER:
+                        question_classifier_entity = QuestionClassifierNodeData.model_validate(node["data"])
+                        dependencies.append(
+                            DependenciesAnalysisService.analyze_model_provider_dependency(
+                                question_classifier_entity.model.provider
+                            ),
+                        )
+                    case NodeType.PARAMETER_EXTRACTOR:
+                        parameter_extractor_entity = ParameterExtractorNodeData.model_validate(node["data"])
+                        dependencies.append(
+                            DependenciesAnalysisService.analyze_model_provider_dependency(
+                                parameter_extractor_entity.model.provider
+                            ),
+                        )
+                    case NodeType.KNOWLEDGE_RETRIEVAL:
+                        knowledge_retrieval_entity = KnowledgeRetrievalNodeData.model_validate(node["data"])
+                        if knowledge_retrieval_entity.retrieval_mode == "multiple":
+                            if knowledge_retrieval_entity.multiple_retrieval_config:
+                                if (
+                                    knowledge_retrieval_entity.multiple_retrieval_config.reranking_mode
+                                    == "reranking_model"
+                                ):
+                                    if knowledge_retrieval_entity.multiple_retrieval_config.reranking_model:
+                                        dependencies.append(
+                                            DependenciesAnalysisService.analyze_model_provider_dependency(
+                                                knowledge_retrieval_entity.multiple_retrieval_config.reranking_model.provider
+                                            ),
+                                        )
+                                elif (
+                                    knowledge_retrieval_entity.multiple_retrieval_config.reranking_mode
+                                    == "weighted_score"
+                                ):
+                                    if knowledge_retrieval_entity.multiple_retrieval_config.weights:
+                                        vector_setting = (
+                                            knowledge_retrieval_entity.multiple_retrieval_config.weights.vector_setting
+                                        )
+                                        dependencies.append(
+                                            DependenciesAnalysisService.analyze_model_provider_dependency(
+                                                vector_setting.embedding_provider_name
+                                            ),
+                                        )
+                        elif knowledge_retrieval_entity.retrieval_mode == "single":
+                            model_config = knowledge_retrieval_entity.single_retrieval_config
+                            if model_config:
+                                dependencies.append(
+                                    DependenciesAnalysisService.analyze_model_provider_dependency(
+                                        model_config.model.provider
+                                    ),
+                                )
+                    case _:
+                        # TODO: Handle default case or unknown node types
+                        pass
+            except Exception as e:
+                logger.exception("Error extracting node dependency", exc_info=e)
+
+        return dependencies
+
+    @classmethod
+    def _extract_dependencies_from_model_config(cls, model_config: Mapping) -> list[str]:
+        """
+        Extract dependencies from model config
+        :param model_config: model config dict
+        :return: dependencies list format like ["langgenius/google"]
+        """
+        dependencies = []
+
+        try:
+            # completion model
+            model_dict = model_config.get("model", {})
+            if model_dict:
+                dependencies.append(
+                    DependenciesAnalysisService.analyze_model_provider_dependency(model_dict.get("provider", ""))
+                )
+
+            # reranking model
+            dataset_configs = model_config.get("dataset_configs", {})
+            if dataset_configs:
+                for dataset_config in dataset_configs.get("datasets", {}).get("datasets", []):
+                    if dataset_config.get("reranking_model"):
+                        dependencies.append(
+                            DependenciesAnalysisService.analyze_model_provider_dependency(
+                                dataset_config.get("reranking_model", {})
+                                .get("reranking_provider_name", {})
+                                .get("provider")
+                            )
+                        )
+
+            # tools
+            agent_configs = model_config.get("agent_mode", {})
+            if agent_configs:
+                for agent_config in agent_configs.get("tools", []):
+                    dependencies.append(
+                        DependenciesAnalysisService.analyze_tool_dependency(agent_config.get("provider_id"))
+                    )
+
+        except Exception as e:
+            logger.exception("Error extracting model config dependency", exc_info=e)
+
+        return dependencies
+
+    @classmethod
+    def get_leaked_dependencies(cls, tenant_id: str, dsl_dependencies: list[dict]) -> list[PluginDependency]:
+        """
+        Returns the leaked dependencies in current workspace
+        """
+        dependencies = [PluginDependency.model_validate(dep) for dep in dsl_dependencies]
+        if not dependencies:
+            return []
+
+        return DependenciesAnalysisService.get_leaked_dependencies(tenant_id=tenant_id, dependencies=dependencies)
+
+    @staticmethod
+    def _generate_aes_key(tenant_id: str) -> bytes:
+        """Generate AES key based on tenant_id"""
+        return hashlib.sha256(tenant_id.encode()).digest()
+
+    @classmethod
+    def encrypt_dataset_id(cls, dataset_id: str, tenant_id: str) -> str:
+        """Encrypt dataset_id using AES-CBC mode or return plain text based on configuration"""
+        if not dify_config.DSL_EXPORT_ENCRYPT_DATASET_ID:
+            return dataset_id
+
+        key = cls._generate_aes_key(tenant_id)
+        iv = key[:16]
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        ct_bytes = cipher.encrypt(pad(dataset_id.encode(), AES.block_size))
+        return base64.b64encode(ct_bytes).decode()
+
+    @classmethod
+    def decrypt_dataset_id(cls, encrypted_data: str, tenant_id: str) -> str | None:
+        """AES decryption with fallback to plain text UUID"""
+        # First, check if it's already a plain UUID (not encrypted)
+        if cls._is_valid_uuid(encrypted_data):
+            return encrypted_data
+
+        # If it's not a UUID, try to decrypt it
+        try:
+            key = cls._generate_aes_key(tenant_id)
+            iv = key[:16]
+            cipher = AES.new(key, AES.MODE_CBC, iv)
+            pt = unpad(cipher.decrypt(base64.b64decode(encrypted_data)), AES.block_size)
+            decrypted_text = pt.decode()
+
+            # Validate that the decrypted result is a valid UUID
+            if cls._is_valid_uuid(decrypted_text):
+                return decrypted_text
+            else:
+                # If decrypted result is not a valid UUID, it's probably not our encrypted data
+                return None
+        except Exception:
+            # If decryption fails completely, return None
+            return None
+
+    @staticmethod
+    def _is_valid_uuid(value: str) -> bool:
+        """Check if string is a valid UUID format"""
+        try:
+            uuid.UUID(value)
+            return True
+        except (ValueError, TypeError):
+            return False

@@ -45,7 +45,7 @@ const InputItem: FC<Props> = ({
     filterVar: (varPayload: Var) => {
       const supportVarTypes = [VarType.string, VarType.number, VarType.secret]
       if (isSupportFile)
-        supportVarTypes.push(...[VarType.file, VarType.arrayFile])
+        supportVarTypes.push(VarType.file, VarType.arrayFile)
 
       return supportVarTypes.includes(varPayload.type)
     },
@@ -57,12 +57,12 @@ const InputItem: FC<Props> = ({
   }, [onRemove])
 
   return (
-    <div className={cn(className, 'hover:bg-gray-50 hover:cursor-text', 'relative flex h-full')}>
+    <div className={cn(className, 'hover:cursor-text hover:bg-state-base-hover', 'relative flex h-full')}>
       {(!readOnly)
         ? (
           <Input
             instanceId={instanceId}
-            className={cn(isFocus ? 'bg-gray-100' : 'bg-width', 'w-0 grow px-3 py-1')}
+            className={cn(isFocus ? 'bg-components-input-bg-active' : 'bg-width', 'w-0 grow px-3 py-1')}
             value={value}
             onChange={onChange}
             readOnly={readOnly}
@@ -76,13 +76,13 @@ const InputItem: FC<Props> = ({
           />
         )
         : <div
-          className="pl-0.5 w-full h-[18px] leading-[18px]"
+          className="h-[18px] w-full pl-0.5 leading-[18px]"
         >
-          {!hasValue && <div className='text-gray-300 text-xs font-normal'>{placeholder}</div>}
+          {!hasValue && <div className='text-xs font-normal text-text-quaternary'>{placeholder}</div>}
           {hasValue && (
             <Input
               instanceId={instanceId}
-              className={cn(isFocus ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'w-0 grow rounded-lg px-3 py-[6px] border')}
+              className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
               value={value}
               onChange={onChange}
               readOnly={readOnly}
@@ -99,7 +99,7 @@ const InputItem: FC<Props> = ({
         </div>}
       {hasRemove && !isFocus && (
         <RemoveButton
-          className='group-hover:block hidden absolute right-1 top-0.5'
+          className='absolute right-1 top-0.5 hidden group-hover:block'
           onClick={handleRemove}
         />
       )}

@@ -30,7 +30,9 @@ import {
   hasRetryNode,
 } from '../../utils'
 import { useNodeIterationInteractions } from '../iteration/use-interactions'
+import { useNodeLoopInteractions } from '../loop/use-interactions'
 import type { IterationNodeType } from '../iteration/types'
+import CopyID from '../tool/components/copy-id'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -43,10 +45,19 @@ import AddVariablePopupWithPosition from './components/add-variable-popup-with-p
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { ToolTypeEnum } from '../../block-selector/types'
+
+type NodeChildProps = {
+  id: string
+  data: NodeProps['data']
+}
 
 type BaseNodeProps = {
-  children: ReactElement
-} & NodeProps
+  children: ReactElement<Partial<NodeChildProps>>
+  id: NodeProps['id']
+  data: NodeProps['data']
+}
 
 const BaseNode: FC<BaseNodeProps> = ({
   id,
@@ -57,6 +68,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
+  const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)
 
   useEffect(() => {
@@ -73,6 +85,23 @@ const BaseNode: FC<BaseNodeProps> = ({
     }
   }, [data.isInIteration, data.selected, id, handleNodeIterationChildSizeChange])
 
+  useEffect(() => {
+    if (nodeRef.current && data.selected && data.isInLoop) {
+      const resizeObserver = new ResizeObserver(() => {
+        handleNodeLoopChildSizeChange(id)
+      })
+
+      resizeObserver.observe(nodeRef.current)
+
+      return () => {
+        resizeObserver.disconnect()
+      }
+    }
+  }, [data.isInLoop, data.selected, id, handleNodeLoopChildSizeChange])
+
+  const { hasNodeInspectVars } = useInspectVarsCrud()
+  const isLoading = data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running
+  const hasVarValue = hasNodeInspectVars(id)
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering
   const {
     showRunningBorder,
@@ -82,32 +111,65 @@ const BaseNode: FC<BaseNodeProps> = ({
   } = useMemo(() => {
     return {
       showRunningBorder: data._runningStatus === NodeRunningStatus.Running && !showSelectedBorder,
-      showSuccessBorder: data._runningStatus === NodeRunningStatus.Succeeded && !showSelectedBorder,
+      showSuccessBorder: (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue) && !showSelectedBorder,
       showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
       showExceptionBorder: data._runningStatus === NodeRunningStatus.Exception && !showSelectedBorder,
     }
-  }, [data._runningStatus, showSelectedBorder])
+  }, [data._runningStatus, hasVarValue, showSelectedBorder])
+
+  const LoopIndex = useMemo(() => {
+    let text = ''
+
+    if (data._runningStatus === NodeRunningStatus.Running)
+      text = t('workflow.nodes.loop.currentLoopCount', { count: data._loopIndex })
+    if (data._runningStatus === NodeRunningStatus.Succeeded || data._runningStatus === NodeRunningStatus.Failed)
+      text = t('workflow.nodes.loop.totalLoopCount', { count: data._loopIndex })
+
+    if (text) {
+      return (
+        <div
+          className={cn(
+            'system-xs-medium mr-2 text-text-tertiary',
+            data._runningStatus === NodeRunningStatus.Running && 'text-text-accent',
+          )}
+        >
+          {text}
+        </div>
+      )
+    }
+
+    return null
+  }, [data._loopIndex, data._runningStatus, t])
 
   return (
     <div
       className={cn(
-        'flex border-[2px] rounded-2xl',
+        'relative flex rounded-2xl border',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
-        !showSelectedBorder && data._inParallelHovering && 'border-workflow-block-border-highlight',
         data._waitingRun && 'opacity-70',
+        data._dimmed && 'opacity-30',
       )}
       ref={nodeRef}
       style={{
-        width: data.type === BlockEnum.Iteration ? data.width : 'auto',
-        height: data.type === BlockEnum.Iteration ? data.height : 'auto',
+        width: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.width : 'auto',
+        height: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.height : 'auto',
       }}
     >
+      {
+        data.type === BlockEnum.DataSource && (
+          <div className='absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]'>
+            <div className='system-2xs-semibold-uppercase flex h-5 items-center px-2.5 text-text-tertiary'>
+              {t('workflow.blocks.datasource')}
+            </div>
+          </div>
+        )
+      }
       <div
         className={cn(
           'group relative pb-1 shadow-xs',
-          'border border-transparent rounded-[15px]',
-          data.type !== BlockEnum.Iteration && 'w-[240px] bg-workflow-block-bg',
-          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-workflow-block-bg-transparent border-workflow-block-border',
+          'rounded-[15px] border border-transparent',
+          (data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop) && 'w-[240px] bg-workflow-block-bg',
+          (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && 'flex h-full w-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
           !data._runningStatus && 'hover:shadow-lg',
           showRunningBorder && '!border-state-accent-solid',
           showSuccessBorder && '!border-state-success-solid',
@@ -116,13 +178,6 @@ const BaseNode: FC<BaseNodeProps> = ({
           data._isBundled && '!shadow-lg',
         )}
       >
-        {
-          data._inParallelHovering && (
-            <div className='absolute left-2 -top-2.5 top system-2xs-medium-uppercase text-text-tertiary z-10'>
-              {t('workflow.common.parallelRun')}
-            </div>
-          )
-        }
         {
           data._showAddVariablePopup && (
             <AddVariablePopupWithPosition
@@ -133,6 +188,14 @@ const BaseNode: FC<BaseNodeProps> = ({
         }
         {
           data.type === BlockEnum.Iteration && (
+            <NodeResizer
+              nodeId={id}
+              nodeData={data}
+            />
+          )
+        }
+        {
+          data.type === BlockEnum.Loop && (
             <NodeResizer
               nodeId={id}
               nodeData={data}
@@ -168,18 +231,18 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         <div className={cn(
-          'flex items-center px-3 pt-3 pb-2 rounded-t-2xl',
-          data.type === BlockEnum.Iteration && 'bg-transparent',
+          'flex items-center rounded-t-2xl px-3 pb-2 pt-3',
+          (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && 'bg-transparent',
         )}>
           <BlockIcon
-            className='shrink-0 mr-2'
+            className='mr-2 shrink-0'
             type={data.type}
             size='md'
             toolIcon={toolIcon}
           />
           <div
             title={data.title}
-            className='grow mr-1 system-sm-semibold-uppercase text-text-primary truncate flex items-center'
+            className='system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary'
           >
             <div>
               {data.title}
@@ -194,7 +257,7 @@ const BaseNode: FC<BaseNodeProps> = ({
                     {t('workflow.nodes.iteration.parallelModeEnableDesc')}
                   </div>}
                 >
-                  <div className='flex justify-center items-center px-[5px] py-[3px] ml-1 border-[1px] border-text-warning rounded-[5px] text-text-warning system-2xs-medium-uppercase '>
+                  <div className='system-2xs-medium-uppercase ml-1 flex items-center justify-center rounded-[5px] border-[1px] border-text-warning px-[5px] py-[3px] text-text-warning '>
                     {t('workflow.nodes.iteration.parallelModeUpper')}
                   </div>
                 </Tooltip>
@@ -209,34 +272,37 @@ const BaseNode: FC<BaseNodeProps> = ({
             )
           }
           {
-            (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
-              <RiLoader2Line className='w-3.5 h-3.5 text-text-accent animate-spin' />
+            data.type === BlockEnum.Loop && data._loopIndex && LoopIndex
+          }
+          {
+            isLoading && (
+              <RiLoader2Line className='h-3.5 w-3.5 animate-spin text-text-accent' />
             )
           }
           {
-            data._runningStatus === NodeRunningStatus.Succeeded && (
-              <RiCheckboxCircleFill className='w-3.5 h-3.5 text-text-success' />
+            (!isLoading && (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue)) && (
+              <RiCheckboxCircleFill className='h-3.5 w-3.5 text-text-success' />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Failed && (
-              <RiErrorWarningFill className='w-3.5 h-3.5 text-text-destructive' />
+              <RiErrorWarningFill className='h-3.5 w-3.5 text-text-destructive' />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Exception && (
-              <RiAlertFill className='w-3.5 h-3.5 text-text-warning-secondary' />
+              <RiAlertFill className='h-3.5 w-3.5 text-text-warning-secondary' />
             )
           }
         </div>
         {
-          data.type !== BlockEnum.Iteration && (
+          data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
             cloneElement(children, { id, data })
           )
         }
         {
-          data.type === BlockEnum.Iteration && (
-            <div className='grow pl-1 pr-1 pb-1'>
+          (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && (
+            <div className='grow pb-1 pl-1 pr-1'>
               {cloneElement(children, { id, data })}
             </div>
           )
@@ -258,12 +324,17 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.desc && data.type !== BlockEnum.Iteration && (
-            <div className='px-3 pt-1 pb-2 system-xs-regular text-text-tertiary whitespace-pre-line break-words'>
+          data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
+            <div className='system-xs-regular whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary'>
               {data.desc}
             </div>
           )
         }
+        {data.type === BlockEnum.Tool && data.provider_type === ToolTypeEnum.MCP && (
+          <div className='px-3 pb-2'>
+            <CopyID content={data.provider_id || ''} />
+          </div>
+        )}
       </div>
     </div>
   )

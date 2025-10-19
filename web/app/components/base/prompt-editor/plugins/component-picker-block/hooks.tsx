@@ -4,8 +4,11 @@ import { $insertNodes } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import type {
   ContextBlockType,
+  CurrentBlockType,
+  ErrorMessageBlockType,
   ExternalToolBlockType,
   HistoryBlockType,
+  LastRunBlockType,
   QueryBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
@@ -27,6 +30,7 @@ import { BracketsX } from '@/app/components/base/icons/src/vender/line/developme
 import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import AppIcon from '@/app/components/base/app-icon'
+import { VarType } from '@/app/components/workflow/types'
 
 export const usePromptOptions = (
   contextBlock?: ContextBlockType,
@@ -44,7 +48,7 @@ export const usePromptOptions = (
       render: ({ isSelected, onSelect, onSetHighlight }) => {
         return <PromptMenuItem
           title={t('common.promptEditor.context.item.title')}
-          icon={<File05 className='w-4 h-4 text-[#6938EF]' />}
+          icon={<File05 className='h-4 w-4 text-[#6938EF]' />}
           disabled={!contextBlock.selectable}
           isSelected={isSelected}
           onClick={onSelect}
@@ -68,7 +72,7 @@ export const usePromptOptions = (
           return (
             <PromptMenuItem
               title={t('common.promptEditor.query.item.title')}
-              icon={<UserEdit02 className='w-4 h-4 text-[#FD853A]' />}
+              icon={<UserEdit02 className='h-4 w-4 text-[#FD853A]' />}
               disabled={!queryBlock.selectable}
               isSelected={isSelected}
               onClick={onSelect}
@@ -94,7 +98,7 @@ export const usePromptOptions = (
           return (
             <PromptMenuItem
               title={t('common.promptEditor.history.item.title')}
-              icon={<MessageClockCircle className='w-4 h-4 text-[#DD2590]' />}
+              icon={<MessageClockCircle className='h-4 w-4 text-[#DD2590]' />}
               disabled={!historyBlock.selectable
               }
               isSelected={isSelected}
@@ -133,7 +137,7 @@ export const useVariableOptions = (
           return (
             <VariableMenuItem
               title={item.value}
-              icon={<BracketsX className='w-[14px] h-[14px] text-text-accent' />}
+              icon={<BracketsX className='h-[14px] w-[14px] text-text-accent' />}
               queryString={queryString}
               isSelected={isSelected}
               onClick={onSelect}
@@ -162,7 +166,7 @@ export const useVariableOptions = (
         return (
           <VariableMenuItem
             title={t('common.promptEditor.variable.modal.add')}
-            icon={<BracketsX className='w-[14px] h-[14px] text-text-accent' />}
+            icon={<BracketsX className='h-[14px] w-[14px] text-text-accent' />}
             queryString={queryString}
             isSelected={isSelected}
             onClick={onSelect}
@@ -206,7 +210,7 @@ export const useExternalToolOptions = (
               title={item.name}
               icon={
                 <AppIcon
-                  className='!w-[14px] !h-[14px]'
+                  className='!h-[14px] !w-[14px]'
                   icon={item.icon}
                   background={item.icon_background}
                 />
@@ -240,8 +244,8 @@ export const useExternalToolOptions = (
         return (
           <VariableMenuItem
             title={t('common.promptEditor.variable.modal.addTool')}
-            icon={<Tool03 className='w-[14px] h-[14px] text-text-accent' />}
-            extraElement={< ArrowUpRight className='w-3 h-3 text-text-tertiary' />}
+            icon={<Tool03 className='h-[14px] w-[14px] text-text-accent' />}
+            extraElement={< ArrowUpRight className='h-3 w-3 text-text-tertiary' />}
             queryString={queryString}
             isSelected={isSelected}
             onClick={onSelect}
@@ -267,17 +271,61 @@ export const useOptions = (
   variableBlock?: VariableBlockType,
   externalToolBlockType?: ExternalToolBlockType,
   workflowVariableBlockType?: WorkflowVariableBlockType,
+  currentBlockType?: CurrentBlockType,
+  errorMessageBlockType?: ErrorMessageBlockType,
+  lastRunBlockType?: LastRunBlockType,
   queryString?: string,
 ) => {
   const promptOptions = usePromptOptions(contextBlock, queryBlock, historyBlock)
   const variableOptions = useVariableOptions(variableBlock, queryString)
   const externalToolOptions = useExternalToolOptions(externalToolBlockType, queryString)
+
   const workflowVariableOptions = useMemo(() => {
     if (!workflowVariableBlockType?.show)
       return []
-
-    return workflowVariableBlockType.variables || []
-  }, [workflowVariableBlockType])
+    const res = workflowVariableBlockType.variables || []
+    if(errorMessageBlockType?.show && res.findIndex(v => v.nodeId === 'error_message') === -1) {
+      res.unshift({
+        nodeId: 'error_message',
+        title: 'error_message',
+        isFlat: true,
+        vars: [
+          {
+            variable: 'error_message',
+            type: VarType.string,
+          },
+        ],
+      })
+    }
+    if(lastRunBlockType?.show && res.findIndex(v => v.nodeId === 'last_run') === -1) {
+      res.unshift({
+        nodeId: 'last_run',
+        title: 'last_run',
+        isFlat: true,
+        vars: [
+          {
+            variable: 'last_run',
+            type: VarType.object,
+          },
+        ],
+      })
+    }
+    if(currentBlockType?.show && res.findIndex(v => v.nodeId === 'current') === -1) {
+      const title = currentBlockType.generatorType === 'prompt' ? 'current_prompt' : 'current_code'
+      res.unshift({
+        nodeId: 'current',
+        title,
+        isFlat: true,
+        vars: [
+          {
+            variable: 'current',
+            type: VarType.string,
+          },
+        ],
+      })
+    }
+    return res
+  }, [workflowVariableBlockType?.show, workflowVariableBlockType?.variables, errorMessageBlockType?.show, lastRunBlockType?.show, currentBlockType?.show, currentBlockType?.generatorType])
 
   return useMemo(() => {
     return {

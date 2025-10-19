@@ -11,6 +11,7 @@ import Button from '@/app/components/base/button'
 
 import { ToastContext } from '@/app/components/base/toast'
 import { createEmptyDataset } from '@/service/datasets'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 
 type IProps = {
   show: boolean
@@ -25,6 +26,7 @@ const EmptyDatasetCreationModal = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const router = useRouter()
+  const invalidDatasetList = useInvalidDatasetList()
 
   const submit = async () => {
     if (!inputValue) {
@@ -37,10 +39,11 @@ const EmptyDatasetCreationModal = ({
     }
     try {
       const dataset = await createEmptyDataset({ name: inputValue })
+      invalidDatasetList()
       onHide()
       router.push(`/datasets/${dataset.id}/documents`)
     }
-    catch (err) {
+    catch {
       notify({ type: 'error', message: t('datasetCreation.stepOne.modal.failed') })
     }
   }
@@ -61,7 +64,7 @@ const EmptyDatasetCreationModal = ({
         <Input value={inputValue} placeholder={t('datasetCreation.stepOne.modal.placeholder') || ''} onChange={e => setInputValue(e.target.value)} />
       </div>
       <div className='flex flex-row-reverse'>
-        <Button className='w-24 ml-2' variant='primary' onClick={submit}>{t('datasetCreation.stepOne.modal.confirmButton')}</Button>
+        <Button className='ml-2 w-24' variant='primary' onClick={submit}>{t('datasetCreation.stepOne.modal.confirmButton')}</Button>
         <Button className='w-24' onClick={onHide}>{t('datasetCreation.stepOne.modal.cancelButton')}</Button>
       </div>
     </Modal>

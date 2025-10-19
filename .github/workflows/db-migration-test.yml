@@ -1,12 +1,7 @@
 name: DB Migration Test
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - api/migrations/**
-      - .github/workflows/db-migration-test.yml
+  workflow_call:
 
 concurrency:
   group: db-migration-test-${{ github.ref }}
@@ -23,13 +18,21 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup Poetry and Python
-        uses: ./.github/actions/setup-poetry
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@v6
         with:
-          poetry-lockfile: api/poetry.lock
+          enable-cache: true
+          python-version: "3.12"
+          cache-dependency-glob: api/uv.lock
 
       - name: Install dependencies
-        run: poetry install -C api
+        run: uv sync --project api
+      - name: Ensure Offline migration are supported
+        run: |
+          # upgrade
+          uv run --directory api flask db upgrade 'base:head' --sql
+          # downgrade
+          uv run --directory api flask db downgrade 'head:base' --sql
 
       - name: Prepare middleware env
         run: |
@@ -53,6 +56,4 @@ jobs:
       - name: Run DB Migration
         env:
           DEBUG: true
-        run: |
-          cd api
-          poetry run python -m flask upgrade-db
+        run: uv run --directory api flask upgrade-db

@@ -70,6 +70,9 @@ export type ChatProps = {
   showFileUpload?: boolean
   onFeatureBarClick?: (state: boolean) => void
   noSpacing?: boolean
+  inputDisabled?: boolean
+  isMobile?: boolean
+  sidebarCollapseState?: boolean
 }
 
 const Chat: FC<ChatProps> = ({
@@ -106,6 +109,9 @@ const Chat: FC<ChatProps> = ({
   showFileUpload,
   onFeatureBarClick,
   noSpacing,
+  inputDisabled,
+  isMobile,
+  sidebarCollapseState,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -154,25 +160,39 @@ const Chat: FC<ChatProps> = ({
   })
 
   useEffect(() => {
-    window.addEventListener('resize', debounce(handleWindowResize))
-    return () => window.removeEventListener('resize', handleWindowResize)
+    const debouncedHandler = debounce(handleWindowResize, 200)
+    window.addEventListener('resize', debouncedHandler)
+
+    return () => {
+      window.removeEventListener('resize', debouncedHandler)
+      debouncedHandler.cancel()
+    }
   }, [handleWindowResize])
 
   useEffect(() => {
     if (chatFooterRef.current && chatContainerRef.current) {
-      const resizeObserver = new ResizeObserver((entries) => {
+      // container padding bottom
+      const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { blockSize } = entry.borderBoxSize[0]
-
           chatContainerRef.current!.style.paddingBottom = `${blockSize}px`
           handleScrollToBottom()
         }
       })
+      resizeContainerObserver.observe(chatFooterRef.current)
 
-      resizeObserver.observe(chatFooterRef.current)
+      // footer width
+      const resizeFooterObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { inlineSize } = entry.borderBoxSize[0]
+          chatFooterRef.current!.style.width = `${inlineSize}px`
+        }
+      })
+      resizeFooterObserver.observe(chatContainerRef.current)
 
       return () => {
-        resizeObserver.disconnect()
+        resizeContainerObserver.disconnect()
+        resizeFooterObserver.disconnect()
       }
     }
   }, [handleScrollToBottom])
@@ -181,13 +201,19 @@ const Chat: FC<ChatProps> = ({
     const chatContainer = chatContainerRef.current
     if (chatContainer) {
       const setUserScrolled = () => {
-        if (chatContainer)
-          userScrolledRef.current = chatContainer.scrollHeight - chatContainer.scrollTop >= chatContainer.clientHeight + 300
+        // eslint-disable-next-line sonarjs/no-gratuitous-expressions
+        if (chatContainer) // its in event callback, chatContainer may be null
+          userScrolledRef.current = chatContainer.scrollHeight - chatContainer.scrollTop > chatContainer.clientHeight
       }
       chatContainer.addEventListener('scroll', setUserScrolled)
       return () => chatContainer.removeEventListener('scroll', setUserScrolled)
     }
   }, [])
+
+  useEffect(() => {
+    if (!sidebarCollapseState)
+      setTimeout(() => handleWindowResize(), 200)
+  }, [handleWindowResize, sidebarCollapseState])
 
   const hasTryToAsk = config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
 
@@ -244,6 +270,8 @@ const Chat: FC<ChatProps> = ({
                     item={item}
                     questionIcon={questionIcon}
                     theme={themeBuilder?.theme}
+                    enableEdit={config?.questionEditEnable}
+                    switchSibling={switchSibling}
                   />
                 )
               })
@@ -251,11 +279,8 @@ const Chat: FC<ChatProps> = ({
           </div>
         </div>
         <div
-          className={`absolute bottom-0 ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
+          className={`absolute bottom-0 z-10 flex justify-center bg-chat-input-mask ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
           ref={chatFooterRef}
-          style={{
-            background: 'linear-gradient(0deg, #F9FAFB 40%, rgba(255, 255, 255, 0.00) 100%)',
-          }}
         >
           <div
             ref={chatFooterInnerRef}
@@ -263,10 +288,10 @@ const Chat: FC<ChatProps> = ({
           >
             {
               !noStopResponding && isResponding && (
-                <div className='flex justify-center mb-2'>
-                  <Button onClick={onStopResponding}>
-                    <StopCircle className='mr-[5px] w-3.5 h-3.5 text-gray-500' />
-                    <span className='text-xs text-gray-500 font-normal'>{t('appDebug.operation.stopResponding')}</span>
+                <div className='mb-2 flex justify-center'>
+                  <Button className='border-components-panel-border bg-components-panel-bg text-components-button-secondary-text' onClick={onStopResponding}>
+                    <StopCircle className='mr-[5px] h-3.5 w-3.5' />
+                    <span className='text-xs font-normal'>{t('appDebug.operation.stopResponding')}</span>
                   </Button>
                 </div>
               )
@@ -276,12 +301,15 @@ const Chat: FC<ChatProps> = ({
                 <TryToAsk
                   suggestedQuestions={suggestedQuestions}
                   onSend={onSend}
+                  isMobile={isMobile}
                 />
               )
             }
             {
               !noChatInput && (
                 <ChatInputArea
+                  botName={appData?.site.title || 'Bot'}
+                  disabled={inputDisabled}
                   showFeatureBar={showFeatureBar}
                   showFileUpload={showFileUpload}
                   featureBarDisabled={isResponding}

@@ -1,9 +1,9 @@
 import logging
 from collections.abc import Generator
 
-import boto3  # type: ignore
-from botocore.client import Config  # type: ignore
-from botocore.exceptions import ClientError  # type: ignore
+import boto3
+from botocore.client import Config
+from botocore.exceptions import ClientError
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
@@ -32,21 +32,17 @@ class AwsS3Storage(BaseStorage):
                 aws_access_key_id=dify_config.S3_ACCESS_KEY,
                 endpoint_url=dify_config.S3_ENDPOINT,
                 region_name=dify_config.S3_REGION,
-                config=Config(
-                    s3={"addressing_style": dify_config.S3_ADDRESS_STYLE},
-                    request_checksum_calculation="when_required",
-                    response_checksum_validation="when_required",
-                ),
+                config=Config(s3={"addressing_style": dify_config.S3_ADDRESS_STYLE}),
             )
         # create bucket
         try:
             self.client.head_bucket(Bucket=self.bucket_name)
         except ClientError as e:
             # if bucket not exists, create it
-            if e.response["Error"]["Code"] == "404":
+            if e.response.get("Error", {}).get("Code") == "404":
                 self.client.create_bucket(Bucket=self.bucket_name)
             # if bucket is not accessible, pass, maybe the bucket is existing but not accessible
-            elif e.response["Error"]["Code"] == "403":
+            elif e.response.get("Error", {}).get("Code") == "403":
                 pass
             else:
                 # other error, raise exception
@@ -59,7 +55,7 @@ class AwsS3Storage(BaseStorage):
         try:
             data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
         except ClientError as ex:
-            if ex.response["Error"]["Code"] == "NoSuchKey":
+            if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
                 raise FileNotFoundError("File not found")
             else:
                 raise
@@ -70,7 +66,7 @@ class AwsS3Storage(BaseStorage):
             response = self.client.get_object(Bucket=self.bucket_name, Key=filename)
             yield from response["Body"].iter_chunks()
         except ClientError as ex:
-            if ex.response["Error"]["Code"] == "NoSuchKey":
+            if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
                 raise FileNotFoundError("file not found")
             elif "reached max retries" in str(ex):
                 raise ValueError("please do not request the same file too frequently")

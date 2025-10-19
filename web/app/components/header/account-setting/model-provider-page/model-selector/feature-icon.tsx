@@ -6,10 +6,13 @@ import {
   ModelFeatureTextEnum,
 } from '../declarations'
 import {
+  AudioSupportIcon,
+  DocumentSupportIcon,
   // MagicBox,
   MagicEyes,
   // MagicWand,
   // Robot,
+  VideoSupportIcon,
 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import Tooltip from '@/app/components/base/tooltip'
 
@@ -65,8 +68,50 @@ const FeatureIcon: FC<FeatureIconProps> = ({
         popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.vision })}
       >
         <div className='inline-block cursor-help'>
-          <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
-            <MagicEyes className='w-3 h-3' />
+          <ModelBadge className={`w-[18px] justify-center !px-0 text-text-tertiary ${className}`}>
+            <MagicEyes className='h-3 w-3' />
+          </ModelBadge>
+        </div>
+      </Tooltip>
+    )
+  }
+
+  if (feature === ModelFeatureEnum.document) {
+    return (
+      <Tooltip
+        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.document })}
+      >
+        <div className='inline-block cursor-help'>
+          <ModelBadge className={`w-[18px] justify-center !px-0 text-text-tertiary ${className}`}>
+            <DocumentSupportIcon className='h-3 w-3' />
+          </ModelBadge>
+        </div>
+      </Tooltip>
+    )
+  }
+
+  if (feature === ModelFeatureEnum.audio) {
+    return (
+      <Tooltip
+        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.audio })}
+      >
+        <div className='inline-block cursor-help'>
+          <ModelBadge className={`w-[18px] justify-center !px-0 text-text-tertiary ${className}`}>
+            <AudioSupportIcon className='h-3 w-3' />
+          </ModelBadge>
+        </div>
+      </Tooltip>
+    )
+  }
+
+  if (feature === ModelFeatureEnum.video) {
+    return (
+      <Tooltip
+        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.video })}
+      >
+        <div className='inline-block cursor-help'>
+          <ModelBadge className={`w-[18px] justify-center !px-0 text-text-tertiary ${className}`}>
+            <VideoSupportIcon className='h-3 w-3' />
           </ModelBadge>
         </div>
       </Tooltip>

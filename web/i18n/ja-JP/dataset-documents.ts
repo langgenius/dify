@@ -1,11 +1,11 @@
 const translation = {
   list: {
     title: 'ドキュメント',
-    desc: 'ナレッジのすべてのファイルがここに表示され、ナレッジ全体がDifyの引用やチャットプラグインを介してリンクされるか、インデックス化されることができます。',
+    desc: 'すべてのファイルがここに表示され、ナレッジベース全体が Dify の引用やチャットプラグインを介してリンクされるか、インデックス化されることができます。',
     learnMore: '詳細はこちら',
     addFile: 'ファイルを追加',
     addPages: 'ページを追加',
-    addUrl: 'URLを追加',
+    addUrl: 'URL を追加',
     table: {
       header: {
         fileName: 'ファイル名',
@@ -30,6 +30,8 @@ const translation = {
       delete: '削除',
       enableWarning: 'アーカイブされたファイルは有効にできません',
       sync: '同期',
+      pause: '一時停止',
+      resume: '再開',
     },
     index: {
       enable: '有効にする',
@@ -51,10 +53,10 @@ const translation = {
     empty: {
       title: 'まだドキュメントがありません',
       upload: {
-        tip: 'ファイルをアップロードしたり、ウェブサイトから同期したり、NotionやGitHubなどのウェブアプリから同期することができます。',
+        tip: 'ファイルをアップロードしたり、ウェブサイトから同期したり、Notion や GitHub などの Web アプリから同期することができます。',
       },
       sync: {
-        tip: 'Difyは定期的にNotionからファイルをダウンロードし、処理を完了します。',
+        tip: 'Dify は定期的に Notion からファイルをダウンロードし、処理を完了します。',
       },
     },
     delete: {
@@ -63,9 +65,9 @@ const translation = {
     },
     batchModal: {
       title: '一括追加',
-      csvUploadTitle: 'CSVファイルをここにドラッグアンドドロップするか、',
+      csvUploadTitle: 'CSV ファイルをここにドラッグアンドドロップするか、',
       browse: '参照',
-      tip: 'CSVファイルは次の構造に準拠する必要があります:',
+      tip: 'CSV ファイルは次の構造に準拠する必要があります：',
       question: '質問',
       answer: '回答',
       contentTitle: 'チャンクの内容',
@@ -82,8 +84,8 @@ const translation = {
   },
   metadata: {
     title: 'メタデータ',
-    desc: 'ドキュメントのメタデータにラベルを付けることで、AIがタイムリーにアクセスできるようになり、ユーザーに参照元が公開されます。',
-    dateTimeFormat: 'YYYY年M月D日 hh:mm A',
+    desc: 'ドキュメントのメタデータにラベルを付けることで、AI がタイムリーにアクセスできるようになり、ユーザーに参照元が公開されます。',
+    dateTimeFormat: 'YYYY 年 M 月 D 日 hh:mm A',
     docTypeSelectTitle: 'ドキュメントタイプを選択してください',
     docTypeChangeTitle: 'ドキュメントタイプを変更',
     docTypeSelectWarning:
@@ -95,8 +97,11 @@ const translation = {
     },
     source: {
       upload_file: 'ファイルをアップロード',
-      notion: 'Notionから同期',
-      github: 'GitHubから同期',
+      notion: 'Notion から同期',
+      github: 'GitHub から同期',
+      website_crawl: 'ウェブサイトクロール',
+      online_document: 'オンライン文書',
+      local_file: 'ローカルファイル',
     },
     type: {
       book: '書籍',
@@ -105,10 +110,10 @@ const translation = {
       socialMediaPost: 'ソーシャルメディアの投稿',
       personalDocument: '個人のドキュメント',
       businessDocument: 'ビジネスドキュメント',
-      IMChat: 'IMチャット',
-      wikipediaEntry: 'Wikipediaのエントリー',
-      notion: 'Notionから同期',
-      github: 'GitHubから同期',
+      IMChat: 'IM チャット',
+      wikipediaEntry: 'Wikipedia のエントリー',
+      notion: 'Notion から同期',
+      github: 'GitHub から同期',
       technicalParameters: '技術的なパラメータ',
     },
     field: {
@@ -151,7 +156,7 @@ const translation = {
         platform: 'プラットフォーム',
         authorUsername: '著者/ユーザー名',
         publishDate: '公開日',
-        postURL: '投稿URL',
+        postURL: '投稿 URL',
         topicsTags: 'トピック/タグ',
       },
       personalDocument: {
@@ -182,7 +187,7 @@ const translation = {
       wikipediaEntry: {
         title: 'タイトル',
         language: '言語',
-        webpageURL: 'ウェブページURL',
+        webpageURL: 'ウェブページ URL',
         editorContributor: '編集者/寄稿者',
         lastEditDate: '最終編集日',
         summaryIntroduction: '概要/紹介',
@@ -334,6 +339,7 @@ const translation = {
     previewTip: '埋め込みが完了した後、段落のプレビューが利用可能になります',
     parentMaxTokens: '親',
     childMaxTokens: '子',
+    waiting: '埋め込み待機中...',
   },
   segment: {
     paragraphs: '段落',
@@ -355,11 +361,11 @@ const translation = {
     newChildChunk: '新しい子チャンク',
     keywords: 'キーワード',
     addKeyWord: 'キーワードを追加',
-    keywordError: 'キーワードの最大長は20です',
+    keywordError: 'キーワードの最大長は 20 です',
     characters_one: '文字',
     characters_other: '文字',
     hitCount: '検索回数',
-    vectorHash: 'ベクトルハッシュ: ',
+    vectorHash: 'ベクトルハッシュ：',
     questionPlaceholder: 'ここに質問を追加',
     questionEmpty: '質問は空にできません',
     answerPlaceholder: 'ここに回答を追加',
@@ -367,7 +373,7 @@ const translation = {
     contentPlaceholder: 'ここに内容を追加',
     contentEmpty: '内容は空にできません',
     newTextSegment: '新しいテキストチャンク',
-    newQaSegment: '新しいQ&Aチャンク',
+    newQaSegment: '新しい Q&A チャンク',
     addChunk: 'チャンクを追加',
     addChildChunk: '子チャンクを追加',
     addAnother: '続けて追加',
@@ -386,8 +392,11 @@ const translation = {
     regenerationSuccessMessage: 'ウィンドウを閉じても大丈夫です',
     edited: '編集済み',
     editedAt: '編集日時',
+    dateTimeFormat: 'YYYY/MM/DD HH:mm',
     expandChunks: 'チャンクを展開',
     collapseChunks: 'チャンクを折りたたむ',
+    keywordDuplicate: 'そのキーワードは既に存在しています',
+    keywordEmpty: 'キーワードは空であってはいけません',
   },
 }
 

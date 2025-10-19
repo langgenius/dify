@@ -17,9 +17,9 @@ export default function AppBack({ curApp }: IAppBackProps) {
   return (
     <div
       className={classNames(`
-        flex items-center h-7 pl-2.5 pr-2
-        text-[#1C64F2] font-semibold cursor-pointer
-        rounded-[10px]
+        flex h-7 cursor-pointer items-center rounded-[10px]
+        pl-2.5 pr-2 font-semibold
+        text-[#1C64F2]
         ${curApp && 'hover:bg-[#EBF5FF]'}
       `)}
       onMouseEnter={() => setHovered(true)}
@@ -27,8 +27,8 @@ export default function AppBack({ curApp }: IAppBackProps) {
     >
       {
         (hovered && curApp)
-          ? <ArrowLeftIcon className='mr-1 w-[18px] h-[18px]' />
-          : <Squares2X2Icon className='mr-1 w-[18px] h-[18px]' />
+          ? <ArrowLeftIcon className='mr-1 h-[18px] w-[18px]' />
+          : <Squares2X2Icon className='mr-1 h-[18px] w-[18px]' />
       }
       {t('common.menus.apps')}
     </div>

@@ -1,115 +1,147 @@
 import {
   memo,
-  useCallback,
+  useMemo,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import BlockIcon from '../block-icon'
-import { BlockEnum } from '../types'
-import type { ToolWithProvider } from '../types'
+import type { BlockEnum, ToolWithProvider } from '../types'
 import IndexBar, { groupItems } from './index-bar'
-import type { ToolDefaultValue } from './types'
-import Tooltip from '@/app/components/base/tooltip'
+import type { ToolDefaultValue, ToolValue } from './types'
+import type { ToolTypeEnum } from './types'
+import { ViewType } from './view-type-select'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { useGetLanguage } from '@/context/i18n'
+import ToolListTreeView from './tool/tool-list-tree-view/list'
+import ToolListFlatView from './tool/tool-list-flat-view/list'
+import classNames from '@/utils/classnames'
 
 type ToolsProps = {
-  showWorkflowEmpty: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  canNotSelectMultiple?: boolean
+  onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   tools: ToolWithProvider[]
+  viewType: ViewType
+  hasSearchText: boolean
+  toolType?: ToolTypeEnum
+  isAgent?: boolean
+  className?: string
+  indexBarClassName?: string
+  selectedTools?: ToolValue[]
+  canChooseMCPTool?: boolean
+  isShowRAGRecommendations?: boolean
 }
 const Blocks = ({
-  showWorkflowEmpty,
   onSelect,
+  canNotSelectMultiple,
+  onSelectMultiple,
   tools,
+  viewType,
+  hasSearchText,
+  toolType,
+  isAgent,
+  className,
+  indexBarClassName,
+  selectedTools,
+  canChooseMCPTool,
+  isShowRAGRecommendations = false,
 }: ToolsProps) => {
+  // const tools: any = []
   const { t } = useTranslation()
   const language = useGetLanguage()
+  const isFlatView = viewType === ViewType.flat
+  const isShowLetterIndex = isFlatView && tools.length > 10
 
-  const { letters, groups: groupedTools } = groupItems(tools, tool => tool.label[language][0])
+  /*
+  treeViewToolsData:
+  {
+    A: {
+      'google': [ // plugin organize name
+        ...tools
+      ],
+      'custom': [ // custom tools
+        ...tools
+      ],
+      'workflow': [ // workflow as tools
+        ...tools
+      ]
+    }
+  }
+  */
+  const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(tools, tool => tool.label[language][0])
+  const treeViewToolsData = useMemo(() => {
+    const result: Record<string, ToolWithProvider[]> = {}
+    Object.keys(withLetterAndGroupViewToolsData).forEach((letter) => {
+      Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
+        if (!result[groupName])
+          result[groupName] = []
+        result[groupName].push(...withLetterAndGroupViewToolsData[letter][groupName])
+      })
+    })
+    return result
+  }, [withLetterAndGroupViewToolsData])
+
+  const listViewToolData = useMemo(() => {
+    const result: ToolWithProvider[] = []
+    letters.forEach((letter) => {
+      Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
+        result.push(...withLetterAndGroupViewToolsData[letter][groupName].map((item) => {
+          return {
+            ...item,
+            letter,
+          }
+        }))
+      })
+    })
+
+    return result
+  }, [withLetterAndGroupViewToolsData, letters])
+
   const toolRefs = useRef({})
 
-  const renderGroup = useCallback((toolWithProvider: ToolWithProvider) => {
-    const list = toolWithProvider.tools
-
-    return (
-      <div
-        key={toolWithProvider.id}
-        className='mb-1 last-of-type:mb-0'
-      >
-        <div className='flex items-start px-3 h-[22px] text-xs font-medium text-gray-500'>
-          {toolWithProvider.label[language]}
-        </div>
-        {
-          list.map(tool => (
-            <Tooltip
-              key={tool.name}
-              position='right'
-              popupClassName='w-[200px]'
-              popupContent={(
-                <div>
-                  <BlockIcon
-                    size='md'
-                    className='mb-2'
-                    type={BlockEnum.Tool}
-                    toolIcon={toolWithProvider.icon}
-                  />
-                  <div className='mb-1 system-md-medium text-text-primary'>{tool.label[language]}</div>
-                  <div className='system-xs-regular text-text-tertiary'>{tool.description[language]}</div>
-                </div>
-              )}
-            >
-              <div
-                className='flex items-center px-3 w-full h-8 rounded-lg hover:bg-state-base-hover cursor-pointer'
-                onClick={() => onSelect(BlockEnum.Tool, {
-                  provider_id: toolWithProvider.id,
-                  provider_type: toolWithProvider.type,
-                  provider_name: toolWithProvider.name,
-                  tool_name: tool.name,
-                  tool_label: tool.label[language],
-                  title: tool.label[language],
-                })}
-              >
-                <BlockIcon
-                  className='mr-2 shrink-0'
-                  type={BlockEnum.Tool}
-                  toolIcon={toolWithProvider.icon}
-                />
-                <div className='text-sm text-text-secondary flex-1 min-w-0 truncate'>{tool.label[language]}</div>
-              </div>
-            </Tooltip>
-          ))
-        }
-      </div>
-    )
-  }, [onSelect, language])
-
-  const renderLetterGroup = (letter) => {
-    const tools = groupedTools[letter]
-    return (
-      <div
-        key={letter}
-        ref={el => (toolRefs.current[letter] = el)}
-      >
-        {tools.map(renderGroup)}
-      </div>
-    )
-  }
-
   return (
-    <div className='p-1 max-w-[320px] max-h-[464px] overflow-y-auto'>
+    <div className={classNames('max-w-[100%] p-1', className)}>
       {
-        !tools.length && !showWorkflowEmpty && (
-          <div className='flex items-center px-3 h-[22px] text-xs font-medium text-text-tertiary'>{t('workflow.tabs.noResult')}</div>
+        !tools.length && hasSearchText && (
+          <div className='mt-2 flex h-[22px] items-center px-3 text-xs font-medium text-text-secondary'>{t('workflow.tabs.noResult')}</div>
         )
       }
-      {!tools.length && showWorkflowEmpty && (
+      {!tools.length && !hasSearchText && (
         <div className='py-10'>
-          <Empty />
+          <Empty type={toolType!} isAgent={isAgent} />
         </div>
       )}
-      {!!tools.length && letters.map(renderLetterGroup)}
-      {tools.length > 10 && <IndexBar letters={letters} itemRefs={toolRefs} />}
+      {!!tools.length && isShowRAGRecommendations && (
+        <div className='system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary'>
+          {t('tools.allTools')}
+        </div>
+      )}
+      {!!tools.length && (
+        isFlatView ? (
+          <ToolListFlatView
+            toolRefs={toolRefs}
+            letters={letters}
+            payload={listViewToolData}
+            isShowLetterIndex={isShowLetterIndex}
+            hasSearchText={hasSearchText}
+            onSelect={onSelect}
+            canNotSelectMultiple={canNotSelectMultiple}
+            onSelectMultiple={onSelectMultiple}
+            selectedTools={selectedTools}
+            canChooseMCPTool={canChooseMCPTool}
+            indexBar={<IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
+          />
+        ) : (
+          <ToolListTreeView
+            payload={treeViewToolsData}
+            hasSearchText={hasSearchText}
+            onSelect={onSelect}
+            canNotSelectMultiple={canNotSelectMultiple}
+            onSelectMultiple={onSelectMultiple}
+            selectedTools={selectedTools}
+            canChooseMCPTool={canChooseMCPTool}
+          />
+        )
+      )}
     </div>
   )
 }

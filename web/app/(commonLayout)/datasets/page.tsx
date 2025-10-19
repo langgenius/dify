@@ -1,11 +1,7 @@
-import Container from './Container'
+import List from '../../components/datasets/list'
 
-const AppList = async () => {
-  return <Container />
+const DatasetList = async () => {
+  return <List />
 }
 
-export const metadata = {
-  title: 'Datasets - Dify',
-}
-
-export default AppList
+export default DatasetList

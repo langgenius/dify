@@ -2,7 +2,7 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   ChatConfig,
@@ -19,9 +19,9 @@ import Citation from '@/app/components/base/chat/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import type { AppData } from '@/models/share'
 import AnswerIcon from '@/app/components/base/answer-icon'
-import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import cn from '@/utils/classnames'
 import { FileList } from '@/app/components/base/file-uploader'
+import ContentSwitch from '../content-switch'
 
 type AnswerProps = {
   item: ChatItem
@@ -100,21 +100,34 @@ const Answer: FC<AnswerProps> = ({
     }
   }, [])
 
+  const handleSwitchSibling = useCallback((direction: 'prev' | 'next') => {
+    if (direction === 'prev') {
+      if (item.prevSibling)
+        switchSibling?.(item.prevSibling)
+    }
+    else {
+      if (item.nextSibling)
+        switchSibling?.(item.nextSibling)
+    }
+  }, [switchSibling, item.prevSibling, item.nextSibling])
+
+  const contentIsEmpty = content.trim() === ''
+
   return (
-    <div className='flex mb-2 last:mb-0'>
-      <div className='shrink-0 relative w-10 h-10'>
+    <div className='mb-2 flex last:mb-0'>
+      <div className='relative h-10 w-10 shrink-0'>
         {answerIcon || <AnswerIcon />}
         {responding && (
-          <div className='absolute -top-[3px] -left-[3px] pl-[6px] flex items-center w-4 h-4 bg-white rounded-full shadow-xs border-[0.5px] border-gray-50'>
+          <div className='absolute left-[-3px] top-[-3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs'>
             <LoadingAnim type='avatar' />
           </div>
         )}
       </div>
-      <div className='chat-answer-container group grow w-0 ml-4' ref={containerRef}>
+      <div className='chat-answer-container group ml-4 w-0 grow pb-4' ref={containerRef}>
         <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
           <div
             ref={contentRef}
-            className={cn('relative inline-block px-4 py-3 max-w-full bg-chat-bubble-bg rounded-2xl body-lg-regular text-text-primary', workflowProcess && 'w-full')}
+            className={cn('body-lg-regular relative inline-block max-w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary', workflowProcess && 'w-full')}
           >
             {
               !responding && (
@@ -130,44 +143,35 @@ const Answer: FC<AnswerProps> = ({
                 />
               )
             }
-            {/** Render the normal steps */}
+            {/** Render workflow process */}
             {
-              workflowProcess && !hideProcessDetail && (
+              workflowProcess && (
                 <WorkflowProcessItem
                   data={workflowProcess}
                   item={item}
                   hideProcessDetail={hideProcessDetail}
-                />
-              )
-            }
-            {/** Hide workflow steps by it's settings in siteInfo */}
-            {
-              workflowProcess && hideProcessDetail && appData && (
-                <WorkflowProcessItem
-                  data={workflowProcess}
-                  item={item}
-                  hideProcessDetail={hideProcessDetail}
-                  readonly={!appData.site.show_workflow_steps}
+                  readonly={hideProcessDetail && appData ? !appData.site.show_workflow_steps : undefined}
                 />
               )
             }
             {
-              responding && !content && !hasAgentThoughts && (
-                <div className='flex items-center justify-center w-6 h-5'>
+              responding && contentIsEmpty && !hasAgentThoughts && (
+                <div className='flex h-5 w-6 items-center justify-center'>
                   <LoadingAnim type='text' />
                 </div>
               )
             }
             {
-              content && !hasAgentThoughts && (
+              !contentIsEmpty && !hasAgentThoughts && (
                 <BasicContent item={item} />
               )
             }
             {
-              hasAgentThoughts && (
+              (hasAgentThoughts) && (
                 <AgentContent
                   item={item}
                   responding={responding}
+                  content={content}
                 />
               )
             }
@@ -207,23 +211,17 @@ const Answer: FC<AnswerProps> = ({
                 <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
               )
             }
-            {item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && <div className="pt-3.5 flex justify-center items-center text-sm">
-              <button
-                className={`${item.prevSibling ? 'opacity-100' : 'opacity-30'}`}
-                disabled={!item.prevSibling}
-                onClick={() => item.prevSibling && switchSibling?.(item.prevSibling)}
-              >
-                <ChevronRight className="w-[14px] h-[14px] rotate-180 text-text-primary" />
-              </button>
-              <span className="px-2 text-xs text-text-primary">{item.siblingIndex + 1} / {item.siblingCount}</span>
-              <button
-                className={`${item.nextSibling ? 'opacity-100' : 'opacity-30'}`}
-                disabled={!item.nextSibling}
-                onClick={() => item.nextSibling && switchSibling?.(item.nextSibling)}
-              >
-                <ChevronRight className="w-[14px] h-[14px] text-text-primary" />
-              </button>
-            </div>}
+            {
+              item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && (
+                <ContentSwitch
+                  count={item.siblingCount}
+                  currentIndex={item.siblingIndex}
+                  prevDisabled={!item.prevSibling}
+                  nextDisabled={!item.nextSibling}
+                  switchSibling={handleSwitchSibling}
+                />
+              )
+            }
           </div>
         </div>
         <More more={more} />

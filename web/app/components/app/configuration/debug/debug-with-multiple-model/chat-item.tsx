@@ -30,6 +30,7 @@ import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-
 import { useFeatures } from '@/app/components/base/features/hooks'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import { getLastAnswer } from '@/app/components/base/chat/utils'
+import { canFindTool } from '@/utils'
 
 type ChatItemProps = {
   modelAndParameter: ModelAndParameter
@@ -128,7 +129,7 @@ const ChatItem: FC<ChatItemProps> = ({
   const allToolIcons = useMemo(() => {
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
-      icons[item.tool_name] = collectionList.find((collection: any) => collection.id === item.provider_id)?.icon
+      icons[item.tool_name] = collectionList.find((collection: any) => canFindTool(collection.id, item.provider_id))?.icon
     })
     return icons
   }, [collectionList, modelConfig.agentConfig.tools])

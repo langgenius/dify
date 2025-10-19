@@ -1,13 +1,16 @@
 name: Style check
 
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_call:
 
 concurrency:
   group: style-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
+
+permissions:
+  checks: write
+  statuses: write
+  contents: read
 
 jobs:
   python-style:
@@ -18,39 +21,43 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v45
+        uses: tj-actions/changed-files@v46
         with:
           files: |
             api/**
             .github/workflows/style.yml
 
-      - name: Setup Poetry and Python
+      - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: ./.github/actions/setup-poetry
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+          python-version: "3.12"
+          cache-dependency-glob: api/uv.lock
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: poetry install -C api --only lint
+        run: uv sync --project api --dev
 
-      - name: Ruff check
+      - name: Run Import Linter
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: |
-          poetry run -C api ruff --version
-          poetry run -C api ruff check ./
-          poetry run -C api ruff format --check ./
+        run: uv run --directory api --dev lint-imports
+
+      - name: Run Basedpyright Checks
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: dev/basedpyright-check
+
+      - name: Run Mypy Type Checks
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv --directory api run mypy --exclude-gitignore --exclude 'tests/' --exclude 'migrations/' --check-untyped-defs --disable-error-code=import-untyped .
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: poetry run -P api dotenv-linter ./api/.env.example ./web/.env.example
-
-      - name: Lint hints
-        if: failure()
-        run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
+        run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
 
   web-style:
     name: Web Style
@@ -63,30 +70,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v45
+        uses: tj-actions/changed-files@v46
         with:
           files: web/**
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+          run_install: false
 
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
-          node-version: 20
-          cache: yarn
+          node-version: 22
+          cache: pnpm
           cache-dependency-path: ./web/package.json
 
       - name: Web dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: yarn install --frozen-lockfile
+        working-directory: ./web
+        run: pnpm install --frozen-lockfile
 
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: yarn run lint
+        working-directory: ./web
+        run: |
+          pnpm run lint
 
   docker-compose-template:
     name: Docker Compose Template
@@ -96,12 +111,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v45
+        uses: tj-actions/changed-files@v46
         with:
           files: |
             docker/generate_docker_compose
@@ -132,7 +146,7 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v45
+        uses: tj-actions/changed-files@v46
         with:
           files: |
             **.sh
@@ -140,13 +154,16 @@ jobs:
             **.yml
             **Dockerfile
             dev/**
+            .editorconfig
 
       - name: Super-linter
-        uses: super-linter/super-linter/slim@v7
+        uses: super-linter/super-linter/slim@v8
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
           BASH_SEVERITY: warning
-          DEFAULT_BRANCH: main
+          DEFAULT_BRANCH: origin/main
+          EDITORCONFIG_FILE_NAME: editorconfig-checker.json
+          FILTER_REGEX_INCLUDE: pnpm-lock.yaml
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
           IGNORE_GITIGNORED_FILES: true
@@ -155,5 +172,6 @@ jobs:
           # FIXME: temporarily disabled until api-docker.yaml's run script is fixed for shellcheck
           # VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_DOCKERFILE_HADOLINT: true
+          VALIDATE_EDITORCONFIG: true
           VALIDATE_XML: true
           VALIDATE_YAML: true

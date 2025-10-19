@@ -3,9 +3,11 @@ const translation = {
   upgradeTip: {
     prefix: 'Aggiorna il tuo piano per',
     suffix: 'personalizzare il tuo marchio.',
+    title: 'Aggiorna il tuo piano',
+    des: 'Aggiorna il tuo piano per personalizzare il tuo marchio',
   },
   webapp: {
-    title: 'Personalizza il marchio WebApp',
+    title: 'Personalizza il marchio web app',
     removeBrand: 'Rimuovi Powered by Dify',
     changeLogo: 'Cambia immagine del marchio Powered by',
     changeLogoTip: 'Formato SVG o PNG con una dimensione minima di 40x40px',

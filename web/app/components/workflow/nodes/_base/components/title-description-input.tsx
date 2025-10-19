@@ -3,7 +3,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import Textarea from 'rc-textarea'
+import Textarea from 'react-textarea-autosize'
 import { useTranslation } from 'react-i18next'
 
 type TitleInputProps = {
@@ -33,8 +33,8 @@ export const TitleInput = memo(({
       value={localValue}
       onChange={e => setLocalValue(e.target.value)}
       className={`
-        grow mr-2 px-1 h-7 text-text-primary system-xl-semibold rounded-md border border-transparent appearance-none outline-none
-        focus:shadow-xs min-w-0
+        system-xl-semibold mr-2 h-7 min-w-0 grow appearance-none rounded-md border border-transparent bg-transparent px-1 text-text-primary
+        outline-none focus:shadow-xs
       `}
       placeholder={t('workflow.common.addTitle') || ''}
       onBlur={handleBlur}
@@ -63,24 +63,23 @@ export const DescriptionInput = memo(({
   return (
     <div
       className={`
-        group flex px-2 py-[5px] max-h-[60px] rounded-lg overflow-y-auto
-        leading-0 bg-components-panel-bg
+        leading-0 group flex max-h-[60px] overflow-y-auto rounded-lg bg-components-panel-bg
+        px-2 py-[5px]
         ${focus && '!shadow-xs'}
       `}
     >
       <Textarea
         value={value}
         onChange={e => onChange(e.target.value)}
-        rows={1}
+        minRows={1}
         onFocus={handleFocus}
         onBlur={handleBlur}
         className={`
-          w-full text-xs text-gray-900 leading-[18px] bg-transparent
-          appearance-none outline-none resize-none
-          placeholder:text-gray-400 caret-[#295EFF]
+          w-full resize-none appearance-none bg-transparent text-xs
+          leading-[18px] text-text-primary caret-[#295EFF]
+          outline-none placeholder:text-text-quaternary
         `}
         placeholder={t('workflow.common.addDescription') || ''}
-        autoSize
       />
     </div>
   )

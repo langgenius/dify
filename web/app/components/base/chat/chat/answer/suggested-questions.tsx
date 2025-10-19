@@ -10,6 +10,7 @@ const SuggestedQuestions: FC<SuggestedQuestionsProps> = ({
   item,
 }) => {
   const { onSend } = useChatContext()
+
   const {
     isOpeningStatement,
     suggestedQuestions,
@@ -23,7 +24,7 @@ const SuggestedQuestions: FC<SuggestedQuestionsProps> = ({
       {suggestedQuestions.filter(q => !!q && q.trim()).map((question, index) => (
         <div
           key={index}
-          className='mt-1 mr-1 max-w-full last:mr-0 shrink-0 py-[5px] leading-[18px] items-center px-4 rounded-lg border border-gray-200 shadow-xs bg-white text-xs font-medium text-primary-600 cursor-pointer'
+          className='system-sm-medium mr-1 mt-1 inline-flex max-w-full shrink-0 cursor-pointer flex-wrap rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 py-2 text-components-button-secondary-accent-text shadow-xs last:mr-0 hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
           onClick={() => onSend?.(question)}
         >
           {question}

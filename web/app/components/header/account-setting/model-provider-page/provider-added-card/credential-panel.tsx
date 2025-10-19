@@ -1,6 +1,8 @@
-import type { FC } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ModelProvider } from '../declarations'
+import type {
+  ModelProvider,
+} from '../declarations'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
@@ -14,20 +16,19 @@ import PrioritySelector from './priority-selector'
 import PriorityUseTip from './priority-use-tip'
 import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './index'
 import Indicator from '@/app/components/header/indicator'
-import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
-import Button from '@/app/components/base/button'
 import { changeModelProviderPriority } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import cn from '@/utils/classnames'
+import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
+import { ConfigProvider } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 
 type CredentialPanelProps = {
   provider: ModelProvider
-  onSetup: () => void
 }
-const CredentialPanel: FC<CredentialPanelProps> = ({
+const CredentialPanel = ({
   provider,
-  onSetup,
-}) => {
+}: CredentialPanelProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -38,6 +39,13 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
   const priorityUseType = provider.preferred_provider_type
   const isCustomConfigured = customConfig.status === CustomConfigurationStatusEnum.active
   const configurateMethods = provider.configurate_methods
+  const {
+    hasCredential,
+    authorized,
+    authRemoved,
+    current_credential_name,
+    notAllowedToUse,
+  } = useCredentialStatus(provider)
 
   const handleChangePriority = async (key: PreferredProviderTypeEnum) => {
     const res = await changeModelProviderPriority({
@@ -61,25 +69,49 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
       } as any)
     }
   }
+  const credentialLabel = useMemo(() => {
+    if (!hasCredential)
+      return t('common.modelProvider.auth.unAuthorized')
+    if (authorized)
+      return current_credential_name
+    if (authRemoved)
+      return t('common.modelProvider.auth.authRemoved')
+
+    return ''
+  }, [authorized, authRemoved, current_credential_name, hasCredential])
+
+  const color = useMemo(() => {
+    if (authRemoved || !hasCredential)
+      return 'red'
+    if (notAllowedToUse)
+      return 'gray'
+    return 'green'
+  }, [authRemoved, notAllowedToUse, hasCredential])
 
   return (
     <>
       {
         provider.provider_credential_schema && (
-          <div className='shrink-0 relative ml-1 p-1 w-[112px] rounded-lg bg-white/[0.3] border-[0.5px] border-black/5'>
-            <div className='flex items-center justify-between mb-1 pt-1 pl-2 pr-[7px] h-5 text-xs font-medium text-gray-500'>
-              API-KEY
-              <Indicator color={isCustomConfigured ? 'green' : 'gray'} />
+          <div className={cn(
+            'relative ml-1 w-[120px] shrink-0 rounded-lg border-[0.5px] border-components-panel-border bg-white/[0.18] p-1',
+            authRemoved && 'border-state-destructive-border bg-state-destructive-hover',
+          )}>
+            <div className='system-xs-medium mb-1 flex h-5 items-center justify-between pl-2 pr-[7px] pt-1 text-text-tertiary'>
+              <div
+                className={cn(
+                  'grow truncate',
+                  authRemoved && 'text-text-destructive',
+                )}
+                title={credentialLabel}
+              >
+                {credentialLabel}
+              </div>
+              <Indicator className='shrink-0' color={color} />
             </div>
             <div className='flex items-center gap-0.5'>
-              <Button
-                className='grow'
-                size='small'
-                onClick={onSetup}
-              >
-                <Settings01 className='mr-1 w-3 h-3' />
-                {t('common.operation.setup')}
-              </Button>
+              <ConfigProvider
+                provider={provider}
+              />
               {
                 systemConfig.enabled && isCustomConfigured && (
                   <PrioritySelector

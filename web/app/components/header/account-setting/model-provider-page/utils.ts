@@ -1,6 +1,5 @@
 import { ValidatedStatus } from '../key-validator/declarations'
 import type {
-  CredentialFormSchemaRadio,
   CredentialFormSchemaTextInput,
   FormValue,
   ModelLoadBalancingConfig,
@@ -18,9 +17,7 @@ import {
   validateModelProvider,
 } from '@/service/common'
 
-export const MODEL_PROVIDER_QUOTA_GET_PAID = ['anthropic', 'openai', 'azure_openai']
-
-export const DEFAULT_BACKGROUND_COLOR = '#F3F4F6'
+export const MODEL_PROVIDER_QUOTA_GET_PAID = ['langgenius/anthropic/anthropic', 'langgenius/openai/openai', 'langgenius/azure_openai/azure_openai']
 
 export const isNullOrUndefined = (value: any) => {
   return value === undefined || value === null
@@ -84,12 +81,14 @@ export const saveCredentials = async (predefined: boolean, provider: string, v: 
   let body, url
 
   if (predefined) {
+    const { __authorization_name__, ...rest } = v
     body = {
       config_from: ConfigurationMethodEnum.predefinedModel,
-      credentials: v,
+      credentials: rest,
       load_balancing: loadBalancing,
+      name: __authorization_name__,
     }
-    url = `/workspaces/current/model-providers/${provider}`
+    url = `/workspaces/current/model-providers/${provider}/credentials`
   }
   else {
     const { __model_name, __model_type, ...credentials } = v
@@ -119,12 +118,17 @@ export const savePredefinedLoadBalancingConfig = async (provider: string, v: For
   return setModelProvider({ url, body })
 }
 
-export const removeCredentials = async (predefined: boolean, provider: string, v: FormValue) => {
+export const removeCredentials = async (predefined: boolean, provider: string, v: FormValue, credentialId?: string) => {
   let url = ''
   let body
 
   if (predefined) {
-    url = `/workspaces/current/model-providers/${provider}`
+    url = `/workspaces/current/model-providers/${provider}/credentials`
+    if (credentialId) {
+      body = {
+        credential_id: credentialId,
+      }
+    }
   }
   else {
     if (v) {
@@ -157,7 +161,7 @@ export const modelTypeFormat = (modelType: ModelTypeEnum) => {
 
 export const genModelTypeFormSchema = (modelTypes: ModelTypeEnum[]) => {
   return {
-    type: FormTypeEnum.radio,
+    type: FormTypeEnum.select,
     label: {
       zh_Hans: '模型类型',
       en_US: 'Model Type',
@@ -176,7 +180,7 @@ export const genModelTypeFormSchema = (modelTypes: ModelTypeEnum[]) => {
         show_on: [],
       }
     }),
-  } as CredentialFormSchemaRadio
+  } as any
 }
 
 export const genModelNameFormSchema = (model?: Pick<CredentialFormSchemaTextInput, 'label' | 'placeholder'>) => {
@@ -193,5 +197,5 @@ export const genModelNameFormSchema = (model?: Pick<CredentialFormSchemaTextInpu
       zh_Hans: '请输入模型名称',
       en_US: 'Please enter model name',
     },
-  } as CredentialFormSchemaTextInput
+  } as any
 }

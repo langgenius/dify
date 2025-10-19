@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import produce from 'immer'
-import cn from '@/utils/classnames'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
 import NoData from '@/app/components/share/text-generation/no-data'
 import Toast from '@/app/components/base/toast'
@@ -13,7 +12,6 @@ import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import Loading from '@/app/components/base/loading'
 import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
-import type { ModerationService } from '@/models/common'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
@@ -22,7 +20,10 @@ import type { SiteInfo } from '@/models/share'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import {
   getFilesInLogs,
+  getProcessedFiles,
 } from '@/app/components/base/file-uploader/utils'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { formatBooleanInputs } from '@/utils/model-config'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -43,11 +44,10 @@ export type IResultProps = {
   handleSaveMessage: (messageId: string) => void
   taskId?: number
   onCompleted: (completionRes: string, taskId?: number, success?: boolean) => void
-  enableModeration?: boolean
-  moderationService?: (text: string) => ReturnType<ModerationService>
   visionConfig: VisionSettings
   completionFiles: VisionFile[]
   siteInfo: SiteInfo | null
+  onRunStart: () => void
 }
 
 const Result: FC<IResultProps> = ({
@@ -72,6 +72,7 @@ const Result: FC<IResultProps> = ({
   visionConfig,
   completionFiles,
   siteInfo,
+  onRunStart,
 }) => {
   const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
   useEffect(() => {
@@ -79,15 +80,15 @@ const Result: FC<IResultProps> = ({
       setRespondingFalse()
   }, [controlStopResponding])
 
-  const [completionRes, doSetCompletionRes] = useState<any>('')
-  const completionResRef = useRef<any>()
-  const setCompletionRes = (res: any) => {
+  const [completionRes, doSetCompletionRes] = useState<string>('')
+  const completionResRef = useRef<string>('')
+  const setCompletionRes = (res: string) => {
     completionResRef.current = res
     doSetCompletionRes(res)
   }
   const getCompletionRes = () => completionResRef.current
   const [workflowProcessData, doSetWorkflowProcessData] = useState<WorkflowProcess>()
-  const workflowProcessDataRef = useRef<WorkflowProcess>()
+  const workflowProcessDataRef = useRef<WorkflowProcess | undefined>(undefined)
   const setWorkflowProcessData = (data: WorkflowProcess) => {
     workflowProcessDataRef.current = data
     doSetWorkflowProcessData(data)
@@ -103,7 +104,7 @@ const Result: FC<IResultProps> = ({
   })
 
   const handleFeedback = async (feedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, installedAppInfo?.id)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, installedAppInfo?.id)
     setFeedback(feedback)
   }
 
@@ -126,7 +127,9 @@ const Result: FC<IResultProps> = ({
     }
 
     let hasEmptyInput = ''
-    const requiredVars = prompt_variables?.filter(({ key, name, required }) => {
+    const requiredVars = prompt_variables?.filter(({ key, name, required, type }) => {
+      if(type === 'boolean' || type === 'checkbox')
+        return false // boolean/checkbox input is not required
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
     }) || [] // compatible with old version
@@ -159,8 +162,22 @@ const Result: FC<IResultProps> = ({
     if (!checkCanSend())
       return
 
+    // Process inputs: convert file entities to API format
+    const processedInputs = { ...formatBooleanInputs(promptConfig?.prompt_variables, inputs) }
+    promptConfig?.prompt_variables.forEach((variable) => {
+      const value = processedInputs[variable.key]
+      if (variable.type === 'file' && value && typeof value === 'object' && !Array.isArray(value)) {
+        // Convert single file entity to API format
+        processedInputs[variable.key] = getProcessedFiles([value as FileEntity])[0]
+      }
+      else if (variable.type === 'file-list' && Array.isArray(value) && value.length > 0) {
+        // Convert file entity array to API format
+        processedInputs[variable.key] = getProcessedFiles(value as FileEntity[])
+      }
+    })
+
     const data: Record<string, any> = {
-      inputs,
+      inputs: processedInputs,
     }
     if (visionConfig.enabled && completionFiles && completionFiles?.length > 0) {
       data.files = completionFiles.map((item) => {
@@ -183,8 +200,10 @@ const Result: FC<IResultProps> = ({
     let res: string[] = []
     let tempMessageId = ''
 
-    if (!isPC)
+    if (!isPC) {
       onShowRes()
+      onRunStart()
+    }
 
     setRespondingTrue()
     let isEnd = false
@@ -218,7 +237,7 @@ const Result: FC<IResultProps> = ({
                 ...data,
                 status: NodeRunningStatus.Running,
                 expand: true,
-              } as any)
+              })
             }))
           },
           onIterationNext: () => {
@@ -237,11 +256,43 @@ const Result: FC<IResultProps> = ({
               draft.tracing[iterationsIndex] = {
                 ...data,
                 expand: !!data.error,
-              } as any
+              }
+            }))
+          },
+          onLoopStart: ({ data }) => {
+            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+              draft.expand = true
+              draft.tracing!.push({
+                ...data,
+                status: NodeRunningStatus.Running,
+                expand: true,
+              })
+            }))
+          },
+          onLoopNext: () => {
+            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+              draft.expand = true
+              const loops = draft.tracing.find(item => item.node_id === data.node_id
+                && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+              loops?.details!.push([])
+            }))
+          },
+          onLoopFinish: ({ data }) => {
+            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+              draft.expand = true
+              const loopsIndex = draft.tracing.findIndex(item => item.node_id === data.node_id
+                && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+              draft.tracing[loopsIndex] = {
+                ...data,
+                expand: !!data.error,
+              }
             }))
           },
           onNodeStarted: ({ data }) => {
             if (data.iteration_id)
+              return
+
+            if (data.loop_id)
               return
 
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
@@ -250,11 +301,14 @@ const Result: FC<IResultProps> = ({
                 ...data,
                 status: NodeRunningStatus.Running,
                 expand: true,
-              } as any)
+              })
             }))
           },
           onNodeFinished: ({ data }) => {
             if (data.iteration_id)
+              return
+
+            if (data.loop_id)
               return
 
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
@@ -267,7 +321,7 @@ const Result: FC<IResultProps> = ({
                     : {}),
                   ...data,
                   expand: !!data.error,
-                } as any
+                }
               }
             }))
           },
@@ -375,7 +429,6 @@ const Result: FC<IResultProps> = ({
     <TextGenerationRes
       isWorkflow={isWorkflow}
       workflowProcessData={workflowProcessData}
-      className='mt-3'
       isError={isError}
       onRetry={handleSend}
       content={completionRes}
@@ -398,11 +451,11 @@ const Result: FC<IResultProps> = ({
   )
 
   return (
-    <div className={cn(isNoData && !isCallBatchAPI && 'h-full')}>
+    <>
       {!isCallBatchAPI && !isWorkflow && (
         (isResponding && !completionRes)
           ? (
-            <div className='flex h-full w-full justify-center items-center'>
+            <div className='flex h-full w-full items-center justify-center'>
               <Loading type='area' />
             </div>)
           : (
@@ -414,25 +467,19 @@ const Result: FC<IResultProps> = ({
             </>
           )
       )}
-      {
-        !isCallBatchAPI && isWorkflow && (
-          (isResponding && !workflowProcessData)
-            ? (
-              <div className='flex h-full w-full justify-center items-center'>
-                <Loading type='area' />
-              </div>
-            )
-            : !workflowProcessData
-              ? <NoData />
-              : renderTextGenerationRes()
-        )
-      }
-      {isCallBatchAPI && (
-        <div className='mt-2'>
-          {renderTextGenerationRes()}
-        </div>
+      {!isCallBatchAPI && isWorkflow && (
+        (isResponding && !workflowProcessData)
+          ? (
+            <div className='flex h-full w-full items-center justify-center'>
+              <Loading type='area' />
+            </div>
+          )
+          : !workflowProcessData
+            ? <NoData />
+            : renderTextGenerationRes()
       )}
-    </div>
+      {isCallBatchAPI && renderTextGenerationRes()}
+    </>
   )
 }
 export default React.memo(Result)

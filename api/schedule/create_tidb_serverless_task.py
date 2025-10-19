@@ -19,7 +19,9 @@ def create_tidb_serverless_task():
     while True:
         try:
             # check the number of idle tidb serverless
-            idle_tidb_serverless_number = TidbAuthBinding.query.filter(TidbAuthBinding.active == False).count()
+            idle_tidb_serverless_number = (
+                db.session.query(TidbAuthBinding).where(TidbAuthBinding.active == False).count()
+            )
             if idle_tidb_serverless_number >= tidb_serverless_number:
                 break
             # create tidb serverless
@@ -31,7 +33,7 @@ def create_tidb_serverless_task():
             break
 
     end_at = time.perf_counter()
-    click.echo(click.style("Create tidb serverless task success latency: {}".format(end_at - start_at), fg="green"))
+    click.echo(click.style(f"Create tidb serverless task success latency: {end_at - start_at}", fg="green"))
 
 
 def create_clusters(batch_size):

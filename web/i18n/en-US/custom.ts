@@ -1,11 +1,13 @@
 const translation = {
   custom: 'Customization',
   upgradeTip: {
+    title: 'Upgrade your plan',
+    des: 'Upgrade your plan to customize your brand',
     prefix: 'Upgrade your plan to',
     suffix: 'customize your brand.',
   },
   webapp: {
-    title: 'Customize WebApp brand',
+    title: 'Customize web app brand',
     removeBrand: 'Remove Powered by Dify',
     changeLogo: 'Change Powered by Brand Image',
     changeLogoTip: 'SVG or PNG format with a minimum size of 40x40px',

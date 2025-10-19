@@ -8,17 +8,67 @@ import time
 import httpx
 
 from configs import dify_config
+from core.helper.http_client_pooling import get_pooled_http_client
+
+logger = logging.getLogger(__name__)
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
 BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
+_SSL_VERIFIED_POOL_KEY = "ssrf:verified"
+_SSL_UNVERIFIED_POOL_KEY = "ssrf:unverified"
+_SSRF_CLIENT_LIMITS = httpx.Limits(
+    max_connections=dify_config.SSRF_POOL_MAX_CONNECTIONS,
+    max_keepalive_connections=dify_config.SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS,
+    keepalive_expiry=dify_config.SSRF_POOL_KEEPALIVE_EXPIRY,
+)
+
 
 class MaxRetriesExceededError(ValueError):
     """Raised when the maximum number of retries is exceeded."""
 
     pass
+
+
+def _create_proxy_mounts() -> dict[str, httpx.HTTPTransport]:
+    return {
+        "http://": httpx.HTTPTransport(
+            proxy=dify_config.SSRF_PROXY_HTTP_URL,
+        ),
+        "https://": httpx.HTTPTransport(
+            proxy=dify_config.SSRF_PROXY_HTTPS_URL,
+        ),
+    }
+
+
+def _build_ssrf_client(verify: bool) -> httpx.Client:
+    if dify_config.SSRF_PROXY_ALL_URL:
+        return httpx.Client(
+            proxy=dify_config.SSRF_PROXY_ALL_URL,
+            verify=verify,
+            limits=_SSRF_CLIENT_LIMITS,
+        )
+
+    if dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
+        return httpx.Client(
+            mounts=_create_proxy_mounts(),
+            verify=verify,
+            limits=_SSRF_CLIENT_LIMITS,
+        )
+
+    return httpx.Client(verify=verify, limits=_SSRF_CLIENT_LIMITS)
+
+
+def _get_ssrf_client(ssl_verify_enabled: bool) -> httpx.Client:
+    if not isinstance(ssl_verify_enabled, bool):
+        raise ValueError("SSRF client verify flag must be a boolean")
+
+    return get_pooled_http_client(
+        _SSL_VERIFIED_POOL_KEY if ssl_verify_enabled else _SSL_UNVERIFIED_POOL_KEY,
+        lambda: _build_ssrf_client(verify=ssl_verify_enabled),
+    )
 
 
 def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
@@ -35,31 +85,26 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
             write=dify_config.SSRF_DEFAULT_WRITE_TIME_OUT,
         )
 
+    # prioritize per-call option, which can be switched on and off inside the HTTP node on the web UI
+    verify_option = kwargs.pop("ssl_verify", dify_config.HTTP_REQUEST_NODE_SSL_VERIFY)
+    client = _get_ssrf_client(verify_option)
+
     retries = 0
-    stream = kwargs.pop("stream", False)
     while retries <= max_retries:
         try:
-            if dify_config.SSRF_PROXY_ALL_URL:
-                with httpx.Client(proxy=dify_config.SSRF_PROXY_ALL_URL) as client:
-                    response = client.request(method=method, url=url, **kwargs)
-            elif dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
-                proxy_mounts = {
-                    "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL),
-                    "https://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTPS_URL),
-                }
-                with httpx.Client(mounts=proxy_mounts) as client:
-                    response = client.request(method=method, url=url, **kwargs)
-            else:
-                with httpx.Client() as client:
-                    response = client.request(method=method, url=url, **kwargs)
+            response = client.request(method=method, url=url, **kwargs)
 
             if response.status_code not in STATUS_FORCELIST:
                 return response
             else:
-                logging.warning(f"Received status code {response.status_code} for URL {url} which is in the force list")
+                logger.warning(
+                    "Received status code %s for URL %s which is in the force list",
+                    response.status_code,
+                    url,
+                )
 
         except httpx.RequestError as e:
-            logging.warning(f"Request to URL {url} failed on attempt {retries + 1}: {e}")
+            logger.warning("Request to URL %s failed on attempt %s: %s", url, retries + 1, e)
             if max_retries == 0:
                 raise
 
