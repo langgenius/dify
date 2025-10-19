@@ -65,7 +65,8 @@ class LoginApi(Resource):
         # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
         return response
 
-
+# this api helps frontend to check whether user is authenticated
+# TODO: remove in the future. frontend should redirect to login page by catching 401 status
 @web_ns.route("/login/status")
 class LoginStatusApi(Resource):
     @setup_required
