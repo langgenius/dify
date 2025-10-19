@@ -17,6 +17,31 @@ const MCPToolItem = ({
   const { locale } = useContext(I18n)
   const language = getLanguage(locale)
 
+  const renderParameters = () => {
+    const parameters = tool.parameters || []
+
+    if (parameters.length === 0)
+      return null
+
+    return (
+      <div className='mt-2'>
+        <div className='title-xs-semi-bold mb-1 text-text-primary'>Parameters:</div>
+        <ul className='space-y-1'>
+          {parameters.map((parameter) => {
+            const descriptionContent = parameter.human_description[language] || 'No Description'
+            return (
+              <li key={parameter.name} className='pl-2'>
+                <span className='system-xs-regular font-bold text-text-secondary'>{parameter.name}</span>
+                <span className='system-xs-regular mr-1 text-text-tertiary'>({parameter.type}):</span>
+                <span className='system-xs-regular text-text-tertiary'>{descriptionContent}</span>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+    )
+  }
+
   return (
     <Tooltip
       key={tool.name}
@@ -26,6 +51,7 @@ const MCPToolItem = ({
         <div>
           <div className='title-xs-semi-bold mb-1 text-text-primary'>{tool.label[language]}</div>
           <div className='body-xs-regular text-text-secondary'>{tool.description[language]}</div>
+          {renderParameters()}
         </div>
       )}
     >
