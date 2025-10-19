@@ -55,6 +55,7 @@ def init_tool_node_with_passthrough(config: dict, passthrough_value: str | None 
 
     # Create tool node directly
     import uuid
+
     tool_node = ToolNode(
         id=str(uuid.uuid4()),
         config=config,
@@ -95,9 +96,9 @@ class TestToolNodePassthrough:
         with patch("core.tools.tool_engine.ToolEngine.generic_invoke") as mock_invoke:
             # Configure mock to return a generator
             from core.tools.entities.tool_entities import ToolInvokeMessage
+
             mock_message = ToolInvokeMessage(
-                type=ToolInvokeMessage.MessageType.TEXT,
-                message=ToolInvokeMessage.TextMessage(text="Test response")
+                type=ToolInvokeMessage.MessageType.TEXT, message=ToolInvokeMessage.TextMessage(text="Test response")
             )
             mock_invoke.return_value = iter([mock_message])
 
@@ -138,9 +139,9 @@ class TestToolNodePassthrough:
         with patch("core.tools.tool_engine.ToolEngine.generic_invoke") as mock_invoke:
             # Configure mock to return a generator
             from core.tools.entities.tool_entities import ToolInvokeMessage
+
             mock_message = ToolInvokeMessage(
-                type=ToolInvokeMessage.MessageType.TEXT,
-                message=ToolInvokeMessage.TextMessage(text="Test response")
+                type=ToolInvokeMessage.MessageType.TEXT, message=ToolInvokeMessage.TextMessage(text="Test response")
             )
             mock_invoke.return_value = iter([mock_message])
 
