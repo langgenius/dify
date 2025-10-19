@@ -46,11 +46,13 @@ class FilePreviewApi(Resource):
     def get(self, file_id):
         file_id = str(file_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("timestamp", type=str, required=True, location="args")
-        parser.add_argument("nonce", type=str, required=True, location="args")
-        parser.add_argument("sign", type=str, required=True, location="args")
-        parser.add_argument("as_attachment", type=bool, required=False, default=False, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("timestamp", type=str, required=True, location="args")
+            .add_argument("nonce", type=str, required=True, location="args")
+            .add_argument("sign", type=str, required=True, location="args")
+            .add_argument("as_attachment", type=bool, required=False, default=False, location="args")
+        )
 
         args = parser.parse_args()
 
