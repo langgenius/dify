@@ -24,17 +24,19 @@ class LoadBalancingCredentialsValidateApi(Resource):
 
         tenant_id = current_tenant_id
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         )
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
         # validate model load balancing credentials
@@ -77,17 +79,19 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
 
         tenant_id = current_tenant_id
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         )
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
         # validate model load balancing config credentials

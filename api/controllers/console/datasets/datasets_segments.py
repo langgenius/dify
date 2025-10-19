@@ -60,13 +60,15 @@ class DatasetDocumentSegmentListApi(Resource):
         if not document:
             raise NotFound("Document not found.")
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("limit", type=int, default=20, location="args")
-        parser.add_argument("status", type=str, action="append", default=[], location="args")
-        parser.add_argument("hit_count_gte", type=int, default=None, location="args")
-        parser.add_argument("enabled", type=str, default="all", location="args")
-        parser.add_argument("keyword", type=str, default=None, location="args")
-        parser.add_argument("page", type=int, default=1, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("limit", type=int, default=20, location="args")
+            .add_argument("status", type=str, action="append", default=[], location="args")
+            .add_argument("hit_count_gte", type=int, default=None, location="args")
+            .add_argument("enabled", type=str, default="all", location="args")
+            .add_argument("keyword", type=str, default=None, location="args")
+            .add_argument("page", type=int, default=1, location="args")
+        )
 
         args = parser.parse_args()
 
@@ -244,10 +246,12 @@ class DatasetDocumentSegmentAddApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
-        parser = reqparse.RequestParser()
-        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("answer", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("keywords", type=list, required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("content", type=str, required=True, nullable=False, location="json")
+            .add_argument("answer", type=str, required=False, nullable=True, location="json")
+            .add_argument("keywords", type=list, required=False, nullable=True, location="json")
+        )
         args = parser.parse_args()
         SegmentService.segment_create_args_validate(args, document)
         segment = SegmentService.create_segment(args, document, dataset)
@@ -309,12 +313,14 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
-        parser = reqparse.RequestParser()
-        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("answer", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("keywords", type=list, required=False, nullable=True, location="json")
-        parser.add_argument(
-            "regenerate_child_chunks", type=bool, required=False, nullable=True, default=False, location="json"
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("content", type=str, required=True, nullable=False, location="json")
+            .add_argument("answer", type=str, required=False, nullable=True, location="json")
+            .add_argument("keywords", type=list, required=False, nullable=True, location="json")
+            .add_argument(
+                "regenerate_child_chunks", type=bool, required=False, nullable=True, default=False, location="json"
+            )
         )
         args = parser.parse_args()
         SegmentService.segment_create_args_validate(args, document)
@@ -385,8 +391,9 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         if not document:
             raise NotFound("Document not found.")
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("upload_file_id", type=str, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "upload_file_id", type=str, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
         upload_file_id = args["upload_file_id"]
 
@@ -484,8 +491,9 @@ class ChildChunkAddApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
-        parser = reqparse.RequestParser()
-        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "content", type=str, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
         try:
             content = args["content"]
@@ -521,10 +529,12 @@ class ChildChunkAddApi(Resource):
         )
         if not segment:
             raise NotFound("Segment not found.")
-        parser = reqparse.RequestParser()
-        parser.add_argument("limit", type=int, default=20, location="args")
-        parser.add_argument("keyword", type=str, default=None, location="args")
-        parser.add_argument("page", type=int, default=1, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("limit", type=int, default=20, location="args")
+            .add_argument("keyword", type=str, default=None, location="args")
+            .add_argument("page", type=int, default=1, location="args")
+        )
 
         args = parser.parse_args()
 
@@ -578,8 +588,9 @@ class ChildChunkAddApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
-        parser = reqparse.RequestParser()
-        parser.add_argument("chunks", type=list, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "chunks", type=list, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
         try:
             chunks_data = args["chunks"]
@@ -700,8 +711,9 @@ class ChildChunkUpdateApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
-        parser = reqparse.RequestParser()
-        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "content", type=str, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
         try:
             content = args["content"]

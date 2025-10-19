@@ -17,8 +17,7 @@ class ComplianceApi(Resource):
     @only_edition_cloud
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("doc_name", type=str, required=True, location="args")
+        parser = reqparse.RequestParser().add_argument("doc_name", type=str, required=True, location="args")
         args = parser.parse_args()
 
         ip_address = extract_remote_ip(request)
