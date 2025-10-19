@@ -97,9 +97,11 @@ class WorkspaceListApi(Resource):
     @setup_required
     @admin_required
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
-        parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+            .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+        )
         args = parser.parse_args()
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
@@ -154,8 +156,7 @@ class SwitchWorkspaceApi(Resource):
     @account_initialization_required
     def post(self):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("tenant_id", type=str, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("tenant_id", type=str, required=True, location="json")
         args = parser.parse_args()
 
         # check if tenant_id is valid, 403 if not
@@ -179,9 +180,11 @@ class CustomConfigWorkspaceApi(Resource):
     @cloud_edition_billing_resource_check("workspace_custom")
     def post(self):
         _, current_tenant_id = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("remove_webapp_brand", type=bool, location="json")
-        parser.add_argument("replace_webapp_logo", type=str, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("remove_webapp_brand", type=bool, location="json")
+            .add_argument("replace_webapp_logo", type=str, location="json")
+        )
         args = parser.parse_args()
         tenant = db.get_or_404(Tenant, current_tenant_id)
 
@@ -246,8 +249,7 @@ class WorkspaceInfoApi(Resource):
     # Change workspace name
     def post(self):
         _, current_tenant_id = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
 
         if not current_tenant_id:

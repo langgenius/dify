@@ -1,4 +1,6 @@
+from flask_restx.reqparse import ParseResult
 import logging
+from typing import Any
 
 from flask import request
 from flask_restx import Resource, marshal_with, reqparse
@@ -96,9 +98,11 @@ class AppAccessMode(Resource):
         }
     )
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("appId", type=str, required=False, location="args")
-        parser.add_argument("appCode", type=str, required=False, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("appId", type=str, required=False, location="args")
+            .add_argument("appCode", type=str, required=False, location="args")
+        )
         args = parser.parse_args()
 
         features = FeatureService.get_system_features()
