@@ -5,7 +5,6 @@ from collections.abc import Sequence
 
 from core.llm_generator.prompts import SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
 
-
 logger = logging.getLogger(__name__)
 
 
