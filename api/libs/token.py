@@ -31,7 +31,7 @@ def is_secure() -> bool:
 
 def _real_cookie_name(cookie_name: str) -> str:
     if is_secure():
-        return '__Host-' + cookie_name
+        return "__Host-" + cookie_name
     else:
         return cookie_name
 
