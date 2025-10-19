@@ -387,7 +387,7 @@ class BaseAgentRunner(AppRunner):
         labels = agent_thought.tool_labels or {}
 
         # get tools from tool_name values, iterate from tool_name
-        for key, tool  in tool_name.items():
+        for key, tool in tool_name.items():
             if not tool:
                 continue
             if tool not in labels:

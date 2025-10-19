@@ -169,11 +169,13 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             else:
                 usage_dict["usage"] = LLMUsage.empty_usage()
 
-            temp_tool_name = (scratchpad.action.action_name if scratchpad.action and not scratchpad.is_final() else "")
+            temp_tool_name = scratchpad.action.action_name if scratchpad.action and not scratchpad.is_final() else ""
             self.save_agent_thought(
                 agent_thought_id=agent_thought_id,
                 tool_name={temp_tool_name: temp_tool_name},
-                tool_input={temp_tool_name: scratchpad.action.action_input} if temp_tool_name and scratchpad.action else {},
+                tool_input={temp_tool_name: scratchpad.action.action_input}
+                if temp_tool_name and scratchpad.action
+                else {},
                 tool_invoke_meta={},
                 thought=scratchpad.thought or "",
                 observation="",
