@@ -160,7 +160,7 @@ class TestApiToolInvoke:
 
         # Verify  _invoke yields a text message
         text_message = _get_message_by_type(result, ToolInvokeMessage.TextMessage)
-        assert text_message is not None, "_invoke should yields a text message containing the serialized JSON."
+        assert text_message is not None, "_invoke should yield a text message containing the serialized JSON."
         assert isinstance(text_message, ToolInvokeMessage)
         assert text_message.type == ToolInvokeMessage.MessageType.TEXT
         assert text_message.message is not None
