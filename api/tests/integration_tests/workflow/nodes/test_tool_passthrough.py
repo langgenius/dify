@@ -25,11 +25,11 @@ def init_tool_node_with_passthrough(config: dict, passthrough_value: str | None 
     }
 
     init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
-        workflow_id="1",
+        tenant_id="550e8400-e29b-41d4-a716-446655440000",
+        app_id="550e8400-e29b-41d4-a716-446655440001",
+        workflow_id="550e8400-e29b-41d4-a716-446655440002",
         graph_config=graph_config,
-        user_id="1",
+        user_id="550e8400-e29b-41d4-a716-446655440003",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
         call_depth=0,
@@ -51,16 +51,17 @@ def init_tool_node_with_passthrough(config: dict, passthrough_value: str | None 
 
     # Create node factory
     node_factory = DifyNodeFactory(graph_init_params=init_params, graph_runtime_state=graph_runtime_state)
-    graph = Graph(node_factory=node_factory, init_params=init_params)
-    graph.init_graph()
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
-    # Get the tool node
-    tool_node = graph.get_node("1")
-    assert isinstance(tool_node, ToolNode)
-
-    # Set graph runtime state
-    tool_node.graph_runtime_state = graph_runtime_state
-
+    # Create tool node directly
+    import uuid
+    tool_node = ToolNode(
+        id=str(uuid.uuid4()),
+        config=config,
+        graph_init_params=init_params,
+        graph_runtime_state=graph_runtime_state,
+    )
+    tool_node.init_node_data(config.get("data", {}))
     return tool_node
 
 
@@ -73,11 +74,15 @@ class TestToolNodePassthrough:
         tool_config = {
             "data": {
                 "type": "tool",
-                "title": "Test Tool",
+                "title": "Current Time Tool",
+                "desc": "Get current time",
                 "provider_type": "builtin",
-                "provider_id": "test_provider",
-                "tool_name": "test_tool",
-                "tool_parameters": {"param1": {"type": "string", "value": "test_value"}},
+                "provider_id": "time",
+                "provider_name": "time",
+                "tool_name": "current_time",
+                "tool_label": "current_time",
+                "tool_configurations": {},
+                "tool_parameters": {"timezone": {"type": "constant", "value": "UTC"}},
             },
             "id": "1",
         }
@@ -89,9 +94,11 @@ class TestToolNodePassthrough:
         # Mock the tool runtime and invoke method
         with patch("core.tools.tool_engine.ToolEngine.generic_invoke") as mock_invoke:
             # Configure mock to return a generator
-            mock_message = MagicMock()
-            mock_message.type = "text"
-            mock_message.message.text = "Test response"
+            from core.tools.entities.tool_entities import ToolInvokeMessage
+            mock_message = ToolInvokeMessage(
+                type=ToolInvokeMessage.MessageType.TEXT,
+                message=ToolInvokeMessage.TextMessage(text="Test response")
+            )
             mock_invoke.return_value = iter([mock_message])
 
             # Run the tool node
@@ -111,11 +118,15 @@ class TestToolNodePassthrough:
         tool_config = {
             "data": {
                 "type": "tool",
-                "title": "Test Tool",
+                "title": "Current Time Tool",
+                "desc": "Get current time",
                 "provider_type": "builtin",
-                "provider_id": "test_provider",
-                "tool_name": "test_tool",
-                "tool_parameters": {"param1": {"type": "string", "value": "test_value"}},
+                "provider_id": "time",
+                "provider_name": "time",
+                "tool_name": "current_time",
+                "tool_label": "current_time",
+                "tool_configurations": {},
+                "tool_parameters": {"timezone": {"type": "constant", "value": "UTC"}},
             },
             "id": "1",
         }
@@ -126,9 +137,11 @@ class TestToolNodePassthrough:
         # Mock the tool runtime and invoke method
         with patch("core.tools.tool_engine.ToolEngine.generic_invoke") as mock_invoke:
             # Configure mock to return a generator
-            mock_message = MagicMock()
-            mock_message.type = "text"
-            mock_message.message.text = "Test response"
+            from core.tools.entities.tool_entities import ToolInvokeMessage
+            mock_message = ToolInvokeMessage(
+                type=ToolInvokeMessage.MessageType.TEXT,
+                message=ToolInvokeMessage.TextMessage(text="Test response")
+            )
             mock_invoke.return_value = iter([mock_message])
 
             # Run the tool node
