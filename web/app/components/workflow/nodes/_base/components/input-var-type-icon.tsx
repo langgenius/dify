@@ -28,7 +28,6 @@ const getIcon = (type: InputVarType) => {
     [InputVarType.jsonObject]: RiBracesLine,
     [InputVarType.singleFile]: RiFileList2Line,
     [InputVarType.multiFiles]: RiFileCopy2Line,
-    [InputVarType.checkbox]: RiCheckboxLine,
   } as any)[type] || RiTextSnippet
 }
 

@@ -40,3 +40,7 @@ class StreamChunkEvent(NodeEventBase):
 
 class StreamCompletedEvent(NodeEventBase):
     node_run_result: NodeRunResult = Field(..., description="run result")
+
+
+class PauseRequestedEvent(NodeEventBase):
+    reason: str | None = Field(default=None, description="Optional pause reason")
