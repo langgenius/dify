@@ -57,10 +57,12 @@ class MemberInviteEmailApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("members")
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("emails", type=list, required=True, location="json")
-        parser.add_argument("role", type=str, required=True, default="admin", location="json")
-        parser.add_argument("language", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("emails", type=list, required=True, location="json")
+            .add_argument("role", type=str, required=True, default="admin", location="json")
+            .add_argument("language", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         invitee_emails = args["emails"]
@@ -149,8 +151,7 @@ class MemberUpdateRoleApi(Resource):
     @login_required
     @account_initialization_required
     def put(self, member_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("role", type=str, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("role", type=str, required=True, location="json")
         args = parser.parse_args()
         new_role = args["role"]
 
@@ -199,8 +200,7 @@ class SendOwnerTransferEmailApi(Resource):
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("language", type=str, required=False, location="json")
+        parser = reqparse.RequestParser().add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
@@ -236,9 +236,11 @@ class OwnerTransferCheckApi(Resource):
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("code", type=str, required=True, location="json")
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("code", type=str, required=True, location="json")
+            .add_argument("token", type=str, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
         # check if the current user is the owner of the workspace
         current_user, _ = current_account_with_tenant()
@@ -281,8 +283,9 @@ class OwnerTransfer(Resource):
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self, member_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "token", type=str, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
 
         # check if the current user is the owner of the workspace

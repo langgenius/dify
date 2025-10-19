@@ -15,19 +15,19 @@ from models.model import App
 from services.annotation_service import AppAnnotationService
 
 # Define parsers for annotation API
-annotation_create_parser = reqparse.RequestParser()
-annotation_create_parser.add_argument("question", required=True, type=str, location="json", help="Annotation question")
-annotation_create_parser.add_argument("answer", required=True, type=str, location="json", help="Annotation answer")
+annotation_create_parser = (
+    reqparse.RequestParser()
+    .add_argument("question", required=True, type=str, location="json", help="Annotation question")
+    .add_argument("answer", required=True, type=str, location="json", help="Annotation answer")
+)
 
-annotation_reply_action_parser = reqparse.RequestParser()
-annotation_reply_action_parser.add_argument(
-    "score_threshold", required=True, type=float, location="json", help="Score threshold for annotation matching"
-)
-annotation_reply_action_parser.add_argument(
-    "embedding_provider_name", required=True, type=str, location="json", help="Embedding provider name"
-)
-annotation_reply_action_parser.add_argument(
-    "embedding_model_name", required=True, type=str, location="json", help="Embedding model name"
+annotation_reply_action_parser = (
+    reqparse.RequestParser()
+    .add_argument(
+        "score_threshold", required=True, type=float, location="json", help="Score threshold for annotation matching"
+    )
+    .add_argument("embedding_provider_name", required=True, type=str, location="json", help="Embedding provider name")
+    .add_argument("embedding_model_name", required=True, type=str, location="json", help="Embedding model name")
 )
 
 

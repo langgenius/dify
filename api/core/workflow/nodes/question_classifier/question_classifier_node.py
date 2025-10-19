@@ -1,4 +1,5 @@
 import json
+import re
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -40,7 +41,7 @@ from .template_prompts import (
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.entities import GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 
 class QuestionClassifierNode(Node):
@@ -194,6 +195,8 @@ class QuestionClassifierNode(Node):
 
             category_name = node_data.classes[0].name
             category_id = node_data.classes[0].id
+            if "<think>" in result_text:
+                result_text = re.sub(r"<think[^>]*>[\s\S]*?</think>", "", result_text, flags=re.IGNORECASE)
             result_text_json = parse_and_check_json_markdown(result_text, [])
             # result_text_json = json.loads(result_text.strip('```JSON\n'))
             if "category_name" in result_text_json and "category_id" in result_text_json:
