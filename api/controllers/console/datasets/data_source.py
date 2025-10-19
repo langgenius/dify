@@ -248,12 +248,12 @@ class DataSourceNotionApi(Resource):
     def post(self):
         _, current_tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("notion_info_list", type=list, required=True, nullable=True, location="json")
-        parser.add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
-        parser.add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
-        parser.add_argument(
-            "doc_language", type=str, default="English", required=False, nullable=False, location="json"
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("notion_info_list", type=list, required=True, nullable=True, location="json")
+            .add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
+            .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
+            .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
         )
         args = parser.parse_args()
         # validate args

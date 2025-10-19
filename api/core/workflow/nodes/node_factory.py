@@ -10,7 +10,8 @@ from libs.typing import is_str, is_str_dict
 from .node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 
 if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams, GraphRuntimeState
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState
 
 
 @final

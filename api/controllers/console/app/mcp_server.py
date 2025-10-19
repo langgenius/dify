@@ -55,9 +55,11 @@ class AppMCPServerController(Resource):
     @edit_permission_required
     def post(self, app_model):
         _, current_tenant_id = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("description", type=str, required=False, location="json")
-        parser.add_argument("parameters", type=dict, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("description", type=str, required=False, location="json")
+            .add_argument("parameters", type=dict, required=True, location="json")
+        )
         args = parser.parse_args()
 
         description = args.get("description")
@@ -103,11 +105,13 @@ class AppMCPServerController(Resource):
     @marshal_with(app_server_fields)
     @edit_permission_required
     def put(self, app_model):
-        parser = reqparse.RequestParser()
-        parser.add_argument("id", type=str, required=True, location="json")
-        parser.add_argument("description", type=str, required=False, location="json")
-        parser.add_argument("parameters", type=dict, required=True, location="json")
-        parser.add_argument("status", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("id", type=str, required=True, location="json")
+            .add_argument("description", type=str, required=False, location="json")
+            .add_argument("parameters", type=dict, required=True, location="json")
+            .add_argument("status", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
         server = db.session.query(AppMCPServer).where(AppMCPServer.id == args["id"]).first()
         if not server:

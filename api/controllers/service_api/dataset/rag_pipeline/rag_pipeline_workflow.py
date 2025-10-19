@@ -91,11 +91,13 @@ class DatasourceNodeRunApi(DatasetApiResource):
     def post(self, tenant_id: str, dataset_id: str, node_id: str):
         """Resource for getting datasource plugins."""
         # Get query parameter to determine published or draft
-        parser: RequestParser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("datasource_type", type=str, required=True, location="json")
-        parser.add_argument("credential_id", type=str, required=False, location="json")
-        parser.add_argument("is_published", type=bool, required=True, location="json")
+        parser: RequestParser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+            .add_argument("datasource_type", type=str, required=True, location="json")
+            .add_argument("credential_id", type=str, required=False, location="json")
+            .add_argument("is_published", type=bool, required=True, location="json")
+        )
         args: ParseResult = parser.parse_args()
 
         datasource_node_run_api_entity = DatasourceNodeRunApiEntity.model_validate(args)
@@ -147,19 +149,21 @@ class PipelineRunApi(DatasetApiResource):
     )
     def post(self, tenant_id: str, dataset_id: str):
         """Resource for running a rag pipeline."""
-        parser: RequestParser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("datasource_type", type=str, required=True, location="json")
-        parser.add_argument("datasource_info_list", type=list, required=True, location="json")
-        parser.add_argument("start_node_id", type=str, required=True, location="json")
-        parser.add_argument("is_published", type=bool, required=True, default=True, location="json")
-        parser.add_argument(
-            "response_mode",
-            type=str,
-            required=True,
-            choices=["streaming", "blocking"],
-            default="blocking",
-            location="json",
+        parser: RequestParser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+            .add_argument("datasource_type", type=str, required=True, location="json")
+            .add_argument("datasource_info_list", type=list, required=True, location="json")
+            .add_argument("start_node_id", type=str, required=True, location="json")
+            .add_argument("is_published", type=bool, required=True, default=True, location="json")
+            .add_argument(
+                "response_mode",
+                type=str,
+                required=True,
+                choices=["streaming", "blocking"],
+                default="blocking",
+                location="json",
+            )
         )
         args: ParseResult = parser.parse_args()
 

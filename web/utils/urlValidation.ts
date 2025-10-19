@@ -7,18 +7,17 @@
  */
 export function validateRedirectUrl(url: string): void {
   try {
-    const parsedUrl = new URL(url);
-    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-      throw new Error("Authorization URL must be HTTP or HTTPS");
-    }
-  } catch (error) {
+    const parsedUrl = new URL(url)
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:')
+      throw new Error('Authorization URL must be HTTP or HTTPS')
+  }
+  catch (error) {
     if (
-      error instanceof Error &&
-      error.message === "Authorization URL must be HTTP or HTTPS"
-    ) {
-      throw error;
-    }
+      error instanceof Error
+      && error.message === 'Authorization URL must be HTTP or HTTPS'
+    )
+      throw error
     // If URL parsing fails, it's also invalid
-    throw new Error(`Invalid URL: ${url}`);
+    throw new Error(`Invalid URL: ${url}`)
   }
 }

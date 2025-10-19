@@ -63,10 +63,12 @@ class ChatMessageListApi(Resource):
     @marshal_with(message_infinite_scroll_pagination_fields)
     @edit_permission_required
     def get(self, app_model):
-        parser = reqparse.RequestParser()
-        parser.add_argument("conversation_id", required=True, type=uuid_value, location="args")
-        parser.add_argument("first_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("conversation_id", required=True, type=uuid_value, location="args")
+            .add_argument("first_id", type=uuid_value, location="args")
+            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        )
         args = parser.parse_args()
 
         conversation = (
@@ -154,9 +156,11 @@ class MessageFeedbackApi(Resource):
     def post(self, app_model):
         current_user, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("message_id", required=True, type=uuid_value, location="json")
-        parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("message_id", required=True, type=uuid_value, location="json")
+            .add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
+        )
         args = parser.parse_args()
 
         message_id = str(args["message_id"])
@@ -218,11 +222,13 @@ class MessageAnnotationApi(Resource):
     @account_initialization_required
     @edit_permission_required
     def post(self, app_model):
-        parser = reqparse.RequestParser()
-        parser.add_argument("message_id", required=False, type=uuid_value, location="json")
-        parser.add_argument("question", required=True, type=str, location="json")
-        parser.add_argument("answer", required=True, type=str, location="json")
-        parser.add_argument("annotation_reply", required=False, type=dict, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("message_id", required=False, type=uuid_value, location="json")
+            .add_argument("question", required=True, type=str, location="json")
+            .add_argument("answer", required=True, type=str, location="json")
+            .add_argument("annotation_reply", required=False, type=dict, location="json")
+        )
         args = parser.parse_args()
         annotation = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
 
