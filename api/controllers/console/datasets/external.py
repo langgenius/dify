@@ -58,20 +58,22 @@ class ExternalApiTemplateListApi(Resource):
     @account_initialization_required
     def post(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="Name is required. Name must be between 1 to 100 characters.",
-            type=_validate_name,
-        )
-        parser.add_argument(
-            "settings",
-            type=dict,
-            location="json",
-            nullable=False,
-            required=True,
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(
+                "name",
+                nullable=False,
+                required=True,
+                help="Name is required. Name must be between 1 to 100 characters.",
+                type=_validate_name,
+            )
+            .add_argument(
+                "settings",
+                type=dict,
+                location="json",
+                nullable=False,
+                required=True,
+            )
         )
         args = parser.parse_args()
 
@@ -116,20 +118,22 @@ class ExternalApiTemplateApi(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
         external_knowledge_api_id = str(external_knowledge_api_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="type is required. Name must be between 1 to 100 characters.",
-            type=_validate_name,
-        )
-        parser.add_argument(
-            "settings",
-            type=dict,
-            location="json",
-            nullable=False,
-            required=True,
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(
+                "name",
+                nullable=False,
+                required=True,
+                help="type is required. Name must be between 1 to 100 characters.",
+                type=_validate_name,
+            )
+            .add_argument(
+                "settings",
+                type=dict,
+                location="json",
+                nullable=False,
+                required=True,
+            )
         )
         args = parser.parse_args()
         ExternalDatasetService.validate_api_list(args["settings"])
@@ -202,18 +206,20 @@ class ExternalDatasetCreateApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("external_knowledge_api_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("external_knowledge_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="name is required. Name must be between 1 to 100 characters.",
-            type=_validate_name,
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("external_knowledge_api_id", type=str, required=True, nullable=False, location="json")
+            .add_argument("external_knowledge_id", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "name",
+                nullable=False,
+                required=True,
+                help="name is required. Name must be between 1 to 100 characters.",
+                type=_validate_name,
+            )
+            .add_argument("description", type=str, required=False, nullable=True, location="json")
+            .add_argument("external_retrieval_model", type=dict, required=False, location="json")
         )
-        parser.add_argument("description", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")
 
         args = parser.parse_args()
 
@@ -266,10 +272,12 @@ class ExternalKnowledgeHitTestingApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("query", type=str, location="json")
-        parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")
-        parser.add_argument("metadata_filtering_conditions", type=dict, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("query", type=str, location="json")
+            .add_argument("external_retrieval_model", type=dict, required=False, location="json")
+            .add_argument("metadata_filtering_conditions", type=dict, required=False, location="json")
+        )
         args = parser.parse_args()
 
         HitTestingService.hit_testing_args_check(args)
@@ -305,15 +313,17 @@ class BedrockRetrievalApi(Resource):
     )
     @api.response(200, "Bedrock retrieval test completed")
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("retrieval_setting", nullable=False, required=True, type=dict, location="json")
-        parser.add_argument(
-            "query",
-            nullable=False,
-            required=True,
-            type=str,
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("retrieval_setting", nullable=False, required=True, type=dict, location="json")
+            .add_argument(
+                "query",
+                nullable=False,
+                required=True,
+                type=str,
+            )
+            .add_argument("knowledge_id", nullable=False, required=True, type=str)
         )
-        parser.add_argument("knowledge_id", nullable=False, required=True, type=str)
         args = parser.parse_args()
 
         # Call the knowledge retrieval service
