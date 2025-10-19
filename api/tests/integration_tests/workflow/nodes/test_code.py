@@ -8,7 +8,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper import encrypter
 from core.variables import SecretVariable
 from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
-from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.node_events import NodeRunResult
