@@ -2166,7 +2166,6 @@ class DocumentService:
         document_indexing_update_task.delay(org_document.dataset_id, org_document.id, new_document.id)
         return new_document
 
-
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, knowledge_config: KnowledgeConfig, account: Account):
         assert isinstance(current_user, Account)
