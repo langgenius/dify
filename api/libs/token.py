@@ -203,6 +203,6 @@ def generate_csrf_token(user_id: str) -> str:
     exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "exp": int(exp_dt.timestamp()),
-        "user_id": user_id,
+        "sub": user_id,
     }
     return PassportService().issue(payload)
