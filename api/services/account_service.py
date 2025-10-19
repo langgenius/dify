@@ -22,6 +22,7 @@ from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
+from libs.token import generate_csrf_token
 from models.account import (
     Account,
     AccountIntegrate,
@@ -76,6 +77,7 @@ logger = logging.getLogger(__name__)
 class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
+    csrf_token: str
 
 
 REFRESH_TOKEN_PREFIX = "refresh_token:"
@@ -404,10 +406,11 @@ class AccountService:
 
         access_token = AccountService.get_account_jwt_token(account=account)
         refresh_token = _generate_refresh_token()
+        csrf_token = generate_csrf_token(account.id)
 
         AccountService._store_refresh_token(refresh_token, account.id)
 
-        return TokenPair(access_token=access_token, refresh_token=refresh_token)
+        return TokenPair(access_token=access_token, refresh_token=refresh_token, csrf_token=csrf_token)
 
     @staticmethod
     def logout(*, account: Account):
@@ -432,8 +435,9 @@ class AccountService:
 
         AccountService._delete_refresh_token(refresh_token, account.id)
         AccountService._store_refresh_token(new_refresh_token, account.id)
+        csrf_token = generate_csrf_token(account.id)
 
-        return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token)
+        return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token, csrf_token=csrf_token)
 
     @staticmethod
     def load_logged_in_account(*, account_id: str):

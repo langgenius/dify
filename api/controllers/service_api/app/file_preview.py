@@ -19,8 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 # Define parser for file preview API
-file_preview_parser = reqparse.RequestParser()
-file_preview_parser.add_argument(
+file_preview_parser = reqparse.RequestParser().add_argument(
     "as_attachment", type=bool, required=False, default=False, location="args", help="Download as attachment"
 )
 

@@ -115,6 +115,14 @@ docker compose up -d
 
 إذا كنت بحاجة إلى تخصيص الإعدادات، فيرجى الرجوع إلى التعليقات في ملف [.env.example](../../docker/.env.example) وتحديث القيم المقابلة في ملف `.env`. بالإضافة إلى ذلك، قد تحتاج إلى إجراء تعديلات على ملف `docker-compose.yaml` نفسه، مثل تغيير إصدارات الصور أو تعيينات المنافذ أو نقاط تحميل وحدات التخزين، بناءً على بيئة النشر ومتطلباتك الخاصة. بعد إجراء أي تغييرات، يرجى إعادة تشغيل `docker-compose up -d`. يمكنك العثور على قائمة كاملة بمتغيرات البيئة المتاحة [هنا](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
+### مراقبة المقاييس باستخدام Grafana
+
+استيراد لوحة التحكم إلى Grafana، باستخدام قاعدة بيانات PostgreSQL الخاصة بـ Dify كمصدر للبيانات، لمراقبة المقاييس بدقة للتطبيقات والمستأجرين والرسائل وغير ذلك.
+
+- [لوحة تحكم Grafana بواسطة @bowenliang123](https://github.com/bowenliang123/dify-grafana-dashboard)
+
+### النشر باستخدام Kubernetes
+
 يوجد مجتمع خاص بـ [Helm Charts](https://helm.sh/) وملفات YAML التي تسمح بتنفيذ Dify على Kubernetes للنظام من الإيجابيات العلوية.
 
 - [رسم بياني Helm من قبل @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)

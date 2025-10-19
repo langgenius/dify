@@ -292,20 +292,20 @@ class DatasetDocumentListApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "indexing_technique", type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False, location="json"
-        )
-        parser.add_argument("data_source", type=dict, required=False, location="json")
-        parser.add_argument("process_rule", type=dict, required=False, location="json")
-        parser.add_argument("duplicate", type=bool, default=True, nullable=False, location="json")
-        parser.add_argument("original_document_id", type=str, required=False, location="json")
-        parser.add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
-        parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
-        parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
-        parser.add_argument(
-            "doc_language", type=str, default="English", required=False, nullable=False, location="json"
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(
+                "indexing_technique", type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False, location="json"
+            )
+            .add_argument("data_source", type=dict, required=False, location="json")
+            .add_argument("process_rule", type=dict, required=False, location="json")
+            .add_argument("duplicate", type=bool, default=True, nullable=False, location="json")
+            .add_argument("original_document_id", type=str, required=False, location="json")
+            .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
+            .add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
+            .add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
+            .add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
+            .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
         )
         args = parser.parse_args()
         knowledge_config = KnowledgeConfig.model_validate(args)
@@ -379,24 +379,24 @@ class DatasetInitApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "indexing_technique",
-            type=str,
-            choices=Dataset.INDEXING_TECHNIQUE_LIST,
-            required=True,
-            nullable=False,
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(
+                "indexing_technique",
+                type=str,
+                choices=Dataset.INDEXING_TECHNIQUE_LIST,
+                required=True,
+                nullable=False,
+                location="json",
+            )
+            .add_argument("data_source", type=dict, required=True, nullable=True, location="json")
+            .add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
+            .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
+            .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
+            .add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
+            .add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
+            .add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
         )
-        parser.add_argument("data_source", type=dict, required=True, nullable=True, location="json")
-        parser.add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
-        parser.add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
-        parser.add_argument(
-            "doc_language", type=str, default="English", required=False, nullable=False, location="json"
-        )
-        parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
-        parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
         args = parser.parse_args()
 
         knowledge_config = KnowledgeConfig.model_validate(args)
@@ -1043,8 +1043,9 @@ class DocumentRetryApi(DocumentResource):
     def post(self, dataset_id):
         """retry document."""
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("document_ids", type=list, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "document_ids", type=list, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -1093,8 +1094,7 @@ class DocumentRenameApi(DocumentResource):
         if not dataset:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_operator_permission(current_user, dataset)
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
         try:
