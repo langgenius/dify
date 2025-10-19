@@ -137,11 +137,11 @@ class TestApiToolInvoke:
         ],
         ids=operator.itemgetter(0),
     )
-    def test_invoke_with_json_array_response_creates_text_message_with_serialized_json(
+    def test_invoke_with_non_dict_json_response_creates_text_message_with_serialized_json(
         self, mock_get: Mock, test_case
     ) -> None:
-        """Test that when upstream returns a JSON array, the output Text message contains JSON-serialized string."""
-        # Setup mock response with JSON array content
+        """Test that when upstream returns a non-dict JSON, the output Text message contains JSON-serialized string."""
+        # Setup mock response with non-dict JSON content
         _, json_value = test_case
         mock_response = Mock(spec=httpx.Response)
         mock_response.status_code = 200
