@@ -266,6 +266,7 @@ class TestOAuthCallback:
         mock_token_pair = MagicMock()
         mock_token_pair.access_token = "jwt_access_token"
         mock_token_pair.refresh_token = "jwt_refresh_token"
+        mock_token_pair.csrf_token = "csrf_token"
         mock_account_service.login.return_value = mock_token_pair
 
         with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
@@ -300,6 +301,7 @@ class TestOAuthCallback:
         mock_token_pair = MagicMock()
         mock_token_pair.access_token = "jwt_access_token"
         mock_token_pair.refresh_token = "jwt_refresh_token"
+        mock_token_pair.csrf_token = "csrf_token"
         mock_account_service.login.return_value = mock_token_pair
 
         with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
@@ -364,6 +366,7 @@ class TestOAuthCallback:
         mock_token_pair = MagicMock()
         mock_token_pair.access_token = "jwt_access_token"
         mock_token_pair.refresh_token = "jwt_refresh_token"
+        mock_token_pair.csrf_token = "csrf_token"
         mock_account_service.login.return_value = mock_token_pair
 
         # Execute OAuth callback
