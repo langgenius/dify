@@ -9,7 +9,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine
@@ -20,6 +20,7 @@ from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase, Gra
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from factories import file_factory
@@ -227,7 +228,7 @@ class WorkflowEntry:
             "height": node_height,
             "type": "custom",
             "data": {
-                "type": NodeType.START.value,
+                "type": NodeType.START,
                 "title": "Start",
                 "desc": "Start",
             },

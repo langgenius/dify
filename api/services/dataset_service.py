@@ -29,7 +29,7 @@ from extensions.ext_redis import redis_client
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
-from models.account import Account, TenantAccountRole
+from models import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
     ChildChunk,
@@ -1470,7 +1470,7 @@ class DocumentService:
                 dataset.collection_binding_id = dataset_collection_binding.id
                 if not dataset.retrieval_model:
                     default_retrieval_model = {
-                        "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+                        "search_method": RetrievalMethod.SEMANTIC_SEARCH,
                         "reranking_enable": False,
                         "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
                         "top_k": 4,
@@ -1752,7 +1752,7 @@ class DocumentService:
     #             dataset.collection_binding_id = dataset_collection_binding.id
     #             if not dataset.retrieval_model:
     #                 default_retrieval_model = {
-    #                     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    #                     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     #                     "reranking_enable": False,
     #                     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     #                     "top_k": 2,
@@ -2205,7 +2205,7 @@ class DocumentService:
             retrieval_model = knowledge_config.retrieval_model
         else:
             retrieval_model = RetrievalModel(
-                search_method=RetrievalMethod.SEMANTIC_SEARCH.value,
+                search_method=RetrievalMethod.SEMANTIC_SEARCH,
                 reranking_enable=False,
                 reranking_model=RerankingModel(reranking_provider_name="", reranking_model_name=""),
                 top_k=4,

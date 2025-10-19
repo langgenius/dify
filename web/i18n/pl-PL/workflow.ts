@@ -328,6 +328,7 @@ const translation = {
     organizeBlocks: 'Organizuj węzły',
     minimize: 'Wyjdź z trybu pełnoekranowego',
     maximize: 'Maksymalizuj płótno',
+    optional_and_hidden: '(opcjonalne i ukryte)',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'Generowana treść',
+        reasoning_content: 'Treść rozumowania',
         usage: 'Informacje o użyciu modelu',
       },
       singleRun: {

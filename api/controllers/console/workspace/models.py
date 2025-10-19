@@ -1,29 +1,30 @@
 import logging
 
-from flask_login import current_user
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import StrLen, uuid_value
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from services.model_load_balancing_service import ModelLoadBalancingService
 from services.model_provider_service import ModelProviderService
 
 logger = logging.getLogger(__name__)
 
 
+@console_ns.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
+        _, tenant_id = current_account_with_tenant()
+
+        parser = reqparse.RequestParser().add_argument(
             "model_type",
             type=str,
             required=True,
@@ -32,8 +33,6 @@ class DefaultModelApi(Resource):
             location="args",
         )
         args = parser.parse_args()
-
-        tenant_id = current_user.current_tenant_id
 
         model_provider_service = ModelProviderService()
         default_model_entity = model_provider_service.get_default_model_of_model_type(
@@ -46,15 +45,15 @@ class DefaultModelApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
+        current_user, tenant_id = current_account_with_tenant()
+
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model_settings", type=list, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "model_settings", type=list, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
-
-        tenant_id = current_user.current_tenant_id
-
         model_provider_service = ModelProviderService()
         model_settings = args["model_settings"]
         for model_setting in model_settings:
@@ -85,12 +84,13 @@ class DefaultModelApi(Resource):
         return {"result": "success"}
 
 
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models")
 class ModelProviderModelApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, provider):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_provider(tenant_id=tenant_id, provider=provider)
@@ -102,24 +102,26 @@ class ModelProviderModelApi(Resource):
     @account_initialization_required
     def post(self, provider: str):
         # To save the model's load balance configs
+        current_user, tenant_id = current_account_with_tenant()
+
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("load_balancing", type=dict, required=False, nullable=True, location="json")
+            .add_argument("config_from", type=str, required=False, nullable=True, location="json")
+            .add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="json")
         )
-        parser.add_argument("load_balancing", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("config_from", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="json")
         args = parser.parse_args()
 
         if args.get("config_from", "") == "custom-model":
@@ -127,7 +129,7 @@ class ModelProviderModelApi(Resource):
                 raise ValueError("credential_id is required when configuring a custom-model")
             service = ModelProviderService()
             service.switch_active_custom_model_credential(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=tenant_id,
                 provider=provider,
                 model_type=args["model_type"],
                 model=args["model"],
@@ -162,20 +164,22 @@ class ModelProviderModelApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, provider: str):
+        current_user, tenant_id = current_account_with_tenant()
+
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
         )
         args = parser.parse_args()
 
@@ -187,25 +191,28 @@ class ModelProviderModelApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
 class ModelProviderModelCredentialApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, provider: str):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="args")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="args",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="args")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="args",
+            )
+            .add_argument("config_from", type=str, required=False, nullable=True, location="args")
+            .add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="args")
         )
-        parser.add_argument("config_from", type=str, required=False, nullable=True, location="args")
-        parser.add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="args")
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -254,24 +261,27 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
+        current_user, tenant_id = current_account_with_tenant()
+
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         )
-        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
-        tenant_id = current_user.current_tenant_id
         model_provider_service = ModelProviderService()
 
         try:
@@ -298,29 +308,33 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def put(self, provider: str):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+            .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
         )
-        parser.add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
 
         try:
             model_provider_service.update_model_credential(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_tenant_id,
                 provider=provider,
                 model_type=args["model_type"],
                 model=args["model"],
@@ -337,24 +351,28 @@ class ModelProviderModelCredentialApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, provider: str):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
         )
-        parser.add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
         model_provider_service.remove_model_credential(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             provider=provider,
             model_type=args["model_type"],
             model=args["model"],
@@ -364,29 +382,34 @@ class ModelProviderModelCredentialApi(Resource):
         return {"result": "success"}, 204
 
 
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
 class ModelProviderModelCredentialSwitchApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def post(self, provider: str):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("credential_id", type=str, required=True, nullable=False, location="json")
         )
-        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
         service = ModelProviderService()
         service.add_model_credential_to_model_list(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             provider=provider,
             model_type=args["model_type"],
             model=args["model"],
@@ -395,22 +418,27 @@ class ModelProviderModelCredentialSwitchApi(Resource):
         return {"result": "success"}
 
 
+@console_ns.route(
+    "/workspaces/current/model-providers/<path:provider>/models/enable", endpoint="model-provider-model-enable"
+)
 class ModelProviderModelEnableApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def patch(self, provider: str):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
         )
         args = parser.parse_args()
 
@@ -422,22 +450,27 @@ class ModelProviderModelEnableApi(Resource):
         return {"result": "success"}
 
 
+@console_ns.route(
+    "/workspaces/current/model-providers/<path:provider>/models/disable", endpoint="model-provider-model-disable"
+)
 class ModelProviderModelDisableApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def patch(self, provider: str):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
         )
         args = parser.parse_args()
 
@@ -449,24 +482,27 @@ class ModelProviderModelDisableApi(Resource):
         return {"result": "success"}
 
 
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/validate")
 class ModelProviderModelValidateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def post(self, provider: str):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         )
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -494,16 +530,17 @@ class ModelProviderModelValidateApi(Resource):
         return response
 
 
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/models/parameter-rules")
 class ModelProviderModelParameterRuleApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, provider: str):
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="args")
+        parser = reqparse.RequestParser().add_argument(
+            "model", type=str, required=True, nullable=False, location="args"
+        )
         args = parser.parse_args()
-
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         model_provider_service = ModelProviderService()
         parameter_rules = model_provider_service.get_model_parameter_rules(
@@ -513,43 +550,14 @@ class ModelProviderModelParameterRuleApi(Resource):
         return jsonable_encoder({"data": parameter_rules})
 
 
+@console_ns.route("/workspaces/current/models/model-types/<string:model_type>")
 class ModelProviderAvailableModelApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, model_type):
-        tenant_id = current_user.current_tenant_id
-
+        _, tenant_id = current_account_with_tenant()
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_model_type(tenant_id=tenant_id, model_type=model_type)
 
         return jsonable_encoder({"data": models})
-
-
-api.add_resource(ModelProviderModelApi, "/workspaces/current/model-providers/<path:provider>/models")
-api.add_resource(
-    ModelProviderModelEnableApi,
-    "/workspaces/current/model-providers/<path:provider>/models/enable",
-    endpoint="model-provider-model-enable",
-)
-api.add_resource(
-    ModelProviderModelDisableApi,
-    "/workspaces/current/model-providers/<path:provider>/models/disable",
-    endpoint="model-provider-model-disable",
-)
-api.add_resource(
-    ModelProviderModelCredentialApi, "/workspaces/current/model-providers/<path:provider>/models/credentials"
-)
-api.add_resource(
-    ModelProviderModelCredentialSwitchApi,
-    "/workspaces/current/model-providers/<path:provider>/models/credentials/switch",
-)
-api.add_resource(
-    ModelProviderModelValidateApi, "/workspaces/current/model-providers/<path:provider>/models/credentials/validate"
-)
-
-api.add_resource(
-    ModelProviderModelParameterRuleApi, "/workspaces/current/model-providers/<path:provider>/models/parameter-rules"
-)
-api.add_resource(ModelProviderAvailableModelApi, "/workspaces/current/models/model-types/<string:model_type>")
-api.add_resource(DefaultModelApi, "/workspaces/current/default-model")

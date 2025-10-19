@@ -328,6 +328,7 @@ const translation = {
     selectNextStep: 'เลือกขั้นตอนถัดไป',
     minimize: 'ออกจากโหมดเต็มหน้าจอ',
     maximize: 'เพิ่มประสิทธิภาพผ้าใบ',
+    optional_and_hidden: '(ตัวเลือก & ซ่อน)',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'สร้างเนื้อหา',
+        reasoning_content: 'เนื้อหาการให้เหตุผล',
         usage: 'ข้อมูลการใช้งานรุ่น',
       },
       singleRun: {

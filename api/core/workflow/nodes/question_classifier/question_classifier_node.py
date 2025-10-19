@@ -1,4 +1,5 @@
 import json
+import re
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -40,7 +41,7 @@ from .template_prompts import (
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.entities import GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 
 class QuestionClassifierNode(Node):
@@ -68,7 +69,7 @@ class QuestionClassifierNode(Node):
             graph_runtime_state=graph_runtime_state,
         )
         # LLM file outputs, used for MultiModal outputs.
-        self._file_outputs: list[File] = []
+        self._file_outputs = []
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -111,9 +112,9 @@ class QuestionClassifierNode(Node):
         query = variable.value if variable else None
         variables = {"query": query}
         # fetch model config
-        model_instance, model_config = LLMNode._fetch_model_config(
-            node_data_model=node_data.model,
+        model_instance, model_config = llm_utils.fetch_model_config(
             tenant_id=self.tenant_id,
+            node_data_model=node_data.model,
         )
         # fetch memory
         memory = llm_utils.fetch_memory(
@@ -194,6 +195,8 @@ class QuestionClassifierNode(Node):
 
             category_name = node_data.classes[0].name
             category_id = node_data.classes[0].id
+            if "<think>" in result_text:
+                result_text = re.sub(r"<think[^>]*>[\s\S]*?</think>", "", result_text, flags=re.IGNORECASE)
             result_text_json = parse_and_check_json_markdown(result_text, [])
             # result_text_json = json.loads(result_text.strip('```JSON\n'))
             if "category_name" in result_text_json and "category_id" in result_text_json:

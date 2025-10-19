@@ -58,8 +58,8 @@ from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
-    from core.workflow.entities import VariablePool
     from core.workflow.nodes.tool.entities import ToolEntity
+    from core.workflow.runtime import VariablePool
 
 logger = logging.getLogger(__name__)
 
@@ -1008,7 +1008,7 @@ class ToolManager:
                     config = tool_configurations.get(parameter.name, {})
                     if not (config and isinstance(config, dict) and config.get("value") is not None):
                         continue
-                    tool_input = ToolNodeData.ToolInput(**tool_configurations.get(parameter.name, {}))
+                    tool_input = ToolNodeData.ToolInput.model_validate(tool_configurations.get(parameter.name, {}))
                     if tool_input.type == "variable":
                         variable = variable_pool.get(tool_input.value)
                         if variable is None:

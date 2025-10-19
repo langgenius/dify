@@ -328,6 +328,7 @@ const translation = {
     changeBlock: 'Изменить узел',
     minimize: 'Выйти из полноэкранного режима',
     maximize: 'Максимизировать холст',
+    optional_and_hidden: '(необязательно и скрыто)',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'Создать контент',
+        reasoning_content: 'Содержимое рассуждений',
         usage: 'Информация об использовании модели',
       },
       singleRun: {

@@ -12,7 +12,6 @@ from core.variables import IntegerVariable, NoneSegment
 from core.variables.segments import ArrayAnySegment, ArraySegment
 from core.variables.variables import VariableUnion
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
-from core.workflow.entities import VariablePool
 from core.workflow.enums import (
     ErrorStrategy,
     NodeExecutionType,
@@ -38,6 +37,7 @@ from core.workflow.node_events import (
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
+from core.workflow.runtime import VariablePool
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import preserve_flask_contexts
 
@@ -95,7 +95,7 @@ class IterationNode(Node):
             "config": {
                 "is_parallel": False,
                 "parallel_nums": 10,
-                "error_handle_mode": ErrorHandleMode.TERMINATED.value,
+                "error_handle_mode": ErrorHandleMode.TERMINATED,
             },
         }
 
@@ -342,10 +342,13 @@ class IterationNode(Node):
         iterator_list_value: Sequence[object],
         iter_run_map: dict[str, float],
     ) -> Generator[NodeEventBase, None, None]:
+        # Flatten the list of lists if all outputs are lists
+        flattened_outputs = self._flatten_outputs_if_needed(outputs)
+
         yield IterationSucceededEvent(
             start_at=started_at,
             inputs=inputs,
-            outputs={"output": outputs},
+            outputs={"output": flattened_outputs},
             steps=len(iterator_list_value),
             metadata={
                 WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
@@ -357,12 +360,38 @@ class IterationNode(Node):
         yield StreamCompletedEvent(
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs={"output": outputs},
+                outputs={"output": flattened_outputs},
                 metadata={
                     WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
                 },
             )
         )
+
+    def _flatten_outputs_if_needed(self, outputs: list[object]) -> list[object]:
+        """
+        Flatten the outputs list if all elements are lists.
+        This maintains backward compatibility with version 1.8.1 behavior.
+        """
+        if not outputs:
+            return outputs
+
+        # Check if all non-None outputs are lists
+        non_none_outputs = [output for output in outputs if output is not None]
+        if not non_none_outputs:
+            return outputs
+
+        if all(isinstance(output, list) for output in non_none_outputs):
+            # Flatten the list of lists
+            flattened: list[Any] = []
+            for output in outputs:
+                if isinstance(output, list):
+                    flattened.extend(output)
+                elif output is not None:
+                    # This shouldn't happen based on our check, but handle it gracefully
+                    flattened.append(output)
+            return flattened
+
+        return outputs
 
     def _handle_iteration_failure(
         self,
@@ -373,10 +402,13 @@ class IterationNode(Node):
         iter_run_map: dict[str, float],
         error: IterationNodeError,
     ) -> Generator[NodeEventBase, None, None]:
+        # Flatten the list of lists if all outputs are lists (even in failure case)
+        flattened_outputs = self._flatten_outputs_if_needed(outputs)
+
         yield IterationFailedEvent(
             start_at=started_at,
             inputs=inputs,
-            outputs={"output": outputs},
+            outputs={"output": flattened_outputs},
             steps=len(iterator_list_value),
             metadata={
                 WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
@@ -525,11 +557,12 @@ class IterationNode(Node):
 
     def _create_graph_engine(self, index: int, item: object):
         # Import dependencies
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
+        from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
         from core.workflow.graph_engine import GraphEngine
         from core.workflow.graph_engine.command_channels import InMemoryChannel
         from core.workflow.nodes.node_factory import DifyNodeFactory
+        from core.workflow.runtime import GraphRuntimeState
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(

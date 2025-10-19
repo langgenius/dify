@@ -1,7 +1,6 @@
 import logging
 
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
@@ -14,7 +13,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import (
@@ -24,8 +23,8 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from libs.helper import TimestampField
-from libs.login import login_required
-from models.account import Account, Tenant, TenantStatus
+from libs.login import current_account_with_tenant, login_required
+from models.account import Tenant, TenantStatus
 from services.account_service import TenantService
 from services.feature_service import FeatureService
 from services.file_service import FileService
@@ -65,13 +64,13 @@ tenants_fields = {
 workspace_fields = {"id": fields.String, "name": fields.String, "status": fields.String, "created_at": TimestampField}
 
 
+@console_ns.route("/workspaces")
 class TenantListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, current_tenant_id = current_account_with_tenant()
         tenants = TenantService.get_join_tenants(current_user)
         tenant_dicts = []
 
@@ -85,7 +84,7 @@ class TenantListApi(Resource):
                 "status": tenant.status,
                 "created_at": tenant.created_at,
                 "plan": features.billing.subscription.plan if features.billing.enabled else "sandbox",
-                "current": tenant.id == current_user.current_tenant_id if current_user.current_tenant_id else False,
+                "current": tenant.id == current_tenant_id if current_tenant_id else False,
             }
 
             tenant_dicts.append(tenant_dict)
@@ -93,13 +92,16 @@ class TenantListApi(Resource):
         return {"workspaces": marshal(tenant_dicts, tenants_fields)}, 200
 
 
+@console_ns.route("/all-workspaces")
 class WorkspaceListApi(Resource):
     @setup_required
     @admin_required
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
-        parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+            .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+        )
         args = parser.parse_args()
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
@@ -118,6 +120,8 @@ class WorkspaceListApi(Resource):
         }, 200
 
 
+@console_ns.route("/workspaces/current", endpoint="workspaces_current")
+@console_ns.route("/info", endpoint="info")  # Deprecated
 class TenantApi(Resource):
     @setup_required
     @login_required
@@ -127,8 +131,7 @@ class TenantApi(Resource):
         if request.path == "/info":
             logger.warning("Deprecated URL /info was used.")
 
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = current_account_with_tenant()
         tenant = current_user.current_tenant
         if not tenant:
             raise ValueError("No current tenant")
@@ -143,20 +146,17 @@ class TenantApi(Resource):
             else:
                 raise Unauthorized("workspace is archived")
 
-        if not tenant:
-            raise ValueError("No tenant available")
         return WorkspaceService.get_tenant_info(tenant), 200
 
 
+@console_ns.route("/workspaces/switch")
 class SwitchWorkspaceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
-        parser = reqparse.RequestParser()
-        parser.add_argument("tenant_id", type=str, required=True, location="json")
+        current_user, _ = current_account_with_tenant()
+        parser = reqparse.RequestParser().add_argument("tenant_id", type=str, required=True, location="json")
         args = parser.parse_args()
 
         # check if tenant_id is valid, 403 if not
@@ -172,22 +172,21 @@ class SwitchWorkspaceApi(Resource):
         return {"result": "success", "new_tenant": marshal(WorkspaceService.get_tenant_info(new_tenant), tenant_fields)}
 
 
+@console_ns.route("/workspaces/custom-config")
 class CustomConfigWorkspaceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
     def post(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
-        parser = reqparse.RequestParser()
-        parser.add_argument("remove_webapp_brand", type=bool, location="json")
-        parser.add_argument("replace_webapp_logo", type=str, location="json")
+        _, current_tenant_id = current_account_with_tenant()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("remove_webapp_brand", type=bool, location="json")
+            .add_argument("replace_webapp_logo", type=str, location="json")
+        )
         args = parser.parse_args()
-
-        if not current_user.current_tenant_id:
-            raise ValueError("No current tenant")
-        tenant = db.get_or_404(Tenant, current_user.current_tenant_id)
+        tenant = db.get_or_404(Tenant, current_tenant_id)
 
         custom_config_dict = {
             "remove_webapp_brand": args["remove_webapp_brand"],
@@ -202,14 +201,14 @@ class CustomConfigWorkspaceApi(Resource):
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
 
 
+@console_ns.route("/workspaces/custom-config/webapp-logo/upload")
 class WebappLogoWorkspaceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
     def post(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = current_account_with_tenant()
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -242,32 +241,21 @@ class WebappLogoWorkspaceApi(Resource):
         return {"id": upload_file.id}, 201
 
 
+@console_ns.route("/workspaces/info")
 class WorkspaceInfoApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     # Change workspace name
     def post(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, location="json")
+        _, current_tenant_id = current_account_with_tenant()
+        parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        if not current_user.current_tenant_id:
+        if not current_tenant_id:
             raise ValueError("No current tenant")
-        tenant = db.get_or_404(Tenant, current_user.current_tenant_id)
+        tenant = db.get_or_404(Tenant, current_tenant_id)
         tenant.name = args["name"]
         db.session.commit()
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
-
-
-api.add_resource(TenantListApi, "/workspaces")  # GET for getting all tenants
-api.add_resource(WorkspaceListApi, "/all-workspaces")  # GET for getting all tenants
-api.add_resource(TenantApi, "/workspaces/current", endpoint="workspaces_current")  # GET for getting current tenant info
-api.add_resource(TenantApi, "/info", endpoint="info")  # Deprecated
-api.add_resource(SwitchWorkspaceApi, "/workspaces/switch")  # POST for switching tenant
-api.add_resource(CustomConfigWorkspaceApi, "/workspaces/custom-config")
-api.add_resource(WebappLogoWorkspaceApi, "/workspaces/custom-config/webapp-logo/upload")
-api.add_resource(WorkspaceInfoApi, "/workspaces/info")  # POST for changing workspace info

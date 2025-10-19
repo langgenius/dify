@@ -54,7 +54,7 @@ class MCPToolProviderController(ToolProviderController):
         """
         tools = []
         tools_data = json.loads(db_provider.tools)
-        remote_mcp_tools = [RemoteMCPTool(**tool) for tool in tools_data]
+        remote_mcp_tools = [RemoteMCPTool.model_validate(tool) for tool in tools_data]
         user = db_provider.load_user()
         tools = [
             ToolEntity(
@@ -76,7 +76,8 @@ class MCPToolProviderController(ToolProviderController):
             )
             for remote_mcp_tool in remote_mcp_tools
         ]
-
+        if not db_provider.icon:
+            raise ValueError("Database provider icon is required")
         return cls(
             entity=ToolProviderEntityWithPlugin(
                 identity=ToolProviderIdentity(

@@ -36,7 +36,7 @@ from .exc import (
 )
 
 if TYPE_CHECKING:
-    from core.workflow.entities import VariablePool
+    from core.workflow.runtime import VariablePool
 
 
 class ToolNode(Node):
@@ -224,7 +224,7 @@ class ToolNode(Node):
         return result
 
     def _fetch_files(self, variable_pool: "VariablePool") -> list[File]:
-        variable = variable_pool.get(["sys", SystemVariableKey.FILES.value])
+        variable = variable_pool.get(["sys", SystemVariableKey.FILES])
         assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
         return list(variable.value) if variable else []
 

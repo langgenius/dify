@@ -52,7 +52,7 @@ from core.variables import (
     StringSegment,
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities import GraphInitParams, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.enums import (
     ErrorStrategy,
     NodeType,
@@ -71,6 +71,7 @@ from core.workflow.node_events import (
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
+from core.workflow.runtime import VariablePool
 
 from . import llm_utils
 from .entities import (
@@ -93,7 +94,7 @@ from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.entities import GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +129,7 @@ class LLMNode(Node):
             graph_runtime_state=graph_runtime_state,
         )
         # LLM file outputs, used for MultiModal outputs.
-        self._file_outputs: list[File] = []
+        self._file_outputs = []
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -166,6 +167,7 @@ class LLMNode(Node):
         node_inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
         result_text = ""
+        clean_text = ""
         usage = LLMUsage.empty_usage()
         finish_reason = None
         reasoning_content = None
@@ -944,7 +946,7 @@ class LLMNode(Node):
             variable_mapping["#files#"] = typed_node_data.vision.configs.variable_selector
 
         if typed_node_data.memory:
-            variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY.value]
+            variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY]
 
         if typed_node_data.prompt_config:
             enable_jinja = False

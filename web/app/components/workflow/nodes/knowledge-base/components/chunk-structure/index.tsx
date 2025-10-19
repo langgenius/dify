@@ -29,7 +29,7 @@ const ChunkStructure = ({
     <Field
       fieldTitleProps={{
         title: t('workflow.nodes.knowledgeBase.chunkStructure'),
-        tooltip: t('workflow.nodes.knowledgeBase.chunkStructure'),
+        tooltip: t('workflow.nodes.knowledgeBase.chunkStructureTip.message'),
         operation: chunkStructure && (
           <Selector
             options={options}

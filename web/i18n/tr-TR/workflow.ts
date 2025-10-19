@@ -328,6 +328,7 @@ const translation = {
     selectNextStep: 'Sonraki Adımı Seç',
     minimize: 'Tam Ekrandan Çık',
     maximize: 'Kanvası Maksimize Et',
+    optional_and_hidden: '(isteğe bağlı ve gizli)',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'İçerik Üret',
+        reasoning_content: 'Akıl yürütme içeriği',
         usage: 'Model Kullanım Bilgileri',
       },
       singleRun: {
