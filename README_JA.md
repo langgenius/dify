@@ -2,8 +2,8 @@
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
-  <a href="https://docs.dify.ai/getting-started/install-self-hosted">セルフホスティング</a> ·
-  <a href="https://docs.dify.ai">ドキュメント</a> ·
+  <a href="https://docs.dify.ai/jp/getting-started/introduction/jp/self-hosting/quick-start/docker-compose">セルフホスティング</a> ·
+  <a href="https://docs.dify.ai/jp/getting-started/introduction">ドキュメント</a> ·
   <a href="https://dify.ai/pricing">Difyの各種エディションについて</a>
 </p>
 
@@ -61,7 +61,7 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
 強力なAIワークフローをビジュアルキャンバス上で構築し、テストできます。すべての機能、および以下の機能を使用できます。
 
 **2. 総合的なモデルサポート**:
-数百ものプロプライエタリ/オープンソースのLLMと、数十もの推論プロバイダーおよびセルフホスティングソリューションとのシームレスな統合を提供します。GPT、Mistral、Llama3、OpenAI APIと互換性のあるすべてのモデルを統合されています。サポートされているモデルプロバイダーの完全なリストは[こちら](https://docs.dify.ai/getting-started/readme/model-providers)をご覧ください。
+数百ものプロプライエタリ/オープンソースのLLMと、数十もの推論プロバイダーおよびセルフホスティングソリューションとのシームレスな統合を提供します。GPT、Mistral、Llama3、OpenAI APIと互換性のあるすべてのモデルを統合されています。サポートされているモデルプロバイダーの完全なリストは[こちら](https://docs.dify.ai/jp/getting-started/introduction/jp/workspace/model-providers)をご覧ください。
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
@@ -87,7 +87,7 @@ LLM Function CallingやReActに基づくエージェントの定義が可能で�
 
 - **Dify Community Editionのセルフホスティング</br>**
   この[スタートガイド](#%E3%82%AF%E3%82%A4%E3%83%83%E3%82%AF%E3%82%B9%E3%82%BF%E3%83%BC%E3%83%88)を使用して、ローカル環境でDifyを簡単に実行できます。
-  詳しくは[ドキュメント](https://docs.dify.ai)をご覧ください。
+  詳しくは[ドキュメント](https://docs.dify.ai/jp/getting-started/introduction)をご覧ください。
 
 - **企業/組織向けのDify</br>**
   企業中心の機能を提供しています。[メールを送信](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry)して企業のニーズについて相談してください。 </br>
@@ -119,11 +119,11 @@ docker compose up -d
 
 実行後、ブラウザで[http://localhost/install](http://localhost/install)にアクセスし、初期化プロセスを開始できます。
 
-> Difyに貢献したり、追加の開発を行う場合は、[ソースコードからのデプロイガイド](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)を参照してください。
+> Difyに貢献したり、追加の開発を行う場合は、[ソースコードからのデプロイガイド](https://docs.dify.ai/jp/getting-started/introduction/jp/self-hosting/advanced-deployments/local-source-code)を参照してください。
 
 ## 次のステップ
 
-設定をカスタマイズする必要がある場合は、[.env.example](docker/.env.example) ファイルのコメントを参照し、`.env` ファイルの対応する値を更新してください。さらに、デプロイ環境や要件に応じて、`docker-compose.yaml` ファイル自体を調整する必要がある場合があります。たとえば、イメージのバージョン、ポートのマッピング、ボリュームのマウントなどを変更します。変更を加えた後は、`docker-compose up -d` を再実行してください。利用可能な環境変数の全一覧は、[こちら](https://docs.dify.ai/getting-started/install-self-hosted/environments)で確認できます。
+設定をカスタマイズする必要がある場合は、[.env.example](docker/.env.example) ファイルのコメントを参照し、`.env` ファイルの対応する値を更新してください。さらに、デプロイ環境や要件に応じて、`docker-compose.yaml` ファイル自体を調整する必要がある場合があります。たとえば、イメージのバージョン、ポートのマッピング、ボリュームのマウントなどを変更します。変更を加えた後は、`docker-compose up -d` を再実行してください。利用可能な環境変数の全一覧は、[こちら](https://docs.dify.ai/jp/getting-started/introduction/jp/self-hosting/configuration/environments)で確認できます。
 
 高可用性設定を設定する必要がある場合、コミュニティは[Helm Charts](https://helm.sh/)とYAMLファイルにより、DifyをKubernetesにデプロイすることができます。
 

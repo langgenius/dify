@@ -6,8 +6,8 @@
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify 雲端服務</a> ·
-  <a href="https://docs.dify.ai/getting-started/install-self-hosted">自行託管</a> ·
-  <a href="https://docs.dify.ai">說明文件</a> ·
+  <a href="https://docs.dify.ai/getting-started/introduction/self-hosting/quick-start/docker-compose">自行託管</a> ·
+  <a href="https://docs.dify.ai/getting-started/introduction">說明文件</a> ·
   <a href="https://dify.ai/pricing">產品方案概覽</a>
 </p>
 
@@ -77,9 +77,9 @@ docker compose up -d
 
 ### 尋求幫助
 
-如果您在設置 Dify 時遇到問題，請參考我們的 [常見問題](https://docs.dify.ai/getting-started/install-self-hosted/faqs)。如果仍有疑問，請聯絡 [社區和我們](#community--contact)。
+如果您在設置 Dify 時遇到問題，請參考我們的 [常見問題](https://docs.dify.ai/getting-started/introduction/self-hosting/quick-start/faqs)。如果仍有疑問，請聯絡 [社區和我們](#community--contact)。
 
-> 如果您想為 Dify 做出貢獻或進行額外開發，請參考我們的 [從原始碼部署指南](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)
+> 如果您想為 Dify 做出貢獻或進行額外開發，請參考我們的 [從原始碼部署指南](https://docs.dify.ai/getting-started/introduction/self-hosting/advanced-deployments/local-source-code)
 
 ## 核心功能
 
@@ -87,7 +87,7 @@ docker compose up -d
 在視覺化畫布上建立和測試強大的 AI 工作流程，利用以下所有功能及更多。
 
 **2. 全面的模型支援**：
-無縫整合來自數十個推理提供商和自託管解決方案的數百個專有/開源 LLM，涵蓋 GPT、Mistral、Llama3 和任何與 OpenAI API 兼容的模型。您可以在[此處](https://docs.dify.ai/getting-started/readme/model-providers)找到支援的模型提供商完整列表。
+無縫整合來自數十個推理提供商和自託管解決方案的數百個專有/開源 LLM，涵蓋 GPT、Mistral、Llama3 和任何與 OpenAI API 兼容的模型。您可以在[此處](https://docs.dify.ai/getting-started/introduction/workspace/model-providers)找到支援的模型提供商完整列表。
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
@@ -113,7 +113,7 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 
 - **自託管 Dify 社區版</br>**
   使用這份[快速指南](#%E5%BF%AB%E9%80%9F%E9%96%8B%E5%A7%8B)在您的環境中快速運行 Dify。
-  使用我們的[文檔](https://docs.dify.ai)獲取更多參考和深入指導。
+  使用我們的[文檔](https://docs.dify.ai/getting-started/introduction)獲取更多參考和深入指導。
 
 - **企業/組織版 Dify</br>**
   我們提供額外的企業中心功能。[通過這個聊天機器人記錄您的問題](https://udify.app/chat/22L1zSxg6yW1cWQg)或[發送電子郵件給我們](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry)討論企業需求。</br>
@@ -128,7 +128,7 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 
 ## 進階設定
 
-如果您需要自定義配置，請參考我們的 [.env.example](docker/.env.example) 文件中的註釋，並在您的 `.env` 文件中更新相應的值。此外，根據您特定的部署環境和需求，您可能需要調整 `docker-compose.yaml` 文件本身，例如更改映像版本、端口映射或卷掛載。進行任何更改後，請重新運行 `docker-compose up -d`。您可以在[這裡](https://docs.dify.ai/getting-started/install-self-hosted/environments)找到可用環境變數的完整列表。
+如果您需要自定義配置，請參考我們的 [.env.example](docker/.env.example) 文件中的註釋，並在您的 `.env` 文件中更新相應的值。此外，根據您特定的部署環境和需求，您可能需要調整 `docker-compose.yaml` 文件本身，例如更改映像版本、端口映射或卷掛載。進行任何更改後，請重新運行 `docker-compose up -d`。您可以在[這裡](https://docs.dify.ai/getting-started/introduction/self-hosting/configuration/environments)找到可用環境變數的完整列表。
 
 如果您想配置高可用性設置，社區貢獻的 [Helm Charts](https://helm.sh/) 和 Kubernetes 資源清單（YAML）允許在 Kubernetes 上部署 Dify。
 

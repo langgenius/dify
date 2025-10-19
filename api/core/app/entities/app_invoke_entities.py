@@ -19,14 +19,14 @@ class InvokeFrom(StrEnum):
     # SERVICE_API indicates that this invocation is from an API call to Dify app.
     #
     # Description of service api in Dify docs:
-    # https://docs.dify.ai/en/guides/application-publishing/developing-with-apis
+    # https://docs.dify.ai/en/documentation/pages/publish/developing-with-apis
     SERVICE_API = "service-api"
 
     # WEB_APP indicates that this invocation is from
     # the web app of the workflow (or chatflow).
     #
     # Description of web app in Dify docs:
-    # https://docs.dify.ai/en/guides/application-publishing/launch-your-webapp-quickly/README
+    # https://docs.dify.ai/en/documentation/pages/publish/webapp/workflow-webapp
     WEB_APP = "web-app"
 
     # EXPLORE indicates that this invocation is from
