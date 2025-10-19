@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from core.workflow.runtime import GraphRuntimeState
+
+if TYPE_CHECKING:
+    from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 
 
 class GraphRuntimeStateSupport:
@@ -14,7 +19,8 @@ class GraphRuntimeStateSupport:
       * `_graph_runtime_state` attribute used as the local cache for the runtime state.
     """
 
-    _graph_runtime_state: GraphRuntimeState | None
+    _base_task_pipeline: BasedGenerateTaskPipeline
+    _graph_runtime_state: GraphRuntimeState | None = None
 
     def _ensure_graph_runtime_initialized(
         self,
@@ -39,7 +45,7 @@ class GraphRuntimeStateSupport:
             return graph_runtime_state
 
         if self._graph_runtime_state is None:
-            candidate = getattr(self._base_task_pipeline.queue_manager, "graph_runtime_state", None)
+            candidate = self._base_task_pipeline.queue_manager.graph_runtime_state
             if candidate is not None:
                 self._graph_runtime_state = candidate
 
