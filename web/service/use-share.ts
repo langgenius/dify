@@ -1,26 +1,15 @@
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { AccessMode } from '@/models/access-control'
 import { useQuery } from '@tanstack/react-query'
 import { fetchAppInfo, fetchAppMeta, fetchAppParams, getAppAccessModeByAppCode } from './share'
 
 const NAME_SPACE = 'webapp'
 
 export const useGetWebAppAccessModeByCode = (code: string | null) => {
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   return useQuery({
     queryKey: [NAME_SPACE, 'appAccessMode', code],
-    queryFn: () => {
-      if (systemFeatures.webapp_auth.enabled === false) {
-        return {
-          accessMode: AccessMode.PUBLIC,
-        }
-      }
-      if (!code || code.length === 0)
-        return Promise.reject(new Error('App code is required to get access mode'))
-
-      return getAppAccessModeByAppCode(code)
-    },
+    queryFn: () => getAppAccessModeByAppCode(code!),
     enabled: !!code,
+    staleTime: 0, // backend change the access mode may cause the logic error. Because /permission API is no cached.
+    gcTime: 0,
   })
 }
 

@@ -1,5 +1,5 @@
 from collections.abc import Generator, Sequence
-from typing import Union, cast
+from typing import Union
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.model_manager import ModelInstance
@@ -77,7 +77,7 @@ class ReactMultiDatasetRouter:
                 user_id=user_id,
                 tenant_id=tenant_id,
             )
-        except Exception as e:
+        except Exception:
             return None
 
     def _react_invoke(
@@ -120,7 +120,7 @@ class ReactMultiDatasetRouter:
             memory=None,
             model_config=model_config,
         )
-        result_text, usage = self._invoke_llm(
+        result_text, _ = self._invoke_llm(
             completion_param=model_config.parameters,
             model_instance=model_instance,
             prompt_messages=prompt_messages,
@@ -150,15 +150,12 @@ class ReactMultiDatasetRouter:
         :param stop: stop
         :return:
         """
-        invoke_result = cast(
-            Generator[LLMResult, None, None],
-            model_instance.invoke_llm(
-                prompt_messages=prompt_messages,
-                model_parameters=completion_param,
-                stop=stop,
-                stream=True,
-                user=user_id,
-            ),
+        invoke_result: Generator[LLMResult, None, None] = model_instance.invoke_llm(
+            prompt_messages=prompt_messages,
+            model_parameters=completion_param,
+            stop=stop,
+            stream=True,
+            user=user_id,
         )
 
         # handle invoke result

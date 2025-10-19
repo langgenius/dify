@@ -15,7 +15,7 @@ type Props = {
 
 const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
 
-export const CopyIcon = ({ content }: Props) => {
+const CopyIcon = ({ content }: Props) => {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState<boolean>(false)
 

@@ -9,6 +9,7 @@ import { comparisonOperatorNotRequireValue, getOperators } from '../../if-else/u
 import SubVariablePicker from './sub-variable-picker'
 import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '@/app/components/workflow/nodes/constants'
 import { SimpleSelect as Select } from '@/app/components/base/select'
+import BoolValue from '../../../panel/chat-variable-panel/components/bool-value'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import cn from '@/utils/classnames'
@@ -28,8 +29,8 @@ const VAR_INPUT_SUPPORTED_KEYS: Record<string, VarType> = {
 
 type Props = {
   condition: Condition
-  onChange: (condition: Condition) => void
   varType: VarType
+  onChange: (condition: Condition) => void
   hasSubVariable: boolean
   readOnly: boolean
   nodeId: string
@@ -58,6 +59,7 @@ const FilterCondition: FC<Props> = ({
 
   const isSelect = [ComparisonOperator.in, ComparisonOperator.notIn, ComparisonOperator.allOf].includes(condition.comparison_operator)
   const isArrayValue = condition.key === 'transfer_method' || condition.key === 'type'
+  const isBoolean = varType === VarType.boolean
 
   const selectOptions = useMemo(() => {
     if (isSelect) {
@@ -112,6 +114,12 @@ const FilterCondition: FC<Props> = ({
         />
       )
     }
+    else if (isBoolean) {
+      inputElement = (<BoolValue
+        value={condition.value as boolean}
+        onChange={handleChange('value')}
+      />)
+    }
     else if (supportVariableInput) {
       inputElement = (
         <Input
@@ -162,7 +170,7 @@ const FilterCondition: FC<Props> = ({
       <div className='flex space-x-1'>
         <ConditionOperator
           className='h-8 bg-components-input-bg-normal'
-          varType={expectedVarType ?? VarType.string}
+          varType={expectedVarType ?? varType ?? VarType.string}
           value={condition.comparison_operator}
           onSelect={handleChange('comparison_operator')}
           file={hasSubVariable ? { key: condition.key } : undefined}

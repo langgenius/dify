@@ -18,8 +18,8 @@ const ContentDialog = ({
   return (
     <Transition
       show={show}
-      as="div"
-      className="absolute left-0 top-0 z-20 box-border h-full w-full p-2"
+      as='div'
+      className='absolute left-0 top-0 z-30 box-border h-full w-full p-2'
     >
       <TransitionChild>
         <div

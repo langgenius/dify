@@ -37,6 +37,14 @@ const translation = {
     externalKnowledgeAPI: '外部ナレッジベース API',
     indexMethodChangeToEconomyDisabledTip: 'HQ から ECO へのダウングレードはできません。',
     searchModel: 'モデル検索',
+    chunkStructure: {
+      learnMore: 'もっと学ぶ',
+      description: 'チャンク構造について。',
+      title: 'チャンク構造',
+    },
+    nameAndIcon: '名前とアイコン',
+    numberOfKeywords: 'キーワードの数',
+    onSearchResults: '一致するメンバーが見つかりませんでした。もう一度検索してください。',
   },
 }
 

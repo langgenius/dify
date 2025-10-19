@@ -55,9 +55,9 @@ const EndpointModal: FC<Props> = ({
         const value = processedCredential[field.name]
         if (typeof value === 'string')
           processedCredential[field.name] = value === 'true' || value === '1' || value === 'True'
-         else if (typeof value === 'number')
+        else if (typeof value === 'number')
           processedCredential[field.name] = value === 1
-         else if (typeof value === 'boolean')
+        else if (typeof value === 'boolean')
           processedCredential[field.name] = value
       }
     })

@@ -8,12 +8,14 @@ import {
 import ActionButton from '@/app/components/base/action-button'
 import CopyIcon from '@/app/components/base/copy-icon'
 import SVGBtn from '@/app/components/base/svg'
-import Flowchart from '@/app/components/base/mermaid'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
 import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
+import dynamic from 'next/dynamic'
+
+const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -81,7 +83,6 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   const echartsRef = useRef<any>(null)
   const contentRef = useRef<string>('')
   const processedRef = useRef<boolean>(false) // Track if content was successfully processed
-  const instanceIdRef = useRef<string>(`chart-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`) // Unique ID for logging
   const isInitialRenderRef = useRef<boolean>(true) // Track if this is initial render
   const chartInstanceRef = useRef<any>(null) // Direct reference to ECharts instance
   const resizeTimerRef = useRef<NodeJS.Timeout | null>(null) // For debounce handling
@@ -126,7 +127,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
   // Store event handlers in useMemo to avoid recreating them
   const echartsEvents = useMemo(() => ({
-    finished: (params: EChartsEventParams) => {
+    finished: (_params: EChartsEventParams) => {
       // Limit finished event frequency to avoid infinite loops
       finishedEventCountRef.current++
       if (finishedEventCountRef.current > 3) {

@@ -46,6 +46,34 @@ const translation = {
   submitError: '양식 제출에 실패했습니다. 나중에 다시 시도해 주세요.',
   successTitle: '당신은 Dify 교육 인증을 받았습니다.',
   emailLabel: '현재 이메일',
+  notice: {
+    expired: {
+      summary: {
+        line1: '여전히 Dify에 접근하고 사용할 수 있습니다.',
+        line2: '하지만, 더 이상 새로운 교육 할인 쿠폰을 받을 수 없습니다.',
+      },
+      title: '귀하의 교육 상태가 만료되었습니다.',
+    },
+    isAboutToExpire: {
+      summary: '걱정하지 마세요 — 이번 사항은 현재 구독에 영향을 주지 않지만, 다시 상태를 확인하지 않으면 갱신 시 교육 할인 혜택을 받지 못합니다.',
+    },
+    stillInEducation: {
+      title: '아직 학업 중이신가요?',
+      isAboutToExpire: '새로운 학년을 위한 쿠폰을 받으시려면 지금 다시 인증하십시오. 쿠폰은 귀하의 계정에 저장되어 다음 갱신 시 사용할 수 있습니다.',
+      expired: '지금 다시 확인하여 다가오는 학년도에 사용할 새 쿠폰을 받아보세요. 우리는 그것을 귀하의 계정에 추가하며, 다음 업그레이드에 사용할 수 있습니다.',
+    },
+    alreadyGraduated: {
+      title: '벌써 졸업했나요?',
+      expired: '유료 기능에 대한 전체 액세스를 얻기 위해 언제든지 자유롭게 업그레이드하세요.',
+      isAboutToExpire: '현재 구독은 여전히 유효합니다. 구독이 종료되면 샌드박스 요금제로 변경되며, 언제든지 업그레이드하여 유료 기능에 대한 전체 접근을 복원할 수 있습니다.',
+    },
+    action: {
+      dismiss: '해제',
+      upgrade: '업그레이드',
+      reVerify: '재확인',
+    },
+    dateFormat: 'MM/DD/YYYY',
+  },
 }
 
 export default translation

@@ -11,11 +11,13 @@ import { fetchNotionPagePreview } from '@/service/datasets'
 
 type IProps = {
   currentPage?: NotionPage
+  notionCredentialId: string
   hidePreview: () => void
 }
 
 const NotionPagePreview = ({
   currentPage,
+  notionCredentialId,
   hidePreview,
 }: IProps) => {
   const { t } = useTranslation()
@@ -30,6 +32,7 @@ const NotionPagePreview = ({
         workspaceID: currentPage.workspace_id,
         pageID: currentPage.page_id,
         pageType: currentPage.type,
+        credentialID: notionCredentialId,
       })
       setPreviewContent(res.content)
       setLoading(false)

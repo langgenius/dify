@@ -42,6 +42,34 @@ const translation = {
   currentSigned: 'CONEXIUNE ÎN PREZENT CA',
   rejectTitle: 'Verificarea educațională Dify a fost respinsă',
   successContent: 'Am emis un cupon de discount de 100% pentru planul Professional Dify pe contul dumneavoastră. Cuponul este valabil timp de un an, vă rugăm să îl utilizați în perioada de valabilitate.',
+  notice: {
+    expired: {
+      summary: {
+        line2: 'Cu toate acestea, nu mai ești eligibil pentru noi cupoane de reducere la educație.',
+        line1: 'Încă poți accesa și folosi Dify.',
+      },
+      title: 'Starea ta educațională a expirat',
+    },
+    isAboutToExpire: {
+      summary: 'Nu te îngrijora — aceasta nu va afecta abonamentul tău curent, dar nu veți primi discountul educațional atunci când se reinnoiește, cu excepția cazului în care îți verifici din nou statutul.',
+    },
+    stillInEducation: {
+      isAboutToExpire: 'Re-verifică acum pentru a obține un nou cupon pentru anul universitar următor. Va fi salvat în contul tău și gata de utilizat la următoarea reînnoire.',
+      title: 'Încă în educație?',
+      expired: 'Re-verificați acum pentru a obține un nou cupon pentru următorul an academic. Vom adăuga acest cupon în contul dvs. și îl puteți folosi pentru următoarea actualizare.',
+    },
+    alreadyGraduated: {
+      title: 'Deja ai absolvit?',
+      expired: 'Nu ezita să faci upgrade oricând pentru a obține acces complet la funcțiile plătite.',
+      isAboutToExpire: 'Abonamentul tău curent va rămâne activ. Când se va încheia, vei fi mutat pe planul Sandbox, sau poți să faci upgrade în orice moment pentru a restaura accesul complet la funcțiile plătite.',
+    },
+    action: {
+      reVerify: 'Re-verifică',
+      upgrade: 'Upgrade',
+      dismiss: 'Respingere',
+    },
+    dateFormat: 'ZZ/LL/AAAA',
+  },
 }
 
 export default translation

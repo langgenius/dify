@@ -6,7 +6,7 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 const MaintenanceNotice = () => {
   const locale = useLanguage()
 
-  const [showNotice, setShowNotice] = useState(localStorage.getItem('hide-maintenance-notice') !== '1')
+  const [showNotice, setShowNotice] = useState(() => localStorage.getItem('hide-maintenance-notice') !== '1')
   const handleJumpNotice = () => {
     window.open(NOTICE_I18N.href, '_blank')
   }

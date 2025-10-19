@@ -111,7 +111,7 @@ const ConfigCredential: FC<Props> = ({
                       <Button onClick={onRemove}>{t('common.operation.remove')}</Button>
                     )
                   }
-                  < div className='flex space-x-2'>
+                  <div className='flex space-x-2'>
                     <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
                     <Button loading={isLoading || isSaving} disabled={isLoading || isSaving} variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
                   </div>

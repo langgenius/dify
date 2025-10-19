@@ -35,17 +35,34 @@ const AuthorizedInNode = ({
     credentials,
     disabled,
     invalidPluginCredentialInfo,
-  } = usePluginAuth(pluginPayload, isOpen || !!credentialId)
+    notAllowCustomCredential,
+  } = usePluginAuth(pluginPayload, true)
   const renderTrigger = useCallback((open?: boolean) => {
     let label = ''
     let removed = false
+    let unavailable = false
+    let color = 'green'
+    let defaultUnavailable = false
     if (!credentialId) {
       label = t('plugin.auth.workspaceDefault')
+
+      const defaultCredential = credentials.find(c => c.is_default)
+
+      if (defaultCredential?.not_allowed_to_use) {
+        color = 'gray'
+        defaultUnavailable = true
+      }
     }
     else {
       const credential = credentials.find(c => c.id === credentialId)
       label = credential ? credential.name : t('plugin.auth.authRemoved')
       removed = !credential
+      unavailable = !!credential?.not_allowed_to_use && !credential?.from_enterprise
+
+      if (removed)
+        color = 'red'
+      else if (unavailable)
+        color = 'gray'
     }
     return (
       <Button
@@ -54,12 +71,21 @@ const AuthorizedInNode = ({
           open && !removed && 'bg-components-button-ghost-bg-hover',
           removed && 'bg-transparent text-text-destructive',
         )}
+        variant={(defaultUnavailable || unavailable) ? 'ghost' : 'secondary'}
       >
         <Indicator
           className='mr-1.5'
-          color={removed ? 'red' : 'green'}
+          color={color as any}
         />
         {label}
+        {
+          (unavailable || defaultUnavailable) && (
+            <>
+              &nbsp;
+              {t('plugin.auth.unavailable')}
+            </>
+          )
+        }
         <RiArrowDownSLine
           className={cn(
             'h-3.5 w-3.5 text-components-button-ghost-text',
@@ -69,6 +95,7 @@ const AuthorizedInNode = ({
       </Button>
     )
   }, [credentialId, credentials, t])
+  const defaultUnavailable = credentials.find(c => c.is_default)?.not_allowed_to_use
   const extraAuthorizationItems: Credential[] = [
     {
       id: '__workspace_default__',
@@ -76,6 +103,7 @@ const AuthorizedInNode = ({
       provider: '',
       is_default: !credentialId,
       isWorkspaceDefault: true,
+      not_allowed_to_use: defaultUnavailable,
     },
   ]
   const handleAuthorizationItemClick = useCallback((id: string) => {
@@ -106,6 +134,7 @@ const AuthorizedInNode = ({
       showItemSelectedIcon
       selectedCredentialId={credentialId || '__workspace_default__'}
       onUpdate={invalidPluginCredentialInfo}
+      notAllowCustomCredential={notAllowCustomCredential}
     />
   )
 }

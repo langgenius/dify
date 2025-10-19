@@ -93,7 +93,7 @@ export type AgentStrategySelectorProps = {
 }
 
 export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
-    const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   const { value, onChange, canChooseMCPTool } = props
   const [open, setOpen] = useState(false)
@@ -212,7 +212,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                 agent_strategy_name: tool!.tool_name,
                 agent_strategy_provider_name: tool!.provider_name,
                 agent_strategy_label: tool!.tool_label,
-                agent_output_schema: tool!.output_schema,
+                agent_output_schema: tool!.output_schema || {},
                 plugin_unique_identifier: tool!.provider_id,
                 meta: tool!.meta,
               })

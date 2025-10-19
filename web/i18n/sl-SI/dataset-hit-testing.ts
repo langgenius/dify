@@ -3,7 +3,6 @@ const translation = {
   settingTitle: 'Nastavitve pridobivanja',
   desc: 'Preizkusite učinkovitost zadetkov znanja na podlagi podanega poizvedbenega besedila',
   dateTimeFormat: 'DD/MM/YYYY hh:mm A',
-  recents: 'Nedavno',
   table: {
     header: {
       source: 'Vir',

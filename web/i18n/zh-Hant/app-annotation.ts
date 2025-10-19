@@ -91,6 +91,7 @@ const translation = {
   batchAction: {
     selected: '選擇的',
     delete: '刪除',
+    cancel: '銷',
   },
 }
 

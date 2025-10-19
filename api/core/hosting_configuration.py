@@ -1,5 +1,3 @@
-from typing import Optional
-
 from flask import Flask
 from pydantic import BaseModel
 
@@ -30,8 +28,8 @@ class FreeHostingQuota(HostingQuota):
 
 class HostingProvider(BaseModel):
     enabled: bool = False
-    credentials: Optional[dict] = None
-    quota_unit: Optional[QuotaUnit] = None
+    credentials: dict | None = None
+    quota_unit: QuotaUnit | None = None
     quotas: list[HostingQuota] = []
 
 
@@ -42,13 +40,13 @@ class HostedModerationConfig(BaseModel):
 
 class HostingConfiguration:
     provider_map: dict[str, HostingProvider]
-    moderation_config: Optional[HostedModerationConfig] = None
+    moderation_config: HostedModerationConfig | None = None
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.provider_map = {}
         self.moderation_config = None
 
-    def init_app(self, app: Flask) -> None:
+    def init_app(self, app: Flask):
         if dify_config.EDITION != "CLOUD":
             return
 

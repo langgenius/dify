@@ -204,7 +204,7 @@ const ConditionWrap: FC<Props> = ({
                 </div>
               </div>
               {!isSubVariable && (
-                <div className='mx-3 my-2 h-[1px] bg-divider-subtle'></div>
+                <div className='mx-3 my-2 h-px bg-divider-subtle'></div>
               )}
             </div>
           ))

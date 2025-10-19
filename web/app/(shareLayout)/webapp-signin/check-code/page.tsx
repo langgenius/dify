@@ -10,7 +10,7 @@ import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
 import I18NContext from '@/context/i18n'
-import { setAccessToken } from '@/app/components/share/utils'
+import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 import { fetchAccessToken } from '@/service/share'
 
 export default function CheckCode() {
@@ -62,9 +62,9 @@ export default function CheckCode() {
       setIsLoading(true)
       const ret = await webAppEmailLoginWithCode({ email, code, token })
       if (ret.result === 'success') {
-        localStorage.setItem('webapp_access_token', ret.data.access_token)
-        const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: ret.data.access_token })
-        await setAccessToken(appCode, tokenResp.access_token)
+        setWebAppAccessToken(ret.data.access_token)
+        const { access_token } = await fetchAccessToken({ appCode: appCode! })
+        setWebAppPassport(appCode!, access_token)
         router.replace(decodeURIComponent(redirectUrl))
       }
     }
@@ -104,7 +104,7 @@ export default function CheckCode() {
 
     <form action="">
       <label htmlFor="code" className='system-md-semibold mb-1 text-text-secondary'>{t('login.checkCode.verificationCode')}</label>
-      <Input value={code} onChange={e => setVerifyCode(e.target.value)} max-length={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
+      <Input value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') || ''} />
       <Button loading={loading} disabled={loading} className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>
       <Countdown onResend={resendCode} />
     </form>

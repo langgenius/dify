@@ -17,6 +17,7 @@ const translation = {
     entertainment: '娛樂',
     search: '搜索',
     image: '圖像',
+    rag: '碎布',
   },
   searchTags: '搜索標籤',
   allTags: '所有標籤',

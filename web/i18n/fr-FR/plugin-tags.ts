@@ -17,6 +17,7 @@ const translation = {
     medical: 'Médical',
     other: 'Autre',
     utilities: 'Utilitaires',
+    rag: 'CHIFFON',
   },
   searchTags: 'Mots-clés de recherche',
   allTags: 'Tous les mots-clés',

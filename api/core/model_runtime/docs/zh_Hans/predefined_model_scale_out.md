@@ -62,7 +62,7 @@ pricing:  # 价格信息
 
 建议将所有模型配置都准备完毕后再开始模型代码的实现。
 
-同样，也可以参考  `model_providers` 目录下其他供应商对应模型类型目录下的 YAML 配置信息，完整的 YAML 规则见：[Schema](schema.md#aimodelentity)。
+同样，也可以参考 `model_providers` 目录下其他供应商对应模型类型目录下的 YAML 配置信息，完整的 YAML 规则见：[Schema](schema.md#aimodelentity)。
 
 ### 实现模型调用代码
 
@@ -82,7 +82,7 @@ pricing:  # 价格信息
           -> Union[LLMResult, Generator]:
       """
       Invoke large language model
-  
+
       :param model: model name
       :param credentials: model credentials
       :param prompt_messages: prompt messages
@@ -137,7 +137,7 @@ pricing:  # 价格信息
   def validate_credentials(self, model: str, credentials: dict) -> None:
       """
       Validate model credentials
-  
+
       :param model: model name
       :param credentials: model credentials
       :return:
@@ -153,7 +153,7 @@ pricing:  # 价格信息
   - `InvokeConnectionError` 调用连接错误
   - `InvokeServerUnavailableError ` 调用服务方不可用
   - `InvokeRateLimitError ` 调用达到限额
-  - `InvokeAuthorizationError`  调用鉴权失败
+  - `InvokeAuthorizationError` 调用鉴权失败
   - `InvokeBadRequestError ` 调用传参有误
 
   ```python
@@ -164,7 +164,7 @@ pricing:  # 价格信息
       The key is the error type thrown to the caller
       The value is the error type thrown by the model,
       which needs to be converted into a unified error type for the caller.
-  
+
       :return: Invoke error mapping
       """
   ```

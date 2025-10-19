@@ -23,6 +23,7 @@ import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested
 import { Markdown } from '@/app/components/base/markdown'
 import cn from '@/utils/classnames'
 import type { FileEntity } from '../../file-uploader/types'
+import { formatBooleanInputs } from '@/utils/model-config'
 import Avatar from '../../avatar'
 
 const ChatWrapper = () => {
@@ -51,6 +52,7 @@ const ChatWrapper = () => {
     allInputsHidden,
     initUserVariables,
   } = useChatWithHistoryContext()
+
   const appConfig = useMemo(() => {
     const config = appParams || {}
 
@@ -61,9 +63,9 @@ const ChatWrapper = () => {
         fileUploadConfig: (config as any).system_parameters,
       },
       supportFeedback: true,
-      opening_statement: currentConversationId ? currentConversationItem?.introduction : (config as any).opening_statement,
+      opening_statement: currentConversationItem?.introduction || (config as any).opening_statement,
     } as ChatConfig
-  }, [appParams, currentConversationItem?.introduction, currentConversationId])
+  }, [appParams, currentConversationItem?.introduction])
   const {
     chatList,
     setTargetMessageId,
@@ -89,7 +91,7 @@ const ChatWrapper = () => {
 
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForms.filter(({ required }) => required)
+    const requiredVars = inputsForms.filter(({ required, type }) => required && type !== InputVarType.checkbox)
     if (requiredVars.length) {
       requiredVars.forEach(({ variable, label, type }) => {
         if (hasEmptyInput)
@@ -131,7 +133,7 @@ const ChatWrapper = () => {
     const data: any = {
       query: message,
       files,
-      inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
+      inputs: formatBooleanInputs(inputsForms, currentConversationId ? currentConversationInputs : newConversationInputs),
       conversation_id: currentConversationId,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
@@ -158,10 +160,11 @@ const ChatWrapper = () => {
   }, [chatList, doSend])
 
   const messageList = useMemo(() => {
-    if (currentConversationId)
+    if (currentConversationId || chatList.length > 1)
       return chatList
+    // Without messages we are in the welcome screen, so hide the opening statement from chatlist
     return chatList.filter(item => !item.isOpeningStatement)
-  }, [chatList, currentConversationId])
+  }, [chatList])
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)
 
@@ -176,7 +179,13 @@ const ChatWrapper = () => {
     else {
       return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
     }
-  }, [inputsForms.length, isMobile, currentConversationId, collapsed, allInputsHidden])
+  },
+  [
+    inputsForms.length,
+    isMobile,
+    currentConversationId,
+    collapsed, allInputsHidden,
+  ])
 
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find(item => item.isOpeningStatement)
@@ -223,7 +232,18 @@ const ChatWrapper = () => {
         </div>
       </div>
     )
-  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length, respondingState, allInputsHidden])
+  },
+  [
+    appData?.site.icon,
+    appData?.site.icon_background,
+    appData?.site.icon_type,
+    appData?.site.icon_url,
+    chatList, collapsed,
+    currentConversationId,
+    inputsForms.length,
+    respondingState,
+    allInputsHidden,
+  ])
 
   const answerIcon = (appData?.site && appData.site.use_icon_as_answer_icon)
     ? <AnswerIcon

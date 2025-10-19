@@ -99,7 +99,8 @@ const CSVUploader: FC<Props> = ({
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    e.target !== dragRef.current && setDragging(true)
+    if (e.target !== dragRef.current)
+      setDragging(true)
   }
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault()
@@ -108,7 +109,8 @@ const CSVUploader: FC<Props> = ({
   const handleDragLeave = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    e.target === dragRef.current && setDragging(false)
+    if (e.target === dragRef.current)
+      setDragging(false)
   }
   const handleDrop = (e: DragEvent) => {
     e.preventDefault()
@@ -161,7 +163,7 @@ const CSVUploader: FC<Props> = ({
   const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
     const currentFile = e.target.files?.[0]
     if (!isValid(currentFile))
-       return
+      return
 
     initialUpload(currentFile)
   }

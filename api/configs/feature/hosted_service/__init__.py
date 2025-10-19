@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import Field, NonNegativeInt
 from pydantic_settings import BaseSettings
 
@@ -40,17 +38,17 @@ class HostedOpenAiConfig(BaseSettings):
     Configuration for hosted OpenAI service
     """
 
-    HOSTED_OPENAI_API_KEY: Optional[str] = Field(
+    HOSTED_OPENAI_API_KEY: str | None = Field(
         description="API key for hosted OpenAI service",
         default=None,
     )
 
-    HOSTED_OPENAI_API_BASE: Optional[str] = Field(
+    HOSTED_OPENAI_API_BASE: str | None = Field(
         description="Base URL for hosted OpenAI API",
         default=None,
     )
 
-    HOSTED_OPENAI_API_ORGANIZATION: Optional[str] = Field(
+    HOSTED_OPENAI_API_ORGANIZATION: str | None = Field(
         description="Organization ID for hosted OpenAI service",
         default=None,
     )
@@ -110,12 +108,12 @@ class HostedAzureOpenAiConfig(BaseSettings):
         default=False,
     )
 
-    HOSTED_AZURE_OPENAI_API_KEY: Optional[str] = Field(
+    HOSTED_AZURE_OPENAI_API_KEY: str | None = Field(
         description="API key for hosted Azure OpenAI service",
         default=None,
     )
 
-    HOSTED_AZURE_OPENAI_API_BASE: Optional[str] = Field(
+    HOSTED_AZURE_OPENAI_API_BASE: str | None = Field(
         description="Base URL for hosted Azure OpenAI API",
         default=None,
     )
@@ -131,12 +129,12 @@ class HostedAnthropicConfig(BaseSettings):
     Configuration for hosted Anthropic service
     """
 
-    HOSTED_ANTHROPIC_API_BASE: Optional[str] = Field(
+    HOSTED_ANTHROPIC_API_BASE: str | None = Field(
         description="Base URL for hosted Anthropic API",
         default=None,
     )
 
-    HOSTED_ANTHROPIC_API_KEY: Optional[str] = Field(
+    HOSTED_ANTHROPIC_API_KEY: str | None = Field(
         description="API key for hosted Anthropic service",
         default=None,
     )
@@ -222,11 +220,28 @@ class HostedFetchAppTemplateConfig(BaseSettings):
     )
 
 
+class HostedFetchPipelineTemplateConfig(BaseSettings):
+    """
+    Configuration for fetching pipeline templates
+    """
+
+    HOSTED_FETCH_PIPELINE_TEMPLATES_MODE: str = Field(
+        description="Mode for fetching pipeline templates: remote, db, or builtin default to remote,",
+        default="remote",
+    )
+
+    HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN: str = Field(
+        description="Domain for fetching remote pipeline templates",
+        default="https://tmpl.dify.ai",
+    )
+
+
 class HostedServiceConfig(
     # place the configs in alphabet order
     HostedAnthropicConfig,
     HostedAzureOpenAiConfig,
     HostedFetchAppTemplateConfig,
+    HostedFetchPipelineTemplateConfig,
     HostedMinmaxConfig,
     HostedOpenAiConfig,
     HostedSparkConfig,

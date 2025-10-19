@@ -42,6 +42,34 @@ const translation = {
   learn: 'Erfahren Sie, wie Sie Ihre Ausbildung überprüfen lassen.',
   emailLabel: 'Ihre aktuelle E-Mail',
   successTitle: 'Sie haben die Dify-Ausbildung verifiziert',
+  notice: {
+    expired: {
+      summary: {
+        line1: 'Sie können weiterhin auf Dify zugreifen und es nutzen.',
+        line2: 'Allerdings sind Sie nicht mehr berechtigt, neue Bildungsgutscheine zu erhalten.',
+      },
+      title: 'Ihr Bildungsstatus ist abgelaufen.',
+    },
+    isAboutToExpire: {
+      summary: 'Keine Sorge - das wird sich nicht auf Ihr aktuelles Abonnement auswirken, aber Sie werden den Bildungspreis beim nächsten Verzicht nicht erhalten, es sei denn, Sie überprüfen Ihren Status erneut.',
+    },
+    stillInEducation: {
+      title: 'Immer noch in der Ausbildung?',
+      isAboutToExpire: 'Überprüfen Sie jetzt erneut, um einen neuen Gutschein für das kommende Studienjahr zu erhalten. Er wird in Ihrem Konto gespeichert und ist bereit zur Nutzung bei Ihrer nächsten Verlängerung.',
+      expired: 'Überprüfen Sie jetzt erneut, um einen neuen Gutschein für das kommende akademische Jahr zu erhalten. Wir fügen ihn Ihrem Konto hinzu und Sie können ihn für das nächste Upgrade verwenden.',
+    },
+    alreadyGraduated: {
+      title: 'Bereits abgeschlossen?',
+      expired: 'Fühlen Sie sich frei, jederzeit ein Upgrade durchzuführen, um vollen Zugriff auf die kostenpflichtigen Funktionen zu erhalten.',
+      isAboutToExpire: 'Ihr aktuelles Abonnement bleibt weiterhin aktiv. Wenn es endet, werden Sie auf den Sandbox-Plan umgestellt, oder Sie können jederzeit upgraden, um den vollen Zugang zu den kostenpflichtigen Funktionen wiederherzustellen.',
+    },
+    action: {
+      dismiss: 'Ablehnen',
+      upgrade: 'Upgrade',
+      reVerify: 'Überprüfen Sie es erneut',
+    },
+    dateFormat: 'MM/TT/JJJJ',
+  },
 }
 
 export default translation

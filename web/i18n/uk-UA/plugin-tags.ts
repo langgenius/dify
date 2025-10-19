@@ -17,6 +17,7 @@ const translation = {
     agent: 'Агент',
     weather: 'Погода',
     entertainment: 'Розваги',
+    rag: 'ТРЯПІЧНАЯ',
   },
   allTags: 'Всі теги',
   searchTags: 'Пошукові теги',

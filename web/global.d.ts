@@ -1,3 +1,6 @@
+import './types/i18n'
+import './types/jsx'
+
 declare module 'lamejs';
 declare module 'lamejs/src/js/MPEGMode';
 declare module 'lamejs/src/js/Lame';
@@ -8,3 +11,5 @@ declare module '*.mdx' {
   let MDXComponent: (props: any) => JSX.Element
   export default MDXComponent
 }
+
+export {}

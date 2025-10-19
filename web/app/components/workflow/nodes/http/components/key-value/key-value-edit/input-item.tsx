@@ -45,7 +45,7 @@ const InputItem: FC<Props> = ({
     filterVar: (varPayload: Var) => {
       const supportVarTypes = [VarType.string, VarType.number, VarType.secret]
       if (isSupportFile)
-        supportVarTypes.push(...[VarType.file, VarType.arrayFile])
+        supportVarTypes.push(VarType.file, VarType.arrayFile)
 
       return supportVarTypes.includes(varPayload.type)
     },

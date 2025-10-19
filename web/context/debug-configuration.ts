@@ -233,7 +233,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
       reranking_provider_name: '',
       reranking_model_name: '',
     },
-    top_k: 2,
+    top_k: 4,
     score_threshold_enabled: false,
     score_threshold: 0.7,
     datasets: {
@@ -242,7 +242,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   },
   datasetConfigsRef: {
     current: null,
-  },
+  } as unknown as RefObject<DatasetConfigs>,
   setDatasetConfigs: noop,
   hasSetContextVar: false,
   isShowVisionConfig: false,

@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
@@ -22,10 +22,10 @@ import Divider from '@/app/components/base/divider'
 type Props = {
   appId: string
   type: TracingProvider
-  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | null
+  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig | null
   onRemoved: () => void
   onCancel: () => void
-  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig) => void
+  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig) => void
   onChosen: (provider: TracingProvider) => void
 }
 
@@ -77,6 +77,12 @@ const aliyunConfigTemplate = {
   endpoint: '',
 }
 
+const tencentConfigTemplate = {
+  token: '',
+  endpoint: '',
+  service_name: '',
+}
+
 const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
@@ -90,7 +96,7 @@ const ProviderConfigModal: FC<Props> = ({
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig>((() => {
+  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig>((() => {
     if (isEdit)
       return payload
 
@@ -111,6 +117,9 @@ const ProviderConfigModal: FC<Props> = ({
 
     else if (type === TracingProvider.aliyun)
       return aliyunConfigTemplate
+
+    else if (type === TracingProvider.tencent)
+      return tencentConfigTemplate
 
     return weaveConfigTemplate
   })())
@@ -200,6 +209,16 @@ const ProviderConfigModal: FC<Props> = ({
         errorMessage = t('common.errorMsg.fieldRequired', { field: 'License Key' })
       if (!errorMessage && !postData.endpoint)
         errorMessage = t('common.errorMsg.fieldRequired', { field: 'Endpoint' })
+    }
+
+    if (type === TracingProvider.tencent) {
+      const postData = config as TencentConfig
+      if (!errorMessage && !postData.token)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Token' })
+      if (!errorMessage && !postData.endpoint)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Endpoint' })
+      if (!errorMessage && !postData.service_name)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Service Name' })
     }
 
     return errorMessage
@@ -335,6 +354,34 @@ const ProviderConfigModal: FC<Props> = ({
                             labelClassName='!text-sm'
                             value={(config as AliyunConfig).app_name}
                             onChange={handleConfigChange('app_name')}
+                          />
+                        </>
+                      )}
+                      {type === TracingProvider.tencent && (
+                        <>
+                          <Field
+                            label='Token'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as TencentConfig).token}
+                            onChange={handleConfigChange('token')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'Token' })!}
+                          />
+                          <Field
+                            label='Endpoint'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as TencentConfig).endpoint}
+                            onChange={handleConfigChange('endpoint')}
+                            placeholder='https://your-region.cls.tencentcs.com'
+                          />
+                          <Field
+                            label='Service Name'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as TencentConfig).service_name}
+                            onChange={handleConfigChange('service_name')}
+                            placeholder='dify_app'
                           />
                         </>
                       )}

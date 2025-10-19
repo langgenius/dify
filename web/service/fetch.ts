@@ -2,9 +2,9 @@ import type { AfterResponseHook, BeforeErrorHook, BeforeRequestHook, Hooks } fro
 import ky from 'ky'
 import type { IOtherOptions } from './base'
 import Toast from '@/app/components/base/toast'
-import { API_PREFIX, MARKETPLACE_API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
-import { getInitialTokenV2, isTokenV1 } from '@/app/components/share/utils'
-import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
+import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, MARKETPLACE_API_PREFIX, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import Cookies from 'js-cookie'
+import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
 
@@ -69,35 +69,15 @@ const beforeErrorToast = (otherOptions: IOtherOptions): BeforeErrorHook => {
   }
 }
 
-export async function getAccessToken(isPublicAPI?: boolean) {
-  if (isPublicAPI) {
-    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-    const userId = (await getProcessedSystemVariablesFromUrlParams()).user_id
-    const accessToken = localStorage.getItem('token') || JSON.stringify({ version: 2 })
-    let accessTokenJson: Record<string, any> = { version: 2 }
-    try {
-      accessTokenJson = JSON.parse(accessToken)
-      if (isTokenV1(accessTokenJson))
-        accessTokenJson = getInitialTokenV2()
-    }
-    catch {
-
-    }
-    return accessTokenJson[sharedToken]?.[userId || 'DEFAULT']
-  }
-  else {
-    return localStorage.getItem('console_token') || ''
-  }
-}
-
-const beforeRequestPublicAuthorization: BeforeRequestHook = async (request) => {
-  const token = await getAccessToken(true)
-  request.headers.set('Authorization', `Bearer ${token}`)
-}
-
-const beforeRequestAuthorization: BeforeRequestHook = async (request) => {
-  const accessToken = await getAccessToken()
-  request.headers.set('Authorization', `Bearer ${accessToken}`)
+const beforeRequestPublicWithCode = (request: Request) => {
+  request.headers.set('Authorization', `Bearer ${getWebAppAccessToken()}`)
+  const shareCode = globalThis.location.pathname.split('/').filter(Boolean).pop() || ''
+  // some pages does not end with share code, so we need to check it
+  // TODO: maybe find a better way to access app code?
+  if (shareCode === 'webapp-signin' || shareCode === 'check-code')
+    return
+  request.headers.set(WEB_APP_SHARE_CODE_HEADER_NAME, shareCode)
+  request.headers.set(PASSPORT_HEADER_NAME, getWebAppPassport(shareCode))
 }
 
 const baseHooks: Hooks = {
@@ -111,7 +91,7 @@ const baseClient = ky.create({
   timeout: TIME_OUT,
 })
 
-export const baseOptions: RequestInit = {
+export const getBaseOptions = (): RequestInit => ({
   method: 'GET',
   mode: 'cors',
   credentials: 'include', // always send cookies、HTTP Basic authentication.
@@ -119,9 +99,10 @@ export const baseOptions: RequestInit = {
     'Content-Type': ContentType.json,
   }),
   redirect: 'follow',
-}
+})
 
 async function base<T>(url: string, options: FetchOptionType = {}, otherOptions: IOtherOptions = {}): Promise<T> {
+  const baseOptions = getBaseOptions()
   const { params, body, headers, ...init } = Object.assign({}, baseOptions, options)
   const {
     isPublicAPI = false,
@@ -147,9 +128,15 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   }
 
   const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
+  if (!isMarketplaceAPI)
+    (headers as any).set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
 
   if (deleteContentType)
     (headers as any).delete('Content-Type')
+
+  // ! For Marketplace API, help to filter tags added in new version
+  if (isMarketplaceAPI)
+    (headers as any).set('X-Dify-Version', APP_VERSION)
 
   const client = baseClient.extend({
     hooks: {
@@ -160,9 +147,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
       ],
       beforeRequest: [
         ...baseHooks.beforeRequest || [],
-        isPublicAPI && beforeRequestPublicAuthorization,
-        !isPublicAPI && !isMarketplaceAPI && beforeRequestAuthorization,
-      ].filter(Boolean),
+        isPublicAPI && beforeRequestPublicWithCode,
+      ].filter((h): h is BeforeRequestHook => Boolean(h)),
       afterResponse: [
         ...baseHooks.afterResponse || [],
         afterResponseErrorCode(otherOptions),

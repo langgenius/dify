@@ -10,6 +10,7 @@ import { PermissionType } from '@/app/components/plugins/types'
 import type { AutoUpdateConfig } from './auto-update-setting/types'
 import AutoUpdateSetting from './auto-update-setting'
 import { defaultValue as autoUpdateDefaultValue } from './auto-update-setting/config'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import Label from './label'
 
 const i18nPrefix = 'plugin.privilege'
@@ -28,6 +29,7 @@ const PluginSettingModal: FC<Props> = ({
   const { auto_upgrade: autoUpdateConfig, permission: privilege } = payload || {}
   const [tempPrivilege, setTempPrivilege] = useState<Permissions>(privilege)
   const [tempAutoUpdateConfig, setTempAutoUpdateConfig] = useState<AutoUpdateConfig>(autoUpdateConfig || autoUpdateDefaultValue)
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const handlePrivilegeChange = useCallback((key: string) => {
     return (value: PermissionType) => {
       setTempPrivilege({
@@ -77,8 +79,11 @@ const PluginSettingModal: FC<Props> = ({
             </div>
           ))}
         </div>
-
-        <AutoUpdateSetting payload={tempAutoUpdateConfig} onChange={setTempAutoUpdateConfig} />
+        {
+          enable_marketplace && (
+            <AutoUpdateSetting payload={tempAutoUpdateConfig} onChange={setTempAutoUpdateConfig} />
+          )
+        }
         <div className='flex h-[76px] items-center justify-end gap-2 self-stretch p-6 pt-5'>
           <Button
             className='min-w-[72px]'

@@ -1,31 +1,110 @@
 import React from 'react'
-import classNames from '@/utils/classnames'
+import cn from '@/utils/classnames'
 import type { RemixiconComponentType } from '@remixicon/react'
 import Divider from '../divider'
+import type { VariantProps } from 'class-variance-authority'
+import { cva } from 'class-variance-authority'
+import './index.css'
 
-// Updated generic type to allow enum values
+type SegmentedControlOption<T> = {
+  value: T
+  text?: string
+  Icon?: RemixiconComponentType
+  count?: number
+  disabled?: boolean
+}
+
 type SegmentedControlProps<T extends string | number | symbol> = {
-  options: { Icon: RemixiconComponentType, text: string, value: T }[]
+  options: SegmentedControlOption<T>[]
   value: T
   onChange: (value: T) => void
   className?: string
+  activeClassName?: string
+  btnClassName?: string
 }
+
+const SegmentedControlVariants = cva(
+  'segmented-control',
+  {
+    variants: {
+      size: {
+        regular: 'segmented-control-regular',
+        small: 'segmented-control-small',
+        large: 'segmented-control-large',
+      },
+      padding: {
+        none: 'no-padding',
+        with: 'padding',
+      },
+    },
+    defaultVariants: {
+      size: 'regular',
+      padding: 'with',
+    },
+  },
+)
+
+const SegmentedControlItemVariants = cva(
+  'segmented-control-item disabled:segmented-control-item-disabled',
+  {
+    variants: {
+      size: {
+        regular: ['segmented-control-item-regular', 'system-sm-medium'],
+        small: ['segmented-control-item-small', 'system-xs-medium'],
+        large: ['segmented-control-item-large', 'system-md-semibold'],
+      },
+      activeState: {
+        default: '',
+        accent: 'accent',
+        accentLight: 'accent-light',
+      },
+    },
+    defaultVariants: {
+      size: 'regular',
+      activeState: 'default',
+    },
+  },
+)
+
+const ItemTextWrapperVariants = cva(
+  'item-text',
+  {
+    variants: {
+      size: {
+        regular: 'item-text-regular',
+        small: 'item-text-small',
+        large: 'item-text-large',
+      },
+    },
+    defaultVariants: {
+      size: 'regular',
+    },
+  },
+)
 
 export const SegmentedControl = <T extends string | number | symbol>({
   options,
   value,
   onChange,
   className,
-}: SegmentedControlProps<T>): JSX.Element => {
+  size,
+  padding,
+  activeState,
+  activeClassName,
+  btnClassName,
+}: SegmentedControlProps<T>
+  & VariantProps<typeof SegmentedControlVariants>
+  & VariantProps<typeof SegmentedControlItemVariants>
+  & VariantProps<typeof ItemTextWrapperVariants>) => {
   const selectedOptionIndex = options.findIndex(option => option.value === value)
 
   return (
-    <div className={classNames(
-      'flex items-center gap-x-[1px] rounded-lg bg-components-segmented-control-bg-normal p-0.5',
+    <div className={cn(
+      SegmentedControlVariants({ size, padding }),
       className,
     )}>
       {options.map((option, index) => {
-        const { Icon } = option
+        const { Icon, text, count, disabled } = option
         const isSelected = index === selectedOptionIndex
         const isNextSelected = index === selectedOptionIndex - 1
         const isLast = index === options.length - 1
@@ -33,28 +112,32 @@ export const SegmentedControl = <T extends string | number | symbol>({
           <button
             type='button'
             key={String(option.value)}
-            className={classNames(
-              'border-0.5 group relative flex items-center justify-center gap-x-0.5 rounded-lg border-transparent px-2 py-1',
-              isSelected
-                ? 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg shadow-xs shadow-shadow-shadow-3'
-                : 'hover:bg-state-base-hover',
+            className={cn(
+              isSelected ? 'active' : 'default',
+              SegmentedControlItemVariants({ size, activeState: isSelected ? activeState : 'default' }),
+              isSelected && activeClassName,
+              disabled && 'disabled',
+              btnClassName,
             )}
-            onClick={() => onChange(option.value)}
+            onClick={() => {
+              if (!isSelected)
+                onChange(option.value)
+            }}
+            disabled={disabled}
           >
-            <span className='flex h-5 w-5 items-center justify-center'>
-              <Icon className={classNames(
-                'h-4 w-4 text-text-tertiary',
-                isSelected ? 'text-text-accent-light-mode-only' : 'group-hover:text-text-secondary',
-              )} />
-            </span>
-            <span className={classNames(
-              'system-sm-medium p-0.5 text-text-tertiary',
-              isSelected ? 'text-text-accent-light-mode-only' : 'group-hover:text-text-secondary',
-            )}>
-              {option.text}
-            </span>
+            {Icon && <Icon className='size-4 shrink-0' />}
+            {text && (
+              <div className={cn('inline-flex items-center gap-x-1', ItemTextWrapperVariants({ size }))}>
+                <span>{text}</span>
+                {count && size === 'large' && (
+                  <div className='system-2xs-medium-uppercase inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] text-text-tertiary'>
+                    {count}
+                  </div>
+                )}
+              </div>
+            )}
             {!isLast && !isSelected && !isNextSelected && (
-              <div className='absolute right-[-1px] top-0 flex h-full items-center'>
+              <div data-testid={`segmented-control-divider-${index}`} className='absolute right-[-1px] top-0 flex h-full items-center'>
                 <Divider type='vertical' className='mx-0 h-3.5' />
               </div>
             )}
@@ -65,4 +148,4 @@ export const SegmentedControl = <T extends string | number | symbol>({
   )
 }
 
-export default React.memo(SegmentedControl) as typeof SegmentedControl
+export default React.memo(SegmentedControl)

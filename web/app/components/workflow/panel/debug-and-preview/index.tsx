@@ -39,7 +39,7 @@ const DebugAndPreview = () => {
   const selectedNode = nodes.find(node => node.data.selected)
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
-  const visibleVariables = variables.filter(v => v.hide !== true)
+  const visibleVariables = variables
 
   const [showConversationVariableModal, setShowConversationVariableModal] = useState(false)
 
@@ -90,7 +90,7 @@ const DebugAndPreview = () => {
       <div
         ref={containerRef}
         className={cn(
-          'relative flex h-full flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-components-panel-bg shadow-xl',
+          'relative flex h-full flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-chatbot-bg shadow-xl',
         )}
         style={{ width: `${panelWidth}px` }}
       >

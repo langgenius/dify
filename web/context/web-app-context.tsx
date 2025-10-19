@@ -2,15 +2,14 @@
 
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import Loading from '@/app/components/base/loading'
-import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import { AccessMode } from '@/models/access-control'
 import type { AppData, AppMeta } from '@/models/share'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
 import { usePathname, useSearchParams } from 'next/navigation'
 import type { FC, PropsWithChildren } from 'react'
 import { useEffect } from 'react'
-import { useState } from 'react'
 import { create } from 'zustand'
+import { useGlobalPublicStore } from './global-public-context'
 
 type WebAppStore = {
   shareCode: string | null
@@ -56,6 +55,7 @@ const getShareCodeFromPathname = (pathname: string): string | null => {
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
+  const isGlobalPending = useGlobalPublicStore(s => s.isGlobalPending)
   const updateWebAppAccessMode = useWebAppStore(state => state.updateWebAppAccessMode)
   const updateShareCode = useWebAppStore(state => state.updateShareCode)
   const pathname = usePathname()
@@ -64,27 +64,18 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
 
   // Compute shareCode directly
   const shareCode = getShareCodeFromRedirectUrl(redirectUrlParam) || getShareCodeFromPathname(pathname)
-  updateShareCode(shareCode)
+  useEffect(() => {
+    updateShareCode(shareCode)
+  }, [shareCode, updateShareCode])
 
   const { isFetching, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
-  const [isFetchingAccessToken, setIsFetchingAccessToken] = useState(false)
 
   useEffect(() => {
-    if (accessModeResult?.accessMode) {
+    if (accessModeResult?.accessMode)
       updateWebAppAccessMode(accessModeResult.accessMode)
-      if (accessModeResult.accessMode === AccessMode.PUBLIC) {
-        setIsFetchingAccessToken(true)
-        checkOrSetAccessToken(shareCode).finally(() => {
-          setIsFetchingAccessToken(false)
-        })
-      }
-      else {
-        setIsFetchingAccessToken(false)
-      }
-    }
   }, [accessModeResult, updateWebAppAccessMode, shareCode])
 
-  if (isFetching || isFetchingAccessToken) {
+  if (isGlobalPending || isFetching) {
     return <div className='flex h-full w-full items-center justify-center'>
       <Loading />
     </div>

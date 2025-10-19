@@ -4,16 +4,13 @@ SQLAlchemy implementation of the WorkflowExecutionRepository.
 
 import json
 import logging
-from typing import Optional, Union
+from typing import Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.workflow.entities.workflow_execution import (
-    WorkflowExecution,
-    WorkflowExecutionStatus,
-    WorkflowType,
-)
+from core.workflow.entities import WorkflowExecution
+from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.helper import extract_tenant_id
@@ -44,8 +41,8 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         self,
         session_factory: sessionmaker | Engine,
         user: Union[Account, EndUser],
-        app_id: Optional[str],
-        triggered_from: Optional[WorkflowRunTriggeredFrom],
+        app_id: str | None,
+        triggered_from: WorkflowRunTriggeredFrom | None,
     ):
         """
         Initialize the repository with a SQLAlchemy sessionmaker or engine and context information.
@@ -159,7 +156,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             else None
         )
         db_model.status = domain_model.status
-        db_model.error = domain_model.error_message if domain_model.error_message else None
+        db_model.error = domain_model.error_message or None
         db_model.total_tokens = domain_model.total_tokens
         db_model.total_steps = domain_model.total_steps
         db_model.exceptions_count = domain_model.exceptions_count
@@ -176,7 +173,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         return db_model
 
-    def save(self, execution: WorkflowExecution) -> None:
+    def save(self, execution: WorkflowExecution):
         """
         Save or update a WorkflowExecution domain entity to the database.
 
@@ -203,5 +200,4 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             session.commit()
 
             # Update the in-memory cache for faster subsequent lookups
-            logger.debug("Updating cache for execution_id: %s", db_model.id)
             self._execution_cache[db_model.id] = db_model

@@ -31,11 +31,11 @@ export const useWorkflowRun = () => {
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const pathname = usePathname()
-  const appId = useAppStore.getState().appDetail?.id
-  const invalidAllLastRun = useInvalidAllLastRun(appId as string)
   const configsMap = useConfigsMap()
+  const { flowId, flowType } = configsMap
+  const invalidAllLastRun = useInvalidAllLastRun(flowType, flowId)
+
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    flowId: appId as string,
     ...configsMap,
   })
 
@@ -202,7 +202,7 @@ export const useWorkflowRun = () => {
           if (onWorkflowFinished)
             onWorkflowFinished(params)
           if (isInWorkflowDebug) {
-            fetchInspectVars()
+            fetchInspectVars({})
             invalidAllLastRun()
           }
         },

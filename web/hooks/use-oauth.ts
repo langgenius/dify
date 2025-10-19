@@ -1,5 +1,6 @@
 'use client'
 import { useEffect } from 'react'
+import { validateRedirectUrl } from '@/utils/urlValidation'
 
 export const useOAuthCallback = () => {
   useEffect(() => {
@@ -18,6 +19,7 @@ export const openOAuthPopup = (url: string, callback: () => void) => {
   const left = window.screenX + (window.outerWidth - width) / 2
   const top = window.screenY + (window.outerHeight - height) / 2
 
+  validateRedirectUrl(url)
   const popup = window.open(
     url,
     'OAuth',

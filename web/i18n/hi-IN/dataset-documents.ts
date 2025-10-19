@@ -31,7 +31,6 @@ const translation = {
       sync: 'सिंक्रोनाइज़ करें',
       resume: 'रिज़्यूमे',
       pause: 'रोकें',
-      download: 'फ़ाइल डाउनलोड करें',
     },
     index: {
       enable: 'सक्रिय करें',
@@ -101,6 +100,9 @@ const translation = {
       upload_file: 'फाइल अपलोड करें',
       notion: 'नोशन से सिंक करें',
       github: 'गिटहब से सिंक करें',
+      local_file: 'स्थानीय फ़ाइल',
+      online_document: 'ऑनलाइन दस्तावेज़',
+      website_crawl: 'वेबसाइट क्रॉल',
     },
     type: {
       book: 'पुस्तक',
@@ -338,13 +340,13 @@ const translation = {
     pause: 'रुकना',
     hierarchical: 'माता-पिता का बच्चा',
     childMaxTokens: 'बच्चा',
+    waiting: 'इनपुट की प्रतीक्षा कर रहा हूं...',
   },
   segment: {
     paragraphs: 'पैराग्राफ',
     keywords: 'कीवर्ड',
     addKeyWord: 'कीवर्ड जोड़ें',
     keywordError: 'कीवर्ड की अधिकतम लंबाई 20 अक्षर हो सकती है',
-    characters: 'अक्षर',
     hitCount: 'पुनर्प्राप्ति गणना',
     vectorHash: 'वेक्टर हैश: ',
     questionPlaceholder: 'यहाँ प्रश्न जोड़ें',

@@ -1,59 +1,41 @@
-from enum import Enum
+from enum import StrEnum
+from typing import Final
 
-# public
-GEN_AI_SESSION_ID = "gen_ai.session.id"
+# Public attributes
+GEN_AI_SESSION_ID: Final[str] = "gen_ai.session.id"
+GEN_AI_USER_ID: Final[str] = "gen_ai.user.id"
+GEN_AI_USER_NAME: Final[str] = "gen_ai.user.name"
+GEN_AI_SPAN_KIND: Final[str] = "gen_ai.span.kind"
+GEN_AI_FRAMEWORK: Final[str] = "gen_ai.framework"
 
-GEN_AI_USER_ID = "gen_ai.user.id"
+# Chain attributes
+INPUT_VALUE: Final[str] = "input.value"
+OUTPUT_VALUE: Final[str] = "output.value"
 
-GEN_AI_USER_NAME = "gen_ai.user.name"
+# Retriever attributes
+RETRIEVAL_QUERY: Final[str] = "retrieval.query"
+RETRIEVAL_DOCUMENT: Final[str] = "retrieval.document"
 
-GEN_AI_SPAN_KIND = "gen_ai.span.kind"
+# LLM attributes
+GEN_AI_REQUEST_MODEL: Final[str] = "gen_ai.request.model"
+GEN_AI_PROVIDER_NAME: Final[str] = "gen_ai.provider.name"
+GEN_AI_USAGE_INPUT_TOKENS: Final[str] = "gen_ai.usage.input_tokens"
+GEN_AI_USAGE_OUTPUT_TOKENS: Final[str] = "gen_ai.usage.output_tokens"
+GEN_AI_USAGE_TOTAL_TOKENS: Final[str] = "gen_ai.usage.total_tokens"
+GEN_AI_PROMPT: Final[str] = "gen_ai.prompt"
+GEN_AI_COMPLETION: Final[str] = "gen_ai.completion"
+GEN_AI_RESPONSE_FINISH_REASON: Final[str] = "gen_ai.response.finish_reason"
 
-GEN_AI_FRAMEWORK = "gen_ai.framework"
+GEN_AI_INPUT_MESSAGE: Final[str] = "gen_ai.input.messages"
+GEN_AI_OUTPUT_MESSAGE: Final[str] = "gen_ai.output.messages"
 
-
-# Chain
-INPUT_VALUE = "input.value"
-
-OUTPUT_VALUE = "output.value"
-
-
-# Retriever
-RETRIEVAL_QUERY = "retrieval.query"
-
-RETRIEVAL_DOCUMENT = "retrieval.document"
-
-
-# LLM
-GEN_AI_MODEL_NAME = "gen_ai.model_name"
-
-GEN_AI_SYSTEM = "gen_ai.system"
-
-GEN_AI_USAGE_INPUT_TOKENS = "gen_ai.usage.input_tokens"
-
-GEN_AI_USAGE_OUTPUT_TOKENS = "gen_ai.usage.output_tokens"
-
-GEN_AI_USAGE_TOTAL_TOKENS = "gen_ai.usage.total_tokens"
-
-GEN_AI_PROMPT_TEMPLATE_TEMPLATE = "gen_ai.prompt_template.template"
-
-GEN_AI_PROMPT_TEMPLATE_VARIABLE = "gen_ai.prompt_template.variable"
-
-GEN_AI_PROMPT = "gen_ai.prompt"
-
-GEN_AI_COMPLETION = "gen_ai.completion"
-
-GEN_AI_RESPONSE_FINISH_REASON = "gen_ai.response.finish_reason"
-
-# Tool
-TOOL_NAME = "tool.name"
-
-TOOL_DESCRIPTION = "tool.description"
-
-TOOL_PARAMETERS = "tool.parameters"
+# Tool attributes
+TOOL_NAME: Final[str] = "tool.name"
+TOOL_DESCRIPTION: Final[str] = "tool.description"
+TOOL_PARAMETERS: Final[str] = "tool.parameters"
 
 
-class GenAISpanKind(Enum):
+class GenAISpanKind(StrEnum):
     CHAIN = "CHAIN"
     RETRIEVER = "RETRIEVER"
     RERANKER = "RERANKER"

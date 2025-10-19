@@ -63,6 +63,7 @@ You can also refer to the YAML configuration information under other provider di
 ### Implementing Provider Code
 
 Providers need to inherit the `__base.model_provider.ModelProvider` base class and implement the `validate_provider_credentials` method for unified provider credential verification. For reference, see [AnthropicProvider](https://github.com/langgenius/dify-runtime/blob/main/lib/model_providers/anthropic/anthropic.py).
+
 > If the provider is the type of `customizable-model`, there is no need to implement the `validate_provider_credentials` method.
 
 ```python
@@ -80,7 +81,7 @@ def validate_provider_credentials(self, credentials: dict) -> None:
 
 Of course, you can also preliminarily reserve the implementation of `validate_provider_credentials` and directly reuse it after the model credential verification method is implemented.
 
----
+______________________________________________________________________
 
 ### Adding Models
 
@@ -166,7 +167,7 @@ In `llm.py`, create an Anthropic LLM class, which we name `AnthropicLargeLanguag
           -> Union[LLMResult, Generator]:
       """
       Invoke large language model
-  
+
       :param model: model name
       :param credentials: model credentials
       :param prompt_messages: prompt messages
@@ -205,7 +206,7 @@ In `llm.py`, create an Anthropic LLM class, which we name `AnthropicLargeLanguag
   def validate_credentials(self, model: str, credentials: dict) -> None:
       """
       Validate model credentials
-  
+
       :param model: model name
       :param credentials: model credentials
       :return:
@@ -232,7 +233,7 @@ In `llm.py`, create an Anthropic LLM class, which we name `AnthropicLargeLanguag
       The key is the error type thrown to the caller
       The value is the error type thrown by the model,
       which needs to be converted into a unified error type for the caller.
-  
+
       :return: Invoke error mapping
       """
   ```

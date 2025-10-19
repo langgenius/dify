@@ -1,11 +1,12 @@
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.agent.plugin_entities import AgentProviderEntityWithPlugin
+from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
@@ -24,7 +25,7 @@ class PluginDaemonBasicResponse(BaseModel, Generic[T]):
 
     code: int
     message: str
-    data: Optional[T]
+    data: T | None = None
 
 
 class InstallPluginMessage(BaseModel):
@@ -46,6 +47,14 @@ class PluginToolProviderEntity(BaseModel):
     plugin_unique_identifier: str
     plugin_id: str
     declaration: ToolProviderEntityWithPlugin
+
+
+class PluginDatasourceProviderEntity(BaseModel):
+    provider: str
+    plugin_unique_identifier: str
+    plugin_id: str
+    is_authorized: bool = False
+    declaration: DatasourceProviderEntityWithPlugin
 
 
 class PluginAgentProviderEntity(BaseModel):
@@ -174,7 +183,7 @@ class PluginVerification(BaseModel):
 class PluginDecodeResponse(BaseModel):
     unique_identifier: str = Field(description="The unique identifier of the plugin.")
     manifest: PluginDeclaration
-    verification: Optional[PluginVerification] = Field(default=None, description="Basic verification information")
+    verification: PluginVerification | None = Field(default=None, description="Basic verification information")
 
 
 class PluginOAuthAuthorizationUrlResponse(BaseModel):

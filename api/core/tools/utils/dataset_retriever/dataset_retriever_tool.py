@@ -1,6 +1,7 @@
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity, ModelConfig
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -16,7 +17,7 @@ from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model: dict[str, Any] = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     "reranking_mode": "reranking_model",
@@ -36,7 +37,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
     args_schema: type[BaseModel] = DatasetRetrieverToolInput
     description: str = "use this to retrieve a dataset. "
     dataset_id: str
-    user_id: Optional[str] = None
+    user_id: str | None = None
     retrieve_config: DatasetRetrieveConfigEntity
     inputs: dict
 
@@ -56,9 +57,8 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
         )
 
     def _run(self, query: str) -> str:
-        dataset = (
-            db.session.query(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id).first()
-        )
+        dataset_stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id)
+        dataset = db.session.scalar(dataset_stmt)
 
         if not dataset:
             return ""
@@ -130,7 +130,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             if dataset.indexing_technique == "economy":
                 # use keyword table query
                 documents = RetrievalService.retrieve(
-                    retrieval_method="keyword_search",
+                    retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
                     dataset_id=dataset.id,
                     query=query,
                     top_k=self.top_k,
@@ -188,15 +188,12 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                         for record in records:
                             segment = record.segment
                             dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
-                            document = (
-                                db.session.query(DatasetDocument)  # type: ignore
-                                .where(
-                                    DatasetDocument.id == segment.document_id,
-                                    DatasetDocument.enabled == True,
-                                    DatasetDocument.archived == False,
-                                )
-                                .first()
+                            dataset_document_stmt = select(DatasetDocument).where(
+                                DatasetDocument.id == segment.document_id,
+                                DatasetDocument.enabled == True,
+                                DatasetDocument.archived == False,
                             )
+                            document = db.session.scalar(dataset_document_stmt)  # type: ignore
                             if dataset and document:
                                 source = RetrievalSourceMetadata(
                                     dataset_id=dataset.id,

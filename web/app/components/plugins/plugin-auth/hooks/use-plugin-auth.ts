@@ -20,6 +20,7 @@ export const usePluginAuth = (pluginPayload: PluginPayload, enable?: boolean) =>
     canApiKey,
     credentials: data?.credentials || [],
     disabled: !isCurrentWorkspaceManager,
+    notAllowCustomCredential: data?.allow_custom_token === false,
     invalidPluginCredentialInfo,
   }
 }

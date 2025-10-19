@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
@@ -43,6 +43,13 @@ class SystemVariable(BaseModel):
     query: str | None = None
     conversation_id: str | None = None
     dialogue_count: int | None = None
+    document_id: str | None = None
+    original_document_id: str | None = None
+    dataset_id: str | None = None
+    batch: str | None = None
+    datasource_type: str | None = None
+    datasource_info: Mapping[str, Any] | None = None
+    invoke_from: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -86,4 +93,18 @@ class SystemVariable(BaseModel):
             d[SystemVariableKey.CONVERSATION_ID] = self.conversation_id
         if self.dialogue_count is not None:
             d[SystemVariableKey.DIALOGUE_COUNT] = self.dialogue_count
+        if self.document_id is not None:
+            d[SystemVariableKey.DOCUMENT_ID] = self.document_id
+        if self.original_document_id is not None:
+            d[SystemVariableKey.ORIGINAL_DOCUMENT_ID] = self.original_document_id
+        if self.dataset_id is not None:
+            d[SystemVariableKey.DATASET_ID] = self.dataset_id
+        if self.batch is not None:
+            d[SystemVariableKey.BATCH] = self.batch
+        if self.datasource_type is not None:
+            d[SystemVariableKey.DATASOURCE_TYPE] = self.datasource_type
+        if self.datasource_info is not None:
+            d[SystemVariableKey.DATASOURCE_INFO] = self.datasource_info
+        if self.invoke_from is not None:
+            d[SystemVariableKey.INVOKE_FROM] = self.invoke_from
         return d

@@ -42,6 +42,34 @@ const translation = {
   learn: 'Dowiedz się, jak uzyskać potwierdzenie wykształcenia',
   emailLabel: 'Twój aktualny email',
   submitError: 'Przesłanie formularza nie powiodło się. Proszę spróbować ponownie później.',
+  notice: {
+    expired: {
+      summary: {
+        line1: 'Możesz nadal uzyskać dostęp i korzystać z Dify.',
+        line2: 'Jednakże, nie kwalifikujesz się już do nowych kuponów zniżkowych na edukację.',
+      },
+      title: 'Twój status edukacji wygasł.',
+    },
+    isAboutToExpire: {
+      summary: 'Nie martw się — to nie wpłynie na twoją obecną subskrypcję, ale nie otrzymasz zniżki edukacyjnej przy jej odnawianiu, chyba że ponownie zweryfikujesz swój status.',
+    },
+    stillInEducation: {
+      title: 'Wciąż w edukacji?',
+      isAboutToExpire: 'Zweryfikuj ponownie teraz, aby otrzymać nowy kupon na nadchodzący rok akademicki. Zostanie zapisany na Twoim koncie i gotowy do użycia przy następnej odnowie.',
+      expired: 'Sprawdź ponownie teraz, aby otrzymać nowy kupon na nadchodzący rok akademicki. Dodamy go do twojego konta i będziesz mógł go użyć przy następnej aktualizacji.',
+    },
+    alreadyGraduated: {
+      title: 'Już ukończone studia?',
+      isAboutToExpire: 'Twoja obecna subskrypcja pozostanie aktywna. Gdy się zakończy, przejdziesz na plan Sandbox, lub możesz w każdej chwili zaktualizować, aby przywrócić pełny dostęp do płatnych funkcji.',
+      expired: 'Nie wahaj się zaktualizować w dowolnym momencie, aby uzyskać pełny dostęp do płatnych funkcji.',
+    },
+    action: {
+      upgrade: 'Ulepsz',
+      dismiss: 'Odrzuć',
+      reVerify: 'Ponownie zweryfikuj',
+    },
+    dateFormat: 'DD/MM/RRRR',
+  },
 }
 
 export default translation

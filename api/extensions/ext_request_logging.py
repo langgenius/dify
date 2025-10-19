@@ -8,7 +8,7 @@ from flask.signals import request_finished, request_started
 
 from configs import dify_config
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def _is_content_type_json(content_type: str) -> bool:
@@ -20,20 +20,20 @@ def _is_content_type_json(content_type: str) -> bool:
 
 def _log_request_started(_sender, **_extra):
     """Log the start of a request."""
-    if not _logger.isEnabledFor(logging.DEBUG):
+    if not logger.isEnabledFor(logging.DEBUG):
         return
 
     request = flask.request
     if not (_is_content_type_json(request.content_type) and request.data):
-        _logger.debug("Received Request %s -> %s", request.method, request.path)
+        logger.debug("Received Request %s -> %s", request.method, request.path)
         return
     try:
         json_data = json.loads(request.data)
     except (TypeError, ValueError):
-        _logger.exception("Failed to parse JSON request")
+        logger.exception("Failed to parse JSON request")
         return
     formatted_json = json.dumps(json_data, ensure_ascii=False, indent=2)
-    _logger.debug(
+    logger.debug(
         "Received Request %s -> %s, Request Body:\n%s",
         request.method,
         request.path,
@@ -43,21 +43,21 @@ def _log_request_started(_sender, **_extra):
 
 def _log_request_finished(_sender, response, **_extra):
     """Log the end of a request."""
-    if not _logger.isEnabledFor(logging.DEBUG) or response is None:
+    if not logger.isEnabledFor(logging.DEBUG) or response is None:
         return
 
     if not _is_content_type_json(response.content_type):
-        _logger.debug("Response %s %s", response.status, response.content_type)
+        logger.debug("Response %s %s", response.status, response.content_type)
         return
 
     response_data = response.get_data(as_text=True)
     try:
         json_data = json.loads(response_data)
     except (TypeError, ValueError):
-        _logger.exception("Failed to parse JSON response")
+        logger.exception("Failed to parse JSON response")
         return
     formatted_json = json.dumps(json_data, ensure_ascii=False, indent=2)
-    _logger.debug(
+    logger.debug(
         "Response %s %s, Response Body:\n%s",
         response.status,
         response.content_type,

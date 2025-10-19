@@ -51,7 +51,6 @@ const Apps = ({
     handleSearch()
   }
 
-  const [currentType, setCurrentType] = useState<string>('')
   const [currCategory, setCurrCategory] = useTabSearchParams({
     defaultTab: allCategoriesEn,
     disableSearchParams: false,
@@ -74,28 +73,7 @@ const Apps = ({
     },
   )
 
-  const filteredList = useMemo(() => {
-    if (currCategory === allCategoriesEn) {
-      if (!currentType)
-        return allList
-      else if (currentType === 'chatbot')
-        return allList.filter(item => (item.app.mode === 'chat' || item.app.mode === 'advanced-chat'))
-      else if (currentType === 'agent')
-        return allList.filter(item => (item.app.mode === 'agent-chat'))
-      else
-        return allList.filter(item => (item.app.mode === 'workflow'))
-    }
-    else {
-      if (!currentType)
-        return allList.filter(item => item.category === currCategory)
-      else if (currentType === 'chatbot')
-        return allList.filter(item => (item.app.mode === 'chat' || item.app.mode === 'advanced-chat') && item.category === currCategory)
-      else if (currentType === 'agent')
-        return allList.filter(item => (item.app.mode === 'agent-chat') && item.category === currCategory)
-      else
-        return allList.filter(item => (item.app.mode === 'workflow') && item.category === currCategory)
-    }
-  }, [currentType, currCategory, allCategoriesEn, allList])
+  const filteredList = allList.filter(item => currCategory === allCategoriesEn || item.category === currCategory)
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0)
@@ -174,23 +152,20 @@ const Apps = ({
       <div className={cn(
         'mt-6 flex items-center justify-between px-12',
       )}>
-        <>
-          <Category
-            list={categories}
-            value={currCategory}
-            onChange={setCurrCategory}
-            allCategoriesEn={allCategoriesEn}
-          />
-        </>
+        <Category
+          list={categories}
+          value={currCategory}
+          onChange={setCurrCategory}
+          allCategoriesEn={allCategoriesEn}
+        />
         <Input
           showLeftIcon
           showClearIcon
-          wrapperClassName='w-[200px]'
+          wrapperClassName='w-[200px] self-start'
           value={keywords}
           onChange={e => handleKeywordsChange(e.target.value)}
           onClear={() => handleKeywordsChange('')}
         />
-
       </div>
 
       <div className={cn(

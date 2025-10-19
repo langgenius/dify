@@ -107,7 +107,7 @@ const VariableInspectTrigger: FC = () => {
             className='system-xs-medium flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-accent shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent'
             onClick={() => setShowVariableInspectPanel(true)}
           >
-            <RiLoader2Line className='h-4 w-4' />
+            <RiLoader2Line className='h-4 w-4 animate-spin' />
             <span className='text-text-accent'>{t('workflow.debug.variableInspect.trigger.running')}</span>
           </div>
           {isPreviewRunning && (

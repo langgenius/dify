@@ -1,7 +1,7 @@
 const translation = {
   title: 'لاگ‌ها',
   description: 'لاگ‌ها وضعیت اجرایی برنامه را ثبت می‌کنند، شامل ورودی‌های کاربر و پاسخ‌های هوش مصنوعی.',
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  dateTimeFormat: 'MM/DD/YYYY hh:mm:ss A',
   table: {
     header: {
       updatedTime: 'زمان به‌روزرسانی',
@@ -82,6 +82,7 @@ const translation = {
     workflowTitle: 'جزئیات لاگ',
     fileListLabel: 'جزئیات فایل',
     fileListDetail: 'جزئیات',
+    testWithParams: 'تست با پارامترها',
   },
   promptLog: 'لاگ درخواست',
   agentLog: 'لاگ عامل',
@@ -93,6 +94,7 @@ const translation = {
     iteration: 'تکرار',
     finalProcessing: 'پردازش نهایی',
   },
+  dateFormat: 'MM/DD/YYYY',
 }
 
 export default translation

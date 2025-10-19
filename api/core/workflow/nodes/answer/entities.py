@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from enum import Enum
+from enum import StrEnum, auto
 
 from pydantic import BaseModel, Field
 
@@ -19,9 +19,9 @@ class GenerateRouteChunk(BaseModel):
     Generate Route Chunk.
     """
 
-    class ChunkType(Enum):
-        VAR = "var"
-        TEXT = "text"
+    class ChunkType(StrEnum):
+        VAR = auto()
+        TEXT = auto()
 
     type: ChunkType = Field(..., description="generate route chunk type")
 

@@ -55,6 +55,7 @@ const translation = {
     passwordInvalid: 'A senha deve conter letras e números e ter um comprimento maior que 8',
     passwordLengthInValid: 'A senha deve ter pelo menos 8 caracteres',
     registrationNotAllowed: 'Conta não encontrada. Entre em contato com o administrador do sistema para se registrar.',
+    invalidEmailOrPassword: 'E-mail ou senha inválidos.',
   },
   license: {
     tip: 'Antes de começar a usar a Edição Comunitária do Dify, leia a',
@@ -109,6 +110,15 @@ const translation = {
     disabled: 'A autenticação do aplicativo da web está desativada. Por favor, entre em contato com o administrador do sistema para habilitá-la. Você pode tentar usar o aplicativo diretamente.',
     noLoginMethodTip: 'Por favor, entre em contato com o administrador do sistema para adicionar um método de autenticação.',
     login: 'Entrar',
+  },
+  signup: {
+    signIn: 'Entrar',
+    noAccount: 'Não tem uma conta?',
+    createAccount: 'Crie sua conta',
+    haveAccount: 'Já tem uma conta?',
+    verifyMail: 'Continue com o código de verificação',
+    signUp: 'Inscreva-se',
+    welcome: '👋 Bem-vindo! Por favor, preencha os detalhes para começar.',
   },
 }
 

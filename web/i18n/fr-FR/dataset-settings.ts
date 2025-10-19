@@ -37,6 +37,14 @@ const translation = {
     upgradeHighQualityTip: 'Une fois la mise à niveau vers le mode Haute Qualité, il n’est pas possible de revenir au mode Économique',
     helpText: 'Apprenez à rédiger une bonne description de jeu de données.',
     searchModel: 'Rechercher un modèle',
+    chunkStructure: {
+      learnMore: 'Pour en savoir plus',
+      title: 'Structure de morceaux',
+      description: 'sur la structure des morceaux.',
+    },
+    numberOfKeywords: 'Nombre de mots-clés',
+    onSearchResults: 'Aucun membre ne correspond à votre recherche.\nRéessayez votre recherche.',
+    nameAndIcon: 'Nom et icône',
   },
 }
 

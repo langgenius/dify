@@ -1,10 +1,13 @@
 from events.dataset_event import dataset_was_deleted
+from models import Dataset
 from tasks.clean_dataset_task import clean_dataset_task
 
 
 @dataset_was_deleted.connect
-def handle(sender, **kwargs):
+def handle(sender: Dataset, **kwargs):
     dataset = sender
+    assert dataset.doc_form
+    assert dataset.indexing_technique
     clean_dataset_task.delay(
         dataset.id,
         dataset.tenant_id,

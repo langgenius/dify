@@ -1,8 +1,8 @@
 import urllib.parse
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
-import requests
 
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 
@@ -68,7 +68,7 @@ class TestGitHubOAuth(BaseOAuthTest):
             ({}, None, True),
         ],
     )
-    @patch("requests.post")
+    @patch("httpx.post")
     def test_should_retrieve_access_token(
         self, mock_post, oauth, mock_response, response_data, expected_token, should_raise
     ):
@@ -105,7 +105,7 @@ class TestGitHubOAuth(BaseOAuthTest):
             ),
         ],
     )
-    @patch("requests.get")
+    @patch("httpx.get")
     def test_should_retrieve_user_info_correctly(self, mock_get, oauth, user_data, email_data, expected_email):
         user_response = MagicMock()
         user_response.json.return_value = user_data
@@ -121,11 +121,11 @@ class TestGitHubOAuth(BaseOAuthTest):
         assert user_info.name == user_data["name"]
         assert user_info.email == expected_email
 
-    @patch("requests.get")
+    @patch("httpx.get")
     def test_should_handle_network_errors(self, mock_get, oauth):
-        mock_get.side_effect = requests.exceptions.RequestException("Network error")
+        mock_get.side_effect = httpx.RequestError("Network error")
 
-        with pytest.raises(requests.exceptions.RequestException):
+        with pytest.raises(httpx.RequestError):
             oauth.get_raw_user_info("test_token")
 
 
@@ -167,7 +167,7 @@ class TestGoogleOAuth(BaseOAuthTest):
             ({}, None, True),
         ],
     )
-    @patch("requests.post")
+    @patch("httpx.post")
     def test_should_retrieve_access_token(
         self, mock_post, oauth, oauth_config, mock_response, response_data, expected_token, should_raise
     ):
@@ -201,7 +201,7 @@ class TestGoogleOAuth(BaseOAuthTest):
             ({"sub": "123", "email": "test@example.com", "name": "Test User"}, ""),  # Always returns empty string
         ],
     )
-    @patch("requests.get")
+    @patch("httpx.get")
     def test_should_retrieve_user_info_correctly(self, mock_get, oauth, mock_response, user_data, expected_name):
         mock_response.json.return_value = user_data
         mock_get.return_value = mock_response
@@ -217,12 +217,12 @@ class TestGoogleOAuth(BaseOAuthTest):
     @pytest.mark.parametrize(
         "exception_type",
         [
-            requests.exceptions.HTTPError,
-            requests.exceptions.ConnectionError,
-            requests.exceptions.Timeout,
+            httpx.HTTPError,
+            httpx.ConnectError,
+            httpx.TimeoutException,
         ],
     )
-    @patch("requests.get")
+    @patch("httpx.get")
     def test_should_handle_http_errors(self, mock_get, oauth, exception_type):
         mock_response = MagicMock()
         mock_response.raise_for_status.side_effect = exception_type("Error")

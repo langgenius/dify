@@ -8,8 +8,8 @@ export enum ScrollPosition {
 }
 
 type Params = {
-  wrapElemRef: React.RefObject<HTMLElement>
-  nextToStickyELemRef: React.RefObject<HTMLElement>
+  wrapElemRef: React.RefObject<HTMLElement | null>
+  nextToStickyELemRef: React.RefObject<HTMLElement | null>
 }
 const useStickyScroll = ({
   wrapElemRef,
@@ -23,7 +23,7 @@ const useStickyScroll = ({
       return
     const { height: wrapHeight, top: wrapTop } = wrapDom.getBoundingClientRect()
     const { top: nextToStickyTop } = stickyDOM.getBoundingClientRect()
-    let scrollPositionNew = ScrollPosition.belowTheWrap
+    let scrollPositionNew: ScrollPosition
 
     if (nextToStickyTop - wrapTop >= wrapHeight)
       scrollPositionNew = ScrollPosition.belowTheWrap

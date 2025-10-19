@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restx import Api, Namespace, fields
 
 from libs.helper import TimestampField
 
@@ -10,6 +10,12 @@ annotation_fields = {
     "created_at": TimestampField,
     # 'account': fields.Nested(simple_account_fields, allow_null=True)
 }
+
+
+def build_annotation_model(api_or_ns: Api | Namespace):
+    """Build the annotation model for the API or Namespace."""
+    return api_or_ns.model("Annotation", annotation_fields)
+
 
 annotation_list_fields = {
     "data": fields.List(fields.Nested(annotation_fields)),

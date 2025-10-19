@@ -6,6 +6,7 @@ const translation = {
     agents: 'Ajan Stratejileri',
     tools: 'Araçları',
     extensions: 'Uzantı -ları',
+    datasources: 'Veri Kaynakları',
   },
   categorySingle: {
     tool: 'Alet',
@@ -13,6 +14,7 @@ const translation = {
     extension: 'Uzantı',
     agent: 'Temsilci Stratejisi',
     model: 'Model',
+    datasource: 'Veri Kaynağı',
   },
   list: {
     source: {
@@ -246,6 +248,12 @@ const translation = {
     addApi: 'API Anahtarını Ekle',
     saveAndAuth: 'Kaydet ve Yetkilendir',
     clientInfo: 'Bu araç sağlayıcı için sistem istemci gizlilikleri bulunmadığından, manuel olarak ayar yapılması gerekmektedir. redirect_uri için lütfen şu adresi kullanın',
+    unavailable: 'Kullanılamıyor',
+    customCredentialUnavailable: 'Özel kimlik bilgileri şu anda mevcut değil.',
+    credentialUnavailable: 'Kimlik bilgileri şu anda mevcut değil. Lütfen yönetici ile iletişime geçin.',
+    credentialUnavailableInButton: 'Kimlik bilgileri mevcut değil',
+    connectedWorkspace: 'Bağlı Çalışma Alanı',
+    emptyAuth: 'Lütfen kimlik doğrulamasını yapılandırın',
   },
   deprecated: 'Kaldırılmış',
   autoUpdate: {

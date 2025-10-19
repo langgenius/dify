@@ -8,7 +8,7 @@ import type {
   VarType,
 } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { getNodeInfoById, isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import {
   VariableLabelInSelect,
@@ -27,18 +27,19 @@ const VariableTag = ({
   availableNodes,
 }: VariableTagProps) => {
   const nodes = useNodes<CommonNodeType>()
+  const isRagVar = isRagVariableVar(valueSelector)
   const node = useMemo(() => {
     if (isSystemVar(valueSelector)) {
       const startNode = availableNodes?.find(n => n.data.type === BlockEnum.Start)
       if (startNode)
         return startNode
     }
-    return getNodeInfoById(availableNodes || nodes, valueSelector[0])
-  }, [nodes, valueSelector, availableNodes])
+    return getNodeInfoById(availableNodes || nodes, isRagVar ? valueSelector[1] : valueSelector[0])
+  }, [nodes, valueSelector, availableNodes, isRagVar])
 
   const isEnv = isENV(valueSelector)
   const isChatVar = isConversationVar(valueSelector)
-  const isValid = Boolean(node) || isEnv || isChatVar
+  const isValid = Boolean(node) || isEnv || isChatVar || isRagVar
 
   const variableName = isSystemVar(valueSelector) ? valueSelector.slice(0).join('.') : valueSelector.slice(1).join('.')
   const isException = isExceptionVariable(variableName, node?.data.type)

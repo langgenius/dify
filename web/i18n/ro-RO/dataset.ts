@@ -42,6 +42,10 @@ const translation = {
     },
     change: 'Schimbă',
     changeRetrievalMethod: 'Schimbă metoda de recuperare',
+    keyword_search: {
+      description: 'Indexul inversat este o structură utilizată pentru o recuperare eficientă. Organizat pe termeni, fiecare termen indică documente sau pagini web care îl conțin.',
+      title: 'Indice inversat',
+    },
   },
   docsFailedNotice: 'documentele nu au putut fi indexate',
   retry: 'Reîncercați',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     general: 'General',
     parentChild: 'Părinte-copil',
+    graph: 'Grafic',
+    qa: 'Întrebări și răspunsuri',
   },
   parentMode: {
     paragraph: 'Paragraf',
@@ -217,6 +223,20 @@ const translation = {
     chooseTime: 'Alege o oră...',
   },
   embeddingModelNotAvailable: 'Modelul de încorporare nu este disponibil.',
+  updated: 'Actualizat',
+  externalKnowledgeBase: 'Baza de cunoștințe externă',
+  createFromPipeline: 'Crearea din Knowledge Pipeline',
+  serviceApi: {
+    card: {
+      title: 'API pentru serviciul backend',
+      apiReference: 'Referință API',
+      endpoint: 'Punct final API de servicii',
+      apiKey: 'Cheie API',
+    },
+    disabled: 'Dezactivat',
+    enabled: 'În serviciu',
+    title: 'API de servicii',
+  },
 }
 
 export default translation

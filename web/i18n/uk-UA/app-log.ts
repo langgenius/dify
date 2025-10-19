@@ -1,7 +1,7 @@
 const translation = {
   title: 'Журнали',
   description: 'Журнали фіксують робочий статус додатка, включаючи введення користувачів та відповіді штучного інтелекту.',
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  dateTimeFormat: 'MM/DD/YYYY hh:mm:ss A',
   table: {
     header: {
       updatedTime: 'Час оновлення',
@@ -82,6 +82,7 @@ const translation = {
     workflowTitle: 'Деталі Журналу',
     fileListDetail: 'Деталь',
     fileListLabel: 'Подробиці файлу',
+    testWithParams: 'Тест з параметрами',
   },
   promptLog: 'Журнал Запитань',
   agentLog: 'Журнал агента',
@@ -93,6 +94,7 @@ const translation = {
     iteration: 'Ітерація',
     finalProcessing: 'Остаточна обробка',
   },
+  dateFormat: 'ДД/ММ/РРРР',
 }
 
 export default translation

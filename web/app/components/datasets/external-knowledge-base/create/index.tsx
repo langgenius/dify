@@ -28,7 +28,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
     external_knowledge_api_id: '',
     external_knowledge_id: '',
     external_retrieval_model: {
-      top_k: 2,
+      top_k: 4,
       score_threshold: 0.5,
       score_threshold_enabled: false,
     },

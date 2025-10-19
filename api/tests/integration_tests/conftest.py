@@ -9,12 +9,13 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
 from app_factory import create_app
-from models import Account, DifySetup, Tenant, TenantAccountJoin, db
+from extensions.ext_database import db
+from models import Account, DifySetup, Tenant, TenantAccountJoin
 from services.account_service import AccountService, RegisterService
 
 
 # Loading the .env file if it exists
-def _load_env() -> None:
+def _load_env():
     current_file_path = pathlib.Path(__file__).absolute()
     # Items later in the list have higher precedence.
     files_to_load = [".env", "vdb.env"]

@@ -17,6 +17,7 @@ const translation = {
     business: 'Negocio',
     other: 'Otro',
     productivity: 'Productividad',
+    rag: 'TRAPO',
   },
   allTags: 'Todas las etiquetas',
   searchTags: 'Etiquetas de búsqueda',

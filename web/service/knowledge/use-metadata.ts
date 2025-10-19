@@ -119,7 +119,7 @@ export const useBatchUpdateDocMetadata = () => {
       })
       // meta data in document list
       await queryClient.invalidateQueries({
-        queryKey: [NAME_SPACE, 'dataset', payload.dataset_id],
+        queryKey: [NAME_SPACE, 'document', payload.dataset_id],
       })
       await queryClient.invalidateQueries({
         queryKey: [...useDocumentListKey, payload.dataset_id],

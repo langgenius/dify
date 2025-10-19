@@ -23,6 +23,10 @@ const VariableTypeSelect = ({
       value: VarType.object,
     },
     {
+      label: 'Boolean',
+      value: VarType.boolean,
+    },
+    {
       label: 'Array[string]',
       value: VarType.arrayString,
     },
@@ -33,6 +37,10 @@ const VariableTypeSelect = ({
     {
       label: 'Array[object]',
       value: VarType.arrayObject,
+    },
+    {
+      label: 'Array[boolean]',
+      value: VarType.arrayBoolean,
     },
   ]
 

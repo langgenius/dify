@@ -86,7 +86,6 @@ const translation = {
         'Http हैडर कुंजी, यदि आपको कुछ पता नहीं है तो "Authorization" के साथ छोड़ सकते हैं या इसे कस्टम मूल्य पर सेट कर सकते हैं',
       types: {
         none: 'कोई नहीं',
-        api_key: 'API कुंजी',
         apiKeyPlaceholder: 'API कुंजी के लिए HTTP हैडर नाम',
         apiValuePlaceholder: 'API कुंजी दर्ज करें',
         api_key_query: 'अनुक्रमणिका पैरामीटर',
@@ -197,6 +196,18 @@ const translation = {
       cancel: 'रद्द करें',
       save: 'सहेजें',
       confirm: 'जोड़ें और अधिकृत करें',
+      timeout: 'टाइमआउट',
+      sseReadTimeout: 'एसएसई पढ़ने का टाइमआउट',
+      headerKey: 'हेडर नाम',
+      headers: 'हेडर',
+      headerValue: 'हेडर मान',
+      timeoutPlaceholder: 'तीस',
+      headerValuePlaceholder: 'उदाहरण के लिए, बियरर टोकन123',
+      addHeader: 'हेडर जोड़ें',
+      headerKeyPlaceholder: 'उदाहरण के लिए, प्राधिकरण',
+      noHeaders: 'कोई कस्टम हेडर कॉन्फ़िगर नहीं किए गए हैं',
+      maskedHeadersTip: 'सुरक्षा के लिए हेडर मानों को छिपाया गया है। परिवर्तन वास्तविक मानों को अपडेट करेगा।',
+      headersTip: 'MCP सर्वर अनुरोधों के साथ भेजने के लिए अतिरिक्त HTTP हेडर्स',
     },
     delete: 'MCP सर्वर हटाएँ',
     deleteConfirmTitle: '{mcp} हटाना चाहते हैं?',
@@ -238,6 +249,7 @@ const translation = {
       publishTip: 'ऐप प्रकाशित नहीं हुआ। कृपया पहले ऐप प्रकाशित करें।',
     },
   },
+  allTools: 'सभी उपकरण',
 }
 
 export default translation

@@ -32,5 +32,5 @@ class ConversationIDNotFoundError(VariableOperatorNodeError):
 
 
 class InvalidDataError(VariableOperatorNodeError):
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: str):
         super().__init__(message)

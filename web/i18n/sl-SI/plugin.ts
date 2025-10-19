@@ -9,6 +9,7 @@ const translation = {
     models: 'Modeli',
     agents: 'Strategije agenta',
     tools: 'Orodja',
+    datasources: 'Viri podatkov',
   },
   categorySingle: {
     extension: 'Razširitev',
@@ -16,6 +17,7 @@ const translation = {
     agent: 'Agentska strategija',
     tool: 'Orodje',
     model: 'Model',
+    datasource: 'Vir podatkov',
   },
   list: {
     source: {
@@ -246,6 +248,12 @@ const translation = {
     oauthClientSettings: 'Nastavitve odjemalca OAuth',
     clientInfo: 'Ker za tega ponudnika orodij niso bili najdeni klientski skrivnosti sistema, je potrebna ročna nastavitev, za redirect_uri prosimo uporabite',
     useApiAuthDesc: 'Po konfiguraciji poverilnic lahko vsi člani v delovnem prostoru uporabljajo to orodje pri orkestraciji aplikacij.',
+    unavailable: 'Nedostopno',
+    customCredentialUnavailable: 'Trenutno niso na voljo prilagojene prijave.',
+    credentialUnavailable: 'Trenutno niso na voljo poverilnice. Prosimo, kontaktirajte administratorja.',
+    credentialUnavailableInButton: 'Pogodba ni na voljo',
+    connectedWorkspace: 'Povezani delovni prostor',
+    emptyAuth: 'Prosimo, konfigurirajte preverjanje pristnosti',
   },
   deprecated: 'Zastaran',
   autoUpdate: {

@@ -1,9 +1,10 @@
-from unittest.mock import patch
+from unittest.mock import create_autospec, patch
 
 import pytest
 from faker import Faker
 from werkzeug.exceptions import NotFound
 
+from models import Account
 from models.model import MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.app_service import AppService
@@ -24,7 +25,7 @@ class TestAnnotationService:
             patch("services.annotation_service.enable_annotation_reply_task") as mock_enable_task,
             patch("services.annotation_service.disable_annotation_reply_task") as mock_disable_task,
             patch("services.annotation_service.batch_import_annotations_task") as mock_batch_import_task,
-            patch("services.annotation_service.current_user") as mock_current_user,
+            patch("services.annotation_service.current_account_with_tenant") as mock_current_account_with_tenant,
         ):
             # Setup default mock returns
             mock_account_feature_service.get_features.return_value.billing.enabled = False
@@ -35,6 +36,9 @@ class TestAnnotationService:
             mock_disable_task.delay.return_value = None
             mock_batch_import_task.delay.return_value = None
 
+            # Create mock user that will be returned by current_account_with_tenant
+            mock_user = create_autospec(Account, instance=True)
+
             yield {
                 "account_feature_service": mock_account_feature_service,
                 "feature_service": mock_feature_service,
@@ -44,7 +48,8 @@ class TestAnnotationService:
                 "enable_task": mock_enable_task,
                 "disable_task": mock_disable_task,
                 "batch_import_task": mock_batch_import_task,
-                "current_user": mock_current_user,
+                "current_account_with_tenant": mock_current_account_with_tenant,
+                "current_user": mock_user,
             }
 
     def _create_test_app_and_account(self, db_session_with_containers, mock_external_service_dependencies):
@@ -104,6 +109,11 @@ class TestAnnotationService:
         """
         mock_external_service_dependencies["current_user"].id = account_id
         mock_external_service_dependencies["current_user"].current_tenant_id = tenant_id
+        # Configure current_account_with_tenant to return (user, tenant_id)
+        mock_external_service_dependencies["current_account_with_tenant"].return_value = (
+            mock_external_service_dependencies["current_user"],
+            tenant_id,
+        )
 
     def _create_test_conversation(self, app, account, fake):
         """
@@ -410,18 +420,18 @@ class TestAnnotationService:
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create annotations with specific keywords
-        unique_keyword = fake.word()
+        unique_keyword = f"unique_{fake.uuid4()[:8]}"
         annotation_args = {
             "question": f"Question with {unique_keyword} keyword",
             "answer": f"Answer with {unique_keyword} keyword",
         }
         AppAnnotationService.insert_app_annotation_directly(annotation_args, app.id)
-
         # Create another annotation without the keyword
         other_args = {
-            "question": "Question without keyword",
-            "answer": "Answer without keyword",
+            "question": "Different question without special term",
+            "answer": "Different answer without special content",
         }
+
         AppAnnotationService.insert_app_annotation_directly(other_args, app.id)
 
         # Search with keyword
@@ -471,7 +481,7 @@ class TestAnnotationService:
         # Verify annotation was deleted
         from extensions.ext_database import db
 
-        deleted_annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).first()
+        deleted_annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
         assert deleted_annotation is None
 
         # Verify delete_annotation_index_task was called (when annotation setting exists)
@@ -674,7 +684,7 @@ class TestAnnotationService:
 
         history = (
             db.session.query(AppAnnotationHitHistory)
-            .filter(
+            .where(
                 AppAnnotationHitHistory.annotation_id == annotation.id, AppAnnotationHitHistory.message_id == message_id
             )
             .first()
@@ -1175,7 +1185,7 @@ class TestAnnotationService:
         AppAnnotationService.delete_app_annotation(app.id, annotation_id)
 
         # Verify annotation was deleted
-        deleted_annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.id == annotation_id).first()
+        deleted_annotation = db.session.query(MessageAnnotation).where(MessageAnnotation.id == annotation_id).first()
         assert deleted_annotation is None
 
         # Verify delete_annotation_index_task was called

@@ -1,3 +1,4 @@
+import contextlib
 import mimetypes
 import os
 import platform
@@ -65,10 +66,8 @@ def guess_file_info_from_response(response: httpx.Response):
 
     # Use python-magic to guess MIME type if still unknown or generic
     if mimetype == "application/octet-stream" and magic is not None:
-        try:
+        with contextlib.suppress(magic.MagicException):
             mimetype = magic.from_buffer(response.content[:1024], mime=True)
-        except magic.MagicException:
-            pass
 
     extension = os.path.splitext(filename)[1]
 

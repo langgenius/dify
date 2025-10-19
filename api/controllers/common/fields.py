@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restx import Api, Namespace, fields
 
 from libs.helper import AppIconUrlField
 
@@ -9,6 +9,12 @@ parameters__system_parameters = {
     "file_size_limit": fields.Integer,
     "workflow_file_upload_limit": fields.Integer,
 }
+
+
+def build_system_parameters_model(api_or_ns: Api | Namespace):
+    """Build the system parameters model for the API or Namespace."""
+    return api_or_ns.model("SystemParameters", parameters__system_parameters)
+
 
 parameters_fields = {
     "opening_statement": fields.String,
@@ -24,6 +30,14 @@ parameters_fields = {
     "file_upload": fields.Raw,
     "system_parameters": fields.Nested(parameters__system_parameters),
 }
+
+
+def build_parameters_model(api_or_ns: Api | Namespace):
+    """Build the parameters model for the API or Namespace."""
+    copied_fields = parameters_fields.copy()
+    copied_fields["system_parameters"] = fields.Nested(build_system_parameters_model(api_or_ns))
+    return api_or_ns.model("Parameters", copied_fields)
+
 
 site_fields = {
     "title": fields.String,
@@ -41,3 +55,8 @@ site_fields = {
     "show_workflow_steps": fields.Boolean,
     "use_icon_as_answer_icon": fields.Boolean,
 }
+
+
+def build_site_model(api_or_ns: Api | Namespace):
+    """Build the site model for the API or Namespace."""
+    return api_or_ns.model("Site", site_fields)

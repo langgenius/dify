@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiArrowRightUpLine,
@@ -16,6 +16,7 @@ import PopupItem from './popup-item'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { useModalContext } from '@/context/modal-context'
 import { supportFunctionCall } from '@/utils/tool-call'
+import { tooltipManager } from '@/app/components/base/tooltip/TooltipManager'
 
 type PopupProps = {
   defaultModel?: DefaultModel
@@ -35,6 +36,25 @@ const Popup: FC<PopupProps> = ({
   const language = useLanguage()
   const [searchText, setSearchText] = useState('')
   const { setShowAccountSettingModal } = useModalContext()
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Close any open tooltips when the user scrolls to prevent them from appearing
+  // in incorrect positions or becoming detached from their trigger elements
+  useEffect(() => {
+    const handleTooltipCloseOnScroll = () => {
+      tooltipManager.closeActiveTooltip()
+    }
+
+    const scrollContainer = scrollRef.current
+    if (!scrollContainer) return
+
+    // Use passive listener for better performance since we don't prevent default
+    scrollContainer.addEventListener('scroll', handleTooltipCloseOnScroll, { passive: true })
+
+    return () => {
+      scrollContainer.removeEventListener('scroll', handleTooltipCloseOnScroll)
+    }
+  }, [])
 
   const filteredModelList = useMemo(() => {
     return modelList.map((model) => {
@@ -60,7 +80,7 @@ const Popup: FC<PopupProps> = ({
   }, [language, modelList, scopeFeatures, searchText])
 
   return (
-    <div className='max-h-[480px] w-[320px] overflow-y-auto rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg'>
+    <div ref={scrollRef} className='max-h-[480px] w-[320px] overflow-y-auto rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg'>
       <div className='sticky top-0 z-10 bg-components-panel-bg pb-1 pl-3 pr-2 pt-3'>
         <div className={`
           flex h-8 items-center rounded-lg border pl-[9px] pr-[10px]

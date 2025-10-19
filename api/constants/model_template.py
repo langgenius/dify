@@ -7,7 +7,7 @@ default_app_templates: Mapping[AppMode, Mapping] = {
     # workflow default mode
     AppMode.WORKFLOW: {
         "app": {
-            "mode": AppMode.WORKFLOW.value,
+            "mode": AppMode.WORKFLOW,
             "enable_site": True,
             "enable_api": True,
         }
@@ -15,7 +15,7 @@ default_app_templates: Mapping[AppMode, Mapping] = {
     # completion default mode
     AppMode.COMPLETION: {
         "app": {
-            "mode": AppMode.COMPLETION.value,
+            "mode": AppMode.COMPLETION,
             "enable_site": True,
             "enable_api": True,
         },
@@ -44,7 +44,7 @@ default_app_templates: Mapping[AppMode, Mapping] = {
     # chat default mode
     AppMode.CHAT: {
         "app": {
-            "mode": AppMode.CHAT.value,
+            "mode": AppMode.CHAT,
             "enable_site": True,
             "enable_api": True,
         },
@@ -60,7 +60,7 @@ default_app_templates: Mapping[AppMode, Mapping] = {
     # advanced-chat default mode
     AppMode.ADVANCED_CHAT: {
         "app": {
-            "mode": AppMode.ADVANCED_CHAT.value,
+            "mode": AppMode.ADVANCED_CHAT,
             "enable_site": True,
             "enable_api": True,
         },
@@ -68,7 +68,7 @@ default_app_templates: Mapping[AppMode, Mapping] = {
     # agent-chat default mode
     AppMode.AGENT_CHAT: {
         "app": {
-            "mode": AppMode.AGENT_CHAT.value,
+            "mode": AppMode.AGENT_CHAT,
             "enable_site": True,
             "enable_api": True,
         },

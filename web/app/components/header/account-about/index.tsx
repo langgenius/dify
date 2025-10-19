@@ -8,7 +8,7 @@ import Button from '@/app/components/base/button'
 import type { LangGeniusVersionResponse } from '@/models/common'
 import { IS_CE_EDITION } from '@/config'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import { noop } from 'lodash-es'
+
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type IAccountSettingProps = {
@@ -27,11 +27,11 @@ export default function AccountAbout({
   return (
     <Modal
       isShow
-      onClose={noop}
+      onClose={onCancel}
       className='!w-[480px] !max-w-[480px] !px-6 !py-4'
     >
-      <div>
-        <div className='absolute right-4 top-4 flex h-8 w-8 cursor-pointer items-center justify-center' onClick={onCancel}>
+      <div className='relative'>
+        <div className='absolute right-0 top-0 flex h-8 w-8 cursor-pointer items-center justify-center' onClick={onCancel}>
           <RiCloseLine className='h-4 w-4 text-text-tertiary' />
         </div>
         <div className='flex flex-col items-center gap-4 py-8'>

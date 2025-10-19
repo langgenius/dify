@@ -17,6 +17,7 @@ const translation = {
     travel: 'Podróż',
     design: 'Projekt',
     finance: 'Finanse',
+    rag: '',
   },
   searchTags: 'Szukaj tagów',
   allTags: 'Wszystkie tagi',

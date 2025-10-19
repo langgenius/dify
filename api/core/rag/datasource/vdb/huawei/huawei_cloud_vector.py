@@ -1,7 +1,7 @@
 import json
 import logging
 import ssl
-from typing import Any, Optional
+from typing import Any
 
 from elasticsearch import Elasticsearch
 from pydantic import BaseModel, model_validator
@@ -28,12 +28,12 @@ def create_ssl_context() -> ssl.SSLContext:
 
 class HuaweiCloudVectorConfig(BaseModel):
     hosts: str
-    username: str | None
-    password: str | None
+    username: str | None = None
+    password: str | None = None
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict) -> dict:
+    def validate_config(cls, values: dict):
         if not values["hosts"]:
             raise ValueError("config HOSTS is required")
         return values
@@ -67,9 +67,9 @@ class HuaweiCloudVector(BaseVector):
                 index=self._collection_name,
                 id=uuids[i],
                 document={
-                    Field.CONTENT_KEY.value: documents[i].page_content,
-                    Field.VECTOR.value: embeddings[i] or None,
-                    Field.METADATA_KEY.value: documents[i].metadata or {},
+                    Field.CONTENT_KEY: documents[i].page_content,
+                    Field.VECTOR: embeddings[i] or None,
+                    Field.METADATA_KEY: documents[i].metadata or {},
                 },
             )
         self._client.indices.refresh(index=self._collection_name)
@@ -78,20 +78,20 @@ class HuaweiCloudVector(BaseVector):
     def text_exists(self, id: str) -> bool:
         return bool(self._client.exists(index=self._collection_name, id=id))
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         for id in ids:
             self._client.delete(index=self._collection_name, id=id)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         query_str = {"query": {"match": {f"metadata.{key}": f"{value}"}}}
         results = self._client.search(index=self._collection_name, body=query_str)
         ids = [hit["_id"] for hit in results["hits"]["hits"]]
         if ids:
             self.delete_by_ids(ids)
 
-    def delete(self) -> None:
+    def delete(self):
         self._client.indices.delete(index=self._collection_name)
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
@@ -101,7 +101,7 @@ class HuaweiCloudVector(BaseVector):
             "size": top_k,
             "query": {
                 "vector": {
-                    Field.VECTOR.value: {
+                    Field.VECTOR: {
                         "vector": query_vector,
                         "topk": top_k,
                     }
@@ -116,9 +116,9 @@ class HuaweiCloudVector(BaseVector):
             docs_and_scores.append(
                 (
                     Document(
-                        page_content=hit["_source"][Field.CONTENT_KEY.value],
-                        vector=hit["_source"][Field.VECTOR.value],
-                        metadata=hit["_source"][Field.METADATA_KEY.value],
+                        page_content=hit["_source"][Field.CONTENT_KEY],
+                        vector=hit["_source"][Field.VECTOR],
+                        metadata=hit["_source"][Field.METADATA_KEY],
                     ),
                     hit["_score"],
                 )
@@ -127,7 +127,7 @@ class HuaweiCloudVector(BaseVector):
         docs = []
         for doc, score in docs_and_scores:
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
-            if score > score_threshold:
+            if score >= score_threshold:
                 if doc.metadata is not None:
                     doc.metadata["score"] = score
             docs.append(doc)
@@ -135,15 +135,15 @@ class HuaweiCloudVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        query_str = {"match": {Field.CONTENT_KEY.value: query}}
+        query_str = {"match": {Field.CONTENT_KEY: query}}
         results = self._client.search(index=self._collection_name, query=query_str, size=kwargs.get("top_k", 4))
         docs = []
         for hit in results["hits"]["hits"]:
             docs.append(
                 Document(
-                    page_content=hit["_source"][Field.CONTENT_KEY.value],
-                    vector=hit["_source"][Field.VECTOR.value],
-                    metadata=hit["_source"][Field.METADATA_KEY.value],
+                    page_content=hit["_source"][Field.CONTENT_KEY],
+                    vector=hit["_source"][Field.VECTOR],
+                    metadata=hit["_source"][Field.METADATA_KEY],
                 )
             )
 
@@ -157,8 +157,8 @@ class HuaweiCloudVector(BaseVector):
     def create_collection(
         self,
         embeddings: list[list[float]],
-        metadatas: Optional[list[dict[Any, Any]]] = None,
-        index_params: Optional[dict] = None,
+        metadatas: list[dict[Any, Any]] | None = None,
+        index_params: dict | None = None,
     ):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
@@ -171,8 +171,8 @@ class HuaweiCloudVector(BaseVector):
                 dim = len(embeddings[0])
                 mappings = {
                     "properties": {
-                        Field.CONTENT_KEY.value: {"type": "text"},
-                        Field.VECTOR.value: {  # Make sure the dimension is correct here
+                        Field.CONTENT_KEY: {"type": "text"},
+                        Field.VECTOR: {  # Make sure the dimension is correct here
                             "type": "vector",
                             "dimension": dim,
                             "indexing": True,
@@ -181,7 +181,7 @@ class HuaweiCloudVector(BaseVector):
                             "neighbors": 32,
                             "efc": 128,
                         },
-                        Field.METADATA_KEY.value: {
+                        Field.METADATA_KEY: {
                             "type": "object",
                             "properties": {
                                 "doc_id": {"type": "keyword"}  # Map doc_id to keyword type

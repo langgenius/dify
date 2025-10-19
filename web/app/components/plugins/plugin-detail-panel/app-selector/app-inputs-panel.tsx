@@ -77,6 +77,13 @@ const AppInputsPanel = ({
             required: false,
           }
         }
+        if(item.checkbox) {
+          return {
+            ...item.checkbox,
+            type: 'checkbox',
+            required: false,
+          }
+        }
         if (item.select) {
           return {
             ...item.select,
@@ -100,6 +107,13 @@ const AppInputsPanel = ({
             type: 'file',
             required: false,
             fileUploadConfig,
+          }
+        }
+
+        if (item.json_object) {
+          return {
+            ...item.json_object,
+            type: 'json_object',
           }
         }
 

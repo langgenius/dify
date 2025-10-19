@@ -55,6 +55,7 @@ const translation = {
     passwordLengthInValid: 'Geslo mora vsebovati vsaj 8 znakov',
     passwordInvalid: 'Geslo mora vsebovati črke in številke, dolžina pa mora biti več kot 8 znakov',
     registrationNotAllowed: 'Računa ni mogoče najti. Za registracijo se obrnite na skrbnika sistema.',
+    invalidEmailOrPassword: 'Neveljaven e-poštni naslov ali geslo.',
   },
   license: {
     tip: 'Preden začnete z Dify Community Edition, preberite GitHub',
@@ -109,6 +110,15 @@ const translation = {
     noLoginMethodTip: 'Prosimo, da se obrnete na sistemskega skrbnika, da dodate metodo za avtentikacijo.',
     disabled: 'Avtentikacija v spletni aplikaciji je onemogočena. Prosimo, kontaktirajte skrbnika sistema, da jo omogoči. Poskusite lahko neposredno uporabljati aplikacijo.',
     login: 'Prijava',
+  },
+  signup: {
+    createAccount: 'Ustvari svoj račun',
+    signUp: 'Prijavite se',
+    verifyMail: 'Nadaljujte z verifikacijskim kodom',
+    haveAccount: 'Že imate račun?',
+    signIn: 'Prijavite se',
+    noAccount: 'Nimate računa?',
+    welcome: '👋 Dobrodošli! Prosimo, izpolnite podatke, da začnete.',
   },
 }
 

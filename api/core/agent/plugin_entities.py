@@ -1,5 +1,5 @@
-import enum
-from typing import Any, Optional
+from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
@@ -26,25 +26,25 @@ class AgentStrategyProviderIdentity(ToolProviderIdentity):
 
 
 class AgentStrategyParameter(PluginParameter):
-    class AgentStrategyParameterType(enum.StrEnum):
+    class AgentStrategyParameterType(StrEnum):
         """
         Keep all the types from PluginParameterType
         """
 
-        STRING = CommonParameterType.STRING.value
-        NUMBER = CommonParameterType.NUMBER.value
-        BOOLEAN = CommonParameterType.BOOLEAN.value
-        SELECT = CommonParameterType.SELECT.value
-        SECRET_INPUT = CommonParameterType.SECRET_INPUT.value
-        FILE = CommonParameterType.FILE.value
-        FILES = CommonParameterType.FILES.value
-        APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
-        MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
-        TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR.value
-        ANY = CommonParameterType.ANY.value
+        STRING = CommonParameterType.STRING
+        NUMBER = CommonParameterType.NUMBER
+        BOOLEAN = CommonParameterType.BOOLEAN
+        SELECT = CommonParameterType.SELECT
+        SECRET_INPUT = CommonParameterType.SECRET_INPUT
+        FILE = CommonParameterType.FILE
+        FILES = CommonParameterType.FILES
+        APP_SELECTOR = CommonParameterType.APP_SELECTOR
+        MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR
+        TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
+        ANY = CommonParameterType.ANY
 
         # deprecated, should not use.
-        SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
+        SYSTEM_FILES = CommonParameterType.SYSTEM_FILES
 
         def as_normal_type(self):
             return as_normal_type(self)
@@ -53,7 +53,7 @@ class AgentStrategyParameter(PluginParameter):
             return cast_parameter_value(self, value)
 
     type: AgentStrategyParameterType = Field(..., description="The type of the parameter")
-    help: Optional[I18nObject] = None
+    help: I18nObject | None = None
 
     def init_frontend_parameter(self, value: Any):
         return init_frontend_parameter(self, self.type, value)
@@ -61,7 +61,7 @@ class AgentStrategyParameter(PluginParameter):
 
 class AgentStrategyProviderEntity(BaseModel):
     identity: AgentStrategyProviderIdentity
-    plugin_id: Optional[str] = Field(None, description="The id of the plugin")
+    plugin_id: str | None = Field(None, description="The id of the plugin")
 
 
 class AgentStrategyIdentity(ToolIdentity):
@@ -72,7 +72,7 @@ class AgentStrategyIdentity(ToolIdentity):
     pass
 
 
-class AgentFeature(enum.StrEnum):
+class AgentFeature(StrEnum):
     """
     Agent Feature, used to describe the features of the agent strategy.
     """
@@ -84,9 +84,9 @@ class AgentStrategyEntity(BaseModel):
     identity: AgentStrategyIdentity
     parameters: list[AgentStrategyParameter] = Field(default_factory=list)
     description: I18nObject = Field(..., description="The description of the agent strategy")
-    output_schema: Optional[dict] = None
-    features: Optional[list[AgentFeature]] = None
-    meta_version: Optional[str] = None
+    output_schema: dict | None = None
+    features: list[AgentFeature] | None = None
+    meta_version: str | None = None
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 

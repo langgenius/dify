@@ -1,7 +1,6 @@
 import logging
 from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -11,7 +10,6 @@ from core.helper.download import download_with_size_limit
 from core.helper.marketplace import download_plugin_pkg
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
-    GenericProviderID,
     PluginDeclaration,
     PluginEntity,
     PluginInstallation,
@@ -27,6 +25,7 @@ from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_redis import redis_client
+from models.provider_ids import GenericProviderID
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import FeatureService, PluginInstallationScope
 
@@ -46,11 +45,11 @@ class PluginService:
     REDIS_TTL = 60 * 5  # 5 minutes
 
     @staticmethod
-    def fetch_latest_plugin_version(plugin_ids: Sequence[str]) -> Mapping[str, Optional[LatestPluginCache]]:
+    def fetch_latest_plugin_version(plugin_ids: Sequence[str]) -> Mapping[str, LatestPluginCache | None]:
         """
         Fetch the latest plugin version
         """
-        result: dict[str, Optional[PluginService.LatestPluginCache]] = {}
+        result: dict[str, PluginService.LatestPluginCache | None] = {}
 
         try:
             cache_not_exists = []
@@ -109,7 +108,7 @@ class PluginService:
             raise PluginInstallationForbiddenError("Plugin installation is restricted to marketplace only")
 
     @staticmethod
-    def _check_plugin_installation_scope(plugin_verification: Optional[PluginVerification]):
+    def _check_plugin_installation_scope(plugin_verification: PluginVerification | None):
         """
         Check the plugin installation scope
         """
@@ -144,7 +143,7 @@ class PluginService:
         return manager.get_debugging_key(tenant_id)
 
     @staticmethod
-    def list_latest_versions(plugin_ids: Sequence[str]) -> Mapping[str, Optional[LatestPluginCache]]:
+    def list_latest_versions(plugin_ids: Sequence[str]) -> Mapping[str, LatestPluginCache | None]:
         """
         List the latest versions of the plugins
         """
@@ -337,6 +336,8 @@ class PluginService:
             pkg,
             verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
         )
+        PluginService._check_plugin_installation_scope(response.verification)
+
         return response
 
     @staticmethod
@@ -359,6 +360,8 @@ class PluginService:
             pkg,
             verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
         )
+        PluginService._check_plugin_installation_scope(response.verification)
+
         return response
 
     @staticmethod
@@ -378,6 +381,10 @@ class PluginService:
 
         manager = PluginInstaller()
 
+        for plugin_unique_identifier in plugin_unique_identifiers:
+            resp = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
+            PluginService._check_plugin_installation_scope(resp.verification)
+
         return manager.install_from_identifiers(
             tenant_id,
             plugin_unique_identifiers,
@@ -394,6 +401,9 @@ class PluginService:
         PluginService._check_marketplace_only_permission()
 
         manager = PluginInstaller()
+        plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
+        PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
+
         return manager.install_from_identifiers(
             tenant_id,
             [plugin_unique_identifier],

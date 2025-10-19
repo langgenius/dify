@@ -43,7 +43,7 @@ export const getOperationItems = (
     ]
   }
 
-  if (writeModeTypes && ['string', 'object'].includes(assignedVarType || '')) {
+  if (writeModeTypes && ['string', 'boolean', 'object'].includes(assignedVarType || '')) {
     return writeModeTypes.map(type => ({
       value: type,
       name: type,

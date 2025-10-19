@@ -181,7 +181,7 @@ const InputVarList: FC<Props> = ({
 
           return (
             <div key={variable} className='space-y-1'>
-              <div className='flex h-[18px] items-center space-x-2'>
+              <div className='flex items-center space-x-2 leading-[18px]'>
                 <span className='code-sm-semibold text-text-secondary'>{label[language] || label.en_US}</span>
                 <span className='system-xs-regular text-text-tertiary'>{paramType(type)}</span>
                 {required && <span className='system-xs-regular text-util-colors-orange-dark-orange-dark-600'>Required</span>}

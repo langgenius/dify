@@ -17,6 +17,7 @@ const translation = {
     medical: 'ทางการแพทย์',
     image: 'ภาพ',
     other: 'อื่นๆ',
+    rag: 'ผ้าขี้ริ้ว',
   },
   searchTags: 'แท็กค้นหา',
   allTags: 'แท็กทั้งหมด',

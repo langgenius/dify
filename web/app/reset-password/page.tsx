@@ -47,12 +47,6 @@ export default function CheckCode() {
         params.set('email', encodeURIComponent(email))
         router.push(`/reset-password/check-code?${params.toString()}`)
       }
-      else if (res.code === 'account_not_found') {
-        Toast.notify({
-          type: 'error',
-          message: t('login.error.registrationNotAllowed'),
-        })
-      }
       else {
         Toast.notify({
           type: 'error',

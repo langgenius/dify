@@ -45,7 +45,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
       <Divider className='mb-0 mt-3' />
       <div className='flex w-full items-center justify-center gap-2 p-3'>
         <Button className='w-full' onClick={() => {
-          onClose && onClose()
+          onClose?.()
         }}>
           {t('app.iconPicker.cancel')}
         </Button>
@@ -54,7 +54,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
           variant="primary"
           className='w-full'
           onClick={() => {
-            onSelect && onSelect(selectedEmoji, selectedBackground!)
+            onSelect?.(selectedEmoji, selectedBackground!)
           }}>
           {t('app.iconPicker.ok')}
         </Button>

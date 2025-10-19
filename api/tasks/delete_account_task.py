@@ -1,9 +1,9 @@
 import logging
 
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from services.billing_service import BillingService
 from tasks.mail_account_deletion_task import send_deletion_success_task
 
@@ -15,7 +15,7 @@ def delete_account_task(account_id):
     account = db.session.query(Account).where(Account.id == account_id).first()
     try:
         BillingService.delete_account(account_id)
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to delete account %s from billing service.", account_id)
         raise
 

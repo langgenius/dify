@@ -1,5 +1,5 @@
 'use client'
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import React, { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import useStickyScroll, { ScrollPosition } from '../use-sticky-scroll'
 import Item from './item'
@@ -17,20 +17,22 @@ export type ListProps = {
   tags: string[]
   toolContentClassName?: string
   disableMaxWidth?: boolean
+  ref?: React.Ref<ListRef>
 }
 
 export type ListRef = { handleScroll: () => void }
 
-const List = forwardRef<ListRef, ListProps>(({
+const List = ({
   wrapElemRef,
   searchText,
   tags,
   list,
   toolContentClassName,
   disableMaxWidth = false,
-}, ref) => {
+  ref,
+}: ListProps) => {
   const { t } = useTranslation()
-  const hasFilter = !searchText
+  const noFilter = !searchText && tags.length === 0
   const hasRes = list.length > 0
   const urlWithSearchText = getMarketplaceUrl('', { q: searchText, tags: tags.join(',') })
   const nextToStickyELemRef = useRef<HTMLDivElement>(null)
@@ -56,7 +58,6 @@ const List = forwardRef<ListRef, ListProps>(({
 
   useEffect(() => {
     handleScroll()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list])
 
   const handleHeadClick = () => {
@@ -67,7 +68,7 @@ const List = forwardRef<ListRef, ListProps>(({
     window.open(urlWithSearchText, '_blank')
   }
 
-  if (hasFilter) {
+  if (noFilter) {
     return (
       <Link
         className='system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
@@ -109,7 +110,7 @@ const List = forwardRef<ListRef, ListProps>(({
             onAction={noop}
           />
         ))}
-        {list.length > 0 && (
+        {hasRes && (
           <div className='mb-3 mt-2 flex items-center justify-center space-x-2'>
             <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(16,24,40,0.08)] to-[rgba(255,255,255,0.01)]"></div>
             <Link
@@ -126,7 +127,7 @@ const List = forwardRef<ListRef, ListProps>(({
       </div>
     </>
   )
-})
+}
 
 List.displayName = 'List'
 

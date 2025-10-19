@@ -1,12 +1,7 @@
-'use client'
-import { useTranslation } from 'react-i18next'
-import Container from './container'
-import useDocumentTitle from '@/hooks/use-document-title'
+import List from '../../components/datasets/list'
 
-const AppList = () => {
-  const { t } = useTranslation()
-  useDocumentTitle(t('common.menus.datasets'))
-  return <Container />
+const DatasetList = async () => {
+  return <List />
 }
 
-export default AppList
+export default DatasetList

@@ -17,6 +17,7 @@ const translation = {
     agent: 'Agent',
     other: 'Drugo',
     travel: 'Potovanje',
+    rag: 'RAG',
   },
   searchTags: 'Iskalne oznake',
   allTags: 'Vse nalepke',

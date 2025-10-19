@@ -31,7 +31,6 @@ const translation = {
       sync: 'Sincronizza',
       resume: 'Riprendi',
       pause: 'Pausa',
-      download: 'Scarica file',
     },
     index: {
       enable: 'Abilita',
@@ -101,6 +100,9 @@ const translation = {
       upload_file: 'Carica File',
       notion: 'Sincronizza da Notion',
       github: 'Sincronizza da Github',
+      online_document: 'Documento online',
+      local_file: 'File locale',
+      website_crawl: 'Scansione del sito web',
     },
     type: {
       book: 'Libro',
@@ -339,13 +341,13 @@ const translation = {
     pause: 'Pausa',
     hierarchical: 'Genitore-figlio',
     parentMaxTokens: 'Genitore',
+    waiting: 'Attesa dell\'incorporamento...',
   },
   segment: {
     paragraphs: 'Paragrafi',
     keywords: 'Parole Chiave',
     addKeyWord: 'Aggiungi parola chiave',
     keywordError: 'La lunghezza massima della parola chiave è 20',
-    characters: 'caratteri',
     hitCount: 'Conteggio recuperi',
     vectorHash: 'Hash del vettore: ',
     questionPlaceholder: 'aggiungi domanda qui',

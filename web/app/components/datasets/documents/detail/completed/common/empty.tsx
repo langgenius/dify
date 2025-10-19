@@ -22,13 +22,13 @@ const Line = React.memo(({
   className,
 }: LineProps) => {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="2" height="241" viewBox="0 0 2 241" fill="none" className={className}>
-      <path d="M1 0.5L1 240.5" stroke="url(#paint0_linear_1989_74474)"/>
+    <svg xmlns='http://www.w3.org/2000/svg' width='2' height='241' viewBox='0 0 2 241' fill='none' className={className}>
+      <path d='M1 0.5L1 240.5' stroke='url(#paint0_linear_1989_74474)' />
       <defs>
-        <linearGradient id="paint0_linear_1989_74474" x1="-7.99584" y1="240.5" x2="-7.88094" y2="0.50004" gradientUnits="userSpaceOnUse">
-          <stop stopColor="white" stopOpacity="0.01"/>
-          <stop offset="0.503965" stopColor="#101828" stopOpacity="0.08"/>
-          <stop offset="1" stopColor="white" stopOpacity="0.01"/>
+        <linearGradient id='paint0_linear_1989_74474' x1='-7.99584' y1='240.5' x2='-7.88094' y2='0.50004' gradientUnits='userSpaceOnUse'>
+          <stop stopColor='white' stopOpacity='0.01' />
+          <stop offset='0.503965' stopColor='#101828' stopOpacity='0.08' />
+          <stop offset='1' stopColor='white' stopOpacity='0.01' />
         </linearGradient>
       </defs>
     </svg>
@@ -47,8 +47,8 @@ const Empty: FC<IEmptyProps> = ({
       <div className='flex flex-col items-center'>
         <div className='relative z-10 flex h-14 w-14 items-center justify-center rounded-xl border border-divider-subtle bg-components-card-bg shadow-lg shadow-shadow-shadow-5'>
           <RiFileList2Line className='h-6 w-6 text-text-secondary' />
-          <Line className='absolute -right-[1px] top-1/2 -translate-y-1/2' />
-          <Line className='absolute -left-[1px] top-1/2 -translate-y-1/2' />
+          <Line className='absolute -right-px top-1/2 -translate-y-1/2' />
+          <Line className='absolute -left-px top-1/2 -translate-y-1/2' />
           <Line className='absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rotate-90' />
           <Line className='absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 rotate-90' />
         </div>

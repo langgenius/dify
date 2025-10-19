@@ -16,9 +16,9 @@
   - `zh_Hans` (string) [optional] 中文描述
   - `en_US` (string) 英文描述
 - `icon_small` (string) [optional] 供应商小 ICON，存储在对应供应商实现目录下的 `_assets` 目录，中英文策略同 `label`
-  - `zh_Hans` (string)  [optional] 中文 ICON
+  - `zh_Hans` (string) [optional] 中文 ICON
   - `en_US` (string) 英文 ICON
-- `icon_large` (string) [optional] 供应商大 ICON，存储在对应供应商实现目录下的 _assets 目录，中英文策略同 label
+- `icon_large` (string) [optional] 供应商大 ICON，存储在对应供应商实现目录下的 \_assets 目录，中英文策略同 label
   - `zh_Hans `(string) [optional] 中文 ICON
   - `en_US` (string) 英文 ICON
 - `background` (string) [optional] 背景颜色色值，例：#FFFFFF，为空则展示前端默认色值。
@@ -29,8 +29,8 @@
   - `url` (object) 帮助链接，i18n
     - `zh_Hans` (string) [optional] 中文链接
     - `en_US` (string) 英文链接
-- `supported_model_types` (array[[ModelType](#ModelType)]) 支持的模型类型
-- `configurate_methods` (array[[ConfigurateMethod](#ConfigurateMethod)]) 配置方式
+- `supported_model_types` (array\[[ModelType](#ModelType)\]) 支持的模型类型
+- `configurate_methods` (array\[[ConfigurateMethod](#ConfigurateMethod)\]) 配置方式
 - `provider_credential_schema` ([ProviderCredentialSchema](#ProviderCredentialSchema)) 供应商凭据规格
 - `model_credential_schema` ([ModelCredentialSchema](#ModelCredentialSchema)) 模型凭据规格
 
@@ -41,23 +41,23 @@
   - `zh_Hans `(string) [optional] 中文标签名
   - `en_US` (string) 英文标签名
 - `model_type` ([ModelType](#ModelType)) 模型类型
-- `features` (array[[ModelFeature](#ModelFeature)]) [optional] 支持功能列表
+- `features` (array\[[ModelFeature](#ModelFeature)\]) [optional] 支持功能列表
 - `model_properties` (object) 模型属性
   - `mode` ([LLMMode](#LLMMode)) 模式 (模型类型 `llm` 可用)
   - `context_size` (int) 上下文大小 (模型类型 `llm` `text-embedding` 可用)
   - `max_chunks` (int) 最大分块数量 (模型类型 `text-embedding ` `moderation` 可用)
   - `file_upload_limit` (int) 文件最大上传限制，单位：MB。（模型类型 `speech2text` 可用）
-  - `supported_file_extensions` (string)  支持文件扩展格式，如：mp3,mp4（模型类型 `speech2text` 可用）
-  - `default_voice` (string)  缺省音色，必选：alloy,echo,fable,onyx,nova,shimmer（模型类型 `tts` 可用）
-  - `voices` (list)  可选音色列表。
-    - `mode` (string)  音色模型。（模型类型 `tts` 可用）
-    - `name` (string)  音色模型显示名称。（模型类型 `tts` 可用）
-    - `language` (string)  音色模型支持语言。（模型类型 `tts` 可用）
-  - `word_limit` (int)  单次转换字数限制，默认按段落分段（模型类型 `tts` 可用）
-  - `audio_type` (string)  支持音频文件扩展格式，如：mp3,wav（模型类型 `tts` 可用）
-  - `max_workers` (int)  支持文字音频转换并发任务数（模型类型 `tts` 可用）
-  - `max_characters_per_chunk` (int) 每块最大字符数 (模型类型  `moderation` 可用)
-- `parameter_rules` (array[[ParameterRule](#ParameterRule)]) [optional] 模型调用参数规则
+  - `supported_file_extensions` (string) 支持文件扩展格式，如：mp3,mp4（模型类型 `speech2text` 可用）
+  - `default_voice` (string) 缺省音色，必选：alloy,echo,fable,onyx,nova,shimmer（模型类型 `tts` 可用）
+  - `voices` (list) 可选音色列表。
+    - `mode` (string) 音色模型。（模型类型 `tts` 可用）
+    - `name` (string) 音色模型显示名称。（模型类型 `tts` 可用）
+    - `language` (string) 音色模型支持语言。（模型类型 `tts` 可用）
+  - `word_limit` (int) 单次转换字数限制，默认按段落分段（模型类型 `tts` 可用）
+  - `audio_type` (string) 支持音频文件扩展格式，如：mp3,wav（模型类型 `tts` 可用）
+  - `max_workers` (int) 支持文字音频转换并发任务数（模型类型 `tts` 可用）
+  - `max_characters_per_chunk` (int) 每块最大字符数 (模型类型 `moderation` 可用)
+- `parameter_rules` (array\[[ParameterRule](#ParameterRule)\]) [optional] 模型调用参数规则
 - `pricing` ([PriceConfig](#PriceConfig)) [optional] 价格信息
 - `deprecated` (bool) 是否废弃。若废弃，模型列表将不再展示，但已经配置的可以继续使用，默认 False。
 
@@ -75,6 +75,7 @@
 - `predefined-model  ` 预定义模型
 
   表示用户只需要配置统一的供应商凭据即可使用供应商下的预定义模型。
+
 - `customizable-model` 自定义模型
 
   用户需要新增每个模型的凭据配置。
@@ -106,7 +107,7 @@
 - `name` (string) 调用模型实际参数名
 
 - `use_template` (string) [optional] 使用模板
-  
+
   默认预置了 5 种变量内容配置模板：
 
   - `temperature`
@@ -114,7 +115,7 @@
   - `frequency_penalty`
   - `presence_penalty`
   - `max_tokens`
-  
+
   可在 use_template 中直接设置模板变量名，将会使用 entities.defaults.PARAMETER_RULE_TEMPLATE 中的默认配置
   不用设置除 `name` 和 `use_template` 之外的所有参数，若设置了额外的配置参数，将覆盖默认配置。
   可参考 `openai/llm/gpt-3.5-turbo.yaml`。
@@ -157,7 +158,7 @@
 
 ### ProviderCredentialSchema
 
-- `credential_form_schemas` (array[[CredentialFormSchema](#CredentialFormSchema)]) 凭据表单规范
+- `credential_form_schemas` (array\[[CredentialFormSchema](#CredentialFormSchema)\]) 凭据表单规范
 
 ### ModelCredentialSchema
 
@@ -168,7 +169,7 @@
   - `placeholder` (object) 模型提示内容
     - `en_US`(string) 英文
     - `zh_Hans`(string) [optional] 中文
-- `credential_form_schemas` (array[[CredentialFormSchema](#CredentialFormSchema)]) 凭据表单规范
+- `credential_form_schemas` (array\[[CredentialFormSchema](#CredentialFormSchema)\]) 凭据表单规范
 
 ### CredentialFormSchema
 
@@ -179,12 +180,12 @@
 - `type` ([FormType](#FormType)) 表单项类型
 - `required` (bool) 是否必填
 - `default`(string) 默认值
-- `options` (array[[FormOption](#FormOption)]) 表单项为 `select` 或 `radio` 专有属性，定义下拉内容
+- `options` (array\[[FormOption](#FormOption)\]) 表单项为 `select` 或 `radio` 专有属性，定义下拉内容
 - `placeholder`(object) 表单项为 `text-input `专有属性，表单项 PlaceHolder
   - `en_US`(string) 英文
   - `zh_Hans` (string) [optional] 中文
 - `max_length` (int) 表单项为`text-input`专有属性，定义输入最大长度，0 为不限制。
-- `show_on` (array[[FormShowOnObject](#FormShowOnObject)]) 当其他表单项值符合条件时显示，为空则始终显示。
+- `show_on` (array\[[FormShowOnObject](#FormShowOnObject)\]) 当其他表单项值符合条件时显示，为空则始终显示。
 
 ### FormType
 
@@ -200,7 +201,7 @@
   - `en_US`(string) 英文
   - `zh_Hans`(string) [optional] 中文
 - `value` (string) 下拉选项值
-- `show_on` (array[[FormShowOnObject](#FormShowOnObject)]) 当其他表单项值符合条件时显示，为空则始终显示。
+- `show_on` (array\[[FormShowOnObject](#FormShowOnObject)\]) 当其他表单项值符合条件时显示，为空则始终显示。
 
 ### FormShowOnObject
 

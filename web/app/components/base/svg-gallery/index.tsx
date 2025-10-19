@@ -3,7 +3,7 @@ import { SVG } from '@svgdotjs/svg.js'
 import DOMPurify from 'dompurify'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
-export const SVGRenderer = ({ content }: { content: string }) => {
+const SVGRenderer = ({ content }: { content: string }) => {
   const svgRef = useRef<HTMLDivElement>(null)
   const [imagePreview, setImagePreview] = useState('')
   const [windowSize, setWindowSize] = useState({

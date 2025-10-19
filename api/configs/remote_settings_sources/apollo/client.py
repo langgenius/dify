@@ -4,8 +4,9 @@ import logging
 import os
 import threading
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
+from typing import Any
 
 from .python_3x import http_request, makedirs_wrapper
 from .utils import (
@@ -25,13 +26,13 @@ logger = logging.getLogger(__name__)
 class ApolloClient:
     def __init__(
         self,
-        config_url,
-        app_id,
-        cluster="default",
-        secret="",
-        start_hot_update=True,
-        change_listener=None,
-        _notification_map=None,
+        config_url: str,
+        app_id: str,
+        cluster: str = "default",
+        secret: str = "",
+        start_hot_update: bool = True,
+        change_listener: Callable[[str, str, str, Any], None] | None = None,
+        _notification_map: dict[str, int] | None = None,
     ):
         # Core routing parameters
         self.config_url = config_url
@@ -47,17 +48,17 @@ class ApolloClient:
         # Private control variables
         self._cycle_time = 5
         self._stopping = False
-        self._cache = {}
-        self._no_key = {}
-        self._hash = {}
+        self._cache: dict[str, dict[str, Any]] = {}
+        self._no_key: dict[str, str] = {}
+        self._hash: dict[str, str] = {}
         self._pull_timeout = 75
         self._cache_file_path = os.path.expanduser("~") + "/.dify/config/remote-settings/apollo/cache/"
-        self._long_poll_thread = None
+        self._long_poll_thread: threading.Thread | None = None
         self._change_listener = change_listener  # "add" "delete" "update"
         if _notification_map is None:
             _notification_map = {"application": -1}
         self._notification_map = _notification_map
-        self.last_release_key = None
+        self.last_release_key: str | None = None
         # Private startup method
         self._path_checker()
         if start_hot_update:
@@ -68,7 +69,7 @@ class ApolloClient:
         heartbeat.daemon = True
         heartbeat.start()
 
-    def get_json_from_net(self, namespace="application"):
+    def get_json_from_net(self, namespace: str = "application") -> dict[str, Any] | None:
         url = "{}/configs/{}/{}/{}?releaseKey={}&ip={}".format(
             self.config_url, self.app_id, self.cluster, namespace, "", self.ip
         )
@@ -88,7 +89,7 @@ class ApolloClient:
             logger.exception("an error occurred in get_json_from_net")
             return None
 
-    def get_value(self, key, default_val=None, namespace="application"):
+    def get_value(self, key: str, default_val: Any = None, namespace: str = "application") -> Any:
         try:
             # read memory configuration
             namespace_cache = self._cache.get(namespace)
@@ -104,7 +105,8 @@ class ApolloClient:
             namespace_data = self.get_json_from_net(namespace)
             val = get_value_from_dict(namespace_data, key)
             if val is not None:
-                self._update_cache_and_file(namespace_data, namespace)
+                if namespace_data is not None:
+                    self._update_cache_and_file(namespace_data, namespace)
                 return val
 
             # read the file configuration
@@ -126,23 +128,23 @@ class ApolloClient:
     # to ensure the real-time correctness of the function call.
     # If the user does not have the same default val twice
     # and the default val is used here, there may be a problem.
-    def _set_local_cache_none(self, namespace, key):
+    def _set_local_cache_none(self, namespace: str, key: str) -> None:
         no_key = no_key_cache_key(namespace, key)
         self._no_key[no_key] = key
 
-    def _start_hot_update(self):
+    def _start_hot_update(self) -> None:
         self._long_poll_thread = threading.Thread(target=self._listener)
         # When the asynchronous thread is started, the daemon thread will automatically exit
         # when the main thread is launched.
         self._long_poll_thread.daemon = True
         self._long_poll_thread.start()
 
-    def stop(self):
+    def stop(self) -> None:
         self._stopping = True
         logger.info("Stopping listener...")
 
     # Call the set callback function, and if it is abnormal, try it out
-    def _call_listener(self, namespace, old_kv, new_kv):
+    def _call_listener(self, namespace: str, old_kv: dict[str, Any] | None, new_kv: dict[str, Any] | None) -> None:
         if self._change_listener is None:
             return
         if old_kv is None:
@@ -168,12 +170,12 @@ class ApolloClient:
         except BaseException as e:
             logger.warning(str(e))
 
-    def _path_checker(self):
+    def _path_checker(self) -> None:
         if not os.path.isdir(self._cache_file_path):
             makedirs_wrapper(self._cache_file_path)
 
     # update the local cache and file cache
-    def _update_cache_and_file(self, namespace_data, namespace="application"):
+    def _update_cache_and_file(self, namespace_data: dict[str, Any], namespace: str = "application") -> None:
         # update the local cache
         self._cache[namespace] = namespace_data
         # update the file cache
@@ -187,7 +189,7 @@ class ApolloClient:
             self._hash[namespace] = new_hash
 
     # get the configuration from the local file
-    def _get_local_cache(self, namespace="application"):
+    def _get_local_cache(self, namespace: str = "application") -> dict[str, Any]:
         cache_file_path = os.path.join(self._cache_file_path, f"{self.app_id}_configuration_{namespace}.txt")
         if os.path.isfile(cache_file_path):
             with open(cache_file_path) as f:
@@ -195,8 +197,8 @@ class ApolloClient:
             return result
         return {}
 
-    def _long_poll(self):
-        notifications = []
+    def _long_poll(self) -> None:
+        notifications: list[dict[str, Any]] = []
         for key in self._cache:
             namespace_data = self._cache[key]
             notification_id = -1
@@ -236,7 +238,7 @@ class ApolloClient:
         except Exception as e:
             logger.warning(str(e))
 
-    def _get_net_and_set_local(self, namespace, n_id, call_change=False):
+    def _get_net_and_set_local(self, namespace: str, n_id: int, call_change: bool = False) -> None:
         namespace_data = self.get_json_from_net(namespace)
         if not namespace_data:
             return
@@ -248,7 +250,7 @@ class ApolloClient:
             new_kv = namespace_data.get(CONFIGURATIONS)
             self._call_listener(namespace, old_kv, new_kv)
 
-    def _listener(self):
+    def _listener(self) -> None:
         logger.info("start long_poll")
         while not self._stopping:
             self._long_poll()
@@ -266,13 +268,13 @@ class ApolloClient:
         headers["Timestamp"] = time_unix_now
         return headers
 
-    def _heart_beat(self):
+    def _heart_beat(self) -> None:
         while not self._stopping:
             for namespace in self._notification_map:
                 self._do_heart_beat(namespace)
             time.sleep(60 * 10)  # 10 minutes
 
-    def _do_heart_beat(self, namespace):
+    def _do_heart_beat(self, namespace: str) -> None:
         url = f"{self.config_url}/configs/{self.app_id}/{self.cluster}/{namespace}?ip={self.ip}"
         try:
             code, body = http_request(url, timeout=3, headers=self._sign_headers(url))
@@ -292,7 +294,7 @@ class ApolloClient:
             logger.exception("an error occurred in _do_heart_beat")
             return None
 
-    def get_all_dicts(self, namespace):
+    def get_all_dicts(self, namespace: str) -> dict[str, Any] | None:
         namespace_data = self._cache.get(namespace)
         if namespace_data is None:
             net_namespace_data = self.get_json_from_net(namespace)
