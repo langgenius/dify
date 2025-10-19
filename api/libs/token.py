@@ -187,7 +187,7 @@ def check_csrf_token(request: Request, user_id: str):
     except:
         _unauthorized()
 
-    if verified.get("user_id") != user_id:
+    if verified.get("sub") != user_id:
         _unauthorized()
 
     exp: int | None = verified.get("exp")
