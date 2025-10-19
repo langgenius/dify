@@ -64,43 +64,45 @@ export const OptionCard: FC<OptionCardProps> = (
   },
 ) => {
   const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, noHighlight, disabled, ...rest } = props
-  return <div
-    className={classNames(
-      'rounded-xl bg-components-option-card-option-bg shadow-xs',
-      (isActive && !noHighlight)
-        ? 'border-[1.5px] border-components-option-card-option-selected-border'
-        : 'border border-components-option-card-option-border',
-      disabled && 'pointer-events-none opacity-50',
-      className,
-    )}
-    style={{
-      ...style,
-    }}
-    onClick={() => {
-      if (!isActive && !disabled)
-        onSwitched?.()
-    }}
-    {...rest}
-    ref={ref}
-  >
-    <OptionCardHeader
-      icon={icon}
-      title={title}
-      description={description}
-      isActive={isActive && !noHighlight}
-      activeClassName={activeHeaderClassName}
-      effectImg={effectImg}
-      disabled={disabled}
-    />
-    {/** Body */}
-    {isActive && (children || actions) && <div className='rounded-b-xl bg-components-panel-bg px-4 py-3'>
-      {children}
-      {actions && <div className='mt-4 flex gap-2'>
-        {actions}
-      </div>
-      }
-    </div>}
-  </div>
+  return (
+    <div
+      className={classNames(
+        'rounded-xl bg-components-option-card-option-bg shadow-xs',
+        (isActive && !noHighlight)
+          ? 'border-[1.5px] border-components-option-card-option-selected-border'
+          : 'border border-components-option-card-option-border',
+        disabled && 'pointer-events-none opacity-50',
+        className,
+      )}
+      style={{
+        ...style,
+      }}
+      onClick={() => {
+        if (!isActive && !disabled)
+          onSwitched?.()
+      }}
+      {...rest}
+      ref={ref}
+    >
+      <OptionCardHeader
+        icon={icon}
+        title={title}
+        description={description}
+        isActive={isActive && !noHighlight}
+        activeClassName={activeHeaderClassName}
+        effectImg={effectImg}
+        disabled={disabled}
+      />
+      {/** Body */}
+      {isActive && (children || actions) && <div className='rounded-b-xl bg-components-panel-bg px-4 py-3'>
+        {children}
+        {actions && <div className='mt-4 flex gap-2'>
+          {actions}
+        </div>
+        }
+      </div>}
+    </div>
+  )
 }
 
 OptionCard.displayName = 'OptionCard'

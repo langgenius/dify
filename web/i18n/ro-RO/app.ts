@@ -80,6 +80,7 @@ const translation = {
     forAdvanced: 'PENTRU UTILIZATORII AVANSAȚI',
     chooseAppType: 'Alegeți un tip de aplicație',
     dropDSLToCreateApp: 'Trageți fișierul DSL aici pentru a crea aplicația',
+    import: 'Importa',
   },
   editApp: 'Editează Info',
   editAppTitle: 'Editează Info Aplicație',
@@ -161,6 +162,10 @@ const translation = {
     aliyun: {
       description: 'Platforma de observabilitate SaaS oferită de Alibaba Cloud permite monitorizarea, urmărirea și evaluarea aplicațiilor Dify din cutie.',
       title: 'Monitorizarea Cloud',
+    },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Monitorizarea Performanței Aplicațiilor Tencent oferă trasabilitate cuprinzătoare și analiză multidimensională pentru aplicațiile LLM.',
     },
   },
   answerIcon: {
@@ -316,6 +321,10 @@ const translation = {
     noMatchingCommands: 'Nu s-au găsit comenzi potrivite',
     tryDifferentSearch: 'Încercați un alt termen de căutare',
     slashHint: 'Tastați / pentru a vedea toate comenzile disponibile',
+    selectToNavigate: 'Selectați pentru a naviga',
+    startTyping: 'Începeți să tastați pentru a căuta',
+    tips: 'Apăsați ↑↓ pentru a naviga',
+    pressEscToClose: 'Apăsați ESC pentru a închide',
   },
 }
 

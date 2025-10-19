@@ -244,6 +244,7 @@ const translation = {
       publishTip: '应用未发布。请先发布应用。',
     },
   },
+  allTools: '全部工具',
 }
 
 export default translation

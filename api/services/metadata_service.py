@@ -1,13 +1,11 @@
 import copy
 import logging
-from typing import Optional
-
-from flask_login import current_user
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
+from libs.login import current_account_with_tenant
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -24,11 +22,11 @@ class MetadataService:
         # check if metadata name is too long
         if len(metadata_args.name) > 255:
             raise ValueError("Metadata name cannot exceed 255 characters.")
-
+        current_user, current_tenant_id = current_account_with_tenant()
         # check if metadata name already exists
         if (
             db.session.query(DatasetMetadata)
-            .filter_by(tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=metadata_args.name)
+            .filter_by(tenant_id=current_tenant_id, dataset_id=dataset_id, name=metadata_args.name)
             .first()
         ):
             raise ValueError("Metadata name already exists.")
@@ -36,7 +34,7 @@ class MetadataService:
             if field.value == metadata_args.name:
                 raise ValueError("Metadata name already exists in Built-in fields.")
         metadata = DatasetMetadata(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             dataset_id=dataset_id,
             type=metadata_args.type,
             name=metadata_args.name,
@@ -54,9 +52,10 @@ class MetadataService:
 
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         # check if metadata name already exists
+        current_user, current_tenant_id = current_account_with_tenant()
         if (
             db.session.query(DatasetMetadata)
-            .filter_by(tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=name)
+            .filter_by(tenant_id=current_tenant_id, dataset_id=dataset_id, name=name)
             .first()
         ):
             raise ValueError("Metadata name already exists.")
@@ -221,9 +220,10 @@ class MetadataService:
                 db.session.commit()
                 # deal metadata binding
                 db.session.query(DatasetMetadataBinding).filter_by(document_id=operation.document_id).delete()
+                current_user, current_tenant_id = current_account_with_tenant()
                 for metadata_value in operation.metadata_list:
                     dataset_metadata_binding = DatasetMetadataBinding(
-                        tenant_id=current_user.current_tenant_id,
+                        tenant_id=current_tenant_id,
                         dataset_id=dataset.id,
                         document_id=operation.document_id,
                         metadata_id=metadata_value.id,
@@ -237,7 +237,7 @@ class MetadataService:
                 redis_client.delete(lock_key)
 
     @staticmethod
-    def knowledge_base_metadata_lock_check(dataset_id: Optional[str], document_id: Optional[str]):
+    def knowledge_base_metadata_lock_check(dataset_id: str | None, document_id: str | None):
         if dataset_id:
             lock_key = f"dataset_metadata_lock_{dataset_id}"
             if redis_client.get(lock_key):

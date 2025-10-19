@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 from urllib.parse import urlparse
 
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
@@ -92,14 +92,14 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
         raise
 
 
-def datetime_to_nanos(dt: Optional[datetime]) -> int:
+def datetime_to_nanos(dt: datetime | None) -> int:
     """Convert datetime to nanoseconds since epoch. If None, use current time."""
     if dt is None:
         dt = datetime.now()
     return int(dt.timestamp() * 1_000_000_000)
 
 
-def string_to_trace_id128(string: Optional[str]) -> int:
+def string_to_trace_id128(string: str | None) -> int:
     """
     Convert any input string into a stable 128-bit integer trace ID.
 
@@ -213,9 +213,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     node_metadata.update(json.loads(node_execution.execution_metadata))
 
                 # Determine the correct span kind based on node type
-                span_kind = OpenInferenceSpanKindValues.CHAIN.value
+                span_kind = OpenInferenceSpanKindValues.CHAIN
                 if node_execution.node_type == "llm":
-                    span_kind = OpenInferenceSpanKindValues.LLM.value
+                    span_kind = OpenInferenceSpanKindValues.LLM
                     provider = process_data.get("model_provider")
                     model = process_data.get("model_name")
                     if provider:
@@ -230,18 +230,18 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         node_metadata["prompt_tokens"] = usage_data.get("prompt_tokens", 0)
                         node_metadata["completion_tokens"] = usage_data.get("completion_tokens", 0)
                 elif node_execution.node_type == "dataset_retrieval":
-                    span_kind = OpenInferenceSpanKindValues.RETRIEVER.value
+                    span_kind = OpenInferenceSpanKindValues.RETRIEVER
                 elif node_execution.node_type == "tool":
-                    span_kind = OpenInferenceSpanKindValues.TOOL.value
+                    span_kind = OpenInferenceSpanKindValues.TOOL
                 else:
-                    span_kind = OpenInferenceSpanKindValues.CHAIN.value
+                    span_kind = OpenInferenceSpanKindValues.CHAIN
 
                 node_span = self.tracer.start_span(
                     name=node_execution.node_type,
                     attributes={
                         SpanAttributes.INPUT_VALUE: node_execution.inputs or "{}",
                         SpanAttributes.OUTPUT_VALUE: node_execution.outputs or "{}",
-                        SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind,
+                        SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind.value,
                         SpanAttributes.METADATA: json.dumps(node_metadata, ensure_ascii=False),
                         SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
                     },
@@ -284,7 +284,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             return
 
         file_list = cast(list[str], trace_info.file_list) or []
-        message_file_data: Optional[MessageFile] = trace_info.message_file_data
+        message_file_data: MessageFile | None = trace_info.message_file_data
 
         if message_file_data is not None:
             file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
@@ -308,7 +308,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         # Add end user data if available
         if trace_info.message_data.from_end_user_id:
-            end_user_data: Optional[EndUser] = (
+            end_user_data: EndUser | None = (
                 db.session.query(EndUser).where(EndUser.id == trace_info.message_data.from_end_user_id).first()
             )
             if end_user_data is not None:

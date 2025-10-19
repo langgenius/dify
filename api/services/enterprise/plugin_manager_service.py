@@ -9,9 +9,9 @@ from services.errors.base import BaseServiceError
 logger = logging.getLogger(__name__)
 
 
-class PluginCredentialType(enum.IntEnum):
-    MODEL = enum.auto()
-    TOOL = enum.auto()
+class PluginCredentialType(enum.Enum):
+    MODEL = 0  # must be 0 for API contract compatibility
+    TOOL = 1  # must be 1 for API contract compatibility
 
     def to_number(self):
         return self.value
@@ -49,7 +49,7 @@ class PluginManagerService:
         if not ret.get("result", False):
             raise CredentialPolicyViolationError("Credentials not available: Please use ENTERPRISE global credentials")
 
-        logger.debug(
+        logging.debug(
             "Credential policy compliance checked for %s with credential %s, result: %s",
             body.provider,
             body.dify_credential_id,

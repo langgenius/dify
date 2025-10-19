@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import languages
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
     EmailCodeError,
@@ -19,20 +19,23 @@ from controllers.console.wraps import email_password_login_enabled, email_regist
 from extensions.ext_database import db
 from libs.helper import email, extract_remote_ip
 from libs.password import valid_password
-from models.account import Account
+from models import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
 
 
+@console_ns.route("/email-register/send-email")
 class EmailRegisterSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("language", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=email, required=True, location="json")
+            .add_argument("language", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         ip_address = extract_remote_ip(request)
@@ -52,15 +55,18 @@ class EmailRegisterSendEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
+@console_ns.route("/email-register/validity")
 class EmailRegisterCheckApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=str, required=True, location="json")
-        parser.add_argument("code", type=str, required=True, location="json")
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=str, required=True, location="json")
+            .add_argument("code", type=str, required=True, location="json")
+            .add_argument("token", type=str, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         user_email = args["email"]
@@ -92,15 +98,18 @@ class EmailRegisterCheckApi(Resource):
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
+@console_ns.route("/email-register")
 class EmailRegisterResetApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("new_password", type=valid_password, required=True, nullable=False, location="json")
-        parser.add_argument("password_confirm", type=valid_password, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("token", type=str, required=True, nullable=False, location="json")
+            .add_argument("new_password", type=valid_password, required=True, nullable=False, location="json")
+            .add_argument("password_confirm", type=valid_password, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         # Validate passwords match
@@ -148,8 +157,3 @@ class EmailRegisterResetApi(Resource):
             raise AccountInFreezeError()
 
         return account
-
-
-api.add_resource(EmailRegisterSendEmailApi, "/email-register/send-email")
-api.add_resource(EmailRegisterCheckApi, "/email-register/validity")
-api.add_resource(EmailRegisterResetApi, "/email-register")

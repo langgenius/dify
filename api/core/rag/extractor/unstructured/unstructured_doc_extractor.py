@@ -1,6 +1,7 @@
 import logging
 import os
 
+from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 
@@ -23,7 +24,7 @@ class UnstructuredWordExtractor(BaseExtractor):
         unstructured_version = tuple(int(x) for x in __unstructured_version__.split("."))
         # check the file extension
         try:
-            import magic  # noqa: F401  # pyright: ignore[reportUnusedImport]
+            import magic  # noqa: F401
 
             is_doc = detect_filetype(self._file_path) == FileType.DOC
         except ImportError:
@@ -49,7 +50,8 @@ class UnstructuredWordExtractor(BaseExtractor):
 
         from unstructured.chunking.title import chunk_by_title
 
-        chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)
+        max_characters = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+        chunks = chunk_by_title(elements, max_characters=max_characters, combine_text_under_n_chars=max_characters)
         documents = []
         for chunk in chunks:
             text = chunk.text.strip()

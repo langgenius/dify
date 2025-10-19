@@ -1,8 +1,8 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, Optional, Protocol
+from typing import Literal, Protocol
 
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
+from core.workflow.entities import WorkflowNodeExecution
 
 
 @dataclass
@@ -10,7 +10,7 @@ class OrderConfig:
     """Configuration for ordering NodeExecution instances."""
 
     order_by: list[str]
-    order_direction: Optional[Literal["asc", "desc"]] = None
+    order_direction: Literal["asc", "desc"] | None = None
 
 
 class WorkflowNodeExecutionRepository(Protocol):
@@ -30,6 +30,12 @@ class WorkflowNodeExecutionRepository(Protocol):
         """
         Save or update a NodeExecution instance.
 
+        This method saves all data on the `WorkflowNodeExecution` object, except for `inputs`, `process_data`,
+        and `outputs`. Its primary purpose is to persist the status and various metadata, such as execution time
+        and execution-related details.
+
+        It's main purpose is to save the status and various metadata (execution time, execution metadata etc.)
+
         This method handles both creating new records and updating existing ones.
         The implementation should determine whether to create or update based on
         the execution's ID or other identifying fields.
@@ -39,10 +45,18 @@ class WorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
+    def save_execution_data(self, execution: WorkflowNodeExecution):
+        """Save or update the inputs, process_data, or outputs associated with a specific
+        node_execution record.
+
+        If any of the inputs, process_data, or outputs are None, those fields will not be updated.
+        """
+        ...
+
     def get_by_workflow_run(
         self,
         workflow_run_id: str,
-        order_config: Optional[OrderConfig] = None,
+        order_config: OrderConfig | None = None,
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all NodeExecution instances for a specific workflow run.

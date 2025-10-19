@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Mapping
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from core.agent.entities import AgentEntity
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
@@ -30,7 +30,7 @@ class AgentChatAppConfig(EasyUIBasedAppConfig):
     Agent Chatbot App Config Entity.
     """
 
-    agent: Optional[AgentEntity] = None
+    agent: AgentEntity | None = None
 
 
 class AgentChatAppConfigManager(BaseAppConfigManager):
@@ -39,8 +39,8 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         cls,
         app_model: App,
         app_model_config: AppModelConfig,
-        conversation: Optional[Conversation] = None,
-        override_config_dict: Optional[dict] = None,
+        conversation: Conversation | None = None,
+        override_config_dict: dict | None = None,
     ) -> AgentChatAppConfig:
         """
         Convert app model config to agent chat app config
@@ -186,7 +186,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
             raise ValueError("enabled in agent_mode must be of boolean type")
 
         if not agent_mode.get("strategy"):
-            agent_mode["strategy"] = PlanningStrategy.ROUTER.value
+            agent_mode["strategy"] = PlanningStrategy.ROUTER
 
         if agent_mode["strategy"] not in [member.value for member in list(PlanningStrategy.__members__.values())]:
             raise ValueError("strategy in agent_mode must be in the specified strategy list")

@@ -1,23 +1,19 @@
 import type { StrategyDetail, StrategyPluginDetail } from '@/app/components/plugins/types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
-import type { NodeDefault } from '../../types'
+import { BlockEnum, type NodeDefault } from '../../types'
 import type { AgentNodeType } from './types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { genNodeMetaData } from '../../utils'
+
+const metaData = genNodeMetaData({
+  sort: 3,
+  type: BlockEnum.Agent,
+})
 import { renderI18nObject } from '@/i18n-config'
 
 const nodeDefault: NodeDefault<AgentNodeType> = {
+  metaData,
   defaultValue: {
     tool_node_version: '2',
-  },
-  getAvailablePrevNodes(isChatMode) {
-    return isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS
-  },
-  getAvailableNextNodes(isChatMode) {
-    return isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS
   },
   checkValid(payload, t, moreDataForCheckValid: {
     strategyProvider?: StrategyPluginDetail,

@@ -1,7 +1,6 @@
 import base64
 import uuid
 from collections.abc import Sequence
-from typing import Optional
 from unittest import mock
 
 import pytest
@@ -21,10 +20,7 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
-from core.workflow.nodes.answer import AnswerStreamGenerateRoute
-from core.workflow.nodes.end import EndStreamParam
+from core.workflow.entities import GraphInitParams
 from core.workflow.nodes.llm import llm_utils
 from core.workflow.nodes.llm.entities import (
     ContextConfig,
@@ -36,10 +32,10 @@ from core.workflow.nodes.llm.entities import (
 )
 from core.workflow.nodes.llm.file_saver import LLMFileSaver
 from core.workflow.nodes.llm.node import LLMNode
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.provider import ProviderType
-from models.workflow import WorkflowType
 
 
 class MockTokenBufferMemory:
@@ -47,7 +43,7 @@ class MockTokenBufferMemory:
         self.history_messages = history_messages or []
 
     def get_history_prompt_messages(
-        self, max_token_limit: int = 2000, message_limit: Optional[int] = None
+        self, max_token_limit: int = 2000, message_limit: int | None = None
     ) -> Sequence[PromptMessage]:
         if message_limit is not None:
             return self.history_messages[-message_limit * 2 :]
@@ -78,28 +74,12 @@ def graph_init_params() -> GraphInitParams:
     return GraphInitParams(
         tenant_id="1",
         app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
         workflow_id="1",
         graph_config={},
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.SERVICE_API,
         call_depth=0,
-    )
-
-
-@pytest.fixture
-def graph() -> Graph:
-    return Graph(
-        root_node_id="1",
-        answer_stream_generate_routes=AnswerStreamGenerateRoute(
-            answer_dependencies={},
-            answer_generate_route={},
-        ),
-        end_stream_param=EndStreamParam(
-            end_dependencies={},
-            end_stream_variable_selector_mapping={},
-        ),
     )
 
 
@@ -117,7 +97,7 @@ def graph_runtime_state() -> GraphRuntimeState:
 
 @pytest.fixture
 def llm_node(
-    llm_node_data: LLMNodeData, graph_init_params: GraphInitParams, graph: Graph, graph_runtime_state: GraphRuntimeState
+    llm_node_data: LLMNodeData, graph_init_params: GraphInitParams, graph_runtime_state: GraphRuntimeState
 ) -> LLMNode:
     mock_file_saver = mock.MagicMock(spec=LLMFileSaver)
     node_config = {
@@ -128,7 +108,6 @@ def llm_node(
         id="1",
         config=node_config,
         graph_init_params=graph_init_params,
-        graph=graph,
         graph_runtime_state=graph_runtime_state,
         llm_file_saver=mock_file_saver,
     )
@@ -506,9 +485,7 @@ def test_handle_list_messages_basic(llm_node):
 
 
 @pytest.fixture
-def llm_node_for_multimodal(
-    llm_node_data, graph_init_params, graph, graph_runtime_state
-) -> tuple[LLMNode, LLMFileSaver]:
+def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_state) -> tuple[LLMNode, LLMFileSaver]:
     mock_file_saver: LLMFileSaver = mock.MagicMock(spec=LLMFileSaver)
     node_config = {
         "id": "1",
@@ -518,7 +495,6 @@ def llm_node_for_multimodal(
         id="1",
         config=node_config,
         graph_init_params=graph_init_params,
-        graph=graph,
         graph_runtime_state=graph_runtime_state,
         llm_file_saver=mock_file_saver,
     )
@@ -669,7 +645,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
             contents=frozenset(["hello world"]), file_saver=mock_file_saver, file_outputs=[]
         )
-        assert list(gen) == ["frozenset({'hello world'})"]
+        assert list(gen) == ["hello world"]
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 

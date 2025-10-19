@@ -41,6 +41,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 import { getVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import useMatchSchemaType from '../../../_base/components/variable/use-match-schema-type'
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 
 type ConditionItemProps = {
@@ -93,6 +94,11 @@ const ConditionItem = ({
   const workflowStore = useWorkflowStore()
   const {
     setControlPromptEditorRerenderKey,
+    buildInTools,
+    customTools,
+    mcpTools,
+    workflowTools,
+    dataSourceList,
   } = workflowStore.getState()
 
   const doUpdateCondition = useCallback((newCondition: Condition) => {
@@ -203,6 +209,7 @@ const ConditionItem = ({
       onRemoveCondition?.(caseId, condition.id)
   }, [caseId, condition, conditionId, isSubVariableKey, onRemoveCondition, onRemoveSubVariableCondition])
 
+  const { schemaTypeDefinitions } = useMatchSchemaType()
   const handleVarChange = useCallback((valueSelector: ValueSelector, _varItem: Var) => {
     const {
       conversationVariables,
@@ -212,6 +219,14 @@ const ConditionItem = ({
       conversationVariables,
       availableNodes,
       isChatMode,
+      allPluginInfoList: {
+        buildInTools,
+        customTools,
+        mcpTools,
+        workflowTools,
+        dataSourceList: dataSourceList ?? [],
+      },
+      schemaTypeDefinitions,
     })
 
     const newCondition = produce(condition, (draft) => {
@@ -219,11 +234,14 @@ const ConditionItem = ({
       draft.varType = resolvedVarType
       draft.value = resolvedVarType === VarType.boolean ? false : ''
       draft.comparison_operator = getOperators(resolvedVarType)[0]
+      delete draft.key
+      delete draft.sub_variable_condition
+      delete draft.numberVarType
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     })
     doUpdateCondition(newCondition)
     setOpen(false)
-  }, [condition, doUpdateCondition, availableNodes, isChatMode, setControlPromptEditorRerenderKey])
+  }, [condition, doUpdateCondition, availableNodes, isChatMode, setControlPromptEditorRerenderKey, schemaTypeDefinitions])
 
   const showBooleanInput = useMemo(() => {
     if(condition.varType === VarType.boolean)

@@ -1,13 +1,11 @@
-from typing import cast
-
 import flask_login
-from flask import request
+from flask import make_response, request
 from flask_restx import Resource, reqparse
 
 import services
 from configs import dify_config
 from constants.languages import languages
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
@@ -26,7 +24,17 @@ from controllers.console.error import (
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
-from models.account import Account
+from libs.login import current_account_with_tenant
+from libs.token import (
+    clear_access_token_from_cookie,
+    clear_csrf_token_from_cookie,
+    clear_refresh_token_from_cookie,
+    extract_access_token,
+    extract_csrf_token,
+    set_access_token_to_cookie,
+    set_csrf_token_to_cookie,
+    set_refresh_token_to_cookie,
+)
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountRegisterError
@@ -34,6 +42,7 @@ from services.errors.workspace import WorkSpaceNotAllowedCreateError, Workspaces
 from services.feature_service import FeatureService
 
 
+@console_ns.route("/login")
 class LoginApi(Resource):
     """Resource for user login."""
 
@@ -41,11 +50,13 @@ class LoginApi(Resource):
     @email_password_login_enabled
     def post(self):
         """Authenticate user and login."""
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("password", type=str, required=True, location="json")
-        parser.add_argument("remember_me", type=bool, required=False, default=False, location="json")
-        parser.add_argument("invite_token", type=str, required=False, default=None, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=email, required=True, location="json")
+            .add_argument("password", type=str, required=True, location="json")
+            .add_argument("remember_me", type=bool, required=False, default=False, location="json")
+            .add_argument("invite_token", type=str, required=False, default=None, location="json")
+        )
         args = parser.parse_args()
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args["email"]):
@@ -88,27 +99,48 @@ class LoginApi(Resource):
 
         token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
-        return {"result": "success", "data": token_pair.model_dump()}
+
+        # Create response with cookies instead of returning tokens in body
+        response = make_response({"result": "success"})
+
+        set_access_token_to_cookie(request, response, token_pair.access_token)
+        set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
+        set_csrf_token_to_cookie(request, response, token_pair.csrf_token)
+
+        return response
 
 
+@console_ns.route("/logout")
 class LogoutApi(Resource):
     @setup_required
-    def get(self):
-        account = cast(Account, flask_login.current_user)
+    def post(self):
+        current_user, _ = current_account_with_tenant()
+        account = current_user
         if isinstance(account, flask_login.AnonymousUserMixin):
-            return {"result": "success"}
-        AccountService.logout(account=account)
-        flask_login.logout_user()
-        return {"result": "success"}
+            response = make_response({"result": "success"})
+        else:
+            AccountService.logout(account=account)
+            flask_login.logout_user()
+            response = make_response({"result": "success"})
+
+        # Clear cookies on logout
+        clear_access_token_from_cookie(response)
+        clear_refresh_token_from_cookie(response)
+        clear_csrf_token_from_cookie(response)
+
+        return response
 
 
+@console_ns.route("/reset-password")
 class ResetPasswordSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("language", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=email, required=True, location="json")
+            .add_argument("language", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         if args["language"] is not None and args["language"] == "zh-Hans":
@@ -130,12 +162,15 @@ class ResetPasswordSendEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
+@console_ns.route("/email-code-login")
 class EmailCodeLoginSendEmailApi(Resource):
     @setup_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("language", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=email, required=True, location="json")
+            .add_argument("language", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         ip_address = extract_remote_ip(request)
@@ -162,13 +197,16 @@ class EmailCodeLoginSendEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
+@console_ns.route("/email-code-login/validity")
 class EmailCodeLoginApi(Resource):
     @setup_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=str, required=True, location="json")
-        parser.add_argument("code", type=str, required=True, location="json")
-        parser.add_argument("token", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=str, required=True, location="json")
+            .add_argument("code", type=str, required=True, location="json")
+            .add_argument("token", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         user_email = args["email"]
@@ -215,25 +253,46 @@ class EmailCodeLoginApi(Resource):
                 raise WorkspacesLimitExceeded()
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
-        return {"result": "success", "data": token_pair.model_dump()}
+
+        # Create response with cookies instead of returning tokens in body
+        response = make_response({"result": "success"})
+
+        set_csrf_token_to_cookie(request, response, token_pair.csrf_token)
+        # Set HTTP-only secure cookies for tokens
+        set_access_token_to_cookie(request, response, token_pair.access_token)
+        set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
+        return response
 
 
+@console_ns.route("/refresh-token")
 class RefreshTokenApi(Resource):
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("refresh_token", type=str, required=True, location="json")
-        args = parser.parse_args()
+        # Get refresh token from cookie instead of request body
+        refresh_token = request.cookies.get("refresh_token")
+
+        if not refresh_token:
+            return {"result": "fail", "message": "No refresh token provided"}, 401
 
         try:
-            new_token_pair = AccountService.refresh_token(args["refresh_token"])
-            return {"result": "success", "data": new_token_pair.model_dump()}
+            new_token_pair = AccountService.refresh_token(refresh_token)
+
+            # Create response with new cookies
+            response = make_response({"result": "success"})
+
+            # Update cookies with new tokens
+            set_csrf_token_to_cookie(request, response, new_token_pair.csrf_token)
+            set_access_token_to_cookie(request, response, new_token_pair.access_token)
+            set_refresh_token_to_cookie(request, response, new_token_pair.refresh_token)
+            return response
         except Exception as e:
-            return {"result": "fail", "data": str(e)}, 401
+            return {"result": "fail", "message": str(e)}, 401
 
 
-api.add_resource(LoginApi, "/login")
-api.add_resource(LogoutApi, "/logout")
-api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
-api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
-api.add_resource(ResetPasswordSendEmailApi, "/reset-password")
-api.add_resource(RefreshTokenApi, "/refresh-token")
+# this api helps frontend to check whether user is authenticated
+# TODO: remove in the future. frontend should redirect to login page by catching 401 status
+@console_ns.route("/login/status")
+class LoginStatus(Resource):
+    def get(self):
+        token = extract_access_token(request)
+        csrf_token = extract_csrf_token(request)
+        return {"logged_in": bool(token) and bool(csrf_token)}

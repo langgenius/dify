@@ -15,21 +15,17 @@ from services.entities.knowledge_entities.knowledge_entities import (
 from services.metadata_service import MetadataService
 
 # Define parsers for metadata APIs
-metadata_create_parser = reqparse.RequestParser()
-metadata_create_parser.add_argument(
-    "type", type=str, required=True, nullable=False, location="json", help="Metadata type"
-)
-metadata_create_parser.add_argument(
-    "name", type=str, required=True, nullable=False, location="json", help="Metadata name"
+metadata_create_parser = (
+    reqparse.RequestParser()
+    .add_argument("type", type=str, required=True, nullable=False, location="json", help="Metadata type")
+    .add_argument("name", type=str, required=True, nullable=False, location="json", help="Metadata name")
 )
 
-metadata_update_parser = reqparse.RequestParser()
-metadata_update_parser.add_argument(
+metadata_update_parser = reqparse.RequestParser().add_argument(
     "name", type=str, required=True, nullable=False, location="json", help="New metadata name"
 )
 
-document_metadata_parser = reqparse.RequestParser()
-document_metadata_parser.add_argument(
+document_metadata_parser = reqparse.RequestParser().add_argument(
     "operation_data", type=list, required=True, nullable=False, location="json", help="Metadata operation data"
 )
 
@@ -51,7 +47,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
     def post(self, tenant_id, dataset_id):
         """Create metadata for a dataset."""
         args = metadata_create_parser.parse_args()
-        metadata_args = MetadataArgs(**args)
+        metadata_args = MetadataArgs.model_validate(args)
 
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -106,7 +102,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, args.get("name"))
+        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, args["name"])
         return marshal(metadata, dataset_metadata_fields), 200
 
     @service_api_ns.doc("delete_dataset_metadata")
@@ -133,7 +129,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         return 204
 
 
-@service_api_ns.route("/datasets/metadata/built-in")
+@service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/built-in")
 class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
     @service_api_ns.doc("get_built_in_fields")
     @service_api_ns.doc(description="Get all built-in metadata fields")
@@ -143,7 +139,7 @@ class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
-    def get(self, tenant_id):
+    def get(self, tenant_id, dataset_id):
         """Get all built-in metadata fields."""
         built_in_fields = MetadataService.get_built_in_fields()
         return {"fields": built_in_fields}, 200
@@ -200,7 +196,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         args = document_metadata_parser.parse_args()
-        metadata_args = MetadataOperationData(**args)
+        metadata_args = MetadataOperationData.model_validate(args)
 
         MetadataService.update_documents_metadata(dataset, metadata_args)
 

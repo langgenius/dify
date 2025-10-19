@@ -18,6 +18,10 @@ const translation = {
     cancel: '取消',
     clear: '清空',
     save: '保存',
+    yes: '是',
+    no: '否',
+    deleteConfirmTitle: '删除？',
+    confirmAction: '请确认您的操作。',
     saveAndEnable: '保存并启用',
     edit: '编辑',
     add: '添加',
@@ -75,6 +79,9 @@ const translation = {
   placeholder: {
     input: '请输入',
     select: '请选择',
+  },
+  label: {
+    optional: '（可选）',
   },
   voice: {
     language: {
@@ -484,6 +491,7 @@ const translation = {
     toBeConfigured: '待配置',
     configureTip: '请配置 API 密钥，添加模型。',
     installProvider: '安装模型供应商',
+    installDataSourceProvider: '安装数据源供应商',
     discoverMore: '发现更多就在',
     emptyProviderTitle: '尚未安装模型供应商',
     emptyProviderTip: '请安装模型供应商。',
@@ -518,6 +526,7 @@ const translation = {
       selectModelCredential: '选择模型凭据',
       customModelCredentialsDeleteTip: '模型凭据正在使用中，无法删除',
     },
+    parametersInvalidRemoved: '部分参数无效，已移除',
   },
   dataSource: {
     add: '添加数据源',
@@ -616,6 +625,7 @@ const translation = {
     viewDoc: '查看文档',
     relatedApp: '个关联应用',
     noRelatedApp: '无关联应用',
+    pipeline: '流水线',
   },
   voiceInput: {
     speaking: '现在讲...',

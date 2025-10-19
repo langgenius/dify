@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Union
 
 from flask import Response
 from flask_restx import Resource, reqparse
@@ -33,14 +33,12 @@ def int_or_str(value):
 
 
 # Define parser for both documentation and validation
-mcp_request_parser = reqparse.RequestParser()
-mcp_request_parser.add_argument(
-    "jsonrpc", type=str, required=True, location="json", help="JSON-RPC version (should be '2.0')"
-)
-mcp_request_parser.add_argument("method", type=str, required=True, location="json", help="The method to invoke")
-mcp_request_parser.add_argument("params", type=dict, required=False, location="json", help="Parameters for the method")
-mcp_request_parser.add_argument(
-    "id", type=int_or_str, required=False, location="json", help="Request ID for tracking responses"
+mcp_request_parser = (
+    reqparse.RequestParser()
+    .add_argument("jsonrpc", type=str, required=True, location="json", help="JSON-RPC version (should be '2.0')")
+    .add_argument("method", type=str, required=True, location="json", help="The method to invoke")
+    .add_argument("params", type=dict, required=False, location="json", help="Parameters for the method")
+    .add_argument("id", type=int_or_str, required=False, location="json", help="Request ID for tracking responses")
 )
 
 
@@ -73,7 +71,7 @@ class MCPAppApi(Resource):
             ValidationError: Invalid request format or parameters
         """
         args = mcp_request_parser.parse_args()
-        request_id: Optional[Union[int, str]] = args.get("id")
+        request_id: Union[int, str] | None = args.get("id")
         mcp_request = self._parse_mcp_request(args)
 
         with Session(db.engine, expire_on_commit=False) as session:
@@ -107,7 +105,7 @@ class MCPAppApi(Resource):
     def _process_mcp_message(
         self,
         mcp_request: mcp_types.ClientRequest | mcp_types.ClientNotification,
-        request_id: Optional[Union[int, str]],
+        request_id: Union[int, str] | None,
         app: App,
         mcp_server: AppMCPServer,
         user_input_form: list[VariableEntity],
@@ -130,7 +128,7 @@ class MCPAppApi(Resource):
     def _handle_request(
         self,
         mcp_request: mcp_types.ClientRequest,
-        request_id: Optional[Union[int, str]],
+        request_id: Union[int, str] | None,
         app: App,
         mcp_server: AppMCPServer,
         user_input_form: list[VariableEntity],

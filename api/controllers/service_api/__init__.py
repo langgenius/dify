@@ -15,38 +15,46 @@ api = ExternalApi(
 
 service_api_ns = Namespace("service_api", description="Service operations", path="/")
 
-
-from . import index  # pyright: ignore[reportUnusedImport]
+from . import index
 from .app import (
-    annotation,  # pyright: ignore[reportUnusedImport]
-    app,  # pyright: ignore[reportUnusedImport]
-    audio,  # pyright: ignore[reportUnusedImport]
-    completion,  # pyright: ignore[reportUnusedImport]
-    conversation,  # pyright: ignore[reportUnusedImport]
-    file,  # pyright: ignore[reportUnusedImport]
-    file_preview,  # pyright: ignore[reportUnusedImport]
-    message,  # pyright: ignore[reportUnusedImport]
-    site,  # pyright: ignore[reportUnusedImport]
-    workflow,  # pyright: ignore[reportUnusedImport]
-    annotation,  # pyright: ignore[reportUnusedImport]
-    app,  # pyright: ignore[reportUnusedImport]
-    audio,  # pyright: ignore[reportUnusedImport]
-    completion,  # pyright: ignore[reportUnusedImport]
-    conversation,  # pyright: ignore[reportUnusedImport]
-    file,  # pyright: ignore[reportUnusedImport]
-    file_preview,  # pyright: ignore[reportUnusedImport]
-    message,  # pyright: ignore[reportUnusedImport]
-    node_executions,  # pyright: ignore[reportUnusedImport]
-    site,  # pyright: ignore[reportUnusedImport]
-    workflow,  # pyright: ignore[reportUnusedImport]
+    annotation,
+    app,
+    audio,
+    completion,
+    conversation,
+    file,
+    file_preview,
+    message,
+    site,
+    workflow,
 )
 from .dataset import (
-    dataset,  # pyright: ignore[reportUnusedImport]
-    document,  # pyright: ignore[reportUnusedImport]
-    hit_testing,  # pyright: ignore[reportUnusedImport]
-    metadata,  # pyright: ignore[reportUnusedImport]
-    segment,  # pyright: ignore[reportUnusedImport]
+    dataset,
+    document,
+    hit_testing,
+    metadata,
+    segment,
 )
-from .workspace import models  # pyright: ignore[reportUnusedImport]
+from .workspace import models
+
+__all__ = [
+    "annotation",
+    "app",
+    "audio",
+    "completion",
+    "conversation",
+    "dataset",
+    "document",
+    "file",
+    "file_preview",
+    "hit_testing",
+    "index",
+    "message",
+    "metadata",
+    "models",
+    "segment",
+    "site",
+    "workflow",
+]
 
 api.add_namespace(service_api_ns)

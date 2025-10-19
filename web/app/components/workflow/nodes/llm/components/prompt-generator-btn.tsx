@@ -16,6 +16,7 @@ type Props = {
   onGenerated?: (prompt: string) => void
   modelConfig?: ModelConfig
   nodeId: string
+  editorId?: string
   currentPrompt?: string
 }
 
@@ -23,6 +24,7 @@ const PromptGeneratorBtn: FC<Props> = ({
   className,
   onGenerated,
   nodeId,
+  editorId,
   currentPrompt,
 }) => {
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
@@ -46,6 +48,7 @@ const PromptGeneratorBtn: FC<Props> = ({
           onFinished={handleAutomaticRes}
           flowId={configsMap?.flowId || ''}
           nodeId={nodeId}
+          editorId={editorId}
           currentPrompt={currentPrompt}
         />
       )}

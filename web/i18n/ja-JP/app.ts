@@ -91,6 +91,7 @@ const translation = {
     workflowUserDescription: 'ドラッグ＆ドロップの簡易性で自律型 AI ワークフローを視覚的に構築',
     completionUserDescription: '簡単な構成でテキスト生成タスク用の AI アシスタントをすばやく構築します。',
     dropDSLToCreateApp: 'アプリを作成するにはここにDSLファイルをドロップしてください',
+    import: '輸入',
   },
   editApp: '情報を編集する',
   editAppTitle: 'アプリ情報を編集する',
@@ -173,6 +174,10 @@ const translation = {
     aliyun: {
       title: 'クラウドモニター',
       description: 'Alibaba Cloud が提供する完全管理型でメンテナンスフリーの可観測性プラットフォームは、Dify アプリケーションの即時監視、トレース、評価を可能にします。',
+    },
+    tencent: {
+      title: 'テンセントAPM',
+      description: 'Tencent アプリケーションパフォーマンスモニタリングは、LLM アプリケーションに対して包括的なトレーシングと多次元分析を提供します。',
     },
   },
   answerIcon: {

@@ -14,6 +14,7 @@ from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
 from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
+from extensions.ext_database import db
 from fields.file_fields import build_file_with_signed_url_model, build_remote_file_info_model
 from services.file_service import FileService
 
@@ -96,8 +97,7 @@ class RemoteFileUploadApi(WebApiResource):
             FileTooLargeError: File exceeds size limit
             UnsupportedFileTypeError: File type not supported
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("url", type=str, required=True, help="URL is required")
+        parser = reqparse.RequestParser().add_argument("url", type=str, required=True, help="URL is required")
         args = parser.parse_args()
 
         url = args["url"]
@@ -119,7 +119,7 @@ class RemoteFileUploadApi(WebApiResource):
         content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url).content
 
         try:
-            upload_file = FileService.upload_file(
+            upload_file = FileService(db.engine).upload_file(
                 filename=file_info.filename,
                 content=content,
                 mimetype=file_info.mimetype,

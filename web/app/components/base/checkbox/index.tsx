@@ -5,7 +5,7 @@ import IndeterminateIcon from './assets/indeterminate-icon'
 type CheckboxProps = {
   id?: string
   checked?: boolean
-  onCheck?: () => void
+  onCheck?: (event: React.MouseEvent<HTMLDivElement>) => void
   className?: string
   disabled?: boolean
   indeterminate?: boolean
@@ -35,10 +35,10 @@ const Checkbox = ({
         disabled && disabledClassName,
         className,
       )}
-      onClick={() => {
+      onClick={(event) => {
         if (disabled)
           return
-        onCheck?.()
+        onCheck?.(event)
       }}
       data-testid={`checkbox-${id}`}
     >

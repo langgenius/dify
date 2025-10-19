@@ -3,7 +3,6 @@ from collections.abc import Generator
 from datetime import date, datetime
 from decimal import Decimal
 from mimetypes import guess_extension
-from typing import Optional
 from uuid import UUID
 
 import numpy as np
@@ -13,7 +12,7 @@ from core.file import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
 from libs.login import current_user
-from models.account import Account
+from models import Account
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +59,7 @@ class ToolFileMessageTransformer:
         messages: Generator[ToolInvokeMessage, None, None],
         user_id: str,
         tenant_id: str,
-        conversation_id: Optional[str] = None,
+        conversation_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Transform tool message and handle file download
@@ -165,5 +164,5 @@ class ToolFileMessageTransformer:
                 yield message
 
     @classmethod
-    def get_tool_file_url(cls, tool_file_id: str, extension: Optional[str]) -> str:
+    def get_tool_file_url(cls, tool_file_id: str, extension: str | None) -> str:
         return f"/files/tools/{tool_file_id}{extension or '.bin'}"

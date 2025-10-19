@@ -15,7 +15,7 @@ from core.file import file_manager
 from core.file.enums import FileTransferMethod
 from core.helper import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.runtime import VariablePool
 
 from .entities import (
     HttpRequestNodeAuthorization,
@@ -87,7 +87,7 @@ class Executor:
                 node_data.authorization.config.api_key
             ).text
 
-        self.url: str = node_data.url
+        self.url = node_data.url
         self.method = node_data.method
         self.auth = node_data.authorization
         self.timeout = timeout
@@ -263,9 +263,6 @@ class Executor:
             if authorization.config is None:
                 raise AuthorizationConfigError("authorization config is required")
 
-            if self.auth.config.api_key is None:
-                raise AuthorizationConfigError("api_key is required")
-
             if not authorization.config.header:
                 authorization.config.header = "Authorization"
 
@@ -352,11 +349,10 @@ class Executor:
             "timeout": (self.timeout.connect, self.timeout.read, self.timeout.write),
             "ssl_verify": self.ssl_verify,
             "follow_redirects": True,
-            "max_retries": self.max_retries,
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
-            response: httpx.Response = _METHOD_MAP[method_lc](**request_args)
+            response: httpx.Response = _METHOD_MAP[method_lc](**request_args, max_retries=self.max_retries)
         except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
             raise HttpRequestNodeError(str(e)) from e
         # FIXME: fix type ignore, this maybe httpx type issue
@@ -409,30 +405,25 @@ class Executor:
         if self.files and not all(f[0] == "__multipart_placeholder__" for f in self.files):
             for file_entry in self.files:
                 # file_entry should be (key, (filename, content, mime_type)), but handle edge cases
-                if len(file_entry) != 2 or not isinstance(file_entry[1], tuple) or len(file_entry[1]) < 2:
+                if len(file_entry) != 2 or len(file_entry[1]) < 2:
                     continue  # skip malformed entries
                 key = file_entry[0]
                 content = file_entry[1][1]
                 body_string += f"--{boundary}\r\n"
                 body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
                 # decode content safely
-                if isinstance(content, bytes):
-                    try:
-                        body_string += content.decode("utf-8")
-                    except UnicodeDecodeError:
-                        body_string += content.decode("utf-8", errors="replace")
-                elif isinstance(content, str):
-                    body_string += content
-                else:
-                    body_string += f"[Unsupported content type: {type(content).__name__}]"
+                try:
+                    body_string += content.decode("utf-8")
+                except UnicodeDecodeError:
+                    body_string += content.decode("utf-8", errors="replace")
                 body_string += "\r\n"
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:
-                if isinstance(self.content, str):
-                    body_string = self.content
-                elif isinstance(self.content, bytes):
+                if isinstance(self.content, bytes):
                     body_string = self.content.decode("utf-8", errors="replace")
+                else:
+                    body_string = self.content
             elif self.data and self.node_data.body.type == "x-www-form-urlencoded":
                 body_string = urlencode(self.data)
             elif self.data and self.node_data.body.type == "form-data":

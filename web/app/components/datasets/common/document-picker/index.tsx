@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '../document-file-icon'
 import DocumentList from './document-list'
 import type { DocumentItem, ParentMode, SimpleDocumentDetail } from '@/models/datasets'
-import { ProcessMode } from '@/models/datasets'
+import { ChunkingMode } from '@/models/datasets'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -15,7 +15,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import cn from '@/utils/classnames'
 import SearchInput from '@/app/components/base/search-input'
-import { GeneralType, ParentChildType } from '@/app/components/base/icons/src/public/knowledge'
+import { GeneralChunk, ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import { useDocumentList } from '@/service/knowledge/use-document'
 import Loading from '@/app/components/base/loading'
 
@@ -24,7 +24,7 @@ type Props = {
   value: {
     name?: string
     extension?: string
-    processMode?: ProcessMode
+    chunkingMode?: ChunkingMode
     parentMode?: ParentMode
   }
   onChange: (value: SimpleDocumentDetail) => void
@@ -39,7 +39,7 @@ const DocumentPicker: FC<Props> = ({
   const {
     name,
     extension,
-    processMode,
+    chunkingMode,
     parentMode,
   } = value
   const [query, setQuery] = useState('')
@@ -53,8 +53,10 @@ const DocumentPicker: FC<Props> = ({
     },
   })
   const documentsList = data?.data
-  const isParentChild = processMode === ProcessMode.parentChild
-  const TypeIcon = isParentChild ? ParentChildType : GeneralType
+  const isGeneralMode = chunkingMode === ChunkingMode.text
+  const isParentChild = chunkingMode === ChunkingMode.parentChild
+  const isQAMode = chunkingMode === ChunkingMode.qa
+  const TypeIcon = isParentChild ? ParentChildChunk : GeneralChunk
 
   const [open, {
     set: setOpen,
@@ -67,6 +69,12 @@ const DocumentPicker: FC<Props> = ({
     setOpen(false)
   }, [documentsList, onChange, setOpen])
 
+  const parentModeLabel = useMemo(() => {
+    if (!parentMode)
+      return '--'
+    return parentMode === 'paragraph' ? t('dataset.parentMode.paragraph') : t('dataset.parentMode.fullDoc')
+  }, [parentMode, t])
+
   return (
     <PortalToFollowElem
       open={open}
@@ -75,7 +83,7 @@ const DocumentPicker: FC<Props> = ({
     >
       <PortalToFollowElemTrigger onClick={togglePopup}>
         <div className={cn('ml-1 flex cursor-pointer select-none items-center rounded-lg px-2 py-0.5 hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-          <FileIcon name={name} extension={extension} size='lg' />
+          <FileIcon name={name} extension={extension} size='xl' />
           <div className='ml-1 mr-0.5 flex flex-col items-start'>
             <div className='flex items-center space-x-0.5'>
               <span className={cn('system-md-semibold text-text-primary')}> {name || '--'}</span>
@@ -84,8 +92,9 @@ const DocumentPicker: FC<Props> = ({
             <div className='flex h-3 items-center space-x-0.5 text-text-tertiary'>
               <TypeIcon className='h-3 w-3' />
               <span className={cn('system-2xs-medium-uppercase', isParentChild && 'mt-0.5' /* to icon problem cause not ver align */)}>
-                {isParentChild ? t('dataset.chunkingMode.parentChild') : t('dataset.chunkingMode.general')}
-                {isParentChild && ` · ${!parentMode ? '--' : parentMode === 'paragraph' ? t('dataset.parentMode.paragraph') : t('dataset.parentMode.fullDoc')}`}
+                {isGeneralMode && t('dataset.chunkingMode.general')}
+                {isQAMode && t('dataset.chunkingMode.qa')}
+                {isParentChild && `${t('dataset.chunkingMode.parentChild')} · ${parentModeLabel}`}
               </span>
             </div>
           </div>

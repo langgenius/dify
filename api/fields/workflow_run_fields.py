@@ -64,6 +64,15 @@ workflow_run_pagination_fields = {
     "data": fields.List(fields.Nested(workflow_run_for_list_fields), attribute="data"),
 }
 
+workflow_run_count_fields = {
+    "total": fields.Integer,
+    "running": fields.Integer,
+    "succeeded": fields.Integer,
+    "failed": fields.Integer,
+    "stopped": fields.Integer,
+    "partial_succeeded": fields.Integer(attribute="partial-succeeded"),
+}
+
 workflow_run_detail_fields = {
     "id": fields.String,
     "version": fields.String,
@@ -116,6 +125,9 @@ workflow_run_node_execution_fields = {
     "created_by_account": fields.Nested(simple_account_fields, attribute="created_by_account", allow_null=True),
     "created_by_end_user": fields.Nested(simple_end_user_fields, attribute="created_by_end_user", allow_null=True),
     "finished_at": TimestampField,
+    "inputs_truncated": fields.Boolean,
+    "outputs_truncated": fields.Boolean,
+    "process_data_truncated": fields.Boolean,
 }
 
 workflow_run_node_execution_list_fields = {

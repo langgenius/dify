@@ -26,25 +26,37 @@ logger = logging.getLogger(__name__)
 
 
 # Define parsers for message APIs
-message_list_parser = reqparse.RequestParser()
-message_list_parser.add_argument(
-    "conversation_id", required=True, type=uuid_value, location="args", help="Conversation ID"
-)
-message_list_parser.add_argument("first_id", type=uuid_value, location="args", help="First message ID for pagination")
-message_list_parser.add_argument(
-    "limit", type=int_range(1, 100), required=False, default=20, location="args", help="Number of messages to return"
+message_list_parser = (
+    reqparse.RequestParser()
+    .add_argument("conversation_id", required=True, type=uuid_value, location="args", help="Conversation ID")
+    .add_argument("first_id", type=uuid_value, location="args", help="First message ID for pagination")
+    .add_argument(
+        "limit",
+        type=int_range(1, 100),
+        required=False,
+        default=20,
+        location="args",
+        help="Number of messages to return",
+    )
 )
 
-message_feedback_parser = reqparse.RequestParser()
-message_feedback_parser.add_argument(
-    "rating", type=str, choices=["like", "dislike", None], location="json", help="Feedback rating"
+message_feedback_parser = (
+    reqparse.RequestParser()
+    .add_argument("rating", type=str, choices=["like", "dislike", None], location="json", help="Feedback rating")
+    .add_argument("content", type=str, location="json", help="Feedback content")
 )
-message_feedback_parser.add_argument("content", type=str, location="json", help="Feedback content")
 
-feedback_list_parser = reqparse.RequestParser()
-feedback_list_parser.add_argument("page", type=int, default=1, location="args", help="Page number")
-feedback_list_parser.add_argument(
-    "limit", type=int_range(1, 101), required=False, default=20, location="args", help="Number of feedbacks per page"
+feedback_list_parser = (
+    reqparse.RequestParser()
+    .add_argument("page", type=int, default=1, location="args", help="Page number")
+    .add_argument(
+        "limit",
+        type=int_range(1, 101),
+        required=False,
+        default=20,
+        location="args",
+        help="Number of feedbacks per page",
+    )
 )
 
 

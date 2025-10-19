@@ -6,7 +6,7 @@ providing improved performance by offloading database operations to background w
 """
 
 import logging
-from typing import Optional, Union
+from typing import Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -39,8 +39,8 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
 
     _session_factory: sessionmaker
     _tenant_id: str
-    _app_id: Optional[str]
-    _triggered_from: Optional[WorkflowRunTriggeredFrom]
+    _app_id: str | None
+    _triggered_from: WorkflowRunTriggeredFrom | None
     _creator_user_id: str
     _creator_user_role: CreatorUserRole
 
@@ -48,8 +48,8 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
         self,
         session_factory: sessionmaker | Engine,
         user: Union[Account, EndUser],
-        app_id: Optional[str],
-        triggered_from: Optional[WorkflowRunTriggeredFrom],
+        app_id: str | None,
+        triggered_from: WorkflowRunTriggeredFrom | None,
     ):
         """
         Initialize the repository with Celery task configuration and context information.
@@ -108,7 +108,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             execution_data = execution.model_dump()
 
             # Queue the save operation as a Celery task (fire and forget)
-            save_workflow_execution_task.delay(
+            save_workflow_execution_task.delay(  # type: ignore
                 execution_data=execution_data,
                 tenant_id=self._tenant_id,
                 app_id=self._app_id or "",

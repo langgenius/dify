@@ -1,6 +1,7 @@
 import React, { type FC } from 'react'
 import CodeEditor from './code-editor'
 import cn from '@/utils/classnames'
+import LargeDataAlert from '@/app/components/workflow/variable-inspect/large-data-alert'
 
 type SchemaEditorProps = {
   schema: string
@@ -8,6 +9,9 @@ type SchemaEditorProps = {
   hideTopMenu?: boolean
   className?: string
   readonly?: boolean
+  onFocus?: () => void
+  onBlur?: () => void
+  isTruncated?: boolean
 }
 
 const SchemaEditor: FC<SchemaEditorProps> = ({
@@ -16,6 +20,9 @@ const SchemaEditor: FC<SchemaEditorProps> = ({
   hideTopMenu,
   className,
   readonly = false,
+  onFocus,
+  onBlur,
+  isTruncated,
 }) => {
   return (
     <CodeEditor
@@ -25,6 +32,9 @@ const SchemaEditor: FC<SchemaEditorProps> = ({
       value={schema}
       onUpdate={onUpdate}
       hideTopMenu={hideTopMenu}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      topContent={isTruncated && <LargeDataAlert className='mx-1 mb-3 mt-[-4px]' />}
     />
   )
 }

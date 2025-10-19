@@ -179,6 +179,6 @@ CHAT_EXAMPLE = [
                 "required": ["food"],
             },
         },
-        "assistant": {"text": "I need to output a valid JSON object.", "json": {"result": "apple pie"}},
+        "assistant": {"text": "I need to output a valid JSON object.", "json": {"food": "apple pie"}},
     },
 ]

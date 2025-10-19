@@ -26,9 +26,15 @@ from services.errors.audio import (
     UnsupportedAudioTypeServiceError,
 )
 
+from .. import console_ns
+
 logger = logging.getLogger(__name__)
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/audio-to-text",
+    endpoint="installed_app_audio",
+)
 class ChatAudioApi(InstalledAppResource):
     def post(self, installed_app):
         app_model = installed_app.app
@@ -65,17 +71,23 @@ class ChatAudioApi(InstalledAppResource):
             raise InternalServerError()
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/text-to-audio",
+    endpoint="installed_app_text",
+)
 class ChatTextApi(InstalledAppResource):
     def post(self, installed_app):
         from flask_restx import reqparse
 
         app_model = installed_app.app
         try:
-            parser = reqparse.RequestParser()
-            parser.add_argument("message_id", type=str, required=False, location="json")
-            parser.add_argument("voice", type=str, location="json")
-            parser.add_argument("text", type=str, location="json")
-            parser.add_argument("streaming", type=bool, location="json")
+            parser = (
+                reqparse.RequestParser()
+                .add_argument("message_id", type=str, required=False, location="json")
+                .add_argument("voice", type=str, location="json")
+                .add_argument("text", type=str, location="json")
+                .add_argument("streaming", type=bool, location="json")
+            )
             args = parser.parse_args()
 
             message_id = args.get("message_id", None)

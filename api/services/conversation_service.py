@@ -1,7 +1,7 @@
 import contextlib
 import logging
 from collections.abc import Callable, Sequence
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
@@ -14,8 +14,7 @@ from extensions.ext_database import db
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models import ConversationVariable
-from models.account import Account
+from models import Account, ConversationVariable
 from models.model import App, Conversation, EndUser, Message
 from services.errors.conversation import (
     ConversationNotExistsError,
@@ -36,12 +35,12 @@ class ConversationService:
         *,
         session: Session,
         app_model: App,
-        user: Optional[Union[Account, EndUser]],
-        last_id: Optional[str],
+        user: Union[Account, EndUser] | None,
+        last_id: str | None,
         limit: int,
         invoke_from: InvokeFrom,
-        include_ids: Optional[Sequence[str]] = None,
-        exclude_ids: Optional[Sequence[str]] = None,
+        include_ids: Sequence[str] | None = None,
+        exclude_ids: Sequence[str] | None = None,
         sort_by: str = "-updated_at",
     ) -> InfiniteScrollPagination:
         if not user:
@@ -118,7 +117,7 @@ class ConversationService:
         cls,
         app_model: App,
         conversation_id: str,
-        user: Optional[Union[Account, EndUser]],
+        user: Union[Account, EndUser] | None,
         name: str,
         auto_generate: bool,
     ):
@@ -158,7 +157,7 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def get_conversation(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
+    def get_conversation(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
         conversation = (
             db.session.query(Conversation)
             .where(
@@ -178,7 +177,7 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def delete(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
+    def delete(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
         try:
             logger.info(
                 "Initiating conversation deletion for app_name %s, conversation_id: %s",
@@ -200,9 +199,9 @@ class ConversationService:
         cls,
         app_model: App,
         conversation_id: str,
-        user: Optional[Union[Account, EndUser]],
+        user: Union[Account, EndUser] | None,
         limit: int,
-        last_id: Optional[str],
+        last_id: str | None,
     ) -> InfiniteScrollPagination:
         conversation = cls.get_conversation(app_model, conversation_id, user)
 
@@ -248,7 +247,7 @@ class ConversationService:
         app_model: App,
         conversation_id: str,
         variable_id: str,
-        user: Optional[Union[Account, EndUser]],
+        user: Union[Account, EndUser] | None,
         new_value: Any,
     ):
         """

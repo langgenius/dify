@@ -15,7 +15,14 @@ class FirecrawlWebExtractor(BaseExtractor):
         only_main_content: Only return the main content of the page excluding headers, navs, footers, etc.
     """
 
-    def __init__(self, url: str, job_id: str, tenant_id: str, mode: str = "crawl", only_main_content: bool = True):
+    def __init__(
+        self,
+        url: str,
+        job_id: str,
+        tenant_id: str,
+        mode: str = "crawl",
+        only_main_content: bool = True,
+    ):
         """Initialize with url, api_key, base_url and mode."""
         self._url = url
         self.job_id = job_id
