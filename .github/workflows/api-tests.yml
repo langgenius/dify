@@ -39,25 +39,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --project api --dev
 
-      - name: Run Unit tests
-        run: |
-          uv run --project api bash dev/pytest/pytest_unit_tests.sh
-
       - name: Run pyrefly check
         run: |
           cd api
           uv add --dev pyrefly
           uv run pyrefly check || true
-      - name: Coverage Summary
-        run: |
-          set -x
-          # Extract coverage percentage and create a summary
-          TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
-
-          # Create a detailed coverage summary
-          echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
-          echo "Total Coverage: ${TOTAL_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
-          uv run --project api coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
 
       - name: Run dify config tests
         run: uv run --project api dev/pytest/pytest_config_tests.py
@@ -93,3 +79,19 @@ jobs:
 
       - name: Run TestContainers
         run: uv run --project api bash dev/pytest/pytest_testcontainers.sh
+
+      - name: Run Unit tests
+        run: |
+          uv run --project api bash dev/pytest/pytest_unit_tests.sh
+
+      - name: Coverage Summary
+        run: |
+          set -x
+          # Extract coverage percentage and create a summary
+          TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
+
+          # Create a detailed coverage summary
+          echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
+          echo "Total Coverage: ${TOTAL_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+          uv run --project api coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
+

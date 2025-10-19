@@ -3,13 +3,13 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { removeAccessToken } from '@/app/components/share/utils'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import NormalForm from './normalForm'
 import { AccessMode } from '@/models/access-control'
 import ExternalMemberSsoAuth from './components/external-member-sso-auth'
 import { useWebAppStore } from '@/context/web-app-context'
+import { webAppLogout } from '@/service/webapp-auth'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
@@ -26,11 +26,12 @@ const WebSSOForm: FC = () => {
     return `/webapp-signin?${params.toString()}`
   }, [redirectUrl])
 
-  const backToHome = useCallback(() => {
-    removeAccessToken()
+  const shareCode = useWebAppStore(s => s.shareCode)
+  const backToHome = useCallback(async () => {
+    await webAppLogout(shareCode!)
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router])
+  }, [getSigninUrl, router, webAppLogout, shareCode])
 
   if (!redirectUrl) {
     return <div className='flex h-full items-center justify-center'>

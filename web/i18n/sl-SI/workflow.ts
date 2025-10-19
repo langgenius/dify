@@ -335,6 +335,7 @@ const translation = {
     minimize: 'Izhod iz celotnega zaslona',
     maximize: 'Maksimiziraj platno',
     optional: '(neobvezno)',
+    optional_and_hidden: '(neobvezno in skrito)',
   },
   nodes: {
     common: {

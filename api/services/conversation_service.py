@@ -14,8 +14,7 @@ from extensions.ext_database import db
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models import ConversationVariable
-from models.account import Account
+from models import Account, ConversationVariable
 from models.model import App, Conversation, EndUser, Message
 from services.errors.conversation import (
     ConversationNotExistsError,
