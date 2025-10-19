@@ -8,6 +8,7 @@ from core.workflow.nodes.base.node import Node
 from libs.typing import is_str, is_str_dict
 
 from .edge import Edge
+from .validation import get_graph_validator
 
 logger = logging.getLogger(__name__)
 
@@ -328,13 +329,18 @@ class Graph:
         cls._mark_inactive_root_branches(nodes, edges, in_edges, out_edges, root_node_id)
 
         # Create and return the graph
-        return cls(
+        graph = cls(
             nodes=nodes,
             edges=edges,
             in_edges=in_edges,
             out_edges=out_edges,
             root_node=root_node,
         )
+
+        # Validate the graph structure using built-in validators
+        get_graph_validator().validate(graph)
+
+        return graph
 
     @property
     def node_ids(self) -> list[str]:
