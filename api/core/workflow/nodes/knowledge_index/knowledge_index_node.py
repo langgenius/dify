@@ -117,6 +117,8 @@ class KnowledgeIndexNode(Node):
                 error=str(e),
                 error_type=type(e).__name__,
             )
+        finally:
+            db.session.close()
 
     def _invoke_knowledge_index(
         self,
@@ -136,6 +138,8 @@ class KnowledgeIndexNode(Node):
         document = db.session.query(Document).filter_by(id=document_id.value).first()
         if not document:
             raise KnowledgeIndexNodeError(f"Document {document_id.value} not found.")
+
+        # Eagerly load document attributes to avoid detached instance errors later
         doc_id_value = document.id
         ds_id_value = dataset.id
         dataset_name_value = dataset.name
@@ -157,6 +161,9 @@ class KnowledgeIndexNode(Node):
                 for segment in segments:
                     db.session.delete(segment)
                 db.session.commit()
+
+        # Refresh the document to ensure it's bound to the current session
+        db.session.refresh(document)
         index_processor.index(dataset, document, chunks)
         indexing_end_at = time.perf_counter()
         document.indexing_latency = indexing_end_at - indexing_start_at
