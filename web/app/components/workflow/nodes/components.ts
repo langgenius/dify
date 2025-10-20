@@ -42,6 +42,8 @@ import DataSourceNode from './data-source/node'
 import DataSourcePanel from './data-source/panel'
 import KnowledgeBaseNode from './knowledge-base/node'
 import KnowledgeBasePanel from './knowledge-base/panel'
+import HumanInputNode from './human-input/node'
+import HumanInputPanel from './human-input/panel'
 
 export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Start]: StartNode,
@@ -66,6 +68,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Agent]: AgentNode,
   [BlockEnum.DataSource]: DataSourceNode,
   [BlockEnum.KnowledgeBase]: KnowledgeBaseNode,
+  [BlockEnum.HumanInput]: HumanInputNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
@@ -91,4 +94,5 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Agent]: AgentPanel,
   [BlockEnum.DataSource]: DataSourcePanel,
   [BlockEnum.KnowledgeBase]: KnowledgeBasePanel,
+  [BlockEnum.HumanInput]: HumanInputPanel,
 }

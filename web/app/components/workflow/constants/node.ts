@@ -20,6 +20,7 @@ import httpRequestDefault from '@/app/components/workflow/nodes/http/default'
 import parameterExtractorDefault from '@/app/components/workflow/nodes/parameter-extractor/default'
 import listOperatorDefault from '@/app/components/workflow/nodes/list-operator/default'
 import toolDefault from '@/app/components/workflow/nodes/tool/default'
+import humanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 
 export const WORKFLOW_COMMON_NODES = [
   llmDefault,
@@ -41,4 +42,5 @@ export const WORKFLOW_COMMON_NODES = [
   httpRequestDefault,
   listOperatorDefault,
   toolDefault,
+  humanInputDefault,
 ]
