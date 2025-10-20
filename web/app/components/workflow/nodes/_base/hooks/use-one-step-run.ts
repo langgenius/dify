@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { unionBy } from 'lodash-es'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   useIsChatMode,
   useNodeDataUpdate,
