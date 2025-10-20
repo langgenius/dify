@@ -30,6 +30,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   const [password, setPassword] = useState('')
 
   const [isLoading, setIsLoading] = useState(false)
+
   const handleEmailPasswordLogin = async () => {
     if (!email) {
       Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
@@ -66,8 +67,6 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
         else {
-          localStorage.setItem('console_token', res.data.access_token)
-          localStorage.setItem('refresh_token', res.data.refresh_token)
           const redirectUrl = resolvePostLoginRedirect(searchParams)
           router.replace(redirectUrl || '/apps')
         }

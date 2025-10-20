@@ -24,9 +24,11 @@ class DatasetMetadataCreateApi(Resource):
     @marshal_with(dataset_metadata_fields)
     def post(self, dataset_id):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=False, location="json")
+            .add_argument("name", type=str, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
         metadata_args = MetadataArgs.model_validate(args)
 
@@ -60,8 +62,7 @@ class DatasetMetadataApi(Resource):
     @marshal_with(dataset_metadata_fields)
     def patch(self, dataset_id, metadata_id):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument("name", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         name = args["name"]
 
@@ -138,8 +139,9 @@ class DocumentMetadataEditApi(Resource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("operation_data", type=list, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "operation_data", type=list, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
         metadata_args = MetadataOperationData.model_validate(args)
 

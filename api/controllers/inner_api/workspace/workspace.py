@@ -25,9 +25,11 @@ class EnterpriseWorkspace(Resource):
         }
     )
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, location="json")
-        parser.add_argument("owner_email", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("name", type=str, required=True, location="json")
+            .add_argument("owner_email", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         account = db.session.query(Account).filter_by(email=args["owner_email"]).first()
@@ -68,8 +70,7 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
         }
     )
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
 
         tenant = TenantService.create_tenant(args["name"], is_from_dashboard=True)

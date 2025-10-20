@@ -53,7 +53,7 @@ from core.variables import (
     StringSegment,
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities import GraphInitParams, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.enums import (
     ErrorStrategy,
     NodeType,
@@ -72,6 +72,7 @@ from core.workflow.node_events import (
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
+from core.workflow.runtime import VariablePool
 
 from . import llm_utils
 from .entities import (
@@ -94,7 +95,7 @@ from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.entities import GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -461,10 +462,14 @@ class LLMNode(Node):
         first_token_time = None
         has_content = False
 
+        collected_structured_output = None  # Collect structured_output from streaming chunks
         # Consume the invoke result and handle generator exception
         try:
             for result in invoke_result:
                 if isinstance(result, LLMResultChunkWithStructuredOutput):
+                    # Collect structured_output from the chunk
+                    if result.structured_output is not None:
+                        collected_structured_output = dict(result.structured_output)
                     yield result
                 if isinstance(result, LLMResultChunk):
                     contents = result.delta.message.content
@@ -531,6 +536,8 @@ class LLMNode(Node):
             finish_reason=finish_reason,
             # Reasoning content for workflow variables and downstream nodes
             reasoning_content=reasoning_content,
+            # Pass structured output if collected from streaming chunks
+            structured_output=collected_structured_output,
             streaming_metrics=streaming_metrics,
         )
 
