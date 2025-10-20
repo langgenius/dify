@@ -1,7 +1,7 @@
 """add app_mode for messsage
 
 Revision ID: d98acf217d43
-Revises: 68519ad5cd18
+Revises: 132392a2635f
 Create Date: 2025-10-14 16:18:08.568011
 
 """
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'd98acf217d43'
-down_revision = '68519ad5cd18'
+down_revision = '132392a2635f'
 branch_labels = None
 depends_on = None
 
