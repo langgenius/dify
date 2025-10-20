@@ -19,7 +19,7 @@ const meta = {
   },
   args: {
     variant: 'ghost',
-    children: 'adsf',
+    children: 'Button',
   },
 } satisfies Meta<typeof Button>
 

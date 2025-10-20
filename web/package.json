@@ -157,7 +157,6 @@
     "@storybook/addon-themes": "9.1.13",
     "@storybook/nextjs": "9.1.13",
     "@storybook/react": "9.1.13",
-    "@storybook/react-vite": "^9.1.13",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.0.1",
