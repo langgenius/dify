@@ -83,6 +83,7 @@ const translation = {
     workflowTitle: 'Log Detail',
     fileListLabel: 'File Details',
     fileListDetail: 'Detail',
+    testWithParams: 'Test With Params',
   },
   promptLog: 'Prompt Log',
   agentLog: 'Agent Log',

@@ -24,7 +24,7 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.plugin_tool.tool import PluginTool
 from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.runtime.variable_pool import VariablePool
 from extensions.ext_database import db
 from models.provider_ids import ToolProviderID
 from services.enterprise.plugin_manager_service import PluginCredentialType
@@ -63,8 +63,8 @@ from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvi
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
-    from core.workflow.entities import VariablePool
     from core.workflow.nodes.tool.entities import ToolEntity
+    from core.workflow.runtime import VariablePool
 
 logger = logging.getLogger(__name__)
 

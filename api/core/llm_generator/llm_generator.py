@@ -29,8 +29,8 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from core.workflow.runtime.variable_pool import VariablePool
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import App, Message, WorkflowNodeExecutionModel
@@ -570,7 +570,7 @@ class LLMGenerator:
         visible_history: Sequence[tuple[str, str]],
         variable_pool: VariablePool,
         memory_block: MemoryBlock,
-        memory_spec: MemoryBlockSpec
+        memory_spec: MemoryBlockSpec,
     ) -> str:
         model_instance = ModelManager().get_model_instance(
             tenant_id=tenant_id,

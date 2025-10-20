@@ -10,10 +10,8 @@ from werkzeug.exceptions import NotFound
 from controllers.console.explore.error import AppAccessDeniedError, TrialAppLimitExceeded, TrialAppNotAllowed
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models import AccountTrialAppRecord, App, InstalledApp, TrialApp
-from models.account import Account
-from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
@@ -26,13 +24,10 @@ def installed_app_required(view: Callable[Concatenate[InstalledApp, P], R] | Non
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app_id: str, *args: P.args, **kwargs: P.kwargs):
-            assert isinstance(current_user, Account)
-            assert current_user.current_tenant_id is not None
+            _, current_tenant_id = current_account_with_tenant()
             installed_app = (
                 db.session.query(InstalledApp)
-                .where(
-                    InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_user.current_tenant_id
-                )
+                .where(InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_tenant_id)
                 .first()
             )
 
@@ -58,14 +53,13 @@ def user_allowed_to_access_app(view: Callable[Concatenate[InstalledApp, P], R] |
     def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
         def decorated(installed_app: InstalledApp, *args: P.args, **kwargs: P.kwargs):
+            current_user, _ = current_account_with_tenant()
             feature = FeatureService.get_system_features()
             if feature.webapp_auth.enabled:
-                assert isinstance(current_user, Account)
                 app_id = installed_app.app_id
-                app_code = AppService.get_app_code_by_id(app_id)
                 res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
                     user_id=str(current_user.id),
-                    app_code=app_code,
+                    app_id=app_id,
                 )
                 if not res:
                     raise AppAccessDeniedError()

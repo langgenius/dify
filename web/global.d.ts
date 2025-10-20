@@ -1,3 +1,6 @@
+import './types/i18n'
+import './types/jsx'
+
 declare module 'lamejs';
 declare module 'lamejs/src/js/MPEGMode';
 declare module 'lamejs/src/js/Lame';
@@ -29,3 +32,4 @@ declare global {
 }
 
 import './types/i18n'
+export {}

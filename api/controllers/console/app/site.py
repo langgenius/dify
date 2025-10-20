@@ -9,29 +9,35 @@ from extensions.ext_database import db
 from fields.app_fields import app_site_fields
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
-from models import Account, Site
+from models import Site
 
 
 def parse_app_site_args():
-    parser = reqparse.RequestParser()
-    parser.add_argument("title", type=str, required=False, location="json")
-    parser.add_argument("icon_type", type=str, required=False, location="json")
-    parser.add_argument("icon", type=str, required=False, location="json")
-    parser.add_argument("icon_background", type=str, required=False, location="json")
-    parser.add_argument("description", type=str, required=False, location="json")
-    parser.add_argument("default_language", type=supported_language, required=False, location="json")
-    parser.add_argument("chat_color_theme", type=str, required=False, location="json")
-    parser.add_argument("chat_color_theme_inverted", type=bool, required=False, location="json")
-    parser.add_argument("customize_domain", type=str, required=False, location="json")
-    parser.add_argument("copyright", type=str, required=False, location="json")
-    parser.add_argument("privacy_policy", type=str, required=False, location="json")
-    parser.add_argument("custom_disclaimer", type=str, required=False, location="json")
-    parser.add_argument(
-        "customize_token_strategy", type=str, choices=["must", "allow", "not_allow"], required=False, location="json"
+    parser = (
+        reqparse.RequestParser()
+        .add_argument("title", type=str, required=False, location="json")
+        .add_argument("icon_type", type=str, required=False, location="json")
+        .add_argument("icon", type=str, required=False, location="json")
+        .add_argument("icon_background", type=str, required=False, location="json")
+        .add_argument("description", type=str, required=False, location="json")
+        .add_argument("default_language", type=supported_language, required=False, location="json")
+        .add_argument("chat_color_theme", type=str, required=False, location="json")
+        .add_argument("chat_color_theme_inverted", type=bool, required=False, location="json")
+        .add_argument("customize_domain", type=str, required=False, location="json")
+        .add_argument("copyright", type=str, required=False, location="json")
+        .add_argument("privacy_policy", type=str, required=False, location="json")
+        .add_argument("custom_disclaimer", type=str, required=False, location="json")
+        .add_argument(
+            "customize_token_strategy",
+            type=str,
+            choices=["must", "allow", "not_allow"],
+            required=False,
+            location="json",
+        )
+        .add_argument("prompt_public", type=bool, required=False, location="json")
+        .add_argument("show_workflow_steps", type=bool, required=False, location="json")
+        .add_argument("use_icon_as_answer_icon", type=bool, required=False, location="json")
     )
-    parser.add_argument("prompt_public", type=bool, required=False, location="json")
-    parser.add_argument("show_workflow_steps", type=bool, required=False, location="json")
-    parser.add_argument("use_icon_as_answer_icon", type=bool, required=False, location="json")
     return parser.parse_args()
 
 
@@ -107,8 +113,6 @@ class AppSite(Resource):
             if value is not None:
                 setattr(site, attr_name, value)
 
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
         site.updated_by = current_user.id
         site.updated_at = naive_utc_now()
         db.session.commit()
@@ -142,8 +146,6 @@ class AppSiteAccessTokenReset(Resource):
             raise NotFound
 
         site.code = Site.generate_code(16)
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
         site.updated_by = current_user.id
         site.updated_at = naive_utc_now()
         db.session.commit()

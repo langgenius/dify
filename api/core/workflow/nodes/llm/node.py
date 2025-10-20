@@ -56,7 +56,7 @@ from core.variables import (
     StringSegment,
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities import GraphInitParams, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.enums import (
     ErrorStrategy,
     NodeType,
@@ -75,6 +75,7 @@ from core.workflow.node_events import (
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
+from core.workflow.runtime import VariablePool
 from models import UserFrom, Workflow
 from models.engine import db
 
@@ -99,7 +100,7 @@ from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.entities import GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -1217,14 +1218,14 @@ class LLMNode(Node):
             node_id=self.node_id,
             conversation_id=conversation_id,
             app_id=self.app_id,
-            tenant_id=self.tenant_id
+            tenant_id=self.tenant_id,
         )
         ChatflowHistoryService.save_node_message(
             prompt_message=(AssistantPromptMessage(content=llm_output)),
             node_id=self.node_id,
             conversation_id=conversation_id,
             app_id=self.app_id,
-            tenant_id=self.tenant_id
+            tenant_id=self.tenant_id,
         )
 
         memory_config = self._node_data.memory
@@ -1236,10 +1237,7 @@ class LLMNode(Node):
 
         # FIXME: This is dirty workaround and may cause incorrect resolution for workflow version
         with Session(db.engine) as session:
-            stmt = select(Workflow).where(
-                Workflow.tenant_id == self.tenant_id,
-                Workflow.app_id == self.app_id
-            )
+            stmt = select(Workflow).where(Workflow.tenant_id == self.tenant_id, Workflow.app_id == self.app_id)
             workflow = session.scalars(stmt).first()
             if not workflow:
                 raise ValueError("Workflow not found.")
@@ -1249,8 +1247,9 @@ class LLMNode(Node):
             memory_block_spec = next((block for block in memory_blocks if block.id == block_id), None)
 
             if memory_block_spec and memory_block_spec.scope == MemoryScope.NODE:
-                is_draft = (self.invoke_from == InvokeFrom.DEBUGGER)
+                is_draft = self.invoke_from == InvokeFrom.DEBUGGER
                 from services.chatflow_memory_service import ChatflowMemoryService
+
                 ChatflowMemoryService.update_node_memory_if_needed(
                     tenant_id=self.tenant_id,
                     app_id=self.app_id,
@@ -1259,7 +1258,7 @@ class LLMNode(Node):
                     memory_block_spec=memory_block_spec,
                     variable_pool=variable_pool,
                     is_draft=is_draft,
-                    created_by=self._get_user_from_context()
+                    created_by=self._get_user_from_context(),
                 )
 
     def _get_user_from_context(self) -> MemoryCreatedBy:

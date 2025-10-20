@@ -21,12 +21,17 @@ class _StubExecutionCoordinator:
         self._execution_complete = False
         self.mark_complete_called = False
         self.failed = False
+        self._paused = False
 
     def check_commands(self) -> None:
         self.command_checks += 1
 
     def check_scaling(self) -> None:
         self.scaling_checks += 1
+
+    @property
+    def is_paused(self) -> bool:
+        return self._paused
 
     def is_execution_complete(self) -> bool:
         return self._execution_complete
@@ -95,10 +100,10 @@ def _make_succeeded_event() -> NodeRunSucceededEvent:
     )
 
 
-def test_dispatcher_checks_commands_after_node_completion() -> None:
-    """Dispatcher should only check commands after node completion events."""
+def test_dispatcher_checks_commands_during_idle_and_on_completion() -> None:
+    """Dispatcher polls commands when idle and after completion events."""
     started_checks = _run_dispatcher_for_event(_make_started_event())
     succeeded_checks = _run_dispatcher_for_event(_make_succeeded_event())
 
-    assert started_checks == 0
-    assert succeeded_checks == 1
+    assert started_checks == 1
+    assert succeeded_checks == 2
