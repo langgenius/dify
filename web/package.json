@@ -180,7 +180,7 @@
     "babel-loader": "^10.0.0",
     "bing-translate-api": "^4.0.2",
     "code-inspector-plugin": "1.2.9",
-    "cross-env": "^7.0.3",
+    "cross-env": "^10.1.0",
     "eslint": "^9.35.0",
     "eslint-plugin-oxlint": "^1.6.0",
     "eslint-plugin-react-hooks": "^5.1.0",
