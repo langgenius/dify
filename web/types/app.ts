@@ -59,8 +59,14 @@ export type VariableInput = {
 /**
  * App modes
  */
-export const AppModes = ['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow'] as const
-export type AppMode = typeof AppModes[number]
+export enum AppModeEnum {
+  COMPLETION = 'completion',
+  WORKFLOW = 'workflow',
+  CHAT = 'chat',
+  ADVANCED_CHAT = 'advanced-chat',
+  AGENT_CHAT = 'agent-chat',
+}
+export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEnum.CHAT, AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT] as const
 
 /**
  * Variable type
@@ -330,7 +336,7 @@ export type App = {
   use_icon_as_answer_icon: boolean
 
   /** Mode */
-  mode: AppMode
+  mode: AppModeEnum
   /** Enable web app */
   enable_site: boolean
   /** Enable web API */
@@ -378,7 +384,7 @@ export type AppTemplate = {
   /** Description */
   description: string
   /** Mode */
-  mode: AppMode
+  mode: AppModeEnum
   /** Model */
   model_config: ModelConfig
 }
