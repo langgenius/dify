@@ -42,12 +42,13 @@ import { fetchDatasets } from '@/service/datasets'
 import { MAX_TREE_DEPTH } from '@/config'
 import useNodesAvailableVarList, { useGetNodesAvailableVarList } from './use-nodes-available-var-list'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
+import type { Emoji } from '@/app/components/tools/types'
 
 export type ChecklistItem = {
   id: string
   type: BlockEnum | string
   title: string
-  toolIcon?: string
+  toolIcon?: string | Emoji
   unConnected?: boolean
   errorMessage?: string
   canNavigate: boolean

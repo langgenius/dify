@@ -32,6 +32,7 @@ import {
 } from '@/app/components/base/icons/src/vender/line/general'
 import { Warning } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { IconR } from '@/app/components/base/icons/src/vender/line/arrows'
+import type { BlockEnum } from '../types'
 
 type WorkflowChecklistProps = {
   disabled: boolean
@@ -120,7 +121,7 @@ const WorkflowChecklist = ({
                         >
                           <div className='flex h-9 items-center p-2 text-xs font-medium text-text-secondary'>
                             <BlockIcon
-                              type={node.type}
+                              type={node.type as BlockEnum}
                               className='mr-1.5'
                               toolIcon={node.toolIcon}
                             />
