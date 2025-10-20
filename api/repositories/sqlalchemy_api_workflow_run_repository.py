@@ -61,7 +61,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         self,
         tenant_id: str,
         app_id: str,
-        triggered_from: str,
+        triggered_from: str | list[str],
         limit: int = 20,
         last_id: str | None = None,
         status: str | None = None,
@@ -78,8 +78,14 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             base_stmt = select(WorkflowRun).where(
                 WorkflowRun.tenant_id == tenant_id,
                 WorkflowRun.app_id == app_id,
-                WorkflowRun.triggered_from == triggered_from,
             )
+
+            # Handle triggered_from values
+            if isinstance(triggered_from, list):
+                from sqlalchemy import or_
+                base_stmt = base_stmt.where(or_(*[WorkflowRun.triggered_from == tf for tf in triggered_from]))
+            else:
+                base_stmt = base_stmt.where(WorkflowRun.triggered_from == triggered_from)
 
             # Add optional status filter
             if status:

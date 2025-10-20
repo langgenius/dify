@@ -56,7 +56,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         self,
         tenant_id: str,
         app_id: str,
-        triggered_from: str,
+        triggered_from: str | list[str],
         limit: int = 20,
         last_id: str | None = None,
         status: str | None = None,
@@ -71,7 +71,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         Args:
             tenant_id: Tenant identifier for multi-tenant isolation
             app_id: Application identifier
-            triggered_from: Filter by trigger source (e.g., "debugging", "app-run")
+            triggered_from: Filter by trigger source(s) (e.g., "debugging", "app-run", or list of values)
             limit: Maximum number of records to return (default: 20)
             last_id: Cursor for pagination - ID of the last record from previous page
             status: Optional filter by status (e.g., "running", "succeeded", "failed")
