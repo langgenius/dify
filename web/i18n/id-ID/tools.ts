@@ -226,6 +226,10 @@ const translation = {
     toolUpdateConfirmContent: 'Memperbarui daftar alat dapat memengaruhi aplikasi yang ada. Apakah Anda ingin melanjutkan?',
     update: 'Pemutakhiran',
     identifier: 'Pengenal Server (Klik untuk Menyalin)',
+    toolItem: {
+      parameters: 'Parameter',
+      noDescription: 'Tanpa deskripsi',
+    },
   },
   title: 'Perkakas',
   createCustomTool: 'Buat Alat Kustom',

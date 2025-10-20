@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import produce from 'immer'
+import { produce } from 'immer'
 import { ReactSortable } from 'react-sortablejs'
 import { RiAddLine, RiAsterisk, RiCloseLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
