@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 import time
@@ -416,6 +417,14 @@ class AdvancedChatAppGenerateTaskPipeline:
         should_direct_answer = self._handle_output_moderation_chunk(delta_text)
         if should_direct_answer:
             return
+
+        current_time = time.perf_counter()
+        if self._task_state.first_token_time is None and delta_text.strip():
+            self._task_state.first_token_time = current_time
+            self._task_state.is_streaming_response = True
+
+        if delta_text.strip():
+            self._task_state.last_token_time = current_time
 
         # Only publish tts message at text chunk streaming
         if tts_publisher and queue_message:
@@ -846,7 +855,10 @@ class AdvancedChatAppGenerateTaskPipeline:
         message.answer = answer_text
         message.updated_at = naive_utc_now()
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline.start_at
-        message.message_metadata = self._task_state.metadata.model_dump_json()
+
+        metadata = self._task_state.metadata.model_dump()
+        metadata.update(self._calculate_streaming_metrics())
+        message.message_metadata = json.dumps(metadata)
         message_files = [
             MessageFile(
                 message_id=message.id,
@@ -916,6 +928,23 @@ class AdvancedChatAppGenerateTaskPipeline:
                 self._base_task_pipeline.output_moderation_handler.append_new_token(text)
 
         return False
+
+    def _calculate_streaming_metrics(self) -> dict:
+        if not self._task_state.is_streaming_response or not self._task_state.first_token_time:
+            return {"gen_ai_server_time_to_first_token": None, "llm_streaming_time_to_generate": None}
+
+        start_time = self._base_task_pipeline.start_at
+        first_token_time = self._task_state.first_token_time
+        last_token_time = self._task_state.last_token_time or first_token_time
+
+        gen_ai_server_time_to_first_token = first_token_time - start_time
+        llm_streaming_time_to_generate = last_token_time - first_token_time
+
+        return {
+            "gen_ai_server_time_to_first_token": round(gen_ai_server_time_to_first_token, 3),
+            "llm_streaming_time_to_generate": round(llm_streaming_time_to_generate, 3),
+            "is_streaming_request": True,
+        }
 
     def _get_message(self, *, session: Session):
         stmt = select(Message).where(Message.id == self._message_id)

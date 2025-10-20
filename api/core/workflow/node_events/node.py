@@ -21,6 +21,7 @@ class ModelInvokeCompletedEvent(NodeEventBase):
     finish_reason: str | None = None
     reasoning_content: str | None = None
     structured_output: dict | None = None
+    streaming_metrics: dict | None = None
 
 
 class RunRetryEvent(NodeEventBase):

@@ -107,6 +107,8 @@ class TencentDataTrace(BaseTraceInstance):
 
             self.trace_client.add_span(message_span)
 
+            self._record_message_llm_metrics(trace_info)
+
         except Exception:
             logger.exception("[Tencent APM] Failed to process message trace")
 
@@ -290,23 +292,158 @@ class TencentDataTrace(BaseTraceInstance):
     def _record_llm_metrics(self, node_execution: WorkflowNodeExecution) -> None:
         """Record LLM performance metrics"""
         try:
-            if not hasattr(self.trace_client, "record_llm_duration"):
-                return
-
             process_data = node_execution.process_data or {}
-            usage = process_data.get("usage", {})
-            latency_s = float(usage.get("latency", 0.0))
+            outputs = node_execution.outputs or {}
+            streaming_metrics = process_data.get("streaming_metrics", {})
 
-            if latency_s > 0:
-                attributes = {
-                    "provider": process_data.get("model_provider", ""),
-                    "model": process_data.get("model_name", ""),
-                    "span_kind": "GENERATION",
-                }
-                self.trace_client.record_llm_duration(latency_s, attributes)
+            model_provider = process_data.get("model_provider", "unknown")
+            model_name = process_data.get("model_name", "unknown")
+
+            # Record LLM duration
+            if hasattr(self.trace_client, "record_llm_duration"):
+                usage = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+                latency_s = float(usage.get("latency", 0.0))
+
+                if latency_s > 0:
+                    attributes = {
+                        "provider": model_provider,
+                        "model": model_name,
+                        "span_kind": "GENERATION",
+                    }
+                    self.trace_client.record_llm_duration(latency_s, attributes)
+
+            # Record streaming metrics
+            if streaming_metrics.get("is_streaming_request"):
+                # Record time to first token
+                ttft = streaming_metrics.get("gen_ai_server_time_to_first_token")
+                if ttft is not None and hasattr(self.trace_client, "record_time_to_first_token"):
+                    ttft_seconds = float(ttft)
+                    if ttft_seconds > 0:
+                        self.trace_client.record_time_to_first_token(
+                            ttft_seconds=ttft_seconds, provider=model_provider, model=model_name
+                        )
+
+                # Record time to generate
+                ttg = streaming_metrics.get("llm_streaming_time_to_generate")
+                if ttg is not None and hasattr(self.trace_client, "record_time_to_generate"):
+                    ttg_seconds = float(ttg)
+                    if ttg_seconds > 0:
+                        self.trace_client.record_time_to_generate(
+                            ttg_seconds=ttg_seconds, provider=model_provider, model=model_name
+                        )
+
+            # Record token usage
+            if hasattr(self.trace_client, "record_token_usage"):
+                usage = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+
+                # Extract token counts
+                input_tokens = int(usage.get("prompt_tokens", 0))
+                output_tokens = int(usage.get("completion_tokens", 0))
+
+                if input_tokens > 0 or output_tokens > 0:
+                    server_address = f"{model_provider}"
+
+                    # Record input tokens
+                    if input_tokens > 0:
+                        self.trace_client.record_token_usage(
+                            token_count=input_tokens,
+                            token_type="input",
+                            operation_name="chat",
+                            request_model=model_name,
+                            response_model=model_name,
+                            server_address=server_address,
+                        )
+
+                    # Record output tokens
+                    if output_tokens > 0:
+                        self.trace_client.record_token_usage(
+                            token_count=output_tokens,
+                            token_type="output",
+                            operation_name="chat",
+                            request_model=model_name,
+                            response_model=model_name,
+                            server_address=server_address,
+                        )
 
         except Exception:
             logger.debug("[Tencent APM] Failed to record LLM metrics")
+
+    def _record_message_llm_metrics(self, trace_info: MessageTraceInfo) -> None:
+        """Record LLM metrics for message traces"""
+        try:
+            trace_metadata = trace_info.metadata or {}
+            message_data = trace_info.message_data or {}
+            provider_latency = 0.0
+            if isinstance(message_data, dict):
+                provider_latency = float(message_data.get("provider_response_latency", 0.0) or 0.0)
+            else:
+                provider_latency = float(getattr(message_data, "provider_response_latency", 0.0) or 0.0)
+
+            model_provider = trace_metadata.get("ls_provider") or (
+                message_data.get("model_provider", "") if isinstance(message_data, dict) else ""
+            )
+            model_name = trace_metadata.get("ls_model_name") or (
+                message_data.get("model_id", "") if isinstance(message_data, dict) else ""
+            )
+
+            # Record LLM duration
+            if provider_latency > 0 and hasattr(self.trace_client, "record_llm_duration"):
+                duration_attributes = {
+                    "provider": model_provider,
+                    "model": model_name,
+                    "span_kind": "GENERATION",
+                }
+                self.trace_client.record_llm_duration(provider_latency, duration_attributes)
+
+            # Record streaming metrics for message traces
+            if trace_info.is_streaming_request:
+                # Record time to first token
+                if trace_info.gen_ai_server_time_to_first_token is not None and hasattr(
+                    self.trace_client, "record_time_to_first_token"
+                ):
+                    ttft_seconds = float(trace_info.gen_ai_server_time_to_first_token)
+                    if ttft_seconds > 0:
+                        self.trace_client.record_time_to_first_token(
+                            ttft_seconds=ttft_seconds, provider=str(model_provider or ""), model=str(model_name or "")
+                        )
+
+                # Record time to generate
+                if trace_info.llm_streaming_time_to_generate is not None and hasattr(
+                    self.trace_client, "record_time_to_generate"
+                ):
+                    ttg_seconds = float(trace_info.llm_streaming_time_to_generate)
+                    if ttg_seconds > 0:
+                        self.trace_client.record_time_to_generate(
+                            ttg_seconds=ttg_seconds, provider=str(model_provider or ""), model=str(model_name or "")
+                        )
+
+            # Record token usage
+            if hasattr(self.trace_client, "record_token_usage"):
+                input_tokens = int(trace_info.message_tokens or 0)
+                output_tokens = int(trace_info.answer_tokens or 0)
+
+                if input_tokens > 0:
+                    self.trace_client.record_token_usage(
+                        token_count=input_tokens,
+                        token_type="input",
+                        operation_name="chat",
+                        request_model=str(model_name or ""),
+                        response_model=str(model_name or ""),
+                        server_address=str(model_provider or ""),
+                    )
+
+                if output_tokens > 0:
+                    self.trace_client.record_token_usage(
+                        token_count=output_tokens,
+                        token_type="output",
+                        operation_name="chat",
+                        request_model=str(model_name or ""),
+                        response_model=str(model_name or ""),
+                        server_address=str(model_provider or ""),
+                    )
+
+        except Exception:
+            logger.debug("[Tencent APM] Failed to record message LLM metrics")
 
     def __del__(self):
         """Ensure proper cleanup on garbage collection."""
