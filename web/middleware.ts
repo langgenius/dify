@@ -56,7 +56,6 @@ export function middleware(request: NextRequest) {
     contentSecurityPolicyHeaderValue,
   )
 
-  response.headers.set('x-nonce', nonce)
   response.headers.set(
     'Content-Security-Policy',
     contentSecurityPolicyHeaderValue,
