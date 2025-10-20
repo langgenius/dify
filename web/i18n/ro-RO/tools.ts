@@ -243,6 +243,10 @@ const translation = {
       },
       publishTip: 'Aplicație nepublicată. Publicați aplicația mai întâi.',
     },
+    toolItem: {
+      parameters: 'Parametri',
+      noDescription: 'Fără descriere',
+    },
   },
   allTools: 'Toate instrumentele',
 }

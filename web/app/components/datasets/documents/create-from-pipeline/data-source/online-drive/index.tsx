@@ -10,7 +10,7 @@ import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } fro
 import Toast from '@/app/components/base/toast'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import { convertOnlineDriveData } from './utils'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useShallow } from 'zustand/react/shallow'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useGetDataSourceAuth } from '@/service/use-datasource'

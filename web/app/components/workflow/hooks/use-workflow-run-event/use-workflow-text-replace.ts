@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { TextReplaceResponse } from '@/types/workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
