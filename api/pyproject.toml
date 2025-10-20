@@ -219,5 +219,6 @@ vdb = [
     "weaviate-client==4.17.0",
     "xinference-client~=1.2.2",
     "mo-vector~=0.1.13",
+    "pymongo"
     "mysql-connector-python>=9.3.0",
 ]
