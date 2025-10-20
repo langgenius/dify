@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import Tooltip from '@/app/components/base/tooltip'
 import MethodSelector from './method-selector'
 import MethodItem from './method-item'

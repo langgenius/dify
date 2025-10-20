@@ -1,4 +1,4 @@
-import produce from 'immer'
+import { produce } from 'immer'
 import type { DeliveryMethod, HumanInputNodeType, UserAction } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {

@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import type { FormInputItem, FormInputItemPlaceholder } from '@/app/components/workflow/nodes/human-input/types'
 import PrePopulate from './pre-populate'
-import produce from 'immer'
+import { produce } from 'immer'
 import { InputVarType } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.humanInput.insertInputField'

@@ -3,7 +3,7 @@ import { useSelectOrDelete } from '../../hooks'
 import { DELETE_HITL_INPUT_BLOCK_COMMAND } from './'
 import ComponentUi from './component-ui'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
-import produce from 'immer'
+import { produce } from 'immer'
 
 type Props = {
   nodeKey: string
