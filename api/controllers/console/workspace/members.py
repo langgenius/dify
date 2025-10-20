@@ -1,7 +1,6 @@
 from urllib import parse
 
 from flask import abort, request
-from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 
 import services
@@ -26,7 +25,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.member_fields import account_with_role_list_fields
 from libs.helper import extract_remote_ip
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.account import Account, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
@@ -42,8 +41,7 @@ class MemberListApi(Resource):
     @account_initialization_required
     @marshal_with(account_with_role_list_fields)
     def get(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         members = TenantService.get_tenant_members(current_user.current_tenant)
@@ -59,10 +57,12 @@ class MemberInviteEmailApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("members")
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("emails", type=list, required=True, location="json")
-        parser.add_argument("role", type=str, required=True, default="admin", location="json")
-        parser.add_argument("language", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("emails", type=list, required=True, location="json")
+            .add_argument("role", type=str, required=True, default="admin", location="json")
+            .add_argument("language", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         invitee_emails = args["emails"]
@@ -70,9 +70,7 @@ class MemberInviteEmailApi(Resource):
         interface_language = args["language"]
         if not TenantAccountRole.is_non_owner_role(invitee_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
-
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = current_account_with_tenant()
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
@@ -121,8 +119,7 @@ class MemberCancelInviteApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, member_id):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         member = db.session.query(Account).where(Account.id == str(member_id)).first()
@@ -154,16 +151,13 @@ class MemberUpdateRoleApi(Resource):
     @login_required
     @account_initialization_required
     def put(self, member_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("role", type=str, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("role", type=str, required=True, location="json")
         args = parser.parse_args()
         new_role = args["role"]
 
         if not TenantAccountRole.is_valid_role(new_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
-
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         member = db.session.get(Account, str(member_id))
@@ -190,8 +184,7 @@ class DatasetOperatorMemberListApi(Resource):
     @account_initialization_required
     @marshal_with(account_with_role_list_fields)
     def get(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         members = TenantService.get_dataset_operator_members(current_user.current_tenant)
@@ -207,16 +200,13 @@ class SendOwnerTransferEmailApi(Resource):
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("language", type=str, required=False, location="json")
+        parser = reqparse.RequestParser().add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
-
+        current_user, _ = current_account_with_tenant()
         # check if the current user is the owner of the workspace
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
@@ -246,13 +236,14 @@ class OwnerTransferCheckApi(Resource):
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("code", type=str, required=True, location="json")
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("code", type=str, required=True, location="json")
+            .add_argument("token", type=str, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
         # check if the current user is the owner of the workspace
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
@@ -292,13 +283,13 @@ class OwnerTransfer(Resource):
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self, member_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "token", type=str, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
 
         # check if the current user is the owner of the workspace
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):

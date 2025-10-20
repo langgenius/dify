@@ -4,12 +4,14 @@ from flask import request
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Unauthorized
 
+from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
 from controllers.web import web_ns
 from controllers.web.error import AppUnavailableError
 from controllers.web.wraps import WebApiResource
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from libs.passport import PassportService
+from libs.token import extract_webapp_passport
 from models.model import App, AppMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -94,9 +96,11 @@ class AppAccessMode(Resource):
         }
     )
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("appId", type=str, required=False, location="args")
-        parser.add_argument("appCode", type=str, required=False, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("appId", type=str, required=False, location="args")
+            .add_argument("appCode", type=str, required=False, location="args")
+        )
         args = parser.parse_args()
 
         features = FeatureService.get_system_features()
@@ -131,18 +135,19 @@ class AppWebAuthPermission(Resource):
     )
     def get(self):
         user_id = "visitor"
+        app_code = request.headers.get(HEADER_NAME_APP_CODE)
+        app_id = request.args.get("appId")
+        if not app_id or not app_code:
+            raise ValueError("appId must be provided")
+
+        require_permission_check = WebAppAuthService.is_app_require_permission_check(app_id=app_id)
+        if not require_permission_check:
+            return {"result": True}
+
         try:
-            auth_header = request.headers.get("Authorization")
-            if auth_header is None:
-                raise Unauthorized("Authorization header is missing.")
-            if " " not in auth_header:
-                raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
-            auth_scheme, tk = auth_header.split(None, 1)
-            auth_scheme = auth_scheme.lower()
-            if auth_scheme != "bearer":
-                raise Unauthorized("Authorization scheme must be 'Bearer'")
-
+            tk = extract_webapp_passport(app_code, request)
+            if not tk:
+                raise Unauthorized("Access token is missing.")
             decoded = PassportService().verify(tk)
             user_id = decoded.get("user_id", "visitor")
         except Unauthorized:
@@ -155,14 +160,7 @@ class AppWebAuthPermission(Resource):
         if not features.webapp_auth.enabled:
             return {"result": True}
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("appId", type=str, required=True, location="args")
-        args = parser.parse_args()
-
-        app_id = args["appId"]
-        app_code = AppService.get_app_code_by_id(app_id)
-
         res = True
         if WebAppAuthService.is_app_require_permission_check(app_id=app_id):
-            res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_code)
+            res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_id)
         return {"result": res}

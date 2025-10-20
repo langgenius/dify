@@ -22,7 +22,7 @@ const AccessControlDialog = ({
   }, [onClose])
   return (
     <Transition appear show={show} as={Fragment}>
-      <Dialog as="div" open={true} className="relative z-20" onClose={() => null}>
+      <Dialog as="div" open={true} className="relative z-[99]" onClose={() => null}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -32,7 +32,7 @@ const AccessControlDialog = ({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="bg-background-overlay/25 fixed inset-0" />
+          <div className="fixed inset-0 bg-background-overlay" />
         </Transition.Child>
 
         <div className="fixed inset-0 flex items-center justify-center">

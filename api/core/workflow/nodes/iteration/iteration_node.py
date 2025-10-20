@@ -12,7 +12,6 @@ from core.variables import IntegerVariable, NoneSegment
 from core.variables.segments import ArrayAnySegment, ArraySegment
 from core.variables.variables import VariableUnion
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
-from core.workflow.entities import VariablePool
 from core.workflow.enums import (
     ErrorStrategy,
     NodeExecutionType,
@@ -38,6 +37,7 @@ from core.workflow.node_events import (
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
+from core.workflow.runtime import VariablePool
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import preserve_flask_contexts
 
@@ -95,7 +95,7 @@ class IterationNode(Node):
             "config": {
                 "is_parallel": False,
                 "parallel_nums": 10,
-                "error_handle_mode": ErrorHandleMode.TERMINATED.value,
+                "error_handle_mode": ErrorHandleMode.TERMINATED,
             },
         }
 
@@ -557,11 +557,12 @@ class IterationNode(Node):
 
     def _create_graph_engine(self, index: int, item: object):
         # Import dependencies
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
+        from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
         from core.workflow.graph_engine import GraphEngine
         from core.workflow.graph_engine.command_channels import InMemoryChannel
         from core.workflow.nodes.node_factory import DifyNodeFactory
+        from core.workflow.runtime import GraphRuntimeState
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(

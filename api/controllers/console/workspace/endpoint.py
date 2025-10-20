@@ -1,4 +1,3 @@
-from flask_login import current_user
 from flask_restx import Resource, fields, reqparse
 from werkzeug.exceptions import Forbidden
 
@@ -6,7 +5,7 @@ from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginPermissionDeniedError
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from services.plugin.endpoint_service import EndpointService
 
 
@@ -34,14 +33,16 @@ class EndpointCreateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifier", type=str, required=True)
-        parser.add_argument("settings", type=dict, required=True)
-        parser.add_argument("name", type=str, required=True)
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("plugin_unique_identifier", type=str, required=True)
+            .add_argument("settings", type=dict, required=True)
+            .add_argument("name", type=str, required=True)
+        )
         args = parser.parse_args()
 
         plugin_unique_identifier = args["plugin_unique_identifier"]
@@ -51,7 +52,7 @@ class EndpointCreateApi(Resource):
         try:
             return {
                 "success": EndpointService.create_endpoint(
-                    tenant_id=user.current_tenant_id,
+                    tenant_id=tenant_id,
                     user_id=user.id,
                     plugin_unique_identifier=plugin_unique_identifier,
                     name=name,
@@ -80,11 +81,13 @@ class EndpointListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=int, required=True, location="args")
-        parser.add_argument("page_size", type=int, required=True, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("page", type=int, required=True, location="args")
+            .add_argument("page_size", type=int, required=True, location="args")
+        )
         args = parser.parse_args()
 
         page = args["page"]
@@ -93,7 +96,7 @@ class EndpointListApi(Resource):
         return jsonable_encoder(
             {
                 "endpoints": EndpointService.list_endpoints(
-                    tenant_id=user.current_tenant_id,
+                    tenant_id=tenant_id,
                     user_id=user.id,
                     page=page,
                     page_size=page_size,
@@ -123,12 +126,14 @@ class EndpointListForSinglePluginApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=int, required=True, location="args")
-        parser.add_argument("page_size", type=int, required=True, location="args")
-        parser.add_argument("plugin_id", type=str, required=True, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("page", type=int, required=True, location="args")
+            .add_argument("page_size", type=int, required=True, location="args")
+            .add_argument("plugin_id", type=str, required=True, location="args")
+        )
         args = parser.parse_args()
 
         page = args["page"]
@@ -138,7 +143,7 @@ class EndpointListForSinglePluginApi(Resource):
         return jsonable_encoder(
             {
                 "endpoints": EndpointService.list_endpoints_for_single_plugin(
-                    tenant_id=user.current_tenant_id,
+                    tenant_id=tenant_id,
                     user_id=user.id,
                     plugin_id=plugin_id,
                     page=page,
@@ -165,10 +170,9 @@ class EndpointDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("endpoint_id", type=str, required=True)
+        parser = reqparse.RequestParser().add_argument("endpoint_id", type=str, required=True)
         args = parser.parse_args()
 
         if not user.is_admin_or_owner:
@@ -177,9 +181,7 @@ class EndpointDeleteApi(Resource):
         endpoint_id = args["endpoint_id"]
 
         return {
-            "success": EndpointService.delete_endpoint(
-                tenant_id=user.current_tenant_id, user_id=user.id, endpoint_id=endpoint_id
-            )
+            "success": EndpointService.delete_endpoint(tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id)
         }
 
 
@@ -207,12 +209,14 @@ class EndpointUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("endpoint_id", type=str, required=True)
-        parser.add_argument("settings", type=dict, required=True)
-        parser.add_argument("name", type=str, required=True)
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("endpoint_id", type=str, required=True)
+            .add_argument("settings", type=dict, required=True)
+            .add_argument("name", type=str, required=True)
+        )
         args = parser.parse_args()
 
         endpoint_id = args["endpoint_id"]
@@ -224,7 +228,7 @@ class EndpointUpdateApi(Resource):
 
         return {
             "success": EndpointService.update_endpoint(
-                tenant_id=user.current_tenant_id,
+                tenant_id=tenant_id,
                 user_id=user.id,
                 endpoint_id=endpoint_id,
                 name=name,
@@ -250,10 +254,9 @@ class EndpointEnableApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("endpoint_id", type=str, required=True)
+        parser = reqparse.RequestParser().add_argument("endpoint_id", type=str, required=True)
         args = parser.parse_args()
 
         endpoint_id = args["endpoint_id"]
@@ -262,9 +265,7 @@ class EndpointEnableApi(Resource):
             raise Forbidden()
 
         return {
-            "success": EndpointService.enable_endpoint(
-                tenant_id=user.current_tenant_id, user_id=user.id, endpoint_id=endpoint_id
-            )
+            "success": EndpointService.enable_endpoint(tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id)
         }
 
 
@@ -285,10 +286,9 @@ class EndpointDisableApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("endpoint_id", type=str, required=True)
+        parser = reqparse.RequestParser().add_argument("endpoint_id", type=str, required=True)
         args = parser.parse_args()
 
         endpoint_id = args["endpoint_id"]
@@ -297,7 +297,5 @@ class EndpointDisableApi(Resource):
             raise Forbidden()
 
         return {
-            "success": EndpointService.disable_endpoint(
-                tenant_id=user.current_tenant_id, user_id=user.id, endpoint_id=endpoint_id
-            )
+            "success": EndpointService.disable_endpoint(tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id)
         }

@@ -26,9 +26,13 @@ from core.model_runtime.entities import AssistantPromptMessage, UserPromptMessag
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.variables.variables import VariableUnion
-from core.workflow.entities import GraphRuntimeState, VariablePool
+from core.workflow.entities import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_events import GraphRunSucceededEvent
+from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
@@ -61,6 +65,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         workflow: Workflow,
         system_user_id: str,
         app: App,
+        workflow_execution_repository: WorkflowExecutionRepository,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -74,6 +80,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self._workflow = workflow
         self.system_user_id = system_user_id
         self._app = app
+        self._workflow_execution_repository = workflow_execution_repository
+        self._workflow_node_execution_repository = workflow_node_execution_repository
 
     def run(self):
         ChatflowMemoryService.wait_for_sync_memory_completion(
@@ -83,6 +91,17 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
+
+        system_inputs = SystemVariable(
+            query=self.application_generate_entity.query,
+            files=self.application_generate_entity.files,
+            conversation_id=self.conversation.id,
+            user_id=self.system_user_id,
+            dialogue_count=self._dialogue_count,
+            app_id=app_config.app_id,
+            workflow_id=app_config.workflow_id,
+            workflow_execution_id=self.application_generate_entity.workflow_run_id,
+        )
 
         with Session(db.engine, expire_on_commit=False) as session:
             app_record = session.scalar(select(App).where(App.id == app_config.app_id))
@@ -100,7 +119,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         else:
             inputs = self.application_generate_entity.inputs
             query = self.application_generate_entity.query
-            files = self.application_generate_entity.files
 
             # moderation
             if self.handle_input_moderation(
@@ -125,17 +143,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             conversation_variables = self._initialize_conversation_variables()
 
             # Create a variable pool.
-            system_inputs = SystemVariable(
-                query=query,
-                files=files,
-                conversation_id=self.conversation.id,
-                user_id=self.system_user_id,
-                dialogue_count=self._dialogue_count,
-                app_id=app_config.app_id,
-                workflow_id=app_config.workflow_id,
-                workflow_execution_id=self.application_generate_entity.workflow_run_id,
-            )
-
             # init variable pool
             variable_pool = VariablePool(
                 system_variables=system_inputs,
@@ -183,6 +190,23 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
         )
+
+        self._queue_manager.graph_runtime_state = graph_runtime_state
+
+        persistence_layer = WorkflowPersistenceLayer(
+            application_generate_entity=self.application_generate_entity,
+            workflow_info=PersistenceWorkflowInfo(
+                workflow_id=self._workflow.id,
+                workflow_type=WorkflowType(self._workflow.type),
+                version=self._workflow.version,
+                graph_data=self._workflow.graph_dict,
+            ),
+            workflow_execution_repository=self._workflow_execution_repository,
+            workflow_node_execution_repository=self._workflow_node_execution_repository,
+            trace_manager=self.application_generate_entity.trace_manager,
+        )
+
+        workflow_entry.graph_engine.layer(persistence_layer)
 
         generator = workflow_entry.run()
 

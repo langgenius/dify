@@ -21,7 +21,7 @@ def build_from_message_files(
     *,
     message_files: Sequence["MessageFile"],
     tenant_id: str,
-    config: FileUploadConfig,
+    config: FileUploadConfig | None = None,
 ) -> Sequence[File]:
     results = [
         build_from_message_file(message_file=file, tenant_id=tenant_id, config=config)
@@ -35,17 +35,20 @@ def build_from_message_file(
     *,
     message_file: "MessageFile",
     tenant_id: str,
-    config: FileUploadConfig,
+    config: FileUploadConfig | None,
 ):
     mapping = {
         "transfer_method": message_file.transfer_method,
         "url": message_file.url,
-        "id": message_file.id,
         "type": message_file.type,
     }
 
+    # Only include id if it exists (message_file has been committed to DB)
+    if message_file.id:
+        mapping["id"] = message_file.id
+
     # Set the correct ID field based on transfer method
-    if message_file.transfer_method == FileTransferMethod.TOOL_FILE.value:
+    if message_file.transfer_method == FileTransferMethod.TOOL_FILE:
         mapping["tool_file_id"] = message_file.upload_file_id
     else:
         mapping["upload_file_id"] = message_file.upload_file_id
@@ -64,7 +67,10 @@ def build_from_mapping(
     config: FileUploadConfig | None = None,
     strict_type_validation: bool = False,
 ) -> File:
-    transfer_method = FileTransferMethod.value_of(mapping.get("transfer_method"))
+    transfer_method_value = mapping.get("transfer_method")
+    if not transfer_method_value:
+        raise ValueError("transfer_method is required in file mapping")
+    transfer_method = FileTransferMethod.value_of(transfer_method_value)
 
     build_functions: dict[FileTransferMethod, Callable] = {
         FileTransferMethod.LOCAL_FILE: _build_from_local_file,
@@ -104,6 +110,8 @@ def build_from_mappings(
 ) -> Sequence[File]:
     # TODO(QuantumGhost): Performance concern - each mapping triggers a separate database query.
     # Implement batch processing to reduce database load when handling multiple files.
+    # Filter out None/empty mappings to avoid errors
+    valid_mappings = [m for m in mappings if m and m.get("transfer_method")]
     files = [
         build_from_mapping(
             mapping=mapping,
@@ -111,7 +119,7 @@ def build_from_mappings(
             config=config,
             strict_type_validation=strict_type_validation,
         )
-        for mapping in mappings
+        for mapping in valid_mappings
     ]
 
     if (
@@ -158,7 +166,10 @@ def _build_from_local_file(
     if strict_type_validation and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
+    if specified_type and specified_type != "custom":
+        file_type = FileType(specified_type)
+    else:
+        file_type = detected_file_type
 
     return File(
         id=mapping.get("id"),
@@ -206,9 +217,10 @@ def _build_from_remote_url(
         if strict_type_validation and specified_type and detected_file_type.value != specified_type:
             raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-        file_type = (
-            FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
-        )
+        if specified_type and specified_type != "custom":
+            file_type = FileType(specified_type)
+        else:
+            file_type = detected_file_type
 
         return File(
             id=mapping.get("id"),
@@ -230,9 +242,16 @@ def _build_from_remote_url(
     mime_type, filename, file_size = _get_remote_file_info(url)
     extension = mimetypes.guess_extension(mime_type) or ("." + filename.split(".")[-1] if "." in filename else ".bin")
 
-    file_type = _standardize_file_type(extension=extension, mime_type=mime_type)
-    if file_type.value != mapping.get("type", "custom"):
+    detected_file_type = _standardize_file_type(extension=extension, mime_type=mime_type)
+    specified_type = mapping.get("type")
+
+    if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+
+    if specified_type and specified_type != "custom":
+        file_type = FileType(specified_type)
+    else:
+        file_type = detected_file_type
 
     return File(
         id=mapping.get("id"),
@@ -323,7 +342,10 @@ def _build_from_tool_file(
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
+    if specified_type and specified_type != "custom":
+        file_type = FileType(specified_type)
+    else:
+        file_type = detected_file_type
 
     return File(
         id=mapping.get("id"),
@@ -368,9 +390,10 @@ def _build_from_datasource_file(
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = (
-        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
-    )
+    if specified_type and specified_type != "custom":
+        file_type = FileType(specified_type)
+    else:
+        file_type = detected_file_type
 
     return File(
         id=mapping.get("datasource_file_id"),

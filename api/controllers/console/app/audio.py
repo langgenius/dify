@@ -111,11 +111,13 @@ class ChatMessageTextApi(Resource):
     @account_initialization_required
     def post(self, app_model: App):
         try:
-            parser = reqparse.RequestParser()
-            parser.add_argument("message_id", type=str, location="json")
-            parser.add_argument("text", type=str, location="json")
-            parser.add_argument("voice", type=str, location="json")
-            parser.add_argument("streaming", type=bool, location="json")
+            parser = (
+                reqparse.RequestParser()
+                .add_argument("message_id", type=str, location="json")
+                .add_argument("text", type=str, location="json")
+                .add_argument("voice", type=str, location="json")
+                .add_argument("streaming", type=bool, location="json")
+            )
             args = parser.parse_args()
 
             message_id = args.get("message_id", None)
@@ -166,8 +168,7 @@ class TextModesApi(Resource):
     @account_initialization_required
     def get(self, app_model):
         try:
-            parser = reqparse.RequestParser()
-            parser.add_argument("language", type=str, required=True, location="args")
+            parser = reqparse.RequestParser().add_argument("language", type=str, required=True, location="args")
             args = parser.parse_args()
 
             response = AudioService.transcript_tts_voices(

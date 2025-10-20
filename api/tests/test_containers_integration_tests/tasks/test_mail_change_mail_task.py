@@ -65,7 +65,7 @@ class TestMailChangeMailTask:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db_session_with_containers.add(join)
