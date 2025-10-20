@@ -863,13 +863,14 @@ class TestWebAppAuthService:
         - Mock service integration
         """
         # Arrange: Setup mock for enterprise service
-        mock_webapp_auth = type("MockWebAppAuth", (), {"access_mode": "sso_verified"})()
+        mock_external_service_dependencies["app_service"].get_app_id_by_code.return_value = "mock_app_id"
+        setting = type("MockWebAppAuth", (), {"access_mode": "sso_verified"})()
         mock_external_service_dependencies[
             "enterprise_service"
-        ].WebAppAuth.get_app_access_mode_by_code.return_value = mock_webapp_auth
+        ].WebAppAuth.get_app_access_mode_by_id.return_value = setting
 
         # Act: Execute authentication type determination
-        result = WebAppAuthService.get_app_auth_type(app_code="mock_app_code")
+        result: WebAppAuthType = WebAppAuthService.get_app_auth_type(app_code="mock_app_code")
 
         # Assert: Verify correct result
         assert result == WebAppAuthType.EXTERNAL
@@ -877,7 +878,7 @@ class TestWebAppAuthService:
         # Verify mock service was called correctly
         mock_external_service_dependencies[
             "enterprise_service"
-        ].WebAppAuth.get_app_access_mode_by_code.assert_called_once_with("mock_app_code")
+        ].WebAppAuth.get_app_access_mode_by_id.assert_called_once_with(app_id="mock_app_id")
 
     def test_get_app_auth_type_no_parameters(self, db_session_with_containers, mock_external_service_dependencies):
         """
