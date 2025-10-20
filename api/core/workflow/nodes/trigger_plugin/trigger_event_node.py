@@ -63,7 +63,8 @@ class TriggerEventNode(Node):
         """
 
         # Get trigger data passed when workflow was triggered
-        trigger_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
+        trigger_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs.get("inputs", {}))
+
         metadata = {
             WorkflowNodeExecutionMetadataKey.TRIGGER_INFO: {
                 **trigger_inputs,
