@@ -162,7 +162,8 @@ class ApiBasedToolSchemaParser:
                                     placeholder=I18nObject(
                                         en_US=property.get("description", ""), zh_Hans=property.get("description", "")
                                     ),
-                                )                                # check if there is a type
+                                )
+                                # check if there is a type
                                 typ = ApiBasedToolSchemaParser._get_tool_parameter_type(property)
                                 if typ:
                                     tool.type = typ
