@@ -76,6 +76,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   const isRetryNode = hasRetryNode(nodeInfo?.node_type) && !!nodeInfo?.retryDetail?.length
   const isAgentNode = nodeInfo?.node_type === BlockEnum.Agent && !!nodeInfo?.agentLog?.length
   const isToolNode = nodeInfo?.node_type === BlockEnum.Tool && !!nodeInfo?.agentLog?.length
+  const isLLMNode = nodeInfo?.node_type === BlockEnum.LLM && !!nodeInfo?.agentLog?.length
 
   return (
     <div className='bg-components-panel-bg py-2'>
@@ -114,7 +115,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           )
         }
         {
-          (isAgentNode || isToolNode) && handleShowAgentOrToolLog && (
+          (isAgentNode || isToolNode || isLLMNode) && handleShowAgentOrToolLog && (
             <AgentLogTrigger
               nodeInfo={nodeInfo}
               onShowAgentOrToolLog={handleShowAgentOrToolLog}

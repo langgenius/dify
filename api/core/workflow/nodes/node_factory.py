@@ -63,7 +63,6 @@ class DifyNodeFactory(NodeFactory):
         node_mapping = NODE_TYPE_CLASSES_MAPPING.get(node_type)
         if not node_mapping:
             raise ValueError(f"No class mapping found for node type: {node_type}")
-
         node_class = node_mapping.get(LATEST_VERSION)
         if not node_class:
             raise ValueError(f"No latest version class found for node type: {node_type}")
