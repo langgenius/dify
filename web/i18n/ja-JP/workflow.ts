@@ -46,7 +46,7 @@ const translation = {
     needConnectTip: '接続されていないステップがあります',
     maxTreeDepth: '1 ブランチあたりの最大ノード数：{{depth}}',
     needAdd: '{{node}}ノードを追加する必要があります',
-    needEndNode: '終了ブロックを追加する必要があります',
+    needOutputNode: '出力ノードを追加する必要があります',
     needStartNode: '少なくとも1つのスタートノードを追加する必要があります',
     needAnswerNode: '回答ブロックを追加する必要があります',
     workflowProcess: 'ワークフロー処理',
@@ -264,7 +264,7 @@ const translation = {
   blocks: {
     'start': 'ユーザー入力',
     'originalStartNode': '元の開始ノード',
-    'end': '終了',
+    'end': '出力',
     'answer': '回答',
     'llm': 'LLM',
     'knowledge-retrieval': '知識検索',
@@ -294,7 +294,7 @@ const translation = {
   customWebhook: 'カスタムWebhook',
   blocksAbout: {
     'start': 'ワークフロー開始時の初期パラメータを定義します。',
-    'end': 'ワークフローの終了条件と結果のタイプを定義します。',
+    'end': 'ワークフローの出力と結果のタイプを定義します',
     'answer': 'チャットダイアログの返答内容を定義します。',
     'llm': '大規模言語モデルを呼び出して質問回答や自然言語処理を実行します。',
     'knowledge-retrieval': 'ナレッジベースからユーザー質問に関連するテキストを検索します。',

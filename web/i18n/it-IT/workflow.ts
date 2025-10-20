@@ -110,7 +110,7 @@ const translation = {
     exportImage: 'Esporta immagine',
     exportJPEG: 'Esporta come JPEG',
     exportPNG: 'Esporta come PNG',
-    needEndNode: 'Deve essere aggiunto il nodo finale',
+    needOutputNode: 'Deve essere aggiunto il nodo di uscita',
     addBlock: 'Aggiungi nodo',
     needAnswerNode: 'Deve essere aggiunto il nodo di risposta',
     tagBound: 'Numero di app che utilizzano questo tag',
@@ -245,7 +245,7 @@ const translation = {
   },
   blocks: {
     'start': 'Inizio',
-    'end': 'Fine',
+    'end': 'Uscita',
     'answer': 'Risposta',
     'llm': 'LLM',
     'knowledge-retrieval': 'Recupero Conoscenza',
@@ -271,7 +271,7 @@ const translation = {
   },
   blocksAbout: {
     'start': 'Definisci i parametri iniziali per l\'avvio di un flusso di lavoro',
-    'end': 'Definisci la fine e il tipo di risultato di un flusso di lavoro',
+    'end': 'Definisci l\'uscita e il tipo di risultato di un flusso di lavoro',
     'answer': 'Definisci il contenuto della risposta di una conversazione chat',
     'llm': 'Invoca modelli di linguaggio di grandi dimensioni per rispondere a domande o elaborare il linguaggio naturale',
     'knowledge-retrieval':

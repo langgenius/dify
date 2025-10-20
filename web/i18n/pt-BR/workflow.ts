@@ -107,7 +107,7 @@ const translation = {
     exportSVG: 'Exportar como SVG',
     exportJPEG: 'Exportar como JPEG',
     addBlock: 'Adicionar Nó',
-    needEndNode: 'O nó de Fim deve ser adicionado',
+    needOutputNode: 'O nó de Saída deve ser adicionado',
     needAnswerNode: 'O nó de resposta deve ser adicionado',
     tagBound: 'Número de aplicativos usando esta tag',
     currentView: 'Visualização atual',
@@ -240,7 +240,7 @@ const translation = {
   },
   blocks: {
     'start': 'Iniciar',
-    'end': 'Fim',
+    'end': 'Saída',
     'answer': 'Resposta',
     'llm': 'LLM',
     'knowledge-retrieval': 'Recuperação de conhecimento',
@@ -266,7 +266,7 @@ const translation = {
   },
   blocksAbout: {
     'start': 'Definir os parâmetros iniciais para iniciar um fluxo de trabalho',
-    'end': 'Definir o fim e o tipo de resultado de um fluxo de trabalho',
+    'end': 'Definir a saída e o tipo de resultado de um fluxo de trabalho',
     'answer': 'Definir o conteúdo da resposta de uma conversa',
     'llm': 'Invocar grandes modelos de linguagem para responder perguntas ou processar linguagem natural',
     'knowledge-retrieval': 'Permite consultar conteúdo de texto relacionado a perguntas do usuário a partir da base de conhecimento',

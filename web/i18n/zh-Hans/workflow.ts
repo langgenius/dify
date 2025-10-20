@@ -48,7 +48,7 @@ const translation = {
     needConnectTip: '此节点尚未连接到其他节点',
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',
     needAdd: '必须添加{{node}}节点',
-    needEndNode: '必须添加结束节点',
+    needOutputNode: '必须添加输出节点',
     needStartNode: '必须添加至少一个开始节点',
     needAnswerNode: '必须添加直接回复节点',
     workflowProcess: '工作流',
@@ -267,7 +267,7 @@ const translation = {
   blocks: {
     'start': '用户输入',
     'originalStartNode': '原始开始节点',
-    'end': '结束',
+    'end': '输出',
     'answer': '直接回复',
     'llm': 'LLM',
     'knowledge-retrieval': '知识检索',
@@ -297,7 +297,7 @@ const translation = {
   customWebhook: '自定义 Webhook',
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
-    'end': '定义一个 workflow 流程的结束和结果类型',
+    'end': '定义一个 workflow 流程的输出和结果类型',
     'answer': '定义一个聊天对话的回复内容',
     'llm': '调用大语言模型回答问题或者对自然语言进行处理',
     'knowledge-retrieval': '允许你从知识库中查询与用户问题相关的文本内容',

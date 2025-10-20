@@ -112,7 +112,7 @@ const translation = {
     exportPNG: 'PNG 로 내보내기',
     addBlock: '노드 추가',
     needAnswerNode: '답변 노드를 추가해야 합니다.',
-    needEndNode: '종단 노드를 추가해야 합니다.',
+    needOutputNode: '출력 노드를 추가해야 합니다',
     tagBound: '이 태그를 사용하는 앱 수',
     currentView: '현재 보기',
     currentWorkflow: '현재 워크플로',
@@ -249,7 +249,7 @@ const translation = {
   },
   blocks: {
     'start': '시작',
-    'end': '끝',
+    'end': '출력',
     'answer': '답변',
     'llm': 'LLM',
     'knowledge-retrieval': '지식 검색',
@@ -275,7 +275,7 @@ const translation = {
   },
   blocksAbout: {
     'start': '워크플로우를 시작하기 위한 초기 매개변수를 정의합니다',
-    'end': '워크플로우의 종료 및 결과 유형을 정의합니다',
+    'end': '워크플로의 출력 및 결과 유형을 정의합니다',
     'answer': '대화의 답변 내용을 정의합니다',
     'llm': '질문에 답하거나 자연어를 처리하기 위해 대형 언어 모델을 호출합니다',
     'knowledge-retrieval':

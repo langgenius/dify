@@ -107,7 +107,7 @@ const translation = {
     publishUpdate: 'Publicar actualización',
     exportImage: 'Exportar imagen',
     needAnswerNode: 'Se debe agregar el nodo de respuesta',
-    needEndNode: 'Se debe agregar el nodo Final',
+    needOutputNode: 'Se debe agregar el nodo de Salida',
     addBlock: 'Agregar nodo',
     tagBound: 'Número de aplicaciones que utilizan esta etiqueta',
     currentView: 'Vista actual',
@@ -240,7 +240,7 @@ const translation = {
   },
   blocks: {
     'start': 'Inicio',
-    'end': 'Fin',
+    'end': 'Salida',
     'answer': 'Respuesta',
     'llm': 'LLM',
     'knowledge-retrieval': 'Recuperación de conocimiento',
@@ -266,7 +266,7 @@ const translation = {
   },
   blocksAbout: {
     'start': 'Define los parámetros iniciales para iniciar un flujo de trabajo',
-    'end': 'Define el final y el tipo de resultado de un flujo de trabajo',
+    'end': 'Define la salida y el tipo de resultado de un flujo de trabajo',
     'answer': 'Define el contenido de respuesta de una conversación de chat',
     'llm': 'Invoca modelos de lenguaje grandes para responder preguntas o procesar lenguaje natural',
     'knowledge-retrieval': 'Te permite consultar contenido de texto relacionado con las preguntas de los usuarios desde el conocimiento',

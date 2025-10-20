@@ -108,7 +108,7 @@ const translation = {
     exportJPEG: 'Xuất dưới dạng JPEG',
     needAnswerNode: 'Nút Trả lời phải được thêm vào',
     addBlock: 'Thêm Node',
-    needEndNode: 'Nút Kết thúc phải được thêm vào',
+    needOutputNode: 'Phải thêm nút Đầu ra',
     tagBound: 'Số lượng ứng dụng sử dụng thẻ này',
     currentWorkflow: 'Quy trình làm việc hiện tại',
     currentView: 'Hiện tại View',
@@ -240,7 +240,7 @@ const translation = {
   },
   blocks: {
     'start': 'Bắt đầu',
-    'end': 'Kết thúc',
+    'end': 'Đầu ra',
     'answer': 'Trả lời',
     'llm': 'LLM',
     'knowledge-retrieval': 'Truy xuất kiến thức',
@@ -266,7 +266,7 @@ const translation = {
   },
   blocksAbout: {
     'start': 'Định nghĩa các tham số ban đầu để khởi chạy quy trình làm việc',
-    'end': 'Định nghĩa kết thúc và loại kết quả của quy trình làm việc',
+    'end': 'Định nghĩa đầu ra và loại kết quả của quy trình làm việc',
     'answer': 'Định nghĩa nội dung trả lời của cuộc trò chuyện',
     'llm': 'Gọi các mô hình ngôn ngữ lớn để trả lời câu hỏi hoặc xử lý ngôn ngữ tự nhiên',
     'knowledge-retrieval': 'Cho phép truy vấn nội dung văn bản liên quan đến câu hỏi của người dùng từ cơ sở kiến thức',

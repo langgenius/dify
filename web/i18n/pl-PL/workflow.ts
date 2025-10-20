@@ -107,7 +107,7 @@ const translation = {
     exportPNG: 'Eksportuj jako PNG',
     publishUpdate: 'Opublikuj aktualizację',
     addBlock: 'Dodaj węzeł',
-    needEndNode: 'Należy dodać węzeł końcowy',
+    needOutputNode: 'Należy dodać węzeł wyjściowy',
     needAnswerNode: 'Węzeł odpowiedzi musi zostać dodany',
     tagBound: 'Liczba aplikacji korzystających z tego tagu',
     currentWorkflow: 'Bieżący przepływ pracy',
@@ -240,7 +240,7 @@ const translation = {
   },
   blocks: {
     'start': 'Start',
-    'end': 'Koniec',
+    'end': 'Wyjście',
     'answer': 'Odpowiedź',
     'llm': 'LLM',
     'knowledge-retrieval': 'Wyszukiwanie wiedzy',
@@ -266,7 +266,7 @@ const translation = {
   },
   blocksAbout: {
     'start': 'Zdefiniuj początkowe parametry uruchamiania przepływu pracy',
-    'end': 'Zdefiniuj zakończenie i typ wyniku przepływu pracy',
+    'end': 'Zdefiniuj wyjście i typ wyniku przepływu pracy',
     'answer': 'Zdefiniuj treść odpowiedzi w rozmowie',
     'llm': 'Wywołaj duże modele językowe do odpowiadania na pytania lub przetwarzania języka naturalnego',
     'knowledge-retrieval': 'Pozwala na wyszukiwanie treści tekstowych związanych z pytaniami użytkowników z bazy wiedzy',

@@ -50,7 +50,7 @@ const translation = {
     needConnectTip: 'This step is not connected to anything',
     maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
     needAdd: '{{node}} node must be added',
-    needEndNode: 'The End node must be added',
+    needOutputNode: 'The Output node must be added',
     needStartNode: 'At least one start node must be added',
     needAnswerNode: 'The Answer node must be added',
     workflowProcess: 'Workflow Process',
@@ -268,7 +268,7 @@ const translation = {
   blocks: {
     'start': 'User Input',
     'originalStartNode': 'original start node',
-    'end': 'End',
+    'end': 'Output',
     'answer': 'Answer',
     'llm': 'LLM',
     'knowledge-retrieval': 'Knowledge Retrieval',
@@ -298,7 +298,7 @@ const translation = {
   customWebhook: 'Custom Webhook',
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
-    'end': 'Define the end and result type of a workflow',
+    'end': 'Define the output and result type of a workflow',
     'answer': 'Define the reply content of a chat conversation',
     'llm': 'Invoking large language models to answer questions or process natural language',
     'knowledge-retrieval': 'Allows you to query text content related to user questions from the Knowledge',

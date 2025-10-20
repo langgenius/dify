@@ -37,7 +37,7 @@ const translation = {
     setVarValuePlaceholder: '設置變量值',
     needConnectTip: '此節點尚未連接到其他節點',
     maxTreeDepth: '每個分支最大限制 {{depth}} 個節點',
-    needEndNode: '必須添加結束節點',
+    needOutputNode: '必須添加輸出節點',
     needAnswerNode: '必須添加直接回覆節點',
     workflowProcess: '工作流',
     notRunning: '尚未運行',
@@ -240,7 +240,7 @@ const translation = {
   },
   blocks: {
     'start': '開始',
-    'end': '結束',
+    'end': '輸出',
     'answer': '直接回覆',
     'llm': 'LLM',
     'knowledge-retrieval': '知識檢索',
@@ -266,7 +266,7 @@ const translation = {
   },
   blocksAbout: {
     'start': '定義一個 workflow 流程啟動的參數',
-    'end': '定義一個 workflow 流程的結束和結果類型',
+    'end': '定義一個 workflow 流程的輸出和結果類型',
     'answer': '定義一個聊天對話的回覆內容',
     'llm': '調用大語言模型回答問題或者對自然語言進行處理',
     'knowledge-retrieval': '允許你從知識庫中查詢與用戶問題相關的文本內容',

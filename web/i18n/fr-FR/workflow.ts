@@ -106,7 +106,7 @@ const translation = {
     versionHistory: 'Historique des versions',
     exportImage: 'Exporter l\'image',
     exportJPEG: 'Exporter en JPEG',
-    needEndNode: 'Le nœud de fin doit être ajouté',
+    needOutputNode: 'Le nœud de sortie doit être ajouté',
     needAnswerNode: 'Le nœud de réponse doit être ajouté.',
     addBlock: 'Ajouter un nœud',
     tagBound: 'Nombre d\'applications utilisant cette étiquette',
@@ -240,7 +240,7 @@ const translation = {
   },
   blocks: {
     'start': 'Début',
-    'end': 'Fin',
+    'end': 'Sortie',
     'answer': 'Réponse',
     'llm': 'LLM',
     'knowledge-retrieval': 'Récupération de connaissances',
@@ -266,7 +266,7 @@ const translation = {
   },
   blocksAbout: {
     'start': 'Définir les paramètres initiaux pour lancer un flux de travail',
-    'end': 'Définir la fin et le type de résultat d\'un flux de travail',
+    'end': 'Définir la sortie et le type de résultat d\'un flux de travail',
     'answer': 'Définir le contenu de la réponse d\'une conversation',
     'llm': 'Inviter de grands modèles de langage pour répondre aux questions ou traiter le langage naturel',
     'knowledge-retrieval': 'Permet de consulter le contenu textuel lié aux questions des utilisateurs à partir de la base de connaissances',

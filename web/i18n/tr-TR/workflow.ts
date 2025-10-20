@@ -108,7 +108,7 @@ const translation = {
     exportSVG: 'SVG olarak dışa aktar',
     addBlock: 'Düğüm Ekle',
     needAnswerNode: 'Cevap düğümü eklenmelidir.',
-    needEndNode: 'Son düğüm eklenmelidir',
+    needOutputNode: 'Çıktı düğümü eklenmelidir',
     tagBound: 'Bu etiketi kullanan uygulama sayısı',
     currentView: 'Geçerli Görünüm',
     currentWorkflow: 'Mevcut İş Akışı',
@@ -240,7 +240,7 @@ const translation = {
   },
   blocks: {
     'start': 'Başlat',
-    'end': 'Son',
+    'end': 'Çıktı',
     'answer': 'Yanıt',
     'llm': 'LLM',
     'knowledge-retrieval': 'Bilgi Geri Alımı',
@@ -266,7 +266,7 @@ const translation = {
   },
   blocksAbout: {
     'start': 'Bir iş akışını başlatmak için başlangıç parametrelerini tanımlayın',
-    'end': 'Bir iş akışının sonunu ve sonuç türünü tanımlayın',
+    'end': 'Bir iş akışının çıktısını ve sonuç türünü tanımlayın',
     'answer': 'Bir sohbet konuşmasının yanıt içeriğini tanımlayın',
     'llm': 'Büyük dil modellerini soruları yanıtlamak veya doğal dili işlemek için çağırın',
     'knowledge-retrieval': 'Kullanıcı sorularıyla ilgili metin içeriğini Bilgi\'den sorgulamanıza olanak tanır',

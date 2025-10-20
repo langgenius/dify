@@ -107,7 +107,7 @@ const translation = {
     exitVersions: 'Ausgangsversionen',
     exportPNG: 'Als PNG exportieren',
     addBlock: 'Knoten hinzufügen',
-    needEndNode: 'Der Endknoten muss hinzugefügt werden.',
+    needOutputNode: 'Der Ausgabeknoten muss hinzugefügt werden',
     needAnswerNode: 'Der Antwortknoten muss hinzugefügt werden.',
     tagBound: 'Anzahl der Apps, die dieses Tag verwenden',
     currentWorkflow: 'Aktueller Arbeitsablauf',
@@ -240,7 +240,7 @@ const translation = {
   },
   blocks: {
     'start': 'Start',
-    'end': 'Ende',
+    'end': 'Ausgabe',
     'answer': 'Antwort',
     'llm': 'LLM',
     'knowledge-retrieval': 'Wissensabruf',
@@ -266,7 +266,7 @@ const translation = {
   },
   blocksAbout: {
     'start': 'Definieren Sie die Anfangsparameter zum Starten eines Workflows',
-    'end': 'Definieren Sie das Ende und den Ergebnistyp eines Workflows',
+    'end': 'Definieren Sie die Ausgabe und den Ergebnistyp eines Workflows',
     'answer': 'Definieren Sie den Antwortinhalt einer Chat-Konversation',
     'llm': 'Große Sprachmodelle aufrufen, um Fragen zu beantworten oder natürliche Sprache zu verarbeiten',
     'knowledge-retrieval': 'Ermöglicht das Abfragen von Textinhalten, die sich auf Benutzerfragen aus der Wissensdatenbank beziehen',

@@ -108,7 +108,7 @@ const translation = {
     exportJPEG: 'Exportă ca JPEG',
     addBlock: 'Adaugă nod',
     needAnswerNode: 'Nodul de răspuns trebuie adăugat',
-    needEndNode: 'Nodul de sfârșit trebuie adăugat',
+    needOutputNode: 'Nodul de ieșire trebuie adăugat',
     tagBound: 'Numărul de aplicații care folosesc acest tag',
     currentView: 'Vizualizare curentă',
     currentWorkflow: 'Flux de lucru curent',
@@ -240,7 +240,7 @@ const translation = {
   },
   blocks: {
     'start': 'Începe',
-    'end': 'Sfârșit',
+    'end': 'Ieșire',
     'answer': 'Răspuns',
     'llm': 'LLM',
     'knowledge-retrieval': 'Recuperare de cunoștințe',
@@ -266,7 +266,7 @@ const translation = {
   },
   blocksAbout: {
     'start': 'Definiți parametrii inițiali pentru lansarea unui flux de lucru',
-    'end': 'Definiți sfârșitul și tipul rezultatului unui flux de lucru',
+    'end': 'Definiți ieșirea și tipul rezultatului unui flux de lucru',
     'answer': 'Definiți conținutul răspunsului unei conversații',
     'llm': 'Invocarea modelelor de limbaj mari pentru a răspunde la întrebări sau pentru a procesa limbajul natural',
     'knowledge-retrieval': 'Permite interogarea conținutului textului legat de întrebările utilizatorului din baza de cunoștințe',
