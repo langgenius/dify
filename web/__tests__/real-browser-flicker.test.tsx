@@ -81,9 +81,9 @@ const setupMockEnvironment = (storedTheme: string | null, systemPrefersDark = fa
 
 // Helper function to create timing page component
 const createTimingPageComponent = (
-  timingData: Array<{ phase: string; timestamp: number; styles: any }>,
+  timingData: Array<{ phase: string; timestamp: number; styles: { backgroundColor: string; color: string } }>,
 ) => {
-  const recordTiming = (phase: string, styles: any) => {
+  const recordTiming = (phase: string, styles: { backgroundColor: string; color: string }) => {
     timingData.push({
       phase,
       timestamp: performance.now(),
