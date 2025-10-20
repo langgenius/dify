@@ -6,28 +6,28 @@ from flask_restx.api import HTTPStatus
 from werkzeug.exceptions import Forbidden
 
 from controllers.service_api import service_api_ns
-from controllers.service_api.wraps import validate_app_token
+from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import annotation_fields, build_annotation_model
 from libs.login import current_user
-from models import Account
-from models.model import App
+from models.account import Account
+from models.model import App, EndUser
 from services.annotation_service import AppAnnotationService
 
 # Define parsers for annotation API
-annotation_create_parser = (
-    reqparse.RequestParser()
-    .add_argument("question", required=True, type=str, location="json", help="Annotation question")
-    .add_argument("answer", required=True, type=str, location="json", help="Annotation answer")
-)
+annotation_create_parser = reqparse.RequestParser()
+annotation_create_parser.add_argument("question", required=True, type=str, location="json", help="Annotation question")
+annotation_create_parser.add_argument("answer", required=True, type=str, location="json", help="Annotation answer")
 
-annotation_reply_action_parser = (
-    reqparse.RequestParser()
-    .add_argument(
-        "score_threshold", required=True, type=float, location="json", help="Score threshold for annotation matching"
-    )
-    .add_argument("embedding_provider_name", required=True, type=str, location="json", help="Embedding provider name")
-    .add_argument("embedding_model_name", required=True, type=str, location="json", help="Embedding model name")
+annotation_reply_action_parser = reqparse.RequestParser()
+annotation_reply_action_parser.add_argument(
+    "score_threshold", required=True, type=float, location="json", help="Score threshold for annotation matching"
+)
+annotation_reply_action_parser.add_argument(
+    "embedding_provider_name", required=True, type=str, location="json", help="Embedding provider name"
+)
+annotation_reply_action_parser.add_argument(
+    "embedding_model_name", required=True, type=str, location="json", help="Embedding model name"
 )
 
 
@@ -111,9 +111,9 @@ class AnnotationListApi(Resource):
             401: "Unauthorized - invalid API token",
         }
     )
-    @validate_app_token
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @service_api_ns.marshal_with(build_annotation_list_model(service_api_ns))
-    def get(self, app_model: App):
+    def get(self, app_model: App, end_user: EndUser):
         """List annotations for the application."""
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
@@ -137,10 +137,14 @@ class AnnotationListApi(Resource):
             401: "Unauthorized - invalid API token",
         }
     )
-    @validate_app_token
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @service_api_ns.marshal_with(build_annotation_model(service_api_ns), code=HTTPStatus.CREATED)
-    def post(self, app_model: App):
+    def post(self, app_model: App, end_user: EndUser):
         """Create a new annotation."""
+        # Only Account with edit permission can perform write operations
+        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
+            raise Forbidden()
+    
         args = annotation_create_parser.parse_args()
         annotation = AppAnnotationService.insert_app_annotation_directly(args, app_model.id)
         return annotation, 201
@@ -160,14 +164,13 @@ class AnnotationUpdateDeleteApi(Resource):
             404: "Annotation not found",
         }
     )
-    @validate_app_token
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @service_api_ns.marshal_with(build_annotation_model(service_api_ns))
-    def put(self, app_model: App, annotation_id):
+    def put(self, app_model: App, annotation_id, end_user: EndUser):
         """Update an existing annotation."""
-        assert isinstance(current_user, Account)
-        if not current_user.has_edit_permission:
+        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
             raise Forbidden()
-
+    
         annotation_id = str(annotation_id)
         args = annotation_create_parser.parse_args()
         annotation = AppAnnotationService.update_app_annotation_directly(args, app_model.id, annotation_id)
@@ -184,14 +187,12 @@ class AnnotationUpdateDeleteApi(Resource):
             404: "Annotation not found",
         }
     )
-    @validate_app_token
-    def delete(self, app_model: App, annotation_id):
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    def delete(self, app_model: App, annotation_id, end_user: EndUser):
         """Delete an annotation."""
-        assert isinstance(current_user, Account)
-
-        if not current_user.has_edit_permission:
+        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
             raise Forbidden()
-
+    
         annotation_id = str(annotation_id)
         AppAnnotationService.delete_app_annotation(app_model.id, annotation_id)
         return {"result": "success"}, 204
