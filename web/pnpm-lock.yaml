@@ -170,8 +170,8 @@ importers:
         specifier: ^1.2.1
         version: 1.2.1
       immer:
-        specifier: ^9.0.19
-        version: 9.0.21
+        specifier: ^10.1.3
+        version: 10.1.3
       js-audio-recorder:
         specifier: ^1.0.7
         version: 1.0.7
@@ -279,7 +279,7 @@ importers:
         version: 1.8.11(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       reactflow:
         specifier: ^11.11.3
-        version: 11.11.4(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+        version: 11.11.4(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       rehype-katex:
         specifier: ^7.0.1
         version: 7.0.1
@@ -327,10 +327,10 @@ importers:
         version: 3.25.76
       zundo:
         specifier: ^2.1.0
-        version: 2.3.0(zustand@4.5.7(@types/react@19.1.11)(immer@9.0.21)(react@19.1.1))
+        version: 2.3.0(zustand@4.5.7(@types/react@19.1.11)(immer@10.1.3)(react@19.1.1))
       zustand:
         specifier: ^4.5.2
-        version: 4.5.7(@types/react@19.1.11)(immer@9.0.21)(react@19.1.1)
+        version: 4.5.7(@types/react@19.1.11)(immer@10.1.3)(react@19.1.1)
     devDependencies:
       '@antfu/eslint-config':
         specifier: ^5.0.0
@@ -5760,8 +5760,8 @@ packages:
     engines: {node: '>=16.x'}
     hasBin: true
 
-  immer@9.0.21:
-    resolution: {integrity: sha512-bc4NBHqOqSfRW7POMkHd51LvClaeMXpm8dx0e8oE2GORbq5aRK7Bxl4FyzVLdGtLmvLKL7BTDBG5ACQm4HWjTA==}
+  immer@10.1.3:
+    resolution: {integrity: sha512-tmjF/k8QDKydUlm3mZU+tjM6zeq9/fFpPqH9SzWmBnVVKsPBg/V66qsMwb3/Bo90cgUN+ghdVBess+hPsxUyRw==}
 
   immutable@5.1.3:
     resolution: {integrity: sha512-+chQdDfvscSF1SJqv2gn4SRO2ZyS3xL3r7IW/wWEEzrzLisnOlKiQu5ytC/BVNcS15C39WT2Hg/bjKjDMcu+zg==}
@@ -11366,29 +11366,29 @@ snapshots:
     dependencies:
       react: 19.1.1
 
-  '@reactflow/background@11.3.14(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
+  '@reactflow/background@11.3.14(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
-      '@reactflow/core': 11.11.4(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@reactflow/core': 11.11.4(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       classcat: 5.0.5
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
-      zustand: 4.5.7(@types/react@19.1.11)(immer@9.0.21)(react@19.1.1)
+      zustand: 4.5.7(@types/react@19.1.11)(immer@10.1.3)(react@19.1.1)
     transitivePeerDependencies:
       - '@types/react'
       - immer
 
-  '@reactflow/controls@11.2.14(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
+  '@reactflow/controls@11.2.14(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
-      '@reactflow/core': 11.11.4(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@reactflow/core': 11.11.4(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       classcat: 5.0.5
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
-      zustand: 4.5.7(@types/react@19.1.11)(immer@9.0.21)(react@19.1.1)
+      zustand: 4.5.7(@types/react@19.1.11)(immer@10.1.3)(react@19.1.1)
     transitivePeerDependencies:
       - '@types/react'
       - immer
 
-  '@reactflow/core@11.11.4(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
+  '@reactflow/core@11.11.4(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
       '@types/d3': 7.4.3
       '@types/d3-drag': 3.0.7
@@ -11400,14 +11400,14 @@ snapshots:
       d3-zoom: 3.0.0
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
-      zustand: 4.5.7(@types/react@19.1.11)(immer@9.0.21)(react@19.1.1)
+      zustand: 4.5.7(@types/react@19.1.11)(immer@10.1.3)(react@19.1.1)
     transitivePeerDependencies:
       - '@types/react'
       - immer
 
-  '@reactflow/minimap@11.7.14(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
+  '@reactflow/minimap@11.7.14(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
-      '@reactflow/core': 11.11.4(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@reactflow/core': 11.11.4(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       '@types/d3-selection': 3.0.11
       '@types/d3-zoom': 3.0.8
       classcat: 5.0.5
@@ -11415,31 +11415,31 @@ snapshots:
       d3-zoom: 3.0.0
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
-      zustand: 4.5.7(@types/react@19.1.11)(immer@9.0.21)(react@19.1.1)
+      zustand: 4.5.7(@types/react@19.1.11)(immer@10.1.3)(react@19.1.1)
     transitivePeerDependencies:
       - '@types/react'
       - immer
 
-  '@reactflow/node-resizer@2.2.14(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
+  '@reactflow/node-resizer@2.2.14(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
-      '@reactflow/core': 11.11.4(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@reactflow/core': 11.11.4(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       classcat: 5.0.5
       d3-drag: 3.0.0
       d3-selection: 3.0.0
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
-      zustand: 4.5.7(@types/react@19.1.11)(immer@9.0.21)(react@19.1.1)
+      zustand: 4.5.7(@types/react@19.1.11)(immer@10.1.3)(react@19.1.1)
     transitivePeerDependencies:
       - '@types/react'
       - immer
 
-  '@reactflow/node-toolbar@1.3.14(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
+  '@reactflow/node-toolbar@1.3.14(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
-      '@reactflow/core': 11.11.4(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@reactflow/core': 11.11.4(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       classcat: 5.0.5
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
-      zustand: 4.5.7(@types/react@19.1.11)(immer@9.0.21)(react@19.1.1)
+      zustand: 4.5.7(@types/react@19.1.11)(immer@10.1.3)(react@19.1.1)
     transitivePeerDependencies:
       - '@types/react'
       - immer
@@ -15063,7 +15063,7 @@ snapshots:
     dependencies:
       queue: 6.0.2
 
-  immer@9.0.21: {}
+  immer@10.1.3: {}
 
   immutable@5.1.3: {}
 
@@ -17303,14 +17303,14 @@ snapshots:
 
   react@19.1.1: {}
 
-  reactflow@11.11.4(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1):
+  reactflow@11.11.4(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1):
     dependencies:
-      '@reactflow/background': 11.3.14(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      '@reactflow/controls': 11.2.14(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      '@reactflow/core': 11.11.4(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      '@reactflow/minimap': 11.7.14(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      '@reactflow/node-resizer': 2.2.14(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      '@reactflow/node-toolbar': 1.3.14(@types/react@19.1.11)(immer@9.0.21)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@reactflow/background': 11.3.14(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@reactflow/controls': 11.2.14(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@reactflow/core': 11.11.4(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@reactflow/minimap': 11.7.14(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@reactflow/node-resizer': 2.2.14(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@reactflow/node-toolbar': 1.3.14(@types/react@19.1.11)(immer@10.1.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
     transitivePeerDependencies:
@@ -18742,16 +18742,16 @@ snapshots:
     dependencies:
       tslib: 2.3.0
 
-  zundo@2.3.0(zustand@4.5.7(@types/react@19.1.11)(immer@9.0.21)(react@19.1.1)):
+  zundo@2.3.0(zustand@4.5.7(@types/react@19.1.11)(immer@10.1.3)(react@19.1.1)):
     dependencies:
-      zustand: 4.5.7(@types/react@19.1.11)(immer@9.0.21)(react@19.1.1)
+      zustand: 4.5.7(@types/react@19.1.11)(immer@10.1.3)(react@19.1.1)
 
-  zustand@4.5.7(@types/react@19.1.11)(immer@9.0.21)(react@19.1.1):
+  zustand@4.5.7(@types/react@19.1.11)(immer@10.1.3)(react@19.1.1):
     dependencies:
       use-sync-external-store: 1.5.0(react@19.1.1)
     optionalDependencies:
       '@types/react': 19.1.11
-      immer: 9.0.21
+      immer: 10.1.3
       react: 19.1.1
 
   zwitch@2.0.4: {}
