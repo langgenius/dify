@@ -80,8 +80,8 @@ importers:
         specifier: ^0.36.2
         version: 0.36.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(yjs@13.6.27)
       '@lexical/selection':
-        specifier: ^0.36.2
-        version: 0.36.2
+        specifier: ^0.37.0
+        version: 0.37.0
       '@lexical/text':
         specifier: ^0.36.2
         version: 0.36.2
@@ -161,8 +161,8 @@ importers:
         specifier: ^3.1.3
         version: 3.1.3
       html-to-image:
-        specifier: 1.11.11
-        version: 1.11.11
+        specifier: 1.11.13
+        version: 1.11.13
       i18next:
         specifier: ^23.16.4
         version: 23.16.8
@@ -5640,8 +5640,8 @@ packages:
   html-parse-stringify@3.0.1:
     resolution: {integrity: sha512-KknJ50kTInJ7qIScF3jeaFRpMpE8/lfiTdzf/twXyPBLAGrLRTmkz3AdTnKeh40X8k9L2fdYwEp/42WGXIRGcg==}
 
-  html-to-image@1.11.11:
-    resolution: {integrity: sha512-9gux8QhvjRO/erSnDPv28noDZcPZmYE7e1vFsBLKLlRlKDSqNJYebj6Qz1TGd5lsRV+X+xYyjCKjuZdABinWjA==}
+  html-to-image@1.11.13:
+    resolution: {integrity: sha512-cuOPoI7WApyhBElTTb9oqsawRvZ0rHhaHwghRLlTuffoD1B2aDemlCruLeZrUIIdvG7gs9xeELEPm6PhuASqrg==}
 
   html-url-attributes@3.0.1:
     resolution: {integrity: sha512-ol6UPyBWqsrO6EJySPz2O7ZSr856WDrEzM5zMqp+FJJLGMW35cLYmmZnl0vztAZxRUoNZJFTCohfjuIJ8I4QBQ==}
@@ -14926,7 +14926,7 @@ snapshots:
     dependencies:
       void-elements: 3.1.0
 
-  html-to-image@1.11.11: {}
+  html-to-image@1.11.13: {}
 
   html-url-attributes@3.0.1: {}
 

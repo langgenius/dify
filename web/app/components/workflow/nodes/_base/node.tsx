@@ -53,8 +53,13 @@ import { useAppContext } from '@/context/app-context'
 import { useStore } from '@/app/components/workflow/store'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 
+type NodeChildProps = {
+  id: string
+  data: NodeProps['data']
+}
+
 type BaseNodeProps = {
-  children: ReactElement
+  children: ReactElement<Partial<NodeChildProps>>
   id: NodeProps['id']
   data: NodeProps['data']
 }
