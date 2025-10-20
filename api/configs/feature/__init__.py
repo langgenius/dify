@@ -1020,6 +1020,28 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=0,
     )
 
+    # Trigger provider refresh (simple version)
+    ENABLE_TRIGGER_PROVIDER_REFRESH_TASK: bool = Field(
+        description="Enable trigger provider refresh poller",
+        default=True,
+    )
+    TRIGGER_PROVIDER_REFRESH_INTERVAL: int = Field(
+        description="Trigger provider refresh poller interval in minutes",
+        default=1,
+    )
+    TRIGGER_PROVIDER_REFRESH_BATCH_SIZE: int = Field(
+        description="Max trigger subscriptions to process per tick",
+        default=200,
+    )
+    TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS: int = Field(
+        description="Proactive credential refresh threshold in seconds",
+        default=180,
+    )
+    TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS: int = Field(
+        description="Proactive subscription refresh threshold in seconds",
+        default=300,
+    )
+
 
 class PositionConfig(BaseSettings):
     POSITION_PROVIDER_PINS: str = Field(

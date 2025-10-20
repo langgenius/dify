@@ -8,6 +8,7 @@ from werkzeug.exceptions import BadRequest, Forbidden
 from configs import dify_config
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.web.error import NotFoundError
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
@@ -318,7 +319,7 @@ class TriggerOAuthAuthorizeApi(Resource):
             )
 
             if oauth_client_params is None:
-                raise Forbidden("No OAuth client configuration found for this trigger provider")
+                raise NotFoundError("No OAuth client configuration found for this trigger provider")
 
             # Create subscription builder
             subscription_builder = TriggerSubscriptionBuilderService.create_trigger_subscription_builder(
