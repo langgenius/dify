@@ -15,7 +15,7 @@ import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import { useFileUploadConfig } from '@/service/use-common'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
-import produce from 'immer'
+import { produce } from 'immer'
 import dynamic from 'next/dynamic'
 
 const SimplePieChart = dynamic(() => import('@/app/components/base/simple-pie-chart'), { ssr: false })

@@ -5,7 +5,7 @@ import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiDeleteBinLine,
   RiErrorWarningFill,
