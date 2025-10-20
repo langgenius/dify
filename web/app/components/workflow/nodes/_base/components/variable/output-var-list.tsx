@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useTranslation } from 'react-i18next'
 import type { OutputVar } from '../../../code/types'
 import RemoveButton from '../remove-button'

@@ -98,7 +98,7 @@ class LLMGenerator:
         return name
 
     @classmethod
-    def generate_suggested_questions_after_answer(cls, tenant_id: str, histories: str):
+    def generate_suggested_questions_after_answer(cls, tenant_id: str, histories: str) -> Sequence[str]:
         output_parser = SuggestedQuestionsAfterAnswerOutputParser()
         format_instructions = output_parser.get_format_instructions()
 
@@ -116,6 +116,8 @@ class LLMGenerator:
             return []
 
         prompt_messages = [UserPromptMessage(content=prompt)]
+
+        questions: Sequence[str] = []
 
         try:
             response: LLMResult = model_instance.invoke_llm(
