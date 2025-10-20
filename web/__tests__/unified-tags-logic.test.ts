@@ -81,7 +81,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
 
       // This simulates the condition in layout-main.tsx
       const shouldFallback1 = appDetailWithoutTags.tags.length === 0
-      const shouldFallback2 = (appDetailWithTags.tags?.length ?? 0) === 0
+      const shouldFallback2 = appDetailWithTags.tags.length === 0
       const shouldFallback3 = !appDetailWithUndefinedTags.tags || appDetailWithUndefinedTags.tags.length === 0
 
       expect(shouldFallback1).toBe(true) // Empty array should trigger fallback
