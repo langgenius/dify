@@ -57,11 +57,11 @@ const translation = {
       description: 'Choose how you want to create your trigger subscription',
       options: {
         apikey: {
-          title: 'Via API Key',
+          title: 'Create with API Key',
           description: 'Automatically create subscription using API credentials',
         },
         oauth: {
-          title: 'Via OAuth',
+          title: 'Create with OAuth',
           description: 'Authorize with third-party platform to create subscription',
           clientSettings: 'OAuth Client Settings',
           clientTitle: 'OAuth Client',
@@ -94,7 +94,7 @@ const translation = {
     },
     oauthRedirectInfo: 'As no system client secrets found for this tool provider, setup it manually is required, for redirect_uri, please use',
     apiKey: {
-      title: 'Create via API Key',
+      title: 'Create with API Key',
       verify: {
         title: 'Verify Credentials',
         description: 'Please provide your API credentials to verify access',
@@ -107,7 +107,7 @@ const translation = {
       },
     },
     oauth: {
-      title: 'Create via OAuth',
+      title: 'Create with OAuth',
       authorization: {
         title: 'OAuth Authorization',
         description: 'Authorize Dify to access your account',
@@ -123,6 +123,14 @@ const translation = {
         title: 'Configure Subscription',
         description: 'Set up your subscription parameters after authorization',
         success: 'OAuth configuration successful',
+        failed: 'OAuth configuration failed',
+      },
+      remove: {
+        success: 'OAuth remove successful',
+        failed: 'OAuth remove failed',
+      },
+      save: {
+        success: 'OAuth configuration saved successfully',
       },
     },
     manual: {

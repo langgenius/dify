@@ -57,11 +57,11 @@ const translation = {
       description: '选择创建触发器订阅的方式',
       options: {
         apikey: {
-          title: '通过 API Key',
+          title: '通过 API Key 创建',
           description: '使用 API 凭据自动创建订阅',
         },
         oauth: {
-          title: '通过 OAuth',
+          title: '通过 OAuth 创建',
           description: '与第三方平台授权以创建订阅',
           clientSettings: 'OAuth 客户端设置',
           clientTitle: 'OAuth 客户端',
@@ -94,7 +94,7 @@ const translation = {
     },
     oauthRedirectInfo: '由于未找到此工具提供方的系统客户端密钥，需要手动设置，对于 redirect_uri，请使用',
     apiKey: {
-      title: '通过 API 密钥创建',
+      title: '通过 API Key 创建',
       verify: {
         title: '验证凭据',
         description: '请提供您的 API 凭据以验证访问权限',
@@ -123,6 +123,14 @@ const translation = {
         title: '配置订阅',
         description: '授权完成后设置您的订阅参数',
         success: 'OAuth 配置成功',
+        failed: 'OAuth 配置失败',
+      },
+      remove: {
+        success: 'OAuth 移除成功',
+        failed: 'OAuth 移除失败',
+      },
+      save: {
+        success: 'OAuth 配置保存成功',
       },
     },
     manual: {

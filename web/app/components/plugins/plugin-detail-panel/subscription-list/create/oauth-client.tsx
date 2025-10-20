@@ -114,13 +114,13 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
         onClose()
         Toast.notify({
           type: 'success',
-          message: t('pluginTrigger.modal.oauth.configuration.success'),
+          message: t('pluginTrigger.modal.oauth.remove.success'),
         })
       },
       onError: (error: any) => {
         Toast.notify({
           type: 'error',
-          message: error?.message || t('pluginTrigger.modal.oauth.configuration.failed'),
+          message: error?.message || t('pluginTrigger.modal.oauth.remove.failed'),
         })
       },
     })
@@ -149,16 +149,16 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
 
     configureOAuth(params, {
       onSuccess: () => {
-        if (needAuth)
+        if (needAuth) {
           handleAuthorization()
-        else
+        }
+        else {
           onClose()
-      },
-      onError: (error: any) => {
-        Toast.notify({
-          type: 'error',
-          message: error?.message || t('pluginTrigger.modal.oauth.configuration.failed'),
-        })
+          Toast.notify({
+            type: 'success',
+            message: t('pluginTrigger.modal.oauth.save.success'),
+          })
+        }
       },
     })
   }
