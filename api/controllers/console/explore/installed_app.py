@@ -15,7 +15,6 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
-from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
@@ -67,31 +66,26 @@ class InstalledAppsListApi(Resource):
 
             # Pre-filter out apps without setting or with sso_verified
             filtered_installed_apps = []
-            app_id_to_app_code = {}
 
             for installed_app in installed_app_list:
                 app_id = installed_app["app"].id
                 webapp_setting = webapp_settings.get(app_id)
                 if not webapp_setting or webapp_setting.access_mode == "sso_verified":
                     continue
-                app_code = AppService.get_app_code_by_id(str(app_id))
-                app_id_to_app_code[app_id] = app_code
                 filtered_installed_apps.append(installed_app)
 
-            app_codes = list(app_id_to_app_code.values())
-
             # Batch permission check
+            app_ids = [installed_app["app"].id for installed_app in filtered_installed_apps]
             permissions = EnterpriseService.WebAppAuth.batch_is_user_allowed_to_access_webapps(
                 user_id=user_id,
-                app_codes=app_codes,
+                app_ids=app_ids,
             )
 
             # Keep only allowed apps
             res = []
             for installed_app in filtered_installed_apps:
                 app_id = installed_app["app"].id
-                app_code = app_id_to_app_code[app_id]
-                if permissions.get(app_code):
+                if permissions.get(app_id):
                     res.append(installed_app)
 
             installed_app_list = res
