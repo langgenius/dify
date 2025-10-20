@@ -7,8 +7,8 @@ from collections.abc import Mapping
 from functools import singledispatchmethod
 from typing import TYPE_CHECKING, final
 
-from core.workflow.entities import GraphRuntimeState
-from core.workflow.enums import ErrorStrategy, NodeExecutionType
+from core.model_runtime.entities.llm_entities import LLMUsage
+from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
     GraphNodeEventBase,
@@ -23,11 +23,13 @@ from core.workflow.graph_events import (
     NodeRunLoopNextEvent,
     NodeRunLoopStartedEvent,
     NodeRunLoopSucceededEvent,
+    NodeRunPauseRequestedEvent,
     NodeRunRetryEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
+from core.workflow.runtime import GraphRuntimeState
 
 from ..domain.graph_execution import GraphExecution
 from ..response_coordinator import ResponseStreamCoordinator
@@ -125,6 +127,7 @@ class EventHandler:
         node_execution = self._graph_execution.get_or_create_node_execution(event.node_id)
         is_initial_attempt = node_execution.retry_count == 0
         node_execution.mark_started(event.id)
+        self._graph_runtime_state.increment_node_run_steps()
 
         # Track in response coordinator for stream ordering
         self._response_coordinator.track_node_execution(event.node_id, event.id)
@@ -163,6 +166,8 @@ class EventHandler:
         node_execution = self._graph_execution.get_or_create_node_execution(event.node_id)
         node_execution.mark_taken()
 
+        self._accumulate_node_usage(event.node_run_result.llm_usage)
+
         # Store outputs in variable pool
         self._store_node_outputs(event.node_id, event.node_run_result.outputs)
 
@@ -200,6 +205,18 @@ class EventHandler:
         self._event_collector.collect(event)
 
     @_dispatch.register
+    def _(self, event: NodeRunPauseRequestedEvent) -> None:
+        """Handle pause requests emitted by nodes."""
+
+        pause_reason = event.reason or "Awaiting human input"
+        self._graph_execution.pause(pause_reason)
+        self._state_manager.finish_execution(event.node_id)
+        if event.node_id in self._graph.nodes:
+            self._graph.nodes[event.node_id].state = NodeState.UNKNOWN
+        self._graph_runtime_state.register_paused_node(event.node_id)
+        self._event_collector.collect(event)
+
+    @_dispatch.register
     def _(self, event: NodeRunFailedEvent) -> None:
         """
         Handle node failure using error handler.
@@ -211,6 +228,8 @@ class EventHandler:
         node_execution = self._graph_execution.get_or_create_node_execution(event.node_id)
         node_execution.mark_failed(event.error)
         self._graph_execution.record_node_failure()
+
+        self._accumulate_node_usage(event.node_run_result.llm_usage)
 
         result = self._error_handler.handle_node_failure(event)
 
@@ -234,6 +253,8 @@ class EventHandler:
         # Node continues via fail-branch/default-value, treat as completion
         node_execution = self._graph_execution.get_or_create_node_execution(event.node_id)
         node_execution.mark_taken()
+
+        self._accumulate_node_usage(event.node_run_result.llm_usage)
 
         # Persist outputs produced by the exception strategy (e.g. default values)
         self._store_node_outputs(event.node_id, event.node_run_result.outputs)
@@ -285,6 +306,19 @@ class EventHandler:
         # Re-queue node for execution
         self._state_manager.enqueue_node(event.node_id)
         self._state_manager.start_execution(event.node_id)
+
+    def _accumulate_node_usage(self, usage: LLMUsage) -> None:
+        """Accumulate token usage into the shared runtime state."""
+        if usage.total_tokens <= 0:
+            return
+
+        self._graph_runtime_state.add_tokens(usage.total_tokens)
+
+        current_usage = self._graph_runtime_state.llm_usage
+        if current_usage.total_tokens == 0:
+            self._graph_runtime_state.llm_usage = usage
+        else:
+            self._graph_runtime_state.llm_usage = current_usage.plus(usage)
 
     def _store_node_outputs(self, node_id: str, outputs: Mapping[str, object]) -> None:
         """

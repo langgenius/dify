@@ -52,7 +52,7 @@ from core.variables import (
     StringSegment,
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities import GraphInitParams, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.enums import (
     ErrorStrategy,
     NodeType,
@@ -71,6 +71,7 @@ from core.workflow.node_events import (
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
+from core.workflow.runtime import VariablePool
 
 from . import llm_utils
 from .entities import (
@@ -93,7 +94,7 @@ from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.entities import GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 

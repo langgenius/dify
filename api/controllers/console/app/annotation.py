@@ -2,13 +2,13 @@ from typing import Literal
 
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with, reqparse
-from werkzeug.exceptions import Forbidden
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
 from controllers.console import api, console_ns
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
+    edit_permission_required,
     setup_required,
 )
 from extensions.ext_redis import redis_client
@@ -16,7 +16,7 @@ from fields.annotation_fields import (
     annotation_fields,
     annotation_hit_history_fields,
 )
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from services.annotation_service import AppAnnotationService
 
 
@@ -41,17 +41,15 @@ class AnnotationReplyActionApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
+    @edit_permission_required
     def post(self, app_id, action: Literal["enable", "disable"]):
-        current_user, _ = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         app_id = str(app_id)
-        parser = reqparse.RequestParser()
-        parser.add_argument("score_threshold", required=True, type=float, location="json")
-        parser.add_argument("embedding_provider_name", required=True, type=str, location="json")
-        parser.add_argument("embedding_model_name", required=True, type=str, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("score_threshold", required=True, type=float, location="json")
+            .add_argument("embedding_provider_name", required=True, type=str, location="json")
+            .add_argument("embedding_model_name", required=True, type=str, location="json")
+        )
         args = parser.parse_args()
         if action == "enable":
             result = AppAnnotationService.enable_app_annotation(args, app_id)
@@ -70,12 +68,8 @@ class AppAnnotationSettingDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def get(self, app_id):
-        current_user, _ = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         app_id = str(app_id)
         result = AppAnnotationService.get_app_annotation_setting_by_app_id(app_id)
         return result, 200
@@ -101,17 +95,12 @@ class AppAnnotationSettingUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def post(self, app_id, annotation_setting_id):
-        current_user, _ = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         app_id = str(app_id)
         annotation_setting_id = str(annotation_setting_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("score_threshold", required=True, type=float, location="json")
+        parser = reqparse.RequestParser().add_argument("score_threshold", required=True, type=float, location="json")
         args = parser.parse_args()
 
         result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, args)
@@ -129,12 +118,8 @@ class AnnotationReplyActionStatusApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
+    @edit_permission_required
     def get(self, app_id, job_id, action):
-        current_user, _ = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         job_id = str(job_id)
         app_annotation_job_key = f"{action}_app_annotation_job_{str(job_id)}"
         cache_result = redis_client.get(app_annotation_job_key)
@@ -166,12 +151,8 @@ class AnnotationApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def get(self, app_id):
-        current_user, _ = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         keyword = request.args.get("keyword", default="", type=str)
@@ -207,16 +188,14 @@ class AnnotationApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @marshal_with(annotation_fields)
+    @edit_permission_required
     def post(self, app_id):
-        current_user, _ = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         app_id = str(app_id)
-        parser = reqparse.RequestParser()
-        parser.add_argument("question", required=True, type=str, location="json")
-        parser.add_argument("answer", required=True, type=str, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("question", required=True, type=str, location="json")
+            .add_argument("answer", required=True, type=str, location="json")
+        )
         args = parser.parse_args()
         annotation = AppAnnotationService.insert_app_annotation_directly(args, app_id)
         return annotation
@@ -224,12 +203,8 @@ class AnnotationApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def delete(self, app_id):
-        current_user, _ = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         app_id = str(app_id)
 
         # Use request.args.getlist to get annotation_ids array directly
@@ -262,12 +237,8 @@ class AnnotationExportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def get(self, app_id):
-        current_user, _ = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         app_id = str(app_id)
         annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
         response = {"data": marshal(annotation_list, annotation_fields)}
@@ -286,18 +257,16 @@ class AnnotationUpdateDeleteApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
+    @edit_permission_required
     @marshal_with(annotation_fields)
     def post(self, app_id, annotation_id):
-        current_user, _ = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         app_id = str(app_id)
         annotation_id = str(annotation_id)
-        parser = reqparse.RequestParser()
-        parser.add_argument("question", required=True, type=str, location="json")
-        parser.add_argument("answer", required=True, type=str, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("question", required=True, type=str, location="json")
+            .add_argument("answer", required=True, type=str, location="json")
+        )
         args = parser.parse_args()
         annotation = AppAnnotationService.update_app_annotation_directly(args, app_id, annotation_id)
         return annotation
@@ -305,12 +274,8 @@ class AnnotationUpdateDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def delete(self, app_id, annotation_id):
-        current_user, _ = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         app_id = str(app_id)
         annotation_id = str(annotation_id)
         AppAnnotationService.delete_app_annotation(app_id, annotation_id)
@@ -329,12 +294,8 @@ class AnnotationBatchImportApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
+    @edit_permission_required
     def post(self, app_id):
-        current_user, _ = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         app_id = str(app_id)
         # check file
         if "file" not in request.files:
@@ -362,12 +323,8 @@ class AnnotationBatchImportStatusApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
+    @edit_permission_required
     def get(self, app_id, job_id):
-        current_user, _ = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         job_id = str(job_id)
         indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
         cache_result = redis_client.get(indexing_cache_key)
@@ -399,12 +356,8 @@ class AnnotationHitHistoryListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def get(self, app_id, annotation_id):
-        current_user, _ = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         app_id = str(app_id)

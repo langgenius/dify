@@ -63,8 +63,8 @@ from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvi
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
-    from core.workflow.entities import VariablePool
     from core.workflow.nodes.tool.entities import ToolEntity
+    from core.workflow.runtime import VariablePool
 
 logger = logging.getLogger(__name__)
 
