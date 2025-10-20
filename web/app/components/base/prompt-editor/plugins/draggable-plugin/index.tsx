@@ -29,7 +29,7 @@ export default function DraggableBlockPlugin({
 }): JSX.Element {
   const menuRef = useRef<HTMLDivElement>(null)
   const targetLineRef = useRef<HTMLDivElement>(null)
-  const [draggableElement, setDraggableElement] = useState<HTMLElement | null>(
+  const [, setDraggableElement] = useState<HTMLElement | null>(
     null,
   )
   const [editor] = useLexicalComposerContext()
@@ -55,20 +55,20 @@ export default function DraggableBlockPlugin({
       menuRef={menuRef as any}
       targetLineRef={targetLineRef as any}
       menuComponent={
-        isSupportDrag ? <div ref={menuRef} className={cn(DRAGGABLE_BLOCK_MENU_CLASSNAME, 'absolute right-[12px] top-[16px] cursor-grab opacity-0 will-change-transform active:cursor-move')}>
+        isSupportDrag ? <div ref={menuRef} className={cn(DRAGGABLE_BLOCK_MENU_CLASSNAME, 'absolute right-[24px] top-[16px] cursor-grab opacity-0 will-change-transform active:cursor-move')}>
           <RiDraggable className='size-3.5 text-text-tertiary' />
         </div> : null
       }
       targetLineComponent={
         <div
           ref={targetLineRef}
-            className="pointer-events-none absolute left-[-21px] top-0 opacity-0 will-change-transform"
-            // style={{ width: 500 }} // width not worked here
-          >
-            <div
-              className='absolute left-0 right-[-40px] top-0 h-[2px] bg-text-accent-secondary'
-            ></div>
-          </div>
+          className="pointer-events-none absolute left-[-21px] top-0 opacity-0 will-change-transform"
+          // style={{ width: 500 }} // width not worked here
+        >
+          <div
+            className='absolute left-0 right-[-40px] top-0 h-[2px] bg-text-accent-secondary'
+          ></div>
+        </div>
       }
       isOnMenu={isOnMenu}
       onElementChanged={setDraggableElement}
