@@ -28,6 +28,7 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headless
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
 import type { Event } from '@/app/components/tools/types'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 
 type Props = {
   readOnly: boolean
@@ -165,16 +166,21 @@ const FormInputItem: FC<Props> = ({
     parameter: variable || '',
     extra: extraParams,
     credential_id: currentProvider?.credential_id || '',
-  }, isDynamicSelect && providerType === 'trigger' && !!currentTool && !!currentProvider)
+  }, isDynamicSelect && providerType === PluginCategoryEnum.trigger && !!currentTool && !!currentProvider)
 
   // Computed values for dynamic options (unified for triggers and tools)
-  const dynamicOptions = providerType === 'trigger' ? triggerDynamicOptions?.options || [] : toolsOptions
-  const isLoadingOptions = providerType === 'trigger' ? isTriggerOptionsLoading : isLoadingToolsOptions
+  const triggerOptions = triggerDynamicOptions?.options
+  const dynamicOptions = providerType === PluginCategoryEnum.trigger
+    ? triggerOptions ?? toolsOptions
+    : toolsOptions
+  const isLoadingOptions = providerType === PluginCategoryEnum.trigger
+    ? (isTriggerOptionsLoading || isLoadingToolsOptions)
+    : isLoadingToolsOptions
 
   // Fetch dynamic options for tools only (triggers use hook directly)
   useEffect(() => {
-    const fetchToolOptions = async () => {
-      if (isDynamicSelect && currentTool && currentProvider && providerType === 'tool') {
+    const fetchPanelDynamicOptions = async () => {
+      if (isDynamicSelect && currentTool && currentProvider && (providerType === PluginCategoryEnum.tool || providerType === PluginCategoryEnum.trigger)) {
         setIsLoadingToolsOptions(true)
         try {
           const data = await fetchDynamicOptions()
@@ -190,7 +196,7 @@ const FormInputItem: FC<Props> = ({
       }
     }
 
-    fetchToolOptions()
+    fetchPanelDynamicOptions()
   }, [
     isDynamicSelect,
     currentTool?.name,
