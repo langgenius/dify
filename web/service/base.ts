@@ -596,7 +596,8 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         Toast.notify({ type: 'error', message })
         return Promise.reject(err)
       }
-      globalThis.location.href = loginUrl
+      if (globalThis.location.href !== loginUrl)
+        globalThis.location.href = loginUrl
       return Promise.reject(err)
     }
     else {
