@@ -111,7 +111,7 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
       if (tags)
         originalAppDetail.tags = tags
 
-      expect(originalAppDetail.tags ?? []).toEqual([])
+      expect(originalAppDetail.tags).toEqual([])
     })
   })
 
