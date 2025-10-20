@@ -8,7 +8,8 @@ from werkzeug.exceptions import NotFound
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
-from libs.login import current_account_with_tenant
+from libs.login import current_account_with_tenant, current_user
+from libs.helper import extract_tenant_id
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
@@ -115,8 +116,19 @@ class AppAnnotationService:
 
     @classmethod
     def get_annotation_list_by_app_id(cls, app_id: str, page: int, limit: int, keyword: str):
-        # get app info
-        _, current_tenant_id = current_account_with_tenant()
+        # get app info (support both Account and EndUser contexts)
+        # current_user is a LocalProxy; unwrap to the real object for isinstance checks
+        user_obj = current_user
+        try:
+            # werkzeug.local.LocalProxy exposes _get_current_object
+            get_obj = getattr(current_user, "_get_current_object", None)
+            if callable(get_obj):
+                user_obj = get_obj()
+        except Exception:
+            # if anything goes wrong, fall back to current_user directly
+            pass
+        current_tenant_id = extract_tenant_id(user_obj)
+        assert current_tenant_id is not None, "The tenant information should be loaded."
         app = (
             db.session.query(App)
             .where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal")
