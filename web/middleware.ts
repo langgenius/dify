@@ -33,7 +33,7 @@ export function middleware(request: NextRequest) {
   const cspHeader = `
     default-src 'self' ${scheme_source} ${csp} ${whiteList};
     connect-src 'self' ${scheme_source} ${csp} ${whiteList};
-    script-src 'self' ${scheme_source} ${csp} ${whiteList};
+    script-src 'self' 'wasm-unsafe-eval' ${scheme_source} ${csp} ${whiteList};
     style-src 'self' 'unsafe-inline' ${scheme_source} ${whiteList};
     worker-src 'self' ${scheme_source} ${csp} ${whiteList};
     media-src 'self' ${scheme_source} ${csp} ${whiteList};

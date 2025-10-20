@@ -8,6 +8,7 @@ import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import type { QueryParam } from './index'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
+import { sendGAEvent } from '@/utils/gtag'
 dayjs.extend(quarterOfYear)
 
 const today = dayjs()
@@ -36,9 +37,19 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
       <Chip
         value={queryParams.status || 'all'}
         onSelect={(item) => {
+          sendGAEvent('filter_workflow_status', {
+            status: item.value,
+            status_name: item.name,
+          })
           setQueryParams({ ...queryParams, status: item.value as string })
         }}
-        onClear={() => setQueryParams({ ...queryParams, status: 'all' })}
+        onClear={() => {
+          sendGAEvent('filter_workflow_status_clear', {
+            status: 'reset',
+            status_name: 'reset',
+          })
+          setQueryParams({ ...queryParams, status: 'all' })
+        }}
         items={[{ value: 'all', name: 'All' },
           { value: 'succeeded', name: 'Success' },
           { value: 'failed', name: 'Fail' },
@@ -52,6 +63,10 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
         leftIcon={<RiCalendarLine className='h-4 w-4 text-text-secondary' />}
         value={queryParams.period}
         onSelect={(item) => {
+          sendGAEvent('filter_workflow_period', {
+            period: item.value,
+            period_name: item.name,
+          })
           setQueryParams({ ...queryParams, period: item.value })
         }}
         onClear={() => setQueryParams({ ...queryParams, period: '9' })}
