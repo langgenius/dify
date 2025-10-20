@@ -31,7 +31,7 @@ const AutoHeightTextarea = (
     onKeyDown,
     onKeyUp,
   }: IProps & {
-    ref?: React.RefObject<unknown>;
+    ref?: React.RefObject<HTMLTextAreaElement>;
   },
 ) => {
   // eslint-disable-next-line react-hooks/rules-of-hooks
