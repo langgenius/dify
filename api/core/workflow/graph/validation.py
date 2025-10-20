@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-from core.workflow.enums import NodeExecutionType
+from core.workflow.enums import NodeExecutionType, NodeType
 
 if TYPE_CHECKING:
     from .graph import Graph
@@ -71,6 +71,7 @@ class _RootNodeValidator:
     """Validates root node invariants."""
 
     invalid_root_code: str = "INVALID_ROOT"
+    container_entry_types: tuple[NodeType, ...] = (NodeType.ITERATION_START, NodeType.LOOP_START)
 
     def validate(self, graph: Graph) -> Sequence[GraphValidationIssue]:
         root_node = graph.root_node
@@ -85,7 +86,8 @@ class _RootNodeValidator:
             )
             return issues
 
-        if root_node.execution_type != NodeExecutionType.ROOT:
+        node_type = getattr(root_node, "node_type", None)
+        if root_node.execution_type != NodeExecutionType.ROOT and node_type not in self.container_entry_types:
             issues.append(
                 GraphValidationIssue(
                     code=self.invalid_root_code,
