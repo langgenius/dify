@@ -12,9 +12,9 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import Subscription
 from core.trigger.utils.endpoint import parse_endpoint_id
-from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.base import Base
+from models.engine import db
 from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from models.model import Account
 from models.types import EnumText, StringUUID
