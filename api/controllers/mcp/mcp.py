@@ -239,4 +239,12 @@ class MCPAppApi(Resource):
             with Session(db.engine, expire_on_commit=False) as create_session, create_session.begin():
                 end_user = self._create_end_user(client_name, app.tenant_id, app.id, mcp_server.id, create_session)
 
+        # Eagerly load EndUser attributes to prevent DetachedInstanceError
+        # This ensures attributes are accessible after session closes
+        if end_user:
+            _ = end_user.id
+            _ = end_user.session_id
+            _ = end_user.tenant_id
+            _ = end_user.app_id
+
         return handle_mcp_request(app, mcp_request, user_input_form, mcp_server, end_user, request_id)
