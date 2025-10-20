@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiAddLine,
   RiCloseLine,
