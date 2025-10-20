@@ -62,6 +62,16 @@ class ApiBasedToolSchemaParser:
                             root = root[ref]
                         interface["operation"]["parameters"][i] = root
                 for parameter in interface["operation"]["parameters"]:
+                    # Handle complex type defaults that are not supported by PluginParameter
+                    default_value = None
+                    if "schema" in parameter and "default" in parameter["schema"]:
+                        default_raw = parameter["schema"]["default"]
+                        # For complex types (list, dict), set default to None to avoid validation errors
+                        if isinstance(default_raw, (list, dict)):
+                            default_value = None
+                        else:
+                            default_value = default_raw
+
                     tool_parameter = ToolParameter(
                         name=parameter["name"],
                         label=I18nObject(en_US=parameter["name"], zh_Hans=parameter["name"]),
@@ -72,9 +82,7 @@ class ApiBasedToolSchemaParser:
                         required=parameter.get("required", False),
                         form=ToolParameter.ToolParameterForm.LLM,
                         llm_description=parameter.get("description"),
-                        default=parameter["schema"]["default"]
-                        if "schema" in parameter and "default" in parameter["schema"]
-                        else None,
+                        default=default_value,
                         placeholder=I18nObject(
                             en_US=parameter.get("description", ""), zh_Hans=parameter.get("description", "")
                         ),
@@ -134,6 +142,12 @@ class ApiBasedToolSchemaParser:
                             required = body_schema.get("required", [])
                             properties = body_schema.get("properties", {})
                             for name, property in properties.items():
+                                # Handle complex type defaults that are not supported by PluginParameter
+                                default_value = property.get("default", None)
+                                if isinstance(default_value, (list, dict)):
+                                    # For complex types (arrays, objects), set to None to avoid validation error
+                                    default_value = None
+
                                 tool = ToolParameter(
                                     name=name,
                                     label=I18nObject(en_US=name, zh_Hans=name),
@@ -144,13 +158,11 @@ class ApiBasedToolSchemaParser:
                                     required=name in required,
                                     form=ToolParameter.ToolParameterForm.LLM,
                                     llm_description=property.get("description", ""),
-                                    default=property.get("default", None),
+                                    default=default_value,
                                     placeholder=I18nObject(
                                         en_US=property.get("description", ""), zh_Hans=property.get("description", "")
                                     ),
-                                )
-
-                                # check if there is a type
+                                )                                # check if there is a type
                                 typ = ApiBasedToolSchemaParser._get_tool_parameter_type(property)
                                 if typ:
                                     tool.type = typ
@@ -217,7 +229,11 @@ class ApiBasedToolSchemaParser:
             return ToolParameter.ToolParameterType.STRING
         elif typ == "array":
             items = parameter.get("items") or parameter.get("schema", {}).get("items")
-            return ToolParameter.ToolParameterType.FILES if items and items.get("format") == "binary" else None
+            if items and items.get("format") == "binary":
+                return ToolParameter.ToolParameterType.FILES
+            else:
+                # For regular arrays, return ARRAY type instead of None
+                return ToolParameter.ToolParameterType.ARRAY
         else:
             return None
 
