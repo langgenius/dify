@@ -548,7 +548,7 @@ class UpdateConfig(BaseSettings):
 
 class WorkflowVariableTruncationConfig(BaseSettings):
     WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE: PositiveInt = Field(
-        # 100KB
+        # 1000KB
         1024_000,
         description="Maximum size for variable to trigger final truncation.",
     )
