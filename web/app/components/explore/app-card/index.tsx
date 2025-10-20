@@ -32,7 +32,7 @@ const AppCard = ({
             background={appBasicInfo.icon_background}
             imageUrl={appBasicInfo.icon_url}
           />
-          <AppTypeIcon wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-[4px] border border-divider-regular outline outline-components-panel-on-panel-item-bg'
+          <AppTypeIcon wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm'
             className='h-3 w-3' type={appBasicInfo.mode} />
         </div>
         <div className='w-0 grow py-[1px]'>

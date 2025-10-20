@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useBoolean } from 'ahooks'
 import { useStore, useWorkflowStore } from '../../store'
 import type { ToolNodeType, ToolVarInputs } from './types'

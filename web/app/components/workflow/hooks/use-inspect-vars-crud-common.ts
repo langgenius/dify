@@ -10,7 +10,7 @@ import {
   isSystemVar,
   toNodeOutputVars,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { Node } from '@/app/components/workflow/types'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
