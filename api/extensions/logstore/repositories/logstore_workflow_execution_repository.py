@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
 
-
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
@@ -65,7 +64,6 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # todo:tmp
         self.sql_repository = SQLAlchemyWorkflowExecutionRepository(session_factory, user, app_id, triggered_from)
-
 
     def _to_domain_model(self, logstore_model: list[tuple[str, str]]) -> WorkflowExecution:
         """
@@ -111,7 +109,6 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             finished_at=finished_at,
         )
 
-
     def _to_logstore_model(self, domain_model: WorkflowExecution) -> list[tuple[str, str]]:
         """
         Convert a domain model to a logstore model (List[Tuple[str, str]]).
@@ -156,7 +153,6 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         return logstore_model
 
-
     def save(self, execution: WorkflowExecution) -> None:
         """
         Save or update a WorkflowExecution domain entity to the database.
@@ -180,7 +176,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             logger.debug("Updating cache for execution_id: %s", execution.id_)
         except Exception as e:
             logger.exception(
-                "Failed to update cache for execution_id: %s",execution.id_
+                "Failed to update cache for execution_id: %s", execution.id_
             )
 
         # todo:tmp

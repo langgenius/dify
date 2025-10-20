@@ -200,7 +200,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             logger.exception("Failed to save node execution to logstore for node_execution_id: %s",
                              execution.node_execution_id)
 
-        #todo:tmp
+        # todo:tmp
         self.sql_repository.save(execution)
 
     def get_db_models_by_workflow_run(
@@ -223,7 +223,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         """
 
         # todo:tmp
-        return self.sql_repository.get_db_models_by_workflow_run(workflow_run_id,order_config)
+        return self.sql_repository.get_db_models_by_workflow_run(workflow_run_id, order_config)
 
     def get_by_workflow_run(
         self,
