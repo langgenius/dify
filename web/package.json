@@ -263,6 +263,11 @@
     "ignoredBuiltDependencies": [
       "canvas",
       "core-js-pure"
+    ],
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "esbuild",
+      "sharp"
     ]
   }
 }
