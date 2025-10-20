@@ -3,7 +3,7 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'

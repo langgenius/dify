@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import VarReferencePicker from './variable/var-reference-picker'
 import ResolutionPicker from '@/app/components/workflow/nodes/llm/components/resolution-picker'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
