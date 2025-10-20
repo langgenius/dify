@@ -1,4 +1,5 @@
 import binascii
+import json
 from collections.abc import Mapping
 from typing import Any, Literal, Optional
 
@@ -246,6 +247,16 @@ class RequestFetchAppInfo(BaseModel):
 class TriggerInvokeEventResponse(BaseModel):
     variables: Mapping[str, Any] = Field(default_factory=dict)
     cancelled: Optional[bool] = False
+
+    model_config = ConfigDict(protected_namespaces=(), arbitrary_types_allowed=True)
+
+    @field_validator("variables", mode="before")
+    @classmethod
+    def convert_variables(cls, v):
+        if isinstance(v, str):
+            return json.loads(v)
+        else:
+            return v
 
 
 class TriggerSubscriptionResponse(BaseModel):
