@@ -13,7 +13,7 @@ import { DataSourceProvider, type NotionPage } from '@/models/common'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useGetDefaultDataSourceListAuth } from '@/service/use-datasource'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import Loading from '@/app/components/base/loading'
 

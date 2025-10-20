@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useContext } from 'use-context-selector'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiAddLine,
 } from '@remixicon/react'
