@@ -336,7 +336,7 @@ class TriggerProviderService:
 
             # Update credentials
             subscription.credentials = dict(encrypter.encrypt(dict(refreshed_credentials.credentials)))
-            subscription.expires_at = refreshed_credentials.expires_at
+            subscription.credential_expires_at = refreshed_credentials.expires_at
             session.commit()
 
             # Clear cache
@@ -448,7 +448,9 @@ class TriggerProviderService:
                 session.add(custom_client)
 
             # Update client params if provided
-            if client_params is not None:
+            if client_params is None:
+                custom_client.encrypted_oauth_params = json.dumps({})
+            else:
                 encrypter, cache = create_provider_encrypter(
                     tenant_id=tenant_id,
                     config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
