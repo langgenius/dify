@@ -2,7 +2,6 @@ from configs import dify_config
 from constants import HEADER_NAME_APP_CODE, HEADER_NAME_CSRF_TOKEN, HEADER_NAME_PASSPORT
 from dify_app import DifyApp
 
-
 APP_CREDENTIAL_HEADERS = (HEADER_NAME_APP_CODE, HEADER_NAME_PASSPORT)
 
 
