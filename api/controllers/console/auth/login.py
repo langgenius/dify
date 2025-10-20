@@ -1,6 +1,7 @@
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource, reqparse
+from werkzeug.exceptions import Unauthorized
 
 import services
 from configs import dify_config
@@ -303,6 +304,6 @@ class LoginStatus(Resource):
         try:
             validated = PassportService().verify(token=token)
             check_csrf_token(request=request, user_id=validated.get("user_id", ""))
-        except Exception:
+        except Unauthorized:
             res = False
         return {"logged_in": res}
