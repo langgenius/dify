@@ -1,19 +1,29 @@
 import type { StorybookConfig } from '@storybook/nextjs'
 
 const config: StorybookConfig = {
-  // stories: ['../stories/**/*.mdx', '../stories/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
   stories: ['../app/components/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
   addons: [
     '@storybook/addon-onboarding',
     '@storybook/addon-links',
-    '@storybook/addon-essentials',
+    '@storybook/addon-docs',
     '@chromatic-com/storybook',
-    '@storybook/addon-interactions',
   ],
   framework: {
     name: '@storybook/nextjs',
-    options: {},
+    options: {
+      builder: {
+        useSWC: true,
+        lazyCompilation: false,
+      },
+      nextConfigPath: undefined,
+    },
   },
   staticDirs: ['../public'],
+  core: {
+    disableWhatsNewNotifications: true,
+  },
+  docs: {
+    defaultName: 'Documentation',
+  },
 }
 export default config
