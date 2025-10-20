@@ -36,7 +36,7 @@ from .exc import (
 )
 
 if TYPE_CHECKING:
-    from core.workflow.entities import VariablePool
+    from core.workflow.runtime import VariablePool
 
 
 class ToolNode(Node):

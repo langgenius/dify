@@ -30,8 +30,7 @@ class TraceAppConfigApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("tracing_provider", type=str, required=True, location="args")
+        parser = reqparse.RequestParser().add_argument("tracing_provider", type=str, required=True, location="args")
         args = parser.parse_args()
 
         try:
@@ -63,9 +62,11 @@ class TraceAppConfigApi(Resource):
     @account_initialization_required
     def post(self, app_id):
         """Create a new trace app configuration"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("tracing_provider", type=str, required=True, location="json")
-        parser.add_argument("tracing_config", type=dict, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("tracing_provider", type=str, required=True, location="json")
+            .add_argument("tracing_config", type=dict, required=True, location="json")
+        )
         args = parser.parse_args()
 
         try:
@@ -99,9 +100,11 @@ class TraceAppConfigApi(Resource):
     @account_initialization_required
     def patch(self, app_id):
         """Update an existing trace app configuration"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("tracing_provider", type=str, required=True, location="json")
-        parser.add_argument("tracing_config", type=dict, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("tracing_provider", type=str, required=True, location="json")
+            .add_argument("tracing_config", type=dict, required=True, location="json")
+        )
         args = parser.parse_args()
 
         try:
@@ -129,8 +132,7 @@ class TraceAppConfigApi(Resource):
     @account_initialization_required
     def delete(self, app_id):
         """Delete an existing trace app configuration"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("tracing_provider", type=str, required=True, location="args")
+        parser = reqparse.RequestParser().add_argument("tracing_provider", type=str, required=True, location="args")
         args = parser.parse_args()
 
         try:

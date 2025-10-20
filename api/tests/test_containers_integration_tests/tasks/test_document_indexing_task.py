@@ -4,7 +4,7 @@ import pytest
 from faker import Faker
 
 from extensions.ext_database import db
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
 from tasks.document_indexing_task import document_indexing_task
 

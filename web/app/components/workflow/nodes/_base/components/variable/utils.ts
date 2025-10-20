@@ -1,4 +1,4 @@
-import produce from 'immer'
+import { produce } from 'immer'
 import { isArray, uniq } from 'lodash-es'
 import type { CodeNodeType } from '../../../code/types'
 import type { EndNodeType } from '../../../end/types'
