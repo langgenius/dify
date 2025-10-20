@@ -120,9 +120,9 @@ export const useIsLogin = () => {
       try {
         await get('/api/account/profile', {
           silent: true,
-        }) // if code is 401, not logged in
+        })
       }
-      catch {
+      catch { // Code 401 and in localhost is CORS. So if not api fail, we think is not logged in
         return { logged_in: false }
       }
       return { logged_in: true }
