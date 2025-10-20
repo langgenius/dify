@@ -32,6 +32,7 @@ from libs.token import (
     clear_csrf_token_from_cookie,
     clear_refresh_token_from_cookie,
     extract_access_token,
+    extract_csrf_token,
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
@@ -295,6 +296,9 @@ class RefreshTokenApi(Resource):
 class LoginStatus(Resource):
     def get(self):
         token = extract_access_token(request)
+        csrf_token = extract_csrf_token(request)
+        if not token or not csrf_token:
+            return {"logged_in": False}
         res = True
         try:
             validated = PassportService().verify(token=token)
