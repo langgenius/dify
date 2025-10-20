@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useBoolean } from 'ahooks'
 import useVarList from '../_base/hooks/use-var-list'
 import { VarType } from '../../types'

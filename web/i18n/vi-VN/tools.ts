@@ -243,6 +243,10 @@ const translation = {
       },
       publishTip: 'Ứng dụng chưa xuất bản. Vui lòng xuất bản ứng dụng trước.',
     },
+    toolItem: {
+      parameters: 'Các thông số',
+      noDescription: 'Không có mô tả',
+    },
   },
   allTools: 'Tất cả các công cụ',
 }
