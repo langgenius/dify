@@ -166,6 +166,12 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.workflow_schedule_task.poll_workflow_schedules",
             "schedule": timedelta(minutes=dify_config.WORKFLOW_SCHEDULE_POLLER_INTERVAL),
         }
+    if dify_config.ENABLE_TRIGGER_PROVIDER_REFRESH_TASK:
+        imports.append("schedule.trigger_provider_refresh_task")
+        beat_schedule["trigger_provider_refresh"] = {
+            "task": "schedule.trigger_provider_refresh_task.trigger_provider_refresh",
+            "schedule": timedelta(minutes=dify_config.TRIGGER_PROVIDER_REFRESH_INTERVAL),
+        }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app
