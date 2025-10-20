@@ -5,6 +5,7 @@ import type { PluginTriggerNodeType } from './types'
 import { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import { type Field, type StructuredOutput, Type } from '../llm/types'
+import { VarKindType } from '../_base/types'
 
 const normalizeJsonSchemaType = (schema: any): string | undefined => {
   if (!schema) return undefined
@@ -222,11 +223,51 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
     // event_type: '',
     config: {},
   },
-  checkValid(payload: PluginTriggerNodeType, t: any) {
+  checkValid(payload: PluginTriggerNodeType, t: any, moreDataForCheckValid: {
+    triggerInputsSchema?: Array<{
+      variable: string
+      label: string
+      required?: boolean
+    }>
+    isReadyForCheckValid?: boolean
+  } = {}) {
     let errorMessage = ''
 
     if (!payload.subscription_id)
       errorMessage = t('workflow.nodes.triggerPlugin.subscriptionRequired')
+
+    const {
+      triggerInputsSchema = [],
+      isReadyForCheckValid = true,
+    } = moreDataForCheckValid || {}
+
+    if (!errorMessage && isReadyForCheckValid) {
+      triggerInputsSchema.filter(field => field.required).forEach((field) => {
+        if (errorMessage)
+          return
+
+        const rawParam = payload.event_parameters?.[field.variable]
+          ?? (payload.config as Record<string, any> | undefined)?.[field.variable]
+        if (!rawParam) {
+          errorMessage = t('workflow.errorMsg.fieldRequired', { field: field.label })
+          return
+        }
+
+        const targetParam = typeof rawParam === 'object' && rawParam !== null && 'type' in rawParam
+          ? rawParam as { type: VarKindType; value: any }
+          : { type: VarKindType.constant, value: rawParam }
+
+        const { type, value } = targetParam
+        if (type === VarKindType.variable) {
+          if (!value || (Array.isArray(value) && value.length === 0))
+            errorMessage = t('workflow.errorMsg.fieldRequired', { field: field.label })
+        }
+        else {
+          if (value === undefined || value === null || value === '')
+            errorMessage = t('workflow.errorMsg.fieldRequired', { field: field.label })
+        }
+      })
+    }
 
     return {
       isValid: !errorMessage,

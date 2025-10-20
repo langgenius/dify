@@ -22,6 +22,7 @@ import {
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
+import { getTriggerCheckParams } from '../utils/trigger'
 import {
   CUSTOM_NODE,
 } from '../constants'
@@ -31,10 +32,12 @@ import {
 } from '../hooks'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
+import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import { useToastContext } from '@/app/components/base/toast'
 import { useGetLanguage } from '@/context/i18n'
 import type { AgentNodeType } from '../nodes/agent/types'
 import { useStrategyProviders } from '@/service/use-strategy'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
 import type { DataSet } from '@/models/datasets'
@@ -70,6 +73,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const workflowTools = useStore(s => s.workflowTools)
   const dataSourceList = useStore(s => s.dataSourceList)
   const { data: strategyProviders } = useStrategyProviders()
+  const { data: triggerPlugins } = useAllTriggerPlugins()
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
   const getToolIcon = useGetToolIcon()
 
@@ -107,6 +111,9 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
       if (node.data.type === BlockEnum.DataSource)
         moreDataForCheckValid = getDataSourceCheckParams(node.data as DataSourceNodeType, dataSourceList || [], language)
+
+      if (node.data.type === BlockEnum.TriggerPlugin)
+        moreDataForCheckValid = getTriggerCheckParams(node.data as PluginTriggerNodeType, triggerPlugins, language)
 
       const toolIcon = getToolIcon(node.data)
       if (node.data.type === BlockEnum.Agent) {
