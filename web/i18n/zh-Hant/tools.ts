@@ -243,6 +243,10 @@ const translation = {
       },
       publishTip: '應用程式尚未發布。請先發布應用程式。',
     },
+    toolItem: {
+      parameters: '參數',
+      noDescription: '無描述',
+    },
   },
   allTools: '所有工具',
 }
