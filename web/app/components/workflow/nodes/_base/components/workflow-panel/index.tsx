@@ -111,6 +111,13 @@ const BasePanel: FC<BasePanelProps> = ({
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const otherPanelWidth = useStore(s => s.otherPanelWidth)
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
+  const {
+    pendingSingleRun,
+    setPendingSingleRun,
+  } = useStore(s => ({
+    pendingSingleRun: s.pendingSingleRun,
+    setPendingSingleRun: s.setPendingSingleRun,
+  }))
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
@@ -255,6 +262,18 @@ const BasePanel: FC<BasePanelProps> = ({
   useEffect(() => {
     setIsPaused(false)
   }, [tabType])
+
+  useEffect(() => {
+    if (!pendingSingleRun || pendingSingleRun.nodeId !== id)
+      return
+
+    if (pendingSingleRun.action === 'run')
+      handleSingleRun()
+    else
+      handleStop()
+
+    setPendingSingleRun(undefined)
+  }, [pendingSingleRun, id, handleSingleRun, handleStop, setPendingSingleRun])
 
   const logParams = useLogs()
   const passedLogParams = (() => {
