@@ -19,10 +19,15 @@ class MockUser(UserMixin):
         return self._is_authenticated
 
 
+def mock_csrf_check(*args, **kwargs):
+    return
+
+
 class TestLoginRequired:
     """Test cases for login_required decorator."""
 
     @pytest.fixture
+    @patch("libs.login.check_csrf_token", mock_csrf_check)
     def setup_app(self, app: Flask):
         """Set up Flask app with login manager."""
         # Initialize login manager
@@ -39,6 +44,7 @@ class TestLoginRequired:
 
         return app
 
+    @patch("libs.login.check_csrf_token", mock_csrf_check)
     def test_authenticated_user_can_access_protected_view(self, setup_app: Flask):
         """Test that authenticated users can access protected views."""
 
@@ -53,6 +59,7 @@ class TestLoginRequired:
                 result = protected_view()
                 assert result == "Protected content"
 
+    @patch("libs.login.check_csrf_token", mock_csrf_check)
     def test_unauthenticated_user_cannot_access_protected_view(self, setup_app: Flask):
         """Test that unauthenticated users are redirected."""
 
@@ -68,6 +75,7 @@ class TestLoginRequired:
                 assert result == "Unauthorized"
                 setup_app.login_manager.unauthorized.assert_called_once()
 
+    @patch("libs.login.check_csrf_token", mock_csrf_check)
     def test_login_disabled_allows_unauthenticated_access(self, setup_app: Flask):
         """Test that LOGIN_DISABLED config bypasses authentication."""
 
@@ -87,6 +95,7 @@ class TestLoginRequired:
                     # Ensure unauthorized was not called
                     setup_app.login_manager.unauthorized.assert_not_called()
 
+    @patch("libs.login.check_csrf_token", mock_csrf_check)
     def test_options_request_bypasses_authentication(self, setup_app: Flask):
         """Test that OPTIONS requests are exempt from authentication."""
 
@@ -103,6 +112,7 @@ class TestLoginRequired:
                 # Ensure unauthorized was not called
                 setup_app.login_manager.unauthorized.assert_not_called()
 
+    @patch("libs.login.check_csrf_token", mock_csrf_check)
     def test_flask_2_compatibility(self, setup_app: Flask):
         """Test Flask 2.x compatibility with ensure_sync."""
 
@@ -120,6 +130,7 @@ class TestLoginRequired:
                 assert result == "Synced content"
                 setup_app.ensure_sync.assert_called_once()
 
+    @patch("libs.login.check_csrf_token", mock_csrf_check)
     def test_flask_1_compatibility(self, setup_app: Flask):
         """Test Flask 1.x compatibility without ensure_sync."""
 

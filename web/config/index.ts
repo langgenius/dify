@@ -144,6 +144,17 @@ export const getMaxToken = (modelId: string) => {
 
 export const LOCALE_COOKIE_NAME = 'locale'
 
+export const CSRF_COOKIE_NAME = () => {
+  const isSecure = API_PREFIX.startsWith('https://')
+  return isSecure ? '__Host-csrf_token' : 'csrf_token'
+}
+export const CSRF_HEADER_NAME = 'X-CSRF-Token'
+export const ACCESS_TOKEN_LOCAL_STORAGE_NAME = 'access_token'
+export const PASSPORT_LOCAL_STORAGE_NAME = (appCode: string) => `passport-${appCode}`
+export const PASSPORT_HEADER_NAME = 'X-App-Passport'
+
+export const WEB_APP_SHARE_CODE_HEADER_NAME = 'X-App-Code'
+
 export const DEFAULT_VALUE_MAX_LEN = 48
 export const DEFAULT_PARAGRAPH_VALUE_MAX_LEN = 1000
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { EditionType, VarType } from '../../types'
 import type { Memory, PromptItem, ValueSelector, Var, Variable } from '../../types'
 import { useStore } from '../../store'
@@ -23,7 +23,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
 
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<LLMNodeType>(id, payload)
   const inputRef = useRef(inputs)

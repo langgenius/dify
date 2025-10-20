@@ -3,7 +3,7 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import produce from 'immer'
+import { produce } from 'immer'
 import { v4 as uuidV4 } from 'uuid'
 import { usePathname } from 'next/navigation'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -168,6 +168,9 @@ export const useWorkflowRun = () => {
     } = workflowStore.getState()
     setWorkflowRunningData({
       result: {
+        inputs_truncated: false,
+        process_data_truncated: false,
+        outputs_truncated: false,
         status: WorkflowRunningStatus.Running,
       },
       tracing: [],

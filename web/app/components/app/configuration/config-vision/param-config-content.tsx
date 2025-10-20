@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { Resolution, TransferMethod } from '@/types/app'
 import ParamItem from '@/app/components/base/param-item'

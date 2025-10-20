@@ -344,6 +344,7 @@ const translation = {
     moveToThisNode: '定位至此节点',
     maximize: '最大化画布',
     minimize: '退出最大化',
+    optional_and_hidden: '（选填 & 隐藏）',
   },
   nodes: {
     common: {

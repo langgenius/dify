@@ -117,6 +117,8 @@ const Answer: FC<AnswerProps> = ({
     }
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
+  const contentIsEmpty = content.trim() === ''
+
   return (
     <div className='mb-2 flex last:mb-0'>
       {!hideAvatar && (
@@ -161,14 +163,14 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              responding && !content && !hasAgentThoughts && (
+              responding && contentIsEmpty && !hasAgentThoughts && (
                 <div className='flex h-5 w-6 items-center justify-center'>
                   <LoadingAnim type='text' />
                 </div>
               )
             }
             {
-              content && !hasAgentThoughts && (
+              !contentIsEmpty && !hasAgentThoughts && (
                 <BasicContent item={item} />
               )
             }
