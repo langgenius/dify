@@ -135,7 +135,7 @@ Here are the chat histories between human and assistant, inside <histories></his
 ### Instructions:
 Some extra information are provided below, you should always follow the instructions as possible as you can.
 <instructions>
-{{instructions}}
+{instructions}
 </instructions>
 """
 
