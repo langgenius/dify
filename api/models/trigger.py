@@ -2,6 +2,7 @@ import json
 import time
 from collections.abc import Mapping
 from datetime import datetime
+from functools import cached_property
 from typing import Any, Optional, cast
 
 import sqlalchemy as sa
@@ -11,7 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import Subscription
-from core.trigger.utils.endpoint import parse_endpoint_id
+from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url, generate_webhook_trigger_endpoint
 from libs.datetime_utils import naive_utc_now
 from models.base import Base
 from models.engine import db
@@ -77,7 +78,7 @@ class TriggerSubscription(Base):
     def to_entity(self) -> Subscription:
         return Subscription(
             expires_at=self.expires_at,
-            endpoint=parse_endpoint_id(self.endpoint_id),
+            endpoint=generate_plugin_trigger_endpoint_url(self.endpoint_id),
             parameters=self.parameters,
             properties=self.properties,
         )
@@ -87,7 +88,7 @@ class TriggerSubscription(Base):
             id=self.id,
             name=self.name,
             provider=self.provider_id,
-            endpoint=parse_endpoint_id(self.endpoint_id),
+            endpoint=generate_plugin_trigger_endpoint_url(self.endpoint_id),
             parameters=self.parameters,
             properties=self.properties,
             credential_type=CredentialType(self.credential_type),
@@ -292,6 +293,20 @@ class WorkflowWebhookTrigger(Base):
         server_default=func.current_timestamp(),
         server_onupdate=func.current_timestamp(),
     )
+
+    @cached_property
+    def webhook_url(self):
+        """
+        Generated webhook url
+        """
+        return generate_webhook_trigger_endpoint(self.webhook_id)
+
+    @cached_property
+    def webhook_debug_url(self):
+        """
+        Generated debug webhook url
+        """
+        return generate_webhook_trigger_endpoint(self.webhook_id, True)
 
 
 class WorkflowPluginTrigger(Base):

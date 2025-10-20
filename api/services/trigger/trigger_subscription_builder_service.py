@@ -22,7 +22,7 @@ from core.trigger.entities.entities import (
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import masked_credentials
-from core.trigger.utils.endpoint import parse_endpoint_id
+from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from extensions.ext_redis import redis_client
 from models.provider_ids import TriggerProviderID
 from services.trigger.trigger_provider_service import TriggerProviderService
@@ -144,7 +144,7 @@ class TriggerSubscriptionBuilderService:
                     tenant_id=tenant_id,
                     user_id=user_id,
                     provider_id=provider_id,
-                    endpoint=parse_endpoint_id(subscription_builder.endpoint_id),
+                    endpoint=generate_plugin_trigger_endpoint_url(subscription_builder.endpoint_id),
                     parameters=subscription_builder.parameters,
                     credentials=subscription_builder.credentials,
                     credential_type=credential_type,
@@ -344,7 +344,7 @@ class TriggerSubscriptionBuilderService:
                     tenant_id=tenant_id,
                     user_id=user_id,
                     provider_id=provider_id,
-                    endpoint=parse_endpoint_id(subscription_builder.endpoint_id),
+                    endpoint=generate_plugin_trigger_endpoint_url(subscription_builder.endpoint_id),
                     parameters=subscription_builder.parameters,
                     credentials=subscription_builder.credentials,
                     credential_type=credential_type,
@@ -378,7 +378,7 @@ class TriggerSubscriptionBuilderService:
             id=entity.id,
             name=entity.name or "",
             provider=entity.provider_id,
-            endpoint=parse_endpoint_id(entity.endpoint_id),
+            endpoint=generate_plugin_trigger_endpoint_url(entity.endpoint_id),
             parameters=entity.parameters,
             properties=entity.properties,
             credential_type=credential_type,

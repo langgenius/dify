@@ -274,6 +274,8 @@ class EndpointConfig(BaseSettings):
         description="Template url for endpoint plugin", default="http://localhost:5002/e/{hook_id}"
     )
 
+    TRIGGER_URL: str = Field(description="Template url for triggers", default="http://localhost:5001")
+
 
 class FileAccessConfig(BaseSettings):
     """

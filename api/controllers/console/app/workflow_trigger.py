@@ -49,11 +49,6 @@ class WebhookTriggerApi(Resource):
             if not webhook_trigger:
                 raise NotFound("Webhook trigger not found for this node")
 
-            # Add computed fields for marshal_with
-            base_url = dify_config.SERVICE_API_URL
-            webhook_trigger.webhook_url = f"{base_url}/triggers/webhook/{webhook_trigger.webhook_id}"  # type: ignore
-            webhook_trigger.webhook_debug_url = f"{base_url}/triggers/webhook-debug/{webhook_trigger.webhook_id}"  # type: ignore
-
             return webhook_trigger
 
 
