@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import React, { useCallback, useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { Authorization as AuthorizationPayloadType } from '../../types'
 import { APIType, AuthorizationType } from '../../types'
 import RadioGroup from './radio-group'
