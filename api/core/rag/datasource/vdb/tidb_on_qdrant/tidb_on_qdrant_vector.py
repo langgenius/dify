@@ -413,6 +413,36 @@ class TidbOnQdrantVector(BaseVector):
 
 class TidbOnQdrantVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TidbOnQdrantVector:
+        if dify_config.TIDB_ON_QDRANT_MULTI_TENANT_ENABLED:
+            tidb_on_qdrant_api_key = self._get_tenant_api_key(dataset)
+        else:
+            tidb_on_qdrant_api_key = dify_config.TIDB_ON_QDRANT_API_KEY
+
+        if dataset.index_struct_dict:
+            class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
+            collection_name = class_prefix
+        else:
+            dataset_id = dataset.id
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.TIDB_ON_QDRANT, collection_name))
+
+        config = current_app.config
+
+        return TidbOnQdrantVector(
+            collection_name=collection_name,
+            group_id=dataset.id,
+            config=TidbOnQdrantConfig(
+                endpoint=dify_config.TIDB_ON_QDRANT_URL or "",
+                api_key=tidb_on_qdrant_api_key,
+                root_path=str(config.root_path),
+                timeout=dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT,
+                grpc_port=dify_config.TIDB_ON_QDRANT_GRPC_PORT,
+                prefer_grpc=dify_config.TIDB_ON_QDRANT_GRPC_ENABLED,
+                replication_factor=dify_config.QDRANT_REPLICATION_FACTOR,
+            ),
+        )
+
+    def _get_tenant_api_key(self, dataset: Dataset) -> str:
         stmt = select(TidbAuthBinding).where(TidbAuthBinding.tenant_id == dataset.tenant_id)
         tidb_auth_binding = db.session.scalars(stmt).one_or_none()
         if not tidb_auth_binding:
@@ -420,8 +450,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                 stmt = select(TidbAuthBinding).where(TidbAuthBinding.tenant_id == dataset.tenant_id)
                 tidb_auth_binding = db.session.scalars(stmt).one_or_none()
                 if tidb_auth_binding:
-                    TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
-
+                    return f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
                 else:
                     idle_tidb_auth_binding = (
                         db.session.query(TidbAuthBinding)
@@ -433,7 +462,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                         idle_tidb_auth_binding.active = True
                         idle_tidb_auth_binding.tenant_id = dataset.tenant_id
                         db.session.commit()
-                        TIDB_ON_QDRANT_API_KEY = f"{idle_tidb_auth_binding.account}:{idle_tidb_auth_binding.password}"
+                        return f"{idle_tidb_auth_binding.account}:{idle_tidb_auth_binding.password}"
                     else:
                         new_cluster = TidbService.create_tidb_serverless_cluster(
                             dify_config.TIDB_PROJECT_ID or "",
@@ -454,33 +483,9 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                         )
                         db.session.add(new_tidb_auth_binding)
                         db.session.commit()
-                        TIDB_ON_QDRANT_API_KEY = f"{new_tidb_auth_binding.account}:{new_tidb_auth_binding.password}"
+                        return f"{new_tidb_auth_binding.account}:{new_tidb_auth_binding.password}"
         else:
-            TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
-
-        if dataset.index_struct_dict:
-            class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
-            collection_name = class_prefix
-        else:
-            dataset_id = dataset.id
-            collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.TIDB_ON_QDRANT, collection_name))
-
-        config = current_app.config
-
-        return TidbOnQdrantVector(
-            collection_name=collection_name,
-            group_id=dataset.id,
-            config=TidbOnQdrantConfig(
-                endpoint=dify_config.TIDB_ON_QDRANT_URL or "",
-                api_key=TIDB_ON_QDRANT_API_KEY,
-                root_path=str(config.root_path),
-                timeout=dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT,
-                grpc_port=dify_config.TIDB_ON_QDRANT_GRPC_PORT,
-                prefer_grpc=dify_config.TIDB_ON_QDRANT_GRPC_ENABLED,
-                replication_factor=dify_config.QDRANT_REPLICATION_FACTOR,
-            ),
-        )
+            return f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
 
     def create_tidb_serverless_cluster(self, tidb_config: TidbConfig, display_name: str, region: str):
         """

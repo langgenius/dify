@@ -17,6 +17,11 @@ class TidbOnQdrantConfig(BaseSettings):
         default=None,
     )
 
+    TIDB_ON_QDRANT_MULTI_TENANT_ENABLED: bool = Field(
+        description="Whether to enable multi-tenant mode for Tidb on Qdrant",
+        default=True,
+    )
+
     TIDB_ON_QDRANT_CLIENT_TIMEOUT: NonNegativeInt = Field(
         description="Tidb on Qdrant client timeout in seconds",
         default=20,
