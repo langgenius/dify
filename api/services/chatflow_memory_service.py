@@ -22,7 +22,7 @@ from core.memory.errors import MemorySyncTimeoutError
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.variables.segments import VersionedMemoryValue
 from core.workflow.constants import MEMORY_BLOCK_VARIABLE_NODE_ID
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.runtime import VariablePool
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models import App, CreatorUserRole

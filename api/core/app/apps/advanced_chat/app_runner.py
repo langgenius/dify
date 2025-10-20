@@ -26,7 +26,7 @@ from core.model_runtime.entities import AssistantPromptMessage, UserPromptMessag
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.variables.variables import VariableUnion
-from core.workflow.entities import WorkflowType
+from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_events import GraphRunSucceededEvent
 from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer

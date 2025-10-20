@@ -3,7 +3,7 @@ from flask_restx import Resource, reqparse
 from controllers.service_api import api
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.memory.entities import MemoryBlock, MemoryCreatedBy
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.runtime import VariablePool
 from models import App, EndUser
 from services.chatflow_memory_service import ChatflowMemoryService
 from services.workflow_service import WorkflowService
