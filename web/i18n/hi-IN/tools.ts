@@ -248,6 +248,10 @@ const translation = {
       },
       publishTip: 'ऐप प्रकाशित नहीं हुआ। कृपया पहले ऐप प्रकाशित करें।',
     },
+    toolItem: {
+      parameters: 'पैरामीटर',
+      noDescription: 'कोई वर्णन नहीं',
+    },
   },
   allTools: 'सभी उपकरण',
 }

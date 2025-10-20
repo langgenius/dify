@@ -243,6 +243,10 @@ const translation = {
       },
       publishTip: 'แอปไม่ถูกเผยแพร่ กรุณาเผยแพร่แอปก่อน',
     },
+    toolItem: {
+      noDescription: 'ไม่มีคำอธิบาย',
+      parameters: 'พารามิเตอร์',
+    },
   },
   allTools: 'เครื่องมือทั้งหมด',
 }
