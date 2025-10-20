@@ -479,8 +479,9 @@ class TriggerOAuthClientManageApi(Resource):
             return jsonable_encoder(
                 {
                     "configured": bool(custom_params or system_client),
-                    "oauth_client_schema": provider_controller.get_oauth_client_schema(),
+                    "system_configured": bool(system_client),
                     "custom_configured": bool(custom_params),
+                    "oauth_client_schema": provider_controller.get_oauth_client_schema(),
                     "custom_enabled": is_custom_enabled,
                     "redirect_uri": redirect_uri,
                     "params": custom_params or {},
