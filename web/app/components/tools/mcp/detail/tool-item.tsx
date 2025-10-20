@@ -6,6 +6,7 @@ import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   tool: Tool
@@ -16,19 +17,20 @@ const MCPToolItem = ({
 }: Props) => {
   const { locale } = useContext(I18n)
   const language = getLanguage(locale)
+  const { t } = useTranslation()
 
   const renderParameters = () => {
-    const parameters = tool.parameters || []
+    const parameters = tool.parameters
 
     if (parameters.length === 0)
       return null
 
     return (
       <div className='mt-2'>
-        <div className='title-xs-semi-bold mb-1 text-text-primary'>Parameters:</div>
+        <div className='title-xs-semi-bold mb-1 text-text-primary'>{t('tools.mcp.toolItem.parameters')}:</div>
         <ul className='space-y-1'>
           {parameters.map((parameter) => {
-            const descriptionContent = parameter.human_description[language] || 'No Description'
+            const descriptionContent = parameter.human_description[language] || t('tools.mcp.toolItem.noDescription')
             return (
               <li key={parameter.name} className='pl-2'>
                 <span className='system-xs-regular font-bold text-text-secondary'>{parameter.name}</span>
