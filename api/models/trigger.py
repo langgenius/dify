@@ -196,12 +196,14 @@ class WorkflowTriggerLog(Base):
     workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     root_node_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    trigger_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    trigger_type: Mapped[str] = mapped_column(EnumText(AppTriggerType, length=50), nullable=False)
     trigger_data: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Full TriggerData as JSON
     inputs: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Just inputs for easy viewing
     outputs: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
 
-    status: Mapped[str] = mapped_column(String(50), nullable=False, default=WorkflowTriggerStatus.PENDING)
+    status: Mapped[str] = mapped_column(
+        EnumText(WorkflowTriggerStatus, length=50), nullable=False, default=WorkflowTriggerStatus.PENDING
+    )
     error: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
 
     queue_name: Mapped[str] = mapped_column(String(100), nullable=False)
