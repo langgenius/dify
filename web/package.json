@@ -81,7 +81,7 @@
     "elkjs": "^0.9.3",
     "emoji-mart": "^5.5.2",
     "fast-deep-equal": "^3.1.3",
-    "html-to-image": "1.11.11",
+    "html-to-image": "1.11.13",
     "i18next": "^23.16.4",
     "i18next-resources-to-backend": "^1.2.1",
     "immer": "^9.0.19",
