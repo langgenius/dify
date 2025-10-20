@@ -18,7 +18,7 @@ from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.logstore.aliyun_logstore import AliyunLogStore
