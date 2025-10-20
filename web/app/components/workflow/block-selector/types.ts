@@ -269,7 +269,9 @@ export type TriggerOAuthConfig = {
   params: {
     client_id: string
     client_secret: string
+    [key: string]: any
   }
+  system_configured: boolean
 }
 
 export type TriggerOAuthClientParams = {

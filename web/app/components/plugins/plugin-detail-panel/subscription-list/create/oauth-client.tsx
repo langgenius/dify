@@ -1,6 +1,6 @@
 'use client'
 import Button from '@/app/components/base/button'
-import Form from '@/app/components/base/form/form-scenarios/auth'
+import { BaseForm } from '@/app/components/base/form/components/base'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import Modal from '@/app/components/base/modal/modal'
 import Toast from '@/app/components/base/toast'
@@ -18,7 +18,7 @@ import {
   RiClipboardLine,
   RiInformation2Fill,
 } from '@remixicon/react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePluginStore } from '../store'
 
@@ -42,14 +42,24 @@ enum ClientTypeEnum {
 export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreateModal }: Props) => {
   const { t } = useTranslation()
   const detail = usePluginStore(state => state.detail)
+  const { configured, custom_enabled, system_configured, params } = oauthConfig || {}
   const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>()
   const [authorizationStatus, setAuthorizationStatus] = useState<AuthorizationStatusEnum>()
 
-  const [clientType, setClientType] = useState<ClientTypeEnum>(oauthConfig?.custom_enabled ? ClientTypeEnum.Custom : ClientTypeEnum.Default)
+  const [clientType, setClientType] = useState<ClientTypeEnum>(((configured && !custom_enabled) || (!configured && system_configured)) ? ClientTypeEnum.Default : ClientTypeEnum.Custom)
 
   const clientFormRef = React.useRef<FormRefObject>(null)
 
-  const oauthClientSchema = detail?.declaration.trigger?.subscription_constructor?.oauth_schema?.client_schema || []
+  const oauthClientSchema = useMemo(() => {
+    const clientSchema = detail?.declaration.trigger?.subscription_constructor?.oauth_schema?.client_schema || []
+    const oauthConfigPramaKeys = Object.keys(params || {})
+    for (const schema of clientSchema) {
+      if (oauthConfigPramaKeys.includes(schema.name))
+        schema.default = params?.[schema.name]
+    }
+    return clientSchema
+  }, [detail, params])
+
   const providerName = detail?.provider || ''
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
   const { mutate: verifyBuilder } = useVerifyTriggerSubscriptionBuilder()
@@ -192,7 +202,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
       }
     >
       <div className='system-sm-medium mb-2 text-text-secondary'>{t('pluginTrigger.subscription.addType.options.oauth.clientTitle')}</div>
-      <div className='mb-4 flex w-full items-start justify-between gap-2'>
+      {oauthConfig?.system_configured && <div className='mb-4 flex w-full items-start justify-between gap-2'>
         {[ClientTypeEnum.Default, ClientTypeEnum.Custom].map(option => (
           <OptionCard
             key={option}
@@ -202,7 +212,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
             className="flex-1"
           />
         ))}
-      </div>
+      </div>}
       {clientType === ClientTypeEnum.Custom && oauthConfig?.redirect_uri && (
         <div className='mb-4 flex items-start gap-3 rounded-xl bg-background-section-burn p-4'>
           <div className='rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg p-2 shadow-xs shadow-shadow-shadow-3'>
@@ -232,10 +242,11 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
         </div>
       )}
       {clientType === ClientTypeEnum.Custom && oauthClientSchema.length > 0 && (
-        <Form
+        <BaseForm
           formSchemas={oauthClientSchema}
           ref={clientFormRef}
-          defaultValues={oauthConfig?.params}
+          labelClassName='system-sm-medium mb-2 block text-text-secondary'
+          formClassName='space-y-4'
         />
       )}
     </Modal >
