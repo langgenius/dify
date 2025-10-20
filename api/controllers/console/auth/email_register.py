@@ -31,9 +31,11 @@ class EmailRegisterSendEmailApi(Resource):
     @email_password_login_enabled
     @email_register_enabled
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("language", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=email, required=True, location="json")
+            .add_argument("language", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         ip_address = extract_remote_ip(request)
@@ -59,10 +61,12 @@ class EmailRegisterCheckApi(Resource):
     @email_password_login_enabled
     @email_register_enabled
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=str, required=True, location="json")
-        parser.add_argument("code", type=str, required=True, location="json")
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=str, required=True, location="json")
+            .add_argument("code", type=str, required=True, location="json")
+            .add_argument("token", type=str, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         user_email = args["email"]
@@ -100,10 +104,12 @@ class EmailRegisterResetApi(Resource):
     @email_password_login_enabled
     @email_register_enabled
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("new_password", type=valid_password, required=True, nullable=False, location="json")
-        parser.add_argument("password_confirm", type=valid_password, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("token", type=str, required=True, nullable=False, location="json")
+            .add_argument("new_password", type=valid_password, required=True, nullable=False, location="json")
+            .add_argument("password_confirm", type=valid_password, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         # Validate passwords match

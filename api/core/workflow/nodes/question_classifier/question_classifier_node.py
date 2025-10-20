@@ -41,7 +41,7 @@ from .template_prompts import (
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.entities import GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 
 class QuestionClassifierNode(Node):

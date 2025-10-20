@@ -69,11 +69,13 @@ class SetupApi(Resource):
         if not get_init_validate_status():
             raise NotInitValidateError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("name", type=StrLen(30), required=True, location="json")
-        parser.add_argument("password", type=valid_password, required=True, location="json")
-        parser.add_argument("language", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=email, required=True, location="json")
+            .add_argument("name", type=StrLen(30), required=True, location="json")
+            .add_argument("password", type=valid_password, required=True, location="json")
+            .add_argument("language", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         # setup

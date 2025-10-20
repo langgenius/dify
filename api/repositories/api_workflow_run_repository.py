@@ -59,6 +59,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         triggered_from: str,
         limit: int = 20,
         last_id: str | None = None,
+        status: str | None = None,
     ) -> InfiniteScrollPagination:
         """
         Get paginated workflow runs with filtering.
@@ -73,6 +74,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
             triggered_from: Filter by trigger source (e.g., "debugging", "app-run")
             limit: Maximum number of records to return (default: 20)
             last_id: Cursor for pagination - ID of the last record from previous page
+            status: Optional filter by status (e.g., "running", "succeeded", "failed")
 
         Returns:
             InfiniteScrollPagination object containing:
@@ -104,6 +106,43 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
 
         Returns:
             WorkflowRun object if found, None otherwise
+        """
+        ...
+
+    def get_workflow_runs_count(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        status: str | None = None,
+        time_range: str | None = None,
+    ) -> dict[str, int]:
+        """
+        Get workflow runs count statistics.
+
+        Retrieves total count and count by status for workflow runs
+        matching the specified filters.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            app_id: Application identifier
+            triggered_from: Filter by trigger source (e.g., "debugging", "app-run")
+            status: Optional filter by specific status
+            time_range: Optional time range filter (e.g., "7d", "4h", "30m", "30s")
+                       Filters records based on created_at field
+
+        Returns:
+            Dictionary containing:
+            - total: Total count of all workflow runs (or filtered by status)
+            - running: Count of workflow runs with status "running"
+            - succeeded: Count of workflow runs with status "succeeded"
+            - failed: Count of workflow runs with status "failed"
+            - stopped: Count of workflow runs with status "stopped"
+            - partial_succeeded: Count of workflow runs with status "partial-succeeded"
+
+            Note: If a status is provided, 'total' will be the count for that status,
+            and the specific status count will also be set to this value, with all
+            other status counts being 0.
         """
         ...
 
