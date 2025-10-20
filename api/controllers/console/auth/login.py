@@ -25,12 +25,13 @@ from controllers.console.wraps import email_password_login_enabled, setup_requir
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
 from libs.login import current_account_with_tenant
+from libs.passport import PassportService
 from libs.token import (
+    check_csrf_token,
     clear_access_token_from_cookie,
     clear_csrf_token_from_cookie,
     clear_refresh_token_from_cookie,
     extract_access_token,
-    extract_csrf_token,
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
@@ -294,5 +295,10 @@ class RefreshTokenApi(Resource):
 class LoginStatus(Resource):
     def get(self):
         token = extract_access_token(request)
-        csrf_token = extract_csrf_token(request)
-        return {"logged_in": bool(token) and bool(csrf_token)}
+        res = True
+        try:
+            validated = PassportService().verify(token=token)
+            check_csrf_token(request=request, user_id=validated.get("user_id"))
+        except:
+            res = False
+        return {"logged_in": res}
