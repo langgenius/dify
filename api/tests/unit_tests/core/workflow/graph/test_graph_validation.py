@@ -22,6 +22,10 @@ class _TestNode(Node):
     node_type = NodeType.ANSWER
     execution_type = NodeExecutionType.EXECUTABLE
 
+    @classmethod
+    def version(cls) -> str:
+        return "test"
+
     def __init__(
         self,
         *,
