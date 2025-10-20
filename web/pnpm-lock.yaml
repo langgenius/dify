@@ -80,8 +80,8 @@ importers:
         specifier: ^0.36.2
         version: 0.36.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(yjs@13.6.27)
       '@lexical/selection':
-        specifier: ^0.36.2
-        version: 0.36.2
+        specifier: ^0.37.0
+        version: 0.37.0
       '@lexical/text':
         specifier: ^0.36.2
         version: 0.36.2
