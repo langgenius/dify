@@ -79,7 +79,7 @@ class VariableTruncator:
         self,
         string_length_limit=5000,
         array_element_limit: int = 20,
-        max_size_bytes: int = 1024_000,  # 1000KB
+        max_size_bytes: int = 1024_000,  # 1000 KiB
     ):
         if string_length_limit <= 3:
             raise ValueError("string_length_limit should be greater than 3.")
