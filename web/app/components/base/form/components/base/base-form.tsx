@@ -139,8 +139,8 @@ const BaseForm = ({
         <BaseField
           field={field}
           formSchema={formSchema}
-          fieldClassName={fieldClassName}
-          labelClassName={labelClassName}
+          fieldClassName={fieldClassName ?? formSchema.fieldClassName}
+          labelClassName={labelClassName ?? formSchema.labelClassName}
           inputContainerClassName={inputContainerClassName}
           inputClassName={inputClassName}
           disabled={disabled}

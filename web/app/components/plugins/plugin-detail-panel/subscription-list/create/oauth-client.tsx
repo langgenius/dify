@@ -51,13 +51,16 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
   const clientFormRef = React.useRef<FormRefObject>(null)
 
   const oauthClientSchema = useMemo(() => {
-    const clientSchema = detail?.declaration.trigger?.subscription_constructor?.oauth_schema?.client_schema || []
-    const oauthConfigPramaKeys = Object.keys(params || {})
-    for (const schema of clientSchema) {
-      if (oauthConfigPramaKeys.includes(schema.name))
-        schema.default = params?.[schema.name]
+    if (detail && params) {
+      const clientSchema = detail?.declaration.trigger?.subscription_constructor?.oauth_schema?.client_schema || []
+      const oauthConfigPramaKeys = Object.keys(params || {})
+      for (const schema of clientSchema) {
+        if (oauthConfigPramaKeys.includes(schema.name))
+          schema.default = params?.[schema.name]
+      }
+      return clientSchema
     }
-    return clientSchema
+    return []
   }, [detail, params])
 
   const providerName = detail?.provider || ''

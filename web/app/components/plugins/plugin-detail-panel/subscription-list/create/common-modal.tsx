@@ -423,6 +423,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
                   parameter: schema.name,
                   credential_id: subscriptionBuilder?.id || '',
                 } : undefined,
+                fieldClassName: schema.type === FormTypeEnum.boolean ? 'flex items-center justify-between' : undefined,
               }
             })}
             ref={autoCommonParametersFormRef}

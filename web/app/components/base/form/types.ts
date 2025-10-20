@@ -68,6 +68,7 @@ export type FormSchema = {
   placeholder?: string | TypeWithI18N | Record<Locale, string>
   options?: FormOption[]
   labelClassName?: string
+  fieldClassName?: string
   validators?: AnyValidators
   showRadioUI?: boolean
   disabled?: boolean
