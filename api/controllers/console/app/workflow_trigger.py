@@ -13,7 +13,7 @@ from extensions.ext_database import db
 from fields.workflow_trigger_fields import trigger_fields, triggers_list_fields, webhook_trigger_fields
 from libs.login import current_user, login_required
 from models.enums import AppTriggerStatus
-from models.model import Account, AppMode
+from models.model import Account, App, AppMode
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 
 logger = logging.getLogger(__name__)
@@ -27,19 +27,19 @@ class WebhookTriggerApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.WORKFLOW)
     @marshal_with(webhook_trigger_fields)
-    def get(self, app_model):
+    def get(self, app_model: App):
         """Get webhook trigger for a node"""
         parser = reqparse.RequestParser()
         parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
         args = parser.parse_args()
 
-        node_id = args["node_id"]
+        node_id = str(args.get["node_id"])
 
         with Session(db.engine) as session:
             # Get webhook trigger for this app and node
             webhook_trigger = (
                 session.query(WorkflowWebhookTrigger)
-                .filter(
+                .where(
                     WorkflowWebhookTrigger.app_id == app_model.id,
                     WorkflowWebhookTrigger.node_id == node_id,
                 )
@@ -60,7 +60,7 @@ class AppTriggersApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.WORKFLOW)
     @marshal_with(triggers_list_fields)
-    def get(self, app_model):
+    def get(self, app_model: App):
         """Get app triggers list"""
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
@@ -97,7 +97,7 @@ class AppTriggerEnableApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.WORKFLOW)
     @marshal_with(trigger_fields)
-    def post(self, app_model):
+    def post(self, app_model: App):
         """Update app trigger (enable/disable)"""
         parser = reqparse.RequestParser()
         parser.add_argument("trigger_id", type=str, required=True, nullable=False, location="json")
