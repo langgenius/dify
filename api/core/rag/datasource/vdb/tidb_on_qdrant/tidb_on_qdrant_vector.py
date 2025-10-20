@@ -413,6 +413,7 @@ class TidbOnQdrantVector(BaseVector):
 
 class TidbOnQdrantVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TidbOnQdrantVector:
+        tidb_on_qdrant_api_key: str | None
         if dify_config.TIDB_ON_QDRANT_MULTI_TENANT_ENABLED:
             tidb_on_qdrant_api_key = self._get_tenant_api_key(dataset)
         else:
