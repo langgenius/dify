@@ -243,6 +243,10 @@ const translation = {
       },
       publishTip: '앱이 게시되지 않았습니다. 먼저 앱을 게시하십시오.',
     },
+    toolItem: {
+      noDescription: '설명 없음',
+      parameters: '매개변수',
+    },
   },
   allTools: '모든 도구',
 }
