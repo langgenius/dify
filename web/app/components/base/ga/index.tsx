@@ -18,7 +18,6 @@ export type IGAProps = {
   gaType: GaType
 }
 
-// 从 CSP header 中提取 nonce
 const extractNonceFromCSP = (cspHeader: string | null): string | undefined => {
   if (!cspHeader)
     return undefined
@@ -32,15 +31,10 @@ const GA: FC<IGAProps> = ({
   if (IS_CE_EDITION)
     return null
 
-  // 从 CSP header 中提取 nonce，而不是直接读取 x-nonce
   const cspHeader = process.env.NODE_ENV === 'production'
     ? (headers() as unknown as UnsafeUnwrappedHeaders).get('content-security-policy')
     : null
   const nonce = extractNonceFromCSP(cspHeader)
-
-  // 服务端日志：验证 nonce 提取
-  if (typeof window === 'undefined')
-    console.log('[GA SSR] CSP header:', cspHeader ? 'exists' : 'MISSING', '| nonce:', nonce ? `extracted (${nonce.substring(0, 10)}...)` : 'NOT FOUND')
 
   return (
     <>
