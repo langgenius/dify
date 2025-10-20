@@ -57,36 +57,44 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
   const editAlignTop = showEdit && inputType === 'textarea'
   const readAlignTop = !showEdit && textNeedWrap
 
+  const renderContent = () => {
+    if (!showEdit)
+      return displayedValue
+
+    if (inputType === 'select') {
+      return <SimpleSelect
+        onSelect={({ value }) => onUpdate?.(value as string)}
+        items={selectOptions}
+        defaultValue={value}
+        className={s.select}
+        wrapperClassName={s.selectWrapper}
+        placeholder={`${t('datasetDocuments.metadata.placeholder.select')}${label}`}
+      />
+    }
+
+    if (inputType === 'textarea') {
+      return <AutoHeightTextarea
+        onChange={e => onUpdate?.(e.target.value)}
+        value={value}
+        className={s.textArea}
+        placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
+      />
+    }
+
+    return <Input
+      onChange={e => onUpdate?.(e.target.value)}
+      value={value}
+      defaultValue={defaultValue}
+      placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
+    />
+  }
+
   return (
     <div className={cn('flex min-h-5 items-center gap-1 py-0.5 text-xs', editAlignTop && '!items-start', readAlignTop && '!items-start pt-1')}>
       <div className={cn('w-[200px] shrink-0 overflow-hidden text-ellipsis whitespace-nowrap text-text-tertiary', editAlignTop && 'pt-1')}>{label}</div>
       <div className="flex grow items-center gap-1 text-text-secondary">
         {valueIcon}
-        {!showEdit
-          ? displayedValue
-          : inputType === 'select'
-            ? <SimpleSelect
-              onSelect={({ value }) => onUpdate?.(value as string)}
-              items={selectOptions}
-              defaultValue={value}
-              className={s.select}
-              wrapperClassName={s.selectWrapper}
-              placeholder={`${t('datasetDocuments.metadata.placeholder.select')}${label}`}
-            />
-            : inputType === 'textarea'
-              ? <AutoHeightTextarea
-                onChange={e => onUpdate?.(e.target.value)}
-                value={value}
-                className={s.textArea}
-                placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
-              />
-              : <Input
-                onChange={e => onUpdate?.(e.target.value)}
-                value={value}
-                defaultValue={defaultValue}
-                placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
-              />
-        }
+        {renderContent()}
       </div>
     </div>
   )
