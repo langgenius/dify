@@ -65,12 +65,9 @@ class ApiBasedToolSchemaParser:
                     # Handle complex type defaults that are not supported by PluginParameter
                     default_value = None
                     if "schema" in parameter and "default" in parameter["schema"]:
-                        default_raw = parameter["schema"]["default"]
-                        # For complex types (list, dict), set default to None to avoid validation errors
-                        if isinstance(default_raw, (list, dict)):
-                            default_value = None
-                        else:
-                            default_value = default_raw
+                        default_value = ApiBasedToolSchemaParser._sanitize_default_value(
+                            parameter["schema"]["default"]
+                        )
 
                     tool_parameter = ToolParameter(
                         name=parameter["name"],
@@ -143,10 +140,9 @@ class ApiBasedToolSchemaParser:
                             properties = body_schema.get("properties", {})
                             for name, property in properties.items():
                                 # Handle complex type defaults that are not supported by PluginParameter
-                                default_value = property.get("default", None)
-                                if isinstance(default_value, (list, dict)):
-                                    # For complex types (arrays, objects), set to None to avoid validation error
-                                    default_value = None
+                                default_value = ApiBasedToolSchemaParser._sanitize_default_value(
+                                    property.get("default", None)
+                                )
 
                                 tool = ToolParameter(
                                     name=name,
@@ -162,7 +158,8 @@ class ApiBasedToolSchemaParser:
                                     placeholder=I18nObject(
                                         en_US=property.get("description", ""), zh_Hans=property.get("description", "")
                                     ),
-                                )                                # check if there is a type
+                                )
+                                # check if there is a type
                                 typ = ApiBasedToolSchemaParser._get_tool_parameter_type(property)
                                 if typ:
                                     tool.type = typ
@@ -208,6 +205,22 @@ class ApiBasedToolSchemaParser:
             )
 
         return bundles
+
+    @staticmethod
+    def _sanitize_default_value(value):
+        """
+        Sanitize default values for PluginParameter compatibility.
+        Complex types (list, dict) are converted to None to avoid validation errors.
+
+        Args:
+            value: The default value from OpenAPI schema
+
+        Returns:
+            None for complex types (list, dict), otherwise the original value
+        """
+        if isinstance(value, (list, dict)):
+            return None
+        return value
 
     @staticmethod
     def _get_tool_parameter_type(parameter: dict) -> ToolParameter.ToolParameterType | None:
