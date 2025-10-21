@@ -34,6 +34,7 @@ export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
     || nodeType === BlockEnum.VariableAggregator
     || nodeType === BlockEnum.Assigner
     || nodeType === BlockEnum.DataSource
+    || nodeType === BlockEnum.TriggerSchedule
     || nodeType === BlockEnum.TriggerWebhook
     || nodeType === BlockEnum.TriggerPlugin
 }
