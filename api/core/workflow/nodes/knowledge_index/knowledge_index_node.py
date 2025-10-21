@@ -118,7 +118,7 @@ class KnowledgeIndexNode(Node):
                 error_type=type(e).__name__,
             )
         finally:
-            db.session.close()
+            db.session.remove()
 
     def _invoke_knowledge_index(
         self,
