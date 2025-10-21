@@ -93,7 +93,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
       },
       {
         value: SupportedCreationMethods.MANUAL,
-        label: t('pluginTrigger.subscription.addType.options.manual.description'), // 使用 description 作为标题
+        label: t('pluginTrigger.subscription.addType.options.manual.description'),
         extra: <Tooltip popupContent={t('pluginTrigger.subscription.addType.options.manual.tip')} />,
         show: supportedMethods.includes(SupportedCreationMethods.MANUAL),
       },
@@ -109,7 +109,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
               if (callbackData) {
                 Toast.notify({
                   type: 'success',
-                  message: t('pluginTrigger.modal.oauth.authorized'),
+                  message: t('pluginTrigger.modal.oauth.authorization.authSuccess'),
                 })
                 setSelectedCreateInfo({ type: SupportedCreationMethods.OAUTH, builder: response.subscription_builder })
               }

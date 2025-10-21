@@ -266,6 +266,7 @@ export type TriggerOAuthConfig = {
   custom_configured: boolean
   custom_enabled: boolean
   redirect_uri: string
+  oauth_client_schema: ParametersSchema[]
   params: {
     client_id: string
     client_secret: string

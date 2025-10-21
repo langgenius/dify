@@ -311,7 +311,7 @@ const BaseField = ({
               <span className='break-all'>
                 {renderI18nObject(formSchema?.help as any)}
               </span>
-              <RiExternalLinkLine className='ml-1 h-3 w-3' />
+              <RiExternalLinkLine className='ml-1 h-3 w-3 shrink-0' />
             </a>
           )
         }

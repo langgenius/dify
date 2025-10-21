@@ -42,26 +42,25 @@ enum ClientTypeEnum {
 export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreateModal }: Props) => {
   const { t } = useTranslation()
   const detail = usePluginStore(state => state.detail)
-  const { configured, custom_enabled, system_configured, params } = oauthConfig || {}
+  const { system_configured, params, oauth_client_schema } = oauthConfig || {}
   const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>()
   const [authorizationStatus, setAuthorizationStatus] = useState<AuthorizationStatusEnum>()
 
-  const [clientType, setClientType] = useState<ClientTypeEnum>(((configured && !custom_enabled) || (!configured && system_configured)) ? ClientTypeEnum.Default : ClientTypeEnum.Custom)
+  const [clientType, setClientType] = useState<ClientTypeEnum>(system_configured ? ClientTypeEnum.Default : ClientTypeEnum.Custom)
 
   const clientFormRef = React.useRef<FormRefObject>(null)
 
   const oauthClientSchema = useMemo(() => {
-    if (detail && params) {
-      const clientSchema = detail?.declaration.trigger?.subscription_constructor?.oauth_schema?.client_schema || []
+    if (oauth_client_schema && oauth_client_schema.length > 0 && params) {
       const oauthConfigPramaKeys = Object.keys(params || {})
-      for (const schema of clientSchema) {
+      for (const schema of oauth_client_schema) {
         if (oauthConfigPramaKeys.includes(schema.name))
           schema.default = params?.[schema.name]
       }
-      return clientSchema
+      return oauth_client_schema
     }
     return []
-  }, [detail, params])
+  }, [oauth_client_schema, params])
 
   const providerName = detail?.provider || ''
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
