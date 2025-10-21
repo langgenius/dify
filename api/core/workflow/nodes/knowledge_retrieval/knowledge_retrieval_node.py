@@ -67,7 +67,7 @@ from .exc import (
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.entities import GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +141,7 @@ class KnowledgeRetrievalNode(Node):
     def version(cls):
         return "1"
 
-    def _run(self) -> NodeRunResult:  # type: ignore
+    def _run(self) -> NodeRunResult:
         # extract variables
         variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_variable_selector)
         if not isinstance(variable, StringSegment):
@@ -443,7 +443,7 @@ class KnowledgeRetrievalNode(Node):
                 metadata_condition = MetadataCondition(
                     logical_operator=node_data.metadata_filtering_conditions.logical_operator
                     if node_data.metadata_filtering_conditions
-                    else "or",  # type: ignore
+                    else "or",
                     conditions=conditions,
                 )
         elif node_data.metadata_filtering_mode == "manual":
@@ -457,10 +457,10 @@ class KnowledgeRetrievalNode(Node):
                             expected_value = self.graph_runtime_state.variable_pool.convert_template(
                                 expected_value
                             ).value[0]
-                            if expected_value.value_type in {"number", "integer", "float"}:  # type: ignore
-                                expected_value = expected_value.value  # type: ignore
-                            elif expected_value.value_type == "string":  # type: ignore
-                                expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
+                            if expected_value.value_type in {"number", "integer", "float"}:
+                                expected_value = expected_value.value
+                            elif expected_value.value_type == "string":
+                                expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()
                             else:
                                 raise ValueError("Invalid expected metadata value type")
                     conditions.append(
@@ -487,7 +487,7 @@ class KnowledgeRetrievalNode(Node):
             if (
                 node_data.metadata_filtering_conditions
                 and node_data.metadata_filtering_conditions.logical_operator == "and"
-            ):  # type: ignore
+            ):
                 document_query = document_query.where(and_(*filters))
             else:
                 document_query = document_query.where(or_(*filters))

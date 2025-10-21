@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useMemo } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useTranslation } from 'react-i18next'
 import VarItem from './var-item'
 import { ChangeType, type InputVar, type MoreInfo } from '@/app/components/workflow/types'

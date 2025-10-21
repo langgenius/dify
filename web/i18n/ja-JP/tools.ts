@@ -243,6 +243,10 @@ const translation = {
       },
       publishTip: 'アプリが公開されていません。まずアプリを公開してください。',
     },
+    toolItem: {
+      parameters: 'パラメータ',
+      noDescription: '説明なし',
+    },
   },
   allTools: 'すべての道具',
 }

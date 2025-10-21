@@ -212,7 +212,7 @@ class TestValidateResult:
                 parameters=[
                     ParameterConfig(
                         name="status",
-                        type="select",  # type: ignore
+                        type="select",
                         description="Status",
                         required=True,
                         options=["active", "inactive"],
@@ -400,7 +400,7 @@ class TestTransformResult:
                 parameters=[
                     ParameterConfig(
                         name="status",
-                        type="select",  # type: ignore
+                        type="select",
                         description="Status",
                         required=True,
                         options=["active", "inactive"],
@@ -414,7 +414,7 @@ class TestTransformResult:
                 parameters=[
                     ParameterConfig(
                         name="status",
-                        type="select",  # type: ignore
+                        type="select",
                         description="Status",
                         required=True,
                         options=["active", "inactive"],

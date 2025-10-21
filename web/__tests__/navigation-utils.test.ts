@@ -160,8 +160,7 @@ describe('Navigation Utilities', () => {
         page: 1,
         limit: '',
         keyword: 'test',
-        empty: null,
-        undefined,
+        filter: '',
       })
 
       expect(path).toBe('/datasets/123/documents?page=1&keyword=test')
