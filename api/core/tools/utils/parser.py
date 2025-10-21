@@ -65,9 +65,7 @@ class ApiBasedToolSchemaParser:
                     # Handle complex type defaults that are not supported by PluginParameter
                     default_value = None
                     if "schema" in parameter and "default" in parameter["schema"]:
-                        default_value = ApiBasedToolSchemaParser._sanitize_default_value(
-                            parameter["schema"]["default"]
-                        )
+                        default_value = ApiBasedToolSchemaParser._sanitize_default_value(parameter["schema"]["default"])
 
                     tool_parameter = ToolParameter(
                         name=parameter["name"],

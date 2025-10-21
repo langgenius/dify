@@ -136,38 +136,28 @@ def test_parse_openapi_to_tool_bundle_default_value_type_casting(app):
                                             "description": "List of category identifiers",
                                             "default": [],
                                             "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
+                                            "items": {"type": "string"},
                                         },
                                         "name": {
                                             "description": "Product name",
                                             "default": "Default Product",
-                                            "type": "string"
+                                            "type": "string",
                                         },
-                                        "price": {
-                                            "description": "Product price",
-                                            "default": 0.0,
-                                            "type": "number"
-                                        },
+                                        "price": {"description": "Product price", "default": 0.0, "type": "number"},
                                         "available": {
                                             "description": "Product availability",
                                             "default": True,
-                                            "type": "boolean"
-                                        }
-                                    }
+                                            "type": "boolean",
+                                        },
+                                    },
                                 }
                             }
                         }
                     },
-                    "responses": {
-                        "200": {
-                            "description": "Default Response"
-                        }
-                    }
+                    "responses": {"200": {"description": "Default Response"}},
                 }
             }
-        }
+        },
     }
 
     with app.test_request_context():
