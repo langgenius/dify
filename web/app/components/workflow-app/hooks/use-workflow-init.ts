@@ -77,6 +77,7 @@ export const useWorkflowInit = () => {
             workflowStore.setState({
               notInitialWorkflow: true,
               showOnboarding: !isAdvancedChat,
+              shouldAutoOpenStartNodeSelector: !isAdvancedChat,
               hasShownOnboarding: false,
             })
             const nodesData = isAdvancedChat ? nodesTemplate : []

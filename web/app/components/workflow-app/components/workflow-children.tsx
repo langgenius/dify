@@ -75,6 +75,7 @@ const WorkflowChildren = () => {
   const showOnboarding = useStore(s => s.showOnboarding)
   const setShowOnboarding = useStore(s => s.setShowOnboarding)
   const setHasSelectedStartNode = useStore(s => s.setHasSelectedStartNode)
+  const setShouldAutoOpenStartNodeSelector = useStore(s => s.setShouldAutoOpenStartNodeSelector)
   const reactFlowStore = useStoreApi()
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -142,6 +143,7 @@ const WorkflowChildren = () => {
 
     setShowOnboarding?.(false)
     setHasSelectedStartNode?.(true)
+    setShouldAutoOpenStartNodeSelector?.(true)
 
     handleSyncWorkflowDraft(true, false, {
       onSuccess: () => {

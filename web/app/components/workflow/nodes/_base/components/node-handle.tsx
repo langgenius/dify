@@ -25,6 +25,7 @@ import {
 } from '../../../hooks'
 import {
   useStore,
+  useWorkflowStore,
 } from '../../../store'
 import cn from '@/utils/classnames'
 
@@ -127,7 +128,10 @@ export const NodeSourceHandle = memo(({
   showExceptionStatus,
 }: NodeHandleProps) => {
   const { t } = useTranslation()
-  const notInitialWorkflow = useStore(s => s.notInitialWorkflow)
+  const shouldAutoOpenStartNodeSelector = useStore(s => s.shouldAutoOpenStartNodeSelector)
+  const setShouldAutoOpenStartNodeSelector = useStore(s => s.setShouldAutoOpenStartNodeSelector)
+  const setHasSelectedStartNode = useStore(s => s.setHasSelectedStartNode)
+  const workflowStoreApi = useWorkflowStore()
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
@@ -157,9 +161,27 @@ export const NodeSourceHandle = memo(({
   }, [handleNodeAdd, id, handleId])
 
   useEffect(() => {
-    if (notInitialWorkflow && (data.type === BlockEnum.Start || data.type === BlockEnum.TriggerSchedule || data.type === BlockEnum.TriggerWebhook || data.type === BlockEnum.TriggerPlugin) && !isChatMode)
+    if (!shouldAutoOpenStartNodeSelector)
+      return
+
+    if (isChatMode) {
+      setShouldAutoOpenStartNodeSelector?.(false)
+      return
+    }
+
+    if (data.type === BlockEnum.Start || data.type === BlockEnum.TriggerSchedule || data.type === BlockEnum.TriggerWebhook || data.type === BlockEnum.TriggerPlugin) {
       setOpen(true)
-  }, [notInitialWorkflow, data.type, isChatMode])
+      if (setShouldAutoOpenStartNodeSelector)
+        setShouldAutoOpenStartNodeSelector(false)
+      else
+        workflowStoreApi?.setState?.({ shouldAutoOpenStartNodeSelector: false })
+
+      if (setHasSelectedStartNode)
+        setHasSelectedStartNode(false)
+      else
+        workflowStoreApi?.setState?.({ hasSelectedStartNode: false })
+    }
+  }, [shouldAutoOpenStartNodeSelector, data.type, isChatMode, setShouldAutoOpenStartNodeSelector, setHasSelectedStartNode, workflowStoreApi])
 
   return (
     <Handle

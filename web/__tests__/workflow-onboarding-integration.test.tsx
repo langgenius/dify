@@ -18,6 +18,7 @@ describe('Workflow Onboarding Integration Logic', () => {
   const mockSetShowOnboarding = jest.fn()
   const mockSetHasSelectedStartNode = jest.fn()
   const mockSetHasShownOnboarding = jest.fn()
+  const mockSetShouldAutoOpenStartNodeSelector = jest.fn()
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -31,6 +32,8 @@ describe('Workflow Onboarding Integration Logic', () => {
       hasShownOnboarding: false,
       setHasShownOnboarding: mockSetHasShownOnboarding,
       notInitialWorkflow: false,
+      shouldAutoOpenStartNodeSelector: false,
+      setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
     })
   })
 
@@ -180,17 +183,17 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
   })
 
-  describe('Auto-expand Logic for Node Handles', () => {
+  describe('Auto-open Logic for Node Handles', () => {
     /**
-     * Test the auto-expand logic from node-handle.tsx
-     * This ensures all trigger types auto-expand the block selector
+     * Test the auto-open logic from node-handle.tsx
+     * This ensures all trigger types auto-open the block selector when flagged
      */
     it('should auto-expand for Start node in new workflow', () => {
-      const notInitialWorkflow = true
+      const shouldAutoOpenStartNodeSelector = true
       const nodeType = BlockEnum.Start
       const isChatMode = false
 
-      const shouldAutoExpand = notInitialWorkflow && (
+      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && (
         nodeType === BlockEnum.Start
         || nodeType === BlockEnum.TriggerSchedule
         || nodeType === BlockEnum.TriggerWebhook
@@ -201,11 +204,11 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should auto-expand for TriggerSchedule in new workflow', () => {
-      const notInitialWorkflow = true
+      const shouldAutoOpenStartNodeSelector = true
       const nodeType = BlockEnum.TriggerSchedule
       const isChatMode = false
 
-      const shouldAutoExpand = notInitialWorkflow && (
+      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && (
         nodeType === BlockEnum.Start
         || nodeType === BlockEnum.TriggerSchedule
         || nodeType === BlockEnum.TriggerWebhook
@@ -216,11 +219,11 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should auto-expand for TriggerWebhook in new workflow', () => {
-      const notInitialWorkflow = true
+      const shouldAutoOpenStartNodeSelector = true
       const nodeType = BlockEnum.TriggerWebhook
       const isChatMode = false
 
-      const shouldAutoExpand = notInitialWorkflow && (
+      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && (
         nodeType === BlockEnum.Start
         || nodeType === BlockEnum.TriggerSchedule
         || nodeType === BlockEnum.TriggerWebhook
@@ -231,11 +234,11 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should auto-expand for TriggerPlugin in new workflow', () => {
-      const notInitialWorkflow = true
+      const shouldAutoOpenStartNodeSelector = true
       const nodeType = BlockEnum.TriggerPlugin
       const isChatMode = false
 
-      const shouldAutoExpand = notInitialWorkflow && (
+      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && (
         nodeType === BlockEnum.Start
         || nodeType === BlockEnum.TriggerSchedule
         || nodeType === BlockEnum.TriggerWebhook
@@ -246,11 +249,11 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should not auto-expand for non-trigger nodes', () => {
-      const notInitialWorkflow = true
+      const shouldAutoOpenStartNodeSelector = true
       const nodeType = BlockEnum.LLM
       const isChatMode = false
 
-      const shouldAutoExpand = notInitialWorkflow && (
+      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && (
         nodeType === BlockEnum.Start
         || nodeType === BlockEnum.TriggerSchedule
         || nodeType === BlockEnum.TriggerWebhook
@@ -261,11 +264,11 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should not auto-expand in chat mode', () => {
-      const notInitialWorkflow = true
+      const shouldAutoOpenStartNodeSelector = true
       const nodeType = BlockEnum.Start
       const isChatMode = true
 
-      const shouldAutoExpand = notInitialWorkflow && (
+      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && (
         nodeType === BlockEnum.Start
         || nodeType === BlockEnum.TriggerSchedule
         || nodeType === BlockEnum.TriggerWebhook
@@ -276,11 +279,11 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should not auto-expand for existing workflows', () => {
-      const notInitialWorkflow = false
+      const shouldAutoOpenStartNodeSelector = false
       const nodeType = BlockEnum.Start
       const isChatMode = false
 
-      const shouldAutoExpand = notInitialWorkflow && (
+      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && (
         nodeType === BlockEnum.Start
         || nodeType === BlockEnum.TriggerSchedule
         || nodeType === BlockEnum.TriggerWebhook
@@ -288,6 +291,24 @@ describe('Workflow Onboarding Integration Logic', () => {
       ) && !isChatMode
 
       expect(shouldAutoExpand).toBe(false)
+    })
+    it('should reset auto-open flag after triggering once', () => {
+      let shouldAutoOpenStartNodeSelector = true
+      const nodeType = BlockEnum.Start
+      const isChatMode = false
+
+      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && (
+        nodeType === BlockEnum.Start
+        || nodeType === BlockEnum.TriggerSchedule
+        || nodeType === BlockEnum.TriggerWebhook
+        || nodeType === BlockEnum.TriggerPlugin
+      ) && !isChatMode
+
+      if (shouldAutoExpand)
+        shouldAutoOpenStartNodeSelector = false
+
+      expect(shouldAutoExpand).toBe(true)
+      expect(shouldAutoOpenStartNodeSelector).toBe(false)
     })
   })
 
@@ -450,12 +471,19 @@ describe('Workflow Onboarding Integration Logic', () => {
         notInitialWorkflow: false,
         setShowOnboarding: mockSetShowOnboarding,
         setHasShownOnboarding: mockSetHasShownOnboarding,
+        hasSelectedStartNode: false,
+        setHasSelectedStartNode: mockSetHasSelectedStartNode,
+        shouldAutoOpenStartNodeSelector: false,
+        setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
         getState: () => ({
           showOnboarding: false,
           hasShownOnboarding: false,
           notInitialWorkflow: false,
           setShowOnboarding: mockSetShowOnboarding,
           setHasShownOnboarding: mockSetHasShownOnboarding,
+          hasSelectedStartNode: false,
+          setHasSelectedStartNode: mockSetHasSelectedStartNode,
+          setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
         }),
       })
 
@@ -526,12 +554,19 @@ describe('Workflow Onboarding Integration Logic', () => {
         notInitialWorkflow: false,
         setShowOnboarding: mockSetShowOnboarding,
         setHasShownOnboarding: mockSetHasShownOnboarding,
+        hasSelectedStartNode: false,
+        setHasSelectedStartNode: mockSetHasSelectedStartNode,
+        shouldAutoOpenStartNodeSelector: false,
+        setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
         getState: () => ({
           showOnboarding: false,
           hasShownOnboarding: true,
           notInitialWorkflow: false,
           setShowOnboarding: mockSetShowOnboarding,
           setHasShownOnboarding: mockSetHasShownOnboarding,
+          hasSelectedStartNode: false,
+          setHasSelectedStartNode: mockSetHasSelectedStartNode,
+          setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
         }),
       })
 
@@ -553,12 +588,19 @@ describe('Workflow Onboarding Integration Logic', () => {
         notInitialWorkflow: true, // Initial workflow creation
         setShowOnboarding: mockSetShowOnboarding,
         setHasShownOnboarding: mockSetHasShownOnboarding,
+        hasSelectedStartNode: false,
+        setHasSelectedStartNode: mockSetHasSelectedStartNode,
+        shouldAutoOpenStartNodeSelector: false,
+        setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
         getState: () => ({
           showOnboarding: false,
           hasShownOnboarding: false,
           notInitialWorkflow: true,
           setShowOnboarding: mockSetShowOnboarding,
           setHasShownOnboarding: mockSetHasShownOnboarding,
+          hasSelectedStartNode: false,
+          setHasSelectedStartNode: mockSetHasSelectedStartNode,
+          setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
         }),
       })
 

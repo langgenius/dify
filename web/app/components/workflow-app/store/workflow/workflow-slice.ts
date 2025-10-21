@@ -5,6 +5,8 @@ export type WorkflowSliceShape = {
   appName: string
   notInitialWorkflow: boolean
   setNotInitialWorkflow: (notInitialWorkflow: boolean) => void
+  shouldAutoOpenStartNodeSelector: boolean
+  setShouldAutoOpenStartNodeSelector: (shouldAutoOpen: boolean) => void
   nodesDefaultConfigs: Record<string, any>
   setNodesDefaultConfigs: (nodesDefaultConfigs: Record<string, any>) => void
   showOnboarding: boolean
@@ -21,6 +23,8 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   appName: '',
   notInitialWorkflow: false,
   setNotInitialWorkflow: notInitialWorkflow => set(() => ({ notInitialWorkflow })),
+  shouldAutoOpenStartNodeSelector: false,
+  setShouldAutoOpenStartNodeSelector: shouldAutoOpenStartNodeSelector => set(() => ({ shouldAutoOpenStartNodeSelector })),
   nodesDefaultConfigs: {},
   setNodesDefaultConfigs: nodesDefaultConfigs => set(() => ({ nodesDefaultConfigs })),
   showOnboarding: false,
