@@ -145,7 +145,7 @@ class DatabaseConfig(BaseSettings):
         default="postgresql",
     )
 
-    @computed_field  # type: ignore[misc]
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         db_extras = (
@@ -198,7 +198,7 @@ class DatabaseConfig(BaseSettings):
         default=os.cpu_count() or 1,
     )
 
-    @computed_field  # type: ignore[misc]
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
         # Parse DB_EXTRAS for 'options'

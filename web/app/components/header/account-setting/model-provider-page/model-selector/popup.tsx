@@ -72,7 +72,7 @@ const Popup: FC<PopupProps> = ({
           return scopeFeatures.every((feature) => {
             if (feature === ModelFeatureEnum.toolCall)
               return supportFunctionCall(modelItem.features)
-            return modelItem.features?.some(featureItem => featureItem === feature)
+            return modelItem.features?.includes(feature) ?? false
           })
         })
       return { ...model, models: filteredModels }

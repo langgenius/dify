@@ -1,16 +1,15 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Concatenate, ParamSpec, TypeVar, cast
+from typing import Concatenate, ParamSpec, TypeVar
 
-import flask_login
 from flask import jsonify, request
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
-from libs.login import login_required
-from models.account import Account
+from libs.login import current_account_with_tenant, login_required
+from models import Account
 from models.model import OAuthProviderApp
 from services.oauth_server import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthGrantType, OAuthServerService
 
@@ -24,8 +23,7 @@ T = TypeVar("T")
 def oauth_server_client_id_required(view: Callable[Concatenate[T, OAuthProviderApp, P], R]):
     @wraps(view)
     def decorated(self: T, *args: P.args, **kwargs: P.kwargs):
-        parser = reqparse.RequestParser()
-        parser.add_argument("client_id", type=str, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("client_id", type=str, required=True, location="json")
         parsed_args = parser.parse_args()
         client_id = parsed_args.get("client_id")
         if not client_id:
@@ -91,8 +89,7 @@ class OAuthServerAppApi(Resource):
     @setup_required
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
-        parser = reqparse.RequestParser()
-        parser.add_argument("redirect_uri", type=str, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("redirect_uri", type=str, required=True, location="json")
         parsed_args = parser.parse_args()
         redirect_uri = parsed_args.get("redirect_uri")
 
@@ -116,7 +113,8 @@ class OAuthServerUserAuthorizeApi(Resource):
     @account_initialization_required
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
-        account = cast(Account, flask_login.current_user)
+        current_user, _ = current_account_with_tenant()
+        account = current_user
         user_account_id = account.id
 
         code = OAuthServerService.sign_oauth_authorization_code(oauth_provider_app.client_id, user_account_id)
@@ -132,12 +130,14 @@ class OAuthServerUserTokenApi(Resource):
     @setup_required
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
-        parser = reqparse.RequestParser()
-        parser.add_argument("grant_type", type=str, required=True, location="json")
-        parser.add_argument("code", type=str, required=False, location="json")
-        parser.add_argument("client_secret", type=str, required=False, location="json")
-        parser.add_argument("redirect_uri", type=str, required=False, location="json")
-        parser.add_argument("refresh_token", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("grant_type", type=str, required=True, location="json")
+            .add_argument("code", type=str, required=False, location="json")
+            .add_argument("client_secret", type=str, required=False, location="json")
+            .add_argument("redirect_uri", type=str, required=False, location="json")
+            .add_argument("refresh_token", type=str, required=False, location="json")
+        )
         parsed_args = parser.parse_args()
 
         try:

@@ -349,6 +349,7 @@ const translation = {
     addNextStep: '이 워크플로우에 다음 단계를 추가하세요.',
     minimize: '전체 화면 종료',
     maximize: '캔버스 전체 화면',
+    optional_and_hidden: '(선택 사항 및 숨김)',
   },
   nodes: {
     common: {
