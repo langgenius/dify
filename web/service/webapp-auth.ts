@@ -31,7 +31,7 @@ type isWebAppLogin = {
 }
 
 export async function webAppLoginStatus(shareCode: string) {
-  // always need login to prevent passport is outdated
+  // always need to check login to prevent passport from being outdated
   // check remotely, the access token could be in cookie (enterprise SSO redirected with https)
   const { logged_in, app_logged_in } = await getPublic<isWebAppLogin>(`/login/status?app_code=${shareCode}`)
   return {
