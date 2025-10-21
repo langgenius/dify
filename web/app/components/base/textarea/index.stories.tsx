@@ -76,6 +76,7 @@ export const Default: Story = {
     size: 'regular',
     placeholder: 'Enter text...',
     rows: 4,
+    value: '',
   },
 }
 
@@ -86,6 +87,7 @@ export const SmallSize: Story = {
     size: 'small',
     placeholder: 'Small textarea...',
     rows: 3,
+    value: '',
   },
 }
 
@@ -96,6 +98,7 @@ export const LargeSize: Story = {
     size: 'large',
     placeholder: 'Large textarea...',
     rows: 5,
+    value: '',
   },
 }
 
@@ -175,7 +178,8 @@ const SizeComparisonDemo = () => {
 
 export const SizeComparison: Story = {
   render: () => <SizeComparisonDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // State comparison
 const StateComparisonDemo = () => {
@@ -216,7 +220,8 @@ const StateComparisonDemo = () => {
 
 export const StateComparison: Story = {
   render: () => <StateComparisonDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Comment form
 const CommentFormDemo = () => {
@@ -250,7 +255,8 @@ const CommentFormDemo = () => {
 
 export const CommentForm: Story = {
   render: () => <CommentFormDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Feedback form
 const FeedbackFormDemo = () => {
@@ -291,7 +297,8 @@ const FeedbackFormDemo = () => {
 
 export const FeedbackForm: Story = {
   render: () => <FeedbackFormDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Code snippet
 const CodeSnippetDemo = () => {
@@ -322,7 +329,8 @@ const CodeSnippetDemo = () => {
 
 export const CodeSnippet: Story = {
   render: () => <CodeSnippetDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Message composer
 const MessageComposerDemo = () => {
@@ -372,7 +380,8 @@ const MessageComposerDemo = () => {
 
 export const MessageComposer: Story = {
   render: () => <MessageComposerDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Bio editor
 const BioEditorDemo = () => {
@@ -408,7 +417,8 @@ const BioEditorDemo = () => {
 
 export const BioEditor: Story = {
   render: () => <BioEditorDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - JSON editor
 const JSONEditorDemo = () => {
@@ -472,7 +482,8 @@ const JSONEditorDemo = () => {
 
 export const JSONEditor: Story = {
   render: () => <JSONEditorDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Task description
 const TaskDescriptionDemo = () => {
@@ -520,7 +531,8 @@ const TaskDescriptionDemo = () => {
 
 export const TaskDescription: Story = {
   render: () => <TaskDescriptionDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Interactive playground
 export const Playground: Story = {
@@ -531,5 +543,6 @@ export const Playground: Story = {
     rows: 4,
     disabled: false,
     destructive: false,
+    value: '',
   },
 }
