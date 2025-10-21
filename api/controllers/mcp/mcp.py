@@ -242,9 +242,6 @@ class MCPAppApi(Resource):
         # Eagerly load EndUser attributes to prevent DetachedInstanceError
         # This ensures attributes are accessible after session closes
         if end_user:
-            _ = end_user.id
-            _ = end_user.session_id
-            _ = end_user.tenant_id
-            _ = end_user.app_id
+            _ = (end_user.id, end_user.session_id, end_user.tenant_id, end_user.app_id)
 
         return handle_mcp_request(app, mcp_request, user_input_form, mcp_server, end_user, request_id)
