@@ -61,6 +61,7 @@ class NodeType(StrEnum):
     TRIGGER_WEBHOOK = "trigger-webhook"
     TRIGGER_SCHEDULE = "trigger-schedule"
     TRIGGER_PLUGIN = "trigger-plugin"
+    HUMAN_INPUT = "human-input"
 
     @property
     def is_start_node(self) -> bool:
@@ -109,6 +110,7 @@ class WorkflowExecutionStatus(StrEnum):
     FAILED = "failed"
     STOPPED = "stopped"
     PARTIAL_SUCCEEDED = "partial-succeeded"
+    PAUSED = "paused"
 
 
 class WorkflowNodeExecutionMetadataKey(StrEnum):

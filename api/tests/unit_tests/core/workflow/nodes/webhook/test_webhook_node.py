@@ -3,11 +3,10 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod, FileType
 from core.variables import StringVariable
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
-from core.workflow.nodes.answer import AnswerStreamGenerateRoute
-from core.workflow.nodes.end import EndStreamParam
+from core.workflow.nodes.answer.entities import AnswerStreamGenerateRoute
+from core.workflow.nodes.end.entities import EndStreamParam
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
@@ -16,6 +15,8 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookParameter,
 )
 from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
+from core.workflow.runtime.graph_runtime_state import GraphRuntimeState
+from core.workflow.runtime.variable_pool import VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.workflow import WorkflowType
@@ -84,7 +85,7 @@ def test_webhook_node_basic_initialization():
 
     node = create_webhook_node(data, variable_pool)
 
-    assert node._node_type.value == "webhook"
+    assert node.node_type.value == "webhook"
     assert node.version() == "1"
     assert node._get_title() == "Test Webhook"
     assert node._node_data.method == Method.POST

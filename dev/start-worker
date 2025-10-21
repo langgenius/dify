@@ -81,10 +81,10 @@ if [[ -z "${QUEUES}" ]]; then
   # Configure queues based on edition
   if [[ "${EDITION}" == "CLOUD" ]]; then
     # Cloud edition: separate queues for dataset and trigger tasks
-    QUEUES="dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor"
+    QUEUES="dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,priority_pipeline,pipeline"
   else
     # Community edition (SELF_HOSTED): dataset and workflow have separate queues
-    QUEUES="dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor"
+    QUEUES="dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,priority_pipeline,pipeline"
   fi
   
   echo "No queues specified, using edition-based defaults: ${QUEUES}"

@@ -53,8 +53,13 @@ import { ToolTypeEnum } from '../../block-selector/types'
 import { useTriggerStatusStore } from '../../store/trigger-status'
 import { isTriggerNode } from '../../types'
 
+type NodeChildProps = {
+  id: string
+  data: NodeProps['data']
+}
+
 type BaseNodeProps = {
-  children: ReactElement
+  children: ReactElement<Partial<NodeChildProps>>
   id: NodeProps['id']
   data: NodeProps['data']
 }

@@ -3,7 +3,7 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import produce from 'immer'
+import { produce } from 'immer'
 import { v4 as uuidV4 } from 'uuid'
 import { usePathname } from 'next/navigation'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -24,7 +24,7 @@ import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { useSetWorkflowVarsWithValue } from '../../workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useConfigsMap } from './use-configs-map'
 import { API_PREFIX } from '@/config'
-import { ContentType, getAccessToken, getBaseOptions } from '@/service/fetch'
+import { base } from '@/service/fetch'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 
 type HandleRunMode = TriggerType
@@ -474,22 +474,14 @@ export const useWorkflowRun = () => {
         ? '__webhookDebugAbortController'
         : '__pluginDebugAbortController'
 
-      ;(window as any)[controllerKey] = controller
+        ; (window as any)[controllerKey] = controller
 
       const debugLabel = debugType === TriggerType.Webhook ? 'Webhook' : debugType === TriggerType.Plugin ? 'Plugin' : 'All'
 
       const poll = async (): Promise<void> => {
         try {
-          const baseOptions = getBaseOptions()
-          const headers = new Headers(baseOptions.headers as Headers)
-          headers.set('Content-Type', ContentType.json)
-          const accessToken = await getAccessToken()
-          headers.set('Authorization', `Bearer ${accessToken}`)
-
-          const response = await fetch(urlWithPrefix, {
-            ...baseOptions,
+          const response = await base<Response>(urlWithPrefix, {
             method: 'POST',
-            headers,
             body: JSON.stringify(requestBody),
             signal: controller.signal,
           })

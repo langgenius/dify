@@ -29,8 +29,7 @@ class CodeBasedExtensionAPI(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("module", type=str, required=True, location="args")
+        parser = reqparse.RequestParser().add_argument("module", type=str, required=True, location="args")
         args = parser.parse_args()
 
         return {"module": args["module"], "data": CodeBasedExtensionService.get_code_based_extension(args["module"])}
@@ -67,11 +66,12 @@ class APIBasedExtensionAPI(Resource):
     @account_initialization_required
     @marshal_with(api_based_extension_fields)
     def post(self):
-        _, current_tenant_id = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, location="json")
-        parser.add_argument("api_endpoint", type=str, required=True, location="json")
-        parser.add_argument("api_key", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("name", type=str, required=True, location="json")
+            .add_argument("api_endpoint", type=str, required=True, location="json")
+            .add_argument("api_key", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
         _, current_tenant_id = current_account_with_tenant()
 
@@ -125,10 +125,12 @@ class APIBasedExtensionDetailAPI(Resource):
 
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, location="json")
-        parser.add_argument("api_endpoint", type=str, required=True, location="json")
-        parser.add_argument("api_key", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("name", type=str, required=True, location="json")
+            .add_argument("api_endpoint", type=str, required=True, location="json")
+            .add_argument("api_key", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         extension_data_from_db.name = args["name"]

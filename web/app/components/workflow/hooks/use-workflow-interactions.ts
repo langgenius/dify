@@ -2,7 +2,7 @@ import {
   useCallback,
 } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useStore, useWorkflowStore } from '../store'
 import {
   CUSTOM_NODE,

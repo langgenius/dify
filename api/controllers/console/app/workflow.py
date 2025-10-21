@@ -125,12 +125,14 @@ class DraftWorkflowApi(Resource):
         content_type = request.headers.get("Content-Type", "")
 
         if "application/json" in content_type:
-            parser = reqparse.RequestParser()
-            parser.add_argument("graph", type=dict, required=True, nullable=False, location="json")
-            parser.add_argument("features", type=dict, required=True, nullable=False, location="json")
-            parser.add_argument("hash", type=str, required=False, location="json")
-            parser.add_argument("environment_variables", type=list, required=True, location="json")
-            parser.add_argument("conversation_variables", type=list, required=False, location="json")
+            parser = (
+                reqparse.RequestParser()
+                .add_argument("graph", type=dict, required=True, nullable=False, location="json")
+                .add_argument("features", type=dict, required=True, nullable=False, location="json")
+                .add_argument("hash", type=str, required=False, location="json")
+                .add_argument("environment_variables", type=list, required=True, location="json")
+                .add_argument("conversation_variables", type=list, required=False, location="json")
+            )
             args = parser.parse_args()
         elif "text/plain" in content_type:
             try:
@@ -212,12 +214,14 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, location="json")
-        parser.add_argument("query", type=str, required=True, location="json", default="")
-        parser.add_argument("files", type=list, location="json")
-        parser.add_argument("conversation_id", type=uuid_value, location="json")
-        parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, location="json")
+            .add_argument("query", type=str, required=True, location="json", default="")
+            .add_argument("files", type=list, location="json")
+            .add_argument("conversation_id", type=uuid_value, location="json")
+            .add_argument("parent_message_id", type=uuid_value, required=False, location="json")
+        )
 
         args = parser.parse_args()
 
@@ -271,8 +275,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
         Run draft workflow iteration node
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, location="json")
+        parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
 
         try:
@@ -319,8 +322,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
         Run draft workflow iteration node
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, location="json")
+        parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
 
         try:
@@ -367,8 +369,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, location="json")
+        parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
 
         try:
@@ -415,8 +416,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, location="json")
+        parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
         args = parser.parse_args()
 
         try:
@@ -462,9 +462,11 @@ class DraftWorkflowRunApi(Resource):
         Run draft workflow
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+            .add_argument("files", type=list, required=False, location="json")
+        )
         args = parser.parse_args()
 
         external_trace_id = get_external_trace_id(request)
@@ -539,10 +541,12 @@ class DraftWorkflowNodeRunApi(Resource):
         Run draft workflow node
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("query", type=str, required=False, location="json", default="")
-        parser.add_argument("files", type=list, location="json", default=[])
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+            .add_argument("query", type=str, required=False, location="json", default="")
+            .add_argument("files", type=list, location="json", default=[])
+        )
         args = parser.parse_args()
 
         user_inputs = args.get("inputs")
@@ -604,9 +608,11 @@ class PublishedWorkflowApi(Resource):
         Publish workflow
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("marked_name", type=str, required=False, default="", location="json")
-        parser.add_argument("marked_comment", type=str, required=False, default="", location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("marked_name", type=str, required=False, default="", location="json")
+            .add_argument("marked_comment", type=str, required=False, default="", location="json")
+        )
         args = parser.parse_args()
 
         # Validate name and comment length
@@ -678,8 +684,7 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("q", type=str, location="args")
+        parser = reqparse.RequestParser().add_argument("q", type=str, location="args")
         args = parser.parse_args()
 
         q = args.get("q")
@@ -718,11 +723,13 @@ class ConvertToWorkflowApi(Resource):
         current_user, _ = current_account_with_tenant()
 
         if request.data:
-            parser = reqparse.RequestParser()
-            parser.add_argument("name", type=str, required=False, nullable=True, location="json")
-            parser.add_argument("icon_type", type=str, required=False, nullable=True, location="json")
-            parser.add_argument("icon", type=str, required=False, nullable=True, location="json")
-            parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json")
+            parser = (
+                reqparse.RequestParser()
+                .add_argument("name", type=str, required=False, nullable=True, location="json")
+                .add_argument("icon_type", type=str, required=False, nullable=True, location="json")
+                .add_argument("icon", type=str, required=False, nullable=True, location="json")
+                .add_argument("icon_background", type=str, required=False, nullable=True, location="json")
+            )
             args = parser.parse_args()
         else:
             args = {}
@@ -755,11 +762,13 @@ class PublishedAllWorkflowApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
-        parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument("user_id", type=str, required=False, location="args")
-        parser.add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+            .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+            .add_argument("user_id", type=str, required=False, location="args")
+            .add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
+        )
         args = parser.parse_args()
         page = int(args.get("page", 1))
         limit = int(args.get("limit", 10))
@@ -818,9 +827,11 @@ class WorkflowByIdApi(Resource):
         Update workflow attributes
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("marked_name", type=str, required=False, location="json")
-        parser.add_argument("marked_comment", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("marked_name", type=str, required=False, location="json")
+            .add_argument("marked_comment", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         # Validate name and comment length

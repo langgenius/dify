@@ -243,6 +243,10 @@ const translation = {
       },
       publishTip: 'برنامه منتشر نشده است. لطفاً ابتدا برنامه را منتشر کنید.',
     },
+    toolItem: {
+      parameters: 'پارامترها',
+      noDescription: 'بدون توضیح',
+    },
   },
   allTools: 'همه ابزارها',
 }

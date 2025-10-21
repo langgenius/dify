@@ -14,7 +14,7 @@ from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
-from core.workflow.entities import VariablePool, WorkflowNodeExecution
+from core.workflow.entities import WorkflowNodeExecution
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
@@ -26,6 +26,7 @@ from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from core.workflow.nodes.trigger_schedule.entities import TriggerScheduleNodeData
 from core.workflow.nodes.trigger_webhook.entities import WebhookData
+from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated

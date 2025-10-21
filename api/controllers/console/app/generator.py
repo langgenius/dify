@@ -43,10 +43,12 @@ class RuleGenerateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("no_variable", type=bool, required=True, default=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("instruction", type=str, required=True, nullable=False, location="json")
+            .add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+            .add_argument("no_variable", type=bool, required=True, default=False, location="json")
+        )
         args = parser.parse_args()
         _, current_tenant_id = current_account_with_tenant()
 
@@ -93,11 +95,13 @@ class RuleCodeGenerateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("no_variable", type=bool, required=True, default=False, location="json")
-        parser.add_argument("code_language", type=str, required=False, default="javascript", location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("instruction", type=str, required=True, nullable=False, location="json")
+            .add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+            .add_argument("no_variable", type=bool, required=True, default=False, location="json")
+            .add_argument("code_language", type=str, required=False, default="javascript", location="json")
+        )
         args = parser.parse_args()
         _, current_tenant_id = current_account_with_tenant()
 
@@ -140,9 +144,11 @@ class RuleStructuredOutputGenerateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("instruction", type=str, required=True, nullable=False, location="json")
+            .add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
         _, current_tenant_id = current_account_with_tenant()
 
@@ -189,14 +195,16 @@ class InstructionGenerateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("flow_id", type=str, required=True, default="", location="json")
-        parser.add_argument("node_id", type=str, required=False, default="", location="json")
-        parser.add_argument("current", type=str, required=False, default="", location="json")
-        parser.add_argument("language", type=str, required=False, default="javascript", location="json")
-        parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("ideal_output", type=str, required=False, default="", location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("flow_id", type=str, required=True, default="", location="json")
+            .add_argument("node_id", type=str, required=False, default="", location="json")
+            .add_argument("current", type=str, required=False, default="", location="json")
+            .add_argument("language", type=str, required=False, default="javascript", location="json")
+            .add_argument("instruction", type=str, required=True, nullable=False, location="json")
+            .add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+            .add_argument("ideal_output", type=str, required=False, default="", location="json")
+        )
         args = parser.parse_args()
         _, current_tenant_id = current_account_with_tenant()
         providers: list[type[CodeNodeProvider]] = [Python3CodeProvider, JavascriptCodeProvider]
@@ -292,8 +300,7 @@ class InstructionGenerationTemplateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, default=False, location="json")
+        parser = reqparse.RequestParser().add_argument("type", type=str, required=True, default=False, location="json")
         args = parser.parse_args()
         match args["type"]:
             case "prompt":

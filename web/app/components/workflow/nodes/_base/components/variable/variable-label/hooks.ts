@@ -26,7 +26,7 @@ export const useVarIcon = (variables: string[], variableCategory?: VarInInspectT
   if (isConversationVar(variables) || variableCategory === VarInInspectType.conversation || variableCategory === 'conversation')
     return BubbleX
 
-  if(isGlobalVar(variables))
+  if (isGlobalVar(variables))
     return GlobalVariable
 
   return Variable02
@@ -50,7 +50,7 @@ export const useVarColor = (variables: string[], isExceptionVariable?: boolean, 
       return 'text-util-colors-orange-orange-600'
 
     return 'text-text-accent'
-  }, [variables, isExceptionVariable])
+  }, [variables, isExceptionVariable, variableCategory])
 }
 
 export const useVarName = (variables: string[], notShowFullPath?: boolean) => {
@@ -60,14 +60,19 @@ export const useVarName = (variables: string[], notShowFullPath?: boolean) => {
   if (isRagVariableVar(variables))
     variableFullPathName = variables.slice(2).join('.')
 
-  const variablesLength = variables.length
   const varName = useMemo(() => {
+    variableFullPathName = variables.slice(1).join('.')
+
+    if (isRagVariableVar(variables))
+      variableFullPathName = variables.slice(2).join('.')
+
+    const variablesLength = variables.length
     const isSystem = isSystemVar(variables)
     const varName = notShowFullPath ? variables[variablesLength - 1] : variableFullPathName
     return `${isSystem ? 'sys.' : ''}${varName}`
   }, [variables, notShowFullPath])
 
-  if(showName)
+  if (showName)
     return showName
   return varName
 }
