@@ -19,7 +19,7 @@ import Indicator from '../../header/indicator'
 import VarPanel from './var-panel'
 import type { FeedbackFunc, FeedbackType, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
 import type { Annotation, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
-import type { App } from '@/types/app'
+import { type App, AppModeEnum } from '@/types/app'
 import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
@@ -369,7 +369,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
   // Only load initial messages, don't auto-load more
   useEffect(() => {
-    if (appDetail?.id && detail.id && appDetail?.mode !== 'completion' && !fetchInitiated.current) {
+    if (appDetail?.id && detail.id && appDetail?.mode !== AppModeEnum.COMPLETION && !fetchInitiated.current) {
       // Mark as initialized, but don't auto-load more messages
       fetchInitiated.current = true
       // Still call fetchData to get initial messages
@@ -578,8 +578,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
   }, [hasMore, isLoading, loadMoreMessages])
 
-  const isChatMode = appDetail?.mode !== 'completion'
-  const isAdvanced = appDetail?.mode === 'advanced-chat'
+  const isChatMode = appDetail?.mode !== AppModeEnum.COMPLETION
+  const isAdvanced = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
 
   const varList = (detail.model_config as any).user_input_form?.map((item: any) => {
     const itemContent = item[Object.keys(item)[0]]
@@ -899,8 +899,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false) // Whether to display the chat details drawer
   const [currentConversation, setCurrentConversation] = useState<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>() // Currently selected conversation
-  const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
-  const isChatflow = appDetail.mode === 'advanced-chat' // Whether the app is a chatflow app
+  const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION // Whether the app is a chat app
+  const isChatflow = appDetail.mode === AppModeEnum.ADVANCED_CHAT // Whether the app is a chatflow app
   const { setShowPromptLogModal, setShowAgentLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
     setShowPromptLogModal: state.setShowPromptLogModal,
     setShowAgentLogModal: state.setShowAgentLogModal,

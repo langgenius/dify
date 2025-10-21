@@ -26,6 +26,7 @@ import { useConfigsMap } from './use-configs-map'
 import { API_PREFIX } from '@/config'
 import { base } from '@/service/fetch'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
+import { AppModeEnum } from '@/types/app'
 
 type HandleRunMode = TriggerType
 type HandleRunOptions = {
@@ -169,7 +170,7 @@ export const useWorkflowRun = () => {
       clientHeight,
     } = workflowContainer!
 
-    const isInWorkflowDebug = appDetail?.mode === 'workflow'
+    const isInWorkflowDebug = appDetail?.mode === AppModeEnum.WORKFLOW
 
     let url = ''
     if (runMode === TriggerType.Plugin || runMode === TriggerType.Webhook || runMode === TriggerType.Schedule) {
@@ -186,7 +187,7 @@ export const useWorkflowRun = () => {
       }
       url = `/apps/${appDetail.id}/workflows/draft/trigger/run-all`
     }
-    else if (appDetail?.mode === 'advanced-chat') {
+    else if (appDetail?.mode === AppModeEnum.ADVANCED_CHAT) {
       url = `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
     }
     else if (isInWorkflowDebug && appDetail?.id) {

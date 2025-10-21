@@ -19,6 +19,7 @@ import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import type { FileUploadConfigResponse } from '@/models/common'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { AppModeEnum } from '@/types/app'
 
 const hasConnectedUserInput = (nodes: any[] = [], edges: any[] = []) => {
   const startNodeIds = nodes
@@ -73,7 +74,7 @@ export const useWorkflowInit = () => {
       if (error && error.json && !error.bodyUsed && appDetail) {
         error.json().then((err: any) => {
           if (err.code === 'draft_workflow_not_exist') {
-            const isAdvancedChat = appDetail.mode === 'advanced-chat'
+            const isAdvancedChat = appDetail.mode === AppModeEnum.ADVANCED_CHAT
             workflowStore.setState({
               notInitialWorkflow: true,
               showOnboarding: !isAdvancedChat,

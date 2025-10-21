@@ -3,14 +3,14 @@ import { clone } from 'lodash-es'
 import { produce } from 'immer'
 import type { ChatPromptConfig, CompletionPromptConfig, ConversationHistoriesRole, PromptItem } from '@/models/debug'
 import { PromptMode } from '@/models/debug'
-import { ModelModeType } from '@/types/app'
+import { AppModeEnum, ModelModeType } from '@/types/app'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { PRE_PROMPT_PLACEHOLDER_TEXT, checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import { fetchPromptTemplate } from '@/service/debug'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type Param = {
-  appMode: string
+  appMode: AppModeEnum
   modelModeType: ModelModeType
   modelName: string
   promptMode: PromptMode
@@ -152,7 +152,7 @@ const useAdvancedPromptConfig = ({
           else
             draft.prompt.text = completionPromptConfig.prompt?.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, toReplacePrePrompt)
 
-          if (['advanced-chat', 'agent-chat', 'chat'].includes(appMode) && completionPromptConfig.conversation_histories_role.assistant_prefix && completionPromptConfig.conversation_histories_role.user_prefix)
+          if ([AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.CHAT].includes(appMode) && completionPromptConfig.conversation_histories_role.assistant_prefix && completionPromptConfig.conversation_histories_role.user_prefix)
             draft.conversation_histories_role = completionPromptConfig.conversation_histories_role
         })
         setCompletionPromptConfig(newPromptConfig)

@@ -43,6 +43,7 @@ import { useAppWorkflow } from '@/service/use-workflow'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
+import { AppModeEnum } from '@/types/app'
 
 export type IAppCardProps = {
   className?: string
@@ -68,7 +69,7 @@ function AppCard({
   const router = useRouter()
   const pathname = usePathname()
   const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
-  const { data: currentWorkflow } = useAppWorkflow(appInfo.mode === 'workflow' ? appInfo.id : '')
+  const { data: currentWorkflow } = useAppWorkflow(appInfo.mode === AppModeEnum.WORKFLOW ? appInfo.id : '')
   const docLink = useDocLink()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
@@ -90,7 +91,7 @@ function AppCard({
       api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: RiBookOpenLine }],
       app: [],
     }
-    if (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow')
+    if (appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW)
       operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: RiWindowLine })
 
     operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.customize.entry'), opIcon: RiPaintBrushLine })
@@ -105,7 +106,7 @@ function AppCard({
   const basicName = isApp
     ? t('appOverview.overview.appInfo.title')
     : t('appOverview.overview.apiInfo.title')
-  const isWorkflowApp = appInfo.mode === 'workflow'
+  const isWorkflowApp = appInfo.mode === AppModeEnum.WORKFLOW
   const appUnpublished = isWorkflowApp && !currentWorkflow?.graph
   const hasStartNode = currentWorkflow?.graph?.nodes?.some(node => node.data.type === BlockEnum.Start)
   const missingStartNode = isWorkflowApp && !hasStartNode
@@ -114,7 +115,7 @@ function AppCard({
   const runningStatus = (appUnpublished || missingStartNode) ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
   const isMinimalState = appUnpublished || missingStartNode
   const { app_base_url, access_token } = appInfo.site ?? {}
-  const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
+  const appMode = (appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW) ? AppModeEnum.CHAT : appInfo.mode
   const appUrl = `${app_base_url}${basePath}/${appMode}/${access_token}`
   const apiUrl = appInfo?.api_base_url
 
@@ -328,9 +329,9 @@ function AppCard({
             {!isApp && <SecretKeyButton appId={appInfo.id} />}
             {OPERATIONS_MAP[cardType].map((op) => {
               const disabled
-              = op.opName === t('appOverview.overview.appInfo.settings.entry')
-                ? false
-                : !runningStatus
+                = op.opName === t('appOverview.overview.appInfo.settings.entry')
+                  ? false
+                  : !runningStatus
               return (
                 <Button
                   className="mr-1 min-w-[88px]"
@@ -361,7 +362,7 @@ function AppCard({
         ? (
           <>
             <SettingsModal
-              isChat={appMode === 'chat'}
+              isChat={appMode === AppModeEnum.CHAT}
               appInfo={appInfo}
               isShow={showSettingsModal}
               onClose={() => setShowSettingsModal(false)}

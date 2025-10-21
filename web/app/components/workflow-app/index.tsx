@@ -34,6 +34,7 @@ import { useSearchParams } from 'next/navigation'
 
 import { fetchRunDetail } from '@/service/log'
 import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
+import { AppModeEnum } from '@/types/app'
 
 const WorkflowAppWithAdditionalContext = () => {
   const {
@@ -48,7 +49,7 @@ const WorkflowAppWithAdditionalContext = () => {
   const { setTriggerStatuses } = useTriggerStatusStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appId = appDetail?.id
-  const isWorkflowMode = appDetail?.mode === 'workflow'
+  const isWorkflowMode = appDetail?.mode === AppModeEnum.WORKFLOW
   const { data: triggersResponse } = useAppTriggers(isWorkflowMode ? appId : undefined, {
     staleTime: 5 * 60 * 1000, // 5 minutes cache
     refetchOnWindowFocus: false,

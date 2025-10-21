@@ -16,7 +16,7 @@ import Switch from '@/app/components/base/switch'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { SimpleSelect } from '@/app/components/base/select'
 import type { AppDetailResponse } from '@/models/app'
-import type { AppIconType, AppSSO, Language } from '@/types/app'
+import { type AppIconType, AppModeEnum, type AppSSO, type Language } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { languages } from '@/i18n-config/language'
 import Tooltip from '@/app/components/base/tooltip'
@@ -328,7 +328,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             <div className='flex items-center justify-between'>
               <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.workflow.subTitle`)}</div>
               <Switch
-                disabled={!(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat')}
+                disabled={!(appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT)}
                 defaultValue={inputInfo.show_workflow_steps}
                 onChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
               />

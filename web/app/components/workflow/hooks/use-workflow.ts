@@ -46,11 +46,12 @@ import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/ite
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { basePath } from '@/utils/var'
 import { useNodesMetaData } from '.'
+import { AppModeEnum } from '@/types/app'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
 
-  return appDetail?.mode === 'advanced-chat'
+  return appDetail?.mode === AppModeEnum.ADVANCED_CHAT
 }
 
 export const useWorkflow = () => {

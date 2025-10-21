@@ -63,6 +63,7 @@ import type { PromptItem } from '@/models/debug'
 import { VAR_REGEX } from '@/config'
 import type { AgentNodeType } from '../../../agent/types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
+import { AppModeEnum } from '@/types/app'
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
@@ -1278,7 +1279,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     }
     case BlockEnum.LLM: {
       const payload = data as LLMNodeType
-      const isChatModel = payload.model?.mode === 'chat'
+      const isChatModel = payload.model?.mode === AppModeEnum.CHAT
       let prompts: string[] = []
       if (isChatModel) {
         prompts
@@ -1581,7 +1582,7 @@ export const updateNodeVars = (
       }
       case BlockEnum.LLM: {
         const payload = data as LLMNodeType
-        const isChatModel = payload.model?.mode === 'chat'
+        const isChatModel = payload.model?.mode === AppModeEnum.CHAT
         if (isChatModel) {
           payload.prompt_template = (
             payload.prompt_template as PromptItem[]

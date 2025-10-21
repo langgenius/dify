@@ -30,6 +30,7 @@ import type { Operation } from './app-operations'
 import AppOperations from './app-operations'
 import dynamic from 'next/dynamic'
 import cn from '@/utils/classnames'
+import { AppModeEnum } from '@/types/app'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,
@@ -157,7 +158,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const exportCheck = async () => {
     if (!appDetail)
       return
-    if (appDetail.mode !== 'workflow' && appDetail.mode !== 'advanced-chat') {
+    if (appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.ADVANCED_CHAT) {
       onExport()
       return
     }
@@ -238,7 +239,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
 
   const secondaryOperations: Operation[] = [
     // Import DSL (conditional)
-    ...(appDetail.mode !== 'agent-chat' && (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')) ? [{
+    ...(appDetail.mode !== AppModeEnum.AGENT_CHAT && (appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW)) ? [{
       id: 'import',
       title: t('workflow.common.importDSL'),
       icon: <RiFileUploadLine />,
@@ -270,7 +271,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   ]
 
   // Keep the switch operation separate as it's not part of the main operations
-  const switchOperation = (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'completion' || appDetail.mode === 'chat')) ? {
+  const switchOperation = (appDetail.mode !== AppModeEnum.AGENT_CHAT && (appDetail.mode === AppModeEnum.COMPLETION || appDetail.mode === AppModeEnum.CHAT)) ? {
     id: 'switch',
     title: t('app.switch'),
     icon: <RiExchange2Line />,
@@ -322,7 +323,12 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
                 <div className='flex w-full'>
                   <div className='system-md-semibold truncate whitespace-nowrap text-text-secondary'>{appDetail.name}</div>
                 </div>
-                <div className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+                <div className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'>
+                  {appDetail.mode === AppModeEnum.ADVANCED_CHAT ? t('app.types.advanced')
+                    : appDetail.mode === AppModeEnum.AGENT_CHAT ? t('app.types.agent')
+                      : appDetail.mode === AppModeEnum.CHAT ? t('app.types.chatbot')
+                        : appDetail.mode === AppModeEnum.COMPLETION ? t('app.types.completion')
+                          : t('app.types.workflow')}</div>
               </div>
             )}
           </div>
@@ -347,7 +353,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
             />
             <div className='flex flex-1 flex-col items-start justify-center overflow-hidden'>
               <div className='system-md-semibold w-full truncate text-text-secondary'>{appDetail.name}</div>
-              <div className='system-2xs-medium-uppercase text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+              <div className='system-2xs-medium-uppercase text-text-tertiary'>{appDetail.mode === AppModeEnum.ADVANCED_CHAT ? t('app.types.advanced') : appDetail.mode === AppModeEnum.AGENT_CHAT ? t('app.types.agent') : appDetail.mode === AppModeEnum.CHAT ? t('app.types.chatbot') : appDetail.mode === AppModeEnum.COMPLETION ? t('app.types.completion') : t('app.types.workflow')}</div>
             </div>
           </div>
           {/* description */}

@@ -13,7 +13,7 @@ import CopyFeedback from '@/app/components/base/copy-feedback'
 import Confirm from '@/app/components/base/confirm'
 import type { AppDetailResponse } from '@/models/app'
 import { useAppContext } from '@/context/app-context'
-import type { AppSSO } from '@/types/app'
+import { AppModeEnum, type AppSSO } from '@/types/app'
 import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { useAppWorkflow } from '@/service/use-workflow'
@@ -45,7 +45,7 @@ function MCPServiceCard({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showMCPServerModal, setShowMCPServerModal] = useState(false)
 
-  const isAdvancedApp = appInfo?.mode === 'advanced-chat' || appInfo?.mode === 'workflow'
+  const isAdvancedApp = appInfo?.mode === AppModeEnum.ADVANCED_CHAT || appInfo?.mode === AppModeEnum.WORKFLOW
   const isBasicApp = !isAdvancedApp
   const { data: currentWorkflow } = useAppWorkflow(isAdvancedApp ? appId : '')
   const [basicAppConfig, setBasicAppConfig] = useState<any>({})
@@ -71,7 +71,7 @@ function MCPServiceCard({
   const { data: detail } = useMCPServerDetail(appId)
   const { id, status, server_code } = detail ?? {}
 
-  const isWorkflowApp = appInfo.mode === 'workflow'
+  const isWorkflowApp = appInfo.mode === AppModeEnum.WORKFLOW
   const appUnpublished = isAdvancedApp ? !currentWorkflow?.graph : !basicAppConfig.updated_at
   const serverPublished = !!id
   const serverActivated = status === 'active'

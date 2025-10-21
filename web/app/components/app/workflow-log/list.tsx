@@ -6,7 +6,7 @@ import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import DetailPanel from './detail'
 import TriggerByDisplay from './trigger-by-display'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse } from '@/models/log'
-import type { App } from '@/types/app'
+import { type App, AppModeEnum } from '@/types/app'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
 import Indicator from '@/app/components/header/indicator'
@@ -52,7 +52,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
   }
 
-  const isWorkflow = appDetail?.mode === 'workflow'
+  const isWorkflow = appDetail?.mode === AppModeEnum.WORKFLOW
 
   const statusTdRender = (status: string) => {
     if (status === 'succeeded') {

@@ -17,7 +17,7 @@ import Pagination from '@/app/components/base/pagination'
 import Loading from '@/app/components/base/loading'
 import { fetchWorkflowLogs } from '@/service/log'
 import { APP_PAGE_LIMIT } from '@/config'
-import type { App, AppMode } from '@/types/app'
+import { type App, AppModeEnum } from '@/types/app'
 import { useAppContext } from '@/context/app-context'
 
 dayjs.extend(utc)
@@ -78,9 +78,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...omit(debouncedQueryParams, ['period', 'status']),
   }
 
-  const getWebAppType = (appType: AppMode) => {
-    if (appType !== 'completion' && appType !== 'workflow')
-      return 'chat'
+  const getWebAppType = (appType: AppModeEnum) => {
+    if (appType !== AppModeEnum.COMPLETION && appType !== AppModeEnum.WORKFLOW)
+      return AppModeEnum.CHAT
     return appType
   }
 

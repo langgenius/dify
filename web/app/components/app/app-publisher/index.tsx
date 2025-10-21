@@ -407,7 +407,7 @@ const AppPublisher = ({
                       {t('workflow.common.accessAPIReference')}
                     </SuggestedAction>
                   </Tooltip>
-                  {appDetail?.mode === 'workflow' && (
+                  {appDetail?.mode === AppModeEnum.WORKFLOW && (
                     <WorkflowToolConfigureButton
                       disabled={workflowToolDisabled}
                       published={!!toolPublished}
