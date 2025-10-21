@@ -14,6 +14,7 @@ import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { API_PREFIX } from '@/config'
 import { useWorkflowRefreshDraft } from '.'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export const useNodesSyncDraft = () => {
   const store = useStoreApi()
@@ -22,6 +23,7 @@ export const useNodesSyncDraft = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const params = useParams()
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
 
   const getPostParams = useCallback(() => {
     const {
@@ -86,21 +88,21 @@ export const useNodesSyncDraft = () => {
           environment_variables: environmentVariables,
           conversation_variables: conversationVariables,
           hash: syncWorkflowDraftHash,
-          _is_collaborative: true,
+          _is_collaborative: isCollaborationEnabled,
         },
       }
     }
-  }, [store, featuresStore, workflowStore])
+  }, [store, featuresStore, workflowStore, isCollaborationEnabled])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly())
       return
 
     // Check leader status at sync time
-    const currentIsLeader = collaborationManager.getIsLeader()
+    const currentIsLeader = isCollaborationEnabled ? collaborationManager.getIsLeader() : true
 
     // Only allow leader to sync data
-    if (!currentIsLeader) {
+    if (isCollaborationEnabled && !currentIsLeader) {
       console.log('Not leader, skipping sync on page close')
       return
     }
@@ -114,7 +116,7 @@ export const useNodesSyncDraft = () => {
         JSON.stringify(postParams.params),
       )
     }
-  }, [getPostParams, params.appId, getNodesReadOnly])
+  }, [getPostParams, params.appId, getNodesReadOnly, isCollaborationEnabled])
 
   const doSyncWorkflowDraft = useCallback(async (
     notRefreshWhenSyncError?: boolean,
@@ -129,12 +131,13 @@ export const useNodesSyncDraft = () => {
       return
 
     // Check leader status at sync time
-    const currentIsLeader = collaborationManager.getIsLeader()
+    const currentIsLeader = isCollaborationEnabled ? collaborationManager.getIsLeader() : true
 
     // If not leader and not forcing upload, request the leader to sync
-    if (!currentIsLeader && !forceUpload) {
+    if (isCollaborationEnabled && !currentIsLeader && !forceUpload) {
       console.log('Not leader, requesting leader to sync workflow draft')
-      collaborationManager.emitSyncRequest()
+      if (isCollaborationEnabled)
+        collaborationManager.emitSyncRequest()
       callback?.onSettled?.()
       return
     }
@@ -180,7 +183,7 @@ export const useNodesSyncDraft = () => {
         callback?.onSettled?.()
       }
     }
-  }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft])
+  }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft, isCollaborationEnabled])
 
   return {
     doSyncWorkflowDraft,

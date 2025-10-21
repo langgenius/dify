@@ -3,6 +3,7 @@ import type { ReactFlowInstance } from 'reactflow'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
 import type { CollaborationState } from '../types/collaboration'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export function useCollaboration(appId: string, reactFlowStore?: any) {
   const [state, setState] = useState<Partial<CollaborationState & { isLeader: boolean }>>({
@@ -14,9 +15,19 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
   })
 
   const cursorServiceRef = useRef<CursorService | null>(null)
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
 
   useEffect(() => {
-    if (!appId) return
+    if (!appId || !isCollaborationEnabled) {
+      setState({
+        isConnected: false,
+        onlineUsers: [],
+        cursors: {},
+        nodePanelPresence: {},
+        isLeader: false,
+      })
+      return
+    }
 
     let connectionId: string | null = null
     let isUnmounted = false
@@ -75,9 +86,12 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
       if (connectionId)
         collaborationManager.disconnect(connectionId)
     }
-  }, [appId, reactFlowStore])
+  }, [appId, reactFlowStore, isCollaborationEnabled])
 
   const startCursorTracking = (containerRef: React.RefObject<HTMLElement>, reactFlowInstance?: ReactFlowInstance) => {
+    if (!isCollaborationEnabled || !cursorServiceRef.current)
+      return
+
     if (cursorServiceRef.current) {
       cursorServiceRef.current.startTracking(containerRef, (position) => {
         collaborationManager.emitCursorMove(position)
@@ -96,6 +110,7 @@ export function useCollaboration(appId: string, reactFlowStore?: any) {
     nodePanelPresence: state.nodePanelPresence || {},
     isLeader: state.isLeader || false,
     leaderId: collaborationManager.getLeaderId(),
+    isEnabled: isCollaborationEnabled,
     startCursorTracking,
     stopCursorTracking,
   }
