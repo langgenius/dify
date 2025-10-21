@@ -37,6 +37,7 @@ dify/
 ## Technology Stack
 
 ### Backend (api/)
+
 - **Framework**: Flask 2.3.2
 - **Database**: PostgreSQL with SQLAlchemy 1.4.28
 - **LLM Integration**: LangChain 0.0.250
@@ -46,6 +47,7 @@ dify/
 - **Authentication**: Flask-Login, Authlib
 
 ### Frontend (web/)
+
 - **Framework**: Next.js 13+ with React
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
@@ -55,7 +57,9 @@ dify/
 ## Key Features
 
 ### 1. Multi-LLM Support
+
 Compatible with multiple LLM providers:
+
 - OpenAI (GPT-4, GPT-3.5-turbo)
 - Azure OpenAI Service
 - Anthropic (Claude 2, Claude Instant)
@@ -64,27 +68,32 @@ Compatible with multiple LLM providers:
 - Chinese models (ChatGLM, Llama2, MiniMax, Spark, Wenxin, Tongyi)
 
 ### 2. Data Integration & Embedding
+
 - Automated text preprocessing and embedding
 - Support for PDF, TXT files
 - Sync from Notion, webpages, APIs
 - Vector database integration for context enhancement
 
 ### 3. Visual Orchestration
+
 - Visual prompt engineering interface
 - Debug and test prompts visually
 - Build applications in minutes without coding
 
 ### 4. Application Types
+
 - Chat-based applications
 - Form-based applications
 - Plugin-enabled smart chat (web browsing, Google search, Wikipedia)
 
 ### 5. Team Collaboration
+
 - Workspace management
 - Team member collaboration
 - Shared AI applications
 
 ### 6. Analytics & Monitoring
+
 - Visual data analysis
 - Log review and inspection
 - Performance monitoring
@@ -92,6 +101,7 @@ Compatible with multiple LLM providers:
 ## Deployment
 
 ### Docker Deployment (Recommended)
+
 ```bash
 cd docker
 docker compose up -d
@@ -100,29 +110,33 @@ docker compose up -d
 Access at: http://localhost/install
 
 ### System Requirements
+
 - CPU >= 2 Core
 - RAM >= 4GB
 
 ### Kubernetes Deployment
+
 Helm Chart available via community contribution
 
 ## Use Cases
 
 1. **AI Chatbots**: Build chatbots with custom business data
-2. **Notion AI Assistant**: Create assistants based on personal notes
-3. **Prompt Generators**: Build tools like Midjourney prompt generators
-4. **Personal Assistants**: Custom AI assistants with specific knowledge bases
-5. **Commercial Applications**: Production-grade AI applications
+1. **Notion AI Assistant**: Create assistants based on personal notes
+1. **Prompt Generators**: Build tools like Midjourney prompt generators
+1. **Personal Assistants**: Custom AI assistants with specific knowledge bases
+1. **Commercial Applications**: Production-grade AI applications
 
 ## Development Workflow
 
 ### Backend Development
+
 - API built with Flask and follows REST principles
 - Database migrations managed via Flask-Migrate
 - LangChain for LLM orchestration
 - Background jobs for async processing
 
 ### Frontend Development
+
 - Next.js with App Router
 - Component-based architecture
 - TypeScript for type safety
@@ -131,6 +145,7 @@ Helm Chart available via community contribution
 ## Configuration
 
 Environment configurations managed through:
+
 - `.env` files for local development
 - Docker environment variables in `docker-compose.yaml`
 - Configuration files in respective directories
@@ -138,6 +153,7 @@ Environment configurations managed through:
 ## Contributing
 
 The project welcomes contributions:
+
 - Code contributions via Pull Requests
 - Issue reporting for bugs and feature requests
 - Sharing use cases and applications built with Dify
@@ -157,6 +173,7 @@ Available under the Dify Open Source License
 ## Recent Development Activity
 
 Based on recent commits:
+
 - Dataset functionality improvements
 - ESLint error fixes
 - Qdrant vector database integration
