@@ -17,7 +17,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
-from models import Account, Tenant, TenantAccountJoin, TenantStatus
+from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
 from models.model import ApiToken, App, DefaultEndUserSessionID, EndUser
 from services.feature_service import FeatureService
@@ -66,6 +66,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
 
             kwargs["app_model"] = app_model
 
+            # If caller needs end-user context, attach EndUser to current_user
             if fetch_user_arg:
                 if fetch_user_arg.fetch_from == WhereisUserArg.QUERY:
                     user_id = request.args.get("user")
@@ -74,7 +75,6 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                 elif fetch_user_arg.fetch_from == WhereisUserArg.FORM:
                     user_id = request.form.get("user")
                 else:
-                    # use default-user
                     user_id = None
 
                 if not user_id and fetch_user_arg.required:
@@ -89,6 +89,28 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                 # Set EndUser as current logged-in user for flask_login.current_user
                 current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
                 user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
+            else:
+                # For service API without end-user context, ensure an Account is logged in
+                # so services relying on current_account_with_tenant() work correctly.
+                tenant_account_join = (
+                    db.session.query(Tenant, TenantAccountJoin)
+                    .where(Tenant.id == app_model.tenant_id)
+                    .where(TenantAccountJoin.tenant_id == Tenant.id)
+                    .where(TenantAccountJoin.role.in_(["owner"]))
+                    .where(Tenant.status == TenantStatus.NORMAL)
+                    .one_or_none()
+                )
+                if tenant_account_join:
+                    tenant_model, ta = tenant_account_join
+                    account = db.session.query(Account).where(Account.id == ta.account_id).first()
+                    if account:
+                        account.current_tenant = tenant_model
+                        current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                        user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
+                    else:
+                        raise Unauthorized("Tenant owner account does not exist.")
+                else:
+                    raise Unauthorized("Tenant does not exist.")
 
             return view_func(*args, **kwargs)
 
