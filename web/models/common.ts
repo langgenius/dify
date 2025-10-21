@@ -302,7 +302,7 @@ export type ModerationService = (
   body: {
     app_id: string
     text: string
-  }
+  },
 ) => Promise<ModerateResponse>
 
 export type StructuredOutputRulesRequestBody = {
