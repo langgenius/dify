@@ -4,7 +4,7 @@ from flask_restx import Resource, reqparse
 
 import services
 from configs import dify_config
-from constants.languages import languages
+from constants.languages import get_valid_language
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -247,7 +247,7 @@ class EmailCodeLoginApi(Resource):
                 account = AccountService.create_account_and_tenant(
                     email=user_email,
                     name=user_email,
-                    interface_language=language if language and language in languages else languages[0],
+                    interface_language=get_valid_language(language),
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()
