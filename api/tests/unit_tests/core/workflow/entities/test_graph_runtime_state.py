@@ -211,8 +211,7 @@ class TestGraphRuntimeState:
 
         snapshot = state.dumps()
 
-        restored = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
-        restored.loads(snapshot)
+        restored = GraphRuntimeState.from_snapshot(snapshot)
 
         assert restored.total_tokens == 10
         assert restored.node_run_steps == 3

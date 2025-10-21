@@ -293,7 +293,8 @@ class GraphRuntimeState:
 
         return json.dumps(snapshot, default=pydantic_encoder)
 
-    def loads(self, data: str | Mapping[str, Any]) -> None:
+    @classmethod
+    def from_snapshot(cls, data: str | Mapping[str, Any]) -> GraphRuntimeState:
         """Restore runtime state from a serialized snapshot."""
 
         payload: dict[str, Any]
@@ -306,56 +307,67 @@ class GraphRuntimeState:
         if version != "1.0":
             raise ValueError(f"Unsupported GraphRuntimeState snapshot version: {version}")
 
-        self._start_at = float(payload.get("start_at", 0.0))
+        start_at = float(payload.get("start_at", 0.0))
+
         total_tokens = int(payload.get("total_tokens", 0))
         if total_tokens < 0:
             raise ValueError("total_tokens must be non-negative")
-        self._total_tokens = total_tokens
 
         node_run_steps = int(payload.get("node_run_steps", 0))
         if node_run_steps < 0:
             raise ValueError("node_run_steps must be non-negative")
-        self._node_run_steps = node_run_steps
 
         llm_usage_payload = payload.get("llm_usage", {})
-        self._llm_usage = LLMUsage.model_validate(llm_usage_payload)
+        llm_usage = LLMUsage.model_validate(llm_usage_payload)
 
-        self._outputs = deepcopy(payload.get("outputs", {}))
+        outputs_payload = deepcopy(payload.get("outputs", {}))
 
         variable_pool_payload = payload.get("variable_pool")
-        if variable_pool_payload is not None:
-            self._variable_pool = VariablePool.model_validate(variable_pool_payload)
+        variable_pool = (
+            VariablePool.model_validate(variable_pool_payload) if variable_pool_payload is not None else VariablePool()
+        )
+
+        state = cls(
+            variable_pool=variable_pool,
+            start_at=start_at,
+            total_tokens=total_tokens,
+            llm_usage=llm_usage,
+            outputs=outputs_payload,
+            node_run_steps=node_run_steps,
+        )
 
         ready_queue_payload = payload.get("ready_queue")
         if ready_queue_payload is not None:
-            self._ready_queue = self._build_ready_queue()
-            self._ready_queue.loads(ready_queue_payload)
+            state._ready_queue = state._build_ready_queue()
+            state._ready_queue.loads(ready_queue_payload)
         else:
-            self._ready_queue = None
+            state._ready_queue = None
 
         graph_execution_payload = payload.get("graph_execution")
-        self._graph_execution = None
-        self._pending_graph_execution_workflow_id = None
+        state._graph_execution = None
+        state._pending_graph_execution_workflow_id = None
         if graph_execution_payload is not None:
             try:
                 execution_payload = json.loads(graph_execution_payload)
-                self._pending_graph_execution_workflow_id = execution_payload.get("workflow_id")
+                state._pending_graph_execution_workflow_id = execution_payload.get("workflow_id")
             except (json.JSONDecodeError, TypeError, AttributeError):
-                self._pending_graph_execution_workflow_id = None
-            self.graph_execution.loads(graph_execution_payload)
+                state._pending_graph_execution_workflow_id = None
+            state.graph_execution.loads(graph_execution_payload)
 
         response_payload = payload.get("response_coordinator")
         if response_payload is not None:
-            if self._graph is not None:
-                self.response_coordinator.loads(response_payload)
+            if state._graph is not None:
+                state.response_coordinator.loads(response_payload)
             else:
-                self._pending_response_coordinator_dump = response_payload
+                state._pending_response_coordinator_dump = response_payload
         else:
-            self._pending_response_coordinator_dump = None
-            self._response_coordinator = None
+            state._pending_response_coordinator_dump = None
+            state._response_coordinator = None
 
         paused_nodes_payload = payload.get("paused_nodes", [])
-        self._paused_nodes = set(map(str, paused_nodes_payload))
+        state._paused_nodes = set(map(str, paused_nodes_payload))
+
+        return state
 
     def register_paused_node(self, node_id: str) -> None:
         """Record a node that should resume when execution is continued."""
