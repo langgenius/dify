@@ -17,11 +17,15 @@ type SubscriptionTriggerButtonProps = {
   onClick?: () => void
   isOpen?: boolean
   className?: string
+  onSelect: (v: SimpleSubscription, callback?: () => void) => void
 }
+
+export const INVALID_SUBSCRIPTION_ID = 'INVALID_SUBSCRIPTION_ID'
 
 const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
   selectedId,
   onClick,
+  onSelect,
   isOpen = false,
   className,
 }) => {
@@ -45,6 +49,7 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
     const selectedSubscription = subscriptions?.find(sub => sub.id === selectedId)
 
     if (!selectedSubscription) {
+      onSelect({ id: INVALID_SUBSCRIPTION_ID, name: '' } as SimpleSubscription)
       return {
         label: t('pluginTrigger.subscription.subscriptionRemoved'),
         color: 'red' as const,
@@ -100,6 +105,7 @@ export const SubscriptionSelectorEntry = ({ selectedId, onSelect }: {
           selectedId={selectedId}
           onClick={() => setIsOpen(!isOpen)}
           isOpen={isOpen}
+          onSelect={onSelect}
         />
       </div>
     </PortalToFollowElemTrigger>
