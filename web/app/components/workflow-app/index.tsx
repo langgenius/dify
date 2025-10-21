@@ -92,7 +92,7 @@ const WorkflowAppWithAdditionalContext = () => {
       if (!parsedInputs)
         return
 
-      const userInputs: Record<string, string> = {}
+      const userInputs: Record<string, string | number | boolean> = {}
       Object.entries(parsedInputs).forEach(([key, value]) => {
         if (key.startsWith('sys.'))
           return

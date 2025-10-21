@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import produce, { setAutoFreeze } from 'immer'
+import { produce, setAutoFreeze } from 'immer'
 import { useBoolean } from 'ahooks'
 import {
   RiAddLine,
