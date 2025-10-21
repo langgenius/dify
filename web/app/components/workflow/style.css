@@ -1,0 +1,26 @@
+.workflow-panel-animation .react-flow__viewport {
+  transition: transform 0.3s ease-in-out;
+}
+
+.workflow-node-animation .react-flow__node {
+  transition: transform 0.2s ease-in-out;
+}
+
+#workflow-container .react-flow__nodesselection-rect {
+  border: 1px solid #528BFF;
+  background: rgba(21, 94, 239, 0.05);
+  cursor: move;
+}
+
+#workflow-container .react-flow__selection {
+  border: 1px solid #528BFF;
+  background: rgba(21, 94, 239, 0.05);
+}
+
+#workflow-container .react-flow__node-custom-note {
+  z-index: -1000 !important;
+}
+
+#workflow-container .react-flow__attribution {
+  background: none !important;
+}

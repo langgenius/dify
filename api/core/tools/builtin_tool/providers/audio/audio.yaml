@@ -1,0 +1,11 @@
+identity:
+  author: hjlarry
+  name: audio
+  label:
+    en_US: Audio
+  description:
+    en_US: A tool for tts and asr.
+    zh_Hans: 一个用于文本转语音和语音转文本的工具。
+  icon: icon.svg
+  tags:
+    - utilities

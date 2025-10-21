@@ -1,0 +1,28 @@
+from pydantic import Field
+from pydantic_settings import BaseSettings
+
+
+class AzureBlobStorageConfig(BaseSettings):
+    """
+    Configuration settings for Azure Blob Storage
+    """
+
+    AZURE_BLOB_ACCOUNT_NAME: str | None = Field(
+        description="Name of the Azure Storage account (e.g., 'mystorageaccount')",
+        default=None,
+    )
+
+    AZURE_BLOB_ACCOUNT_KEY: str | None = Field(
+        description="Access key for authenticating with the Azure Storage account",
+        default=None,
+    )
+
+    AZURE_BLOB_CONTAINER_NAME: str | None = Field(
+        description="Name of the Azure Blob container to store and retrieve objects",
+        default=None,
+    )
+
+    AZURE_BLOB_ACCOUNT_URL: str | None = Field(
+        description="URL of the Azure Blob storage endpoint (e.g., 'https://mystorageaccount.blob.core.windows.net')",
+        default=None,
+    )

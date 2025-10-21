@@ -1,7 +1,27 @@
-# -*- coding:utf-8 -*-
-__all__ = [
-    'base', 'conversation', 'message', 'index', 'app_model_config', 'account', 'document', 'dataset',
-    'app', 'completion', 'audio'
-]
+from . import (
+    account,
+    app,
+    app_model_config,
+    audio,
+    base,
+    conversation,
+    dataset,
+    document,
+    file,
+    index,
+    message,
+)
 
-from . import *
+__all__ = [
+    "account",
+    "app",
+    "app_model_config",
+    "audio",
+    "base",
+    "conversation",
+    "dataset",
+    "document",
+    "file",
+    "index",
+    "message",
+]

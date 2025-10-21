@@ -1,26 +1,27 @@
-import { Dialog, Transition } from '@headlessui/react'
-import { Fragment } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import ConfirmUI from '../confirm-ui'
+import Button from '../button'
 
-// https://headlessui.com/react/dialog
-
-type IConfirm = {
+export type IConfirm = {
   className?: string
   isShow: boolean
-  onClose: () => void
   type?: 'info' | 'warning'
   title: string
-  content: string
-  confirmText?: string
+  content?: React.ReactNode
+  confirmText?: string | null
   onConfirm: () => void
   cancelText?: string
   onCancel: () => void
+  isLoading?: boolean
+  isDisabled?: boolean
+  showConfirm?: boolean
+  showCancel?: boolean
+  maskClosable?: boolean
 }
 
-export default function Confirm({
+function Confirm({
   isShow,
-  onClose,
   type = 'warning',
   title,
   content,
@@ -28,52 +29,80 @@ export default function Confirm({
   cancelText,
   onConfirm,
   onCancel,
+  showConfirm = true,
+  showCancel = true,
+  isLoading = false,
+  isDisabled = false,
+  maskClosable = true,
 }: IConfirm) {
   const { t } = useTranslation()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const [isVisible, setIsVisible] = useState(isShow)
+
   const confirmTxt = confirmText || `${t('common.operation.confirm')}`
   const cancelTxt = cancelText || `${t('common.operation.cancel')}`
-  return (
-    <Transition appear show={isShow} as={Fragment}>
-      <Dialog as="div" className="relative z-[100]" onClose={onClose} onClick={e => e.preventDefault()}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
-        </Transition.Child>
 
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-full p-4 text-center">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <Dialog.Panel className={'w-full max-w-md transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-xl transition-all'}>
-                <ConfirmUI
-                  type={type}
-                  title={title}
-                  content={content}
-                  confirmText={confirmTxt}
-                  cancelText={cancelTxt}
-                  onConfirm={onConfirm}
-                  onCancel={onCancel}
-                />
-              </Dialog.Panel>
-            </Transition.Child>
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape')
+        onCancel()
+      if (event.key === 'Enter' && isShow) {
+        event.preventDefault()
+        onConfirm()
+      }
+    }
 
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [onCancel, onConfirm, isShow])
+
+  const handleClickOutside = (event: MouseEvent) => {
+    if (maskClosable && dialogRef.current && !dialogRef.current.contains(event.target as Node))
+      onCancel()
+  }
+
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [maskClosable])
+
+  useEffect(() => {
+    if (isShow) {
+      setIsVisible(true)
+    }
+    else {
+      const timer = setTimeout(() => setIsVisible(false), 200)
+      return () => clearTimeout(timer)
+    }
+  }, [isShow])
+
+  if (!isVisible)
+    return null
+
+  return createPortal(
+    <div className={'fixed inset-0 z-[10000000] flex items-center justify-center bg-background-overlay'}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}>
+      <div ref={dialogRef} className={'relative w-full max-w-[480px] overflow-hidden'}>
+        <div className='shadows-shadow-lg flex max-w-full flex-col items-start rounded-2xl border-[0.5px] border-solid border-components-panel-border bg-components-panel-bg'>
+          <div className='flex flex-col items-start gap-2 self-stretch pb-4 pl-6 pr-6 pt-6'>
+            <div className='title-2xl-semi-bold text-text-primary'>{title}</div>
+            <div className='system-md-regular w-full text-text-tertiary'>{content}</div>
+          </div>
+          <div className='flex items-start justify-end gap-2 self-stretch p-6'>
+            {showCancel && <Button onClick={onCancel}>{cancelTxt}</Button>}
+            {showConfirm && <Button variant={'primary'} destructive={type !== 'info'} loading={isLoading} disabled={isDisabled} onClick={onConfirm}>{confirmTxt}</Button>}
           </div>
         </div>
-      </Dialog>
-    </Transition>
+      </div>
+    </div>, document.body,
   )
 }
+
+export default React.memo(Confirm)

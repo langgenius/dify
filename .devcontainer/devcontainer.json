@@ -1,13 +1,12 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/anaconda
 {
-	"name": "Anaconda (Python 3)",
-	"build": { 
+	"name": "Python 3.12",
+	"build": {
 		"context": "..",
 		"dockerfile": "Dockerfile"
 	},
 	"features": {
-		"ghcr.io/dhoeric/features/act:1": {},
 		"ghcr.io/devcontainers/features/node:1": {
 			"nodeGypDependencies": true,
 			"version": "lts"
@@ -33,8 +32,8 @@
 			]
 		}
 	},
-	"postStartCommand": "cd api && pip install -r requirements.txt",
-	"postCreateCommand": "cd web && npm install"
+	"postStartCommand": "./.devcontainer/post_start_command.sh",
+	"postCreateCommand": "./.devcontainer/post_create_command.sh"
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},

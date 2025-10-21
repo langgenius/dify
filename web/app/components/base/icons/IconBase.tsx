@@ -1,4 +1,3 @@
-import { forwardRef } from 'react'
 import { generate } from './utils'
 import type { AbstractNode } from './utils'
 
@@ -14,7 +13,14 @@ export type IconBaseProps = {
   style?: React.CSSProperties
 }
 
-const IconBase = forwardRef<React.MutableRefObject<HTMLOrSVGElement>, IconBaseProps>((props, ref) => {
+const IconBase = (
+  {
+    ref,
+    ...props
+  }: IconBaseProps & {
+    ref?: React.RefObject<React.RefObject<HTMLOrSVGElement>>;
+  },
+) => {
   const { data, className, onClick, style, ...restProps } = props
 
   return generate(data.icon, `svg-${data.name}`, {
@@ -26,6 +32,8 @@ const IconBase = forwardRef<React.MutableRefObject<HTMLOrSVGElement>, IconBasePr
     ...restProps,
     'ref': ref,
   })
-})
+}
+
+IconBase.displayName = 'IconBase'
 
 export default IconBase

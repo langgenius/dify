@@ -1,52 +1,87 @@
-# -*- coding:utf-8 -*-
-
 import json
 import logging
 
-import requests
-from flask import current_app
-from flask_restful import reqparse, Resource
-from werkzeug.exceptions import InternalServerError
+import httpx
+from flask_restx import Resource, fields, reqparse
+from packaging import version
 
-from . import api
+from configs import dify_config
+
+from . import api, console_ns
+
+logger = logging.getLogger(__name__)
 
 
+@console_ns.route("/version")
 class VersionApi(Resource):
-
+    @api.doc("check_version_update")
+    @api.doc(description="Check for application version updates")
+    @api.expect(
+        api.parser().add_argument(
+            "current_version", type=str, required=True, location="args", help="Current application version"
+        )
+    )
+    @api.response(
+        200,
+        "Success",
+        api.model(
+            "VersionResponse",
+            {
+                "version": fields.String(description="Latest version number"),
+                "release_date": fields.String(description="Release date of latest version"),
+                "release_notes": fields.String(description="Release notes for latest version"),
+                "can_auto_update": fields.Boolean(description="Whether auto-update is supported"),
+                "features": fields.Raw(description="Feature flags and capabilities"),
+            },
+        ),
+    )
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('current_version', type=str, required=True, location='args')
+        """Check for application version updates"""
+        parser = reqparse.RequestParser().add_argument("current_version", type=str, required=True, location="args")
         args = parser.parse_args()
-        check_update_url = current_app.config['CHECK_UPDATE_URL']
+        check_update_url = dify_config.CHECK_UPDATE_URL
 
-        if not check_update_url:
-            return {
-                'version': '0.0.0',
-                'release_date': '',
-                'release_notes': '',
-                'can_auto_update': False
-            }
-
-        try:
-            response = requests.get(check_update_url, {
-                'current_version': args.get('current_version')
-            })
-        except Exception as error:
-            logging.warning("Check update version error: {}.".format(str(error)))
-            return {
-                'version': args.get('current_version'),
-                'release_date': '',
-                'release_notes': '',
-                'can_auto_update': False
-            }
-
-        content = json.loads(response.content)
-        return {
-            'version': content['version'],
-            'release_date': content['releaseDate'],
-            'release_notes': content['releaseNotes'],
-            'can_auto_update': content['canAutoUpdate']
+        result = {
+            "version": dify_config.project.version,
+            "release_date": "",
+            "release_notes": "",
+            "can_auto_update": False,
+            "features": {
+                "can_replace_logo": dify_config.CAN_REPLACE_LOGO,
+                "model_load_balancing_enabled": dify_config.MODEL_LB_ENABLED,
+            },
         }
 
+        if not check_update_url:
+            return result
 
-api.add_resource(VersionApi, '/version')
+        try:
+            response = httpx.get(
+                check_update_url,
+                params={"current_version": args["current_version"]},
+                timeout=httpx.Timeout(connect=3, read=10),
+            )
+        except Exception as error:
+            logger.warning("Check update version error: %s.", str(error))
+            result["version"] = args["current_version"]
+            return result
+
+        content = json.loads(response.content)
+        if _has_new_version(latest_version=content["version"], current_version=f"{args['current_version']}"):
+            result["version"] = content["version"]
+            result["release_date"] = content["releaseDate"]
+            result["release_notes"] = content["releaseNotes"]
+            result["can_auto_update"] = content["canAutoUpdate"]
+        return result
+
+
+def _has_new_version(*, latest_version: str, current_version: str) -> bool:
+    try:
+        latest = version.parse(latest_version)
+        current = version.parse(current_version)
+
+        # Compare versions
+        return latest > current
+    except version.InvalidVersion:
+        logger.warning("Invalid version format: latest=%s, current=%s", latest_version, current_version)
+        return False

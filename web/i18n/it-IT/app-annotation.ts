@@ -1,0 +1,100 @@
+const translation = {
+  title: 'Annotazioni',
+  name: 'Risposta Annotazione',
+  editBy: 'Risposta modificata da {{author}}',
+  noData: {
+    title: 'Nessuna annotazione',
+    description:
+      'Puoi modificare le annotazioni durante il debug dell\'app o importare annotazioni in blocco qui per una risposta di alta qualità.',
+  },
+  table: {
+    header: {
+      question: 'domanda',
+      answer: 'risposta',
+      createdAt: 'creato il',
+      hits: 'hit',
+      actions: 'azioni',
+      addAnnotation: 'Aggiungi Annotazione',
+      bulkImport: 'Importazione Bulk',
+      bulkExport: 'Esportazione Bulk',
+      clearAll: 'Cancella Tutte le Annotazioni',
+      clearAllConfirm: 'Eliminare tutte le annotazioni?',
+    },
+  },
+  editModal: {
+    title: 'Modifica Risposta Annotazione',
+    queryName: 'Query Utente',
+    answerName: 'Bot Narratore',
+    yourAnswer: 'La tua Risposta',
+    answerPlaceholder: 'Scrivi qui la tua risposta',
+    yourQuery: 'La tua Query',
+    queryPlaceholder: 'Scrivi qui la tua query',
+    removeThisCache: 'Rimuovi questa Annotazione',
+    createdAt: 'Creato il',
+  },
+  addModal: {
+    title: 'Aggiungi Risposta Annotazione',
+    queryName: 'Domanda',
+    answerName: 'Risposta',
+    answerPlaceholder: 'Scrivi qui la risposta',
+    queryPlaceholder: 'Scrivi qui la query',
+    createNext: 'Aggiungi un\'altra risposta annotata',
+  },
+  batchModal: {
+    title: 'Importazione Bulk',
+    csvUploadTitle: 'Trascina e rilascia il tuo file CSV qui, oppure ',
+    browse: 'sfoglia',
+    tip: 'Il file CSV deve conformarsi alla seguente struttura:',
+    question: 'domanda',
+    answer: 'risposta',
+    contentTitle: 'contenuto chunk',
+    content: 'contenuto',
+    template: 'Scarica il modello qui',
+    cancel: 'Annulla',
+    run: 'Esegui Batch',
+    runError: 'Errore nell\'esecuzione del batch',
+    processing: 'Elaborazione batch in corso',
+    completed: 'Importazione completata',
+    error: 'Errore di Importazione',
+    ok: 'OK',
+  },
+  errorMessage: {
+    answerRequired: 'La risposta è obbligatoria',
+    queryRequired: 'La domanda è obbligatoria',
+  },
+  viewModal: {
+    annotatedResponse: 'Risposta Annotazione',
+    hitHistory: 'Storico Hit',
+    hit: 'Hit',
+    hits: 'Hit',
+    noHitHistory: 'Nessuno storico hit',
+  },
+  hitHistoryTable: {
+    query: 'Query',
+    match: 'Corrispondenza',
+    response: 'Risposta',
+    source: 'Fonte',
+    score: 'Punteggio',
+    time: 'Ora',
+  },
+  initSetup: {
+    title: 'Configurazione Iniziale Risposta Annotazione',
+    configTitle: 'Configurazione Risposta Annotazione',
+    confirmBtn: 'Salva & Abilita',
+    configConfirmBtn: 'Salva',
+  },
+  embeddingModelSwitchTip:
+    'Modello di vettorizzazione del testo di annotazione, il cambio di modello comporterà una nuova integrazione, comportando costi aggiuntivi.',
+  list: {
+    delete: {
+      title: 'Sei sicuro di voler eliminare?',
+    },
+  },
+  batchAction: {
+    delete: 'Elimina',
+    cancel: 'Annulla',
+    selected: 'selezionato',
+  },
+}
+
+export default translation

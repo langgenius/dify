@@ -1,77 +1,115 @@
 'use client'
-import React, { useEffect } from 'react'
+import React, { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDebounceFn } from 'ahooks'
+
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useContext } from 'use-context-selector'
-import Toast from '../components/base/toast'
-import Loading from '../components/base/loading'
-import Button from '@/app/components/base/button'
-import I18n from '@/context/i18n'
-import { fetchSetupStatus, setup } from '@/service/common'
-import type { SetupStatusResponse } from '@/models/common'
 
-const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
-const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
+import type { SubmitHandler } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
+import Loading from '../components/base/loading'
+import classNames from '@/utils/classnames'
+import Button from '@/app/components/base/button'
+
+import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
+import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { useDocLink } from '@/context/i18n'
+import { validPassword } from '@/config'
+
+const accountFormSchema = z.object({
+  email: z
+    .string()
+    .min(1, { message: 'login.error.emailInValid' })
+    .email('login.error.emailInValid'),
+  name: z.string().min(1, { message: 'login.error.nameEmpty' }),
+  password: z.string().min(8, {
+    message: 'login.error.passwordLengthInValid',
+  }).regex(validPassword, 'login.error.passwordInvalid'),
+})
+
+type AccountFormValues = z.infer<typeof accountFormSchema>
 
 const InstallForm = () => {
+  useDocumentTitle('')
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const docLink = useDocLink()
   const router = useRouter()
-
-  const [email, setEmail] = React.useState('')
-  const [name, setName] = React.useState('')
-  const [password, setPassword] = React.useState('')
   const [showPassword, setShowPassword] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<AccountFormValues>({
+    resolver: zodResolver(accountFormSchema),
+    defaultValues: {
+      name: '',
+      password: '',
+      email: '',
+    },
+  })
 
-  const showErrorMessage = (message: string) => {
-    Toast.notify({
-      type: 'error',
-      message,
-    })
-  }
-  const valid = () => {
-    if (!email) {
-      showErrorMessage(t('login.error.emailEmpty'))
-      return false
-    }
-    if (!validEmailReg.test(email)) {
-      showErrorMessage(t('login.error.emailInValid'))
-      return false
-    }
-    if (!name.trim()) {
-      showErrorMessage(t('login.error.nameEmpty'))
-      return false
-    }
-    if (!password.trim()) {
-      showErrorMessage(t('login.error.passwordEmpty'))
-      return false
-    }
-    if (!validPassword.test(password))
-      showErrorMessage(t('login.error.passwordInvalid'))
-
-    return true
-  }
-  const handleSetting = async () => {
-    if (!valid())
-      return
+  const onSubmit: SubmitHandler<AccountFormValues> = async (data) => {
+    // First, setup the admin account
     await setup({
       body: {
-        email,
-        name,
-        password,
+        ...data,
       },
     })
-    router.push('/signin')
+
+    // Then, automatically login with the same credentials
+    const loginRes = await login({
+      url: '/login',
+      body: {
+        email: data.email,
+        password: data.password,
+      },
+    })
+
+    // Store tokens and redirect to apps if login successful
+    if (loginRes.result === 'success') {
+      router.replace('/apps')
+    }
+    else {
+      // Fallback to signin page if auto-login fails
+      router.replace('/signin')
+    }
   }
+
+  const handleSetting = async () => {
+    if (isSubmitting) return
+    handleSubmit(onSubmit)()
+  }
+
+  const { run: debouncedHandleKeyDown } = useDebounceFn(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        handleSetting()
+      }
+    },
+    { wait: 200 },
+  )
+
+  const handleKeyDown = useCallback(debouncedHandleKeyDown, [debouncedHandleKeyDown])
 
   useEffect(() => {
     fetchSetupStatus().then((res: SetupStatusResponse) => {
-      if (res.step === 'finished')
-        window.location.href = '/signin'
-      else
-        setLoading(false)
+      if (res.step === 'finished') {
+        localStorage.setItem('setup_status', 'finished')
+        router.push('/signin')
+      }
+      else {
+        fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
+          if (res.status === 'not_started')
+            router.push('/init')
+        })
+      }
+      setLoading(false)
     })
   }, [])
 
@@ -80,95 +118,82 @@ const InstallForm = () => {
       ? <Loading />
       : <>
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <h2 className="text-[32px] font-bold text-gray-900">{t('login.setAdminAccount')}</h2>
-          <p className='
-          mt-1 text-sm text-gray-600
-        '>{t('login.setAdminAccountDesc')}</p>
+          <h2 className="text-[32px] font-bold text-text-primary">{t('login.setAdminAccount')}</h2>
+          <p className='mt-1 text-sm text-text-secondary'>{t('login.setAdminAccountDesc')}</p>
         </div>
-
-        <div className="grow mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white ">
-            <form onSubmit={() => { }}>
+        <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="relative">
+            <form onSubmit={handleSubmit(onSubmit)} onKeyDown={handleKeyDown}>
               <div className='mb-5'>
-                <label htmlFor="email" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+                <label htmlFor="email" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
                   {t('login.email')}
                 </label>
-                <div className="mt-1">
+                <div className="mt-1 rounded-md shadow-sm">
                   <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
+                    {...register('email')}
                     placeholder={t('login.emailPlaceholder') || ''}
-                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
+                    className={'system-sm-regular w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal px-3 py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
                   />
+                  {errors.email && <span className='text-sm text-red-400'>{t(`${errors.email?.message}`)}</span>}
                 </div>
+
               </div>
 
               <div className='mb-5'>
-                <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+                <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
                   {t('login.name')}
                 </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="relative mt-1 rounded-md shadow-sm">
                   <input
-                    id="name"
-                    type="text"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
+                    {...register('name')}
                     placeholder={t('login.namePlaceholder') || ''}
-                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
+                    className={'system-sm-regular w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal px-3 py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
                   />
                 </div>
+                {errors.name && <span className='text-sm text-red-400'>{t(`${errors.name.message}`)}</span>}
               </div>
 
               <div className='mb-5'>
-                <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+                <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
                   {t('login.password')}
                 </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="relative mt-1 rounded-md shadow-sm">
                   <input
-                    id="password"
+                    {...register('password')}
                     type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
                     placeholder={t('login.passwordPlaceholder') || ''}
-                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
+                    className={'system-sm-regular w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal px-3 py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
                   />
+
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500"
+                      className="text-text-quaternary hover:text-text-tertiary focus:text-text-tertiary focus:outline-none"
                     >
                       {showPassword ? '👀' : '😝'}
                     </button>
                   </div>
                 </div>
-                <div className='mt-1 text-xs text-gray-500'>{t('login.error.passwordInvalid')}</div>
 
+                <div className={classNames('mt-1 text-xs text-text-secondary', {
+                  'text-red-400 !text-sm': errors.password,
+                })}>{t('login.error.passwordInvalid')}</div>
               </div>
 
-              {/* <div className="flex items-center justify-between">
-              <div className="text-sm">
-                <div className="flex items-center mb-4">
-                  <input id="default-checkbox" type="checkbox" className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 rounded" />
-                  <label htmlFor="default-checkbox" className="ml-2 text-sm font-medium cursor-pointer text-primary-600 hover:text-gray-500">{t('login.acceptPP')}</label>
-                </div>
-              </div>
-            </div> */}
               <div>
-                <Button type='primary' className='w-full !fone-medium !text-sm' onClick={handleSetting}>
+                <Button variant='primary' className='w-full' onClick={handleSetting}>
                   {t('login.installBtn')}
                 </Button>
               </div>
             </form>
-            <div className="block w-hull mt-2 text-xs text-gray-600">
+            <div className="mt-2 block w-full text-xs text-text-secondary">
               {t('login.license.tip')}
-            &nbsp;
+              &nbsp;
               <Link
-                className='text-primary-600'
-                target={'_blank'}
-                href={`https://docs.dify.ai/${locale === 'en' ? '' : `v/${locale.toLowerCase()}/`}community/open-source`}
+                className='text-text-accent'
+                target='_blank' rel='noopener noreferrer'
+                href={docLink('/policies/open-source')}
               >{t('login.license.link')}</Link>
             </div>
           </div>

@@ -1,5 +1,5 @@
 .pageHeader {
-  @apply px-16;
+  @apply px-16 flex justify-between items-center;
   position: sticky;
   top: 0;
   left: 0;
@@ -13,24 +13,12 @@
   z-index: 10;
 }
 
-.form {
-  @apply px-16 pb-8;
-}
-
-.form .label {
-  @apply pt-6 pb-2;
-  font-weight: 500;
-  font-size: 16px;
-  line-height: 24px;
-  color: #344054;
-}
-
 .segmentationItem {
   min-height: 68px;
 }
 
 .indexItem {
-  min-height: 146px;
+  min-height: 126px;
 }
 
 .indexItem .disableMask {
@@ -75,6 +63,10 @@
   cursor: pointer;
 }
 
+.disabled {
+  cursor: not-allowed !important;
+}
+
 .indexItem.disabled:hover {
   background-color: #fcfcfd;
   border-color: #f2f4f7;
@@ -87,8 +79,7 @@
 }
 
 .radioItem {
-  @apply relative mb-2 rounded-xl border border-gray-100 cursor-pointer;
-  background-color: #fcfcfd;
+  @apply relative mb-2 rounded-xl border border-components-option-card-option-border cursor-pointer bg-components-option-card-option-bg;
 }
 
 .radioItem.segmentationItem.custom {
@@ -121,10 +112,6 @@
   @apply pb-1;
 }
 
-.radioItem.indexItem .typeHeader .tip {
-  @apply pb-3;
-}
-
 .radioItem .typeIcon {
   position: absolute;
   top: 18px;
@@ -150,7 +137,7 @@
 }
 
 .typeIcon.economical {
-  background-image: url(../assets/piggy-bank-01.svg);
+  background-image: url(../assets/piggy-bank-mod.svg);
 }
 
 .radioItem .radio {
@@ -251,7 +238,7 @@
 }
 
 .ruleItem {
-  @apply flex items-center h-7;
+  @apply flex items-center py-1.5;
 }
 
 .formFooter {
@@ -262,8 +249,9 @@
   font-size: 13px;
   line-height: 18px;
 }
+
 .input {
-  @apply inline-flex h-9 w-full py-1 px-2 rounded-lg text-xs leading-normal;
+  @apply inline-flex h-9 w-full py-1 px-2 pr-14 rounded-lg text-xs leading-normal;
   @apply bg-gray-100 caret-primary-600 hover:bg-gray-100 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus-visible:outline-none focus:bg-white placeholder:text-gray-400;
 }
 
@@ -288,6 +276,10 @@
 
 .fileIcon.csv {
   background-image: url(../assets/csv.svg);
+}
+
+.fileIcon.doc {
+  background-image: url(../assets/doc.svg);
 }
 
 .fileIcon.docx {
@@ -316,9 +308,12 @@
 .fileIcon.json {
   background-image: url(../assets/json.svg);
 }
+
 .sourceContent {
+  width: 0;
   flex: 1 1 auto;
 }
+
 .sourceCount {
   @apply shrink-0 ml-1;
   font-weight: 500;
@@ -326,6 +321,7 @@
   line-height: 18px;
   color: #667085;
 }
+
 .segmentCount {
   flex: 1 1 30%;
   max-width: 120px;
@@ -385,20 +381,11 @@
   width: 524px;
 }
 
-.previewHeader {
-  position: sticky;
-  top: 0;
-  left: 0;
-  padding-top: 42px;
-  background-color: #fff;
-  font-weight: 600;
-  font-size: 18px;
-  line-height: 28px;
-  color: #101828;
-  z-index: 10;
+.previewWrap.isMobile {
+  max-width: 524px;
 }
 
-/* 
+/*
  * `fixed` must under `previewHeader` because of style override would not work
  */
 .fixed {
@@ -410,12 +397,14 @@
   backdrop-filter: blur(4px);
   animation: fix 0.5s;
 }
+
 @keyframes fix {
   from {
     padding-top: 42px;
     font-size: 18px;
     line-height: 28px;
   }
+
   to {
     padding-top: 12px;
     font-size: 12px;

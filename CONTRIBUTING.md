@@ -1,61 +1,97 @@
-# Contributing
+# CONTRIBUTING
 
-Thanks for your interest in [Dify](https://dify.ai) and for wanting to contribute! Before you begin, read the
-[code of conduct](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md) and check out the
-[existing issues](https://github.com/langgenius/langgenius-gateway/issues).
-This document describes how to set up your development environment to build and test [Dify](https://dify.ai).
+So you're looking to contribute to Dify - that's awesome, we can't wait to see what you do. As a startup with limited headcount and funding, we have grand ambitions to design the most intuitive workflow for building and managing LLM applications. Any help from the community counts, truly.
 
-### Install dependencies
+We need to be nimble and ship fast given where we are, but we also want to make sure that contributors like you get as smooth an experience at contributing as possible. We've assembled this contribution guide for that purpose, aiming at getting you familiarized with the codebase & how we work with contributors, so you could quickly jump to the fun part.
 
-You need to install and configure the following dependencies on your machine to build [Dify](https://dify.ai):
+This guide, like Dify itself, is a constant work in progress. We highly appreciate your understanding if at times it lags behind the actual project, and welcome any feedback for us to improve.
 
-- [Git](http://git-scm.com/)
-- [Docker](https://www.docker.com/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
-- [Node.js v18.x (LTS)](http://nodejs.org)
-- [npm](https://www.npmjs.com/) version 8.x.x or [Yarn](https://yarnpkg.com/)
-- [Python](https://www.python.org/) version 3.10.x
+In terms of licensing, please take a minute to read our short [License and Contributor Agreement](./LICENSE). The community also adheres to the [code of conduct](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md).
 
-## Local development
+## Before you jump in
 
-To set up a working development environment, just fork the project git repository and install the backend and frontend dependencies using the proper package manager and create run the docker-compose stack.
+Looking for something to tackle? Browse our [good first issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) and pick one to get started!
 
-### Fork the repository
+Got a cool new model runtime or tool to add? Open a PR in our [plugin repo](https://github.com/langgenius/dify-plugins) and show us what you've built.
 
-you need to fork the [repository](https://github.com/langgenius/dify).
+Need to update an existing model runtime, tool, or squash some bugs? Head over to our [official plugin repo](https://github.com/langgenius/dify-official-plugins) and make your magic happen!
 
-### Clone the repo
+Join the fun, contribute, and let's build something awesome together! 💡✨
 
-Clone your GitHub forked repository:
+Don't forget to link an existing issue or open a new issue in the PR's description.
 
-```
-git clone git@github.com:<github_username>/dify.git
-```
+### Bug reports
 
-### Install backend
+> [!IMPORTANT]
+> Please make sure to include the following information when submitting a bug report:
 
-To learn how to install the backend application, please refer to the [Backend README](api/README.md).
+- A clear and descriptive title
+- A detailed description of the bug, including any error messages
+- Steps to reproduce the bug
+- Expected behavior
+- **Logs**, if available, for backend issues, this is really important, you can find them in docker-compose logs
+- Screenshots or videos, if applicable
 
-### Install frontend
+How we prioritize:
 
-To learn how to install the frontend application, please refer to the [Frontend README](web/README.md).
+| Issue Type | Priority |
+| ------------------------------------------------------------ | --------------- |
+| Bugs in core functions (cloud service, cannot login, applications not working, security loopholes) | Critical |
+| Non-critical bugs, performance boosts | Medium Priority |
+| Minor fixes (typos, confusing but working UI) | Low Priority |
 
-### Visit dify in your browser
+### Feature requests
 
-Finally, you can now visit [http://localhost:3000](http://localhost:3000) to view the [Dify](https://dify.ai) in local environment.
+> [!NOTE]
+> Please make sure to include the following information when submitting a feature request:
 
+- A clear and descriptive title
+- A detailed description of the feature
+- A use case for the feature
+- Any other context or screenshots about the feature request
 
-## Create a pull request
+How we prioritize:
 
-After making your changes, open a pull request (PR). Once you submit your pull request, others from the Dify team/community will review it with you.
+| Feature Type | Priority |
+| ------------------------------------------------------------ | --------------- |
+| High-Priority Features as being labeled by a team member | High Priority |
+| Popular feature requests from our [community feedback board](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Medium Priority |
+| Non-core features and minor enhancements | Low Priority |
+| Valuable but not immediate | Future-Feature |
 
-Did you have an issue, like a merge conflict, or don't know how to open a pull request? Check out [GitHub's pull request tutorial](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests) on how to resolve merge conflicts and other issues. Once your PR has been merged, you will be proudly listed as a contributor in the [contributor chart](https://github.com/langgenius/langgenius-gateway/graphs/contributors).
+## Submitting your PR
 
-## Community channels
+### Pull Request Process
 
-Stuck somewhere? Have any questions? Join the [Discord Community Server](https://discord.gg/j3XRWSPBf7). We are here to help!
+1. Fork the repository
+1. Before you draft a PR, please create an issue to discuss the changes you want to make
+1. Create a new branch for your changes
+1. Please add tests for your changes accordingly
+1. Ensure your code passes the existing tests
+1. Please link the issue in the PR description, `fixes #<issue_number>`
+1. Get merged!
 
-### i18n (Internationalization) Support
+### Setup the project
 
-We are looking for contributors to help with translations in other languages. If you are interested in helping, please join the [Discord Community Server](https://discord.gg/AhzKf7dNgk) and let us know.  
-Also check out the [Frontend i18n README]((web/i18n/README_EN.md)) for more information.
+#### Frontend
+
+For setting up the frontend service, please refer to our comprehensive [guide](https://github.com/langgenius/dify/blob/main/web/README.md) in the `web/README.md` file. This document provides detailed instructions to help you set up the frontend environment properly.
+
+#### Backend
+
+For setting up the backend service, kindly refer to our detailed [instructions](https://github.com/langgenius/dify/blob/main/api/README.md) in the `api/README.md` file. This document contains step-by-step guidance to help you get the backend up and running smoothly.
+
+#### Other things to note
+
+We recommend reviewing this document carefully before proceeding with the setup, as it contains essential information about:
+
+- Prerequisites and dependencies
+- Installation steps
+- Configuration details
+- Common troubleshooting tips
+
+Feel free to reach out if you encounter any issues during the setup process.
+
+## Getting Help
+
+If you ever get stuck or get a burning question while contributing, simply shoot your queries our way via the related GitHub issue, or hop onto our [Discord](https://discord.gg/8Tpq4AcN9c) for a quick chat.

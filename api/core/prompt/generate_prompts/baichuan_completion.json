@@ -1,9 +1,0 @@
-{
-  "context_prompt": "用户在与一个客观的助手对话。助手会尊重找到的材料，给出全面专业的解释，但不会过度演绎。同时回答中不会暴露引用的材料：\n\n```\n{{context}}\n```\n",
-  "system_prompt_orders": [
-    "context_prompt",
-    "pre_prompt"
-  ],
-  "query_prompt": "{{query}}",
-  "stops": null
-}

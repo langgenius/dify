@@ -1,30 +1,40 @@
 'use client'
 
-import { createRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import type { FC, ReactNode } from 'react'
-import { fetchAppList } from '@/service/apps'
-import Loading from '@/app/components/base/loading'
-import { fetchCurrentWorkspace, fetchLanggeniusVersion, fetchUserProfile } from '@/service/common'
-import type { App } from '@/types/app'
+import { fetchCurrentWorkspace, fetchLangGeniusVersion, fetchUserProfile } from '@/service/common'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
+import { noop } from 'lodash-es'
+import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { ZENDESK_FIELD_IDS } from '@/config'
 
 export type AppContextValue = {
-  apps: App[]
-  mutateApps: VoidFunction
   userProfile: UserProfileResponse
   mutateUserProfile: VoidFunction
   currentWorkspace: ICurrentWorkspace
   isCurrentWorkspaceManager: boolean
+  isCurrentWorkspaceOwner: boolean
+  isCurrentWorkspaceEditor: boolean
+  isCurrentWorkspaceDatasetOperator: boolean
   mutateCurrentWorkspace: VoidFunction
-  pageContainerRef: React.RefObject<HTMLDivElement>
-  langeniusVersionInfo: LangGeniusVersionResponse
+  langGeniusVersionInfo: LangGeniusVersionResponse
   useSelector: typeof useSelector
+  isLoadingCurrentWorkspace: boolean
 }
 
-const initialLangeniusVersionInfo = {
+const userProfilePlaceholder = {
+  id: '',
+  name: '',
+  email: '',
+  avatar: '',
+  avatar_url: '',
+  is_password_set: false,
+}
+
+const initialLangGeniusVersionInfo = {
   current_env: '',
   current_version: '',
   latest_version: '',
@@ -42,26 +52,20 @@ const initialWorkspaceInfo: ICurrentWorkspace = {
   created_at: 0,
   role: 'normal',
   providers: [],
-  in_trail: true,
 }
 
 const AppContext = createContext<AppContextValue>({
-  apps: [],
-  mutateApps: () => { },
-  userProfile: {
-    id: '',
-    name: '',
-    email: '',
-    avatar: '',
-    is_password_set: false,
-  },
+  userProfile: userProfilePlaceholder,
   currentWorkspace: initialWorkspaceInfo,
   isCurrentWorkspaceManager: false,
-  mutateUserProfile: () => { },
-  mutateCurrentWorkspace: () => { },
-  pageContainerRef: createRef(),
-  langeniusVersionInfo: initialLangeniusVersionInfo,
+  isCurrentWorkspaceOwner: false,
+  isCurrentWorkspaceEditor: false,
+  isCurrentWorkspaceDatasetOperator: false,
+  mutateUserProfile: noop,
+  mutateCurrentWorkspace: noop,
+  langGeniusVersionInfo: initialLangGeniusVersionInfo,
   useSelector,
+  isLoadingCurrentWorkspace: false,
 })
 
 export function useSelector<T>(selector: (value: AppContextValue) => T): T {
@@ -73,27 +77,36 @@ export type AppContextProviderProps = {
 }
 
 export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
-  const pageContainerRef = useRef<HTMLDivElement>(null)
+  const { data: userProfileResponse, mutate: mutateUserProfile, error: userProfileError } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
+  const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace, isLoading: isLoadingCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
 
-  const { data: appList, mutate: mutateApps } = useSWR({ url: '/apps', params: { page: 1 } }, fetchAppList)
-  const { data: userProfileResponse, mutate: mutateUserProfile } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
-  const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
-
-  const [userProfile, setUserProfile] = useState<UserProfileResponse>()
-  const [langeniusVersionInfo, setLangeniusVersionInfo] = useState<LangGeniusVersionResponse>(initialLangeniusVersionInfo)
+  const [userProfile, setUserProfile] = useState<UserProfileResponse>(userProfilePlaceholder)
+  const [langGeniusVersionInfo, setLangGeniusVersionInfo] = useState<LangGeniusVersionResponse>(initialLangGeniusVersionInfo)
   const [currentWorkspace, setCurrentWorkspace] = useState<ICurrentWorkspace>(initialWorkspaceInfo)
   const isCurrentWorkspaceManager = useMemo(() => ['owner', 'admin'].includes(currentWorkspace.role), [currentWorkspace.role])
-
+  const isCurrentWorkspaceOwner = useMemo(() => currentWorkspace.role === 'owner', [currentWorkspace.role])
+  const isCurrentWorkspaceEditor = useMemo(() => ['owner', 'admin', 'editor'].includes(currentWorkspace.role), [currentWorkspace.role])
+  const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
   const updateUserProfileAndVersion = useCallback(async () => {
     if (userProfileResponse && !userProfileResponse.bodyUsed) {
-      const result = await userProfileResponse.json()
-      setUserProfile(result)
-      const current_version = userProfileResponse.headers.get('x-version')
-      const current_env = process.env.NODE_ENV === 'development' ? 'DEVELOPMENT' : userProfileResponse.headers.get('x-env')
-      const versionData = await fetchLanggeniusVersion({ url: '/version', params: { current_version } })
-      setLangeniusVersionInfo({ ...versionData, current_version, latest_version: versionData.version, current_env })
+      try {
+        const result = await userProfileResponse.json()
+        setUserProfile(result)
+        const current_version = userProfileResponse.headers.get('x-version')
+        const current_env = process.env.NODE_ENV === 'development' ? 'DEVELOPMENT' : userProfileResponse.headers.get('x-env')
+        const versionData = await fetchLangGeniusVersion({ url: '/version', params: { current_version } })
+        setLangGeniusVersionInfo({ ...versionData, current_version, latest_version: versionData.version, current_env })
+      }
+      catch (error) {
+        console.error('Failed to update user profile:', error)
+        if (userProfile.id === '')
+          setUserProfile(userProfilePlaceholder)
+      }
     }
-  }, [userProfileResponse])
+    else if (userProfileError && userProfile.id === '') {
+      setUserProfile(userProfilePlaceholder)
+    }
+  }, [userProfileResponse, userProfileError, userProfile.id])
 
   useEffect(() => {
     updateUserProfileAndVersion()
@@ -104,25 +117,61 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       setCurrentWorkspace(currentWorkspaceResponse)
   }, [currentWorkspaceResponse])
 
-  if (!appList || !userProfile)
-    return <Loading type='app' />
+  // #region Zendesk conversation fields
+  useEffect(() => {
+    if (ZENDESK_FIELD_IDS.ENVIRONMENT && langGeniusVersionInfo?.current_env) {
+      setZendeskConversationFields([{
+        id: ZENDESK_FIELD_IDS.ENVIRONMENT,
+        value: langGeniusVersionInfo.current_env.toLowerCase(),
+      }])
+    }
+  }, [langGeniusVersionInfo?.current_env])
+
+  useEffect(() => {
+    if (ZENDESK_FIELD_IDS.VERSION && langGeniusVersionInfo?.version) {
+      setZendeskConversationFields([{
+        id: ZENDESK_FIELD_IDS.VERSION,
+        value: langGeniusVersionInfo.version,
+      }])
+    }
+  }, [langGeniusVersionInfo?.version])
+
+  useEffect(() => {
+    if (ZENDESK_FIELD_IDS.EMAIL && userProfile?.email) {
+      setZendeskConversationFields([{
+        id: ZENDESK_FIELD_IDS.EMAIL,
+        value: userProfile.email,
+      }])
+    }
+  }, [userProfile?.email])
+
+  useEffect(() => {
+    if (ZENDESK_FIELD_IDS.WORKSPACE_ID && currentWorkspace?.id) {
+      setZendeskConversationFields([{
+        id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
+        value: currentWorkspace.id,
+      }])
+    }
+  }, [currentWorkspace?.id])
+  // #endregion Zendesk conversation fields
 
   return (
     <AppContext.Provider value={{
-      apps: appList.data,
-      mutateApps,
       userProfile,
       mutateUserProfile,
-      pageContainerRef,
-      langeniusVersionInfo,
+      langGeniusVersionInfo,
       useSelector,
       currentWorkspace,
       isCurrentWorkspaceManager,
+      isCurrentWorkspaceOwner,
+      isCurrentWorkspaceEditor,
+      isCurrentWorkspaceDatasetOperator,
       mutateCurrentWorkspace,
+      isLoadingCurrentWorkspace,
     }}>
-      <div className='flex flex-col h-full'>
+      <div className='flex h-full flex-col overflow-y-auto'>
         {globalThis.document?.body?.getAttribute('data-public-maintenance-notice') && <MaintenanceNotice />}
-        <div ref={pageContainerRef} className='grow relative flex flex-col overflow-auto bg-gray-100'>
+        <div className='relative flex grow flex-col overflow-y-auto overflow-x-hidden bg-background-body'>
           {children}
         </div>
       </div>

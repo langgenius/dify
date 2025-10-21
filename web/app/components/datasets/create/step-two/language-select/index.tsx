@@ -1,37 +1,61 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from 'classnames'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
+import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import Popover from '@/app/components/base/popover'
+import { languages } from '@/i18n-config/language'
 
 export type ILanguageSelectProps = {
   currentLanguage: string
   onSelect: (language: string) => void
+  disabled?: boolean
 }
 
 const LanguageSelect: FC<ILanguageSelectProps> = ({
   currentLanguage,
   onSelect,
+  disabled,
 }) => {
   return (
     <Popover
       manualClose
       trigger='click'
+      disabled={disabled}
+      popupClassName='z-20'
       htmlContent={
-        <div className='w-full py-1'>
-          <div className='py-2 px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer text-gray-700 text-sm' onClick={() => onSelect('English')}>English</div>
-          <div className='py-2 px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer text-gray-700 text-sm' onClick={() => onSelect('Chinese')}>简体中文</div>
+        <div className='w-full p-1'>
+          {languages.filter(language => language.supported).map(({ prompt_name }) => (
+            <div
+              key={prompt_name}
+              className='inline-flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2 hover:bg-state-base-hover'
+              onClick={() => onSelect(prompt_name)}
+            >
+              <span className='system-sm-medium text-text-secondary'>{prompt_name}</span>
+              {(currentLanguage === prompt_name) && <RiCheckLine className='size-4 text-text-accent' />}
+            </div>
+          ))}
         </div>
       }
       btnElement={
-        <div className='inline-flex items-center'>
-          <span className='pr-[2px] text-xs leading-[18px] font-medium'>{currentLanguage === 'English' ? 'English' : '简体中文'}</span>
-          <ChevronDown className='w-3 h-3 opacity-60' />
+        <div className={cn('inline-flex items-center gap-x-[1px]', disabled && 'cursor-not-allowed')}>
+          <span className={cn(
+            'system-xs-semibold px-[3px] text-components-button-tertiary-text',
+            disabled ? 'text-components-button-tertiary-text-disabled' : '',
+          )}>
+            {currentLanguage}
+          </span>
+          <RiArrowDownSLine className={cn(
+            'size-3.5 text-components-button-tertiary-text',
+            disabled ? 'text-components-button-tertiary-text-disabled' : '',
+          )} />
         </div>
       }
-      btnClassName={open => cn('!border-0 !px-0 !py-0 !bg-inherit !hover:bg-inherit', open ? 'text-blue-600' : 'text-gray-500')}
-      className='!w-[120px] h-fit !z-20 !translate-x-0 !left-[-16px]'
+      btnClassName={() => cn(
+        '!hover:bg-components-button-tertiary-bg !mx-1 rounded-md !border-0 !bg-components-button-tertiary-bg !px-1.5 !py-1',
+        disabled ? 'bg-components-button-tertiary-bg-disabled' : '',
+      )}
+      className='!left-1 !z-20 h-fit !w-[140px] !translate-x-0'
     />
   )
 }

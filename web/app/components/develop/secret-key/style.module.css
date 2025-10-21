@@ -1,5 +1,5 @@
 .customModal {
-    max-width: 40rem !important;
+    max-width: 800px !important;
     max-height: calc(100vh - 80px);
 }
 
@@ -14,10 +14,6 @@
 
 .w64 {
     width: 4rem;
-}
-
-.w320 {
-    width: 20rem;
 }
 
 .customApi {

@@ -1,1 +1,1 @@
-export { default as Grid01 } from './Grid01'
+export { default as LayoutGrid02 } from './LayoutGrid02'

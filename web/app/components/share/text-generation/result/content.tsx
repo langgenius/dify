@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import React from 'react'
 import Header from './header'
-import type { Feedbacktype } from '@/app/components/app/chat/type'
+import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import { format } from '@/service/base'
 
 export type IResultProps = {
   content: string
   showFeedback: boolean
-  feedback: Feedbacktype
-  onFeedback: (feedback: Feedbacktype) => void
+  feedback: FeedbackType
+  onFeedback: (feedback: FeedbackType) => void
 }
 const Result: FC<IResultProps> = ({
   content,
@@ -17,10 +17,10 @@ const Result: FC<IResultProps> = ({
   onFeedback,
 }) => {
   return (
-    <div className='basis-3/4 h-max'>
+    <div className='h-max basis-3/4'>
       <Header result={content} showFeedback={showFeedback} feedback={feedback} onFeedback={onFeedback} />
       <div
-        className='mt-4 w-full flex text-sm leading-5 overflow-scroll font-normal text-gray-900'
+        className='mt-4 flex w-full overflow-scroll text-sm font-normal leading-5 text-gray-900'
         style={{
           maxHeight: '70vh',
         }}

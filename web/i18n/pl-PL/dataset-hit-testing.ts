@@ -1,0 +1,34 @@
+const translation = {
+  title: 'Testowanie odzyskiwania',
+  desc: 'Przetestuj efekt uderzenia wiedzy na podstawie podanego tekstu zapytania.',
+  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  table: {
+    header: {
+      source: 'Źródło',
+      text: 'Tekst',
+      time: 'Czas',
+    },
+  },
+  input: {
+    title: 'Tekst źródłowy',
+    placeholder: 'Proszę wpisać tekst, zaleca się krótkie zdanie deklaratywne.',
+    countWarning: 'Do 200 znaków.',
+    indexWarning: 'Tylko wiedza wysokiej jakości.',
+    testing: 'Testowanie',
+  },
+  hit: {
+    title: 'AKAPITY ODZYSKIWANIA',
+    emptyTip: 'Wyniki testowania odzyskiwania będą tu pokazane',
+  },
+  noRecentTip: 'Brak ostatnich wyników zapytań tutaj',
+  viewChart: 'Zobacz WYKRES WEKTOROWY',
+  settingTitle: 'Ustawienie pobierania',
+  viewDetail: 'Pokaż szczegóły',
+  keyword: 'Słowa kluczowe',
+  hitChunks: 'Trafienie w {{num}} fragmentów podrzędnych',
+  open: 'Otwierać',
+  records: 'Rekordy',
+  chunkDetail: 'Szczegóły kawałka',
+}
+
+export default translation

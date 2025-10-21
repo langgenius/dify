@@ -1,0 +1,59 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "17",
+			"height": "16",
+			"viewBox": "0 0 17 16",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "Icon"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "g",
+						"attributes": {
+							"id": "Icon_2"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"d": "M8.49967 14.6663C12.1816 14.6663 15.1663 11.6816 15.1663 7.99967C15.1663 4.31778 12.1816 1.33301 8.49967 1.33301C4.81778 1.33301 1.83301 4.31778 1.83301 7.99967C1.83301 11.6816 4.81778 14.6663 8.49967 14.6663Z",
+									"stroke": "currentColor",
+									"stroke-width": "1.5",
+									"stroke-linecap": "round",
+									"stroke-linejoin": "round"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"d": "M10.4997 5.99967H6.49967V9.99967H10.4997V5.99967Z",
+									"stroke": "currentColor",
+									"stroke-width": "1.5",
+									"stroke-linecap": "round",
+									"stroke-linejoin": "round"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"name": "StopCircle"
+}

@@ -1,0 +1,1053 @@
+import { CodeGroup } from '../code.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
+
+# Workflow App API
+
+Workflow applications offers non-session support and is ideal for translation, article writing, summarization AI, and more.
+
+<div>
+  ### Base URL
+  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url} />
+
+  ### Authentication
+
+  The Service API uses `API-Key` authentication.
+  <i>**Strongly recommend storing your API Key on the server-side, not shared or stored on the client-side, to avoid possible API-Key leakage that can lead to serious consequences.**</i>
+
+  For all API requests, include your API Key in the `Authorization` HTTP Header, as shown below:
+
+  <CodeGroup title="Code" targetCode='Authorization: Bearer {API_KEY}' />
+</div>
+
+---
+
+<Heading
+  url='/workflows/run'
+  method='POST'
+  title='Execute Workflow'
+  name='#Execute-Workflow'
+/>
+<Row>
+  <Col>
+    Execute workflow, cannot be executed without a published workflow.
+
+    ### Request Body
+      - `inputs` (object) Required
+        Allows the entry of various variable values defined by the App.
+        The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
+        The workflow application requires at least one key/value pair to be inputted. The variable can be of File Array type.
+        File Array type variable is suitable for inputting files combined with text understanding and answering questions, available only when the model supports file parsing and understanding capability.
+        If the variable is of File Array type, the corresponding value should be a list whose elements contain following attributions:
+          - `type` (string) Supported type:
+            - `document` Supported types include: 'TXT', 'MD', 'MARKDOWN', 'MDX', 'PDF', 'HTML', 'XLSX', 'XLS', 'VTT', 'PROPERTIES', 'DOC', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
+            - `image` Supported types include: 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
+            - `audio` Supported types include: 'MP3', 'M4A', 'WAV', 'WEBM', 'MPGA'
+            - `video` Supported types include: 'MP4', 'MOV', 'MPEG', 'WEBM'
+            - `custom` Supported types include: other file types
+          - `transfer_method` (string) Transfer method:
+            - `remote_url`: File URL.
+            - `local_file`: Upload file.
+          - `url` File URL. (Only when transfer method is `remote_url`).
+          - `upload_file_id` Upload file ID. (Only when transfer method is `local_file`).
+
+      - `response_mode` (string) Required
+        The mode of response return, supporting:
+        - `streaming` Streaming mode (recommended), implements a typewriter-like output through SSE ([Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)).
+        - `blocking` Blocking mode, returns result after execution is complete. (Requests may be interrupted if the process is long)
+        <i>Due to Cloudflare restrictions, the request will be interrupted without a return after 100 seconds.</i>
+      - `user` (string) Required
+        User identifier, used to define the identity of the end-user for retrieval and statistics.
+        Should be uniquely defined by the developer within the application.
+        <br/>
+        <i>The user identifier should be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.</i>
+      - `files` (array[object]) Optional
+      - `trace_id` (string) Optional
+        Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:
+        1. Header: via HTTP Header `X-Trace-Id`, highest priority.
+        2. Query parameter: via URL query parameter `trace_id`.
+        3. Request Body: via request body field `trace_id` (i.e., this field).
+
+    ### Response
+    When `response_mode` is `blocking`, return a CompletionResponse object.
+    When `response_mode` is `streaming`, return a ChunkCompletionResponse stream.
+
+    ### CompletionResponse
+    Returns the App result, `Content-Type` is `application/json`.
+    - `workflow_run_id` (string) Unique ID of workflow execution
+    - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+    - `data` (object) detail of result
+      - `id` (string) ID of workflow execution
+      - `workflow_id` (string) ID of related workflow
+      - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
+      - `outputs` (json) Optional content of output
+      - `error` (string) Optional reason of error
+      - `elapsed_time` (float) Optional total seconds to be used
+      - `total_tokens` (int) Optional tokens to be used
+      - `total_steps` (int) default 0
+      - `created_at` (timestamp) start time
+      - `finished_at` (timestamp) end time
+
+    ### ChunkCompletionResponse
+    Returns the stream chunks outputted by the App, `Content-Type` is `text/event-stream`.
+    Each streaming chunk starts with `data:`, separated by two newline characters `\n\n`, as shown below:
+    <CodeGroup>
+    ```streaming {{ title: 'Response' }}
+    data: {"event": "text_chunk", "workflow_run_id": "b85e5fc5-751b-454d-b14e-dc5f240b0a31", "task_id": "bd029338-b068-4d34-a331-fc85478922c2", "data": {"text": "\u4e3a\u4e86", "from_variable_selector": ["1745912968134", "text"]}}\n\n
+    ```
+    </CodeGroup>
+    The structure of the streaming chunks varies depending on the `event`:
+    - `event: workflow_started` workflow starts execution
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `workflow_started`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `workflow_id` (string) ID of related workflow
+        - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
+    - `event: node_started` node execution started
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `node_started`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `node_id` (string) ID of node
+        - `node_type` (string) type of node
+        - `title` (string) name of node
+        - `index` (int) Execution sequence number, used to display Tracing Node sequence
+        - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
+        - `inputs` (object) Contents of all preceding node variables used in the node
+        - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: text_chunk` Text fragment
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `text_chunk`
+      - `data` (object) detail
+        - `text` (string) Text content
+        - `from_variable_selector` (array) Text source path, helping developers understand which node and variable generated the text
+    - `event: node_finished` node execution ends, success or failure in different states in the same event
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `node_finished`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `node_id` (string) ID of node
+        - `node_type` (string) type of node
+        - `title` (string) name of node
+        - `index` (int) Execution sequence number, used to display Tracing Node sequence
+        - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
+        - `inputs` (object) Contents of all preceding node variables used in the node
+        - `process_data` (json) Optional node process data
+        - `outputs` (json) Optional content of output
+        - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
+        - `error` (string) Optional reason of error
+        - `elapsed_time` (float) Optional total seconds to be used
+        - `execution_metadata` (json) meta data
+          - `total_tokens` (int) optional tokens to be used
+          - `total_price` (decimal) optional Total cost
+          - `currency` (string) optional e.g. `USD` / `RMB`
+        - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: workflow_finished` workflow execution ends, success or failure in different states in the same event
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `workflow_finished`
+      - `data` (object) detail
+        - `id` (string) ID of workflow execution
+        - `workflow_id` (string) ID of related workflow
+        - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
+        - `outputs` (json) Optional content of output
+        - `error` (string) Optional reason of error
+        - `elapsed_time` (float) Optional total seconds to be used
+        - `total_tokens` (int) Optional tokens to be used
+        - `total_steps` (int) default 0
+        - `created_at` (timestamp) start time
+        - `finished_at` (timestamp) end time
+    - `event: tts_message` TTS audio stream event, that is, speech synthesis output. The content is an audio block in Mp3 format, encoded as a base64 string. When playing, simply decode the base64 and feed it into the player. (This message is available only when auto-play is enabled)
+      - `task_id` (string) Task ID, used for request tracking and the stop response interface below
+      - `message_id` (string) Unique message ID
+      - `audio` (string) The audio after speech synthesis, encoded in base64 text content, when playing, simply decode the base64 and feed it into the player
+      - `created_at` (int) Creation timestamp, e.g.: 1705395332
+    - `event: tts_message_end` TTS audio stream end event, receiving this event indicates the end of the audio stream.
+      - `task_id` (string) Task ID, used for request tracking and the stop response interface below
+      - `message_id` (string) Unique message ID
+      - `audio` (string) The end event has no audio, so this is an empty string
+      - `created_at` (int) Creation timestamp, e.g.: 1705395332
+    - `event: ping` Ping event every 10 seconds to keep the connection alive.
+
+    ### Errors
+    - 400, `invalid_param`, abnormal parameter input
+    - 400, `app_unavailable`, App configuration unavailable
+    - 400, `provider_not_initialize`, no available model credential configuration
+    - 400, `provider_quota_exceeded`, model invocation quota insufficient
+    - 400, `model_currently_not_support`, current model unavailable
+    - 400, `workflow_request_error`, workflow execution failed
+    - 500, internal server error
+
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/run"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "inputs": ${JSON.stringify(props.inputs)},
+    "response_mode": "streaming",
+    "user": "abc-123"
+}'`}
+    />
+    <CodeGroup title="Example: file array as an input variable">
+      ```json {{ title: 'File variable example' }}
+      {
+        "inputs": {
+          "{variable_name}":
+          [
+            {
+            "transfer_method": "local_file",
+            "upload_file_id": "{upload_file_id}",
+            "type": "{document_type}"
+            }
+          ]
+        }
+      }
+      ```
+    </CodeGroup>
+    ### Blocking Mode
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "workflow_run_id": "djflajgkldjgd",
+        "task_id": "9da23599-e713-473b-982c-4328d4f5c78a",
+        "data": {
+            "id": "fdlsjfjejkghjda",
+            "workflow_id": "fldjaslkfjlsda",
+            "status": "succeeded",
+            "outputs": {
+              "text": "Nice to meet you."
+            },
+            "error": null,
+            "elapsed_time": 0.875,
+            "total_tokens": 3562,
+            "total_steps": 8,
+            "created_at": 1705407629,
+            "finished_at": 1727807631
+        }
+    }
+    ```
+    </CodeGroup>
+    ### Streaming Mode
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "created_at": 1679586595}}
+      data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
+      data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
+      data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
+      data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
+      data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
+    ```
+    </CodeGroup>
+    <CodeGroup title="File upload sample code">
+      ```json {{ title: 'File upload sample code' }}
+      import requests
+      import json
+
+      def upload_file(file_path, user):
+          upload_url = "https://api.dify.ai/v1/files/upload"
+          headers = {
+              "Authorization": "Bearer app-xxxxxxxx",
+          }
+
+          try:
+              print("Upload file...")
+              with open(file_path, 'rb') as file:
+                  files = {
+                      'file': (file_path, file, 'text/plain')  # Make sure the file is uploaded with the appropriate MIME type
+                  }
+                  data = {
+                      "user": user,
+                      "type": "TXT"  # Set the file type to TXT
+                  }
+
+                  response = requests.post(upload_url, headers=headers, files=files, data=data)
+                  if response.status_code == 201:  # 201 means creation is successful
+                      print("File uploaded successfully")
+                      return response.json().get("id")  # Get the uploaded file ID
+                  else:
+                      print(f"File upload failed, status code: {response.status_code}")
+                      return None
+          except Exception as e:
+              print(f"Error occurred: {str(e)}")
+              return None
+
+      def run_workflow(file_id, user, response_mode="blocking"):
+          workflow_url = "https://api.dify.ai/v1/workflows/run"
+          headers = {
+              "Authorization": "Bearer app-xxxxxxxxx",
+              "Content-Type": "application/json"
+          }
+
+          data = {
+              "inputs": {
+                  "orig_mail": [{
+                      "transfer_method": "local_file",
+                      "upload_file_id": file_id,
+                      "type": "document"
+                  }]
+              },
+              "response_mode": response_mode,
+              "user": user
+          }
+
+          try:
+              print("Run Workflow...")
+              response = requests.post(workflow_url, headers=headers, json=data)
+              if response.status_code == 200:
+                  print("Workflow execution successful")
+                  return response.json()
+              else:
+                  print(f"Workflow execution failed, status code: {response.status_code}")
+                  return {"status": "error", "message": f"Failed to execute workflow, status code: {response.status_code}"}
+          except Exception as e:
+              print(f"Error occurred: {str(e)}")
+              return {"status": "error", "message": str(e)}
+
+      # Usage Examples
+      file_path = "{your_file_path}"
+      user = "difyuser"
+
+      # Upload files
+      file_id = upload_file(file_path, user)
+      if file_id:
+          # The file was uploaded successfully, and the workflow continues to run
+          result = run_workflow(file_id, user)
+          print(result)
+      else:
+          print("File upload failed and workflow cannot be executed")
+      ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflows/:workflow_id/run'
+  method='POST'
+  title='Execute Specific Workflow'
+  name='#Execute-Specific-Workflow'
+/>
+<Row>
+  <Col>
+    Execute a specific version of workflow by specifying the workflow ID in the path parameter.
+
+    ### Path
+          - `workflow_id` (string) Required Workflow ID to specify a specific version of workflow
+
+      How to obtain: In the version history interface, click the copy icon on the right side of each version entry to copy the complete workflow ID. Each version entry contains a copyable ID field.
+
+    ### Request Body
+      - `inputs` (object) Required
+        Allows the entry of various variable values defined by the App.
+        The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
+        The workflow application requires at least one key/value pair to be inputted. The variable can be of File Array type.
+        File Array type variable is suitable for inputting files combined with text understanding and answering questions, available only when the model supports file parsing and understanding capability.
+        If the variable is of File Array type, the corresponding value should be a list whose elements contain following attributions:
+          - `type` (string) Supported type:
+            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
+            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
+            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
+            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
+            - `custom` (Other file types)
+          - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
+          - `url` (string) Image URL (when the transfer method is `remote_url`)
+          - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
+
+      - `response_mode` (string) Required
+        The mode of response return, supporting:
+        - `streaming` Streaming mode (recommended), implements a typewriter-like output through SSE ([Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)).
+        - `blocking` Blocking mode, returns result after execution is complete. (Requests may be interrupted if the process is long)
+        <i>Due to Cloudflare restrictions, the request will be interrupted without a return after 100 seconds.</i>
+      - `user` (string) Required
+        User identifier, used to define the identity of the end-user for retrieval and statistics.
+        Should be uniquely defined by the developer within the application.
+        <br/>
+        <i>The user identifier should be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.</i>
+      - `files` (array[object]) Optional
+      - `trace_id` (string) Optional
+        Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:
+        1. Header: via HTTP Header `X-Trace-Id`, highest priority.
+        2. Query parameter: via URL query parameter `trace_id`.
+        3. Request Body: via request body field `trace_id` (i.e., this field).
+
+    ### Response
+    When `response_mode` is `blocking`, return a CompletionResponse object.
+    When `response_mode` is `streaming`, return a ChunkCompletionResponse stream.
+
+    ### CompletionResponse
+    Returns the App result, `Content-Type` is `application/json`.
+    - `workflow_run_id` (string) Unique ID of workflow execution
+    - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+    - `data` (object) detail of result
+      - `id` (string) ID of workflow execution
+      - `workflow_id` (string) ID of related workflow
+      - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
+      - `outputs` (json) Optional content of output
+      - `error` (string) Optional reason of error
+      - `elapsed_time` (float) Optional total seconds to be used
+      - `total_tokens` (int) Optional tokens to be used
+      - `total_steps` (int) default 0
+      - `created_at` (timestamp) start time
+      - `finished_at` (timestamp) end time
+
+    ### ChunkCompletionResponse
+    Returns the stream chunks outputted by the App, `Content-Type` is `text/event-stream`.
+    Each streaming chunk starts with `data:`, separated by two newline characters `\n\n`, as shown below:
+    <CodeGroup>
+    ```streaming {{ title: 'Response' }}
+    data: {"event": "text_chunk", "workflow_run_id": "b85e5fc5-751b-454d-b14e-dc5f240b0a31", "task_id": "bd029338-b068-4d34-a331-fc85478922c2", "data": {"text": "\u4e3a\u4e86", "from_variable_selector": ["1745912968134", "text"]}}\n\n
+    ```
+    </CodeGroup>
+    The structure of the streaming chunks varies depending on the `event`:
+    - `event: workflow_started` workflow starts execution
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `workflow_started`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `workflow_id` (string) ID of related workflow
+        - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
+    - `event: node_started` node execution started
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `node_started`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `node_id` (string) ID of node
+        - `node_type` (string) type of node
+        - `title` (string) name of node
+        - `index` (int) Execution sequence number, used to display Tracing Node sequence
+        - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
+        - `inputs` (object) Contents of all preceding node variables used in the node
+        - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: text_chunk` Text fragment
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `text_chunk`
+      - `data` (object) detail
+        - `text` (string) Text content
+        - `from_variable_selector` (array) Text source path, helps developers understand which variable of which node the text is generated from
+    - `event: node_finished` node execution finished, success and failure are different states in the same event
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `node_finished`
+      - `data` (object) detail
+        - `id` (string) Unique ID of node execution
+        - `node_id` (string) ID of node
+        - `index` (int) Execution sequence number, used to display Tracing Node sequence
+        - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
+        - `inputs` (object) Contents of all preceding node variables used in the node
+        - `process_data` (json) Optional Process data of node
+        - `outputs` (json) Optional content of output
+        - `status` (string) status of execution `running` / `succeeded` / `failed` / `stopped`
+        - `error` (string) Optional reason of error
+        - `elapsed_time` (float) Optional total seconds to be used
+        - `execution_metadata` (json) metadata
+          - `total_tokens` (int) optional tokens to be used
+          - `total_price` (decimal) optional total cost
+          - `currency` (string) optional currency, such as `USD` / `RMB`
+        - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: workflow_finished` workflow execution finished, success and failure are different states in the same event
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `workflow_finished`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `workflow_id` (string) ID of related workflow
+        - `status` (string) status of execution `running` / `succeeded` / `failed` / `stopped`
+        - `outputs` (json) Optional content of output
+        - `error` (string) Optional reason of error
+        - `elapsed_time` (float) Optional total seconds to be used
+        - `total_tokens` (int) Optional tokens to be used
+        - `total_steps` (int) default 0
+        - `created_at` (timestamp) start time
+        - `finished_at` (timestamp) end time
+    - `event: tts_message` TTS audio stream event, i.e., speech synthesis output. The content is an audio block in Mp3 format, encoded as a base64 string, which can be decoded directly when playing. (Only available when auto-play is enabled)
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `message_id` (string) Unique message ID
+      - `audio` (string) The audio block after speech synthesis is encoded as base64 text content, which can be directly base64 decoded and sent to the player when playing
+      - `created_at` (int) Creation timestamp, e.g., 1705395332
+    - `event: tts_message_end` TTS audio stream end event, receiving this event indicates the end of audio stream return.
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `message_id` (string) Unique message ID
+      - `audio` (string) The end event has no audio, so this is an empty string
+      - `created_at` (int) Creation timestamp, e.g., 1705395332
+    - `event: ping` Ping event every 10s to keep the connection alive.
+
+    ### Errors
+    - 400, `invalid_param`, Invalid input parameters
+    - 400, `app_unavailable`, App configuration unavailable
+    - 400, `provider_not_initialize`, No available model credentials configured
+    - 400, `provider_quota_exceeded`, Insufficient model call quota
+    - 400, `model_currently_not_support`, Current model unavailable
+    - 400, `workflow_not_found`, Specified workflow version not found
+    - 400, `draft_workflow_error`, Cannot use draft workflow version
+    - 400, `workflow_id_format_error`, Workflow ID format error, UUID format required
+    - 400, `workflow_request_error`, Workflow execution failed
+    - 500, Internal service error
+
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/:workflow_id/run"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/{workflow_id}/run' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "inputs": ${JSON.stringify(props.inputs)},
+    "response_mode": "streaming",
+    "user": "abc-123"
+}'`}
+    />
+    <CodeGroup title="Example: file array as an input variable">
+      ```json {{ title: 'File variable example' }}
+      {
+        "inputs": {
+          "{variable_name}":
+          [
+            {
+            "transfer_method": "local_file",
+            "upload_file_id": "{upload_file_id}",
+            "type": "{document_type}"
+            }
+          ]
+        }
+      }
+      ```
+    </CodeGroup>
+    ### Blocking Mode
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "workflow_run_id": "djflajgkldjgd",
+        "task_id": "9da23599-e713-473b-982c-4328d4f5c78a",
+        "data": {
+            "id": "fdlsjfjejkghjda",
+            "workflow_id": "fldjaslkfjlsda",
+            "status": "succeeded",
+            "outputs": {
+              "text": "Nice to meet you."
+            },
+            "error": null,
+            "elapsed_time": 0.875,
+            "total_tokens": 3562,
+            "total_steps": 8,
+            "created_at": 1705407629,
+            "finished_at": 1727807631
+        }
+    }
+    ```
+    </CodeGroup>
+    ### Streaming Mode
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "created_at": 1679586595}}
+      data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
+      data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
+      data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
+      data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
+      data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflows/run/:workflow_run_id'
+  method='GET'
+  title='Get Workflow Run Detail'
+  name='#get-workflow-run-detail'
+/>
+<Row>
+  <Col>
+    Retrieve the current execution results of a workflow task based on the workflow execution ID.
+    ### Path
+    - `workflow_run_id` (string) Workflow run ID, can be obtained from the streaming chunk return
+    ### Response
+    - `id` (string) ID of workflow execution
+    - `workflow_id` (string) ID of related workflow
+    - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
+    - `inputs` (json) content of input
+    - `outputs` (json) content of output
+    - `error` (string) reason of error
+    - `total_steps` (int) total steps of task
+    - `total_tokens` (int) total tokens to be used
+    - `created_at` (timestamp) start time
+    - `finished_at` (timestamp) end time
+    - `elapsed_time` (float) total seconds to be used
+  </Col>
+  <Col sticky>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflows/run/:workflow_run_id"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json'`}
+    />
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "id": "b1ad3277-089e-42c6-9dff-6820d94fbc76",
+        "workflow_id": "19eff89f-ec03-4f75-b0fc-897e7effea02",
+        "status": "succeeded",
+        "inputs": "{\"sys.files\": [], \"sys.user_id\": \"abc-123\"}",
+        "outputs": null,
+        "error": null,
+        "total_steps": 3,
+        "total_tokens": 0,
+        "created_at": 1705407629,
+        "finished_at": 1727807631,
+        "elapsed_time": 30.098514399956912
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflows/tasks/:task_id/stop'
+  method='POST'
+  title='Stop Generate'
+  name='#stop-generatebacks'
+/>
+<Row>
+  <Col>
+  Only supported in streaming mode.
+  ### Path
+  - `task_id` (string) Task ID, can be obtained from the streaming chunk return
+  ### Request Body
+  - `user` (string) Required
+    User identifier, used to define the identity of the end-user, must be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.
+  ### Response
+  - `result` (string) Always returns "success"
+  </Col>
+  <Col sticky>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/tasks/:task_id/stop"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json' \\
+--data-raw '{"user": "abc-123"}'`}
+    />
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/files/upload'
+  method='POST'
+  title='File Upload'
+  name='#file-upload'
+/>
+<Row>
+  <Col>
+  Upload a file for use when sending messages, enabling multimodal understanding of images and text.
+  Supports any formats that are supported by your workflow.
+  Uploaded files are for use by the current end-user only.
+
+  ### Request Body
+  This interface requires a `multipart/form-data` request.
+  - `file` (File) Required
+    The file to be uploaded.
+  - `user` (string) Required
+    User identifier, defined by the developer's rules, must be unique within the application. The Service API does not share conversations created by the WebApp.
+
+  ### Response
+  After a successful upload, the server will return the file's ID and related information.
+  - `id` (uuid) ID
+  - `name` (string) File name
+  - `size` (int) File size (bytes)
+  - `extension` (string) File extension
+  - `mime_type` (string) File mime-type
+  - `created_by` (uuid) End-user ID
+  - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
+
+  ### Errors
+  - 400, `no_file_uploaded`, a file must be provided
+  - 400, `too_many_files`, currently only one file is accepted
+  - 400, `unsupported_preview`, the file does not support preview
+  - 400, `unsupported_estimate`, the file does not support estimation
+  - 413, `file_too_large`, the file is too large
+  - 415, `unsupported_file_type`, unsupported extension, currently only document files are accepted
+  - 503, `s3_connection_failed`, unable to connect to S3 service
+  - 503, `s3_permission_denied`, no permission to upload files to S3
+  - 503, `s3_file_too_large`, file exceeds S3 size limit
+  - 500, internal server error
+
+
+  </Col>
+  <Col sticky>
+  ### Request Example
+  <CodeGroup
+    title="Request"
+    tag="POST"
+    label="/files/upload"
+    targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\
+--header 'Authorization: Bearer {api_key}' \\
+--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\
+--form 'user=abc-123'`}
+  />
+
+  ### Response Example
+  <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",
+      "name": "example.png",
+      "size": 1024,
+      "extension": "png",
+      "mime_type": "image/png",
+      "created_by": "6ad1ab0a-73ff-4ac1-b9e4-cdb312f71f13",
+      "created_at": 1577836800,
+    }
+  ```
+  </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflows/logs'
+  method='GET'
+  title='Get Workflow Logs'
+  name='#Get-Workflow-Logs'
+/>
+<Row>
+  <Col>
+    Returns workflow logs, with the first page returning the latest `{limit}` messages, i.e., in reverse order.
+
+    ### Query
+
+    <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        Keyword to search
+      </Property>
+      <Property name='status' type='string' key='status'>
+        succeeded/failed/stopped
+      </Property>
+      <Property name='page' type='int' key='page'>
+        current page, default is 1.
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+          How many chat history messages to return in one request, default is 20.
+      </Property>
+      <Property name='created_by_end_user_session_id' type='str' key='created_by_end_user_session_id'>
+          Created by which endUser, for example, `abc-123`.
+      </Property>
+      <Property name='created_by_account' type='str' key='created_by_account'>
+          Created by which email account, for example, lizb@test.com.
+      </Property>
+    </Properties>
+
+    ### Response
+  - `page` (int) Current page
+  - `limit` (int) Number of returned items, if input exceeds system limit, returns system limit amount
+  - `total` (int) Number of total items
+  - `has_more` (bool) Whether there is a next page
+  - `data` (array[object]) Log list
+    - `id` (string) ID
+    - `workflow_run` (object) Workflow run
+      - `id` (string) ID
+      - `version` (string) Version
+      - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
+      - `error` (string) Optional reason of error
+      - `elapsed_time` (float) total seconds to be used
+      - `total_tokens` (int) tokens to be used
+      - `total_steps` (int) default 0
+      - `created_at` (timestamp) start time
+      - `finished_at` (timestamp) end time
+    - `created_from` (string) Created from
+    - `created_by_role` (string) Created by role
+    - `created_by_account` (string) Optional Created by account
+    - `created_by_end_user` (object) Created by end user
+      - `id` (string) ID
+      - `type` (string) Type
+      - `is_anonymous` (bool) Is anonymous
+      - `session_id` (string) Session ID
+    - `created_at` (timestamp) create time
+  </Col>
+  <Col sticky>
+
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflows/logs"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/logs'\\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "page": 1,
+        "limit": 1,
+        "total": 7,
+        "has_more": true,
+        "data": [
+            {
+                "id": "e41b93f1-7ca2-40fd-b3a8-999aeb499cc0",
+                "workflow_run": {
+                    "id": "c0640fc8-03ef-4481-a96c-8a13b732a36e",
+                    "version": "2024-08-01 12:17:09.771832",
+                    "status": "succeeded",
+                    "error": null,
+                    "elapsed_time": 1.3588523610014818,
+                    "total_tokens": 0,
+                    "total_steps": 3,
+                    "created_at": 1726139643,
+                    "finished_at": 1726139644
+                },
+                "created_from": "service-api",
+                "created_by_role": "end_user",
+                "created_by_account": null,
+                "created_by_end_user": {
+                    "id": "7f7d9117-dd9d-441d-8970-87e5e7e687a3",
+                    "type": "service_api",
+                    "is_anonymous": false,
+                    "session_id": "abc-123"
+                },
+                "created_at": 1726139644
+            }
+        ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='Get Application Basic Information'
+  name='#info'
+/>
+<Row>
+  <Col>
+  Used to get basic information about this application
+
+  ### Response
+  - `name` (string) application name
+  - `description` (string) application description
+  - `tags` (array[string]) application tags
+  - `mode` (string) application mode
+  - `author_name` (string) application author name
+  </Col>
+  <Col>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/info"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ],
+      "mode": "workflow",
+      "author_name": "Dify"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='Get Application Parameters Information'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    Used at the start of entering the page to obtain information such as features, input parameter names, types, and default values.
+
+    ### Response
+    - `user_input_form` (array[object]) User input form configuration
+      - `text-input` (object) Text input control
+        - `label` (string) Variable display label name
+        - `variable` (string) Variable ID
+        - `required` (bool) Whether it is required
+        - `default` (string) Default value
+      - `paragraph` (object) Paragraph text input control
+        - `label` (string) Variable display label name
+        - `variable` (string) Variable ID
+        - `required` (bool) Whether it is required
+        - `default` (string) Default value
+      - `select` (object) Dropdown control
+        - `label` (string) Variable display label name
+        - `variable` (string) Variable ID
+        - `required` (bool) Whether it is required
+        - `default` (string) Default value
+        - `options` (array[string]) Option values
+    - `file_upload` (object) File upload configuration
+      - `document` (object) Document settings
+        Currently only supports document types: `txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Document number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `image` (object) Image settings
+        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Image number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `audio` (object) Audio settings
+        Currently only supports audio types: `mp3`, `m4a`, `wav`, `webm`, `amr`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Audio number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `video` (object) Video settings
+        Currently only supports video types: `mp4`, `mov`, `mpeg`, `mpga`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Video number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `custom` (object) Custom settings
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Custom number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+    - `system_parameters` (object) System parameters
+      - `file_size_limit` (int) Document upload size limit (MB)
+      - `image_file_size_limit` (int) Image file upload size limit (MB)
+      - `audio_file_size_limit` (int) Audio file upload size limit (MB)
+      - `video_file_size_limit` (int) Video file upload size limit (MB)
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/parameters"
+      targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "user_input_form": [
+          {
+              "paragraph": {
+                  "label": "Query",
+                  "variable": "query",
+                  "required": true,
+                  "default": ""
+              }
+          }
+      ],
+      "file_upload": {
+          "image": {
+              "enabled": false,
+              "number_limits": 3,
+              "detail": "high",
+              "transfer_methods": [
+                  "remote_url",
+                  "local_file"
+              ]
+          }
+      },
+      "system_parameters": {
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/site'
+  method='GET'
+  title='Get Application WebApp Settings'
+  name='#site'
+/>
+<Row>
+  <Col>
+  Used to get the WebApp settings of the application.
+  ### Response
+  - `title` (string) WebApp name
+  - `icon_type` (string) Icon type, `emoji` - emoji, `image` - picture
+  - `icon` (string) Icon. If it's `emoji` type, it's an emoji symbol; if it's `image` type, it's an image URL.
+  - `icon_background` (string) Background color in hex format
+  - `icon_url` (string) Icon URL
+  - `description` (string) Description
+  - `copyright` (string) Copyright information
+  - `privacy_policy` (string) Privacy policy link
+  - `custom_disclaimer` (string) Custom disclaimer
+  - `default_language` (string) Default language
+  - `show_workflow_steps` (bool) Whether to show workflow details
+  </Col>
+  <Col>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/site"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "title": "My App",
+      "icon_type": "emoji",
+      "icon": "😄",
+      "icon_background": "#FFEAD5",
+      "icon_url": null,
+      "description": "This is my app.",
+      "copyright": "all rights reserved",
+      "privacy_policy": "",
+      "custom_disclaimer": "All generated by AI",
+      "default_language": "en-US",
+      "show_workflow_steps": false,
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+___

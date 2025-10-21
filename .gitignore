@@ -46,6 +46,7 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+coverage.json
 *.cover
 *.py,cover
 .hypothesis/
@@ -103,6 +104,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env-local
 .venv
 env/
 venv/
@@ -121,10 +123,12 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# mypy
+# type checking
 .mypy_cache/
 .dmypy.json
 dmypy.json
+pyrightconfig.json
+!api/pyrightconfig.json
 
 # Pyre type checker
 .pyre/
@@ -134,20 +138,100 @@ dmypy.json
 web/.vscode/settings.json
 
 # Intellij IDEA Files
-.idea/
+.idea/*
+!.idea/vcs.xml
+!.idea/icon.png
 .ideaDataSources/
+*.iml
+api/.idea
 
 api/.env
 api/storage/*
 
+docker-legacy/volumes/app/storage/*
+docker-legacy/volumes/db/data/*
+docker-legacy/volumes/redis/data/*
+docker-legacy/volumes/weaviate/*
+docker-legacy/volumes/qdrant/*
+docker-legacy/volumes/etcd/*
+docker-legacy/volumes/minio/*
+docker-legacy/volumes/milvus/*
+docker-legacy/volumes/chroma/*
+docker-legacy/volumes/opensearch/data/*
+docker-legacy/volumes/pgvectors/data/*
+docker-legacy/volumes/pgvector/data/*
+
 docker/volumes/app/storage/*
+docker/volumes/certbot/*
 docker/volumes/db/data/*
 docker/volumes/redis/data/*
 docker/volumes/weaviate/*
+docker/volumes/qdrant/*
+docker/tidb/volumes/*
+docker/volumes/etcd/*
+docker/volumes/minio/*
+docker/volumes/milvus/*
+docker/volumes/chroma/*
+docker/volumes/opensearch/data/*
+docker/volumes/myscale/data/*
+docker/volumes/myscale/log/*
+docker/volumes/unstructured/*
+docker/volumes/pgvector/data/*
+docker/volumes/pgvecto_rs/data/*
+docker/volumes/couchbase/*
+docker/volumes/oceanbase/*
+docker/volumes/plugin_daemon/*
+docker/volumes/matrixone/*
+!docker/volumes/oceanbase/init.d
+
+docker/nginx/conf.d/default.conf
+docker/nginx/ssl/*
+!docker/nginx/ssl/.gitkeep
+docker/middleware.env
+docker/docker-compose.override.yaml
 
 sdks/python-client/build
 sdks/python-client/dist
 sdks/python-client/dify_client.egg-info
 
 .vscode/*
-!.vscode/launch.json
+!.vscode/launch.json.template
+!.vscode/README.md
+api/.vscode
+web/.vscode
+# vscode Code History Extension
+.history
+
+.idea/
+
+# pnpm
+/.pnpm-store
+
+# plugin migrate
+plugins.jsonl
+
+# mise
+mise.toml
+
+# Next.js build output
+.next/
+
+# PWA generated files
+web/public/sw.js
+web/public/sw.js.map
+web/public/workbox-*.js
+web/public/workbox-*.js.map
+web/public/fallback-*.js
+
+# AI Assistant
+.roo/
+api/.env.backup
+/clickzetta
+
+# Benchmark
+scripts/stress-test/setup/config/
+scripts/stress-test/reports/
+
+# mcp
+.playwright-mcp/
+.serena/

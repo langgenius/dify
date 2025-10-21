@@ -1,0 +1,22 @@
+{
+    "Verbose": false,
+    "Debug": false,
+    "IgnoreDefaults": false,
+    "SpacesAfterTabs": false,
+    "NoColor": false,
+    "Exclude": [
+        "^web/public/vs/",
+        "^web/public/pdf.worker.min.mjs$",
+        "web/app/components/base/icons/src/vender/"
+    ],
+    "AllowedContentTypes": [],
+    "PassedFiles": [],
+    "Disable": {
+        "EndOfLine": false,
+        "Indentation": false,
+        "IndentSize": true,
+        "InsertFinalNewline": false,
+        "TrimTrailingWhitespace": false,
+        "MaxLineLength": false
+    }
+}

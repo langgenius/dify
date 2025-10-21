@@ -1,16 +1,15 @@
-import React from 'react'
-import type { FC } from 'react'
-import GA, { GaType } from '@/app/components/base/ga'
+import type { FC, PropsWithChildren } from 'react'
+import WebAppStoreProvider from '@/context/web-app-context'
+import Splash from './components/splash'
 
-const Layout: FC<{
-  children: React.ReactNode
-}> = ({ children }) => {
+const Layout: FC<PropsWithChildren> = ({ children }) => {
   return (
-    <div className=''>
-      <div className="min-w-[300px]">
-        <GA gaType={GaType.webapp} />
-        {children}
-      </div>
+    <div className="h-full min-w-[300px] pb-[env(safe-area-inset-bottom)]">
+      <WebAppStoreProvider>
+        <Splash>
+          {children}
+        </Splash>
+      </WebAppStoreProvider>
     </div>
   )
 }

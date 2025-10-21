@@ -1,0 +1,32 @@
+.note-editor-theme_paragraph {
+  font-size: 12px;
+}
+
+.note-editor-theme_list-ul {
+  font-size: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: disc;
+}
+
+.note-editor-theme_list-li {
+  margin-left: 18px;
+  margin-right: 8px;
+}
+
+.note-editor-theme_link {
+  cursor: pointer;
+  color: var(--text-text-selected);
+}
+
+.note-editor-theme_link:hover {
+  text-decoration: underline;
+}
+
+.note-editor-theme_text-strikethrough {
+  text-decoration: line-through;
+}
+
+.note-editor-theme_text-italic {
+  font-style: italic;
+}

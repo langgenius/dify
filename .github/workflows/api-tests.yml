@@ -1,0 +1,97 @@
+name: Run Pytest
+
+on:
+  workflow_call:
+
+concurrency:
+  group: api-tests-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: API Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        python-version:
+          - "3.11"
+          - "3.12"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+          cache-dependency-glob: api/uv.lock
+
+      - name: Check UV lockfile
+        run: uv lock --project api --check
+
+      - name: Install dependencies
+        run: uv sync --project api --dev
+
+      - name: Run pyrefly check
+        run: |
+          cd api
+          uv add --dev pyrefly
+          uv run pyrefly check || true
+
+      - name: Run dify config tests
+        run: uv run --project api dev/pytest/pytest_config_tests.py
+
+      - name: Set up dotenvs
+        run: |
+          cp docker/.env.example docker/.env
+          cp docker/middleware.env.example docker/middleware.env
+
+      - name: Expose Service Ports
+        run: sh .github/workflows/expose_service_ports.sh
+
+      - name: Set up Sandbox
+        uses: hoverkraft-tech/compose-action@v2.0.2
+        with:
+          compose-file: |
+            docker/docker-compose.middleware.yaml
+          services: |
+            db
+            redis
+            sandbox
+            ssrf_proxy
+
+      - name: setup test config
+        run: |
+          cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
+
+      - name: Run Workflow
+        run: uv run --project api bash dev/pytest/pytest_workflow.sh
+
+      - name: Run Tool
+        run: uv run --project api bash dev/pytest/pytest_tools.sh
+
+      - name: Run TestContainers
+        run: uv run --project api bash dev/pytest/pytest_testcontainers.sh
+
+      - name: Run Unit tests
+        run: |
+          uv run --project api bash dev/pytest/pytest_unit_tests.sh
+
+      - name: Coverage Summary
+        run: |
+          set -x
+          # Extract coverage percentage and create a summary
+          TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
+
+          # Create a detailed coverage summary
+          echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
+          echo "Total Coverage: ${TOTAL_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+          uv run --project api coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
+

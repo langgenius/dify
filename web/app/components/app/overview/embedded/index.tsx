@@ -1,51 +1,84 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
+import {
+  RiClipboardFill,
+  RiClipboardLine,
+} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import style from './style.module.css'
 import Modal from '@/app/components/base/modal'
-import copyStyle from '@/app/components/app/chat/copy-btn/style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 import { useAppContext } from '@/context/app-context'
 import { IS_CE_EDITION } from '@/config'
-
-// const isDevelopment = process.env.NODE_ENV === 'development'
+import type { SiteInfo } from '@/models/share'
+import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
+import ActionButton from '@/app/components/base/action-button'
+import { basePath } from '@/utils/var'
+import cn from '@/utils/classnames'
 
 type Props = {
+  siteInfo?: SiteInfo
   isShow: boolean
   onClose: () => void
   accessToken: string
   appBaseUrl: string
+  className?: string
 }
 
 const OPTION_MAP = {
   iframe: {
     getContent: (url: string, token: string) =>
       `<iframe
- src="${url}/chatbot/${token}"
+ src="${url}${basePath}/chatbot/${token}"
  style="width: 100%; height: 100%; min-height: 700px"
- frameborder="0" 
+ frameborder="0"
  allow="microphone">
 </iframe>`,
   },
   scripts: {
-    getContent: (url: string, token: string, isTestEnv?: boolean) =>
+    getContent: (url: string, token: string, primaryColor: string, isTestEnv?: boolean) =>
       `<script>
- window.difyChatbotConfig = { 
+ window.difyChatbotConfig = {
   token: '${token}'${isTestEnv
-  ? `, 
+    ? `,
   isDev: true`
-  : ''}${IS_CE_EDITION
-  ? `, 
-  baseUrl: '${url}'`
-  : ''}
+    : ''}${IS_CE_EDITION
+    ? `,
+  baseUrl: '${url}${basePath}'`
+    : ''},
+  inputs: {
+    // You can define the inputs from the Start node here
+    // key is the variable name
+    // e.g.
+    // name: "NAME"
+  },
+  systemVariables: {
+    // user_id: 'YOU CAN DEFINE USER ID HERE',
+    // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE, IT MUST BE A VALID UUID',
+  },
+  userVariables: {
+    // avatar_url: 'YOU CAN DEFINE USER AVATAR URL HERE',
+    // name: 'YOU CAN DEFINE USER NAME HERE',
+  },
  }
 </script>
 <script
- src="${url}/embed.min.js"
+ src="${url}${basePath}/embed.min.js"
  id="${token}"
  defer>
-</script>`,
+</script>
+<style>
+  #dify-chatbot-bubble-button {
+    background-color: ${primaryColor} !important;
+  }
+  #dify-chatbot-bubble-window {
+    width: 24rem !important;
+    height: 40rem !important;
+  }
+</style>`,
+  },
+  chromePlugin: {
+    getContent: (url: string, token: string) => `ChatBot URL: ${url}${basePath}/chatbot/${token}`,
   },
 }
 const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
@@ -55,17 +88,27 @@ type Option = keyof typeof OPTION_MAP
 type OptionStatus = {
   iframe: boolean
   scripts: boolean
+  chromePlugin: boolean
 }
 
-const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
+const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, className }: Props) => {
   const { t } = useTranslation()
   const [option, setOption] = useState<Option>('iframe')
-  const [isCopied, setIsCopied] = useState<OptionStatus>({ iframe: false, scripts: false })
+  const [isCopied, setIsCopied] = useState<OptionStatus>({ iframe: false, scripts: false, chromePlugin: false })
 
-  const { langeniusVersionInfo } = useAppContext()
-  const isTestEnv = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
+  const { langGeniusVersionInfo } = useAppContext()
+  const themeBuilder = useThemeContext()
+  themeBuilder.buildTheme(siteInfo?.chat_color_theme ?? null, siteInfo?.chat_color_theme_inverted ?? false)
+  const isTestEnv = langGeniusVersionInfo.current_env === 'TESTING' || langGeniusVersionInfo.current_env === 'DEVELOPMENT'
   const onClickCopy = () => {
-    copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv))
+    if (option === 'chromePlugin') {
+      const splitUrl = OPTION_MAP[option].getContent(appBaseUrl, accessToken).split(': ')
+      if (splitUrl.length > 1)
+        copy(splitUrl[1])
+    }
+    else {
+      copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken, themeBuilder.theme?.primaryColor ?? '#1C64F2', isTestEnv))
+    }
     setIsCopied({ ...isCopied, [option]: true })
   }
 
@@ -78,6 +121,10 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
     setIsCopied(cache)
   }
 
+  const navigateToChromeUrl = () => {
+    window.open('https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf', '_blank', 'noopener,noreferrer')
+  }
+
   useEffect(() => {
     resetCopyStatus()
   }, [isShow])
@@ -87,13 +134,14 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
       title={t(`${prefixEmbedded}.title`)}
       isShow={isShow}
       onClose={onClose}
-      className="!max-w-2xl w-[640px]"
+      className="w-[640px] !max-w-2xl"
+      wrapperClassName={className}
       closable={true}
     >
-      <div className="mb-4 mt-8 text-gray-900 text-[14px] font-medium leading-tight">
+      <div className="system-sm-medium mb-4 mt-8 text-text-primary">
         {t(`${prefixEmbedded}.explanation`)}
       </div>
-      <div className="flex gap-4 items-center">
+      <div className="flex flex-wrap items-center justify-between gap-y-2">
         {Object.keys(OPTION_MAP).map((v, index) => {
           return (
             <div
@@ -111,25 +159,41 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
           )
         })}
       </div>
-      <div className="mt-6 w-full bg-gray-100 rounded-lg flex-col justify-start items-start inline-flex">
-        <div className="self-stretch pl-3 pr-1 py-1 bg-gray-50 rounded-tl-lg rounded-tr-lg border border-black border-opacity-5 justify-start items-center gap-2 inline-flex">
-          <div className="grow shrink basis-0 text-slate-700 text-[13px] font-medium leading-none">
-            {t(`${prefixEmbedded}.${option}`)}
-          </div>
-          <div className="p-2 rounded-lg justify-center items-center gap-1 flex">
-            <Tooltip
-              selector={'code-copy-feedback'}
-              content={(isCopied[option] ? t(`${prefixEmbedded}.copied`) : t(`${prefixEmbedded}.copy`)) || ''}
-            >
-              <div className="w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg">
-                <div onClick={onClickCopy} className={`w-full h-full ${copyStyle.copyIcon} ${isCopied[option] ? copyStyle.copied : ''}`}></div>
-              </div>
-            </Tooltip>
+      {option === 'chromePlugin' && (
+        <div className="mt-6 w-full">
+          <div className={cn('inline-flex w-full items-center justify-center gap-2 rounded-lg py-3',
+            'shrink-0 cursor-pointer bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm')}>
+            <div className={`relative h-4 w-4 ${style.pluginInstallIcon}`}></div>
+            <div className="font-['Inter'] text-sm font-medium leading-tight text-white" onClick={navigateToChromeUrl}>{t(`${prefixEmbedded}.chromePlugin`)}</div>
           </div>
         </div>
-        <div className="self-stretch p-3 justify-start items-start gap-2 inline-flex">
-          <div className="grow shrink basis-0 text-slate-700 text-[13px] leading-tight font-mono">
-            <pre className='select-text'>{OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv)}</pre>
+      )}
+      <div className={cn('inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section',
+        'mt-6')}>
+        <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1  pl-3 pr-1">
+          <div className="system-sm-medium shrink-0 grow text-text-secondary">
+            {t(`${prefixEmbedded}.${option}`)}
+          </div>
+          <Tooltip
+            popupContent={
+              (isCopied[option]
+                ? t(`${prefixEmbedded}.copied`)
+                : t(`${prefixEmbedded}.copy`)) || ''
+            }
+          >
+            <ActionButton>
+              <div
+                onClick={onClickCopy}
+              >
+                {isCopied[option] && <RiClipboardFill className='h-4 w-4' />}
+                {!isCopied[option] && <RiClipboardLine className='h-4 w-4' />}
+              </div>
+            </ActionButton>
+          </Tooltip>
+        </div>
+        <div className="flex w-full items-start justify-start gap-2 overflow-x-auto p-3">
+          <div className="shrink grow basis-0 font-mono text-[13px] leading-tight text-text-secondary">
+            <pre className='select-text'>{OPTION_MAP[option].getContent(appBaseUrl, accessToken, themeBuilder.theme?.primaryColor ?? '#1C64F2', isTestEnv)}</pre>
           </div>
         </div>
       </div>

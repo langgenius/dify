@@ -1,0 +1,27 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "8",
+			"height": "12",
+			"viewBox": "0 0 8 12",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"id": "Rectangle 1",
+					"d": "M1.03647 1.5547C0.59343 0.890144 1.06982 0 1.86852 0H8V12L1.03647 1.5547Z",
+					"fill": "currentColor"
+				},
+				"children": []
+			}
+		]
+	},
+	"name": "AnswerTriangle"
+}

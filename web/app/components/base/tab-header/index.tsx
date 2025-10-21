@@ -1,40 +1,47 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from 'classnames'
-
-import s from './style.module.css'
+import cn from '@/utils/classnames'
 
 type Item = {
   id: string
   name: string
   isRight?: boolean
+  icon?: React.ReactNode
   extra?: React.ReactNode
+  disabled?: boolean
 }
 
 export type ITabHeaderProps = {
   items: Item[]
   value: string
+  itemClassName?: string
   onChange: (value: string) => void
 }
 
 const TabHeader: FC<ITabHeaderProps> = ({
   items,
   value,
+  itemClassName,
   onChange,
 }) => {
-  const renderItem = ({ id, name, extra }: Item) => (
+  const renderItem = ({ id, name, icon, extra, disabled }: Item) => (
     <div
       key={id}
-      className={cn(id === value ? `${s.itemActive} text-gray-900` : 'text-gray-500', 'relative flex items-center pb-1.5 leading-6 cursor-pointer')}
-      onClick={() => onChange(id)}
+      className={cn(
+        'system-md-semibold relative flex cursor-pointer items-center border-b-2 border-transparent pb-2 pt-2.5',
+        id === value ? 'border-components-tab-active text-text-primary' : 'text-text-tertiary',
+        disabled && 'cursor-not-allowed opacity-30',
+      )}
+      onClick={() => !disabled && onChange(id)}
     >
-      <div className='text-base font-semibold'>{name}</div>
+      {icon || ''}
+      <div className={cn('ml-2', itemClassName)}>{name}</div>
       {extra || ''}
     </div>
   )
   return (
-    <div className='flex justify-between border-b border-gray-200 '>
+    <div className='flex justify-between'>
       <div className='flex space-x-4'>
         {items.filter(item => !item.isRight).map(renderItem)}
       </div>

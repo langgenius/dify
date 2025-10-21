@@ -1,183 +1,199 @@
-import datetime
+import concurrent.futures
 import json
 import logging
 import re
 import threading
 import time
 import uuid
-from typing import Optional, List, cast
+from typing import Any
 
-from flask import current_app, Flask
-from flask_login import current_user
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter, TextSplitter
+from flask import current_app
+from sqlalchemy import select
+from sqlalchemy.orm.exc import ObjectDeletedError
 
-from core.data_loader.file_extractor import FileExtractor
-from core.data_loader.loader.notion import NotionLoader
-from core.docstore.dataset_docstore import DatesetDocumentStore
-from core.generator.llm_generator import LLMGenerator
-from core.index.index import IndexBuilder
-from core.model_providers.error import ProviderTokenNotInitError
-from core.model_providers.model_factory import ModelFactory
-from core.model_providers.models.entity.message import MessageType
-from core.spiltter.fixed_text_splitter import FixedRecursiveCharacterTextSplitter
+from configs import dify_config
+from core.entities.knowledge_entities import IndexingEstimate, PreviewDetail, QAPreviewDetail
+from core.errors.error import ProviderTokenNotInitError
+from core.model_manager import ModelInstance, ModelManager
+from core.model_runtime.entities.model_entities import ModelType
+from core.rag.cleaner.clean_processor import CleanProcessor
+from core.rag.datasource.keyword.keyword_factory import Keyword
+from core.rag.docstore.dataset_docstore import DatasetDocumentStore
+from core.rag.extractor.entity.datasource_type import DatasourceType
+from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
+from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.index_processor_base import BaseIndexProcessor
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.models.document import ChildDocument, Document
+from core.rag.splitter.fixed_text_splitter import (
+    EnhanceRecursiveCharacterTextSplitter,
+    FixedRecursiveCharacterTextSplitter,
+)
+from core.rag.splitter.text_splitter import TextSplitter
+from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper
+from libs.datetime_utils import naive_utc_now
+from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.dataset import Dataset, DocumentSegment, DatasetProcessRule
 from models.model import UploadFile
-from models.source import DataSourceBinding
+from services.feature_service import FeatureService
+
+logger = logging.getLogger(__name__)
 
 
 class IndexingRunner:
-
     def __init__(self):
         self.storage = storage
+        self.model_manager = ModelManager()
 
-    def run(self, dataset_documents: List[DatasetDocument]):
+    def _handle_indexing_error(self, document_id: str, error: Exception) -> None:
+        """Handle indexing errors by updating document status."""
+        logger.exception("consume document failed")
+        document = db.session.get(DatasetDocument, document_id)
+        if document:
+            document.indexing_status = "error"
+            error_message = getattr(error, "description", str(error))
+            document.error = str(error_message)
+            document.stopped_at = naive_utc_now()
+            db.session.commit()
+
+    def run(self, dataset_documents: list[DatasetDocument]):
         """Run the indexing process."""
         for dataset_document in dataset_documents:
+            document_id = dataset_document.id
             try:
+                # Re-query the document to ensure it's bound to the current session
+                requeried_document = db.session.get(DatasetDocument, document_id)
+                if not requeried_document:
+                    logger.warning("Document not found, skipping document id: %s", document_id)
+                    continue
+
                 # get dataset
-                dataset = Dataset.query.filter_by(
-                    id=dataset_document.dataset_id
-                ).first()
+                dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
 
                 if not dataset:
                     raise ValueError("no dataset found")
-
-                # load file
-                text_docs = self._load_data(dataset_document)
-
                 # get the process rule
-                processing_rule = db.session.query(DatasetProcessRule). \
-                    filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id). \
-                    first()
-
-                # get splitter
-                splitter = self._get_splitter(processing_rule)
-
-                # split to documents
-                documents = self._step_split(
-                    text_docs=text_docs,
-                    splitter=splitter,
-                    dataset=dataset,
-                    dataset_document=dataset_document,
-                    processing_rule=processing_rule
+                stmt = select(DatasetProcessRule).where(
+                    DatasetProcessRule.id == requeried_document.dataset_process_rule_id
                 )
-                self._build_index(
-                    dataset=dataset,
-                    dataset_document=dataset_document,
-                    documents=documents
+                processing_rule = db.session.scalar(stmt)
+                if not processing_rule:
+                    raise ValueError("no process rule found")
+                index_type = requeried_document.doc_form
+                index_processor = IndexProcessorFactory(index_type).init_index_processor()
+                # extract
+                text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict())
+
+                # transform
+                documents = self._transform(
+                    index_processor, dataset, text_docs, requeried_document.doc_language, processing_rule.to_dict()
                 )
-            except DocumentIsPausedException:
-                raise DocumentIsPausedException('Document paused, document id: {}'.format(dataset_document.id))
+                # save segment
+                self._load_segments(dataset, requeried_document, documents)
+
+                # load
+                self._load(
+                    index_processor=index_processor,
+                    dataset=dataset,
+                    dataset_document=requeried_document,
+                    documents=documents,
+                )
+            except DocumentIsPausedError:
+                raise DocumentIsPausedError(f"Document paused, document id: {document_id}")
             except ProviderTokenNotInitError as e:
-                dataset_document.indexing_status = 'error'
-                dataset_document.error = str(e.description)
-                dataset_document.stopped_at = datetime.datetime.utcnow()
-                db.session.commit()
+                self._handle_indexing_error(document_id, e)
+            except ObjectDeletedError:
+                logger.warning("Document deleted, document id: %s", document_id)
             except Exception as e:
-                logging.exception("consume document failed")
-                dataset_document.indexing_status = 'error'
-                dataset_document.error = str(e)
-                dataset_document.stopped_at = datetime.datetime.utcnow()
-                db.session.commit()
-
-    def format_split_text(self, text):
-        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"
-        matches = re.findall(regex, text, re.MULTILINE)
-
-        result = []
-        for match in matches:
-            q = match[0]
-            a = match[1]
-            if q and a:
-                result.append({
-                    "question": q,
-                    "answer": re.sub(r"\n\s*", "\n", a.strip())
-                })
-
-        return result
+                self._handle_indexing_error(document_id, e)
 
     def run_in_splitting_status(self, dataset_document: DatasetDocument):
         """Run the indexing process when the index_status is splitting."""
+        document_id = dataset_document.id
         try:
+            # Re-query the document to ensure it's bound to the current session
+            requeried_document = db.session.get(DatasetDocument, document_id)
+            if not requeried_document:
+                logger.warning("Document not found: %s", document_id)
+                return
+
             # get dataset
-            dataset = Dataset.query.filter_by(
-                id=dataset_document.dataset_id
-            ).first()
+            dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
 
             if not dataset:
                 raise ValueError("no dataset found")
 
             # get exist document_segment list and delete
-            document_segments = DocumentSegment.query.filter_by(
-                dataset_id=dataset.id,
-                document_id=dataset_document.id
-            ).all()
+            document_segments = (
+                db.session.query(DocumentSegment)
+                .filter_by(dataset_id=dataset.id, document_id=requeried_document.id)
+                .all()
+            )
 
-            db.session.delete(document_segments)
+            for document_segment in document_segments:
+                db.session.delete(document_segment)
+                if requeried_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                    # delete child chunks
+                    db.session.query(ChildChunk).where(ChildChunk.segment_id == document_segment.id).delete()
             db.session.commit()
-
-            # load file
-            text_docs = self._load_data(dataset_document)
-
             # get the process rule
-            processing_rule = db.session.query(DatasetProcessRule). \
-                filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id). \
-                first()
+            stmt = select(DatasetProcessRule).where(DatasetProcessRule.id == requeried_document.dataset_process_rule_id)
+            processing_rule = db.session.scalar(stmt)
+            if not processing_rule:
+                raise ValueError("no process rule found")
 
-            # get splitter
-            splitter = self._get_splitter(processing_rule)
+            index_type = requeried_document.doc_form
+            index_processor = IndexProcessorFactory(index_type).init_index_processor()
+            # extract
+            text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict())
 
-            # split to documents
-            documents = self._step_split(
-                text_docs=text_docs,
-                splitter=splitter,
-                dataset=dataset,
-                dataset_document=dataset_document,
-                processing_rule=processing_rule
+            # transform
+            documents = self._transform(
+                index_processor, dataset, text_docs, requeried_document.doc_language, processing_rule.to_dict()
             )
+            # save segment
+            self._load_segments(dataset, requeried_document, documents)
 
-            # build index
-            self._build_index(
+            # load
+            self._load(
+                index_processor=index_processor,
                 dataset=dataset,
-                dataset_document=dataset_document,
-                documents=documents
+                dataset_document=requeried_document,
+                documents=documents,
             )
-        except DocumentIsPausedException:
-            raise DocumentIsPausedException('Document paused, document id: {}'.format(dataset_document.id))
+        except DocumentIsPausedError:
+            raise DocumentIsPausedError(f"Document paused, document id: {document_id}")
         except ProviderTokenNotInitError as e:
-            dataset_document.indexing_status = 'error'
-            dataset_document.error = str(e.description)
-            dataset_document.stopped_at = datetime.datetime.utcnow()
-            db.session.commit()
+            self._handle_indexing_error(document_id, e)
         except Exception as e:
-            logging.exception("consume document failed")
-            dataset_document.indexing_status = 'error'
-            dataset_document.error = str(e)
-            dataset_document.stopped_at = datetime.datetime.utcnow()
-            db.session.commit()
+            self._handle_indexing_error(document_id, e)
 
     def run_in_indexing_status(self, dataset_document: DatasetDocument):
         """Run the indexing process when the index_status is indexing."""
+        document_id = dataset_document.id
         try:
+            # Re-query the document to ensure it's bound to the current session
+            requeried_document = db.session.get(DatasetDocument, document_id)
+            if not requeried_document:
+                logger.warning("Document not found: %s", document_id)
+                return
+
             # get dataset
-            dataset = Dataset.query.filter_by(
-                id=dataset_document.dataset_id
-            ).first()
+            dataset = db.session.query(Dataset).filter_by(id=requeried_document.dataset_id).first()
 
             if not dataset:
                 raise ValueError("no dataset found")
 
             # get exist document_segment list and delete
-            document_segments = DocumentSegment.query.filter_by(
-                dataset_id=dataset.id,
-                document_id=dataset_document.id
-            ).all()
+            document_segments = (
+                db.session.query(DocumentSegment)
+                .filter_by(dataset_id=dataset.id, document_id=requeried_document.id)
+                .all()
+            )
 
             documents = []
             if document_segments:
@@ -191,404 +207,283 @@ class IndexingRunner:
                                 "doc_hash": document_segment.index_node_hash,
                                 "document_id": document_segment.document_id,
                                 "dataset_id": document_segment.dataset_id,
-                            }
+                            },
                         )
-
+                        if requeried_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                            child_chunks = document_segment.get_child_chunks()
+                            if child_chunks:
+                                child_documents = []
+                                for child_chunk in child_chunks:
+                                    child_document = ChildDocument(
+                                        page_content=child_chunk.content,
+                                        metadata={
+                                            "doc_id": child_chunk.index_node_id,
+                                            "doc_hash": child_chunk.index_node_hash,
+                                            "document_id": document_segment.document_id,
+                                            "dataset_id": document_segment.dataset_id,
+                                        },
+                                    )
+                                    child_documents.append(child_document)
+                                document.children = child_documents
                         documents.append(document)
-
             # build index
-            self._build_index(
+            index_type = requeried_document.doc_form
+            index_processor = IndexProcessorFactory(index_type).init_index_processor()
+            self._load(
+                index_processor=index_processor,
                 dataset=dataset,
-                dataset_document=dataset_document,
-                documents=documents
+                dataset_document=requeried_document,
+                documents=documents,
             )
-        except DocumentIsPausedException:
-            raise DocumentIsPausedException('Document paused, document id: {}'.format(dataset_document.id))
+        except DocumentIsPausedError:
+            raise DocumentIsPausedError(f"Document paused, document id: {document_id}")
         except ProviderTokenNotInitError as e:
-            dataset_document.indexing_status = 'error'
-            dataset_document.error = str(e.description)
-            dataset_document.stopped_at = datetime.datetime.utcnow()
-            db.session.commit()
+            self._handle_indexing_error(document_id, e)
         except Exception as e:
-            logging.exception("consume document failed")
-            dataset_document.indexing_status = 'error'
-            dataset_document.error = str(e)
-            dataset_document.stopped_at = datetime.datetime.utcnow()
-            db.session.commit()
+            self._handle_indexing_error(document_id, e)
 
-    def file_indexing_estimate(self, tenant_id: str, file_details: List[UploadFile], tmp_processing_rule: dict,
-                               doc_form: str = None, doc_language: str = 'English', dataset_id: str = None,
-                               indexing_technique: str = 'economy') -> dict:
+    def indexing_estimate(
+        self,
+        tenant_id: str,
+        extract_settings: list[ExtractSetting],
+        tmp_processing_rule: dict,
+        doc_form: str | None = None,
+        doc_language: str = "English",
+        dataset_id: str | None = None,
+        indexing_technique: str = "economy",
+    ) -> IndexingEstimate:
         """
         Estimate the indexing for the document.
         """
-        embedding_model = None
-        if dataset_id:
-            dataset = Dataset.query.filter_by(
-                id=dataset_id
-            ).first()
-            if not dataset:
-                raise ValueError('Dataset not found.')
-            if dataset.indexing_technique == 'high_quality' or indexing_technique == 'high_quality':
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=dataset.tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
-                )
-        else:
-            if indexing_technique == 'high_quality':
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=tenant_id
-                )
-        tokens = 0
-        preview_texts = []
-        total_segments = 0
-        for file_detail in file_details:
-            # load data from file
-            text_docs = FileExtractor.load(file_detail)
+        # check document limit
+        features = FeatureService.get_features(tenant_id)
+        if features.billing.enabled:
+            count = len(extract_settings)
+            batch_upload_limit = dify_config.BATCH_UPLOAD_LIMIT
+            if count > batch_upload_limit:
+                raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 
+        embedding_model_instance = None
+        if dataset_id:
+            dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
+            if not dataset:
+                raise ValueError("Dataset not found.")
+            if dataset.indexing_technique == "high_quality" or indexing_technique == "high_quality":
+                if dataset.embedding_model_provider:
+                    embedding_model_instance = self.model_manager.get_model_instance(
+                        tenant_id=tenant_id,
+                        provider=dataset.embedding_model_provider,
+                        model_type=ModelType.TEXT_EMBEDDING,
+                        model=dataset.embedding_model,
+                    )
+                else:
+                    embedding_model_instance = self.model_manager.get_default_model_instance(
+                        tenant_id=tenant_id,
+                        model_type=ModelType.TEXT_EMBEDDING,
+                    )
+        else:
+            if indexing_technique == "high_quality":
+                embedding_model_instance = self.model_manager.get_default_model_instance(
+                    tenant_id=tenant_id,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                )
+        # keep separate, avoid union-list ambiguity
+        preview_texts: list[PreviewDetail] = []
+        qa_preview_texts: list[QAPreviewDetail] = []
+
+        total_segments = 0
+        index_type = doc_form
+        index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        for extract_setting in extract_settings:
+            # extract
             processing_rule = DatasetProcessRule(
-                mode=tmp_processing_rule["mode"],
-                rules=json.dumps(tmp_processing_rule["rules"])
+                mode=tmp_processing_rule["mode"], rules=json.dumps(tmp_processing_rule["rules"])
             )
-
-            # get splitter
-            splitter = self._get_splitter(processing_rule)
-
-            # split to documents
-            documents = self._split_to_documents_for_estimate(
-                text_docs=text_docs,
-                splitter=splitter,
-                processing_rule=processing_rule
+            text_docs = index_processor.extract(extract_setting, process_rule_mode=tmp_processing_rule["mode"])
+            documents = index_processor.transform(
+                text_docs,
+                embedding_model_instance=embedding_model_instance,
+                process_rule=processing_rule.to_dict(),
+                tenant_id=tenant_id,
+                doc_language=doc_language,
+                preview=True,
             )
-
             total_segments += len(documents)
-
             for document in documents:
-                if len(preview_texts) < 5:
-                    preview_texts.append(document.page_content)
-                if indexing_technique == 'high_quality' or embedding_model:
-                    tokens += embedding_model.get_num_tokens(self.filter_string(document.page_content))
+                if len(preview_texts) < 10:
+                    if doc_form and doc_form == "qa_model":
+                        qa_detail = QAPreviewDetail(
+                            question=document.page_content, answer=document.metadata.get("answer") or ""
+                        )
+                        qa_preview_texts.append(qa_detail)
+                    else:
+                        preview_detail = PreviewDetail(content=document.page_content)
+                        if document.children:
+                            preview_detail.child_chunks = [child.page_content for child in document.children]
+                        preview_texts.append(preview_detail)
 
-        if doc_form and doc_form == 'qa_model':
-            text_generation_model = ModelFactory.get_text_generation_model(
-                tenant_id=tenant_id
-            )
-            if len(preview_texts) > 0:
-                # qa model document
-                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0], doc_language)
-                document_qa_list = self.format_split_text(response)
-                return {
-                    "total_segments": total_segments * 20,
-                    "tokens": total_segments * 2000,
-                    "total_price": '{:f}'.format(
-                        text_generation_model.calc_tokens_price(total_segments * 2000, MessageType.HUMAN)),
-                    "currency": embedding_model.get_currency(),
-                    "qa_preview": document_qa_list,
-                    "preview": preview_texts
-                }
-        return {
-            "total_segments": total_segments,
-            "tokens": tokens,
-            "total_price": '{:f}'.format(embedding_model.calc_tokens_price(tokens)) if embedding_model else 0,
-            "currency": embedding_model.get_currency() if embedding_model else 'USD',
-            "preview": preview_texts
-        }
+                # delete image files and related db records
+                image_upload_file_ids = get_image_upload_file_ids(document.page_content)
+                for upload_file_id in image_upload_file_ids:
+                    stmt = select(UploadFile).where(UploadFile.id == upload_file_id)
+                    image_file = db.session.scalar(stmt)
+                    if image_file is None:
+                        continue
+                    try:
+                        storage.delete(image_file.key)
+                    except Exception:
+                        logger.exception(
+                            "Delete image_files failed while indexing_estimate, \
+                                          image_upload_file_is: %s",
+                            upload_file_id,
+                        )
+                    db.session.delete(image_file)
 
-    def notion_indexing_estimate(self, tenant_id: str, notion_info_list: list, tmp_processing_rule: dict,
-                                 doc_form: str = None, doc_language: str = 'English', dataset_id: str = None,
-                                 indexing_technique: str = 'economy') -> dict:
-        """
-        Estimate the indexing for the document.
-        """
-        embedding_model = None
-        if dataset_id:
-            dataset = Dataset.query.filter_by(
-                id=dataset_id
-            ).first()
-            if not dataset:
-                raise ValueError('Dataset not found.')
-            if dataset.indexing_technique == 'high_quality' or indexing_technique == 'high_quality':
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=dataset.tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
-                )
-        else:
-            if indexing_technique == 'high_quality':
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=tenant_id
-                )
-        # load data from notion
-        tokens = 0
-        preview_texts = []
-        total_segments = 0
-        for notion_info in notion_info_list:
-            workspace_id = notion_info['workspace_id']
-            data_source_binding = DataSourceBinding.query.filter(
-                db.and_(
-                    DataSourceBinding.tenant_id == current_user.current_tenant_id,
-                    DataSourceBinding.provider == 'notion',
-                    DataSourceBinding.disabled == False,
-                    DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
-                )
-            ).first()
-            if not data_source_binding:
-                raise ValueError('Data source binding not found.')
+        if doc_form and doc_form == "qa_model":
+            return IndexingEstimate(total_segments=total_segments * 20, qa_preview=qa_preview_texts, preview=[])
+        return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
-            for page in notion_info['pages']:
-                loader = NotionLoader(
-                    notion_access_token=data_source_binding.access_token,
-                    notion_workspace_id=workspace_id,
-                    notion_obj_id=page['page_id'],
-                    notion_page_type=page['type']
-                )
-                documents = loader.load()
-
-                processing_rule = DatasetProcessRule(
-                    mode=tmp_processing_rule["mode"],
-                    rules=json.dumps(tmp_processing_rule["rules"])
-                )
-
-                # get splitter
-                splitter = self._get_splitter(processing_rule)
-
-                # split to documents
-                documents = self._split_to_documents_for_estimate(
-                    text_docs=documents,
-                    splitter=splitter,
-                    processing_rule=processing_rule
-                )
-                total_segments += len(documents)
-                for document in documents:
-                    if len(preview_texts) < 5:
-                        preview_texts.append(document.page_content)
-                    if indexing_technique == 'high_quality' or embedding_model:
-                        tokens += embedding_model.get_num_tokens(document.page_content)
-
-        if doc_form and doc_form == 'qa_model':
-            text_generation_model = ModelFactory.get_text_generation_model(
-                tenant_id=tenant_id
-            )
-            if len(preview_texts) > 0:
-                # qa model document
-                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0], doc_language)
-                document_qa_list = self.format_split_text(response)
-                return {
-                    "total_segments": total_segments * 20,
-                    "tokens": total_segments * 2000,
-                    "total_price": '{:f}'.format(
-                        text_generation_model.calc_tokens_price(total_segments * 2000, MessageType.HUMAN)),
-                    "currency": embedding_model.get_currency(),
-                    "qa_preview": document_qa_list,
-                    "preview": preview_texts
-                }
-        return {
-            "total_segments": total_segments,
-            "tokens": tokens,
-            "total_price": '{:f}'.format(embedding_model.calc_tokens_price(tokens)) if embedding_model else 0,
-            "currency": embedding_model.get_currency() if embedding_model else 'USD',
-            "preview": preview_texts
-        }
-
-    def _load_data(self, dataset_document: DatasetDocument) -> List[Document]:
+    def _extract(
+        self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
+    ) -> list[Document]:
         # load file
-        if dataset_document.data_source_type not in ["upload_file", "notion_import"]:
+        if dataset_document.data_source_type not in {"upload_file", "notion_import", "website_crawl"}:
             return []
 
         data_source_info = dataset_document.data_source_info_dict
         text_docs = []
-        if dataset_document.data_source_type == 'upload_file':
-            if not data_source_info or 'upload_file_id' not in data_source_info:
+        if dataset_document.data_source_type == "upload_file":
+            if not data_source_info or "upload_file_id" not in data_source_info:
                 raise ValueError("no upload file found")
-
-            file_detail = db.session.query(UploadFile). \
-                filter(UploadFile.id == data_source_info['upload_file_id']). \
-                one_or_none()
+            stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
+            file_detail = db.session.scalars(stmt).one_or_none()
 
             if file_detail:
-                text_docs = FileExtractor.load(file_detail)
-        elif dataset_document.data_source_type == 'notion_import':
-            loader = NotionLoader.from_document(dataset_document)
-            text_docs = loader.load()
-
+                extract_setting = ExtractSetting(
+                    datasource_type=DatasourceType.FILE,
+                    upload_file=file_detail,
+                    document_model=dataset_document.doc_form,
+                )
+                text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+        elif dataset_document.data_source_type == "notion_import":
+            if (
+                not data_source_info
+                or "notion_workspace_id" not in data_source_info
+                or "notion_page_id" not in data_source_info
+            ):
+                raise ValueError("no notion import info found")
+            extract_setting = ExtractSetting(
+                datasource_type=DatasourceType.NOTION,
+                notion_info=NotionInfo.model_validate(
+                    {
+                        "credential_id": data_source_info["credential_id"],
+                        "notion_workspace_id": data_source_info["notion_workspace_id"],
+                        "notion_obj_id": data_source_info["notion_page_id"],
+                        "notion_page_type": data_source_info["type"],
+                        "document": dataset_document,
+                        "tenant_id": dataset_document.tenant_id,
+                    }
+                ),
+                document_model=dataset_document.doc_form,
+            )
+            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+        elif dataset_document.data_source_type == "website_crawl":
+            if (
+                not data_source_info
+                or "provider" not in data_source_info
+                or "url" not in data_source_info
+                or "job_id" not in data_source_info
+            ):
+                raise ValueError("no website import info found")
+            extract_setting = ExtractSetting(
+                datasource_type=DatasourceType.WEBSITE,
+                website_info=WebsiteInfo.model_validate(
+                    {
+                        "provider": data_source_info["provider"],
+                        "job_id": data_source_info["job_id"],
+                        "tenant_id": dataset_document.tenant_id,
+                        "url": data_source_info["url"],
+                        "mode": data_source_info["mode"],
+                        "only_main_content": data_source_info["only_main_content"],
+                    }
+                ),
+                document_model=dataset_document.doc_form,
+            )
+            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
         # update document status to splitting
         self._update_document_index_status(
             document_id=dataset_document.id,
             after_indexing_status="splitting",
             extra_update_params={
-                DatasetDocument.word_count: sum([len(text_doc.page_content) for text_doc in text_docs]),
-                DatasetDocument.parsing_completed_at: datetime.datetime.utcnow()
-            }
+                DatasetDocument.word_count: sum(len(text_doc.page_content) for text_doc in text_docs),
+                DatasetDocument.parsing_completed_at: naive_utc_now(),
+            },
         )
 
         # replace doc id to document model id
-        text_docs = cast(List[Document], text_docs)
         for text_doc in text_docs:
-            # remove invalid symbol
-            text_doc.page_content = self.filter_string(text_doc.page_content)
-            text_doc.metadata['document_id'] = dataset_document.id
-            text_doc.metadata['dataset_id'] = dataset_document.dataset_id
+            if text_doc.metadata is not None:
+                text_doc.metadata["document_id"] = dataset_document.id
+                text_doc.metadata["dataset_id"] = dataset_document.dataset_id
 
         return text_docs
 
-    def filter_string(self, text):
-        text = re.sub(r'<\|', '<', text)
-        text = re.sub(r'\|>', '>', text)
-        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\x80-\xFF]', '', text)
+    @staticmethod
+    def filter_string(text):
+        text = re.sub(r"<\|", "<", text)
+        text = re.sub(r"\|>", ">", text)
+        text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\xEF\xBF\xBE]", "", text)
+        # Unicode  U+FFFE
+        text = re.sub("\ufffe", "", text)
         return text
 
-    def _get_splitter(self, processing_rule: DatasetProcessRule) -> TextSplitter:
+    @staticmethod
+    def _get_splitter(
+        processing_rule_mode: str,
+        max_tokens: int,
+        chunk_overlap: int,
+        separator: str,
+        embedding_model_instance: ModelInstance | None,
+    ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
         """
-        if processing_rule.mode == "custom":
+        character_splitter: TextSplitter
+        if processing_rule_mode in ["custom", "hierarchical"]:
             # The user-defined segmentation rule
-            rules = json.loads(processing_rule.rules)
-            segmentation = rules["segmentation"]
-            if segmentation["max_tokens"] < 50 or segmentation["max_tokens"] > 1000:
-                raise ValueError("Custom segment length should be between 50 and 1000.")
+            max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+            if max_tokens < 50 or max_tokens > max_segmentation_tokens_length:
+                raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}.")
 
-            separator = segmentation["separator"]
             if separator:
-                separator = separator.replace('\\n', '\n')
+                separator = separator.replace("\\n", "\n")
 
-            character_splitter = FixedRecursiveCharacterTextSplitter.from_tiktoken_encoder(
-                chunk_size=segmentation["max_tokens"],
-                chunk_overlap=0,
+            character_splitter = FixedRecursiveCharacterTextSplitter.from_encoder(
+                chunk_size=max_tokens,
+                chunk_overlap=chunk_overlap,
                 fixed_separator=separator,
-                separators=["\n\n", "。", ".", " ", ""]
+                separators=["\n\n", "。", ". ", " ", ""],
+                embedding_model_instance=embedding_model_instance,
             )
         else:
             # Automatic segmentation
-            character_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-                chunk_size=DatasetProcessRule.AUTOMATIC_RULES['segmentation']['max_tokens'],
-                chunk_overlap=0,
-                separators=["\n\n", "。", ".", " ", ""]
+            automatic_rules: dict[str, Any] = dict(DatasetProcessRule.AUTOMATIC_RULES["segmentation"])
+            character_splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
+                chunk_size=automatic_rules["max_tokens"],
+                chunk_overlap=automatic_rules["chunk_overlap"],
+                separators=["\n\n", "。", ". ", " ", ""],
+                embedding_model_instance=embedding_model_instance,
             )
 
         return character_splitter
 
-    def _step_split(self, text_docs: List[Document], splitter: TextSplitter,
-                    dataset: Dataset, dataset_document: DatasetDocument, processing_rule: DatasetProcessRule) \
-            -> List[Document]:
-        """
-        Split the text documents into documents and save them to the document segment.
-        """
-        documents = self._split_to_documents(
-            text_docs=text_docs,
-            splitter=splitter,
-            processing_rule=processing_rule,
-            tenant_id=dataset.tenant_id,
-            document_form=dataset_document.doc_form,
-            document_language=dataset_document.doc_language
-        )
-
-        # save node to document segment
-        doc_store = DatesetDocumentStore(
-            dataset=dataset,
-            user_id=dataset_document.created_by,
-            document_id=dataset_document.id
-        )
-
-        # add document segments
-        doc_store.add_documents(documents)
-
-        # update document status to indexing
-        cur_time = datetime.datetime.utcnow()
-        self._update_document_index_status(
-            document_id=dataset_document.id,
-            after_indexing_status="indexing",
-            extra_update_params={
-                DatasetDocument.cleaning_completed_at: cur_time,
-                DatasetDocument.splitting_completed_at: cur_time,
-            }
-        )
-
-        # update segment status to indexing
-        self._update_segments_by_document(
-            dataset_document_id=dataset_document.id,
-            update_params={
-                DocumentSegment.status: "indexing",
-                DocumentSegment.indexing_at: datetime.datetime.utcnow()
-            }
-        )
-
-        return documents
-
-    def _split_to_documents(self, text_docs: List[Document], splitter: TextSplitter,
-                            processing_rule: DatasetProcessRule, tenant_id: str,
-                            document_form: str, document_language: str) -> List[Document]:
+    def _split_to_documents_for_estimate(
+        self, text_docs: list[Document], splitter: TextSplitter, processing_rule: DatasetProcessRule
+    ) -> list[Document]:
         """
         Split the text documents into nodes.
         """
-        all_documents = []
-        all_qa_documents = []
-        for text_doc in text_docs:
-            # document clean
-            document_text = self._document_clean(text_doc.page_content, processing_rule)
-            text_doc.page_content = document_text
-
-            # parse document to nodes
-            documents = splitter.split_documents([text_doc])
-            split_documents = []
-            for document_node in documents:
-
-                if document_node.page_content.strip():
-                    doc_id = str(uuid.uuid4())
-                    hash = helper.generate_text_hash(document_node.page_content)
-                    document_node.metadata['doc_id'] = doc_id
-                    document_node.metadata['doc_hash'] = hash
-                    split_documents.append(document_node)
-            all_documents.extend(split_documents)
-        # processing qa document
-        if document_form == 'qa_model':
-            for i in range(0, len(all_documents), 10):
-                threads = []
-                sub_documents = all_documents[i:i + 10]
-                for doc in sub_documents:
-                    document_format_thread = threading.Thread(target=self.format_qa_document, kwargs={
-                        'flask_app': current_app._get_current_object(),
-                        'tenant_id': tenant_id, 'document_node': doc, 'all_qa_documents': all_qa_documents,
-                        'document_language': document_language})
-                    threads.append(document_format_thread)
-                    document_format_thread.start()
-                for thread in threads:
-                    thread.join()
-            return all_qa_documents
-        return all_documents
-
-    def format_qa_document(self, flask_app: Flask, tenant_id: str, document_node, all_qa_documents, document_language):
-        format_documents = []
-        if document_node.page_content is None or not document_node.page_content.strip():
-            return
-        with flask_app.app_context():
-            try:
-                # qa model document
-                response = LLMGenerator.generate_qa_document(tenant_id, document_node.page_content, document_language)
-                document_qa_list = self.format_split_text(response)
-                qa_documents = []
-                for result in document_qa_list:
-                    qa_document = Document(page_content=result['question'], metadata=document_node.metadata.copy())
-                    doc_id = str(uuid.uuid4())
-                    hash = helper.generate_text_hash(result['question'])
-                    qa_document.metadata['answer'] = result['answer']
-                    qa_document.metadata['doc_id'] = doc_id
-                    qa_document.metadata['doc_hash'] = hash
-                    qa_documents.append(qa_document)
-                format_documents.extend(qa_documents)
-            except Exception as e:
-                logging.exception(e)
-
-            all_qa_documents.extend(format_documents)
-
-
-    def _split_to_documents_for_estimate(self, text_docs: List[Document], splitter: TextSplitter,
-                                         processing_rule: DatasetProcessRule) -> List[Document]:
-        """
-        Split the text documents into nodes.
-        """
-        all_documents = []
+        all_documents: list[Document] = []
         for text_doc in text_docs:
             # document clean
             document_text = self._document_clean(text_doc.page_content, processing_rule)
@@ -601,11 +496,11 @@ class IndexingRunner:
             for document in documents:
                 if document.page_content is None or not document.page_content.strip():
                     continue
-                doc_id = str(uuid.uuid4())
-                hash = helper.generate_text_hash(document.page_content)
-
-                document.metadata['doc_id'] = doc_id
-                document.metadata['doc_hash'] = hash
+                if document.metadata is not None:
+                    doc_id = str(uuid.uuid4())
+                    hash = helper.generate_text_hash(document.page_content)
+                    document.metadata["doc_id"] = doc_id
+                    document.metadata["doc_hash"] = hash
 
                 split_documents.append(document)
 
@@ -613,7 +508,8 @@ class IndexingRunner:
 
         return all_documents
 
-    def _document_clean(self, text: str, processing_rule: DatasetProcessRule) -> str:
+    @staticmethod
+    def _document_clean(text: str, processing_rule: DatasetProcessRule) -> str:
         """
         Clean the document text according to the processing rules.
         """
@@ -621,92 +517,85 @@ class IndexingRunner:
             rules = DatasetProcessRule.AUTOMATIC_RULES
         else:
             rules = json.loads(processing_rule.rules) if processing_rule.rules else {}
+        document_text = CleanProcessor.clean(text, {"rules": rules})
 
-        if 'pre_processing_rules' in rules:
-            pre_processing_rules = rules["pre_processing_rules"]
-            for pre_processing_rule in pre_processing_rules:
-                if pre_processing_rule["id"] == "remove_extra_spaces" and pre_processing_rule["enabled"] is True:
-                    # Remove extra spaces
-                    pattern = r'\n{3,}'
-                    text = re.sub(pattern, '\n\n', text)
-                    pattern = r'[\t\f\r\x20\u00a0\u1680\u180e\u2000-\u200a\u202f\u205f\u3000]{2,}'
-                    text = re.sub(pattern, ' ', text)
-                elif pre_processing_rule["id"] == "remove_urls_emails" and pre_processing_rule["enabled"] is True:
-                    # Remove email
-                    pattern = r'([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)'
-                    text = re.sub(pattern, '', text)
+        return document_text
 
-                    # Remove URL
-                    pattern = r'https?://[^\s]+'
-                    text = re.sub(pattern, '', text)
+    @staticmethod
+    def format_split_text(text: str) -> list[QAPreviewDetail]:
+        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q\d+:|$)"
+        matches = re.findall(regex, text, re.UNICODE)
 
-        return text
+        return [QAPreviewDetail(question=q, answer=re.sub(r"\n\s*", "\n", a.strip())) for q, a in matches if q and a]
 
-    def format_split_text(self, text):
-        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"  # 匹配Q和A的正则表达式
-        matches = re.findall(regex, text, re.MULTILINE)  # 获取所有匹配到的结果
-
-        result = []  # 存储最终的结果
-        for match in matches:
-            q = match[0]
-            a = match[1]
-            if q and a:
-                # 如果Q和A都存在，就将其添加到结果中
-                result.append({
-                    "question": q,
-                    "answer": re.sub(r"\n\s*", "\n", a.strip())
-                })
-
-        return result
-
-    def _build_index(self, dataset: Dataset, dataset_document: DatasetDocument, documents: List[Document]) -> None:
+    def _load(
+        self,
+        index_processor: BaseIndexProcessor,
+        dataset: Dataset,
+        dataset_document: DatasetDocument,
+        documents: list[Document],
+    ):
         """
-        Build the index for the document.
+        insert index and update document/segment status to completed
         """
-        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
-        keyword_table_index = IndexBuilder.get_index(dataset, 'economy')
-        embedding_model = None
-        if dataset.indexing_technique == 'high_quality':
-            embedding_model = ModelFactory.get_embedding_model(
+
+        embedding_model_instance = None
+        if dataset.indexing_technique == "high_quality":
+            embedding_model_instance = self.model_manager.get_model_instance(
                 tenant_id=dataset.tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
+                provider=dataset.embedding_model_provider,
+                model_type=ModelType.TEXT_EMBEDDING,
+                model=dataset.embedding_model,
             )
 
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
         tokens = 0
-        chunk_size = 100
-        for i in range(0, len(documents), chunk_size):
-            # check document is paused
-            self._check_document_paused_status(dataset_document.id)
-            chunk_documents = documents[i:i + chunk_size]
-            if dataset.indexing_technique == 'high_quality' or embedding_model:
-                tokens += sum(
-                    embedding_model.get_num_tokens(document.page_content)
-                    for document in chunk_documents
-                )
+        create_keyword_thread = None
+        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
+            # create keyword index
+            create_keyword_thread = threading.Thread(
+                target=self._process_keyword_index,
+                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  # type: ignore
+            )
+            create_keyword_thread.start()
 
-            # save vector index
-            if vector_index:
-                vector_index.add_texts(chunk_documents)
+        max_workers = 10
+        if dataset.indexing_technique == "high_quality":
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = []
 
-            # save keyword index
-            keyword_table_index.add_texts(chunk_documents)
+                # Distribute documents into multiple groups based on the hash values of page_content
+                # This is done to prevent multiple threads from processing the same document,
+                # Thereby avoiding potential database insertion deadlocks
+                document_groups: list[list[Document]] = [[] for _ in range(max_workers)]
+                for document in documents:
+                    hash = helper.generate_text_hash(document.page_content)
+                    group_index = int(hash, 16) % max_workers
+                    document_groups[group_index].append(document)
+                for chunk_documents in document_groups:
+                    if len(chunk_documents) == 0:
+                        continue
+                    futures.append(
+                        executor.submit(
+                            self._process_chunk,
+                            current_app._get_current_object(),  # type: ignore
+                            index_processor,
+                            chunk_documents,
+                            dataset,
+                            dataset_document,
+                            embedding_model_instance,
+                        )
+                    )
 
-            document_ids = [document.metadata['doc_id'] for document in chunk_documents]
-            db.session.query(DocumentSegment).filter(
-                DocumentSegment.document_id == dataset_document.id,
-                DocumentSegment.index_node_id.in_(document_ids),
-                DocumentSegment.status == "indexing"
-            ).update({
-                DocumentSegment.status: "completed",
-                DocumentSegment.enabled: True,
-                DocumentSegment.completed_at: datetime.datetime.utcnow()
-            })
-
-            db.session.commit()
-
+                for future in futures:
+                    tokens += future.result()
+        if (
+            dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX
+            and dataset.indexing_technique == "economy"
+            and create_keyword_thread is not None
+        ):
+            create_keyword_thread.join()
         indexing_end_at = time.perf_counter()
 
         # update document status to completed
@@ -715,69 +604,174 @@ class IndexingRunner:
             after_indexing_status="completed",
             extra_update_params={
                 DatasetDocument.tokens: tokens,
-                DatasetDocument.completed_at: datetime.datetime.utcnow(),
+                DatasetDocument.completed_at: naive_utc_now(),
                 DatasetDocument.indexing_latency: indexing_end_at - indexing_start_at,
-            }
+                DatasetDocument.error: None,
+            },
         )
 
-    def _check_document_paused_status(self, document_id: str):
-        indexing_cache_key = 'document_{}_is_paused'.format(document_id)
+    @staticmethod
+    def _process_keyword_index(flask_app, dataset_id, document_id, documents):
+        with flask_app.app_context():
+            dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
+            if not dataset:
+                raise ValueError("no dataset found")
+            keyword = Keyword(dataset)
+            keyword.create(documents)
+            if dataset.indexing_technique != "high_quality":
+                document_ids = [document.metadata["doc_id"] for document in documents]
+                db.session.query(DocumentSegment).where(
+                    DocumentSegment.document_id == document_id,
+                    DocumentSegment.dataset_id == dataset_id,
+                    DocumentSegment.index_node_id.in_(document_ids),
+                    DocumentSegment.status == "indexing",
+                ).update(
+                    {
+                        DocumentSegment.status: "completed",
+                        DocumentSegment.enabled: True,
+                        DocumentSegment.completed_at: naive_utc_now(),
+                    }
+                )
+
+                db.session.commit()
+
+    def _process_chunk(
+        self, flask_app, index_processor, chunk_documents, dataset, dataset_document, embedding_model_instance
+    ):
+        with flask_app.app_context():
+            # check document is paused
+            self._check_document_paused_status(dataset_document.id)
+
+            tokens = 0
+            if embedding_model_instance:
+                page_content_list = [document.page_content for document in chunk_documents]
+                tokens += sum(embedding_model_instance.get_text_embedding_num_tokens(page_content_list))
+
+            # load index
+            index_processor.load(dataset, chunk_documents, with_keywords=False)
+
+            document_ids = [document.metadata["doc_id"] for document in chunk_documents]
+            db.session.query(DocumentSegment).where(
+                DocumentSegment.document_id == dataset_document.id,
+                DocumentSegment.dataset_id == dataset.id,
+                DocumentSegment.index_node_id.in_(document_ids),
+                DocumentSegment.status == "indexing",
+            ).update(
+                {
+                    DocumentSegment.status: "completed",
+                    DocumentSegment.enabled: True,
+                    DocumentSegment.completed_at: naive_utc_now(),
+                }
+            )
+
+            db.session.commit()
+
+            return tokens
+
+    @staticmethod
+    def _check_document_paused_status(document_id: str):
+        indexing_cache_key = f"document_{document_id}_is_paused"
         result = redis_client.get(indexing_cache_key)
         if result:
-            raise DocumentIsPausedException()
+            raise DocumentIsPausedError()
 
-    def _update_document_index_status(self, document_id: str, after_indexing_status: str,
-                                      extra_update_params: Optional[dict] = None) -> None:
+    @staticmethod
+    def _update_document_index_status(
+        document_id: str, after_indexing_status: str, extra_update_params: dict | None = None
+    ):
         """
         Update the document indexing status.
         """
-        count = DatasetDocument.query.filter_by(id=document_id, is_paused=True).count()
+        count = db.session.query(DatasetDocument).filter_by(id=document_id, is_paused=True).count()
         if count > 0:
-            raise DocumentIsPausedException()
+            raise DocumentIsPausedError()
+        document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
+        if not document:
+            raise DocumentIsDeletedPausedError()
 
-        update_params = {
-            DatasetDocument.indexing_status: after_indexing_status
-        }
+        update_params = {DatasetDocument.indexing_status: after_indexing_status}
 
         if extra_update_params:
             update_params.update(extra_update_params)
-
-        DatasetDocument.query.filter_by(id=document_id).update(update_params)
+        db.session.query(DatasetDocument).filter_by(id=document_id).update(update_params)  # type: ignore
         db.session.commit()
 
-    def _update_segments_by_document(self, dataset_document_id: str, update_params: dict) -> None:
+    @staticmethod
+    def _update_segments_by_document(dataset_document_id: str, update_params: dict):
         """
         Update the document segment by document id.
         """
-        DocumentSegment.query.filter_by(document_id=dataset_document_id).update(update_params)
+        db.session.query(DocumentSegment).filter_by(document_id=dataset_document_id).update(update_params)
         db.session.commit()
 
-    def batch_add_segments(self, segments: List[DocumentSegment], dataset: Dataset):
-        """
-        Batch add segments index processing
-        """
-        documents = []
-        for segment in segments:
-            document = Document(
-                page_content=segment.content,
-                metadata={
-                    "doc_id": segment.index_node_id,
-                    "doc_hash": segment.index_node_hash,
-                    "document_id": segment.document_id,
-                    "dataset_id": segment.dataset_id,
-                }
-            )
-            documents.append(document)
-        # save vector index
-        index = IndexBuilder.get_index(dataset, 'high_quality')
-        if index:
-            index.add_texts(documents, duplicate_check=True)
+    def _transform(
+        self,
+        index_processor: BaseIndexProcessor,
+        dataset: Dataset,
+        text_docs: list[Document],
+        doc_language: str,
+        process_rule: dict,
+    ) -> list[Document]:
+        # get embedding model instance
+        embedding_model_instance = None
+        if dataset.indexing_technique == "high_quality":
+            if dataset.embedding_model_provider:
+                embedding_model_instance = self.model_manager.get_model_instance(
+                    tenant_id=dataset.tenant_id,
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model,
+                )
+            else:
+                embedding_model_instance = self.model_manager.get_default_model_instance(
+                    tenant_id=dataset.tenant_id,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                )
 
-        # save keyword index
-        index = IndexBuilder.get_index(dataset, 'economy')
-        if index:
-            index.add_texts(documents)
+        documents = index_processor.transform(
+            text_docs,
+            embedding_model_instance=embedding_model_instance,
+            process_rule=process_rule,
+            tenant_id=dataset.tenant_id,
+            doc_language=doc_language,
+        )
+
+        return documents
+
+    def _load_segments(self, dataset, dataset_document, documents):
+        # save node to document segment
+        doc_store = DatasetDocumentStore(
+            dataset=dataset, user_id=dataset_document.created_by, document_id=dataset_document.id
+        )
+
+        # add document segments
+        doc_store.add_documents(docs=documents, save_child=dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX)
+
+        # update document status to indexing
+        cur_time = naive_utc_now()
+        self._update_document_index_status(
+            document_id=dataset_document.id,
+            after_indexing_status="indexing",
+            extra_update_params={
+                DatasetDocument.cleaning_completed_at: cur_time,
+                DatasetDocument.splitting_completed_at: cur_time,
+            },
+        )
+
+        # update segment status to indexing
+        self._update_segments_by_document(
+            dataset_document_id=dataset_document.id,
+            update_params={
+                DocumentSegment.status: "indexing",
+                DocumentSegment.indexing_at: naive_utc_now(),
+            },
+        )
+        pass
 
 
-class DocumentIsPausedException(Exception):
+class DocumentIsPausedError(Exception):
+    pass
+
+
+class DocumentIsDeletedPausedError(Exception):
     pass

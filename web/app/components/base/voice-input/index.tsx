@@ -1,23 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, usePathname } from 'next/navigation'
-import cn from 'classnames'
+import {
+  RiCloseLine,
+  RiLoader2Line,
+} from '@remixicon/react'
 import Recorder from 'js-audio-recorder'
 import { useRafInterval } from 'ahooks'
 import { convertToMp3 } from './utils'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
-import { Loading02, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { audioToText } from '@/service/share'
 
 type VoiceInputTypes = {
   onConverted: (text: string) => void
   onCancel: () => void
+  wordTimestamps?: string
 }
 
 const VoiceInput = ({
   onCancel,
   onConverted,
+  wordTimestamps,
 }: VoiceInputTypes) => {
   const { t } = useTranslation()
   const recorder = useRef(new Recorder({
@@ -44,8 +49,8 @@ const VoiceInput = ({
     const ctx = ctxRef.current!
     const dataUnit8Array = recorder.current.getRecordAnalyseData()
     const dataArray = [].slice.call(dataUnit8Array)
-    const lineLength = parseInt(`${canvas.width / 3}`)
-    const gap = parseInt(`${1024 / lineLength}`)
+    const lineLength = Number.parseInt(`${canvas.width / 3}`)
+    const gap = Number.parseInt(`${1024 / lineLength}`)
 
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.beginPath()
@@ -76,7 +81,8 @@ const VoiceInput = ({
     setStartRecord(false)
     setStartConvert(true)
     recorder.current.stop()
-    drawRecordId.current && cancelAnimationFrame(drawRecordId.current)
+    if (drawRecordId.current)
+      cancelAnimationFrame(drawRecordId.current)
     drawRecordId.current = null
     const canvas = canvasRef.current!
     const ctx = ctxRef.current!
@@ -85,8 +91,9 @@ const VoiceInput = ({
     const mp3File = new File([mp3Blob], 'temp.mp3', { type: 'audio/mp3' })
     const formData = new FormData()
     formData.append('file', mp3File)
+    formData.append('word_timestamps', wordTimestamps || 'disabled')
 
-    let url = '/universal-chat/audio-to-text'
+    let url = ''
     let isPublic = false
 
     if (params.token) {
@@ -105,11 +112,11 @@ const VoiceInput = ({
       onConverted(audioResponse.text)
       onCancel()
     }
-    catch (e) {
+    catch {
       onConverted('')
       onCancel()
     }
-  }, [])
+  }, [clearInterval, onCancel, onConverted, params.appId, params.token, pathname, wordTimestamps])
   const handleStartRecord = async () => {
     try {
       await recorder.current.start()
@@ -119,7 +126,7 @@ const VoiceInput = ({
       if (canvasRef.current && ctxRef.current)
         drawRecord()
     }
-    catch (e) {
+    catch {
       onCancel()
     }
   }
@@ -143,23 +150,27 @@ const VoiceInput = ({
       }
     }
   }
-  if (originDuration >= 120 && startRecord)
+  if (originDuration >= 600 && startRecord)
     handleStopRecorder()
 
   useEffect(() => {
     initCanvas()
     handleStartRecord()
+    const recorderRef = recorder?.current
+    return () => {
+      recorderRef?.stop()
+    }
   }, [])
 
-  const minutes = parseInt(`${parseInt(`${originDuration}`) / 60}`)
-  const seconds = parseInt(`${originDuration}`) % 60
+  const minutes = Number.parseInt(`${Number.parseInt(`${originDuration}`) / 60}`)
+  const seconds = Number.parseInt(`${originDuration}`) % 60
 
   return (
     <div className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
-      <div className='absolute inset-[1.5px] flex items-center pl-[14.5px] pr-[6.5px] py-[14px] bg-primary-25 rounded-[10.5px] overflow-hidden'>
-        <canvas id='voice-input-record' className='absolute left-0 bottom-0 w-full h-4' />
+      <div className='absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pl-[14.5px] pr-[6.5px]'>
+        <canvas id='voice-input-record' className='absolute bottom-0 left-0 h-4 w-full' />
         {
-          startConvert && <Loading02 className='animate-spin mr-2 w-4 h-4 text-primary-700' />
+          startConvert && <RiLoader2Line className='mr-2 h-4 w-4 animate-spin text-primary-700' />
         }
         <div className='grow'>
           {
@@ -180,24 +191,24 @@ const VoiceInput = ({
         {
           startRecord && (
             <div
-              className='flex justify-center items-center mr-1 w-8 h-8 hover:bg-primary-100 rounded-lg  cursor-pointer'
+              className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg  hover:bg-primary-100'
               onClick={handleStopRecorder}
             >
-              <StopCircle className='w-5 h-5 text-primary-600' />
+              <StopCircle className='h-5 w-5 text-primary-600' />
             </div>
           )
         }
         {
           startConvert && (
             <div
-              className='flex justify-center items-center mr-1 w-8 h-8 hover:bg-gray-200 rounded-lg  cursor-pointer'
+              className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg  hover:bg-gray-200'
               onClick={onCancel}
             >
-              <XClose className='w-4 h-4 text-gray-500' />
+              <RiCloseLine className='h-4 w-4 text-gray-500' />
             </div>
           )
         }
-        <div className={`w-[45px] pl-1 text-xs font-medium ${originDuration > 110 ? 'text-[#F04438]' : 'text-gray-700'}`}>{`0${minutes.toFixed(0)}:${seconds >= 10 ? seconds : `0${seconds}`}`}</div>
+        <div className={`w-[45px] pl-1 text-xs font-medium ${originDuration > 500 ? 'text-[#F04438]' : 'text-gray-700'}`}>{`0${minutes.toFixed(0)}:${seconds >= 10 ? seconds : `0${seconds}`}`}</div>
       </div>
     </div>
   )

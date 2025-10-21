@@ -1,12 +1,13 @@
-import type { FC } from 'react'
+'use client'
 import React from 'react'
+import EmbeddedChatbot from '@/app/components/base/chat/embedded-chatbot'
+import AuthenticatedLayout from '../../components/authenticated-layout'
 
-import type { IMainProps } from '@/app/components/share/chat'
-import Main from '@/app/components/share/chatbot'
-
-const Chatbot: FC<IMainProps> = () => {
+const Chatbot = () => {
   return (
-    <Main />
+    <AuthenticatedLayout>
+      <EmbeddedChatbot />
+    </AuthenticatedLayout>
   )
 }
 

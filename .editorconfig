@@ -1,0 +1,39 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+# Unix-style newlines with a newline ending every file
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.py]
+indent_size = 4
+indent_style = space
+
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[*.toml]
+indent_size = 4
+indent_style = space
+
+# Markdown and MDX are whitespace sensitive languages.
+# Do not remove trailing spaces.
+[*.{md,mdx}]
+trim_trailing_whitespace = false
+
+# Matches multiple files with brace expansion notation
+# Set default charset
+[*.{js,tsx}]
+indent_style = space
+indent_size = 2
+
+# Matches the exact files package.json
+[package.json]
+indent_style = space
+indent_size = 2

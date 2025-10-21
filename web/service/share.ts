@@ -1,9 +1,41 @@
-import type { IOnCompleted, IOnData, IOnError, IOnMessageEnd } from './base'
+import type {
+  IOnCompleted,
+  IOnData,
+  IOnError,
+  IOnFile,
+  IOnIterationFinished,
+  IOnIterationNext,
+  IOnIterationStarted,
+  IOnLoopFinished,
+  IOnLoopNext,
+  IOnLoopStarted,
+  IOnMessageEnd,
+  IOnMessageReplace,
+  IOnNodeFinished,
+  IOnNodeStarted,
+  IOnTTSChunk,
+  IOnTTSEnd,
+  IOnTextChunk,
+  IOnTextReplace,
+  IOnThought,
+  IOnWorkflowFinished,
+  IOnWorkflowStarted,
+} from './base'
 import {
   del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
   delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
 } from './base'
-import type { Feedbacktype } from '@/app/components/app/chat/type'
+import type { FeedbackType } from '@/app/components/base/chat/chat/type'
+import type {
+  AppConversationData,
+  AppData,
+  AppMeta,
+  ConversationItem,
+} from '@/models/share'
+import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { AccessMode } from '@/models/access-control'
+import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import { getWebAppAccessToken } from './webapp-auth'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
@@ -18,48 +50,108 @@ function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boo
   }
 }
 
-function getUrl(url: string, isInstalledApp: boolean, installedAppId: string) {
+export function getUrl(url: string, isInstalledApp: boolean, installedAppId: string) {
   return isInstalledApp ? `installed-apps/${installedAppId}/${url.startsWith('/') ? url.slice(1) : url}` : url
 }
 
-export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onError, getAbortController, onMessageEnd }: {
+export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace, onTTSChunk, onTTSEnd }: {
   onData: IOnData
   onCompleted: IOnCompleted
+  onFile: IOnFile
+  onThought: IOnThought
   onError: IOnError
   onMessageEnd?: IOnMessageEnd
+  onMessageReplace?: IOnMessageReplace
   getAbortController?: (abortController: AbortController) => void
+  onTTSChunk?: IOnTTSChunk
+  onTTSEnd?: IOnTTSEnd
 }, isInstalledApp: boolean, installedAppId = '') => {
   return ssePost(getUrl('chat-messages', isInstalledApp, installedAppId), {
     body: {
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, isPublicAPI: !isInstalledApp, onError, getAbortController, onMessageEnd })
+  }, { onData, onCompleted, onThought, onFile, isPublicAPI: !isInstalledApp, onError, getAbortController, onMessageEnd, onMessageReplace, onTTSChunk, onTTSEnd })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string, isInstalledApp: boolean, installedAppId = '') => {
   return getAction('post', isInstalledApp)(getUrl(`chat-messages/${taskId}/stop`, isInstalledApp, installedAppId))
 }
 
-export const sendCompletionMessage = async (body: Record<string, any>, { onData, onCompleted, onError }: {
+export const sendCompletionMessage = async (body: Record<string, any>, { onData, onCompleted, onError, onMessageReplace }: {
   onData: IOnData
   onCompleted: IOnCompleted
   onError: IOnError
+  onMessageReplace: IOnMessageReplace
 }, isInstalledApp: boolean, installedAppId = '') => {
   return ssePost(getUrl('completion-messages', isInstalledApp, installedAppId), {
     body: {
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, isPublicAPI: !isInstalledApp, onError })
+  }, { onData, onCompleted, isPublicAPI: !isInstalledApp, onError, onMessageReplace })
+}
+
+export const sendWorkflowMessage = async (
+  body: Record<string, any>,
+  {
+    onWorkflowStarted,
+    onNodeStarted,
+    onNodeFinished,
+    onWorkflowFinished,
+    onIterationStart,
+    onIterationNext,
+    onIterationFinish,
+    onLoopStart,
+    onLoopNext,
+    onLoopFinish,
+    onTextChunk,
+    onTextReplace,
+  }: {
+    onWorkflowStarted: IOnWorkflowStarted
+    onNodeStarted: IOnNodeStarted
+    onNodeFinished: IOnNodeFinished
+    onWorkflowFinished: IOnWorkflowFinished
+    onIterationStart: IOnIterationStarted
+    onIterationNext: IOnIterationNext
+    onIterationFinish: IOnIterationFinished
+    onLoopStart: IOnLoopStarted
+    onLoopNext: IOnLoopNext
+    onLoopFinish: IOnLoopFinished
+    onTextChunk: IOnTextChunk
+    onTextReplace: IOnTextReplace
+  },
+  isInstalledApp: boolean,
+  installedAppId = '',
+) => {
+  return ssePost(getUrl('workflows/run', isInstalledApp, installedAppId), {
+    body: {
+      ...body,
+      response_mode: 'streaming',
+    },
+  }, {
+    onNodeStarted,
+    onWorkflowStarted,
+    onWorkflowFinished,
+    isPublicAPI: !isInstalledApp,
+    onNodeFinished,
+    onIterationStart,
+    onIterationNext,
+    onIterationFinish,
+    onLoopStart,
+    onLoopNext,
+    onLoopFinish,
+    onTextChunk,
+    onTextReplace,
+  })
 }
 
 export const fetchAppInfo = async () => {
-  return get('/site')
+  return get('/site') as Promise<AppData>
 }
 
 export const fetchConversations = async (isInstalledApp: boolean, installedAppId = '', last_id?: string, pinned?: boolean, limit?: number) => {
-  return getAction('get', isInstalledApp)(getUrl('conversations', isInstalledApp, installedAppId), { params: { ...{ limit: limit || 20 }, ...(last_id ? { last_id } : {}), ...(pinned !== undefined ? { pinned } : {}) } })
+  return getAction('get', isInstalledApp)(getUrl('conversations', isInstalledApp, installedAppId), { params: { limit: limit || 20, ...(last_id ? { last_id } : {}), ...(pinned !== undefined ? { pinned } : {}) } }) as Promise<AppConversationData>
 }
 
 export const pinConversation = async (isInstalledApp: boolean, installedAppId = '', id: string) => {
@@ -78,8 +170,12 @@ export const renameConversation = async (isInstalledApp: boolean, installedAppId
   return getAction('post', isInstalledApp)(getUrl(`conversations/${id}/name`, isInstalledApp, installedAppId), { body: { name } })
 }
 
+export const generationConversationName = async (isInstalledApp: boolean, installedAppId = '', id: string) => {
+  return getAction('post', isInstalledApp)(getUrl(`conversations/${id}/name`, isInstalledApp, installedAppId), { body: { auto_generate: true } }) as Promise<ConversationItem>
+}
+
 export const fetchChatList = async (conversationId: string, isInstalledApp: boolean, installedAppId = '') => {
-  return getAction('get', isInstalledApp)(getUrl('messages', isInstalledApp, installedAppId), { params: { conversation_id: conversationId, limit: 20, last_id: '' } })
+  return getAction('get', isInstalledApp)(getUrl('messages', isInstalledApp, installedAppId), { params: { conversation_id: conversationId, limit: 20, last_id: '' } }) as any
 }
 
 // Abandoned API interface
@@ -89,10 +185,70 @@ export const fetchChatList = async (conversationId: string, isInstalledApp: bool
 
 // init value. wait for server update
 export const fetchAppParams = async (isInstalledApp: boolean, installedAppId = '') => {
-  return (getAction('get', isInstalledApp))(getUrl('parameters', isInstalledApp, installedAppId))
+  return (getAction('get', isInstalledApp))(getUrl('parameters', isInstalledApp, installedAppId)) as Promise<ChatConfig>
 }
 
-export const updateFeedback = async ({ url, body }: { url: string; body: Feedbacktype }, isInstalledApp: boolean, installedAppId = '') => {
+export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/saml/login', false, ''), {
+    params: {
+      app_code: appCode,
+      redirect_url: redirectUrl,
+    },
+  }) as Promise<{ url: string }>
+}
+
+export const fetchWebOIDCSSOUrl = async (appCode: string, redirectUrl: string) => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/oidc/login', false, ''), {
+    params: {
+      app_code: appCode,
+      redirect_url: redirectUrl,
+    },
+
+  }) as Promise<{ url: string }>
+}
+
+export const fetchWebOAuth2SSOUrl = async (appCode: string, redirectUrl: string) => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/oauth2/login', false, ''), {
+    params: {
+      app_code: appCode,
+      redirect_url: redirectUrl,
+    },
+  }) as Promise<{ url: string }>
+}
+
+export const fetchMembersSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/members/saml/login', false, ''), {
+    params: {
+      app_code: appCode,
+      redirect_url: redirectUrl,
+    },
+  }) as Promise<{ url: string }>
+}
+
+export const fetchMembersOIDCSSOUrl = async (appCode: string, redirectUrl: string) => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/members/oidc/login', false, ''), {
+    params: {
+      app_code: appCode,
+      redirect_url: redirectUrl,
+    },
+
+  }) as Promise<{ url: string }>
+}
+
+export const fetchMembersOAuth2SSOUrl = async (appCode: string, redirectUrl: string) => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/members/oauth2/login', false, ''), {
+    params: {
+      app_code: appCode,
+      redirect_url: redirectUrl,
+    },
+  }) as Promise<{ url: string }>
+}
+
+export const fetchAppMeta = async (isInstalledApp: boolean, installedAppId = '') => {
+  return (getAction('get', isInstalledApp))(getUrl('meta', isInstalledApp, installedAppId)) as Promise<AppMeta>
+}
+
+export const updateFeedback = async ({ url, body }: { url: string; body: FeedbackType }, isInstalledApp: boolean, installedAppId = '') => {
   return (getAction('post', isInstalledApp))(getUrl(url, isInstalledApp, installedAppId), { body })
 }
 
@@ -124,8 +280,31 @@ export const audioToText = (url: string, isPublicAPI: boolean, body: FormData) =
   return (getAction('post', !isPublicAPI))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ text: string }>
 }
 
-export const fetchAccessToken = async (appCode: string) => {
+export const textToAudio = (url: string, isPublicAPI: boolean, body: FormData) => {
+  return (getAction('post', !isPublicAPI))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ data: string }>
+}
+
+export const textToAudioStream = (url: string, isPublicAPI: boolean, header: { content_type: string }, body: { streaming: boolean; voice?: string; message_id?: string; text?: string | null | undefined }) => {
+  return (getAction('post', !isPublicAPI))(url, { body, header }, { needAllResponseContent: true })
+}
+
+export const fetchAccessToken = async ({ userId, appCode }: { userId?: string, appCode: string }) => {
   const headers = new Headers()
-  headers.append('X-App-Code', appCode)
-  return get('/passport', { headers }) as Promise<{ access_token: string }>
+  headers.append(WEB_APP_SHARE_CODE_HEADER_NAME, appCode)
+  headers.append('Authorization', `Bearer ${getWebAppAccessToken()}`)
+  const params = new URLSearchParams()
+  userId && params.append('user_id', userId)
+  const url = `/passport?${params.toString()}`
+  return get<{ access_token: string }>(url, { headers }) as Promise<{ access_token: string }>
+}
+
+export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {
+  if (isInstalledApp)
+    return consoleGet<{ result: boolean }>(`/enterprise/webapp/permission?appId=${appId}`)
+
+  return get<{ result: boolean }>(`/webapp/permission?appId=${appId}`)
+}
+
+export const getAppAccessModeByAppCode = (appCode: string) => {
+  return get<{ accessMode: AccessMode }>(`/webapp/access-mode?appCode=${appCode}`)
 }

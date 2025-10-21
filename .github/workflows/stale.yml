@@ -7,7 +7,7 @@ name: Mark stale issues and pull requests
 
 on:
   schedule:
-  - cron: '0 3 * * *'
+    - cron: '0 3 * * *'
 
 jobs:
   stale:
@@ -18,13 +18,13 @@ jobs:
       pull-requests: write
 
     steps:
-    - uses: actions/stale@v5
-      with:
-        days-before-issue-stale: 30
-        days-before-issue-close: 3
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        stale-issue-message: "Close due to it's no longer active, if you have any questions, you can reopen it."
-        stale-pr-message: "Close due to it's no longer active, if you have any questions, you can reopen it."
-        stale-issue-label: 'no-issue-activity'
-        stale-pr-label: 'no-pr-activity'
-        any-of-labels: 'duplicate,question,invalid,wontfix,no-issue-activity,no-pr-activity,enhancement'
+      - uses: actions/stale@v5
+        with:
+          days-before-issue-stale: 15
+          days-before-issue-close: 3
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-issue-message: "Close due to it's no longer active, if you have any questions, you can reopen it."
+          stale-pr-message: "Close due to it's no longer active, if you have any questions, you can reopen it."
+          stale-issue-label: 'no-issue-activity'
+          stale-pr-label: 'no-pr-activity'
+          any-of-labels: 'duplicate,question,invalid,wontfix,no-issue-activity,no-pr-activity,enhancement,cant-reproduce,help-wanted'

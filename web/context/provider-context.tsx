@@ -1,33 +1,124 @@
 'use client'
 
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import useSWR from 'swr'
-import { fetchDefaultModal, fetchModelList } from '@/service/common'
-import { ModelFeature, ModelType } from '@/app/components/header/account-setting/model-page/declarations'
-import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
-const ProviderContext = createContext<{
-  textGenerationModelList: BackendModel[]
-  embeddingsModelList: BackendModel[]
-  speech2textModelList: BackendModel[]
-  agentThoughtModelList: BackendModel[]
-  updateModelList: (type: ModelType) => void
-  embeddingsDefaultModel?: BackendModel
-  mutateEmbeddingsDefaultModel: () => void
-  speech2textDefaultModel?: BackendModel
-  mutateSpeech2textDefaultModel: () => void
-}>({
-      textGenerationModelList: [],
-      embeddingsModelList: [],
-      speech2textModelList: [],
-      agentThoughtModelList: [],
-      updateModelList: () => {},
-      speech2textDefaultModel: undefined,
-      mutateSpeech2textDefaultModel: () => {},
-      embeddingsDefaultModel: undefined,
-      mutateEmbeddingsDefaultModel: () => {},
-    })
+import { useEffect, useState } from 'react'
+import dayjs from 'dayjs'
+import { useTranslation } from 'react-i18next'
+import {
+  fetchModelList,
+  fetchModelProviders,
+  fetchSupportRetrievalMethods,
+} from '@/service/common'
+import {
+  CurrentSystemQuotaTypeEnum,
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { RETRIEVE_METHOD } from '@/types/app'
+import type { BasicPlan } from '@/app/components/billing/type'
+import { Plan, type UsagePlanInfo } from '@/app/components/billing/type'
+import { fetchCurrentPlanInfo } from '@/service/billing'
+import { parseCurrentPlan } from '@/app/components/billing/utils'
+import { defaultPlan } from '@/app/components/billing/config'
+import Toast from '@/app/components/base/toast'
+import {
+  useEducationStatus,
+} from '@/service/use-education'
+import { noop } from 'lodash-es'
+import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { ZENDESK_FIELD_IDS } from '@/config'
+
+type ProviderContextState = {
+  modelProviders: ModelProvider[]
+  refreshModelProviders: () => void
+  textGenerationModelList: Model[]
+  supportRetrievalMethods: RETRIEVE_METHOD[]
+  isAPIKeySet: boolean
+  plan: {
+    type: BasicPlan
+    usage: UsagePlanInfo
+    total: UsagePlanInfo
+  }
+  isFetchedPlan: boolean
+  enableBilling: boolean
+  onPlanInfoChanged: () => void
+  enableReplaceWebAppLogo: boolean
+  modelLoadBalancingEnabled: boolean
+  datasetOperatorEnabled: boolean
+  enableEducationPlan: boolean
+  isEducationWorkspace: boolean
+  isEducationAccount: boolean
+  allowRefreshEducationVerify: boolean
+  educationAccountExpireAt: number | null
+  isLoadingEducationAccountInfo: boolean
+  isFetchingEducationAccountInfo: boolean
+  webappCopyrightEnabled: boolean
+  licenseLimit: {
+    workspace_members: {
+      size: number
+      limit: number
+    }
+  },
+  refreshLicenseLimit: () => void
+  isAllowTransferWorkspace: boolean
+  isAllowPublishAsCustomKnowledgePipelineTemplate: boolean
+}
+const ProviderContext = createContext<ProviderContextState>({
+  modelProviders: [],
+  refreshModelProviders: noop,
+  textGenerationModelList: [],
+  supportRetrievalMethods: [],
+  isAPIKeySet: true,
+  plan: {
+    type: Plan.sandbox,
+    usage: {
+      vectorSpace: 32,
+      buildApps: 12,
+      teamMembers: 1,
+      annotatedResponse: 1,
+      documentsUploadQuota: 50,
+    },
+    total: {
+      vectorSpace: 200,
+      buildApps: 50,
+      teamMembers: 1,
+      annotatedResponse: 10,
+      documentsUploadQuota: 500,
+    },
+  },
+  isFetchedPlan: false,
+  enableBilling: false,
+  onPlanInfoChanged: noop,
+  enableReplaceWebAppLogo: false,
+  modelLoadBalancingEnabled: false,
+  datasetOperatorEnabled: false,
+  enableEducationPlan: false,
+  isEducationWorkspace: false,
+  isEducationAccount: false,
+  allowRefreshEducationVerify: false,
+  educationAccountExpireAt: null,
+  isLoadingEducationAccountInfo: false,
+  isFetchingEducationAccountInfo: false,
+  webappCopyrightEnabled: false,
+  licenseLimit: {
+    workspace_members: {
+      size: 0,
+      limit: 0,
+    },
+  },
+  refreshLicenseLimit: noop,
+  isAllowTransferWorkspace: false,
+  isAllowPublishAsCustomKnowledgePipelineTemplate: false,
+})
 
 export const useProviderContext = () => useContext(ProviderContext)
+
+// Adding a dangling comma to avoid the generic parsing issue in tsx, see:
+// https://github.com/microsoft/TypeScript/issues/15713
+export const useProviderContextSelector = <T,>(selector: (state: ProviderContextState) => T): T =>
+  useContextSelector(ProviderContext, selector)
 
 type ProviderContextProviderProps = {
   children: React.ReactNode
@@ -35,34 +126,139 @@ type ProviderContextProviderProps = {
 export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
-  const { data: embeddingsDefaultModel, mutate: mutateEmbeddingsDefaultModel } = useSWR('/workspaces/current/default-model?model_type=embeddings', fetchDefaultModal)
-  const { data: speech2textDefaultModel, mutate: mutateSpeech2textDefaultModel } = useSWR('/workspaces/current/default-model?model_type=speech2text', fetchDefaultModal)
-  const fetchModelListUrlPrefix = '/workspaces/current/models/model-type/'
-  const { data: textGenerationModelList, mutate: mutateTextGenerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.textGeneration}`, fetchModelList)
-  const { data: embeddingsModelList, mutate: mutateEmbeddingsModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.embeddings}`, fetchModelList)
-  const { data: speech2textModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.speech2text}`, fetchModelList)
-  const agentThoughtModelList = textGenerationModelList?.filter((item) => {
-    return item.features?.includes(ModelFeature.agentThought)
+  const { data: providersData, mutate: refreshModelProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
+  const fetchModelListUrlPrefix = '/workspaces/current/models/model-types/'
+  const { data: textGenerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelTypeEnum.textGeneration}`, fetchModelList)
+  const { data: supportRetrievalMethods } = useSWR('/datasets/retrieval-setting', fetchSupportRetrievalMethods)
+
+  const [plan, setPlan] = useState(defaultPlan)
+  const [isFetchedPlan, setIsFetchedPlan] = useState(false)
+  const [enableBilling, setEnableBilling] = useState(true)
+  const [enableReplaceWebAppLogo, setEnableReplaceWebAppLogo] = useState(false)
+  const [modelLoadBalancingEnabled, setModelLoadBalancingEnabled] = useState(false)
+  const [datasetOperatorEnabled, setDatasetOperatorEnabled] = useState(false)
+  const [webappCopyrightEnabled, setWebappCopyrightEnabled] = useState(false)
+  const [licenseLimit, setLicenseLimit] = useState({
+    workspace_members: {
+      size: 0,
+      limit: 0,
+    },
   })
 
-  const updateModelList = (type: ModelType) => {
-    if (type === ModelType.textGeneration)
-      mutateTextGenerationModelList()
-    if (type === ModelType.embeddings)
-      mutateEmbeddingsModelList()
+  const [enableEducationPlan, setEnableEducationPlan] = useState(false)
+  const [isEducationWorkspace, setIsEducationWorkspace] = useState(false)
+  const { data: educationAccountInfo, isLoading: isLoadingEducationAccountInfo, isFetching: isFetchingEducationAccountInfo } = useEducationStatus(!enableEducationPlan)
+  const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
+  const [isAllowPublishAsCustomKnowledgePipelineTemplate, setIsAllowPublishAsCustomKnowledgePipelineTemplate] = useState(false)
+
+  const fetchPlan = async () => {
+    try {
+      const data = await fetchCurrentPlanInfo()
+      if (!data) {
+        console.error('Failed to fetch plan info: data is undefined')
+        return
+      }
+
+      // set default value to avoid undefined error
+      setEnableBilling(data.billing?.enabled ?? false)
+      setEnableEducationPlan(data.education?.enabled ?? false)
+      setIsEducationWorkspace(data.education?.activated ?? false)
+      setEnableReplaceWebAppLogo(data.can_replace_logo ?? false)
+
+      if (data.billing?.enabled) {
+        setPlan(parseCurrentPlan(data) as any)
+        setIsFetchedPlan(true)
+      }
+
+      if (data.model_load_balancing_enabled)
+        setModelLoadBalancingEnabled(true)
+      if (data.dataset_operator_enabled)
+        setDatasetOperatorEnabled(true)
+      if (data.webapp_copyright_enabled)
+        setWebappCopyrightEnabled(true)
+      if (data.workspace_members)
+        setLicenseLimit({ workspace_members: data.workspace_members })
+      if (data.is_allow_transfer_workspace)
+        setIsAllowTransferWorkspace(data.is_allow_transfer_workspace)
+      if (data.knowledge_pipeline?.publish_enabled)
+        setIsAllowPublishAsCustomKnowledgePipelineTemplate(data.knowledge_pipeline?.publish_enabled)
+    }
+    catch (error) {
+      console.error('Failed to fetch plan info:', error)
+      // set default value to avoid undefined error
+      setEnableBilling(false)
+      setEnableEducationPlan(false)
+      setIsEducationWorkspace(false)
+      setEnableReplaceWebAppLogo(false)
+    }
   }
+  useEffect(() => {
+    fetchPlan()
+  }, [])
+
+  // #region Zendesk conversation fields
+  useEffect(() => {
+    if (ZENDESK_FIELD_IDS.PLAN && plan.type) {
+      setZendeskConversationFields([{
+        id: ZENDESK_FIELD_IDS.PLAN,
+        value: `${plan.type}-plan`,
+      }])
+    }
+  }, [plan.type])
+  // #endregion Zendesk conversation fields
+
+  const { t } = useTranslation()
+  useEffect(() => {
+    if (localStorage.getItem('anthropic_quota_notice') === 'true')
+      return
+
+    if (dayjs().isAfter(dayjs('2025-03-17')))
+      return
+
+    if (providersData?.data && providersData.data.length > 0) {
+      const anthropic = providersData.data.find(provider => provider.provider === 'anthropic')
+      if (anthropic && anthropic.system_configuration.current_quota_type === CurrentSystemQuotaTypeEnum.trial) {
+        const quota = anthropic.system_configuration.quota_configurations.find(item => item.quota_type === anthropic.system_configuration.current_quota_type)
+        if (quota && quota.is_valid && quota.quota_used < quota.quota_limit) {
+          Toast.notify({
+            type: 'info',
+            message: t('common.provider.anthropicHosted.trialQuotaTip'),
+            duration: 60000,
+            onClose: () => {
+              localStorage.setItem('anthropic_quota_notice', 'true')
+            },
+          })
+        }
+      }
+    }
+  }, [providersData, t])
 
   return (
     <ProviderContext.Provider value={{
-      textGenerationModelList: textGenerationModelList || [],
-      embeddingsModelList: embeddingsModelList || [],
-      speech2textModelList: speech2textModelList || [],
-      agentThoughtModelList: agentThoughtModelList || [],
-      updateModelList,
-      embeddingsDefaultModel,
-      mutateEmbeddingsDefaultModel,
-      speech2textDefaultModel,
-      mutateSpeech2textDefaultModel,
+      modelProviders: providersData?.data || [],
+      refreshModelProviders,
+      textGenerationModelList: textGenerationModelList?.data || [],
+      isAPIKeySet: !!textGenerationModelList?.data.some(model => model.status === ModelStatusEnum.active),
+      supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
+      plan,
+      isFetchedPlan,
+      enableBilling,
+      onPlanInfoChanged: fetchPlan,
+      enableReplaceWebAppLogo,
+      modelLoadBalancingEnabled,
+      datasetOperatorEnabled,
+      enableEducationPlan,
+      isEducationWorkspace,
+      isEducationAccount: educationAccountInfo?.is_student || false,
+      allowRefreshEducationVerify: educationAccountInfo?.allow_refresh || false,
+      educationAccountExpireAt: educationAccountInfo?.expire_at || null,
+      isLoadingEducationAccountInfo,
+      isFetchingEducationAccountInfo,
+      webappCopyrightEnabled,
+      licenseLimit,
+      refreshLicenseLimit: fetchPlan,
+      isAllowTransferWorkspace,
+      isAllowPublishAsCustomKnowledgePipelineTemplate,
     }}>
       {children}
     </ProviderContext.Provider>

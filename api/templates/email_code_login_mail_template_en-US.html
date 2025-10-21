@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        font-family: 'Arial', sans-serif;
+        line-height: 16pt;
+        color: #101828;
+        background-color: #e9ebf0;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        width: 600px;
+        height: 360px;
+        margin: 40px auto;
+        padding: 36px 48px;
+        background-color: #fcfcfd;
+        border-radius: 16px;
+        border: 1px solid #ffffff;
+        box-shadow: 0 2px 4px -2px rgba(9, 9, 11, 0.08);
+      }
+      .header {
+        margin-bottom: 24px;
+      }
+      .header img {
+        max-width: 100px;
+        height: auto;
+      }
+      .title {
+        font-weight: 600;
+        font-size: 24px;
+        line-height: 28.8px;
+      }
+      .description {
+        font-size: 13px;
+        line-height: 16px;
+        color: #676f83;
+        margin-top: 12px;
+      }
+      .code-content {
+        padding: 16px 32px;
+        text-align: center;
+        border-radius: 16px;
+        background-color: #f2f4f7;
+        margin: 16px auto;
+      }
+      .code {
+        line-height: 36px;
+        font-weight: 700;
+        font-size: 30px;
+      }
+      .tips {
+        line-height: 16px;
+        color: #676f83;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <!-- Optional: Add a logo or a header image here -->
+        <img src="https://assets.dify.ai/images/logo.png" alt="Dify Logo" />
+      </div>
+      <p class="title">Your login code for Dify</p>
+      <p class="description">Copy and paste this code, this code will only be valid for the next 5 minutes.</p>
+      <div class="code-content">
+        <span class="code">{{code}}</span>
+      </div>
+      <p class="tips">If you didn't request a login, don't worry. You can safely ignore this email.</p>
+    </div>
+  </body>
+</html>

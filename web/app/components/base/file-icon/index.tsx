@@ -1,12 +1,14 @@
 import type { FC } from 'react'
 import {
   Csv,
+  Doc,
+  Docx,
   Html,
   Json,
   Md,
   Pdf,
   Txt,
-  Unknow,
+  Unknown,
   Xlsx,
 } from '@/app/components/base/icons/src/public/files'
 import { Notion } from '@/app/components/base/icons/src/public/common'
@@ -23,6 +25,10 @@ const FileIcon: FC<FileIconProps> = ({
   switch (type) {
     case 'csv':
       return <Csv className={className} />
+    case 'doc':
+      return <Doc className={className} />
+    case 'docx':
+      return <Docx className={className} />
     case 'htm':
     case 'html':
       return <Html className={className} />
@@ -30,6 +36,7 @@ const FileIcon: FC<FileIconProps> = ({
       return <Json className={className} />
     case 'md':
     case 'markdown':
+    case 'mdx':
       return <Md className={className} />
     case 'pdf':
       return <Pdf className={className} />
@@ -41,7 +48,7 @@ const FileIcon: FC<FileIconProps> = ({
     case 'notion':
       return <Notion className={className} />
     default:
-      return <Unknow className={className} />
+      return <Unknown className={className} />
   }
 }
 

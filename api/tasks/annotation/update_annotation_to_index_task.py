@@ -1,0 +1,63 @@
+import logging
+import time
+
+import click
+from celery import shared_task
+
+from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.models.document import Document
+from extensions.ext_database import db
+from models.dataset import Dataset
+from services.dataset_service import DatasetCollectionBindingService
+
+logger = logging.getLogger(__name__)
+
+
+@shared_task(queue="dataset")
+def update_annotation_to_index_task(
+    annotation_id: str, question: str, tenant_id: str, app_id: str, collection_binding_id: str
+):
+    """
+    Update annotation to index.
+    :param annotation_id: annotation id
+    :param question: question
+    :param tenant_id: tenant id
+    :param app_id: app id
+    :param collection_binding_id: embedding binding id
+
+    Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
+    """
+    logger.info(click.style(f"Start update index for annotation: {annotation_id}", fg="green"))
+    start_at = time.perf_counter()
+
+    try:
+        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+            collection_binding_id, "annotation"
+        )
+
+        dataset = Dataset(
+            id=app_id,
+            tenant_id=tenant_id,
+            indexing_technique="high_quality",
+            embedding_model_provider=dataset_collection_binding.provider_name,
+            embedding_model=dataset_collection_binding.model_name,
+            collection_binding_id=dataset_collection_binding.id,
+        )
+
+        document = Document(
+            page_content=question, metadata={"annotation_id": annotation_id, "app_id": app_id, "doc_id": annotation_id}
+        )
+        vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+        vector.delete_by_metadata_field("annotation_id", annotation_id)
+        vector.add_texts([document])
+        end_at = time.perf_counter()
+        logger.info(
+            click.style(
+                f"Build index successful for annotation: {annotation_id} latency: {end_at - start_at}",
+                fg="green",
+            )
+        )
+    except Exception:
+        logger.exception("Build index for annotation failed")
+    finally:
+        db.session.close()

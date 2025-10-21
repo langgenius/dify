@@ -1,10 +1,11 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import WarningMask from '.'
 import Button from '@/app/components/base/button'
 
-export interface IHasNotSetAPIProps {
+export type IHasNotSetAPIProps = {
   isTrailFinished: boolean
   onSetting: () => void
 }
@@ -18,7 +19,7 @@ const icon = (
 
 const HasNotSetAPI: FC<IHasNotSetAPIProps> = ({
   isTrailFinished,
-  onSetting
+  onSetting,
 }) => {
   const { t } = useTranslation()
 
@@ -27,7 +28,7 @@ const HasNotSetAPI: FC<IHasNotSetAPIProps> = ({
       title={isTrailFinished ? t('appDebug.notSetAPIKey.trailFinished') : t('appDebug.notSetAPIKey.title')}
       description={t('appDebug.notSetAPIKey.description')}
       footer={
-        <Button type='primary' className='flex items-center space-x-2' onClick={onSetting}>
+        <Button variant='primary' className='flex space-x-2' onClick={onSetting}>
           <span>{t('appDebug.notSetAPIKey.settingBtn')}</span>
           {icon}
         </Button>}

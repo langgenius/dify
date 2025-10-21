@@ -1,7 +1,10 @@
 .env
 *.env.*
 
+storage/generate_files/*
 storage/privkeys/*
+storage/tools/*
+storage/upload_files/*
 
 # Logs
 logs
@@ -9,3 +12,8 @@ logs
 
 # jetbrains
 .idea
+.mypy_cache
+.ruff_cache
+
+# venv
+.venv

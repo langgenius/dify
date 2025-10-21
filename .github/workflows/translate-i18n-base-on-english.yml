@@ -1,0 +1,88 @@
+name: Check i18n Files and Create PR
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/i18n/en-US/*.ts'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-and-update:
+    if: github.repository == 'langgenius/dify'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check for file changes in i18n/en-US
+        id: check_files
+        run: |
+          recent_commit_sha=$(git rev-parse HEAD)
+          second_recent_commit_sha=$(git rev-parse HEAD~1)
+          changed_files=$(git diff --name-only $recent_commit_sha $second_recent_commit_sha -- 'i18n/en-US/*.ts')
+          echo "Changed files: $changed_files"
+          if [ -n "$changed_files" ]; then
+            echo "FILES_CHANGED=true" >> $GITHUB_ENV
+            file_args=""
+            for file in $changed_files; do
+              filename=$(basename "$file" .ts)
+              file_args="$file_args --file=$filename"
+            done
+            echo "FILE_ARGS=$file_args" >> $GITHUB_ENV
+            echo "File arguments: $file_args"
+          else
+            echo "FILES_CHANGED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+          run_install: false
+
+      - name: Set up Node.js
+        if: env.FILES_CHANGED == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: pnpm
+          cache-dependency-path: ./web/package.json
+
+      - name: Install dependencies
+        if: env.FILES_CHANGED == 'true'
+        working-directory: ./web
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate i18n translations
+        if: env.FILES_CHANGED == 'true'
+        working-directory: ./web
+        run: pnpm run auto-gen-i18n ${{ env.FILE_ARGS }}
+
+      - name: Generate i18n type definitions
+        if: env.FILES_CHANGED == 'true'
+        working-directory: ./web
+        run: pnpm run gen:i18n-types
+
+      - name: Create Pull Request
+        if: env.FILES_CHANGED == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: Update i18n files and type definitions based on en-US changes
+          title: 'chore: translate i18n files and update type definitions'
+          body: |
+            This PR was automatically created to update i18n files and TypeScript type definitions based on changes in en-US locale.
+            
+            **Changes included:**
+            - Updated translation files for all locales
+            - Regenerated TypeScript type definitions for type safety
+          branch: chore/automated-i18n-updates

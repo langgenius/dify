@@ -1,26 +1,71 @@
 import type { Fetcher } from 'swr'
 import { del, get, patch, post, put } from './base'
 import type {
-  AccountIntegrate, CommonResponse, DataSourceNotion,
-  DocumentsLimitResponse,
+  AccountIntegrate,
+  ApiBasedExtension,
+  CodeBasedExtension,
+  CommonResponse,
+  DataSourceNotion,
   FileUploadConfigResponse,
   ICurrentWorkspace,
-  IWorkspace, InvitationResponse, LangGeniusVersionResponse, Member,
-  OauthResponse, PluginProvider, Provider, ProviderAnthropicToken, ProviderAzureToken,
-  SetupStatusResponse, UserProfileOriginResponse,
+  IWorkspace,
+  InitValidateStatusResponse,
+  InvitationResponse,
+  LangGeniusVersionResponse,
+  Member,
+  ModerateResponse,
+  OauthResponse,
+  PluginProvider,
+  Provider,
+  ProviderAnthropicToken,
+  ProviderAzureToken,
+  SetupStatusResponse,
+  UserProfileOriginResponse,
 } from '@/models/common'
 import type {
   UpdateOpenAIKeyResponse,
   ValidateOpenAIKeyResponse,
 } from '@/models/app'
-import type { BackendModel, ProviderMap } from '@/app/components/header/account-setting/model-page/declarations'
+import type {
+  DefaultModelResponse,
+  Model,
+  ModelItem,
+  ModelLoadBalancingConfig,
+  ModelParameterRule,
+  ModelProvider,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { RETRIEVE_METHOD } from '@/types/app'
+import type { SystemFeatures } from '@/types/feature'
 
-export const login: Fetcher<CommonResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
-  return post<CommonResponse>(url, { body })
+type LoginSuccess = {
+  result: 'success'
+  data: { access_token: string }
+}
+type LoginFail = {
+  result: 'fail'
+  data: string
+  code: string
+  message: string
+}
+type LoginResponse = LoginSuccess | LoginFail
+export const login: Fetcher<LoginResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<LoginResponse>
+}
+export const webAppLogin: Fetcher<LoginResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post(url, { body }, { isPublicAPI: true }) as Promise<LoginResponse>
 }
 
 export const setup: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
   return post<CommonResponse>('/setup', { body })
+}
+
+export const initValidate: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
+  return post<CommonResponse>('/init', { body })
+}
+
+export const fetchInitValidateStatus = () => {
+  return get<InitValidateStatusResponse>('/init')
 }
 
 export const fetchSetupStatus = () => {
@@ -35,11 +80,7 @@ export const updateUserProfile: Fetcher<CommonResponse, { url: string; body: Rec
   return post<CommonResponse>(url, { body })
 }
 
-export const logout: Fetcher<CommonResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get<CommonResponse>(url, params)
-}
-
-export const fetchLanggeniusVersion: Fetcher<LangGeniusVersionResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+export const fetchLangGeniusVersion: Fetcher<LangGeniusVersionResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
   return get<LangGeniusVersionResponse>(url, { params })
 }
 
@@ -82,6 +123,15 @@ export const deleteMemberOrCancelInvitation: Fetcher<CommonResponse, { url: stri
   return del<CommonResponse>(url)
 }
 
+export const sendOwnerEmail = (body: { language?: string }) =>
+  post<CommonResponse & { data: string }>('/workspaces/current/members/send-owner-transfer-confirm-email', { body })
+
+export const verifyOwnerEmail = (body: { code: string; token: string }) =>
+  post<CommonResponse & { is_valid: boolean; email: string; token: string }>('/workspaces/current/members/owner-transfer-check', { body })
+
+export const ownershipTransfer = (memberID: string, body: { token: string }) =>
+  post<CommonResponse & { is_valid: boolean; email: string; token: string }>(`/workspaces/current/members/${memberID}/owner-transfer`, { body })
+
 export const fetchFilePreview: Fetcher<{ content: string }, { fileID: string }> = ({ fileID }) => {
   return get<{ content: string }>(`/files/${fileID}/preview`)
 }
@@ -90,12 +140,20 @@ export const fetchCurrentWorkspace: Fetcher<ICurrentWorkspace, { url: string; pa
   return get<ICurrentWorkspace>(url, { params })
 }
 
+export const updateCurrentWorkspace: Fetcher<ICurrentWorkspace, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post<ICurrentWorkspace>(url, { body })
+}
+
 export const fetchWorkspaces: Fetcher<{ workspaces: IWorkspace[] }, { url: string; params: Record<string, any> }> = ({ url, params }) => {
   return get<{ workspaces: IWorkspace[] }>(url, { params })
 }
 
 export const switchWorkspace: Fetcher<CommonResponse & { new_tenant: IWorkspace }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post<CommonResponse & { new_tenant: IWorkspace }>(url, { body })
+}
+
+export const updateWorkspaceInfo: Fetcher<ICurrentWorkspace, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post<ICurrentWorkspace>(url, { body })
 }
 
 export const fetchDataSource: Fetcher<{ data: DataSourceNotion[] }, { url: string }> = ({ url }) => {
@@ -121,23 +179,49 @@ export const updatePluginProviderAIKey: Fetcher<UpdateOpenAIKeyResponse, { url: 
   return post<UpdateOpenAIKeyResponse>(url, { body })
 }
 
-export const invitationCheck: Fetcher<CommonResponse & { is_valid: boolean; workspace_name: string }, { url: string; params: { workspace_id: string; email: string; token: string } }> = ({ url, params }) => {
-  return get<CommonResponse & { is_valid: boolean; workspace_name: string }>(url, { params })
+export const invitationCheck: Fetcher<CommonResponse & { is_valid: boolean; data: { workspace_name: string; email: string; workspace_id: string } }, { url: string; params: { workspace_id?: string; email?: string; token: string } }> = ({ url, params }) => {
+  return get<CommonResponse & { is_valid: boolean; data: { workspace_name: string; email: string; workspace_id: string } }>(url, { params })
 }
 
-export const activateMember: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
-  return post<CommonResponse>(url, { body })
+export const activateMember: Fetcher<LoginResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post<LoginResponse>(url, { body })
 }
 
-export const fetchModelProviders: Fetcher<ProviderMap, string> = (url) => {
-  return get<ProviderMap>(url)
+export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (url) => {
+  return get<{ data: ModelProvider[] }>(url)
 }
 
-export const fetchModelList: Fetcher<BackendModel[], string> = (url) => {
-  return get<BackendModel[]>(url)
+export type ModelProviderCredentials = {
+  credentials?: Record<string, string | undefined | boolean>
+  load_balancing: ModelLoadBalancingConfig
+}
+export const fetchModelProviderCredentials: Fetcher<ModelProviderCredentials, string> = (url) => {
+  return get<ModelProviderCredentials>(url)
+}
+
+export const fetchModelLoadBalancingConfig: Fetcher<{
+  credentials?: Record<string, string | undefined | boolean>
+  load_balancing: ModelLoadBalancingConfig
+}, string> = (url) => {
+  return get<{
+    credentials?: Record<string, string | undefined | boolean>
+    load_balancing: ModelLoadBalancingConfig
+  }>(url)
+}
+
+export const fetchModelProviderModelList: Fetcher<{ data: ModelItem[] }, string> = (url) => {
+  return get<{ data: ModelItem[] }>(url)
+}
+
+export const fetchModelList: Fetcher<{ data: Model[] }, string> = (url) => {
+  return get<{ data: Model[] }>(url)
 }
 
 export const validateModelProvider: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post<ValidateOpenAIKeyResponse>(url, { body })
+}
+
+export const validateModelLoadBalancingCredentials: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {
   return post<ValidateOpenAIKeyResponse>(url, { body })
 }
 
@@ -145,8 +229,8 @@ export const setModelProvider: Fetcher<CommonResponse, { url: string; body: any 
   return post<CommonResponse>(url, { body })
 }
 
-export const deleteModelProvider: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
-  return del<CommonResponse>(url)
+export const deleteModelProvider: Fetcher<CommonResponse, { url: string; body?: any }> = ({ url, body }) => {
+  return del<CommonResponse>(url, { body })
 }
 
 export const changeModelProviderPriority: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
@@ -165,26 +249,143 @@ export const getPayUrl: Fetcher<{ url: string }, string> = (url) => {
   return get<{ url: string }>(url)
 }
 
-export const fetchDefaultModal: Fetcher<BackendModel, string> = (url) => {
-  return get<BackendModel>(url)
+export const fetchDefaultModal: Fetcher<{ data: DefaultModelResponse }, string> = (url) => {
+  return get<{ data: DefaultModelResponse }>(url)
 }
 
 export const updateDefaultModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
   return post<CommonResponse>(url, { body })
 }
 
-export const submitFreeQuota: Fetcher<{ type: string; redirect_url?: string; result?: string }, string> = (url) => {
-  return post<{ type: string; redirect_url?: string; result?: string }>(url)
+export const fetchModelParameterRules: Fetcher<{ data: ModelParameterRule[] }, string> = (url) => {
+  return get<{ data: ModelParameterRule[] }>(url)
 }
 
 export const fetchFileUploadConfig: Fetcher<FileUploadConfigResponse, { url: string }> = ({ url }) => {
   return get<FileUploadConfigResponse>(url)
 }
 
-export const fetchDocumentsLimit: Fetcher<DocumentsLimitResponse, string> = (url) => {
-  return get<DocumentsLimitResponse>(url)
+export const fetchNotionConnection: Fetcher<{ data: string }, string> = (url) => {
+  return get(url) as Promise<{ data: string }>
 }
 
-export const fetchFreeQuotaVerify: Fetcher<{ result: string; flag: boolean; reason: string }, string> = (url) => {
-  return get(url) as Promise<{ result: string; flag: boolean; reason: string }>
+export const fetchDataSourceNotionBinding: Fetcher<{ result: string }, string> = (url) => {
+  return get(url) as Promise<{ result: string }>
 }
+
+export const fetchApiBasedExtensionList: Fetcher<ApiBasedExtension[], string> = (url) => {
+  return get(url) as Promise<ApiBasedExtension[]>
+}
+
+export const fetchApiBasedExtensionDetail: Fetcher<ApiBasedExtension, string> = (url) => {
+  return get(url) as Promise<ApiBasedExtension>
+}
+
+export const addApiBasedExtension: Fetcher<ApiBasedExtension, { url: string; body: ApiBasedExtension }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<ApiBasedExtension>
+}
+
+export const updateApiBasedExtension: Fetcher<ApiBasedExtension, { url: string; body: ApiBasedExtension }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<ApiBasedExtension>
+}
+
+export const deleteApiBasedExtension: Fetcher<{ result: string }, string> = (url) => {
+  return del(url) as Promise<{ result: string }>
+}
+
+export const fetchCodeBasedExtensionList: Fetcher<CodeBasedExtension, string> = (url) => {
+  return get(url) as Promise<CodeBasedExtension>
+}
+
+export const moderate = (url: string, body: { app_id: string; text: string }) => {
+  return post(url, { body }) as Promise<ModerateResponse>
+}
+
+type RetrievalMethodsRes = {
+  retrieval_method: RETRIEVE_METHOD[]
+}
+export const fetchSupportRetrievalMethods: Fetcher<RetrievalMethodsRes, string> = (url) => {
+  return get<RetrievalMethodsRes>(url)
+}
+
+export const getSystemFeatures = () => {
+  return get<SystemFeatures>('/system-features')
+}
+
+export const enableModel = (url: string, body: { model: string; model_type: ModelTypeEnum }) =>
+  patch<CommonResponse>(url, { body })
+
+export const disableModel = (url: string, body: { model: string; model_type: ModelTypeEnum }) =>
+  patch<CommonResponse>(url, { body })
+
+export const sendForgotPasswordEmail: Fetcher<CommonResponse & { data: string }, { url: string; body: { email: string } }> = ({ url, body }) =>
+  post<CommonResponse & { data: string }>(url, { body })
+
+export const verifyForgotPasswordToken: Fetcher<CommonResponse & { is_valid: boolean; email: string }, { url: string; body: { token: string } }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse & { is_valid: boolean; email: string }>
+}
+
+export const changePasswordWithToken: Fetcher<CommonResponse, { url: string; body: { token: string; new_password: string; password_confirm: string } }> = ({ url, body }) =>
+  post<CommonResponse>(url, { body })
+
+export const sendWebAppForgotPasswordEmail: Fetcher<CommonResponse & { data: string }, { url: string; body: { email: string } }> = ({ url, body }) =>
+  post<CommonResponse & { data: string }>(url, { body }, { isPublicAPI: true })
+
+export const verifyWebAppForgotPasswordToken: Fetcher<CommonResponse & { is_valid: boolean; email: string }, { url: string; body: { token: string } }> = ({ url, body }) => {
+  return post(url, { body }, { isPublicAPI: true }) as Promise<CommonResponse & { is_valid: boolean; email: string }>
+}
+
+export const changeWebAppPasswordWithToken: Fetcher<CommonResponse, { url: string; body: { token: string; new_password: string; password_confirm: string } }> = ({ url, body }) =>
+  post<CommonResponse>(url, { body }, { isPublicAPI: true })
+
+export const uploadRemoteFileInfo = (url: string, isPublic?: boolean, silent?: boolean) => {
+  return post<{ id: string; name: string; size: number; mime_type: string; url: string }>('/remote-files/upload', { body: { url } }, { isPublicAPI: isPublic, silent })
+}
+
+export const sendEMailLoginCode = (email: string, language = 'en-US') =>
+  post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } })
+
+export const emailLoginWithCode = (data: { email: string; code: string; token: string }) =>
+  post<LoginResponse>('/email-code-login/validity', { body: data })
+
+export const sendResetPasswordCode = (email: string, language = 'en-US') =>
+  post<CommonResponse & { data: string; message?: string; code?: string }>('/forgot-password', { body: { email, language } })
+
+export const verifyResetPasswordCode = (body: { email: string; code: string; token: string }) =>
+  post<CommonResponse & { is_valid: boolean; token: string }>('/forgot-password/validity', { body })
+
+export const sendWebAppEMailLoginCode = (email: string, language = 'en-US') =>
+  post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } }, { isPublicAPI: true })
+
+export const webAppEmailLoginWithCode = (data: { email: string; code: string; token: string }) =>
+  post<LoginResponse>('/email-code-login/validity', { body: data }, { isPublicAPI: true })
+
+export const sendWebAppResetPasswordCode = (email: string, language = 'en-US') =>
+  post<CommonResponse & { data: string; message?: string; code?: string }>('/forgot-password', { body: { email, language } }, { isPublicAPI: true })
+
+export const verifyWebAppResetPasswordCode = (body: { email: string; code: string; token: string }) =>
+  post<CommonResponse & { is_valid: boolean; token: string }>('/forgot-password/validity', { body }, { isPublicAPI: true })
+
+export const sendDeleteAccountCode = () =>
+  get<CommonResponse & { data: string }>('/account/delete/verify')
+
+export const verifyDeleteAccountCode = (body: { code: string; token: string }) =>
+  post<CommonResponse & { is_valid: boolean }>('/account/delete', { body })
+
+export const submitDeleteAccountFeedback = (body: { feedback: string; email: string }) =>
+  post<CommonResponse>('/account/delete/feedback', { body })
+
+export const getDocDownloadUrl = (doc_name: string) =>
+  get<{ url: string }>('/compliance/download', { params: { doc_name } }, { silent: true })
+
+export const sendVerifyCode = (body: { email: string; phase: string; token?: string }) =>
+  post<CommonResponse & { data: string }>('/account/change-email', { body })
+
+export const verifyEmail = (body: { email: string; code: string; token: string }) =>
+  post<CommonResponse & { is_valid: boolean; email: string; token: string }>('/account/change-email/validity', { body })
+
+export const resetEmail = (body: { new_email: string; token: string }) =>
+  post<CommonResponse>('/account/change-email/reset', { body })
+
+export const checkEmailExisted = (body: { email: string }) =>
+  post<CommonResponse>('/account/change-email/check-email-unique', { body }, { silent: true })

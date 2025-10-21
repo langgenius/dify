@@ -1,0 +1,62 @@
+services:
+  pd0:
+    image: pingcap/pd:v8.5.1
+    # ports:
+    #  - "2379"
+    volumes:
+      - ./config/pd.toml:/pd.toml:ro
+      - ./volumes/data:/data
+      - ./volumes/logs:/logs
+    command:
+      - --name=pd0
+      - --client-urls=http://0.0.0.0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-client-urls=http://pd0:2379
+      - --advertise-peer-urls=http://pd0:2380
+      - --initial-cluster=pd0=http://pd0:2380
+      - --data-dir=/data/pd
+      - --config=/pd.toml
+      - --log-file=/logs/pd.log
+    restart: on-failure
+  tikv:
+    image: pingcap/tikv:v8.5.1
+    volumes:
+      - ./volumes/data:/data
+      - ./volumes/logs:/logs
+    command:
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv:20160
+      - --status-addr=tikv:20180
+      - --data-dir=/data/tikv
+      - --pd=pd0:2379
+      - --log-file=/logs/tikv.log
+    depends_on:
+      - "pd0"
+    restart: on-failure
+  tidb:
+    image: pingcap/tidb:v8.5.1
+    # ports:
+    #   - "4000:4000"
+    volumes:
+      - ./volumes/logs:/logs
+    command:
+      - --advertise-address=tidb
+      - --store=tikv
+      - --path=pd0:2379
+      - --log-file=/logs/tidb.log
+    depends_on:
+      - "tikv"
+    restart: on-failure
+  tiflash:
+    image: pingcap/tiflash:v8.5.1
+    volumes:
+      - ./config/tiflash.toml:/tiflash.toml:ro
+      - ./config/tiflash-learner.toml:/tiflash-learner.toml:ro
+      - ./volumes/data:/data
+      - ./volumes/logs:/logs
+    command:
+      - --config=/tiflash.toml
+    depends_on:
+      - "tikv"
+      - "tidb"
+    restart: on-failure

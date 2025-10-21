@@ -2,11 +2,10 @@
 
 import type { ChangeEvent, FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import classNames from 'classnames'
 import { useTranslation } from 'react-i18next'
+import VarHighlight from '../../app/configuration/base/var-highlight'
 import Toast from '../toast'
-import { varHighlightHTML } from '../../app/configuration/base/var-highlight'
-import Button from '@/app/components/base/button'
+import classNames from '@/utils/classnames'
 import { checkKeys } from '@/utils/var'
 
 // regex to match the {{}} and replace it with a span
@@ -50,13 +49,11 @@ const BlockInput: FC<IBlockInputProps> = ({
     setCurrentValue(value)
   }, [value])
 
-  const isContentChanged = value !== currentValue
-
   const contentEditableRef = useRef<HTMLTextAreaElement>(null)
   const [isEditing, setIsEditing] = useState<boolean>(false)
   useEffect(() => {
     if (isEditing && contentEditableRef.current) {
-      // TODO: Focus at the click positon
+      // TODO: Focus at the click position
       if (currentValue)
         contentEditableRef.current.setSelectionRange(currentValue.length, currentValue.length)
 
@@ -65,20 +62,32 @@ const BlockInput: FC<IBlockInputProps> = ({
   }, [isEditing])
 
   const style = classNames({
-    'block px-4 py-1 w-full h-full text-sm text-gray-900 outline-0 border-0 break-all': true,
+    'block px-4 py-2 w-full h-full text-sm text-gray-900 outline-0 border-0 break-all': true,
     'block-input--editing': isEditing,
   })
 
-  const coloredContent = (currentValue || '')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(regex, varHighlightHTML({ name: '$1' })) // `<span class="${highLightClassName}">{{$1}}</span>`
-    .replace(/\n/g, '<br />')
+  const renderSafeContent = (value: string) => {
+    const parts = value.split(/(\{\{[^}]+\}\}|\n)/g)
+    return parts.map((part, index) => {
+      const variableMatch = part.match(/^\{\{([^}]+)\}\}$/)
+      if (variableMatch) {
+        return (
+          <VarHighlight
+            key={`var-${index}`}
+            name={variableMatch[1]}
+          />
+        )
+      }
+      if (part === '\n')
+        return <br key={`br-${index}`} />
+
+      return <span key={`text-${index}`}>{part}</span>
+    })
+  }
 
   // Not use useCallback. That will cause out callback get old data.
-  const handleSubmit = () => {
+  const handleSubmit = (value: string) => {
     if (onConfirm) {
-      const value = currentValue
       const keys = getInputKeys(value)
       const { isValid, errorKey, errorMessageKey } = checkKeys(keys)
       if (!isValid) {
@@ -89,26 +98,22 @@ const BlockInput: FC<IBlockInputProps> = ({
         return
       }
       onConfirm(value, keys)
-      setIsEditing(false)
     }
   }
 
-  const handleCancel = useCallback(() => {
-    setIsEditing(false)
-    setCurrentValue(value)
-  }, [value])
-
   const onValueChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
-    setCurrentValue(e.target.value)
+    const value = e.target.value
+    setCurrentValue(value)
+    handleSubmit(value)
   }, [])
 
   // Prevent rerendering caused cursor to jump to the start of the contentEditable element
   const TextAreaContentView = () => {
-    return <div
-      className={classNames(style, className)}
-      dangerouslySetInnerHTML={{ __html: coloredContent }}
-      suppressContentEditableWarning={true}
-    />
+    return (
+      <div className={classNames(style, className)}>
+        {renderSafeContent(currentValue || '')}
+      </div>
+    )
   }
 
   const placeholder = ''
@@ -117,19 +122,17 @@ const BlockInput: FC<IBlockInputProps> = ({
   const textAreaContent = (
     <div className={classNames(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', ' overflow-y-auto')} onClick={() => !readonly && setIsEditing(true)}>
       {isEditing
-        ? <div className='h-full px-4 py-1'>
+        ? <div className='h-full px-4 py-2'>
           <textarea
             ref={contentEditableRef}
-            className={classNames(editAreaClassName, 'block w-full h-full absolut3e resize-none')}
+            className={classNames(editAreaClassName, 'block h-full w-full resize-none')}
             placeholder={placeholder}
             onChange={onValueChange}
             value={currentValue}
             onBlur={() => {
               blur()
-              if (!isContentChanged)
-                setIsEditing(false)
-
-              // click confirm also make blur. Then outter value is change. So below code has problem.
+              setIsEditing(false)
+              // click confirm also make blur. Then outer value is change. So below code has problem.
               // setTimeout(() => {
               //   handleCancel()
               // }, 1000)
@@ -140,38 +143,12 @@ const BlockInput: FC<IBlockInputProps> = ({
     </div>)
 
   return (
-    <div className={classNames('block-input w-full overflow-y-auto border-none rounded-lg')}>
+    <div className={classNames('block-input w-full overflow-y-auto rounded-xl border-none bg-white')}>
       {textAreaContent}
       {/* footer */}
       {!readonly && (
-        <div className='flex item-center h-14 px-4'>
-          {isContentChanged
-            ? (
-              <div className='flex items-center justify-between w-full'>
-                <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{currentValue?.length}</div>
-                <div className='flex space-x-2'>
-                  <Button
-                    onClick={handleCancel}
-                    className='w-20 !h-8 !text-[13px]'
-                  >
-                    {t('common.operation.cancel')}
-                  </Button>
-                  <Button
-                    onClick={handleSubmit}
-                    type="primary"
-                    className='w-20 !h-8 !text-[13px]'
-                  >
-                    {t('common.operation.confirm')}
-                  </Button>
-                </div>
-
-              </div>
-            )
-            : (
-              <p className="leading-5 text-xs text-gray-500">
-                {t('appDebug.promptTip')}
-              </p>
-            )}
+        <div className='flex pb-2 pl-4'>
+          <div className="h-[18px] rounded-md bg-gray-100 px-1 text-xs leading-[18px] text-gray-500">{currentValue?.length}</div>
         </div>
       )}
 

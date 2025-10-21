@@ -2,18 +2,17 @@
 import type { FC } from 'react'
 import React, { useRef, useState } from 'react'
 import { useGetState, useInfiniteScroll } from 'ahooks'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
-import produce from 'immer'
-import TypeIcon from '../type-icon'
-import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import type { DataSet } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { fetchDatasets } from '@/service/datasets'
 import Loading from '@/app/components/base/loading'
-import { formatNumber } from '@/utils/format'
+import Badge from '@/app/components/base/badge'
+import { useKnowledge } from '@/hooks/use-knowledge'
+import cn from '@/utils/classnames'
+import AppIcon from '@/app/components/base/app-icon'
 
 export type ISelectDataSetProps = {
   isShow: boolean
@@ -29,15 +28,17 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const [selected, setSelected] = React.useState<DataSet[]>(selectedIds.map(id => ({ id }) as any))
+  const [selected, setSelected] = React.useState<DataSet[]>([])
   const [loaded, setLoaded] = React.useState(false)
   const [datasets, setDataSets] = React.useState<DataSet[] | null>(null)
+  const [hasInitialized, setHasInitialized] = React.useState(false)
   const hasNoData = !datasets || datasets?.length === 0
   const canSelectMulti = true
 
   const listRef = useRef<HTMLDivElement>(null)
   const [page, setPage, getPage] = useGetState(1)
   const [isNoMore, setIsNoMore] = useState(false)
+  const { formatIndexingTechniqueAndMethod } = useKnowledge()
 
   useInfiniteScroll(
     async () => {
@@ -45,22 +46,20 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         const { data, has_more } = await fetchDatasets({ url: '/datasets', params: { page } })
         setPage(getPage() + 1)
         setIsNoMore(!has_more)
-        const newList = [...(datasets || []), ...data]
+        const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique || item.provider === 'external')]
         setDataSets(newList)
         setLoaded(true)
-        if (!selected.find(item => !item.name))
-          return { list: [] }
 
-        const newSelected = produce(selected, (draft) => {
-          selected.forEach((item, index) => {
-            if (!item.name) { // not fetched database
-              const newItem = newList.find(i => i.id === item.id)
-              if (newItem)
-                draft[index] = newItem
-            }
-          })
-        })
-        setSelected(newSelected)
+        // Initialize selected datasets based on selectedIds and available datasets
+        if (!hasInitialized) {
+          if (selectedIds.length > 0) {
+            const validSelectedDatasets = selectedIds
+              .map(id => newList.find(item => item.id === id))
+              .filter(Boolean) as DataSet[]
+            setSelected(validSelectedDatasets)
+          }
+          setHasInitialized(true)
+        }
       }
       return { list: [] }
     },
@@ -89,6 +88,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const handleSelect = () => {
     onSelect(selected)
   }
+
   return (
     <Modal
       isShow={isShow}
@@ -103,60 +103,75 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       )}
 
       {(loaded && hasNoData) && (
-        <div className='flex items-center justify-center mt-6 rounded-lg space-x-1  h-[128px] text-[13px] border'
+        <div className='mt-6 flex h-[128px] items-center justify-center space-x-1  rounded-lg border text-[13px]'
           style={{
             background: 'rgba(0, 0, 0, 0.02)',
             borderColor: 'rgba(0, 0, 0, 0.02',
           }}
         >
-          <span className='text-gray-500'>{t('appDebug.feature.dataSet.noDataSet')}</span>
-          <Link href="/datasets/create" className='font-normal text-[#155EEF]'>{t('appDebug.feature.dataSet.toCreate')}</Link>
+          <span className='text-text-tertiary'>{t('appDebug.feature.dataSet.noDataSet')}</span>
+          <Link href='/datasets/create' className='font-normal text-text-accent'>{t('appDebug.feature.dataSet.toCreate')}</Link>
         </div>
       )}
 
       {datasets && datasets?.length > 0 && (
         <>
-          <div ref={listRef} className='mt-7 space-y-1 max-h-[286px] overflow-y-auto'>
+          <div ref={listRef} className='mt-7 max-h-[286px] space-y-1 overflow-y-auto'>
             {datasets.map(item => (
               <div
                 key={item.id}
-                className={cn(s.item, selected.some(i => i.id === item.id) && s.selected, 'flex justify-between items-center h-10 px-2 rounded-lg bg-white border border-gray-200  cursor-pointer', !item.embedding_available && s.disabled)}
+                className={cn(
+                  'flex h-10 cursor-pointer items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 shadow-xs hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+                  selected.some(i => i.id === item.id) && 'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover shadow-xs hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover hover:shadow-xs',
+                  !item.embedding_available && 'hover:border-components-panel-border-subtle hover:bg-components-panel-on-panel-item-bg hover:shadow-xs',
+                )}
                 onClick={() => {
                   if (!item.embedding_available)
                     return
                   toggleSelect(item)
                 }}
               >
-                <div className='mr-1 flex items-center'>
-                  <div className={cn('mr-2', !item.embedding_available && 'opacity-50')}>
-                    <TypeIcon type="upload_file" size='md' />
+                <div className='mr-1 flex items-center overflow-hidden'>
+                  <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
+                    <AppIcon
+                      size='tiny'
+                      iconType={item.icon_info.icon_type}
+                      icon={item.icon_info.icon}
+                      background={item.icon_info.icon_type === 'image' ? undefined : item.icon_info.icon_background}
+                      imageUrl={item.icon_info.icon_type === 'image' ? item.icon_info.icon_url : undefined}
+                    />
                   </div>
-                  <div className={cn('max-w-[200px] text-[13px] font-medium text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap', !item.embedding_available && 'opacity-50 !max-w-[120px]')}>{item.name}</div>
+                  <div className={cn('max-w-[200px] truncate text-[13px] font-medium text-text-secondary', !item.embedding_available && '!max-w-[120px] opacity-30')}>{item.name}</div>
                   {!item.embedding_available && (
-                    <span className='ml-1 shrink-0 px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                    <span className='ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs font-normal leading-[18px] text-text-tertiary'>{t('dataset.unavailable')}</span>
                   )}
                 </div>
-
-                <div className={cn('shrink-0 flex text-xs text-gray-500 overflow-hidden whitespace-nowrap', !item.embedding_available && 'opacity-50')}>
-                  <span className='max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap'>{formatNumber(item.word_count)}</span>
-                  {t('appDebug.feature.dataSet.words')}
-                  <span className='px-0.5'>·</span>
-                  <span className='max-w-[100px] min-w-[8px] overflow-hidden text-ellipsis whitespace-nowrap'>{formatNumber(item.document_count)} </span>
-                  {t('appDebug.feature.dataSet.textBlocks')}
-                </div>
+                {
+                  item.indexing_technique && (
+                    <Badge
+                      className='shrink-0'
+                      text={formatIndexingTechniqueAndMethod(item.indexing_technique, item.retrieval_model_dict?.search_method)}
+                    />
+                  )
+                }
+                {
+                  item.provider === 'external' && (
+                    <Badge className='shrink-0' text={t('dataset.externalTag')} />
+                  )
+                }
               </div>
             ))}
           </div>
         </>
       )}
       {loaded && (
-        <div className='flex justify-between items-center mt-8'>
-          <div className='text-sm  font-medium text-gray-700'>
+        <div className='mt-8 flex items-center justify-between'>
+          <div className='text-sm  font-medium text-text-secondary'>
             {selected.length > 0 && `${selected.length} ${t('appDebug.feature.dataSet.selected')}`}
           </div>
           <div className='flex space-x-2'>
-            <Button className='!w-24 !h-9' onClick={onClose}>{t('common.operation.cancel')}</Button>
-            <Button className='!w-24 !h-9' type='primary' onClick={handleSelect} disabled={hasNoData}>{t('common.operation.add')}</Button>
+            <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
+            <Button variant='primary' onClick={handleSelect} disabled={hasNoData}>{t('common.operation.add')}</Button>
           </div>
         </div>
       )}

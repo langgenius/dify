@@ -1,0 +1,59 @@
+name: DB Migration Test
+
+on:
+  workflow_call:
+
+concurrency:
+  group: db-migration-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  db-migration-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+          cache-dependency-glob: api/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --project api
+      - name: Ensure Offline migration are supported
+        run: |
+          # upgrade
+          uv run --directory api flask db upgrade 'base:head' --sql
+          # downgrade
+          uv run --directory api flask db downgrade 'head:base' --sql
+
+      - name: Prepare middleware env
+        run: |
+          cd docker
+          cp middleware.env.example middleware.env
+
+      - name: Set up Middlewares
+        uses: hoverkraft-tech/compose-action@v2.0.2
+        with:
+          compose-file: |
+            docker/docker-compose.middleware.yaml
+          services: |
+            db
+            redis
+
+      - name: Prepare configs
+        run: |
+          cd api
+          cp .env.example .env
+
+      - name: Run DB Migration
+        env:
+          DEBUG: true
+        run: uv run --directory api flask upgrade-db

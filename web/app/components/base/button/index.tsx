@@ -1,50 +1,61 @@
-import type { FC, MouseEventHandler } from 'react'
+import type { CSSProperties } from 'react'
 import React from 'react'
+import { type VariantProps, cva } from 'class-variance-authority'
 import Spinner from '../spinner'
+import classNames from '@/utils/classnames'
 
-export type IButtonProps = {
-  type?: string
-  className?: string
-  disabled?: boolean
+const buttonVariants = cva(
+  'btn disabled:btn-disabled',
+  {
+    variants: {
+      variant: {
+        'primary': 'btn-primary',
+        'warning': 'btn-warning',
+        'secondary': 'btn-secondary',
+        'secondary-accent': 'btn-secondary-accent',
+        'ghost': 'btn-ghost',
+        'ghost-accent': 'btn-ghost-accent',
+        'tertiary': 'btn-tertiary',
+      },
+      size: {
+        small: 'btn-small',
+        medium: 'btn-medium',
+        large: 'btn-large',
+      },
+    },
+    defaultVariants: {
+      variant: 'secondary',
+      size: 'medium',
+    },
+  },
+)
+
+export type ButtonProps = {
+  destructive?: boolean
   loading?: boolean
-  tabIndex?: number
-  children: React.ReactNode
-  onClick?: MouseEventHandler<HTMLDivElement>
-}
+  styleCss?: CSSProperties
+  spinnerClassName?: string
+  ref?: React.Ref<HTMLButtonElement>
+} & React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>
 
-const Button: FC<IButtonProps> = ({
-  type,
-  disabled,
-  children,
-  className,
-  onClick,
-  loading = false,
-  tabIndex,
-}) => {
-  let style = 'cursor-pointer'
-  switch (type) {
-    case 'primary':
-      style = (disabled || loading) ? 'bg-primary-200 cursor-not-allowed text-white' : 'bg-primary-600 hover:bg-primary-600/75 hover:shadow-md cursor-pointer text-white hover:shadow-sm'
-      break
-    case 'warning':
-      style = (disabled || loading) ? 'bg-red-600/75 cursor-not-allowed text-white' : 'bg-red-600 hover:bg-red-600/75 hover:shadow-md cursor-pointer text-white hover:shadow-sm'
-      break
-    default:
-      style = disabled ? 'border-solid border border-gray-200 bg-gray-200 cursor-not-allowed text-gray-800' : 'border-solid border border-gray-200 cursor-pointer text-gray-500 hover:bg-white hover:shadow-sm hover:border-gray-300'
-      break
-  }
-
+const Button = ({ className, variant, size, destructive, loading, styleCss, children, spinnerClassName, ref, ...props }: ButtonProps) => {
   return (
-    <div
-      className={`inline-flex justify-center items-center content-center h-9 leading-5 rounded-lg px-4 py-2 text-base ${style} ${className && className}`}
-      tabIndex={tabIndex}
-      onClick={disabled ? undefined : onClick}
+    <button
+      type='button'
+      className={classNames(
+        buttonVariants({ variant, size, className }),
+        destructive && 'btn-destructive',
+      )}
+      ref={ref}
+      style={styleCss}
+      {...props}
     >
       {children}
-      {/* Spinner is hidden when loading is false */}
-      <Spinner loading={loading} className='!text-white !h-3 !w-3 !border-2 !ml-1' />
-    </div>
+      {loading && <Spinner loading={loading} className={classNames('!ml-1 !h-3 !w-3 !border-2 !text-white', spinnerClassName)} />}
+    </button>
   )
 }
+Button.displayName = 'Button'
 
-export default React.memo(Button)
+export default Button
+export { Button, buttonVariants }

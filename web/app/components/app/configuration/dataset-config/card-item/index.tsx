@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import TypeIcon from '../type-icon'
 import RemoveIcon from '../../base/icons/remove-icon'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import type { DataSet } from '@/models/datasets'
 import { formatNumber } from '@/utils/format'
 import Tooltip from '@/app/components/base/tooltip'
@@ -16,7 +16,6 @@ export type ICardItemProps = {
   onRemove: (id: string) => void
   readonly?: boolean
 }
-
 const CardItem: FC<ICardItemProps> = ({
   className,
   config,
@@ -29,25 +28,24 @@ const CardItem: FC<ICardItemProps> = ({
     <div
       className={
         cn(className, s.card,
-          'relative flex items-center rounded-xl  px-3 py-2.5 bg-white border border-gray-200  cursor-pointer')
+          'relative flex cursor-pointer items-center  rounded-xl border border-gray-200 bg-white px-3  py-2.5')
       }>
       <div className='flex items-center space-x-2'>
         <div className={cn(!config.embedding_available && 'opacity-50')}>
           <TypeIcon type="upload_file" />
         </div>
         <div>
-          <div className='flex items-center w-[160px] mr-1'>
-            <div className={cn('text-[13px] leading-[18px] font-medium text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap', !config.embedding_available && 'opacity-50')}>{config.name}</div>
+          <div className='mr-1 flex w-[160px] items-center'>
+            <div className={cn('overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-medium leading-[18px] text-gray-800', !config.embedding_available && 'opacity-50')}>{config.name}</div>
             {!config.embedding_available && (
               <Tooltip
-                selector={`unavailable-tag-${config.id}`}
-                htmlContent={t('dataset.unavailableTip')}
+                popupContent={t('dataset.unavailableTip')}
               >
-                <span className='shrink-0 inline-flex whitespace-nowrap px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                <span className='inline-flex shrink-0 whitespace-nowrap rounded-md border border-gray-200 px-1 text-xs font-normal leading-[18px] text-gray-500'>{t('dataset.unavailable')}</span>
               </Tooltip>
             )}
           </div>
-          <div className={cn('max-w-[150px] flex text-xs text-gray-500', !config.embedding_available && 'opacity-50')}>
+          <div className={cn('flex max-w-[150px] text-xs text-gray-500', !config.embedding_available && 'opacity-50')}>
             {formatNumber(config.word_count)} {t('appDebug.feature.dataSet.words')} · {formatNumber(config.document_count)} {t('appDebug.feature.dataSet.textBlocks')}
           </div>
         </div>

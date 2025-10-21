@@ -1,7 +1,0 @@
-.opBtn {
-  visibility: hidden;
-}
-
-.item:hover .opBtn {
-  visibility: visible;
-}

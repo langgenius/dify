@@ -10,10 +10,10 @@ import { updateUserProfile } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
 import I18n from '@/context/i18n'
 import { timezones } from '@/utils/timezone'
-import { languageMaps, languages } from '@/utils/language'
+import { languages } from '@/i18n-config/language'
 
 const titleClassName = `
-  mb-2 text-sm font-medium text-gray-900
+  mb-2 system-sm-semibold text-text-secondary
 `
 
 export default function LanguagePage() {
@@ -22,27 +22,41 @@ export default function LanguagePage() {
   const { notify } = useContext(ToastContext)
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
-  const handleSelect = async (type: string, item: Item) => {
-    let url = ''
-    let bodyKey = ''
-    if (type === 'language') {
-      url = '/account/interface-language'
-      bodyKey = 'interface_language'
-      setLocaleOnClient(item.value === 'en-US' ? 'en' : 'zh-Hans')
-    }
-    if (type === 'timezone') {
-      url = '/account/timezone'
-      bodyKey = 'timezone'
-    }
+
+  const handleSelectLanguage = async (item: Item) => {
+    const url = '/account/interface-language'
+    const bodyKey = 'interface_language'
+
+    setEditing(true)
     try {
-      setEditing(true)
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      mutateUserProfile()
-      setEditing(false)
+
+      setLocaleOnClient(item.value.toString())
     }
     catch (e) {
       notify({ type: 'error', message: (e as Error).message })
+    }
+    finally {
+      setEditing(false)
+    }
+  }
+
+  const handleSelectTimezone = async (item: Item) => {
+    const url = '/account/timezone'
+    const bodyKey = 'timezone'
+
+    setEditing(true)
+    try {
+      await updateUserProfile({ url, body: { [bodyKey]: item.value } })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+
+      mutateUserProfile()
+    }
+    catch (e) {
+      notify({ type: 'error', message: (e as Error).message })
+    }
+    finally {
       setEditing(false)
     }
   }
@@ -52,10 +66,11 @@ export default function LanguagePage() {
       <div className='mb-8'>
         <div className={titleClassName}>{t('common.language.displayLanguage')}</div>
         <SimpleSelect
-          defaultValue={languageMaps[locale] || userProfile.interface_language}
-          items={languages}
-          onSelect={item => handleSelect('language', item)}
+          defaultValue={locale || userProfile.interface_language}
+          items={languages.filter(item => item.supported)}
+          onSelect={item => handleSelectLanguage(item)}
           disabled={editing}
+          notClearable={true}
         />
       </div>
       <div className='mb-8'>
@@ -63,8 +78,9 @@ export default function LanguagePage() {
         <SimpleSelect
           defaultValue={userProfile.timezone}
           items={timezones}
-          onSelect={item => handleSelect('timezone', item)}
+          onSelect={item => handleSelectTimezone(item)}
           disabled={editing}
+          notClearable={true}
         />
       </div>
     </>

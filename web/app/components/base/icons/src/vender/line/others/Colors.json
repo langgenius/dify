@@ -1,0 +1,66 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "14",
+			"height": "14",
+			"viewBox": "0 0 14 14",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "colors",
+					"clip-path": "url(#clip0_18499_53582)"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Icon",
+							"d": "M7.00032 11.9422C7.61954 12.4964 8.43724 12.8334 9.33366 12.8334C11.2667 12.8334 12.8337 11.2664 12.8337 9.33342C12.8337 7.71938 11.7411 6.36051 10.2552 5.95602M3.74543 5.95601C2.25954 6.3605 1.16699 7.71937 1.16699 9.33341C1.16699 11.2664 2.734 12.8334 4.66699 12.8334C6.59999 12.8334 8.16699 11.2664 8.16699 9.33341C8.16699 8.87813 8.08006 8.44314 7.92189 8.04415M10.5003 4.66675C10.5003 6.59974 8.93332 8.16675 7.00033 8.16675C5.06733 8.16675 3.50033 6.59974 3.50033 4.66675C3.50033 2.73375 5.06733 1.16675 7.00033 1.16675C8.93332 1.16675 10.5003 2.73375 10.5003 4.66675Z",
+							"stroke": "currentColor",
+							"stroke-width": "1.25",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					}
+				]
+			},
+			{
+				"type": "element",
+				"name": "defs",
+				"attributes": {},
+				"children": [
+					{
+						"type": "element",
+						"name": "clipPath",
+						"attributes": {
+							"id": "clip0_18499_53582"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "rect",
+								"attributes": {
+									"width": "14",
+									"height": "14",
+									"fill": "white"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"name": "Colors"
+}

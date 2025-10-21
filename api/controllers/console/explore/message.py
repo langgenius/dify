@@ -1,128 +1,138 @@
-# -*- coding:utf-8 -*-
-import json
 import logging
-from typing import Generator, Union
 
-from flask import stream_with_context, Response
-from flask_login import current_user
-from flask_restful import reqparse, fields, marshal_with
-from flask_restful.inputs import int_range
-from werkzeug.exceptions import NotFound, InternalServerError
+from flask_restx import marshal_with, reqparse
+from flask_restx.inputs import int_range
+from werkzeug.exceptions import InternalServerError, NotFound
 
-import services
-from controllers.console import api
-from controllers.console.app.error import AppMoreLikeThisDisabledError, ProviderNotInitializeError, \
-    ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError, CompletionRequestError
-from controllers.console.explore.error import NotCompletionAppError, AppSuggestedQuestionsAfterAnswerDisabledError
+from controllers.console.app.error import (
+    AppMoreLikeThisDisabledError,
+    CompletionRequestError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
+from controllers.console.explore.error import (
+    AppSuggestedQuestionsAfterAnswerDisabledError,
+    NotChatAppError,
+    NotCompletionAppError,
+)
 from controllers.console.explore.wraps import InstalledAppResource
-from core.model_providers.error import LLMRateLimitError, LLMBadRequestError, LLMAuthorizationError, LLMAPIConnectionError, \
-    ProviderTokenNotInitError, LLMAPIUnavailableError, QuotaExceededError, ModelCurrentlyNotSupportError
-from libs.helper import uuid_value, TimestampField
-from services.completion_service import CompletionService
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.model_runtime.errors.invoke import InvokeError
+from fields.message_fields import message_infinite_scroll_pagination_fields
+from libs import helper
+from libs.helper import uuid_value
+from libs.login import current_account_with_tenant
+from models.model import AppMode
+from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
+from services.errors.message import (
+    FirstMessageNotExistsError,
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
 from services.message_service import MessageService
 
+from .. import console_ns
 
+logger = logging.getLogger(__name__)
+
+
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages",
+    endpoint="installed_app_messages",
+)
 class MessageListApi(InstalledAppResource):
-    feedback_fields = {
-        'rating': fields.String
-    }
-
-    retriever_resource_fields = {
-        'id': fields.String,
-        'message_id': fields.String,
-        'position': fields.Integer,
-        'dataset_id': fields.String,
-        'dataset_name': fields.String,
-        'document_id': fields.String,
-        'document_name': fields.String,
-        'data_source_type': fields.String,
-        'segment_id': fields.String,
-        'score': fields.Float,
-        'hit_count': fields.Integer,
-        'word_count': fields.Integer,
-        'segment_position': fields.Integer,
-        'index_node_hash': fields.String,
-        'content': fields.String,
-        'created_at': TimestampField
-    }
-
-    message_fields = {
-        'id': fields.String,
-        'conversation_id': fields.String,
-        'inputs': fields.Raw,
-        'query': fields.String,
-        'answer': fields.String,
-        'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
-        'retriever_resources': fields.List(fields.Nested(retriever_resource_fields)),
-        'created_at': TimestampField
-    }
-
-    message_infinite_scroll_pagination_fields = {
-        'limit': fields.Integer,
-        'has_more': fields.Boolean,
-        'data': fields.List(fields.Nested(message_fields))
-    }
-
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, installed_app):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument('conversation_id', required=True, type=uuid_value, location='args')
-        parser.add_argument('first_id', type=uuid_value, location='args')
-        parser.add_argument('limit', type=int_range(1, 100), required=False, default=20, location='args')
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("conversation_id", required=True, type=uuid_value, location="args")
+            .add_argument("first_id", type=uuid_value, location="args")
+            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        )
         args = parser.parse_args()
 
         try:
-            return MessageService.pagination_by_first_id(app_model, current_user,
-                                                     args['conversation_id'], args['first_id'], args['limit'])
-        except services.errors.conversation.ConversationNotExistsError:
+            return MessageService.pagination_by_first_id(
+                app_model, current_user, args["conversation_id"], args["first_id"], args["limit"]
+            )
+        except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        except services.errors.message.FirstMessageNotExistsError:
+        except FirstMessageNotExistsError:
             raise NotFound("First Message Not Exists.")
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/feedbacks",
+    endpoint="installed_app_message_feedback",
+)
 class MessageFeedbackApi(InstalledAppResource):
     def post(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
         message_id = str(message_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument('rating', type=str, choices=['like', 'dislike', None], location='json')
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
+            .add_argument("content", type=str, location="json")
+        )
         args = parser.parse_args()
 
         try:
-            MessageService.create_feedback(app_model, message_id, current_user, args['rating'])
-        except services.errors.message.MessageNotExistsError:
+            MessageService.create_feedback(
+                app_model=app_model,
+                message_id=message_id,
+                user=current_user,
+                rating=args.get("rating"),
+                content=args.get("content"),
+            )
+        except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
-        return {'result': 'success'}
+        return {"result": "success"}
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/more-like-this",
+    endpoint="installed_app_more_like_this",
+)
 class MessageMoreLikeThisApi(InstalledAppResource):
     def get(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
-        if app_model.mode != 'completion':
+        if app_model.mode != "completion":
             raise NotCompletionAppError()
 
         message_id = str(message_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument('response_mode', type=str, required=True, choices=['blocking', 'streaming'], location='args')
+        parser = reqparse.RequestParser().add_argument(
+            "response_mode", type=str, required=True, choices=["blocking", "streaming"], location="args"
+        )
         args = parser.parse_args()
 
-        streaming = args['response_mode'] == 'streaming'
+        streaming = args["response_mode"] == "streaming"
 
         try:
-            response = CompletionService.generate_more_like_this(app_model, current_user, message_id, streaming)
-            return compact_response(response)
+            response = AppGenerateService.generate_more_like_this(
+                app_model=app_model,
+                user=current_user,
+                message_id=message_id,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=streaming,
+            )
+            return helper.compact_generate_response(response)
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
         except MoreLikeThisDisabledError:
@@ -133,60 +143,32 @@ class MessageMoreLikeThisApi(InstalledAppResource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
-def compact_response(response: Union[dict | Generator]) -> Response:
-    if isinstance(response, dict):
-        return Response(response=json.dumps(response), status=200, mimetype='application/json')
-    else:
-        def generate() -> Generator:
-            try:
-                for chunk in response:
-                    yield chunk
-            except MessageNotExistsError:
-                yield "data: " + json.dumps(api.handle_error(NotFound("Message Not Exists.")).get_json()) + "\n\n"
-            except MoreLikeThisDisabledError:
-                yield "data: " + json.dumps(api.handle_error(AppMoreLikeThisDisabledError()).get_json()) + "\n\n"
-            except ProviderTokenNotInitError as ex:
-                yield "data: " + json.dumps(api.handle_error(ProviderNotInitializeError(ex.description)).get_json()) + "\n\n"
-            except QuotaExceededError:
-                yield "data: " + json.dumps(api.handle_error(ProviderQuotaExceededError()).get_json()) + "\n\n"
-            except ModelCurrentlyNotSupportError:
-                yield "data: " + json.dumps(api.handle_error(ProviderModelCurrentlyNotSupportError()).get_json()) + "\n\n"
-            except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                    LLMRateLimitError, LLMAuthorizationError) as e:
-                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(str(e))).get_json()) + "\n\n"
-            except ValueError as e:
-                yield "data: " + json.dumps(api.handle_error(e).get_json()) + "\n\n"
-            except Exception:
-                logging.exception("internal server error.")
-                yield "data: " + json.dumps(api.handle_error(InternalServerError()).get_json()) + "\n\n"
-
-        return Response(stream_with_context(generate()), status=200,
-                        mimetype='text/event-stream')
-
-
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/suggested-questions",
+    endpoint="installed_app_suggested_question",
+)
 class MessageSuggestedQuestionApi(InstalledAppResource):
     def get(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
-        if app_model.mode != 'chat':
-            raise NotCompletionAppError()
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+            raise NotChatAppError()
 
         message_id = str(message_id)
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model,
-                user=current_user,
-                message_id=message_id
+                app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
             )
         except MessageNotExistsError:
             raise NotFound("Message not found")
@@ -200,17 +182,10 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
-        return {'data': questions}
-
-
-api.add_resource(MessageListApi, '/installed-apps/<uuid:installed_app_id>/messages', endpoint='installed_app_messages')
-api.add_resource(MessageFeedbackApi, '/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/feedbacks', endpoint='installed_app_message_feedback')
-api.add_resource(MessageMoreLikeThisApi, '/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/more-like-this', endpoint='installed_app_more_like_this')
-api.add_resource(MessageSuggestedQuestionApi, '/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/suggested-questions', endpoint='installed_app_suggested_question')
+        return {"data": questions}

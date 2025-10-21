@@ -1,13 +1,13 @@
-import type { FC } from 'react'
 import React from 'react'
-
-import type { IMainProps } from '@/app/components/share/chat'
 import Main from '@/app/components/share/text-generation'
+import AuthenticatedLayout from '../../components/authenticated-layout'
 
-const TextGeneration: FC<IMainProps> = () => {
+const Completion = () => {
   return (
-    <Main />
+    <AuthenticatedLayout>
+      <Main />
+    </AuthenticatedLayout>
   )
 }
 
-export default React.memo(TextGeneration)
+export default React.memo(Completion)

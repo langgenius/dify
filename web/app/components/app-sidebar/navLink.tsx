@@ -1,15 +1,15 @@
 'use client'
-
+import React from 'react'
 import { useSelectedLayoutSegment } from 'next/navigation'
-import classNames from 'classnames'
 import Link from 'next/link'
+import classNames from '@/utils/classnames'
+import type { RemixiconComponentType } from '@remixicon/react'
 
 export type NavIcon = React.ComponentType<
-React.PropsWithoutRef<React.ComponentProps<'svg'>> & {
-  title?: string | undefined
-  titleId?: string | undefined
-}
->
+  React.PropsWithoutRef<React.ComponentProps<'svg'>> & {
+    title?: string | undefined
+    titleId?: string | undefined
+  }> | RemixiconComponentType
 
 export type NavLinkProps = {
   name: string
@@ -18,34 +18,88 @@ export type NavLinkProps = {
     selected: NavIcon
     normal: NavIcon
   }
+  mode?: string
+  disabled?: boolean
 }
 
-export default function NavLink({
+const NavLink = ({
   name,
   href,
   iconMap,
-}: NavLinkProps) {
+  mode = 'expand',
+  disabled = false,
+}: NavLinkProps) => {
   const segment = useSelectedLayoutSegment()
-  const isActive = href.toLowerCase().split('/')?.pop() === segment?.toLowerCase()
+  const formattedSegment = (() => {
+    let res = segment?.toLowerCase()
+    // logs and annotations use the same nav
+    if (res === 'annotations')
+      res = 'logs'
+
+    return res
+  })()
+  const isActive = href.toLowerCase().split('/')?.pop() === formattedSegment
   const NavIcon = isActive ? iconMap.selected : iconMap.normal
+
+  const renderIcon = () => (
+    <div className={classNames(mode !== 'expand' && '-ml-1')}>
+      <NavIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+    </div>
+  )
+
+  if (disabled) {
+    return (
+      <button
+        key={name}
+        type='button'
+        disabled
+        className={classNames(
+          'system-sm-medium flex h-8 cursor-not-allowed items-center rounded-lg text-components-menu-item-text opacity-30 hover:bg-components-menu-item-bg-hover',
+          'pl-3 pr-1',
+        )}
+        title={mode === 'collapse' ? name : ''}
+        aria-disabled
+      >
+        {renderIcon()}
+        <span
+          className={classNames(
+            'overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out',
+            mode === 'expand'
+              ? 'ml-2 max-w-none opacity-100'
+              : 'ml-0 max-w-0 opacity-0',
+          )}
+        >
+          {name}
+        </span>
+      </button>
+    )
+  }
 
   return (
     <Link
       key={name}
       href={href}
       className={classNames(
-        isActive ? 'bg-primary-50 text-primary-600 font-semibold' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-700',
-        'group flex items-center rounded-md px-2 py-2 text-sm font-normal',
+        isActive
+          ? 'system-sm-semibold border-b-[0.25px] border-l-[0.75px] border-r-[0.25px] border-t-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active text-text-accent-light-mode-only'
+          : 'system-sm-medium text-components-menu-item-text hover:bg-components-menu-item-bg-hover hover:text-components-menu-item-text-hover',
+        'flex h-8 items-center rounded-lg pl-3 pr-1',
       )}
+      title={mode === 'collapse' ? name : ''}
     >
-      <NavIcon
+      {renderIcon()}
+      <span
         className={classNames(
-          'mr-2 h-4 w-4 flex-shrink-0',
-          isActive ? 'text-primary-600' : 'text-gray-700',
+          'overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out',
+          mode === 'expand'
+            ? 'ml-2 max-w-none opacity-100'
+            : 'ml-0 max-w-0 opacity-0',
         )}
-        aria-hidden="true"
-      />
-      {name}
+      >
+        {name}
+      </span>
     </Link>
   )
 }
+
+export default React.memo(NavLink)

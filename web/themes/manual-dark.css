@@ -1,0 +1,76 @@
+html[data-theme="dark"] {
+    --color-chatbot-bg: linear-gradient(180deg,
+            rgba(34, 34, 37, 0.9) 0%,
+            rgba(29, 29, 32, 0.9) 90.48%);
+    --color-chat-bubble-bg: linear-gradient(180deg,
+            rgb(42, 43, 48) 0%,
+            rgb(37, 38, 42) 100%);
+    --color-chat-input-mask: linear-gradient(180deg,
+            rgba(24, 24, 27, 0.04) 0%,
+            rgba(24, 24, 27, 0.60) 100%);
+    --color-workflow-process-bg: linear-gradient(90deg,
+            rgba(24, 24, 27, 0.25) 0%,
+            rgba(24, 24, 27, 0.04) 100%);
+    --color-workflow-run-failed-bg: linear-gradient(98deg,
+            rgba(240, 68, 56, 0.12) 0%,
+            rgba(0, 0, 0, 0) 26.01%);
+    --color-workflow-batch-failed-bg: linear-gradient(92deg,
+            rgba(240, 68, 56, 0.3) 0%,
+            rgba(0, 0, 0, 0) 100%);
+    --color-marketplace-divider-bg: linear-gradient(90deg,
+            rgba(200, 206, 218, 0.14) 0%,
+            rgba(0, 0, 0, 0) 100%);
+    --color-marketplace-plugin-empty: linear-gradient(180deg,
+            rgba(0, 0, 0, 0) 0%,
+            #222225 100%);
+    --color-toast-success-bg: linear-gradient(92deg,
+            rgba(23, 178, 106, 0.3) 0%,
+            rgba(0, 0, 0, 0) 100%);
+    --color-toast-warning-bg: linear-gradient(92deg,
+            rgba(247, 144, 9, 0.3) 0%,
+            rgba(0, 0, 0, 0) 100%);
+    --color-toast-error-bg: linear-gradient(92deg,
+            rgba(240, 68, 56, 0.3) 0%,
+            rgba(0, 0, 0, 0) 100%);
+    --color-toast-info-bg: linear-gradient(92deg,
+            rgba(11, 165, 236, 0.3) 0%);
+    --color-account-teams-bg: linear-gradient(271deg,
+            rgba(34, 34, 37, 0.9) -0.1%,
+            rgba(29, 29, 32, 0.9) 98.26%);
+    --color-app-detail-bg: linear-gradient(169deg,
+            #1D1D20 1.18%,
+            #222225 99.52%);
+    --color-app-detail-overlay-bg: linear-gradient(270deg,
+            rgba(0, 0, 0, 0.00) 0%,
+            rgba(24, 24, 27, 0.02) 8%,
+            rgba(24, 24, 27, 0.54) 100%);
+    --color-dataset-chunk-process-success-bg: linear-gradient(92deg, rgba(23, 178, 106, 0.30) 0%, rgba(0, 0, 0, 0.00) 100%);
+    --color-dataset-chunk-process-error-bg: linear-gradient(92deg, rgba(240, 68, 56, 0.30) 0%, rgba(0, 0, 0, 0.00) 100%);
+    --color-dataset-chunk-detail-card-hover-bg: linear-gradient(180deg, #1D1D20 0%, #222225 100%);
+    --color-dataset-child-chunk-expand-btn-bg: linear-gradient(90deg, rgba(24, 24, 27, 0.25) 0%, rgba(24, 24, 27, 0.04) 100%);
+    --color-dataset-option-card-blue-gradient: linear-gradient(90deg, #24252E 0%, #1E1E21 100%);
+    --color-dataset-option-card-purple-gradient: linear-gradient(90deg, #25242E 0%, #1E1E21 100%);
+    --color-dataset-option-card-orange-gradient: linear-gradient(90deg, #2B2322 0%, #1E1E21 100%);
+    --color-dataset-chunk-list-mask-bg: linear-gradient(180deg, rgba(34, 34, 37, 0.00) 0%, #222225 100%);
+    --mask-top2bottom-gray-50-to-transparent: linear-gradient(180deg,
+            rgba(29, 29, 32, 0.9) 0%,
+            rgba(29, 29, 32, 0.08) 100%);
+    --color-line-divider-bg: linear-gradient(90deg, rgba(200, 206, 218, 0.14) 0%, rgba(0, 0, 0, 0) 100%);
+    --color-access-app-icon-mask-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.03) 100%);
+    --color-premium-yearly-tip-text-background: linear-gradient(91deg, #FDB022 2.18%, #F79009 108.79%);
+    --color-premium-badge-background: linear-gradient(95deg, rgba(103, 111, 131, 0.90) 0%, rgba(73, 84, 100, 0.90) 105.58%), var(--util-colors-gray-gray-200, #18222F);
+    --color-premium-text-background: linear-gradient(92deg, rgba(249, 250, 251, 0.95) 0%, rgba(233, 235, 240, 0.95) 97.78%);
+    --color-premium-badge-border-highlight-color: #ffffff33;
+    --color-price-enterprise-background: linear-gradient(180deg, rgba(185, 211, 234, 0.00) 0%, rgba(180, 209, 234, 0.92) 100%);
+    --color-grid-mask-background: linear-gradient(0deg, rgba(0, 0, 0, 0.00) 0%, rgba(24, 24, 25, 0.1) 62.25%, rgba(24, 24, 25, 0.10) 100%);
+    --color-node-data-source-bg: linear-gradient(100deg, var(--workflow-block-wrapper-bg-1, rgba(39, 39, 43, 1)) 0%, var(--workflow-block-wrapper-bg-2, rgba(39, 39, 43, 0.2)) 100%);
+    --color-tag-selector-mask-bg: linear-gradient(90deg, rgba(34, 34, 37, 0) 0%, rgba(34, 34, 37, 1) 100%);
+    --color-tag-selector-mask-hover-bg: linear-gradient(90deg, rgba(39, 39, 43, 0) 0%, rgba(39, 39, 43, 1) 100%);
+    --color-pipeline-template-card-hover-bg: linear-gradient(0deg, rgba(58, 58, 64, 1) 60.27%, rgba(58, 58, 64, 0) 100%);
+    --color-pipeline-add-documents-title-bg: linear-gradient(92deg, rgba(54, 191, 250, 1) 0%, rgba(41, 109, 255, 1) 97.78%);
+    --color-background-gradient-bg-fill-chat-bubble-bg-3: #27314d;
+    --color-billing-plan-title-bg: linear-gradient(95deg, #0A68FF 29.47%, #03F 105.31%);
+    --color-billing-plan-card-premium-bg: linear-gradient(180deg, #F90 0%, rgba(255, 153, 0, 0.00) 100%);
+    --color-billing-plan-card-enterprise-bg: linear-gradient(180deg, #03F 0%, rgba(0, 51, 255, 0.00) 100%);
+    --color-knowledge-pipeline-creation-footer-bg: linear-gradient(90deg, rgba(34, 34, 37, 1) 4.89%, rgba(0, 0, 0, 0) 100%);
+}

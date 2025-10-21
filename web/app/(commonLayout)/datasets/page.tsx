@@ -1,17 +1,7 @@
-import Datasets from './Datasets'
-import DatasetFooter from './DatasetFooter'
+import List from '../../components/datasets/list'
 
-const AppList = async () => {
-  return (
-    <div className='flex flex-col overflow-auto bg-gray-100 shrink-0 grow'>
-      <Datasets />
-      <DatasetFooter />
-    </div >
-  )
+const DatasetList = async () => {
+  return <List />
 }
 
-export const metadata = {
-  title: 'Datasets - Dify',
-}
-
-export default AppList
+export default DatasetList

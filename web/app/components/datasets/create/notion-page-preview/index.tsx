@@ -1,20 +1,23 @@
 'use client'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { XMarkIcon } from '@heroicons/react/20/solid'
+import Loading from '@/app/components/base/loading'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import type { NotionPage } from '@/models/common'
 import NotionIcon from '@/app/components/base/notion-icon'
 import { fetchNotionPagePreview } from '@/service/datasets'
 
 type IProps = {
   currentPage?: NotionPage
+  notionCredentialId: string
   hidePreview: () => void
 }
 
 const NotionPagePreview = ({
   currentPage,
+  notionCredentialId,
   hidePreview,
 }: IProps) => {
   const { t } = useTranslation()
@@ -29,11 +32,12 @@ const NotionPagePreview = ({
         workspaceID: currentPage.workspace_id,
         pageID: currentPage.page_id,
         pageType: currentPage.type,
+        credentialID: notionCredentialId,
       })
       setPreviewContent(res.content)
       setLoading(false)
     }
-    catch {}
+    catch { }
   }
 
   useEffect(() => {
@@ -44,27 +48,27 @@ const NotionPagePreview = ({
   }, [currentPage])
 
   return (
-    <div className={cn(s.filePreview)}>
+    <div className={cn(s.filePreview, 'h-full')}>
       <div className={cn(s.previewHeader)}>
-        <div className={cn(s.title)}>
+        <div className={cn(s.title, 'title-md-semi-bold')}>
           <span>{t('datasetCreation.stepOne.pagePreview')}</span>
-          <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
+          <div className='flex h-6 w-6 cursor-pointer items-center justify-center' onClick={hidePreview}>
             <XMarkIcon className='h-4 w-4'></XMarkIcon>
           </div>
         </div>
-        <div className={cn(s.fileName)}>
+        <div className={cn(s.fileName, 'system-xs-medium')}>
           <NotionIcon
-            className='shrink-0 mr-1'
+            className='mr-1 shrink-0'
             type='page'
             src={currentPage?.page_icon}
           />
           {currentPage?.page_name}
         </div>
       </div>
-      <div className={cn(s.previewContent)}>
-        {loading && <div className={cn(s.loading)}/>}
+      <div className={cn(s.previewContent, 'body-md-regular')}>
+        {loading && <Loading type='area' />}
         {!loading && (
-          <div className={cn(s.fileContent)}>{previewContent}</div>
+          <div className={cn(s.fileContent, 'body-md-regular')}>{previewContent}</div>
         )}
       </div>
     </div>

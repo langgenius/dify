@@ -1,0 +1,222 @@
+---
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# Description:
+# Default configuration for OpenSearch Dashboards
+
+# OpenSearch Dashboards is served by a back end server. This setting specifies the port to use.
+# server.port: 5601
+
+# Specifies the address to which the OpenSearch Dashboards server will bind. IP addresses and host names are both valid values.
+# The default is 'localhost', which usually means remote machines will not be able to connect.
+# To allow connections from remote users, set this parameter to a non-loopback address.
+# server.host: "localhost"
+
+# Enables you to specify a path to mount OpenSearch Dashboards at if you are running behind a proxy.
+# Use the `server.rewriteBasePath` setting to tell OpenSearch Dashboards if it should remove the basePath
+# from requests it receives, and to prevent a deprecation warning at startup.
+# This setting cannot end in a slash.
+# server.basePath: ""
+
+# Specifies whether OpenSearch Dashboards should rewrite requests that are prefixed with
+# `server.basePath` or require that they are rewritten by your reverse proxy.
+# server.rewriteBasePath: false
+
+# The maximum payload size in bytes for incoming server requests.
+# server.maxPayloadBytes: 1048576
+
+# The OpenSearch Dashboards server's name.  This is used for display purposes.
+# server.name: "your-hostname"
+
+# The URLs of the OpenSearch instances to use for all your queries.
+# opensearch.hosts: ["http://localhost:9200"]
+
+# OpenSearch Dashboards uses an index in OpenSearch to store saved searches, visualizations and
+# dashboards. OpenSearch Dashboards creates a new index if the index doesn't already exist.
+# opensearchDashboards.index: ".opensearch_dashboards"
+
+# The default application to load.
+# opensearchDashboards.defaultAppId: "home"
+
+# Setting for an optimized healthcheck that only uses the local OpenSearch node to do Dashboards healthcheck.
+# This settings should be used for large clusters or for clusters with ingest heavy nodes.
+# It allows Dashboards to only healthcheck using the local OpenSearch node rather than fan out requests across all nodes.
+#
+# It requires the user to create an OpenSearch node attribute with the same name as the value used in the setting
+# This node attribute should assign all nodes of the same cluster an integer value that increments with each new cluster that is spun up
+# e.g. in opensearch.yml file you would set the value to a setting using node.attr.cluster_id:
+# Should only be enabled if there is a corresponding node attribute created in your OpenSearch config that matches the value here
+# opensearch.optimizedHealthcheckId: "cluster_id"
+
+# If your OpenSearch is protected with basic authentication, these settings provide
+# the username and password that the OpenSearch Dashboards server uses to perform maintenance on the OpenSearch Dashboards
+# index at startup. Your OpenSearch Dashboards users still need to authenticate with OpenSearch, which
+# is proxied through the OpenSearch Dashboards server.
+# opensearch.username: "opensearch_dashboards_system"
+# opensearch.password: "pass"
+
+# Enables SSL and paths to the PEM-format SSL certificate and SSL key files, respectively.
+# These settings enable SSL for outgoing requests from the OpenSearch Dashboards server to the browser.
+# server.ssl.enabled: false
+# server.ssl.certificate: /path/to/your/server.crt
+# server.ssl.key: /path/to/your/server.key
+
+# Optional settings that provide the paths to the PEM-format SSL certificate and key files.
+# These files are used to verify the identity of OpenSearch Dashboards to OpenSearch and are required when
+# xpack.security.http.ssl.client_authentication in OpenSearch is set to required.
+# opensearch.ssl.certificate: /path/to/your/client.crt
+# opensearch.ssl.key: /path/to/your/client.key
+
+# Optional setting that enables you to specify a path to the PEM file for the certificate
+# authority for your OpenSearch instance.
+# opensearch.ssl.certificateAuthorities: [ "/path/to/your/CA.pem" ]
+
+# To disregard the validity of SSL certificates, change this setting's value to 'none'.
+# opensearch.ssl.verificationMode: full
+
+# Time in milliseconds to wait for OpenSearch to respond to pings. Defaults to the value of
+# the opensearch.requestTimeout setting.
+# opensearch.pingTimeout: 1500
+
+# Time in milliseconds to wait for responses from the back end or OpenSearch. This value
+# must be a positive integer.
+# opensearch.requestTimeout: 30000
+
+# List of OpenSearch Dashboards client-side headers to send to OpenSearch. To send *no* client-side
+# headers, set this value to [] (an empty list).
+# opensearch.requestHeadersWhitelist: [ authorization ]
+
+# Header names and values that are sent to OpenSearch. Any custom headers cannot be overwritten
+# by client-side headers, regardless of the opensearch.requestHeadersWhitelist configuration.
+# opensearch.customHeaders: {}
+
+# Time in milliseconds for OpenSearch to wait for responses from shards. Set to 0 to disable.
+# opensearch.shardTimeout: 30000
+
+# Logs queries sent to OpenSearch. Requires logging.verbose set to true.
+# opensearch.logQueries: false
+
+# Specifies the path where OpenSearch Dashboards creates the process ID file.
+# pid.file: /var/run/opensearchDashboards.pid
+
+# Enables you to specify a file where OpenSearch Dashboards stores log output.
+# logging.dest: stdout
+
+# Set the value of this setting to true to suppress all logging output.
+# logging.silent: false
+
+# Set the value of this setting to true to suppress all logging output other than error messages.
+# logging.quiet: false
+
+# Set the value of this setting to true to log all events, including system usage information
+# and all requests.
+# logging.verbose: false
+
+# Set the interval in milliseconds to sample system and process performance
+# metrics. Minimum is 100ms. Defaults to 5000.
+# ops.interval: 5000
+
+# Specifies locale to be used for all localizable strings, dates and number formats.
+# Supported languages are the following: English - en , by default , Chinese - zh-CN .
+# i18n.locale: "en"
+
+# Set the allowlist to check input graphite Url. Allowlist is the default check list.
+# vis_type_timeline.graphiteAllowedUrls: ['https://www.hostedgraphite.com/UID/ACCESS_KEY/graphite']
+
+# Set the blocklist to check input graphite Url. Blocklist is an IP list.
+# Below is an example for reference
+# vis_type_timeline.graphiteBlockedIPs: [
+#  //Loopback
+#  '127.0.0.0/8',
+#  '::1/128',
+#  //Link-local Address for IPv6
+#  'fe80::/10',
+#  //Private IP address for IPv4
+#  '10.0.0.0/8',
+#  '172.16.0.0/12',
+#  '192.168.0.0/16',
+#  //Unique local address (ULA)
+#  'fc00::/7',
+#  //Reserved IP address
+#  '0.0.0.0/8',
+#  '100.64.0.0/10',
+#  '192.0.0.0/24',
+#  '192.0.2.0/24',
+#  '198.18.0.0/15',
+#  '192.88.99.0/24',
+#  '198.51.100.0/24',
+#  '203.0.113.0/24',
+#  '224.0.0.0/4',
+#  '240.0.0.0/4',
+#  '255.255.255.255/32',
+#  '::/128',
+#  '2001:db8::/32',
+#  'ff00::/8',
+# ]
+# vis_type_timeline.graphiteBlockedIPs: []
+
+# opensearchDashboards.branding:
+#   logo:
+#     defaultUrl: ""
+#     darkModeUrl: ""
+#   mark:
+#     defaultUrl: ""
+#     darkModeUrl: ""
+#   loadingLogo:
+#     defaultUrl: ""
+#     darkModeUrl: ""
+#   faviconUrl: ""
+#   applicationTitle: ""
+
+# Set the value of this setting to true to capture region blocked warnings and errors
+# for your map rendering services.
+# map.showRegionBlockedWarning: false%
+
+# Set the value of this setting to false to suppress search usage telemetry
+# for reducing the load of OpenSearch cluster.
+# data.search.usageTelemetry.enabled: false
+
+# 2.4 renames 'wizard.enabled: false' to 'vis_builder.enabled: false'
+# Set the value of this setting to false to disable VisBuilder
+# functionality in Visualization.
+# vis_builder.enabled: false
+
+# 2.4 New Experimental Feature
+# Set the value of this setting to true to enable the experimental multiple data source
+# support feature. Use with caution.
+# data_source.enabled: false
+# Set the value of these settings to customize crypto materials to encryption saved credentials
+# in data sources.
+# data_source.encryption.wrappingKeyName: 'changeme'
+# data_source.encryption.wrappingKeyNamespace: 'changeme'
+# data_source.encryption.wrappingKey: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+# 2.6 New ML Commons Dashboards Feature
+# Set the value of this setting to true to enable the ml commons dashboards
+# ml_commons_dashboards.enabled: false
+
+# 2.12 New experimental Assistant Dashboards Feature
+# Set the value of this setting to true to enable the assistant dashboards
+# assistant.chat.enabled: false
+
+# 2.13 New Query Assistant Feature
+# Set the value of this setting to false to disable the query assistant
+# observability.query_assist.enabled: false
+
+# 2.14 Enable Ui Metric Collectors in Usage Collector
+# Set the value of this setting to true to enable UI Metric collections
+# usageCollection.uiMetric.enabled: false
+
+opensearch.hosts: [https://localhost:9200]
+opensearch.ssl.verificationMode: none
+opensearch.username: admin
+opensearch.password: 'Qazwsxedc!@#123'
+opensearch.requestHeadersWhitelist: [authorization, securitytenant]
+
+opensearch_security.multitenancy.enabled: true
+opensearch_security.multitenancy.tenants.preferred: [Private, Global]
+opensearch_security.readonly_mode.roles: [kibana_read_only]
+# Use this setting if you are running opensearch-dashboards without https
+opensearch_security.cookie.secure: false
+server.host: '0.0.0.0'

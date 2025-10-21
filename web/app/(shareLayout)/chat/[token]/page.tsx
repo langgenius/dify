@@ -1,12 +1,13 @@
-import type { FC } from 'react'
+'use client'
 import React from 'react'
+import ChatWithHistoryWrap from '@/app/components/base/chat/chat-with-history'
+import AuthenticatedLayout from '../../components/authenticated-layout'
 
-import type { IMainProps } from '@/app/components/share/chat'
-import Main from '@/app/components/share/chat'
-
-const Chat: FC<IMainProps> = () => {
+const Chat = () => {
   return (
-    <Main />
+    <AuthenticatedLayout>
+      <ChatWithHistoryWrap />
+    </AuthenticatedLayout>
   )
 }
 

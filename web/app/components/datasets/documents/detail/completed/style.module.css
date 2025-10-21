@@ -1,14 +1,5 @@
-/* .cardWrapper {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, auto));
-  grid-gap: 16px;
-  grid-auto-rows: 180px;
-} */
-.totalText {
-  @apply text-gray-900 font-medium text-base flex-1;
-}
 .docSearchWrapper {
-  @apply sticky w-full h-10 -top-3 bg-white flex items-center mb-3 justify-between z-10;
+  @apply sticky w-full -top-3 flex items-center mb-3 justify-between z-[11] flex-wrap gap-y-1 pr-3;
 }
 .listContainer {
   height: calc(100% - 3.25rem);
@@ -18,7 +9,7 @@
   @apply grid gap-4 grid-cols-3 min-w-[902px] last:mb-[30px];
 }
 .segWrapper {
-  @apply box-border h-[180px] min-w-[290px] bg-gray-50 px-4 pt-4 flex flex-col text-opacity-50 rounded-xl border border-transparent hover:border-gray-200 hover:shadow-lg hover:cursor-pointer hover:bg-white;
+  @apply box-border h-[180px] w-full xl:min-w-[290px] bg-gray-50 px-4 pt-4 flex flex-col text-opacity-50 rounded-xl border border-transparent hover:border-gray-200 hover:shadow-lg hover:cursor-pointer hover:bg-white;
 }
 .segTitleWrapper {
   @apply flex items-center justify-between;
@@ -41,14 +32,14 @@
   @apply text-primary-600 font-semibold text-xs absolute right-0 hidden h-12 pl-12 items-center;
 }
 .select {
-  @apply h-8 py-0 bg-gray-50 hover:bg-gray-100 rounded-lg shadow-none !important;
+  @apply h-8 py-0 pr-5 w-[100px] shadow-none !important;
 }
 .segModalContent {
   @apply h-96 text-gray-800 text-base break-all overflow-y-scroll;
   white-space: pre-line;
 }
 .footer {
-  @apply flex items-center justify-between box-border border-t-gray-200 border-t-[0.5px] pt-3 mt-4;
+  @apply flex items-center justify-between box-border border-t-gray-200 border-t-[0.5px] pt-3 mt-4 flex-wrap gap-y-2;
 }
 .numberInfo {
   @apply text-gray-500 text-xs font-medium;

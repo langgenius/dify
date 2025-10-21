@@ -1,0 +1,7 @@
+.modal-dialog {
+  @apply relative z-50;
+}
+
+.modal-panel {
+  @apply w-full max-w-[480px] transform rounded-2xl bg-components-panel-bg p-6 text-left align-middle shadow-xl transition-all;
+}

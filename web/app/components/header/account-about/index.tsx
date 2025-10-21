@@ -1,89 +1,91 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import classNames from 'classnames'
 import Link from 'next/link'
-import { useContext } from 'use-context-selector'
-import s from './index.module.css'
+import dayjs from 'dayjs'
+import { RiCloseLine } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-import { Dify } from '@/app/components/base/icons/src/public/common'
+import Button from '@/app/components/base/button'
 import type { LangGeniusVersionResponse } from '@/models/common'
 import { IS_CE_EDITION } from '@/config'
-import I18n from '@/context/i18n'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
+
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type IAccountSettingProps = {
-  langeniusVersionInfo: LangGeniusVersionResponse
+  langGeniusVersionInfo: LangGeniusVersionResponse
   onCancel: () => void
 }
-const buttonClassName = `
-shrink-0 flex items-center h-8 px-3 rounded-lg border border-gray-200
-text-xs text-gray-800 font-medium
-`
+
 export default function AccountAbout({
-  langeniusVersionInfo,
+  langGeniusVersionInfo,
   onCancel,
 }: IAccountSettingProps) {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
-  const isLatest = langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version
+  const isLatest = langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
 
   return (
     <Modal
       isShow
-      onClose={() => { }}
-      className={s.modal}
+      onClose={onCancel}
+      className='!w-[480px] !max-w-[480px] !px-6 !py-4'
     >
       <div className='relative'>
-        <div className='absolute -top-2 -right-4 flex justify-center items-center w-8 h-8 cursor-pointer' onClick={onCancel}>
-          <XClose className='w-4 h-4 text-gray-500' />
+        <div className='absolute right-0 top-0 flex h-8 w-8 cursor-pointer items-center justify-center' onClick={onCancel}>
+          <RiCloseLine className='h-4 w-4 text-text-tertiary' />
         </div>
-        <div>
-          <div className={classNames(
-            s['logo-icon'],
-            'mx-auto mb-3 w-12 h-12 bg-white rounded-xl border-[0.5px] border-gray-200',
-          )} />
-          <Dify className='mx-auto mb-2' />
-          <div className='mb-3 text-center text-xs font-normal text-gray-500'>Version {langeniusVersionInfo?.current_version}</div>
-          <div className='mb-4 text-center text-xs font-normal text-gray-700'>
-            <div>© 2023 LangGenius, Inc., Contributors.</div>
-            <div className='text-[#1C64F2]'>
+        <div className='flex flex-col items-center gap-4 py-8'>
+          {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+            ? <img
+              src={systemFeatures.branding.workspace_logo}
+              className='block h-7 w-auto object-contain'
+              alt='logo'
+            />
+            : <DifyLogo size='large' className='mx-auto' />}
+
+          <div className='text-center text-xs font-normal text-text-tertiary'>Version {langGeniusVersionInfo?.current_version}</div>
+          <div className='flex flex-col items-center gap-2 text-center text-xs font-normal text-text-secondary'>
+            <div>© {dayjs().year()} LangGenius, Inc., Contributors.</div>
+            <div className='text-text-accent'>
               {
                 IS_CE_EDITION
-                  ? <Link href={'https://github.com/langgenius/dify/blob/main/LICENSE'} target='_blank'>Open Source License</Link>
+                  ? <Link href={'https://github.com/langgenius/dify/blob/main/LICENSE'} target='_blank' rel='noopener noreferrer'>Open Source License</Link>
                   : <>
-                    <Link href={locale === 'en' ? 'https://docs.dify.ai/user-agreement/privacy-policy' : 'https://docs.dify.ai/v/zh-hans/yong-hu-xie-yi/yin-si-xie-yi'} target='_blank'>Privacy Policy</Link>,
-                    <Link href={locale === 'en' ? 'https://docs.dify.ai/user-agreement/terms-of-service' : 'https://docs.dify.ai/v/zh-hans/yong-hu-xie-yi/fu-wu-xie-yi'} target='_blank'>Terms of Service</Link>
+                    <Link href='https://dify.ai/privacy' target='_blank' rel='noopener noreferrer'>Privacy Policy</Link>,&nbsp;
+                    <Link href='https://dify.ai/terms' target='_blank' rel='noopener noreferrer'>Terms of Service</Link>
                   </>
               }
             </div>
           </div>
         </div>
-        <div className='mb-4 -mx-8 h-[0.5px] bg-gray-200' />
-        <div className='flex justify-between items-center'>
-          <div className='text-xs font-medium text-gray-800'>
+        <div className='-mx-8 mb-4 h-[0.5px] bg-divider-regular' />
+        <div className='flex items-center justify-between'>
+          <div className='text-xs font-medium text-text-tertiary'>
             {
               isLatest
-                ? t('common.about.latestAvailable', { version: langeniusVersionInfo.latest_version })
-                : t('common.about.nowAvailable', { version: langeniusVersionInfo.latest_version })
+                ? t('common.about.latestAvailable', { version: langGeniusVersionInfo.latest_version })
+                : t('common.about.nowAvailable', { version: langGeniusVersionInfo.latest_version })
             }
           </div>
           <div className='flex items-center'>
-            <Link
-              className={classNames(buttonClassName, 'mr-2')}
-              href={'https://github.com/langgenius/dify/releases'}
-              target='_blank'
-            >
-              {t('common.about.changeLog')}
-            </Link>
+            <Button className='mr-2' size='small'>
+              <Link
+                href={'https://github.com/langgenius/dify/releases'}
+                target='_blank' rel='noopener noreferrer'
+              >
+                {t('common.about.changeLog')}
+              </Link>
+            </Button>
             {
               !isLatest && !IS_CE_EDITION && (
-                <Link
-                  className={classNames(buttonClassName, 'text-primary-600')}
-                  href={langeniusVersionInfo.release_notes}
-                  target='_blank'
-                >
-                  {t('common.about.updateNow')}
-                </Link>
+                <Button variant='primary' size='small'>
+                  <Link
+                    href={langGeniusVersionInfo.release_notes}
+                    target='_blank' rel='noopener noreferrer'
+                  >
+                    {t('common.about.updateNow')}
+                  </Link>
+                </Button>
               )
             }
           </div>

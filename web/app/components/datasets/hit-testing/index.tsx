@@ -1,21 +1,30 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { omit } from 'lodash-es'
-import cn from 'classnames'
-import dayjs from 'dayjs'
-import SegmentCard from '../documents/detail/completed/SegmentCard'
-import docStyle from '../documents/detail/completed/style.module.css'
+import { useBoolean } from 'ahooks'
+import { useContext } from 'use-context-selector'
+import { RiApps2Line, RiFocus2Line, RiHistoryLine } from '@remixicon/react'
 import Textarea from './textarea'
 import s from './style.module.css'
-import HitDetail from './hit-detail'
-import type { HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
+import ModifyRetrievalModal from './modify-retrieval-modal'
+import ResultItem from './components/result-item'
+import ResultItemExternal from './components/result-item-external'
+import cn from '@/utils/classnames'
+import type { ExternalKnowledgeBaseHitTesting, ExternalKnowledgeBaseHitTestingResponse, HitTesting, HitTestingResponse } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
-import Modal from '@/app/components/base/modal'
+import Drawer from '@/app/components/base/drawer'
 import Pagination from '@/app/components/base/pagination'
+import FloatRightContainer from '@/app/components/base/float-right-container'
 import { fetchTestingRecords } from '@/service/datasets'
+import DatasetDetailContext from '@/context/dataset-detail'
+import type { RetrievalConfig } from '@/types/app'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useTimestamp from '@/hooks/use-timestamp'
+import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
+import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
 
 const limit = 10
 
@@ -25,19 +34,24 @@ type Props = {
 
 const RecordsEmpty: FC = () => {
   const { t } = useTranslation()
-  return <div className='bg-gray-50 rounded-2xl p-5'>
-    <div className={s.clockWrapper}>
-      <div className={cn(s.clockIcon, 'w-5 h-5')}></div>
+  return <div className='rounded-2xl bg-workflow-process-bg p-5'>
+    <div className='flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'>
+      <RiHistoryLine className='h-5 w-5 text-text-tertiary' />
     </div>
-    <div className='my-2 text-gray-500 text-sm'>{t('datasetHitTesting.noRecentTip')}</div>
+    <div className='my-2 text-[13px] font-medium leading-4 text-text-tertiary'>{t('datasetHitTesting.noRecentTip')}</div>
   </div>
 }
 
-const HitTesting: FC<Props> = ({ datasetId }: Props) => {
+const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { t } = useTranslation()
+  const { formatTime } = useTimestamp()
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>() // 初始化记录为空数组
+  const [externalHitResult, setExternalHitResult] = useState<ExternalKnowledgeBaseHitTestingResponse | undefined>()
   const [submitLoading, setSubmitLoading] = useState(false)
-  const [currParagraph, setCurrParagraph] = useState<{ paraInfo?: HitTestingType; showModal: boolean }>({ showModal: false })
   const [text, setText] = useState('')
 
   const [currPage, setCurrPage] = React.useState<number>(0)
@@ -49,29 +63,71 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
 
   const total = recordsRes?.total || 0
 
-  const points = useMemo(() => (hitResult?.records.map(v => [v.tsne_position.x, v.tsne_position.y]) || []), [hitResult?.records])
+  const { dataset: currentDataset } = useContext(DatasetDetailContext)
+  const isExternal = currentDataset?.provider === 'external'
 
-  const onClickCard = (detail: HitTestingType) => {
-    setCurrParagraph({ paraInfo: detail, showModal: true })
-  }
+  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
+  const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
+  const [isShowRightPanel, { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel }] = useBoolean(!isMobile)
+  const renderHitResults = (results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]) => (
+    <div className='flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3'>
+      <div className='mb-2 shrink-0 pl-2 font-semibold leading-6 text-text-primary'>
+        {t('datasetHitTesting.hit.title', { num: results.length })}
+      </div>
+      <div className='grow space-y-2 overflow-y-auto'>
+        {results.map((record, idx) =>
+          isExternal
+            ? (
+              <ResultItemExternal
+                key={idx}
+                positionId={idx + 1}
+                payload={record as ExternalKnowledgeBaseHitTesting}
+              />
+            )
+            : (
+              <ResultItem key={idx} payload={record as HitTesting} />
+            ),
+        )}
+      </div>
+    </div>
+  )
+
+  const renderEmptyState = () => (
+    <div className='flex h-full flex-col items-center justify-center rounded-tl-2xl bg-background-body px-4 py-3'>
+      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!h-14 !w-14 !bg-text-quaternary')} />
+      <div className='mt-3 text-[13px] text-text-quaternary'>
+        {t('datasetHitTesting.hit.emptyTip')}
+      </div>
+    </div>
+  )
+
+  useEffect(() => {
+    setShowRightPanel(!isMobile)
+  }, [isMobile, setShowRightPanel])
 
   return (
     <div className={s.container}>
-      <div className={s.leftDiv}>
-        <div className={s.titleWrapper}>
-          <h1 className={s.title}>{t('datasetHitTesting.title')}</h1>
-          <p className={s.desc}>{t('datasetHitTesting.desc')}</p>
+      <div className='flex flex-col px-6 py-3'>
+        <div className='mb-4 flex flex-col justify-center'>
+          <h1 className='text-base font-semibold text-text-primary'>{t('datasetHitTesting.title')}</h1>
+          <p className='mt-0.5 text-[13px] font-normal leading-4 text-text-tertiary'>{t('datasetHitTesting.desc')}</p>
         </div>
         <Textarea
           datasetId={datasetId}
           setHitResult={setHitResult}
+          setExternalHitResult={setExternalHitResult}
+          onSubmit={showRightPanel}
           onUpdateList={recordsMutate}
           loading={submitLoading}
           setLoading={setSubmitLoading}
           setText={setText}
           text={text}
+          isExternal={isExternal}
+          onClickRetrievalMethod={() => setIsShowModifyRetrievalModal(true)}
+          retrievalConfig={retrievalConfig}
+          isEconomy={currentDataset?.indexing_technique === 'economy'}
         />
-        <div className={cn(s.title, 'mt-8 mb-2')}>{t('datasetHitTesting.recents')}</div>
+        <div className='mb-3 mt-6 text-base font-semibold text-text-primary'>{t('datasetHitTesting.records')}</div>
         {(!recordsRes && !error)
           ? (
             <div className='flex-1'><Loading type='app' /></div>
@@ -80,30 +136,31 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
             ? (
               <>
                 <div className='grow overflow-y-auto'>
-                  <table className={`w-full border-collapse border-0 mt-3 ${s.table}`}>
-                    <thead className="sticky top-0 h-8 bg-white leading-8 border-b border-gray-200 text-gray-500 font-bold">
+                  <table className={'w-full border-collapse border-0 text-[13px] leading-4 text-text-secondary '}>
+                    <thead className='sticky top-0 h-7 text-xs  font-medium uppercase leading-7 text-text-tertiary backdrop-blur-[5px]'>
                       <tr>
-                        <td className='w-28'>{t('datasetHitTesting.table.header.source')}</td>
-                        <td>{t('datasetHitTesting.table.header.text')}</td>
-                        <td className='w-48'>{t('datasetHitTesting.table.header.time')}</td>
+                        <td className='w-[128px] rounded-l-lg bg-background-section-burn pl-3'>{t('datasetHitTesting.table.header.source')}</td>
+                        <td className='bg-background-section-burn'>{t('datasetHitTesting.table.header.text')}</td>
+                        <td className='w-48 rounded-r-lg bg-background-section-burn pl-2'>{t('datasetHitTesting.table.header.time')}</td>
                       </tr>
                     </thead>
-                    <tbody className="text-gray-500">
+                    <tbody>
                       {recordsRes?.data?.map((record) => {
+                        const SourceIcon = record.source === 'app' ? RiApps2Line : RiFocus2Line
                         return <tr
                           key={record.id}
-                          className='group border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'
+                          className='group h-10 cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover'
                           onClick={() => setText(record.content)}
                         >
-                          <td className='w-24'>
+                          <td className='w-[128px] pl-3'>
                             <div className='flex items-center'>
-                              <div className={cn(s[`${record.source}_icon`], s.commonIcon, 'mr-1')} />
-                              <span className='capitalize'>{record.source.replace('_', ' ')}</span>
+                              <SourceIcon className='mr-1 size-4 text-text-tertiary' />
+                              <span className='capitalize'>{record.source.replace('_', ' ').replace('hit testing', 'retrieval test')}</span>
                             </div>
                           </td>
-                          <td className='max-w-xs group-hover:text-primary-600'>{record.content}</td>
-                          <td className='w-36'>
-                            {dayjs.unix(record.created_at).format(t('datasetHitTesting.dateTimeFormat') as string)}
+                          <td className='max-w-xs py-2'>{record.content}</td>
+                          <td className='w-36 pl-2'>
+                            {formatTime(record.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
                           </td>
                         </tr>
                       })}
@@ -119,67 +176,41 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
               <RecordsEmpty />
             )}
       </div>
-      <div className={s.rightDiv}>
-        {submitLoading
-          ? <div className={s.cardWrapper}>
-            <SegmentCard
-              loading={true}
-              scene='hitTesting'
-              className='h-[216px]'
-            />
-            <SegmentCard
-              loading={true}
-              scene='hitTesting'
-              className='h-[216px]'
-            />
-          </div>
-          : !hitResult?.records.length
-            ? (
-              <div className='h-full flex flex-col justify-center items-center'>
-                <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!bg-gray-200 !h-14 !w-14')} />
-                <div className='text-gray-300 text-[13px] mt-3'>
-                  {t('datasetHitTesting.hit.emptyTip')}
-                </div>
-              </div>
-            )
+      <FloatRightContainer panelClassName='!justify-start !overflow-y-auto' showClose isMobile={isMobile} isOpen={isShowRightPanel} onClose={hideRightPanel} footer={null}>
+        <div className='flex flex-col pt-3'>
+          {/* {renderHitResults(generalResultData)} */}
+          {submitLoading
+            ? <div className='flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3'>
+              <CardSkelton />
+            </div>
             : (
-              <>
-                <div className='text-gray-600 font-semibold mb-4'>{t('datasetHitTesting.hit.title')}</div>
-                <div className='overflow-auto flex-1'>
-                  <div className={s.cardWrapper}>
-                    {hitResult?.records.map((record, idx) => {
-                      return <SegmentCard
-                        key={idx}
-                        loading={false}
-                        detail={record.segment as any}
-                        score={record.score}
-                        scene='hitTesting'
-                        className='h-[216px] mb-4'
-                        onClick={() => onClickCard(record as any)}
-                      />
-                    })}
-                  </div>
-                </div>
-              </>
+              (() => {
+                if (!hitResult?.records.length && !externalHitResult?.records.length)
+                  return renderEmptyState()
+
+                if (hitResult?.records.length)
+                  return renderHitResults(hitResult.records)
+
+                return renderHitResults(externalHitResult?.records || [])
+              })()
             )
-        }
-      </div>
-      <Modal
-        className='!max-w-[960px] !p-0'
-        closable
-        onClose={() => setCurrParagraph({ showModal: false })}
-        isShow={currParagraph.showModal}
-      >
-        {currParagraph.showModal && <HitDetail
-          segInfo={currParagraph.paraInfo?.segment}
-          vectorInfo={{
-            curr: [[currParagraph.paraInfo?.tsne_position?.x || 0, currParagraph.paraInfo?.tsne_position.y || 0]],
-            points,
+          }
+        </div>
+      </FloatRightContainer>
+      <Drawer unmount={true} isOpen={isShowModifyRetrievalModal} onClose={() => setIsShowModifyRetrievalModal(false)} footer={null} mask={isMobile} panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
+        <ModifyRetrievalModal
+          indexMethod={currentDataset?.indexing_technique || ''}
+          value={retrievalConfig}
+          isShow={isShowModifyRetrievalModal}
+          onHide={() => setIsShowModifyRetrievalModal(false)}
+          onSave={(value) => {
+            setRetrievalConfig(value)
+            setIsShowModifyRetrievalModal(false)
           }}
-        />}
-      </Modal>
+        />
+      </Drawer>
     </div>
   )
 }
 
-export default HitTesting
+export default HitTestingPage

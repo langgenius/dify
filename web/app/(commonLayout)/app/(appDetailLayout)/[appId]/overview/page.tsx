@@ -1,31 +1,26 @@
 import React from 'react'
-import ChartView from './chartView'
-import CardView from './cardView'
-import { getLocaleOnServer } from '@/i18n/server'
-import { useTranslation as translate } from '@/i18n/i18next-serverside-config'
+import ChartView from './chart-view'
+import TracingPanel from './tracing/panel'
 import ApikeyInfoPanel from '@/app/components/app/overview/apikey-info-panel'
 
 export type IDevelopProps = {
-  params: { appId: string }
+  params: Promise<{ appId: string }>
 }
 
-const Overview = async ({
-  params: { appId },
-}: IDevelopProps) => {
-  const locale = getLocaleOnServer()
-  /*
-    rename useTranslation to avoid lint error
-    please check: https://github.com/i18next/next-13-app-dir-i18next-example/issues/24
-  */
-  const { t } = await translate(locale, 'app-overview')
+const Overview = async (props: IDevelopProps) => {
+  const params = await props.params
+
+  const {
+    appId,
+  } = params
+
   return (
-    <div className="h-full px-16 py-6 overflow-scroll">
+    <div className="h-full overflow-y-auto bg-chatbot-bg px-4 py-6 sm:px-12">
       <ApikeyInfoPanel />
-      <div className='flex flex-row items-center justify-between mb-4 text-xl text-gray-900'>
-        {t('overview.title')}
-      </div>
-      <CardView appId={appId} />
-      <ChartView appId={appId} />
+      <ChartView
+        appId={appId}
+        headerRight={<TracingPanel />}
+      />
     </div>
   )
 }

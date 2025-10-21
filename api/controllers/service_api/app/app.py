@@ -1,49 +1,95 @@
-# -*- coding:utf-8 -*-
-from flask_restful import fields, marshal_with
+from flask_restx import Resource
 
-from controllers.service_api import api
-from controllers.service_api.wraps import AppApiResource
+from controllers.common.fields import build_parameters_model
+from controllers.service_api import service_api_ns
+from controllers.service_api.app.error import AppUnavailableError
+from controllers.service_api.wraps import validate_app_token
+from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from models.model import App, AppMode
+from services.app_service import AppService
 
-from models.model import App
 
-
-class AppParameterApi(AppApiResource):
+@service_api_ns.route("/parameters")
+class AppParameterApi(Resource):
     """Resource for app variables."""
 
-    variable_fields = {
-        'key': fields.String,
-        'name': fields.String,
-        'description': fields.String,
-        'type': fields.String,
-        'default': fields.String,
-        'max_length': fields.Integer,
-        'options': fields.List(fields.String)
-    }
-
-    parameters_fields = {
-        'opening_statement': fields.String,
-        'suggested_questions': fields.Raw,
-        'suggested_questions_after_answer': fields.Raw,
-        'speech_to_text': fields.Raw,
-        'retriever_resource': fields.Raw,
-        'more_like_this': fields.Raw,
-        'user_input_form': fields.Raw,
-    }
-
-    @marshal_with(parameters_fields)
-    def get(self, app_model: App, end_user):
-        """Retrieve app parameters."""
-        app_model_config = app_model.app_model_config
-
-        return {
-            'opening_statement': app_model_config.opening_statement,
-            'suggested_questions': app_model_config.suggested_questions_list,
-            'suggested_questions_after_answer': app_model_config.suggested_questions_after_answer_dict,
-            'speech_to_text': app_model_config.speech_to_text_dict,
-            'retriever_resource': app_model_config.retriever_resource_dict,
-            'more_like_this': app_model_config.more_like_this_dict,
-            'user_input_form': app_model_config.user_input_form_list
+    @service_api_ns.doc("get_app_parameters")
+    @service_api_ns.doc(description="Retrieve application input parameters and configuration")
+    @service_api_ns.doc(
+        responses={
+            200: "Parameters retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Application not found",
         }
+    )
+    @validate_app_token
+    @service_api_ns.marshal_with(build_parameters_model(service_api_ns))
+    def get(self, app_model: App):
+        """Retrieve app parameters.
+
+        Returns the input form parameters and configuration for the application.
+        """
+        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+            workflow = app_model.workflow
+            if workflow is None:
+                raise AppUnavailableError()
+
+            features_dict = workflow.features_dict
+            user_input_form = workflow.user_input_form(to_old_structure=True)
+        else:
+            app_model_config = app_model.app_model_config
+            if app_model_config is None:
+                raise AppUnavailableError()
+
+            features_dict = app_model_config.to_dict()
+
+            user_input_form = features_dict.get("user_input_form", [])
+
+        return get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
 
 
-api.add_resource(AppParameterApi, '/parameters')
+@service_api_ns.route("/meta")
+class AppMetaApi(Resource):
+    @service_api_ns.doc("get_app_meta")
+    @service_api_ns.doc(description="Get application metadata")
+    @service_api_ns.doc(
+        responses={
+            200: "Metadata retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Application not found",
+        }
+    )
+    @validate_app_token
+    def get(self, app_model: App):
+        """Get app metadata.
+
+        Returns metadata about the application including configuration and settings.
+        """
+        return AppService().get_app_meta(app_model)
+
+
+@service_api_ns.route("/info")
+class AppInfoApi(Resource):
+    @service_api_ns.doc("get_app_info")
+    @service_api_ns.doc(description="Get basic application information")
+    @service_api_ns.doc(
+        responses={
+            200: "Application info retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Application not found",
+        }
+    )
+    @validate_app_token
+    def get(self, app_model: App):
+        """Get app information.
+
+        Returns basic information about the application including name, description, tags, and mode.
+        """
+        tags = [tag.name for tag in app_model.tags]
+        return {
+            "name": app_model.name,
+            "description": app_model.description,
+            "tags": tags,
+            "mode": app_model.mode,
+            "author_name": app_model.author_name,
+        }

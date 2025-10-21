@@ -1,2 +1,3 @@
-# -*- coding:utf-8 -*-
-import services.errors
+from . import errors
+
+__all__ = ["errors"]

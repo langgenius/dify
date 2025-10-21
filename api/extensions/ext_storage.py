@@ -1,108 +1,126 @@
-import os
-import shutil
-from contextlib import closing
+import logging
+from collections.abc import Callable, Generator
+from typing import Literal, Union, overload
 
-import boto3
-from botocore.exceptions import ClientError
 from flask import Flask
+
+from configs import dify_config
+from dify_app import DifyApp
+from extensions.storage.base_storage import BaseStorage
+from extensions.storage.storage_type import StorageType
+
+logger = logging.getLogger(__name__)
 
 
 class Storage:
-    def __init__(self):
-        self.storage_type = None
-        self.bucket_name = None
-        self.client = None
-        self.folder = None
-
     def init_app(self, app: Flask):
-        self.storage_type = app.config.get('STORAGE_TYPE')
-        if self.storage_type == 's3':
-            self.bucket_name = app.config.get('S3_BUCKET_NAME')
-            self.client = boto3.client(
-                's3',
-                aws_secret_access_key=app.config.get('S3_SECRET_KEY'),
-                aws_access_key_id=app.config.get('S3_ACCESS_KEY'),
-                endpoint_url=app.config.get('S3_ENDPOINT'),
-                region_name=app.config.get('S3_REGION')
-            )
-        else:
-            self.folder = app.config.get('STORAGE_LOCAL_PATH')
-            if not os.path.isabs(self.folder):
-                self.folder = os.path.join(app.root_path, self.folder)
+        storage_factory = self.get_storage_factory(dify_config.STORAGE_TYPE)
+        with app.app_context():
+            self.storage_runner = storage_factory()
+
+    @staticmethod
+    def get_storage_factory(storage_type: str) -> Callable[[], BaseStorage]:
+        match storage_type:
+            case StorageType.S3:
+                from extensions.storage.aws_s3_storage import AwsS3Storage
+
+                return AwsS3Storage
+            case StorageType.OPENDAL:
+                from extensions.storage.opendal_storage import OpenDALStorage
+
+                return lambda: OpenDALStorage(dify_config.OPENDAL_SCHEME)
+            case StorageType.LOCAL:
+                from extensions.storage.opendal_storage import OpenDALStorage
+
+                return lambda: OpenDALStorage(scheme="fs", root=dify_config.STORAGE_LOCAL_PATH)
+            case StorageType.AZURE_BLOB:
+                from extensions.storage.azure_blob_storage import AzureBlobStorage
+
+                return AzureBlobStorage
+            case StorageType.ALIYUN_OSS:
+                from extensions.storage.aliyun_oss_storage import AliyunOssStorage
+
+                return AliyunOssStorage
+            case StorageType.GOOGLE_STORAGE:
+                from extensions.storage.google_cloud_storage import GoogleCloudStorage
+
+                return GoogleCloudStorage
+            case StorageType.TENCENT_COS:
+                from extensions.storage.tencent_cos_storage import TencentCosStorage
+
+                return TencentCosStorage
+            case StorageType.OCI_STORAGE:
+                from extensions.storage.oracle_oci_storage import OracleOCIStorage
+
+                return OracleOCIStorage
+            case StorageType.HUAWEI_OBS:
+                from extensions.storage.huawei_obs_storage import HuaweiObsStorage
+
+                return HuaweiObsStorage
+            case StorageType.BAIDU_OBS:
+                from extensions.storage.baidu_obs_storage import BaiduObsStorage
+
+                return BaiduObsStorage
+            case StorageType.VOLCENGINE_TOS:
+                from extensions.storage.volcengine_tos_storage import VolcengineTosStorage
+
+                return VolcengineTosStorage
+            case StorageType.SUPABASE:
+                from extensions.storage.supabase_storage import SupabaseStorage
+
+                return SupabaseStorage
+            case StorageType.CLICKZETTA_VOLUME:
+                from extensions.storage.clickzetta_volume.clickzetta_volume_storage import (
+                    ClickZettaVolumeConfig,
+                    ClickZettaVolumeStorage,
+                )
+
+                def create_clickzetta_volume_storage():
+                    # ClickZettaVolumeConfig will automatically read from environment variables
+                    # and fallback to CLICKZETTA_* config if CLICKZETTA_VOLUME_* is not set
+                    volume_config = ClickZettaVolumeConfig()
+                    return ClickZettaVolumeStorage(volume_config)
+
+                return create_clickzetta_volume_storage
+            case _:
+                raise ValueError(f"unsupported storage type {storage_type}")
 
     def save(self, filename, data):
-        if self.storage_type == 's3':
-            self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
+        self.storage_runner.save(filename, data)
+
+    @overload
+    def load(self, filename: str, /, *, stream: Literal[False] = False) -> bytes: ...
+
+    @overload
+    def load(self, filename: str, /, *, stream: Literal[True]) -> Generator: ...
+
+    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
+        if stream:
+            return self.load_stream(filename)
         else:
-            if not self.folder or self.folder.endswith('/'):
-                filename = self.folder + filename
-            else:
-                filename = self.folder + '/' + filename
+            return self.load_once(filename)
 
-            folder = os.path.dirname(filename)
-            os.makedirs(folder, exist_ok=True)
+    def load_once(self, filename: str) -> bytes:
+        return self.storage_runner.load_once(filename)
 
-            with open(os.path.join(os.getcwd(), filename), "wb") as f:
-                f.write(data)
-
-    def load(self, filename):
-        if self.storage_type == 's3':
-            try:
-                with closing(self.client) as client:
-                    data = client.get_object(Bucket=self.bucket_name, Key=filename)['Body'].read()
-            except ClientError as ex:
-                if ex.response['Error']['Code'] == 'NoSuchKey':
-                    raise FileNotFoundError("File not found")
-                else:
-                    raise
-        else:
-            if not self.folder or self.folder.endswith('/'):
-                filename = self.folder + filename
-            else:
-                filename = self.folder + '/' + filename
-
-            if not os.path.exists(filename):
-                raise FileNotFoundError("File not found")
-
-            with open(filename, "rb") as f:
-                data = f.read()
-
-        return data
+    def load_stream(self, filename: str) -> Generator:
+        return self.storage_runner.load_stream(filename)
 
     def download(self, filename, target_filepath):
-        if self.storage_type == 's3':
-            with closing(self.client) as client:
-                client.download_file(self.bucket_name, filename, target_filepath)
-        else:
-            if not self.folder or self.folder.endswith('/'):
-                filename = self.folder + filename
-            else:
-                filename = self.folder + '/' + filename
-
-            if not os.path.exists(filename):
-                raise FileNotFoundError("File not found")
-
-            shutil.copyfile(filename, target_filepath)
+        self.storage_runner.download(filename, target_filepath)
 
     def exists(self, filename):
-        if self.storage_type == 's3':
-            with closing(self.client) as client:
-                try:
-                    client.head_object(Bucket=self.bucket_name, Key=filename)
-                    return True
-                except:
-                    return False
-        else:
-            if not self.folder or self.folder.endswith('/'):
-                filename = self.folder + filename
-            else:
-                filename = self.folder + '/' + filename
+        return self.storage_runner.exists(filename)
 
-            return os.path.exists(filename)
+    def delete(self, filename):
+        return self.storage_runner.delete(filename)
+
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        return self.storage_runner.scan(path, files=files, directories=directories)
 
 
 storage = Storage()
 
 
-def init_app(app: Flask):
+def init_app(app: DifyApp):
     storage.init_app(app)

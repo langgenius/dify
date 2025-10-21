@@ -1,13 +1,13 @@
 'use client'
-import React, { FC, useRef } from 'react'
+import type { FC } from 'react'
+import React, { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { useClickAway } from 'ahooks'
 import VarHighlight from '../../base/var-highlight'
+import Button from '@/app/components/base/button'
 
-export interface IConfirmAddVarProps {
+export type IConfirmAddVarProps = {
   varNameArr: string[]
-  onConfrim: () => void
+  onConfirm: () => void
   onCancel: () => void
   onHide: () => void
 }
@@ -22,47 +22,44 @@ const VarIcon = (
 
 const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
   varNameArr,
-  onConfrim,
+  onConfirm,
   onCancel,
-  onHide,
+  // onHide,
 }) => {
   const { t } = useTranslation()
   const mainContentRef = useRef<HTMLDivElement>(null)
-  useClickAway(() => {
-    onHide()
-  }, mainContentRef)
+  // new prompt editor blur trigger click...
+  // useClickAway(() => {
+  //   onHide()
+  // }, mainContentRef)
   return (
     <div className='absolute inset-0  flex items-center justify-center rounded-xl'
       style={{
-        backgroundColor: 'rgba(35, 56, 118, 0.2)'
+        backgroundColor: 'rgba(35, 56, 118, 0.2)',
       }}>
       <div
         ref={mainContentRef}
-        className='w-[420px] rounded-xl bg-gray-50 p-6'
+        className='w-[420px] rounded-xl bg-components-panel-bg p-6'
         style={{
-          boxShadow: '0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03)'
+          boxShadow: '0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03)',
         }}
       >
         <div className='flex items-start space-x-3'>
           <div
-            className='shrink-0 flex items-center justify-center h-10 w-10 rounded-xl border border-gray-100'
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              boxShadow: '0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03)'
-            }}
+            className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-components-card-border bg-components-card-bg-alt shadow-lg'
           >{VarIcon}</div>
           <div className='grow-1'>
-            <div className='text-sm font-medium text-gray-900'>{t('appDebug.autoAddVar')}</div>
-            <div className='flex flex-wrap mt-[15px] max-h-[66px] overflow-y-auto px-1 space-x-1'>
-              {varNameArr.map((name) => (
+            <div className='text-sm font-medium text-text-primary'>{t('appDebug.autoAddVar')}</div>
+            <div className='mt-[15px] flex max-h-[66px] flex-wrap space-x-1 overflow-y-auto px-1'>
+              {varNameArr.map(name => (
                 <VarHighlight key={name} name={name} />
               ))}
             </div>
           </div>
         </div>
         <div className='mt-7 flex justify-end space-x-2'>
-          <Button className='w-20 h-8 !text-[13px]' onClick={onCancel}>{t('common.operation.cancel')}</Button>
-          <Button className='w-20 h-8 !text-[13px]' type='primary' onClick={onConfrim}>{t('common.operation.add')}</Button>
+          <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
+          <Button variant='primary' onClick={onConfirm}>{t('common.operation.add')}</Button>
         </div>
       </div>
 

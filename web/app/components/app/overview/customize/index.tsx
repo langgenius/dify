@@ -3,9 +3,8 @@ import type { FC } from 'react'
 import React from 'react'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { useDocLink } from '@/context/i18n'
 import type { AppMode } from '@/types/app'
-import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import Tag from '@/app/components/base/tag'
@@ -14,12 +13,13 @@ type IShareLinkProps = {
   isShow: boolean
   onClose: () => void
   linkUrl: string
+  api_base_url: string
   appId: string
   mode: AppMode
 }
 
 const StepNum: FC<{ children: React.ReactNode }> = ({ children }) =>
-  <div className='h-7 w-7 flex justify-center items-center flex-shrink-0 mr-3 text-primary-600 bg-primary-50 rounded-2xl'>
+  <div className='mr-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-2xl bg-util-colors-blue-blue-50 text-text-accent'>
     {children}
   </div>
 
@@ -37,67 +37,75 @@ const CustomizeModal: FC<IShareLinkProps> = ({
   isShow,
   onClose,
   appId,
+  api_base_url,
   mode,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
-  const isChatApp = mode === 'chat'
+  const docLink = useDocLink()
+  const isChatApp = mode === 'chat' || mode === 'advanced-chat'
 
   return <Modal
     title={t(`${prefixCustomize}.title`)}
     description={t(`${prefixCustomize}.explanation`)}
     isShow={isShow}
     onClose={onClose}
-    className='!max-w-2xl w-[640px]'
+    className='w-[640px] !max-w-2xl'
     closable={true}
   >
-    <div className='w-full mt-4 px-6 py-5 border-gray-200 rounded-lg border-[0.5px]'>
-      <Tag bordered={true} hideBg={true} className='text-primary-600 border-primary-600 uppercase'>{t(`${prefixCustomize}.way`)} 1</Tag>
-      <p className='my-2 text-base font-medium text-gray-800'>{t(`${prefixCustomize}.way1.name`)}</p>
+    <div className='mt-4 w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5'>
+      <Tag bordered={true} hideBg={true} className='border-text-accent-secondary uppercase text-text-accent-secondary'>{t(`${prefixCustomize}.way`)} 1</Tag>
+      <p className='system-sm-medium my-2 text-text-secondary'>{t(`${prefixCustomize}.way1.name`)}</p>
       <div className='flex py-4'>
         <StepNum>1</StepNum>
         <div className='flex flex-col'>
-          <div className='text-gray-900'>{t(`${prefixCustomize}.way1.step1`)}</div>
-          <div className='text-gray-500 text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step1Tip`)}</div>
-          <a href={`https://github.com/langgenius/${isChatApp ? 'webapp-conversation' : 'webapp-text-generator'}`} target='_blank'>
-            <Button className='text-gray-800 text-sm w-fit'><GithubIcon className='text-gray-800 mr-2' />{t(`${prefixCustomize}.way1.step1Operation`)}</Button>
+          <div className='text-text-primary'>{t(`${prefixCustomize}.way1.step1`)}</div>
+          <div className='mb-2 mt-1 text-xs text-text-tertiary'>{t(`${prefixCustomize}.way1.step1Tip`)}</div>
+          <a href={`https://github.com/langgenius/${isChatApp ? 'webapp-conversation' : 'webapp-text-generator'}`} target='_blank' rel='noopener noreferrer'>
+            <Button><GithubIcon className='mr-2 text-text-secondary' />{t(`${prefixCustomize}.way1.step1Operation`)}</Button>
           </a>
         </div>
       </div>
-      <div className='flex py-4'>
-        <StepNum>2</StepNum>
-        <div className='flex flex-col w-full'>
-          <div className='text-gray-900'>{t(`${prefixCustomize}.way1.step2`)}</div>
-          <div className='text-gray-500 text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step2Tip`)}</div>
-          <pre className='box-border py-3 px-4 bg-gray-100 text-xs font-medium rounded-lg select-text'>
-            export const APP_ID = '{appId}'<br />
-            export const API_KEY = {'\'<Web API Key From Dify>\''}
-          </pre>
-        </div>
-      </div>
       <div className='flex pt-4'>
-        <StepNum>3</StepNum>
+        <StepNum>2</StepNum>
         <div className='flex flex-col'>
-          <div className='text-gray-900'>{t(`${prefixCustomize}.way1.step3`)}</div>
-          <div className='text-gray-500 text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step3Tip`)}</div>
-          <a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target='_blank'>
-            <Button className='text-gray-800 text-sm w-fit'>
-              <div className='mr-1.5 border-solid border-t-0 border-r-[7px] border-l-[7px] border-b-[12px] border-r-transparent border-b-black border-l-transparent border-t-transparent'></div>
-              <span>{t(`${prefixCustomize}.way1.step3Operation`)}</span>
+          <div className='text-text-primary'>{t(`${prefixCustomize}.way1.step2`)}</div>
+          <div className='mb-2 mt-1 text-xs text-text-tertiary'>{t(`${prefixCustomize}.way1.step2Tip`)}</div>
+          <a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target='_blank' rel='noopener noreferrer'>
+            <Button>
+              <div className='mr-1.5 border-b-[12px] border-l-[7px] border-r-[7px] border-t-0 border-solid border-text-primary border-l-transparent border-r-transparent border-t-transparent'></div>
+              <span>{t(`${prefixCustomize}.way1.step2Operation`)}</span>
             </Button>
           </a>
         </div>
       </div>
+      <div className='flex py-4'>
+        <StepNum>3</StepNum>
+        <div className='flex w-full flex-col overflow-hidden'>
+          <div className='text-text-primary'>{t(`${prefixCustomize}.way1.step3`)}</div>
+          <div className='mb-2 mt-1 text-xs text-text-tertiary'>{t(`${prefixCustomize}.way1.step3Tip`)}</div>
+          <pre className='box-border select-text overflow-x-scroll rounded-lg border-[0.5px] border-components-panel-border bg-background-section px-4 py-3 text-xs font-medium text-text-secondary'>
+            NEXT_PUBLIC_APP_ID={`'${appId}'`} <br />
+            NEXT_PUBLIC_APP_KEY={'\'<Web API Key From Dify>\''} <br />
+            NEXT_PUBLIC_API_URL={`'${api_base_url}'`}
+          </pre>
+        </div>
+      </div>
+
     </div>
-    <div className='w-full mt-4 px-6 py-5 border-gray-200 rounded-lg border-[0.5px]'>
-      <Tag bordered={true} hideBg={true} className='text-primary-600 border-primary-600 uppercase'>{t(`${prefixCustomize}.way`)} 2</Tag>
-      <p className='mt-2 text-base font-medium text-gray-800'>{t(`${prefixCustomize}.way2.name`)}</p>
+    <div className='mt-4 w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5'>
+      <Tag bordered={true} hideBg={true} className='border-text-accent-secondary uppercase text-text-accent-secondary'>{t(`${prefixCustomize}.way`)} 2</Tag>
+      <p className='system-sm-medium my-2 text-text-secondary'>{t(`${prefixCustomize}.way2.name`)}</p>
       <Button
-        className='w-36 mt-2'
-        onClick={() => window.open(`https://docs.dify.ai/${locale === 'en' ? '' : `v/${locale.toLowerCase()}`}/application/developing-with-apis`, '_blank')}
+        className='mt-2'
+        onClick={() =>
+          window.open(
+            docLink('/guides/application-publishing/developing-with-apis'),
+            '_blank',
+          )
+        }
       >
-        <span className='text-sm text-gray-800'>{t(`${prefixCustomize}.way2.operation`)}</span>
-        <ArrowTopRightOnSquareIcon className='w-4 h-4 ml-1 text-gray-800 shrink-0' />
+        <span className='text-sm text-text-secondary'>{t(`${prefixCustomize}.way2.operation`)}</span>
+        <ArrowTopRightOnSquareIcon className='ml-1 h-4 w-4 shrink-0 text-text-secondary' />
       </Button>
     </div>
   </Modal>

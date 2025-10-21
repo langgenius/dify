@@ -1,5 +1,5 @@
 .main {
-  @apply w-96 xl:w-[360px] flex-shrink-0 px-6 py-5 overflow-y-auto border-l-gray-100 border-l;
+  @apply w-full sm:w-96 xl:w-[360px] flex-shrink-0 p-0 sm:px-6 sm:py-5 overflow-y-auto border-none sm:border-l-gray-100 sm:border-l;
 }
 .operationWrapper {
   @apply flex flex-col items-center gap-4 mt-7 mb-8;
@@ -53,18 +53,7 @@
 .desc {
   @apply text-gray-500 text-xs;
 }
-.fieldInfo {
-  /* height: 1.75rem; */
-  min-height: 1.75rem;
-  @apply flex flex-row items-center gap-4;
-}
-.fieldInfo > .label {
-  @apply w-2/5 max-w-[128px] text-gray-500 text-xs font-medium overflow-hidden text-ellipsis whitespace-nowrap;
-}
-.fieldInfo > .value {
-  overflow-wrap: anywhere;
-  @apply w-3/5 text-gray-700 font-normal text-xs;
-}
+
 .changeTip {
   @apply text-[#D92D20] text-xs text-center;
 }

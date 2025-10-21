@@ -1,43 +1,52 @@
-# -*- coding:utf-8 -*-
 import logging
 
 from flask import request
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.console import api
-from controllers.console.app.error import AppUnavailableError, ProviderNotInitializeError, \
-    ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError, CompletionRequestError, \
-    NoAudioUploadedError, AudioTooLargeError, \
-    UnsupportedAudioTypeError, ProviderNotSupportSpeechToTextError
+from controllers.console.app.error import (
+    AppUnavailableError,
+    AudioTooLargeError,
+    CompletionRequestError,
+    NoAudioUploadedError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderNotSupportSpeechToTextError,
+    ProviderQuotaExceededError,
+    UnsupportedAudioTypeError,
+)
 from controllers.console.explore.wraps import InstalledAppResource
-from core.model_providers.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
-    LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.model_runtime.errors.invoke import InvokeError
 from services.audio_service import AudioService
-from services.errors.audio import NoAudioUploadedServiceError, AudioTooLargeServiceError, \
-    UnsupportedAudioTypeServiceError, ProviderNotSupportSpeechToTextServiceError
-from models.model import AppModelConfig
+from services.errors.audio import (
+    AudioTooLargeServiceError,
+    NoAudioUploadedServiceError,
+    ProviderNotSupportSpeechToTextServiceError,
+    UnsupportedAudioTypeServiceError,
+)
+
+from .. import console_ns
+
+logger = logging.getLogger(__name__)
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/audio-to-text",
+    endpoint="installed_app_audio",
+)
 class ChatAudioApi(InstalledAppResource):
     def post(self, installed_app):
         app_model = installed_app.app
-        app_model_config: AppModelConfig = app_model.app_model_config
 
-        if not app_model_config.speech_to_text_dict['enabled']:
-            raise AppUnavailableError()
-
-        file = request.files['file']
+        file = request.files["file"]
 
         try:
-            response = AudioService.transcript(
-                tenant_id=app_model.tenant_id,
-                file=file,
-            )
+            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=None)
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -53,14 +62,61 @@ class ChatAudioApi(InstalledAppResource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
-        
 
-api.add_resource(ChatAudioApi, '/installed-apps/<uuid:installed_app_id>/audio-to-text', endpoint='installed_app_audio')
+
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/text-to-audio",
+    endpoint="installed_app_text",
+)
+class ChatTextApi(InstalledAppResource):
+    def post(self, installed_app):
+        from flask_restx import reqparse
+
+        app_model = installed_app.app
+        try:
+            parser = (
+                reqparse.RequestParser()
+                .add_argument("message_id", type=str, required=False, location="json")
+                .add_argument("voice", type=str, location="json")
+                .add_argument("text", type=str, location="json")
+                .add_argument("streaming", type=bool, location="json")
+            )
+            args = parser.parse_args()
+
+            message_id = args.get("message_id", None)
+            text = args.get("text", None)
+            voice = args.get("voice", None)
+
+            response = AudioService.transcript_tts(app_model=app_model, text=text, voice=voice, message_id=message_id)
+            return response
+        except services.errors.app_model_config.AppModelConfigBrokenError:
+            logger.exception("App model config broken.")
+            raise AppUnavailableError()
+        except NoAudioUploadedServiceError:
+            raise NoAudioUploadedError()
+        except AudioTooLargeServiceError as e:
+            raise AudioTooLargeError(str(e))
+        except UnsupportedAudioTypeServiceError:
+            raise UnsupportedAudioTypeError()
+        except ProviderNotSupportSpeechToTextServiceError:
+            raise ProviderNotSupportSpeechToTextError()
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+        except ValueError as e:
+            raise e
+        except Exception as e:
+            logger.exception("internal server error.")
+            raise InternalServerError()

@@ -1,22 +1,19 @@
 import React from 'react'
 import I18N from './i18n'
 import { ToastProvider } from './base/toast'
-import { getDictionary, getLocaleOnServer } from '@/i18n/server'
+import { getLocaleOnServer } from '@/i18n-config/server'
 
 export type II18NServerProps = {
-  // locale: Locale
   children: React.ReactNode
 }
 
 const I18NServer = async ({
-  // locale,
   children,
 }: II18NServerProps) => {
-  const locale = getLocaleOnServer()
-  const dictionary = await getDictionary(locale)
+  const locale = await getLocaleOnServer()
 
   return (
-    <I18N {...{ locale, dictionary }}>
+    <I18N {...{ locale }}>
       <ToastProvider>{children}</ToastProvider>
     </I18N>
   )
