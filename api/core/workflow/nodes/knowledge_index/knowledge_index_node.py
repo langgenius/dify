@@ -162,8 +162,7 @@ class KnowledgeIndexNode(Node):
                     db.session.delete(segment)
                 db.session.commit()
 
-        # Refresh the document to ensure it's bound to the current session
-        db.session.refresh(document)
+        # The document is already bound to the current session and attributes are eagerly loaded.
         index_processor.index(dataset, document, chunks)
         indexing_end_at = time.perf_counter()
         document.indexing_latency = indexing_end_at - indexing_start_at
