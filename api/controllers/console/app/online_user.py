@@ -3,8 +3,10 @@ import time
 
 from extensions.ext_redis import redis_client
 from extensions.ext_socketio import sio
+from libs.token import extract_access_token
 from libs.passport import PassportService
 from services.account_service import AccountService
+from werkzeug.wrappers import Request as WerkzeugRequest
 
 
 @sio.on("connect")
@@ -15,6 +17,14 @@ def socket_connect(sid, environ, auth):
     token = None
     if auth and isinstance(auth, dict):
         token = auth.get("token")
+
+    if not token:
+        try:
+            request_environ = WerkzeugRequest(environ)
+            token = extract_access_token(request_environ)
+        except Exception:
+            token = None
+
     if not token:
         return False
 
