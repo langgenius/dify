@@ -391,7 +391,7 @@ class VariableTruncator:
     def _truncate_json_primitives(self, val: None, target_size: int) -> _PartResult[None]: ...
 
     def _truncate_json_primitives(
-        self, val: str | list | dict | bool | int | float | None, target_size: int
+        self, val: UpdatedVariable | str | list | dict | bool | int | float | None, target_size: int
     ) -> _PartResult[Any]:
         """Truncate a value within an object to fit within budget."""
         if isinstance(val, UpdatedVariable):
