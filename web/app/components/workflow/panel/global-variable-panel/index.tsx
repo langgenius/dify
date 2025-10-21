@@ -8,16 +8,53 @@ import Item from './item'
 import { useStore } from '@/app/components/workflow/store'
 
 import cn from '@/utils/classnames'
+import { useTranslation } from 'react-i18next'
+import { useIsChatMode } from '../../hooks'
+import { isInWorkflowPage } from '../../constants'
 
 const Panel = () => {
+  const { t } = useTranslation()
+  const isChatMode = useIsChatMode()
   const setShowPanel = useStore(s => s.setShowGlobalVariablePanel)
+  const isWorkflowPage = isInWorkflowPage()
 
   const globalVariableList: GlobalVariable[] = [
-    {
+    ...(isChatMode ? [{
       name: 'conversation_id',
-      value_type: 'string',
-      description: 'conversation id',
+      value_type: 'string' as const,
+      description: t('workflow.globalVar.fieldsDescription.conversationId'),
     },
+    {
+      name: 'dialog_count',
+      value_type: 'number' as const,
+      description: t('workflow.globalVar.fieldsDescription.dialogCount'),
+    }] : []),
+    {
+      name: 'user_id',
+      value_type: 'string',
+      description: t('workflow.globalVar.fieldsDescription.userId'),
+    },
+    {
+      name: 'app_id',
+      value_type: 'string',
+      description: t('workflow.globalVar.fieldsDescription.appId'),
+    },
+    {
+      name: 'workflow_id',
+      value_type: 'string',
+      description: t('workflow.globalVar.fieldsDescription.workflowId'),
+    },
+    {
+      name: 'workflow_run_id',
+      value_type: 'string',
+      description: t('workflow.globalVar.fieldsDescription.workflowRunId'),
+    },
+    // is workflow
+    ...(isWorkflowPage ? [{
+      name: 'trigger_timestamp',
+      value_type: 'string' as const,
+      description: t('workflow.globalVar.fieldsDescription.triggerTimestamp'),
+    }] : []),
   ]
 
   return (
@@ -27,7 +64,7 @@ const Panel = () => {
       )}
     >
       <div className='system-xl-semibold flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary'>
-        Global Variables(Current not show)
+        {t('workflow.globalVar.title')}
         <div className='flex items-center'>
           <div
             className='flex h-6 w-6 cursor-pointer items-center justify-center'
@@ -37,9 +74,9 @@ const Panel = () => {
           </div>
         </div>
       </div>
-      <div className='system-sm-regular shrink-0 px-4 py-1 text-text-tertiary'>...</div>
+      <div className='system-sm-regular shrink-0 px-4 py-1 text-text-tertiary'>{t('workflow.globalVar.description')}</div>
 
-      <div className='grow overflow-y-auto rounded-b-2xl px-4'>
+      <div className='mt-4 grow overflow-y-auto rounded-b-2xl px-4'>
         {globalVariableList.map(item => (
           <Item
             key={item.name}

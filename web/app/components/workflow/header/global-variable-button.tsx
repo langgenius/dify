@@ -11,7 +11,7 @@ const GlobalVariableButton = ({ disabled }: { disabled: boolean }) => {
   }
 
   return (
-    <Button className='p-2' disabled={disabled} onClick={handleClick}>
+    <Button className='p-2' disabled={disabled} onClick={handleClick} variant='ghost'>
       <GlobalVariable className='h-4 w-4 text-components-button-secondary-text' />
     </Button>
   )

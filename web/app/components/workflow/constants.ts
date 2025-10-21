@@ -35,7 +35,12 @@ export const NODE_LAYOUT_HORIZONTAL_PADDING = 60
 export const NODE_LAYOUT_VERTICAL_PADDING = 60
 export const NODE_LAYOUT_MIN_DISTANCE = 100
 
+export const isInWorkflowPage = () => {
+  const pathname = globalThis.location.pathname
+  return /^\/app\/[^/]+\/workflow$/.test(pathname) || /^\/workflow\/[^/]+$/.test(pathname)
+}
 export const getGlobalVars = (isChatMode: boolean): Var[] => {
+  const isInWorkflow = isInWorkflowPage()
   const vars: Var[] = [
     ...(isChatMode ? [
       {
@@ -63,6 +68,12 @@ export const getGlobalVars = (isChatMode: boolean): Var[] => {
       variable: 'sys.workflow_run_id',
       type: VarType.string,
     },
+    ...(isInWorkflow ? [
+      {
+        variable: 'sys.trigger_timestamp',
+        type: VarType.string,
+      },
+    ] : []),
   ]
   return vars
 }

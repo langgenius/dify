@@ -146,6 +146,19 @@ const translation = {
       export: 'Export DSL with secret values ',
     },
   },
+  globalVar: {
+    title: 'System Variables',
+    description: 'System variables are global variables that can be referenced by any node without wiring when the type is correct, such as end-user ID and workflow ID.',
+    fieldsDescription: {
+      conversationId: 'Conversation ID',
+      dialogCount: 'Conversation Count',
+      userId: 'User ID',
+      triggerTimestamp: 'Application trigger time',
+      appId: 'Application ID',
+      workflowId: 'Workflow ID',
+      workflowRunId: 'Workflow run ID',
+    },
+  },
   sidebar: {
     exportWarning: 'Export Current Saved Version',
     exportWarningDesc: 'This will export the current saved version of your workflow. If you have unsaved changes in the editor, please save them first by using the export option in the workflow canvas.',
