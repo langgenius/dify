@@ -363,7 +363,6 @@ const BaseNode: FC<BaseNodeProps> = ({
   return isEntryNode ? (
     <EntryNodeContainer
       status={nodeStatus}
-      showIndicator={!isStartNode}
       nodeType={isStartNode ? 'start' : 'trigger'}
     >
       {nodeContent}

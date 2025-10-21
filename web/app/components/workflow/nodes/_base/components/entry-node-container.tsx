@@ -8,7 +8,6 @@ type EntryNodeContainerProps = {
   children: ReactNode
   status?: EntryNodeStatus
   customLabel?: string
-  showIndicator?: boolean
   nodeType?: 'start' | 'trigger'
 }
 
@@ -16,7 +15,6 @@ const EntryNodeContainer: FC<EntryNodeContainerProps> = ({
   children,
   status = 'enabled',
   customLabel,
-  showIndicator = true,
   nodeType = 'trigger',
 }) => {
   const { t } = useTranslation()
@@ -36,10 +34,7 @@ const EntryNodeContainer: FC<EntryNodeContainerProps> = ({
   return (
     <div className="w-fit min-w-[242px] rounded-2xl bg-workflow-block-wrapper-bg-1 px-0 pb-0 pt-0.5">
       <div className="mb-0.5 flex items-center px-1.5 pt-0.5">
-        {showIndicator && (
-          <div className={`ml-0.5 mr-0.5 h-1.5 w-1.5 rounded-sm border ${statusConfig.dotClasses}`} />
-        )}
-        <span className={`text-2xs font-semibold uppercase text-text-tertiary ${!showIndicator ? 'ml-1.5' : ''}`}>
+        <span className="text-2xs font-semibold uppercase text-text-tertiary">
           {statusConfig.label}
         </span>
       </div>
