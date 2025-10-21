@@ -108,7 +108,7 @@ class LoopNode(Node):
                     raise ValueError(f"Invalid value for loop variable {loop_variable.label}")
                 variable_selector = [self._node_id, loop_variable.label]
                 variable = segment_to_variable(segment=processed_segment, selector=variable_selector)
-                self.graph_runtime_state.variable_pool.add(variable_selector, variable)
+                self.graph_runtime_state.variable_pool.add(variable_selector, variable.value)
                 loop_variable_selectors[loop_variable.label] = variable_selector
                 inputs[loop_variable.label] = processed_segment.value
 
@@ -175,20 +175,11 @@ class LoopNode(Node):
                     break
 
                 if break_conditions:
-                    try:
-                        _, _, reach_break_condition = condition_processor.process_conditions(
-                            variable_pool=self.graph_runtime_state.variable_pool,
-                            conditions=break_conditions,
-                            operator=logical_operator,
-                        )
-                    except Exception as e:
-                        logger.warning(
-                            "Loop %s break condition evaluation failed at iteration %s: %s",
-                            self._node_id,
-                            i,
-                            e,
-                        )
-                        reach_break_condition = False
+                    _, _, reach_break_condition = condition_processor.process_conditions(
+                        variable_pool=self.graph_runtime_state.variable_pool,
+                        conditions=break_conditions,
+                        operator=logical_operator,
+                    )
                 if reach_break_condition:
                     break
 
