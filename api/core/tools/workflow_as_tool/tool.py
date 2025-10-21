@@ -182,12 +182,12 @@ class WorkflowTool(Tool):
         """
         with Session(db.engine, expire_on_commit=False) as session, session.begin():
             if not version:
-                workflow = (
-                    session.query(Workflow)
+                stmt = (
+                    select(Workflow)
                     .where(Workflow.app_id == app_id, Workflow.version != Workflow.VERSION_DRAFT)
                     .order_by(Workflow.created_at.desc())
-                    .first()
                 )
+                workflow = session.scalars(stmt).first()
             else:
                 stmt = select(Workflow).where(Workflow.app_id == app_id, Workflow.version == version)
                 workflow = session.scalar(stmt)
