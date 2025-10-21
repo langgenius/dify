@@ -32,6 +32,7 @@ def supported_language(lang):
     error = f"{lang} is not a valid language."
     raise ValueError(error)
 
+
 def get_valid_language(lang: str | None) -> str:
     if lang and lang in languages:
         return lang
