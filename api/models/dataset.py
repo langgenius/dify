@@ -847,7 +847,7 @@ class DocumentSegment(Base):
         # Reconstruct the text with signed URLs
         offset = 0
         for start, end, signed_url in signed_urls:
-            text = text[: start + offset] + signed_url + text[end + offset :]
+            text = text[: start + offset] + signed_url + text[end + offset:]
             offset += len(signed_url) - (end - start)
 
         return text
@@ -1239,15 +1239,6 @@ class PipelineBuiltInTemplate(Base):  # type: ignore[name-defined]
     language = mapped_column(db.String(255), nullable=False)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    created_by = mapped_column(StringUUID, nullable=False)
-    updated_by = mapped_column(StringUUID, nullable=True)
-
-    @property
-    def created_user_name(self):
-        account = db.session.query(Account).where(Account.id == self.created_by).first()
-        if account:
-            return account.name
-        return ""
 
 
 class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]
