@@ -173,6 +173,7 @@ const translation = {
     support: 'Destek',
     compliance: 'Uygunluk',
     github: 'GitHub',
+    contactUs: 'Bize Ulaşın',
   },
   settings: {
     accountGroup: 'HESAP',

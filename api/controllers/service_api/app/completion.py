@@ -37,40 +37,34 @@ logger = logging.getLogger(__name__)
 
 
 # Define parser for completion API
-completion_parser = reqparse.RequestParser()
-completion_parser.add_argument(
-    "inputs", type=dict, required=True, location="json", help="Input parameters for completion"
-)
-completion_parser.add_argument("query", type=str, location="json", default="", help="The query string")
-completion_parser.add_argument("files", type=list, required=False, location="json", help="List of file attachments")
-completion_parser.add_argument(
-    "response_mode", type=str, choices=["blocking", "streaming"], location="json", help="Response mode"
-)
-completion_parser.add_argument(
-    "retriever_from", type=str, required=False, default="dev", location="json", help="Retriever source"
+completion_parser = (
+    reqparse.RequestParser()
+    .add_argument("inputs", type=dict, required=True, location="json", help="Input parameters for completion")
+    .add_argument("query", type=str, location="json", default="", help="The query string")
+    .add_argument("files", type=list, required=False, location="json", help="List of file attachments")
+    .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json", help="Response mode")
+    .add_argument("retriever_from", type=str, required=False, default="dev", location="json", help="Retriever source")
 )
 
 # Define parser for chat API
-chat_parser = reqparse.RequestParser()
-chat_parser.add_argument("inputs", type=dict, required=True, location="json", help="Input parameters for chat")
-chat_parser.add_argument("query", type=str, required=True, location="json", help="The chat query")
-chat_parser.add_argument("files", type=list, required=False, location="json", help="List of file attachments")
-chat_parser.add_argument(
-    "response_mode", type=str, choices=["blocking", "streaming"], location="json", help="Response mode"
+chat_parser = (
+    reqparse.RequestParser()
+    .add_argument("inputs", type=dict, required=True, location="json", help="Input parameters for chat")
+    .add_argument("query", type=str, required=True, location="json", help="The chat query")
+    .add_argument("files", type=list, required=False, location="json", help="List of file attachments")
+    .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json", help="Response mode")
+    .add_argument("conversation_id", type=uuid_value, location="json", help="Existing conversation ID")
+    .add_argument("retriever_from", type=str, required=False, default="dev", location="json", help="Retriever source")
+    .add_argument(
+        "auto_generate_name",
+        type=bool,
+        required=False,
+        default=True,
+        location="json",
+        help="Auto generate conversation name",
+    )
+    .add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
 )
-chat_parser.add_argument("conversation_id", type=uuid_value, location="json", help="Existing conversation ID")
-chat_parser.add_argument(
-    "retriever_from", type=str, required=False, default="dev", location="json", help="Retriever source"
-)
-chat_parser.add_argument(
-    "auto_generate_name",
-    type=bool,
-    required=False,
-    default=True,
-    location="json",
-    help="Auto generate conversation name",
-)
-chat_parser.add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
 
 
 @service_api_ns.route("/completion-messages")

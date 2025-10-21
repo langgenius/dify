@@ -8,7 +8,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { useLocalStorageState } from 'ahooks'
-import produce from 'immer'
+import { produce } from 'immer'
 import type {
   ChatConfig,
   ChatItem,

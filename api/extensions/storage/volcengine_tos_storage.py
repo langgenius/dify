@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-import tos  # type: ignore
+import tos
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage

@@ -9,7 +9,9 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
 
 from configs import dify_config
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 from core.errors.error import AppInvokeQuotaExceededError
+from libs.token import is_secure
 
 
 def http_status_message(code):
@@ -67,6 +69,19 @@ def register_external_error_handlers(api: Api):
             # If you need WWW-Authenticate for 401, add it to headers
             if status_code == 401:
                 headers["WWW-Authenticate"] = 'Bearer realm="api"'
+                # Check if this is a forced logout error - clear cookies
+                error_code = getattr(e, "error_code", None)
+                if error_code == "unauthorized_and_force_logout":
+                    # Add Set-Cookie headers to clear auth cookies
+
+                    secure = is_secure()
+                    # response is not accessible, so we need to do it ugly
+                    common_part = "Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly"
+                    headers["Set-Cookie"] = [
+                        f'{COOKIE_NAME_ACCESS_TOKEN}=""; {common_part}{"; Secure" if secure else ""}; SameSite=Lax',
+                        f'{COOKIE_NAME_CSRF_TOKEN}=""; {common_part}{"; Secure" if secure else ""}; SameSite=Lax',
+                        f'{COOKIE_NAME_REFRESH_TOKEN}=""; {common_part}{"; Secure" if secure else ""}; SameSite=Lax',
+                    ]
             return data, status_code, headers
 
     _ = handle_http_exception
@@ -131,6 +146,6 @@ class ExternalApi(Api):
         kwargs["doc"] = dify_config.SWAGGER_UI_PATH if dify_config.SWAGGER_UI_ENABLED else False
 
         # manual separate call on construction and init_app to ensure configs in kwargs effective
-        super().__init__(app=None, *args, **kwargs)  # type: ignore
+        super().__init__(app=None, *args, **kwargs)
         self.init_app(app, **kwargs)
         register_external_error_handlers(self)

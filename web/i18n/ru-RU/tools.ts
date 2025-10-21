@@ -243,6 +243,10 @@ const translation = {
       },
       publishTip: 'Приложение не опубликовано. Пожалуйста, сначала опубликуйте приложение.',
     },
+    toolItem: {
+      parameters: 'Параметры',
+      noDescription: 'Нет описания',
+    },
   },
   allTools: 'Все инструменты',
 }

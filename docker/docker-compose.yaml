@@ -68,6 +68,8 @@ x-shared-env: &shared-api-worker-env
   POSTGRES_WORK_MEM: ${POSTGRES_WORK_MEM:-4MB}
   POSTGRES_MAINTENANCE_WORK_MEM: ${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}
   POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}
+  POSTGRES_STATEMENT_TIMEOUT: ${POSTGRES_STATEMENT_TIMEOUT:-60000}
+  POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT: ${POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT:-60000}
   REDIS_HOST: ${REDIS_HOST:-redis}
   REDIS_PORT: ${REDIS_PORT:-6379}
   REDIS_USERNAME: ${REDIS_USERNAME:-}
@@ -631,6 +633,13 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+    # TODO: Remove this entrypoint override when weaviate-client 4.17.0 is included in the next Dify release
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        uv pip install --system weaviate-client==4.17.0
+        exec /bin/bash /app/api/docker/entrypoint.sh
     networks:
       - ssrf_proxy_network
       - default
@@ -658,6 +667,13 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+    # TODO: Remove this entrypoint override when weaviate-client 4.17.0 is included in the next Dify release
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        uv pip install --system weaviate-client==4.17.0
+        exec /bin/bash /app/api/docker/entrypoint.sh
     networks:
       - ssrf_proxy_network
       - default
@@ -722,6 +738,8 @@ services:
                -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
                -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
                -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
+               -c 'statement_timeout=${POSTGRES_STATEMENT_TIMEOUT:-60000}'
+               -c 'idle_in_transaction_session_timeout=${POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT:-60000}'
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     healthcheck:
@@ -938,7 +956,6 @@ services:
   weaviate:
     image: semitechnologies/weaviate:1.27.0
     profiles:
-      - ""
       - weaviate
     restart: always
     volumes:
