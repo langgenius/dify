@@ -1,12 +1,13 @@
 import json
 import time
 
+from werkzeug.wrappers import Request as WerkzeugRequest
+
 from extensions.ext_redis import redis_client
 from extensions.ext_socketio import sio
-from libs.token import extract_access_token
 from libs.passport import PassportService
+from libs.token import extract_access_token
 from services.account_service import AccountService
-from werkzeug.wrappers import Request as WerkzeugRequest
 
 
 @sio.on("connect")

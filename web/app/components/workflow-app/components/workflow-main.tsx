@@ -45,26 +45,38 @@ const WorkflowMain = ({
   const reactFlow = useReactFlow()
 
   const store = useStoreApi()
-  const { startCursorTracking, stopCursorTracking, onlineUsers, cursors, isConnected } = useCollaboration(appId || '', store)
+  const {
+    startCursorTracking,
+    stopCursorTracking,
+    onlineUsers,
+    cursors,
+    isConnected,
+    isEnabled: isCollaborationEnabled,
+  } = useCollaboration(appId || '', store)
   const [myUserId, setMyUserId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (isConnected)
+    if (isCollaborationEnabled && isConnected)
       setMyUserId('current-user')
-  }, [isConnected])
+    else
+      setMyUserId(null)
+  }, [isCollaborationEnabled, isConnected])
 
   const filteredCursors = Object.fromEntries(
     Object.entries(cursors).filter(([userId]) => userId !== myUserId),
   )
 
   useEffect(() => {
+    if (!isCollaborationEnabled)
+      return
+
     if (containerRef.current)
       startCursorTracking(containerRef as React.RefObject<HTMLElement>, reactFlow)
 
     return () => {
       stopCursorTracking()
     }
-  }, [startCursorTracking, stopCursorTracking, reactFlow])
+  }, [startCursorTracking, stopCursorTracking, reactFlow, isCollaborationEnabled])
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {
@@ -128,7 +140,7 @@ const WorkflowMain = ({
   } = useWorkflowRun()
 
   useEffect(() => {
-    if (!appId) return
+    if (!appId || !isCollaborationEnabled) return
 
     const unsubscribe = collaborationManager.onVarsAndFeaturesUpdate(async (update: any) => {
       try {
@@ -141,11 +153,11 @@ const WorkflowMain = ({
     })
 
     return unsubscribe
-  }, [appId, handleWorkflowDataUpdate])
+  }, [appId, handleWorkflowDataUpdate, isCollaborationEnabled])
 
   // Listen for workflow updates from other users
   useEffect(() => {
-    if (!appId) return
+    if (!appId || !isCollaborationEnabled) return
 
     const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
       console.log('Received workflow update from collaborator, fetching latest workflow data')
@@ -170,11 +182,11 @@ const WorkflowMain = ({
     })
 
     return unsubscribe
-  }, [appId, handleWorkflowDataUpdate, handleUpdateWorkflowCanvas])
+  }, [appId, handleWorkflowDataUpdate, handleUpdateWorkflowCanvas, isCollaborationEnabled])
 
   // Listen for sync requests from other users (only processed by leader)
   useEffect(() => {
-    if (!appId) return
+    if (!appId || !isCollaborationEnabled) return
 
     const unsubscribe = collaborationManager.onSyncRequest(() => {
       console.log('Leader received sync request, performing sync')
@@ -182,7 +194,7 @@ const WorkflowMain = ({
     })
 
     return unsubscribe
-  }, [appId, doSyncWorkflowDraft])
+  }, [appId, doSyncWorkflowDraft, isCollaborationEnabled])
   const {
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,

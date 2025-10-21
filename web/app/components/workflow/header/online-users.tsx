@@ -50,7 +50,7 @@ const useAvatarUrls = (users: any[]) => {
 
 const OnlineUsers = () => {
   const appId = useStore(s => s.appId)
-  const { onlineUsers, cursors } = useCollaboration(appId as string)
+  const { onlineUsers, cursors, isEnabled: isCollaborationEnabled } = useCollaboration(appId as string)
   const { userProfile } = useAppContext()
   const reactFlow = useReactFlow()
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -67,7 +67,7 @@ const OnlineUsers = () => {
     reactFlow.setCenter(cursor.x, cursor.y, { zoom: 1, duration: 800 })
   }
 
-  if (!onlineUsers || onlineUsers.length === 0)
+  if (!isCollaborationEnabled || !onlineUsers || onlineUsers.length === 0)
     return null
 
   // Display logic:
