@@ -181,7 +181,7 @@ export const getConfiguredValue = (value: Record<string, any>, formSchemas: { va
 const getVarKindType = (type: FormTypeEnum) => {
   if (type === FormTypeEnum.file || type === FormTypeEnum.files)
     return VarKindType.variable
-  if (type === FormTypeEnum.select || type === FormTypeEnum.boolean || type === FormTypeEnum.textNumber)
+  if (type === FormTypeEnum.select || type === FormTypeEnum.checkbox || type === FormTypeEnum.textNumber)
     return VarKindType.constant
   if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
     return VarKindType.mixed

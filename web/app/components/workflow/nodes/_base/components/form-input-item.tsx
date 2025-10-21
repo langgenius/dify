@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { type ResourceVarInputs, VarKindType } from '../types'
 import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -17,7 +17,6 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
-import FormInputBoolean from './form-input-boolean'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
@@ -29,6 +28,8 @@ import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
 import type { Event } from '@/app/components/tools/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import CheckboxList from '@/app/components/base/checkbox-list'
+import FormInputBoolean from './form-input-boolean'
 
 type Props = {
   readOnly: boolean
@@ -69,6 +70,7 @@ const FormInputItem: FC<Props> = ({
     placeholder,
     variable,
     type,
+    _type,
     default: defaultValue,
     options,
     multiple,
@@ -81,7 +83,8 @@ const FormInputItem: FC<Props> = ({
   const isArray = type === FormTypeEnum.array
   const isShowJSONEditor = isObject || isArray
   const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
-  const isBoolean = type === FormTypeEnum.boolean
+  const isBoolean = _type === FormTypeEnum.boolean
+  const isCheckbox = _type === FormTypeEnum.checkbox
   const isSelect = type === FormTypeEnum.select
   const isDynamicSelect = type === FormTypeEnum.dynamicSelect
   const isAppSelector = type === FormTypeEnum.appSelector
@@ -280,6 +283,45 @@ const FormInputItem: FC<Props> = ({
     })
   }
 
+  const availableCheckboxOptions = useMemo(() => (
+    (options || []).filter((option: { show_on?: Array<{ variable: string; value: any }> }) => {
+      if (option.show_on?.length)
+        return option.show_on.every(showOnItem => value[showOnItem.variable]?.value === showOnItem.value || value[showOnItem.variable] === showOnItem.value)
+      return true
+    })
+  ), [options, value])
+
+  const checkboxListOptions = useMemo(() => (
+    availableCheckboxOptions.map((option: { value: string; label: Record<string, string> }) => ({
+      value: option.value,
+      label: option.label?.[language] || option.label?.en_US || option.value,
+    }))
+  ), [availableCheckboxOptions, language])
+
+  const checkboxListValue = useMemo(() => {
+    let current: string[] = []
+    if (Array.isArray(varInput?.value))
+      current = varInput.value as string[]
+    else if (typeof varInput?.value === 'string')
+      current = [varInput.value as string]
+    else if (Array.isArray(defaultValue))
+      current = defaultValue as string[]
+
+    const allowedValues = new Set(availableCheckboxOptions.map((option: { value: string }) => option.value))
+    return current.filter(item => allowedValues.has(item))
+  }, [varInput?.value, defaultValue, availableCheckboxOptions])
+
+  const handleCheckboxListChange = (selected: string[]) => {
+    onChange({
+      ...value,
+      [variable]: {
+        ...(varInput || {}),
+        type: VarKindType.constant,
+        value: selected,
+      },
+    })
+  }
+
   return (
     <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
       {showTypeSwitch && (
@@ -304,6 +346,16 @@ const FormInputItem: FC<Props> = ({
           value={Number.isNaN(varInput?.value) ? '' : varInput?.value}
           onChange={e => handleValueChange(e.target.value)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
+        />
+      )}
+      {isCheckbox && isConstant && (
+        <CheckboxList
+          title={schema.label?.[language] || schema.label?.en_US || variable}
+          value={checkboxListValue}
+          onChange={handleCheckboxListChange}
+          options={checkboxListOptions}
+          disabled={readOnly}
+          maxHeight='200px'
         />
       )}
       {isBoolean && isConstant && (
