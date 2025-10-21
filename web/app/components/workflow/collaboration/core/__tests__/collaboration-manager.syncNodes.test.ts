@@ -17,6 +17,12 @@ type WorkflowVariable = {
   variable: string
 }
 
+type PromptTemplateItem = {
+  id: string
+  role: string
+  text: string
+}
+
 const createVariable = (name: string, overrides: Partial<WorkflowVariable> = {}): WorkflowVariable => ({
   default: '',
   hint: '',
@@ -53,6 +59,43 @@ const createNodeSnapshot = (variableNames: string[]): Node<{ variables: Workflow
   },
 })
 
+const LLM_NODE_ID = 'llm-node'
+
+const createLLMNodeSnapshot = (promptTemplates: PromptTemplateItem[]): Node<any> => ({
+  id: LLM_NODE_ID,
+  type: 'custom',
+  position: { x: 200, y: 120 },
+  positionAbsolute: { x: 200, y: 120 },
+  height: 320,
+  width: 460,
+  selected: false,
+  selectable: true,
+  draggable: true,
+  sourcePosition: 'right',
+  targetPosition: 'left',
+  data: {
+    type: 'llm',
+    title: 'LLM',
+    selected: false,
+    context: {
+      enabled: false,
+      variable_selector: [],
+    },
+    model: {
+      mode: 'chat',
+      name: 'gemini-2.5-pro',
+      provider: 'langgenius/gemini/google',
+      completion_params: {
+        temperature: 0.7,
+      },
+    },
+    vision: {
+      enabled: false,
+    },
+    prompt_template: promptTemplates,
+  },
+})
+
 const getVariables = (node: Node): string[] => {
   const variables = (node.data as any)?.variables ?? []
   return variables.map((item: WorkflowVariable) => item.variable)
@@ -61,6 +104,10 @@ const getVariables = (node: Node): string[] => {
 const getVariableObject = (node: Node, name: string): WorkflowVariable | undefined => {
   const variables = (node.data as any)?.variables ?? []
   return variables.find((item: WorkflowVariable) => item.variable === name)
+}
+
+const getPromptTemplates = (node: Node): PromptTemplateItem[] => {
+  return ((node.data as any)?.prompt_template ?? []) as PromptTemplateItem[]
 }
 
 describe('CollaborationManager syncNodes', () => {
@@ -176,5 +223,60 @@ describe('CollaborationManager syncNodes', () => {
     const finalVariables = getVariables(finalNode!)
     expect(finalVariables).toEqual(['a', 'b'])
     expect(getVariableObject(finalNode!, 'b')).toBeDefined()
+  })
+
+  it('synchronizes prompt_template list updates across collaborators', () => {
+    const promptManager = new CollaborationManager()
+    const doc = new LoroDoc()
+    ;(promptManager as any).doc = doc
+    ;(promptManager as any).nodesMap = doc.getMap('nodes')
+    ;(promptManager as any).edgesMap = doc.getMap('edges')
+
+    const baseTemplate = [
+      {
+        id: 'abcfa5f9-3c44-4252-aeba-4b6eaf0acfc4',
+        role: 'system',
+        text: 'avc',
+      },
+    ]
+
+    const baseNode = createLLMNodeSnapshot(baseTemplate)
+    ;(promptManager as any).syncNodes([], [deepClone(baseNode)])
+
+    const updatedTemplates = [
+      ...baseTemplate,
+      {
+        id: 'user-1',
+        role: 'user',
+        text: 'hello world',
+      },
+    ]
+
+    const updatedNode = createLLMNodeSnapshot(updatedTemplates)
+    ;(promptManager as any).syncNodes([deepClone(baseNode)], [deepClone(updatedNode)])
+
+    const stored = (promptManager.getNodes() as Node[]).find(node => node.id === LLM_NODE_ID)
+    expect(stored).toBeDefined()
+
+    const storedTemplates = getPromptTemplates(stored!)
+    expect(storedTemplates).toHaveLength(2)
+    expect(storedTemplates[0]).toEqual(baseTemplate[0])
+    expect(storedTemplates[1]).toEqual(updatedTemplates[1])
+
+    const editedTemplates = [
+      {
+        id: 'abcfa5f9-3c44-4252-aeba-4b6eaf0acfc4',
+        role: 'system',
+        text: 'updated system prompt',
+      },
+    ]
+    const editedNode = createLLMNodeSnapshot(editedTemplates)
+
+    ;(promptManager as any).syncNodes([deepClone(updatedNode)], [deepClone(editedNode)])
+
+    const final = (promptManager.getNodes() as Node[]).find(node => node.id === LLM_NODE_ID)
+    const finalTemplates = getPromptTemplates(final!)
+    expect(finalTemplates).toHaveLength(1)
+    expect(finalTemplates[0].text).toBe('updated system prompt')
   })
 })

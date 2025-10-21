@@ -77,6 +77,16 @@ export class CollaborationManager {
     return typeof list.getAttached === 'function' ? list.getAttached() ?? list : list
   }
 
+  private ensurePromptTemplateList(nodeContainer: LoroMap<any>): LoroList<any> {
+    const dataContainer = this.ensureDataContainer(nodeContainer)
+    let list = dataContainer.get('prompt_template') as any
+
+    if (!list || typeof list.kind !== 'function' || list.kind() !== 'List')
+      list = dataContainer.setContainer('prompt_template', new LoroList())
+
+    return typeof list.getAttached === 'function' ? list.getAttached() ?? list : list
+  }
+
   private exportNode(nodeId: string): Node {
     const container = this.getNodeContainer(nodeId)
     const json = container.toJSON() as any
@@ -139,6 +149,8 @@ export class CollaborationManager {
 
       if (key === 'variables')
         this.syncVariables(container, Array.isArray(value) ? value : [])
+      else if (key === 'prompt_template')
+        this.syncPromptTemplate(container, Array.isArray(value) ? value : [])
       else
         dataContainer.set(key, cloneDeep(value))
     })
@@ -150,6 +162,8 @@ export class CollaborationManager {
 
       if (key === 'variables')
         dataContainer.delete('variables')
+      else if (key === 'prompt_template')
+        dataContainer.delete('prompt_template')
 
       else
         dataContainer.delete(key)
@@ -163,6 +177,28 @@ export class CollaborationManager {
 
   private syncVariables(nodeContainer: LoroMap<any>, desired: any[]): void {
     const list = this.ensureVariableList(nodeContainer)
+    const current = list.toJSON() as any[]
+    const target = Array.isArray(desired) ? desired : []
+    const minLength = Math.min(current.length, target.length)
+
+    for (let i = 0; i < minLength; i += 1) {
+      if (!isEqual(current[i], target[i])) {
+        list.delete(i, 1)
+        list.insert(i, cloneDeep(target[i]))
+      }
+    }
+
+    if (current.length > target.length) {
+      list.delete(target.length, current.length - target.length)
+    }
+    else if (target.length > current.length) {
+      for (let i = current.length; i < target.length; i += 1)
+        list.insert(i, cloneDeep(target[i]))
+    }
+  }
+
+  private syncPromptTemplate(nodeContainer: LoroMap<any>, desired: any[]): void {
+    const list = this.ensurePromptTemplateList(nodeContainer)
     const current = list.toJSON() as any[]
     const target = Array.isArray(desired) ? desired : []
     const minLength = Math.min(current.length, target.length)
