@@ -39,34 +39,159 @@ const setupMockEnvironment = (storedTheme: string | null, systemPrefersDark = fa
     const isDarkQuery = DARK_MODE_MEDIA_QUERY.test(query)
     const matches = isDarkQuery ? systemPrefersDark : false
 
+    const handleAddListener = (listener: (event: MediaQueryListEvent) => void) => {
+      listeners.add(listener)
+    }
+
+    const handleRemoveListener = (listener: (event: MediaQueryListEvent) => void) => {
+      listeners.delete(listener)
+    }
+
+    const handleAddEventListener = (_event: string, listener: EventListener) => {
+      if (typeof listener === 'function')
+        listeners.add(listener as (event: MediaQueryListEvent) => void)
+    }
+
+    const handleRemoveEventListener = (_event: string, listener: EventListener) => {
+      if (typeof listener === 'function')
+        listeners.delete(listener as (event: MediaQueryListEvent) => void)
+    }
+
+    const handleDispatchEvent = (event: Event) => {
+      listeners.forEach(listener => listener(event as MediaQueryListEvent))
+      return true
+    }
+
     const mediaQueryList: MediaQueryList = {
       matches,
       media: query,
       onchange: null,
-      addListener: (listener: MediaQueryListListener) => {
-        listeners.add(listener)
-      },
-      removeListener: (listener: MediaQueryListListener) => {
-        listeners.delete(listener)
-      },
-      addEventListener: (_event, listener: EventListener) => {
-        if (typeof listener === 'function')
-          listeners.add(listener as MediaQueryListListener)
-      },
-      removeEventListener: (_event, listener: EventListener) => {
-        if (typeof listener === 'function')
-          listeners.delete(listener as MediaQueryListListener)
-      },
-      dispatchEvent: (event: Event) => {
-        listeners.forEach(listener => listener(event as MediaQueryListEvent))
-        return true
-      },
+      addListener: handleAddListener,
+      removeListener: handleRemoveListener,
+      addEventListener: handleAddEventListener,
+      removeEventListener: handleRemoveEventListener,
+      dispatchEvent: handleDispatchEvent,
     }
 
     return mediaQueryList
   }
 
   jest.spyOn(window, 'matchMedia').mockImplementation(mockMatchMedia)
+}
+
+// Helper function to create timing page component
+const createTimingPageComponent = (
+  timingData: Array<{ phase: string; timestamp: number; styles: { backgroundColor: string; color: string } }>,
+) => {
+  const recordTiming = (phase: string, styles: { backgroundColor: string; color: string }) => {
+    timingData.push({
+      phase,
+      timestamp: performance.now(),
+      styles,
+    })
+  }
+
+  const TimingPageComponent = () => {
+    const [mounted, setMounted] = useState(false)
+    const { theme } = useTheme()
+    const isDark = mounted ? theme === 'dark' : false
+
+    const currentStyles = {
+      backgroundColor: isDark ? '#1f2937' : '#ffffff',
+      color: isDark ? '#ffffff' : '#000000',
+    }
+
+    recordTiming(mounted ? 'CSR' : 'Initial', currentStyles)
+
+    useEffect(() => {
+      setMounted(true)
+    }, [])
+
+    return (
+      <div
+        data-testid="timing-page"
+        style={currentStyles}
+      >
+        <div data-testid="timing-status">
+          Phase: {mounted ? 'CSR' : 'Initial'} | Theme: {theme} | Visual: {isDark ? 'dark' : 'light'}
+        </div>
+      </div>
+    )
+  }
+
+  return TimingPageComponent
+}
+
+// Helper function to create CSS test component
+const createCSSTestComponent = (
+  cssStates: Array<{ className: string; timestamp: number }>,
+) => {
+  const recordCSSState = (className: string) => {
+    cssStates.push({
+      className,
+      timestamp: performance.now(),
+    })
+  }
+
+  const CSSTestComponent = () => {
+    const [mounted, setMounted] = useState(false)
+    const { theme } = useTheme()
+    const isDark = mounted ? theme === 'dark' : false
+
+    const className = `min-h-screen ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-black'}`
+
+    recordCSSState(className)
+
+    useEffect(() => {
+      setMounted(true)
+    }, [])
+
+    return (
+      <div
+        data-testid="css-component"
+        className={className}
+      >
+        <div data-testid="css-classes">Classes: {className}</div>
+      </div>
+    )
+  }
+
+  return CSSTestComponent
+}
+
+// Helper function to create performance test component
+const createPerformanceTestComponent = (
+  performanceMarks: Array<{ event: string; timestamp: number }>,
+) => {
+  const recordPerformanceMark = (event: string) => {
+    performanceMarks.push({ event, timestamp: performance.now() })
+  }
+
+  const PerformanceTestComponent = () => {
+    const [mounted, setMounted] = useState(false)
+    const { theme } = useTheme()
+
+    recordPerformanceMark('component-render')
+
+    useEffect(() => {
+      recordPerformanceMark('mount-start')
+      setMounted(true)
+      recordPerformanceMark('mount-complete')
+    }, [])
+
+    useEffect(() => {
+      if (theme)
+        recordPerformanceMark('theme-available')
+    }, [theme])
+
+    return (
+      <div data-testid="performance-test">
+        Mounted: {mounted.toString()} | Theme: {theme || 'loading'}
+      </div>
+    )
+  }
+
+  return PerformanceTestComponent
 }
 
 // Simulate real page component based on Dify's actual theme usage
@@ -227,39 +352,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       setupMockEnvironment('dark')
 
       const timingData: Array<{ phase: string; timestamp: number; styles: any }> = []
-
-      const TimingPageComponent = () => {
-        const [mounted, setMounted] = useState(false)
-        const { theme } = useTheme()
-        const isDark = mounted ? theme === 'dark' : false
-
-        // Record timing and styles for each render phase
-        const currentStyles = {
-          backgroundColor: isDark ? '#1f2937' : '#ffffff',
-          color: isDark ? '#ffffff' : '#000000',
-        }
-
-        timingData.push({
-          phase: mounted ? 'CSR' : 'Initial',
-          timestamp: performance.now(),
-          styles: currentStyles,
-        })
-
-        useEffect(() => {
-          setMounted(true)
-        }, [])
-
-        return (
-          <div
-            data-testid="timing-page"
-            style={currentStyles}
-          >
-            <div data-testid="timing-status">
-              Phase: {mounted ? 'CSR' : 'Initial'} | Theme: {theme} | Visual: {isDark ? 'dark' : 'light'}
-            </div>
-          </div>
-        )
-      }
+      const TimingPageComponent = createTimingPageComponent(timingData)
 
       render(
         <TestThemeProvider>
@@ -295,33 +388,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       setupMockEnvironment('dark')
 
       const cssStates: Array<{ className: string; timestamp: number }> = []
-
-      const CSSTestComponent = () => {
-        const [mounted, setMounted] = useState(false)
-        const { theme } = useTheme()
-        const isDark = mounted ? theme === 'dark' : false
-
-        // Simulate Tailwind CSS class application
-        const className = `min-h-screen ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-black'}`
-
-        cssStates.push({
-          className,
-          timestamp: performance.now(),
-        })
-
-        useEffect(() => {
-          setMounted(true)
-        }, [])
-
-        return (
-          <div
-            data-testid="css-component"
-            className={className}
-          >
-            <div data-testid="css-classes">Classes: {className}</div>
-          </div>
-        )
-      }
+      const CSSTestComponent = createCSSTestComponent(cssStates)
 
       render(
         <TestThemeProvider>
@@ -413,33 +480,11 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
     test('verifies ThemeProvider position fix reduces initialization delay', async () => {
       const performanceMarks: Array<{ event: string; timestamp: number }> = []
 
-      const PerformanceTestComponent = () => {
-        const [mounted, setMounted] = useState(false)
-        const { theme } = useTheme()
-
-        performanceMarks.push({ event: 'component-render', timestamp: performance.now() })
-
-        useEffect(() => {
-          performanceMarks.push({ event: 'mount-start', timestamp: performance.now() })
-          setMounted(true)
-          performanceMarks.push({ event: 'mount-complete', timestamp: performance.now() })
-        }, [])
-
-        useEffect(() => {
-          if (theme)
-            performanceMarks.push({ event: 'theme-available', timestamp: performance.now() })
-        }, [theme])
-
-        return (
-          <div data-testid="performance-test">
-            Mounted: {mounted.toString()} | Theme: {theme || 'loading'}
-          </div>
-        )
-      }
-
       setupMockEnvironment('dark')
 
       expect(window.localStorage.getItem('theme')).toBe('dark')
+
+      const PerformanceTestComponent = createPerformanceTestComponent(performanceMarks)
 
       render(
         <TestThemeProvider>
