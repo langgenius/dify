@@ -49,6 +49,11 @@ const meta = {
       description: 'Default value when undefined',
     },
   },
+  args: {
+    onChange: (value) => {
+      console.log('Value changed:', value)
+    },
+  },
 } satisfies Meta<typeof InputNumber>
 
 export default meta
@@ -196,7 +201,8 @@ const SizeComparisonDemo = () => {
 
 export const SizeComparison: Story = {
   render: () => <SizeComparisonDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Font size picker
 const FontSizePickerDemo = () => {
@@ -228,7 +234,8 @@ const FontSizePickerDemo = () => {
 
 export const FontSizePicker: Story = {
   render: () => <FontSizePickerDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Quantity selector
 const QuantitySelectorDemo = () => {
@@ -268,7 +275,8 @@ const QuantitySelectorDemo = () => {
 
 export const QuantitySelector: Story = {
   render: () => <QuantitySelectorDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Timer settings
 const TimerSettingsDemo = () => {
@@ -324,7 +332,8 @@ const TimerSettingsDemo = () => {
 
 export const TimerSettings: Story = {
   render: () => <TimerSettingsDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Animation settings
 const AnimationSettingsDemo = () => {
@@ -380,7 +389,8 @@ const AnimationSettingsDemo = () => {
 
 export const AnimationSettings: Story = {
   render: () => <AnimationSettingsDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Temperature control
 const TemperatureControlDemo = () => {
@@ -420,7 +430,8 @@ const TemperatureControlDemo = () => {
 
 export const TemperatureControl: Story = {
   render: () => <TemperatureControlDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Interactive playground
 export const Playground: Story = {
