@@ -194,6 +194,19 @@ def clear_csrf_token_from_cookie(response: Response):
     _clear_cookie(response, COOKIE_NAME_CSRF_TOKEN, http_only=False)
 
 
+def build_force_logout_cookie_headers() -> list[str]:
+    """
+    Generate Set-Cookie header values that clear all auth-related cookies.
+    This mirrors the behavior of the standard cookie clearing helpers while
+    allowing callers that do not have a Response instance to reuse the logic.
+    """
+    response = Response()
+    clear_access_token_from_cookie(response)
+    clear_csrf_token_from_cookie(response)
+    clear_refresh_token_from_cookie(response)
+    return response.headers.getlist("Set-Cookie")
+
+
 def check_csrf_token(request: Request, user_id: str):
     # some apis are sent by beacon, so we need to bypass csrf token check
     # since these APIs are post, they are already protected by SameSite: Lax, so csrf is not required.
