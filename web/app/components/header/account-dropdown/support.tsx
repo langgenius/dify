@@ -56,7 +56,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
               <div className="px-1 py-1">
                 {hasDedicatedChannel && (
                   <MenuItem>
-                    {ZENDESK_WIDGET_KEY ? (
+                    {ZENDESK_WIDGET_KEY && ZENDESK_WIDGET_KEY.trim() !== '' ? (
                       <button
                         className={cn(itemClassName, 'group justify-between text-left data-[active]:bg-state-base-hover')}
                         onClick={() => {
