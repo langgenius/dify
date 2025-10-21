@@ -2492,7 +2492,7 @@ class DocumentService:
                     logger.exception("Error setting cache for document %s", update_info["document"].id)
             # Raise any propagation error after all updates
             if propagation_error:
-                raise propagation_error()
+                raise propagation_error
 
     @staticmethod
     def _prepare_document_status_update(
