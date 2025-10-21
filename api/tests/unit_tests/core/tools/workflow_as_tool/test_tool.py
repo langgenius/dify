@@ -79,6 +79,12 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
+    # Mock user resolution to avoid database access
+    from unittest.mock import Mock
+    
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
+
     # replace `WorkflowAppGenerator.generate` 's return value.
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate",
@@ -136,6 +142,12 @@ def test_workflow_tool_should_handle_empty_outputs(monkeypatch: pytest.MonkeyPat
     # needs to patch those methods to avoid database access.
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+
+    # Mock user resolution to avoid database access
+    from unittest.mock import Mock
+    
+    mock_user = Mock()
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
 
     # replace `WorkflowAppGenerator.generate` 's return value.
     monkeypatch.setattr(
