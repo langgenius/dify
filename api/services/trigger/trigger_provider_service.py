@@ -1,5 +1,6 @@
 import json
 import logging
+import time as _time
 import uuid
 from collections.abc import Mapping
 from typing import Any, Optional
@@ -18,6 +19,7 @@ from core.trigger.entities.api_entities import (
     TriggerProviderApiEntity,
     TriggerProviderSubscriptionApiEntity,
 )
+from core.trigger.entities.entities import Subscription as TriggerSubscriptionEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.trigger.utils.encryption import (
@@ -25,6 +27,7 @@ from core.trigger.utils.encryption import (
     create_trigger_provider_encrypter_for_subscription,
     delete_cache_for_subscription,
 )
+from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.provider_ids import TriggerProviderID
@@ -346,6 +349,91 @@ class TriggerProviderService:
                 "result": "success",
                 "expires_at": refreshed_credentials.expires_at,
             }
+
+    @classmethod
+    def refresh_subscription(
+        cls,
+        tenant_id: str,
+        subscription_id: str,
+        now: int | None = None,
+    ) -> Mapping[str, Any]:
+        """
+        Refresh trigger subscription if expired.
+
+        Args:
+            tenant_id: Tenant ID
+            subscription_id: Subscription instance ID
+            now: Current timestamp, defaults to `int(time.time())`
+
+        Returns:
+            Mapping with keys: `result` ("success"|"skipped") and `expires_at` (new or existing value)
+        """
+        now_ts: int = int(now if now is not None else _time.time())
+
+        with Session(db.engine) as session:
+            subscription: TriggerSubscription | None = (
+                session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
+            )
+            if subscription is None:
+                raise ValueError(f"Trigger provider subscription {subscription_id} not found")
+
+            if subscription.expires_at == -1 or int(subscription.expires_at) > now_ts:
+                logger.debug(
+                    "Subscription not due for refresh: tenant=%s id=%s expires_at=%s now=%s",
+                    tenant_id,
+                    subscription_id,
+                    subscription.expires_at,
+                    now_ts,
+                )
+                return {"result": "skipped", "expires_at": int(subscription.expires_at)}
+
+            provider_id = TriggerProviderID(subscription.provider_id)
+            controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+                tenant_id=tenant_id, provider_id=provider_id
+            )
+
+            # Decrypt credentials and properties for runtime
+            credential_encrypter, _ = create_trigger_provider_encrypter_for_subscription(
+                tenant_id=tenant_id,
+                controller=controller,
+                subscription=subscription,
+            )
+            properties_encrypter, properties_cache = create_trigger_provider_encrypter_for_properties(
+                tenant_id=tenant_id,
+                controller=controller,
+                subscription=subscription,
+            )
+
+            decrypted_credentials = credential_encrypter.decrypt(subscription.credentials)
+            decrypted_properties = properties_encrypter.decrypt(subscription.properties)
+
+            sub_entity: TriggerSubscriptionEntity = TriggerSubscriptionEntity(
+                expires_at=int(subscription.expires_at),
+                endpoint=generate_plugin_trigger_endpoint_url(subscription.endpoint_id),
+                parameters=subscription.parameters,
+                properties=decrypted_properties,
+            )
+
+            refreshed: TriggerSubscriptionEntity = controller.refresh_trigger(
+                subscription=sub_entity,
+                credentials=decrypted_credentials,
+                credential_type=CredentialType.of(subscription.credential_type),
+            )
+
+            # Persist refreshed properties and expires_at
+            subscription.properties = dict(properties_encrypter.encrypt(dict(refreshed.properties)))
+            subscription.expires_at = int(refreshed.expires_at)
+            session.commit()
+            properties_cache.delete()
+
+            logger.info(
+                "Subscription refreshed (service): tenant=%s id=%s new_expires_at=%s",
+                tenant_id,
+                subscription_id,
+                subscription.expires_at,
+            )
+
+            return {"result": "success", "expires_at": int(refreshed.expires_at)}
 
     @classmethod
     def get_oauth_client(cls, tenant_id: str, provider_id: TriggerProviderID) -> Optional[Mapping[str, Any]]:

@@ -1039,7 +1039,7 @@ class CeleryScheduleTasksConfig(BaseSettings):
     )
     TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS: int = Field(
         description="Proactive subscription refresh threshold in seconds",
-        default=300,
+        default=60 * 60,
     )
 
 
