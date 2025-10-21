@@ -203,7 +203,6 @@ export const ProviderContextProvider = ({
         id: ZENDESK_FIELD_IDS.PLAN,
         value: `${plan.type}-plan`,
       }])
-      // setZendeskWidgetVisibility(plan.type !== Plan.sandbox)
     }
   }, [plan.type])
   // #endregion Zendesk conversation fields
