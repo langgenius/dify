@@ -286,13 +286,3 @@ class RefreshTokenApi(Resource):
             return response
         except Exception as e:
             return {"result": "fail", "message": str(e)}, 401
-
-
-# this api helps frontend to check whether user is authenticated
-# TODO: remove in the future. frontend should redirect to login page by catching 401 status
-@console_ns.route("/login/status")
-class LoginStatus(Resource):
-    def get(self):
-        token = extract_access_token(request)
-        csrf_token = extract_csrf_token(request)
-        return {"logged_in": bool(token) and bool(csrf_token)}
