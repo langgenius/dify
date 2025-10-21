@@ -301,12 +301,14 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
     }
 
     if (createType !== SupportedCreationMethods.MANUAL) {
-      const autoCommonParametersFormValues = autoCommonParametersFormRef.current?.getFormValues({}) || defaultFormValues
-      if (!autoCommonParametersFormValues?.isCheckValidated)
-        return
-      params.parameters = autoCommonParametersFormValues.values
+      if (autoCommonParametersSchema.length > 0) {
+        const autoCommonParametersFormValues = autoCommonParametersFormRef.current?.getFormValues({}) || defaultFormValues
+        if (!autoCommonParametersFormValues?.isCheckValidated)
+          return
+        params.parameters = autoCommonParametersFormValues.values
+      }
     }
-    else {
+    else if (manualPropertiesSchema.length > 0) {
       const manualFormValues = manualPropertiesFormRef.current?.getFormValues({}) || defaultFormValues
       if (!manualFormValues?.isCheckValidated)
         return
