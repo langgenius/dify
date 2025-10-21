@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useTranslation } from 'react-i18next'
 import type { HttpMethod, WebhookHeader, WebhookParameter, WebhookTriggerNodeType } from './types'
 

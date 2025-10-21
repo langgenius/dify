@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { PluginTriggerNodeType } from './types'
 import type { PluginTriggerVarInputs } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
