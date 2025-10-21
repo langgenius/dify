@@ -108,7 +108,7 @@ class LoopNode(Node):
                     raise ValueError(f"Invalid value for loop variable {loop_variable.label}")
                 variable_selector = [self._node_id, loop_variable.label]
                 variable = segment_to_variable(segment=processed_segment, selector=variable_selector)
-                self.graph_runtime_state.variable_pool.add(variable_selector, variable)
+                self.graph_runtime_state.variable_pool.add(variable_selector, variable.value)
                 loop_variable_selectors[loop_variable.label] = variable_selector
                 inputs[loop_variable.label] = processed_segment.value
 
