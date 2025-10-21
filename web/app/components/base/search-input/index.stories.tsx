@@ -19,6 +19,10 @@ const meta = {
       control: 'text',
       description: 'Search input value',
     },
+    onChange: {
+      action: 'changed',
+      description: 'Change handler',
+    },
     placeholder: {
       control: 'text',
       description: 'Placeholder text',
@@ -30,6 +34,11 @@ const meta = {
     className: {
       control: 'text',
       description: 'Additional CSS classes',
+    },
+  },
+  args: {
+    onChange: (v) => {
+      console.log('Search value changed:', v)
     },
   },
 } satisfies Meta<typeof SearchInput>
@@ -66,6 +75,10 @@ export const Default: Story = {
   args: {
     placeholder: 'Search...',
     white: false,
+    value: '',
+    onChange: (v) => {
+      console.log('Search value changed:', v)
+    },
   },
 }
 
@@ -75,6 +88,7 @@ export const WhiteBackground: Story = {
   args: {
     placeholder: 'Search...',
     white: true,
+    value: '',
   },
 }
 
@@ -94,6 +108,7 @@ export const CustomPlaceholder: Story = {
   args: {
     placeholder: 'Search documents, files, and more...',
     white: false,
+    value: '',
   },
 }
 
@@ -156,7 +171,8 @@ const UserListSearchDemo = () => {
 
 export const UserListSearch: Story = {
   render: () => <UserListSearchDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Product search
 const ProductSearchDemo = () => {
@@ -209,7 +225,8 @@ const ProductSearchDemo = () => {
 
 export const ProductSearch: Story = {
   render: () => <ProductSearchDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Documentation search
 const DocumentationSearchDemo = () => {
@@ -271,7 +288,8 @@ const DocumentationSearchDemo = () => {
 
 export const DocumentationSearch: Story = {
   render: () => <DocumentationSearchDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Command palette
 const CommandPaletteDemo = () => {
@@ -330,7 +348,8 @@ const CommandPaletteDemo = () => {
 
 export const CommandPalette: Story = {
   render: () => <CommandPaletteDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Live search with results count
 const LiveSearchWithCountDemo = () => {
@@ -384,7 +403,8 @@ const LiveSearchWithCountDemo = () => {
 
 export const LiveSearchWithCount: Story = {
   render: () => <LiveSearchWithCountDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Size variations
 const SizeVariationsDemo = () => {
@@ -422,7 +442,8 @@ const SizeVariationsDemo = () => {
 
 export const SizeVariations: Story = {
   render: () => <SizeVariationsDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Interactive playground
 export const Playground: Story = {

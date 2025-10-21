@@ -23,6 +23,10 @@ const meta = {
       control: 'text',
       description: 'Textarea value',
     },
+    onChange: {
+      action: 'changed',
+      description: 'Change handler',
+    },
     minHeight: {
       control: 'number',
       description: 'Minimum height in pixels',
@@ -42,6 +46,11 @@ const meta = {
     wrapperClassName: {
       control: 'text',
       description: 'Wrapper CSS classes',
+    },
+  },
+  args: {
+    onChange: (e) => {
+      console.log('Text changed:', e.target.value)
     },
   },
 } satisfies Meta<typeof AutoHeightTextarea>
