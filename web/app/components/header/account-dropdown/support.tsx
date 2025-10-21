@@ -51,10 +51,8 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
             >
               <div className="px-1 py-1">
                 {hasDedicatedChannel && <MenuItem>
-                  <span
-                    className={cn(itemClassName, 'group justify-between',
-                      'data-[active]:bg-state-base-hover',
-                    )}
+                  <button
+                    className={cn(itemClassName, 'group justify-between text-left data-[active]:bg-state-base-hover')}
                     onClick={() => {
                       toggleZendeskWindow(true)
                       closeAccountDropdown()
@@ -62,7 +60,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                   >
                     <RiChatSmile2Line className='size-4 shrink-0 text-text-tertiary' />
                     <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.contactUs')}</div>
-                  </span>
+                  </button>
                 </MenuItem>}
                 <MenuItem>
                   <Link
