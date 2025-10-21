@@ -23,6 +23,13 @@ type PromptTemplateItem = {
   text: string
 }
 
+type ParameterItem = {
+  description: string
+  name: string
+  required: boolean
+  type: string
+}
+
 const createVariable = (name: string, overrides: Partial<WorkflowVariable> = {}): WorkflowVariable => ({
   default: '',
   hint: '',
@@ -60,6 +67,7 @@ const createNodeSnapshot = (variableNames: string[]): Node<{ variables: Workflow
 })
 
 const LLM_NODE_ID = 'llm-node'
+const PARAM_NODE_ID = 'param-extractor-node'
 
 const createLLMNodeSnapshot = (promptTemplates: PromptTemplateItem[]): Node<any> => ({
   id: LLM_NODE_ID,
@@ -96,6 +104,39 @@ const createLLMNodeSnapshot = (promptTemplates: PromptTemplateItem[]): Node<any>
   },
 })
 
+const createParameterExtractorNodeSnapshot = (parameters: ParameterItem[]): Node<any> => ({
+  id: PARAM_NODE_ID,
+  type: 'custom',
+  position: { x: 420, y: 220 },
+  positionAbsolute: { x: 420, y: 220 },
+  height: 260,
+  width: 420,
+  selected: true,
+  selectable: true,
+  draggable: true,
+  sourcePosition: 'right',
+  targetPosition: 'left',
+  data: {
+    type: 'parameter-extractor',
+    title: '参数提取器',
+    selected: true,
+    model: {
+      mode: 'chat',
+      name: '',
+      provider: '',
+      completion_params: {
+        temperature: 0.7,
+      },
+    },
+    reasoning_mode: 'prompt',
+    parameters,
+    query: [],
+    vision: {
+      enabled: false,
+    },
+  },
+})
+
 const getVariables = (node: Node): string[] => {
   const variables = (node.data as any)?.variables ?? []
   return variables.map((item: WorkflowVariable) => item.variable)
@@ -108,6 +149,10 @@ const getVariableObject = (node: Node, name: string): WorkflowVariable | undefin
 
 const getPromptTemplates = (node: Node): PromptTemplateItem[] => {
   return ((node.data as any)?.prompt_template ?? []) as PromptTemplateItem[]
+}
+
+const getParameters = (node: Node): ParameterItem[] => {
+  return ((node.data as any)?.parameters ?? []) as ParameterItem[]
 }
 
 describe('CollaborationManager syncNodes', () => {
@@ -278,5 +323,43 @@ describe('CollaborationManager syncNodes', () => {
     const finalTemplates = getPromptTemplates(final!)
     expect(finalTemplates).toHaveLength(1)
     expect(finalTemplates[0].text).toBe('updated system prompt')
+  })
+
+  it('keeps parameter list in sync when nodes add, edit, or remove parameters', () => {
+    const parameterManager = new CollaborationManager()
+    const doc = new LoroDoc()
+    ;(parameterManager as any).doc = doc
+    ;(parameterManager as any).nodesMap = doc.getMap('nodes')
+    ;(parameterManager as any).edgesMap = doc.getMap('edges')
+
+    const baseParameters: ParameterItem[] = [
+      { description: 'bb', name: 'aa', required: false, type: 'string' },
+      { description: 'dd', name: 'cc', required: false, type: 'string' },
+    ]
+
+    const baseNode = createParameterExtractorNodeSnapshot(baseParameters)
+    ;(parameterManager as any).syncNodes([], [deepClone(baseNode)])
+
+    const updatedParameters: ParameterItem[] = [
+      ...baseParameters,
+      { description: 'ff', name: 'ee', required: true, type: 'number' },
+    ]
+
+    const updatedNode = createParameterExtractorNodeSnapshot(updatedParameters)
+    ;(parameterManager as any).syncNodes([deepClone(baseNode)], [deepClone(updatedNode)])
+
+    const stored = (parameterManager.getNodes() as Node[]).find(node => node.id === PARAM_NODE_ID)
+    expect(stored).toBeDefined()
+    expect(getParameters(stored!)).toEqual(updatedParameters)
+
+    const editedParameters: ParameterItem[] = [
+      { description: 'bb edited', name: 'aa', required: true, type: 'string' },
+    ]
+    const editedNode = createParameterExtractorNodeSnapshot(editedParameters)
+
+    ;(parameterManager as any).syncNodes([deepClone(updatedNode)], [deepClone(editedNode)])
+
+    const final = (parameterManager.getNodes() as Node[]).find(node => node.id === PARAM_NODE_ID)
+    expect(getParameters(final!)).toEqual(editedParameters)
   })
 })
