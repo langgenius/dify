@@ -8,6 +8,7 @@ on:
       - "build/**"
       - "release/e-*"
       - "hotfix/**"
+      - "feat/add-celery-prefetch-setting"
     tags:
       - "*"
 
