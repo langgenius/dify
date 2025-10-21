@@ -6,7 +6,6 @@ import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { useTranslation } from 'react-i18next'
-import { AccessMode } from '@/models/access-control'
 import { webAppLoginStatus, webAppLogout } from '@/service/webapp-auth'
 import { fetchAccessToken } from '@/service/share'
 import Loading from '@/app/components/base/loading'
@@ -35,7 +34,6 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     router.replace(url)
   }, [getSigninUrl, router, webAppLogout, shareCode])
 
-  const needCheckIsLogin = webAppAccessMode !== AccessMode.PUBLIC
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
     if (message) {
@@ -58,8 +56,8 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     }
 
     (async () => {
-      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(needCheckIsLogin, shareCode!)
-
+      // if access mode is public, user login is always true, but the app login(passport) may be expired
+      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(shareCode!)
       if (userLoggedIn && appLoggedIn) {
         redirectOrFinish()
       }
@@ -87,7 +85,6 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     router,
     message,
     webAppAccessMode,
-    needCheckIsLogin,
     tokenFromUrl])
 
   if (message) {
