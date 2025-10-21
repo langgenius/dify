@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useStoreApi } from 'reactflow'
 import { useParams } from 'next/navigation'
 import {
@@ -97,7 +97,7 @@ export const useNodesSyncDraft = () => {
 
     if (postParams) {
       navigator.sendBeacon(
-        `${API_PREFIX}/apps/${params.appId}/workflows/draft?_token=${localStorage.getItem('console_token')}`,
+        `${API_PREFIX}/apps/${params.appId}/workflows/draft`,
         JSON.stringify(postParams.params),
       )
     }

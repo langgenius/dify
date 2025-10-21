@@ -128,6 +128,14 @@ Si necesita personalizar la configuración, consulte los comentarios en nuestro 
 
 . Después de realizar los cambios, ejecuta `docker-compose up -d` nuevamente. Puedes ver la lista completa de variables de entorno [aquí](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
+### Monitorización de Métricas con Grafana
+
+Importe el panel a Grafana, utilizando la base de datos PostgreSQL de Dify como fuente de datos, para monitorizar métricas en granularidad de aplicaciones, inquilinos, mensajes y más.
+
+- [Panel de Grafana por @bowenliang123](https://github.com/bowenliang123/dify-grafana-dashboard)
+
+### Implementación con Kubernetes
+
 Si desea configurar una configuración de alta disponibilidad, la comunidad proporciona [Gráficos Helm](https://helm.sh/) y archivos YAML, a través de los cuales puede desplegar Dify en Kubernetes.
 
 - [Gráfico Helm por @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)

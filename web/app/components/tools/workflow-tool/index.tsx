@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer-plus'

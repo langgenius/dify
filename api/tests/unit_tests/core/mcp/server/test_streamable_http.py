@@ -235,7 +235,7 @@ class TestIndividualHandlers:
         # Type assertion needed due to union type
         text_content = result.content[0]
         assert hasattr(text_content, "text")
-        assert text_content.text == "test answer"  # type: ignore[attr-defined]
+        assert text_content.text == "test answer"
 
     def test_handle_call_tool_no_end_user(self):
         """Test call tool handler without end user"""

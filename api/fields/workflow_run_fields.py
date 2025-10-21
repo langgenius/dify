@@ -64,6 +64,15 @@ workflow_run_pagination_fields = {
     "data": fields.List(fields.Nested(workflow_run_for_list_fields), attribute="data"),
 }
 
+workflow_run_count_fields = {
+    "total": fields.Integer,
+    "running": fields.Integer,
+    "succeeded": fields.Integer,
+    "failed": fields.Integer,
+    "stopped": fields.Integer,
+    "partial_succeeded": fields.Integer(attribute="partial-succeeded"),
+}
+
 workflow_run_detail_fields = {
     "id": fields.String,
     "version": fields.String,

@@ -9,7 +9,7 @@ from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from models.dataset import Dataset, DatasetQuery
 
 logger = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ class HitTestingService:
         db.session.add(dataset_query)
         db.session.commit()
 
-        return cls.compact_retrieve_response(query, all_documents)  # type: ignore
+        return cls.compact_retrieve_response(query, all_documents)
 
     @classmethod
     def external_retrieve(

@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import RemoveButton from '../remove-button'
 import VarReferencePicker from './var-reference-picker'
 import Input from '@/app/components/base/input'
@@ -61,7 +61,6 @@ const VarList: FC<Props> = ({
       return
     }
     if (list.some(item => item.variable?.trim() === newKey.trim())) {
-      console.log('new key', newKey.trim())
       setToastHandle(Toast.notify({
         type: 'error',
         message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
