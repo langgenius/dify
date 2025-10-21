@@ -3,10 +3,11 @@ from functools import wraps
 from typing import Any
 
 from flask import current_app, g, has_request_context, request
-from flask_login.config import EXEMPT_METHODS  # type: ignore
+from flask_login.config import EXEMPT_METHODS
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
+from libs.token import check_csrf_token
 from models import Account
 from models.model import EndUser
 
@@ -73,6 +74,9 @@ def login_required(func: Callable[P, R]):
             pass
         elif current_user is not None and not current_user.is_authenticated:
             return current_app.login_manager.unauthorized()  # type: ignore
+        # we put csrf validation here for less conflicts
+        # TODO: maybe find a better place for it.
+        check_csrf_token(request, current_user.id)
         return current_app.ensure_sync(func)(*args, **kwargs)
 
     return decorated_view
@@ -83,7 +87,7 @@ def _get_user() -> EndUser | Account | None:
         if "_login_user" not in g:
             current_app.login_manager._load_user()  # type: ignore
 
-        return g._login_user  # type: ignore
+        return g._login_user
 
     return None
 

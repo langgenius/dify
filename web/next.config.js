@@ -112,7 +112,6 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: [
-      '@remixicon/react',
       '@heroicons/react'
     ],
   },

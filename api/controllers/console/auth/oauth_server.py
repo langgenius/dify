@@ -23,8 +23,7 @@ T = TypeVar("T")
 def oauth_server_client_id_required(view: Callable[Concatenate[T, OAuthProviderApp, P], R]):
     @wraps(view)
     def decorated(self: T, *args: P.args, **kwargs: P.kwargs):
-        parser = reqparse.RequestParser()
-        parser.add_argument("client_id", type=str, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("client_id", type=str, required=True, location="json")
         parsed_args = parser.parse_args()
         client_id = parsed_args.get("client_id")
         if not client_id:
@@ -90,8 +89,7 @@ class OAuthServerAppApi(Resource):
     @setup_required
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
-        parser = reqparse.RequestParser()
-        parser.add_argument("redirect_uri", type=str, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("redirect_uri", type=str, required=True, location="json")
         parsed_args = parser.parse_args()
         redirect_uri = parsed_args.get("redirect_uri")
 
@@ -132,12 +130,14 @@ class OAuthServerUserTokenApi(Resource):
     @setup_required
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
-        parser = reqparse.RequestParser()
-        parser.add_argument("grant_type", type=str, required=True, location="json")
-        parser.add_argument("code", type=str, required=False, location="json")
-        parser.add_argument("client_secret", type=str, required=False, location="json")
-        parser.add_argument("redirect_uri", type=str, required=False, location="json")
-        parser.add_argument("refresh_token", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("grant_type", type=str, required=True, location="json")
+            .add_argument("code", type=str, required=False, location="json")
+            .add_argument("client_secret", type=str, required=False, location="json")
+            .add_argument("redirect_uri", type=str, required=False, location="json")
+            .add_argument("refresh_token", type=str, required=False, location="json")
+        )
         parsed_args = parser.parse_args()
 
         try:

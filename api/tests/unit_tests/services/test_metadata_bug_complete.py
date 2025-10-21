@@ -80,9 +80,11 @@ class TestMetadataBugCompleteValidation:
     def test_4_fixed_api_layer_rejects_null(self, app):
         """Test Layer 4: Fixed API configuration properly rejects null values."""
         # Test Console API create endpoint (fixed)
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=False, location="json")
+            .add_argument("name", type=str, required=True, nullable=False, location="json")
+        )
 
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             with pytest.raises(BadRequest):
@@ -100,9 +102,11 @@ class TestMetadataBugCompleteValidation:
 
     def test_5_fixed_api_accepts_valid_values(self, app):
         """Test that fixed API still accepts valid non-null values."""
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=False, location="json")
+            .add_argument("name", type=str, required=True, nullable=False, location="json")
+        )
 
         with app.test_request_context(json={"type": "string", "name": "valid_name"}, content_type="application/json"):
             args = parser.parse_args()
@@ -112,9 +116,11 @@ class TestMetadataBugCompleteValidation:
     def test_6_simulated_buggy_behavior(self, app):
         """Test simulating the original buggy behavior with nullable=True."""
         # Simulate the old buggy configuration
-        buggy_parser = reqparse.RequestParser()
-        buggy_parser.add_argument("type", type=str, required=True, nullable=True, location="json")
-        buggy_parser.add_argument("name", type=str, required=True, nullable=True, location="json")
+        buggy_parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=True, location="json")
+            .add_argument("name", type=str, required=True, nullable=True, location="json")
+        )
 
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             # This would pass in the buggy version

@@ -125,13 +125,13 @@ class TestApiKeyAuthService:
         mock_session.commit = Mock()
 
         args_copy = self.mock_args.copy()
-        original_key = args_copy["credentials"]["config"]["api_key"]  # type: ignore
+        original_key = args_copy["credentials"]["config"]["api_key"]
 
         ApiKeyAuthService.create_provider_auth(self.tenant_id, args_copy)
 
         # Verify original key is replaced with encrypted key
-        assert args_copy["credentials"]["config"]["api_key"] == encrypted_key  # type: ignore
-        assert args_copy["credentials"]["config"]["api_key"] != original_key  # type: ignore
+        assert args_copy["credentials"]["config"]["api_key"] == encrypted_key
+        assert args_copy["credentials"]["config"]["api_key"] != original_key
 
         # Verify encryption function is called correctly
         mock_encrypter.encrypt_token.assert_called_once_with(self.tenant_id, original_key)
@@ -268,7 +268,7 @@ class TestApiKeyAuthService:
     def test_validate_api_key_auth_args_empty_credentials(self):
         """Test API key auth args validation - empty credentials"""
         args = self.mock_args.copy()
-        args["credentials"] = None  # type: ignore
+        args["credentials"] = None
 
         with pytest.raises(ValueError, match="credentials is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
@@ -284,7 +284,7 @@ class TestApiKeyAuthService:
     def test_validate_api_key_auth_args_missing_auth_type(self):
         """Test API key auth args validation - missing auth_type"""
         args = self.mock_args.copy()
-        del args["credentials"]["auth_type"]  # type: ignore
+        del args["credentials"]["auth_type"]
 
         with pytest.raises(ValueError, match="auth_type is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
@@ -292,7 +292,7 @@ class TestApiKeyAuthService:
     def test_validate_api_key_auth_args_empty_auth_type(self):
         """Test API key auth args validation - empty auth_type"""
         args = self.mock_args.copy()
-        args["credentials"]["auth_type"] = ""  # type: ignore
+        args["credentials"]["auth_type"] = ""
 
         with pytest.raises(ValueError, match="auth_type is required"):
             ApiKeyAuthService.validate_api_key_auth_args(args)
@@ -380,7 +380,7 @@ class TestApiKeyAuthService:
     def test_validate_api_key_auth_args_dict_credentials_with_list_auth_type(self):
         """Test API key auth args validation - dict credentials with list auth_type"""
         args = self.mock_args.copy()
-        args["credentials"]["auth_type"] = ["api_key"]  # type: ignore # list instead of string
+        args["credentials"]["auth_type"] = ["api_key"]
 
         # Current implementation checks if auth_type exists and is truthy, list ["api_key"] is truthy
         # So this should not raise exception, this test should pass

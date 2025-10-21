@@ -37,8 +37,7 @@ class VersionApi(Resource):
     )
     def get(self):
         """Check for application version updates"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("current_version", type=str, required=True, location="args")
+        parser = reqparse.RequestParser().add_argument("current_version", type=str, required=True, location="args")
         args = parser.parse_args()
         check_update_url = dify_config.CHECK_UPDATE_URL
 

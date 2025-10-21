@@ -251,6 +251,10 @@ const translation = {
       },
       publishTip: 'Aplicativo não publicado. Por favor, publique o aplicativo primeiro.',
     },
+    toolItem: {
+      noDescription: 'Sem descrição',
+      parameters: 'Parâmetros',
+    },
   },
   allTools: 'Todas as ferramentas',
 }

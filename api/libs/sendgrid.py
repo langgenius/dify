@@ -1,8 +1,8 @@
 import logging
 
-import sendgrid  # type: ignore
+import sendgrid
 from python_http_client.exceptions import ForbiddenError, UnauthorizedError
-from sendgrid.helpers.mail import Content, Email, Mail, To  # type: ignore
+from sendgrid.helpers.mail import Content, Email, Mail, To
 
 logger = logging.getLogger(__name__)
 

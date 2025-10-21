@@ -17,6 +17,7 @@ from core.variables.segments import (
     StringSegment,
 )
 from core.variables.utils import dumps_with_segments
+from core.workflow.nodes.variable_assigner.common.helpers import UpdatedVariable
 
 _MAX_DEPTH = 100
 
@@ -79,7 +80,7 @@ class VariableTruncator:
         self,
         string_length_limit=5000,
         array_element_limit: int = 20,
-        max_size_bytes: int = 1024_000,  # 100KB
+        max_size_bytes: int = 1024_000,  # 1000 KiB
     ):
         if string_length_limit <= 3:
             raise ValueError("string_length_limit should be greater than 3.")
@@ -202,6 +203,9 @@ class VariableTruncator:
         """Recursively calculate JSON size without serialization."""
         if isinstance(value, Segment):
             return VariableTruncator.calculate_json_size(value.value)
+        if isinstance(value, UpdatedVariable):
+            # TODO(Workflow): migrate UpdatedVariable serialization upstream and drop this fallback.
+            return VariableTruncator.calculate_json_size(value.model_dump(), depth=depth + 1)
         if depth > _MAX_DEPTH:
             raise MaxDepthExceededError()
         if isinstance(value, str):
@@ -387,10 +391,13 @@ class VariableTruncator:
     def _truncate_json_primitives(self, val: None, target_size: int) -> _PartResult[None]: ...
 
     def _truncate_json_primitives(
-        self, val: str | list | dict | bool | int | float | None, target_size: int
+        self, val: UpdatedVariable | str | list | dict | bool | int | float | None, target_size: int
     ) -> _PartResult[Any]:
         """Truncate a value within an object to fit within budget."""
-        if isinstance(val, str):
+        if isinstance(val, UpdatedVariable):
+            # TODO(Workflow): push UpdatedVariable normalization closer to its producer.
+            return self._truncate_object(val.model_dump(), target_size)
+        elif isinstance(val, str):
             return self._truncate_string(val, target_size)
         elif isinstance(val, list):
             return self._truncate_array(val, target_size)

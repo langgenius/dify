@@ -24,8 +24,7 @@ class ModelProviderListApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
+        parser = reqparse.RequestParser().add_argument(
             "model_type",
             type=str,
             required=False,
@@ -50,8 +49,9 @@ class ModelProviderCredentialApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
         # if credential_id is not provided, return current used credential
-        parser = reqparse.RequestParser()
-        parser.add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="args")
+        parser = reqparse.RequestParser().add_argument(
+            "credential_id", type=uuid_value, required=False, nullable=True, location="args"
+        )
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -69,9 +69,11 @@ class ModelProviderCredentialApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+            .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
+        )
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -96,10 +98,12 @@ class ModelProviderCredentialApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+            .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
+        )
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -124,8 +128,9 @@ class ModelProviderCredentialApi(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "credential_id", type=uuid_value, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -145,8 +150,9 @@ class ModelProviderCredentialSwitchApi(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "credential_id", type=str, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
 
         service = ModelProviderService()
@@ -165,8 +171,9 @@ class ModelProviderValidateApi(Resource):
     @account_initialization_required
     def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "credentials", type=dict, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
 
         tenant_id = current_tenant_id
@@ -223,8 +230,7 @@ class PreferredProviderTypeUpdateApi(Resource):
 
         tenant_id = current_tenant_id
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
+        parser = reqparse.RequestParser().add_argument(
             "preferred_provider_type",
             type=str,
             required=True,

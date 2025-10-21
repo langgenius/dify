@@ -211,8 +211,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             user=user,
             stream=streaming,
         )
-        # FIXME: Type hinting issue here, ignore it for now, will fix it later
-        return AgentChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)  # type: ignore
+        return AgentChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
 
     def _generate_worker(
         self,

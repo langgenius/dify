@@ -276,6 +276,7 @@ export const useInvalidateBuiltinProviderInfo = () => {
 
 export const useBuiltinTools = (providerName: string) => {
   return useQuery({
+    enabled: !!providerName,
     queryKey: [NAME_SPACE, 'builtin-provider-tools', providerName],
     queryFn: () => get<Tool[]>(`/workspaces/current/tool-provider/builtin/${providerName}/tools`),
   })

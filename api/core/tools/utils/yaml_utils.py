@@ -3,7 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import yaml  # type: ignore
+import yaml
 from yaml import YAMLError
 
 logger = logging.getLogger(__name__)
