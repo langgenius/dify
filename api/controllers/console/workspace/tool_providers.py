@@ -973,6 +973,7 @@ class ToolMCPAuthApi(Resource):
                 headers=provider.decrypted_headers,
                 timeout=provider.timeout,
                 sse_read_timeout=provider.sse_read_timeout,
+                proxy=(provider.decrypted_proxy if dify_config.MCP_PROVIDER_PROXY_ENABLED else {}),
             ):
                 MCPToolManageService.update_mcp_provider_credentials(
                     mcp_provider=provider,
