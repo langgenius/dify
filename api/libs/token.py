@@ -30,8 +30,22 @@ def is_secure() -> bool:
     return dify_config.CONSOLE_WEB_URL.startswith("https") and dify_config.CONSOLE_API_URL.startswith("https")
 
 
+def _cookie_domain() -> str | None:
+    """
+    Returns the normalized cookie domain.
+
+    Leading dots are stripped from the configured domain. Historically, a leading dot
+    indicated that a cookie should be sent to all subdomains, but modern browsers treat
+    'example.com' and '.example.com' identically. This normalization ensures consistent
+    behavior and avoids confusion.
+    """
+    domain = dify_config.COOKIE_DOMAIN.strip()
+    domain = domain.removeprefix(".")
+    return domain or None
+
+
 def _real_cookie_name(cookie_name: str) -> str:
-    if is_secure():
+    if is_secure() and _cookie_domain() is None:
         return "__Host-" + cookie_name
     else:
         return cookie_name
@@ -112,6 +126,7 @@ def set_access_token_to_cookie(request: Request, response: Response, token: str,
         _real_cookie_name(COOKIE_NAME_ACCESS_TOKEN),
         value=token,
         httponly=True,
+        domain=_cookie_domain(),
         secure=is_secure(),
         samesite=samesite,
         max_age=int(dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 60),
@@ -124,6 +139,7 @@ def set_refresh_token_to_cookie(request: Request, response: Response, token: str
         _real_cookie_name(COOKIE_NAME_REFRESH_TOKEN),
         value=token,
         httponly=True,
+        domain=_cookie_domain(),
         secure=is_secure(),
         samesite="Lax",
         max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
@@ -136,6 +152,7 @@ def set_csrf_token_to_cookie(request: Request, response: Response, token: str):
         _real_cookie_name(COOKIE_NAME_CSRF_TOKEN),
         value=token,
         httponly=False,
+        domain=_cookie_domain(),
         secure=is_secure(),
         samesite="Lax",
         max_age=int(60 * dify_config.ACCESS_TOKEN_EXPIRE_MINUTES),
@@ -154,6 +171,7 @@ def _clear_cookie(
         "",
         expires=0,
         path="/",
+        domain=_cookie_domain(),
         secure=is_secure(),
         httponly=http_only,
         samesite=samesite,
