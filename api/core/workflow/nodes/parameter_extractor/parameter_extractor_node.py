@@ -747,7 +747,7 @@ class ParameterExtractorNode(Node):
         if model_mode == ModelMode.CHAT:
             system_prompt_messages = ChatModelMessage(
                 role=PromptMessageRole.SYSTEM,
-                text=CHAT_GENERATE_JSON_PROMPT.format(histories=memory_str).replace("{{instructions}}", instruction),
+                text=CHAT_GENERATE_JSON_PROMPT.format(histories=memory_str, instructions=instruction),
             )
             user_prompt_message = ChatModelMessage(role=PromptMessageRole.USER, text=input_text)
             return [system_prompt_messages, user_prompt_message]
