@@ -53,8 +53,9 @@ import { useInvalidLastRun } from '@/service/use-workflow'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 import type { FlowType } from '@/types/common'
 import useMatchSchemaType from '../components/variable/use-match-schema-type'
-import { API_PREFIX } from '@/config'
-import { getAccessToken, getBaseOptions } from '@/service/fetch'
+import Cookies from 'js-cookie'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
+import { getBaseOptions } from '@/service/fetch'
 // eslint-disable-next-line ts/no-unsafe-function-type
 const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.LLM]: checkLLMValid,
@@ -298,9 +299,8 @@ const useOneStepRun = <T>({
       try {
         const baseOptions = getBaseOptions()
         const headers = new Headers(baseOptions.headers as Headers)
-        const accessToken = await getAccessToken()
-        headers.set('Authorization', `Bearer ${accessToken}`)
         headers.set('Content-Type', 'application/json')
+        headers.set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
 
         const response = await fetch(urlWithPrefix, {
           ...baseOptions,
@@ -398,9 +398,8 @@ const useOneStepRun = <T>({
       try {
         const baseOptions = getBaseOptions()
         const headers = new Headers(baseOptions.headers as Headers)
-        const accessToken = await getAccessToken()
-        headers.set('Authorization', `Bearer ${accessToken}`)
         headers.set('Content-Type', 'application/json')
+        headers.set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
 
         const response = await fetch(urlWithPrefix, {
           ...baseOptions,
