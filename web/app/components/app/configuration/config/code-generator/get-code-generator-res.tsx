@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
 import { generateRule } from '@/service/debug'
 import type { GenRes } from '@/service/debug'
-import type { ModelModeType } from '@/types/app'
-import type { AppType, CompletionParams, Model } from '@/types/app'
+import type { AppModeEnum, ModelModeType } from '@/types/app'
+import type { CompletionParams, Model } from '@/types/app'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
@@ -33,7 +33,7 @@ export type IGetCodeGeneratorResProps = {
   flowId: string
   nodeId: string
   currentCode?: string
-  mode: AppType
+  mode: AppModeEnum
   isShow: boolean
   codeLanguages: CodeLanguage
   onClose: () => void

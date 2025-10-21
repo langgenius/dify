@@ -31,13 +31,13 @@ import Loading from '@/app/components/base/loading'
 import { useProviderContext } from '@/context/provider-context'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
-import type { AppModeEnum } from '@/types/app'
+import type { ModelModeType } from '@/types/app'
 
 export type ModelParameterModalProps = {
   popupClassName?: string
   portalToFollowElemContentClassName?: string
   isAdvancedMode: boolean
-  mode: AppModeEnum
+  mode: ModelModeType
   modelId: string
   provider: string
   setModel: (model: { modelId: string; provider: string; mode?: string; features?: string[] }) => void

@@ -16,6 +16,7 @@ const translation = {
     maxCount: 'Max {{num}} subscriptions',
     selectPlaceholder: 'Select subscription',
     noSubscriptionSelected: 'No subscription selected',
+    subscriptionRemoved: 'Subscription removed',
     list: {
       title: 'Subscriptions',
       addButton: 'Add',

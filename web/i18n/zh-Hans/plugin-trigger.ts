@@ -16,6 +16,7 @@ const translation = {
     maxCount: '最多 {{num}} 个订阅',
     selectPlaceholder: '选择订阅',
     noSubscriptionSelected: '未选择订阅',
+    subscriptionRemoved: '订阅已移除',
     list: {
       title: '订阅列表',
       addButton: '添加',

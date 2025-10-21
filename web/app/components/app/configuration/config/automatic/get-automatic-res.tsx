@@ -19,8 +19,7 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
-import type { CompletionParams, Model } from '@/types/app'
-import type { AppType } from '@/types/app'
+import type { AppModeEnum, CompletionParams, Model } from '@/types/app'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
 
@@ -44,7 +43,7 @@ import { useGenerateRuleTemplate } from '@/service/use-apps'
 
 const i18nPrefix = 'appDebug.generate'
 export type IGetAutomaticResProps = {
-  mode: AppType
+  mode: AppModeEnum
   isShow: boolean
   onClose: () => void
   onFinished: (res: GenRes) => void

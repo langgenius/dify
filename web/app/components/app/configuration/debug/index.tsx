@@ -23,7 +23,7 @@ import {
   APP_CHAT_WITH_MULTIPLE_MODEL,
   APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
 } from './types'
-import { AppType, ModelModeType, TransferMethod } from '@/types/app'
+import { AppModeEnum, ModelModeType, TransferMethod } from '@/types/app'
 import ChatUserInput from '@/app/components/app/configuration/debug/chat-user-input'
 import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
 import ConfigContext from '@/context/debug-configuration'
@@ -142,7 +142,7 @@ const Debug: FC<IDebug> = ({
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
 
   const checkCanSend = useCallback(() => {
-    if (isAdvancedMode && mode !== AppType.completion) {
+    if (isAdvancedMode && mode !== AppModeEnum.COMPLETION) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
           notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty') })
@@ -411,7 +411,7 @@ const Debug: FC<IDebug> = ({
                 )
                 : null
             }
-            {mode !== AppType.completion && (
+            {mode !== AppModeEnum.COMPLETION && (
               <>
                 <TooltipPlus
                   popupContent={t('common.operation.refresh')}
@@ -436,14 +436,14 @@ const Debug: FC<IDebug> = ({
             )}
           </div>
         </div>
-        {mode !== AppType.completion && expanded && (
+        {mode !== AppModeEnum.COMPLETION && expanded && (
           <div className='mx-3'>
             <ChatUserInput inputs={inputs} />
           </div>
         )}
-        {mode === AppType.completion && (
+        {mode === AppModeEnum.COMPLETION && (
           <PromptValuePanel
-            appType={mode as AppType}
+            appType={mode as AppModeEnum}
             onSend={handleSendTextCompletion}
             inputs={inputs}
             visionConfig={{
@@ -491,7 +491,7 @@ const Debug: FC<IDebug> = ({
         !debugWithMultipleModel && (
           <div className="flex grow flex-col" ref={ref}>
             {/* Chat */}
-            {mode !== AppType.completion && (
+            {mode !== AppModeEnum.COMPLETION && (
               <div className='h-0 grow overflow-hidden'>
                 <DebugWithSingleModel
                   ref={debugWithSingleModelRef}
@@ -500,7 +500,7 @@ const Debug: FC<IDebug> = ({
               </div>
             )}
             {/* Text  Generation */}
-            {mode === AppType.completion && (
+            {mode === AppModeEnum.COMPLETION && (
               <>
                 {(completionRes || isResponding) && (
                   <>
@@ -529,7 +529,7 @@ const Debug: FC<IDebug> = ({
                 )}
               </>
             )}
-            {mode === AppType.completion && showPromptLogModal && (
+            {mode === AppModeEnum.COMPLETION && showPromptLogModal && (
               <PromptLogModal
                 width={width}
                 currentLogItem={currentLogItem}

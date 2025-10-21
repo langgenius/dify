@@ -42,8 +42,17 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
       }
     }
 
+    const selectedSubscription = subscriptions?.find(sub => sub.id === selectedId)
+
+    if (!selectedSubscription) {
+      return {
+        label: t('pluginTrigger.subscription.subscriptionRemoved'),
+        color: 'red' as const,
+      }
+    }
+
     return {
-      label: subscriptions?.find(sub => sub.id === selectedId)?.name || t('pluginTrigger.subscription.selectPlaceholder'),
+      label: selectedSubscription.name,
       color: 'green' as const,
     }
   }, [selectedId, subscriptions, t, isOpen])
