@@ -65,5 +65,7 @@ def get_session_maker() -> sessionmaker[Session]:
 def init_app(app: DifyApp) -> None:
     db.init_app(app)
     global _session_maker
-    _session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+    # Ensure we access db.engine within an application context
+    with app.app_context():
+        _session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     _setup_gevent_compatibility()

@@ -11,7 +11,7 @@ from controllers.mcp import mcp_ns
 from core.app.app_config.entities import VariableEntity
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import handle_mcp_request
-from extensions.ext_database import get_session_maker
+from extensions.ext_database import db, get_session_maker
 from libs import helper
 from models.model import App, AppMCPServer, AppMode, EndUser
 
