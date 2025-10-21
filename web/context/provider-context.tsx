@@ -27,7 +27,7 @@ import {
   useEducationStatus,
 } from '@/service/use-education'
 import { noop } from 'lodash-es'
-import { setZendeskConversationFields, setZendeskWidgetVisibility } from '@/app/components/base/zendesk/utils'
+import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
 
 type ProviderContextState = {
@@ -203,7 +203,7 @@ export const ProviderContextProvider = ({
         id: ZENDESK_FIELD_IDS.PLAN,
         value: `${plan.type}-plan`,
       }])
-      setZendeskWidgetVisibility(plan.type !== Plan.sandbox)
+      // setZendeskWidgetVisibility(plan.type !== Plan.sandbox)
     }
   }, [plan.type])
   // #endregion Zendesk conversation fields

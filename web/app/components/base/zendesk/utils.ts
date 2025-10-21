@@ -26,3 +26,8 @@ export const setZendeskWidgetVisibility = (visible: boolean) => {
   if (!IS_CE_EDITION && window.zE)
     window.zE('messenger', visible ? 'show' : 'hide')
 }
+
+export const toggleZendeskWindow = (open: boolean) => {
+  if (!IS_CE_EDITION && window.zE)
+    window.zE('messenger', open ? 'open' : 'close')
+}
