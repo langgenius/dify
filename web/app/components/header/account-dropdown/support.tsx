@@ -72,7 +72,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                         className={cn(itemClassName, 'group justify-between',
                           'data-[active]:bg-state-base-hover',
                         )}
-                        href={mailToSupport(userProfile.email, plan.type, langGeniusVersionInfo.current_version)}
+                        href={mailToSupport(userProfile.email, plan.type, langGeniusVersionInfo?.current_version)}
                         target='_blank' rel='noopener noreferrer'>
                         <RiMailSendLine className='size-4 shrink-0 text-text-tertiary' />
                         <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.emailSupport')}</div>
