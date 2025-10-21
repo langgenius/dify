@@ -1,7 +1,7 @@
 import { LoroDoc } from 'loro-crdt'
 import { CollaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { BlockEnum } from '@/app/components/workflow/types'
-import type { Node } from '@/app/components/workflow/types'
+import type { Edge, Node } from '@/app/components/workflow/types'
 
 const NODE_ID = '1760342909316'
 
@@ -361,5 +361,168 @@ describe('CollaborationManager syncNodes', () => {
 
     const final = (parameterManager.getNodes() as Node[]).find(node => node.id === PARAM_NODE_ID)
     expect(getParameters(final!)).toEqual(editedParameters)
+  })
+
+  it('handles nodes without data gracefully', () => {
+    const emptyNode: Node = {
+      id: 'empty-node',
+      type: 'custom',
+      position: { x: 0, y: 0 },
+      data: undefined as any,
+    }
+
+    ;(manager as any).syncNodes([], [deepClone(emptyNode)])
+
+    const stored = (manager.getNodes() as Node[]).find(node => node.id === 'empty-node')
+    expect(stored).toBeDefined()
+    expect(stored?.data).toEqual({})
+  })
+
+  it('preserves CRDT list instances when synchronizing parsed state back into the manager', () => {
+    const promptManager = new CollaborationManager()
+    const doc = new LoroDoc()
+    ;(promptManager as any).doc = doc
+    ;(promptManager as any).nodesMap = doc.getMap('nodes')
+    ;(promptManager as any).edgesMap = doc.getMap('edges')
+
+    const base = createLLMNodeSnapshot([
+      { id: 'system', role: 'system', text: 'base' },
+    ])
+    ;(promptManager as any).syncNodes([], [deepClone(base)])
+
+    const storedBefore = promptManager.getNodes().find(node => node.id === LLM_NODE_ID)
+    const firstTemplate = (storedBefore?.data as any).prompt_template?.[0]
+    expect(firstTemplate?.text).toBe('base')
+
+    // simulate consumer mutating the plain JSON array and syncing back
+    const mutatedNode = deepClone(storedBefore!)
+    mutatedNode.data.prompt_template.push({
+      id: 'user',
+      role: 'user',
+      text: 'mutated',
+    })
+
+    ;(promptManager as any).syncNodes([storedBefore], [mutatedNode])
+
+    const storedAfter = promptManager.getNodes().find(node => node.id === LLM_NODE_ID)
+    const templatesAfter = (storedAfter?.data as any).prompt_template
+    expect(Array.isArray(templatesAfter)).toBe(true)
+    expect(templatesAfter).toHaveLength(2)
+  })
+
+  it('reuses CRDT list when syncing parameters repeatedly', () => {
+    const parameterManager = new CollaborationManager()
+    const doc = new LoroDoc()
+    ;(parameterManager as any).doc = doc
+    ;(parameterManager as any).nodesMap = doc.getMap('nodes')
+    ;(parameterManager as any).edgesMap = doc.getMap('edges')
+
+    const initialParameters: ParameterItem[] = [
+      { description: 'desc', name: 'param', required: false, type: 'string' },
+    ]
+    const node = createParameterExtractorNodeSnapshot(initialParameters)
+    ;(parameterManager as any).syncNodes([], [deepClone(node)])
+
+    const stored = parameterManager.getNodes().find(n => n.id === PARAM_NODE_ID)!
+    const mutatedNode = deepClone(stored)
+    mutatedNode.data.parameters[0].description = 'updated'
+
+    ;(parameterManager as any).syncNodes([stored], [mutatedNode])
+
+    const storedAfter = parameterManager.getNodes().find(n => n.id === PARAM_NODE_ID)!
+    const params = (storedAfter.data as any).parameters
+    expect(params).toHaveLength(1)
+    expect(params[0].description).toBe('updated')
+  })
+
+  it('filters out transient/private data keys while keeping allowlisted ones', () => {
+    const nodeWithPrivate: Node = {
+      id: 'private-node',
+      type: 'custom',
+      position: { x: 0, y: 0 },
+      data: {
+        type: BlockEnum.Start,
+        _foo: 'should disappear',
+        _children: ['child-a'],
+        selected: true,
+        variables: [],
+      },
+    }
+
+    ;(manager as any).syncNodes([], [deepClone(nodeWithPrivate)])
+
+    const stored = (manager.getNodes() as Node[]).find(node => node.id === 'private-node')!
+    expect((stored.data as any)._foo).toBeUndefined()
+    expect((stored.data as any)._children).toEqual(['child-a'])
+    expect((stored.data as any).selected).toBeUndefined()
+  })
+
+  it('removes list fields when they are omitted in the update snapshot', () => {
+    const baseNode = createNodeSnapshot(['alpha'])
+    ;(manager as any).syncNodes([], [deepClone(baseNode)])
+
+    const withoutVariables: Node = {
+      ...deepClone(baseNode),
+      data: {
+        ...deepClone(baseNode).data,
+      },
+    }
+    delete (withoutVariables.data as any).variables
+
+    ;(manager as any).syncNodes([deepClone(baseNode)], [withoutVariables])
+
+    const stored = (manager.getNodes() as Node[]).find(node => node.id === NODE_ID)!
+    expect((stored.data as any).variables).toBeUndefined()
+  })
+
+  it('treats non-array list inputs as empty lists during synchronization', () => {
+    const promptManager = new CollaborationManager()
+    const doc = new LoroDoc()
+    ;(promptManager as any).doc = doc
+    ;(promptManager as any).nodesMap = doc.getMap('nodes')
+    ;(promptManager as any).edgesMap = doc.getMap('edges')
+
+    const nodeWithInvalidTemplate = createLLMNodeSnapshot([] as any)
+    ;(promptManager as any).syncNodes([], [deepClone(nodeWithInvalidTemplate)])
+
+    const mutated = deepClone(nodeWithInvalidTemplate)
+    ;(mutated.data as any).prompt_template = 'not-an-array'
+
+    ;(promptManager as any).syncNodes([deepClone(nodeWithInvalidTemplate)], [mutated])
+
+    const stored = promptManager.getNodes().find(node => node.id === LLM_NODE_ID)!
+    expect(Array.isArray((stored.data as any).prompt_template)).toBe(true)
+    expect((stored.data as any).prompt_template).toHaveLength(0)
+  })
+
+  it('updates edges map when edges are added, modified, and removed', () => {
+    const edgeManager = new CollaborationManager()
+    const doc = new LoroDoc()
+    ;(edgeManager as any).doc = doc
+    ;(edgeManager as any).nodesMap = doc.getMap('nodes')
+    ;(edgeManager as any).edgesMap = doc.getMap('edges')
+
+    const edge: Edge = {
+      id: 'edge-1',
+      source: 'node-a',
+      target: 'node-b',
+      type: 'default',
+      data: { label: 'initial' },
+    } as Edge
+
+    ;(edgeManager as any).setEdges([], [edge])
+    expect(edgeManager.getEdges()).toHaveLength(1)
+    expect((edgeManager.getEdges()[0].data as any).label).toBe('initial')
+
+    const updatedEdge: Edge = {
+      ...edge,
+      data: { label: 'updated' },
+    }
+    ;(edgeManager as any).setEdges([edge], [updatedEdge])
+    expect(edgeManager.getEdges()).toHaveLength(1)
+    expect((edgeManager.getEdges()[0].data as any).label).toBe('updated')
+
+    ;(edgeManager as any).setEdges([updatedEdge], [])
+    expect(edgeManager.getEdges()).toHaveLength(0)
   })
 })
