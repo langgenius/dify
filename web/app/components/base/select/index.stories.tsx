@@ -33,6 +33,11 @@ const meta = {
       description: 'Hide check icon on selected item',
     },
   },
+  args: {
+    onSelect: (item) => {
+      console.log('Selected:', item)
+    },
+  },
 } satisfies Meta<typeof SimpleSelect>
 
 export default meta
@@ -87,6 +92,7 @@ export const Default: Story = {
   args: {
     placeholder: 'Select a fruit...',
     defaultValue: 'apple',
+    items: [],
   },
 }
 
@@ -96,6 +102,7 @@ export const WithPlaceholder: Story = {
   args: {
     placeholder: 'Choose an option...',
     defaultValue: '',
+    items: [],
   },
 }
 
@@ -106,6 +113,7 @@ export const Disabled: Story = {
     placeholder: 'Select a fruit...',
     defaultValue: 'banana',
     disabled: true,
+    items: [],
   },
 }
 
@@ -116,6 +124,7 @@ export const NotClearable: Story = {
     placeholder: 'Select a fruit...',
     defaultValue: 'cherry',
     notClearable: true,
+    items: [],
   },
 }
 
@@ -126,6 +135,7 @@ export const HideChecked: Story = {
     placeholder: 'Select a fruit...',
     defaultValue: 'apple',
     hideChecked: true,
+    items: [],
   },
 }
 
@@ -153,7 +163,8 @@ const WithSearchDemo = () => {
 
 export const WithSearch: Story = {
   render: () => <WithSearchDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // PortalSelect
 const PortalSelectVariantDemo = () => {
@@ -179,7 +190,8 @@ const PortalSelectVariantDemo = () => {
 
 export const PortalSelectVariant: Story = {
   render: () => <PortalSelectVariantDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Custom render option
 const CustomRenderOptionDemo = () => {
@@ -215,7 +227,8 @@ const CustomRenderOptionDemo = () => {
 
 export const CustomRenderOption: Story = {
   render: () => <CustomRenderOptionDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Loading state
 export const LoadingState: Story = {
@@ -232,7 +245,8 @@ export const LoadingState: Story = {
       </div>
     )
   },
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Form field
 const FormFieldDemo = () => {
@@ -297,7 +311,8 @@ const FormFieldDemo = () => {
 
 export const FormField: Story = {
   render: () => <FormFieldDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Filter selector
 const FilterSelectorDemo = () => {
@@ -359,7 +374,8 @@ const FilterSelectorDemo = () => {
 
 export const FilterSelector: Story = {
   render: () => <FilterSelectorDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Version selector with badge
 const VersionSelectorDemo = () => {
@@ -398,7 +414,8 @@ const VersionSelectorDemo = () => {
 
 export const VersionSelector: Story = {
   render: () => <VersionSelectorDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Settings dropdown
 const SettingsDropdownDemo = () => {
@@ -447,7 +464,8 @@ const SettingsDropdownDemo = () => {
 
 export const SettingsDropdown: Story = {
   render: () => <SettingsDropdownDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Comparison of variants
 const VariantComparisonDemo = () => {
@@ -504,7 +522,8 @@ const VariantComparisonDemo = () => {
 
 export const VariantComparison: Story = {
   render: () => <VariantComparisonDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Interactive playground
 const PlaygroundDemo = () => {
@@ -524,4 +543,5 @@ const PlaygroundDemo = () => {
 
 export const Playground: Story = {
   render: () => <PlaygroundDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
