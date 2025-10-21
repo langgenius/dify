@@ -122,7 +122,7 @@ const Flowchart = (props: FlowchartProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartId = useRef(`mermaid-chart-${Math.random().toString(36).slice(2, 11)}`).current
   const [isLoading, setIsLoading] = useState(true)
-  const renderTimeoutRef = useRef<NodeJS.Timeout>()
+  const renderTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const [errMsg, setErrMsg] = useState('')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
