@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 import app
 from configs import dify_config
+from core.trigger.utils.locks import build_trigger_refresh_lock_keys
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.trigger import TriggerSubscription
@@ -35,11 +36,6 @@ def _build_due_filter(now_ts: int):
     return or_(credential_due, subscription_due)
 
 
-def _lock_keys(rows: Sequence[tuple[str, str]]) -> list[str]:
-    """Generate redis lock keys for rows as (tenant_id, subscription_id)."""
-    return [f"trigger_provider_refresh_lock:{tenant_id}_{sid}" for tenant_id, sid in rows]
-
-
 def _acquire_locks(keys: Iterable[str], ttl_seconds: int) -> list[bool]:
     """Attempt to acquire locks in a single pipelined round-trip.
 
@@ -57,17 +53,15 @@ def trigger_provider_refresh() -> None:
     """
     Scan due trigger subscriptions and enqueue refresh tasks with in-flight locks.
     """
-    now = _now_ts()
+    now: int = _now_ts()
 
-    batch_size = int(dify_config.TRIGGER_PROVIDER_REFRESH_BATCH_SIZE)
-    lock_ttl = max(
-        300,
-        int(dify_config.TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS),
-    )
+    batch_size: int = int(dify_config.TRIGGER_PROVIDER_REFRESH_BATCH_SIZE)
+    lock_ttl: int = max(300, int(dify_config.TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS))
 
     with Session(db.engine, expire_on_commit=False) as session:
         filter: ColumnElement[bool] = _build_due_filter(now_ts=now)
-        total_due: int = session.scalar(statement=select(func.count()).where(filter)) or 0
+        total_due: int = int(session.scalar(statement=select(func.count()).where(filter)) or 0)
+        logger.info("Trigger refresh scan start: due=%d", total_due)
         if total_due == 0:
             return
 
@@ -82,17 +76,29 @@ def trigger_provider_refresh() -> None:
                 .limit(batch_size)
             ).all()
             if not subscription_rows:
+                logger.debug("Trigger refresh page %d/%d empty", page + 1, pages)
                 continue
 
             subscriptions: list[tuple[str, str]] = [
                 (str(tenant_id), str(subscription_id)) for tenant_id, subscription_id in subscription_rows
             ]
-            lock_keys: list[str] = _lock_keys(subscriptions)
+            lock_keys: list[str] = build_trigger_refresh_lock_keys(subscriptions)
             acquired: list[bool] = _acquire_locks(keys=lock_keys, ttl_seconds=lock_ttl)
 
+            enqueued: int = 0
             for (tenant_id, subscription_id), is_locked in zip(subscriptions, acquired):
                 if not is_locked:
                     continue
                 trigger_subscription_refresh.delay(tenant_id=tenant_id, subscription_id=subscription_id)
+                enqueued += 1
 
-    logger.info("Trigger provider refresh queued for due subscriptions: %d", total_due)
+            logger.info(
+                "Trigger refresh page %d/%d: scanned=%d locks_acquired=%d enqueued=%d",
+                page + 1,
+                pages,
+                len(subscriptions),
+                sum(1 for x in acquired if x),
+                enqueued,
+            )
+
+    logger.info("Trigger refresh scan done: due=%d", total_due)
