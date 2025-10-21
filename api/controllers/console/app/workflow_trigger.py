@@ -33,7 +33,7 @@ class WebhookTriggerApi(Resource):
         parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
         args = parser.parse_args()
 
-        node_id = str(args.get["node_id"])
+        node_id = str(args["node_id"])
 
         with Session(db.engine) as session:
             # Get webhook trigger for this app and node
