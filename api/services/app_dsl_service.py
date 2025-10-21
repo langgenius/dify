@@ -7,7 +7,7 @@ from enum import StrEnum
 from urllib.parse import urlparse
 from uuid import uuid4
 
-import yaml  # type: ignore
+import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging import version
@@ -564,7 +564,7 @@ class AppDslService:
         else:
             cls._append_model_config_export_data(export_data, app_model)
 
-        return yaml.dump(export_data, allow_unicode=True)  # type: ignore
+        return yaml.dump(export_data, allow_unicode=True)
 
     @classmethod
     def _append_workflow_export_data(
