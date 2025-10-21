@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 import pytest
-from tos import TosClientV2  # type: ignore
+from tos import TosClientV2
 
 from extensions.storage.volcengine_tos_storage import VolcengineTosStorage
 from tests.unit_tests.oss.__mock.base import (
