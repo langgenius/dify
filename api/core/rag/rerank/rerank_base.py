@@ -22,4 +22,4 @@ class BaseRerankRunner(ABC):
         :param user: unique user id if needed
         :return:
         """
-        raise NotImplementedError
+        raise NotImplementedError()

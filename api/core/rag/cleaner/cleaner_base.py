@@ -8,4 +8,4 @@ class BaseCleaner(ABC):
 
     @abstractmethod
     def clean(self, content: str):
-        raise NotImplementedError
+        raise NotImplementedError()

@@ -57,7 +57,7 @@ class RemoteFileUploadApi(Resource):
         file_info = helpers.guess_file_info_from_response(resp)
 
         if not FileService.is_file_size_within_limit(extension=file_info.extension, file_size=file_info.size):
-            raise FileTooLargeError
+            raise FileTooLargeError()
 
         content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url).content
 

@@ -9,7 +9,7 @@ class RemoteSettingsSource:
         pass
 
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def prepare_field_value(self, field_name: str, field: FieldInfo, value: Any, value_is_complex: bool):
         return value

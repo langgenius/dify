@@ -12,42 +12,42 @@ class BaseVector(ABC):
 
     @abstractmethod
     def get_type(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def text_exists(self, id: str) -> bool:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def delete_by_ids(self, ids: list[str]):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def get_ids_by_metadata_field(self, key: str, value: str):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def delete_by_metadata_field(self, key: str, value: str):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def delete(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:
         for text in texts.copy():

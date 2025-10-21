@@ -6,12 +6,12 @@ class PipelineTemplateRetrievalBase(ABC):
 
     @abstractmethod
     def get_pipeline_templates(self, language: str) -> dict:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def get_pipeline_template_detail(self, template_id: str) -> dict | None:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def get_type(self) -> str:
-        raise NotImplementedError
+        raise NotImplementedError()

@@ -9,27 +9,27 @@ class BaseStorage(ABC):
 
     @abstractmethod
     def save(self, filename, data):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def load_once(self, filename: str) -> bytes:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def load_stream(self, filename: str) -> Generator:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def download(self, filename, target_filepath):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def exists(self, filename):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def delete(self, filename):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def scan(self, path, files=True, directories=False) -> list[str]:
         """

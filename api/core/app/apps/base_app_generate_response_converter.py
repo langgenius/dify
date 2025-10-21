@@ -40,26 +40,26 @@ class AppGenerateResponseConverter(ABC):
     @classmethod
     @abstractmethod
     def convert_blocking_full_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @classmethod
     @abstractmethod
     def convert_blocking_simple_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @classmethod
     @abstractmethod
     def convert_stream_full_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
     ) -> Generator[dict | str, None, None]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @classmethod
     @abstractmethod
     def convert_stream_simple_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
     ) -> Generator[dict | str, None, None]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @classmethod
     def _get_simple_metadata(cls, metadata: dict[str, Any]):

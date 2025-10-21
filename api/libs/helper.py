@@ -125,7 +125,7 @@ def timestamp_value(timestamp):
     try:
         int_timestamp = int(timestamp)
         if int_timestamp < 0:
-            raise ValueError
+            raise ValueError()
         return int_timestamp
     except ValueError:
         error = f"{timestamp} is not a valid timestamp."

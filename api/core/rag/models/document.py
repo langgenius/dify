@@ -109,7 +109,7 @@ class BaseDocumentTransformer(ABC):
                 async def atransform_documents(
                     self, documents: Sequence[Document], **kwargs: Any
                 ) -> Sequence[Document]:
-                    raise NotImplementedError
+                    raise NotImplementedError()
 
     """
 

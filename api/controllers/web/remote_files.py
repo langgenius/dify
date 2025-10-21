@@ -114,7 +114,7 @@ class RemoteFileUploadApi(WebApiResource):
         file_info = helpers.guess_file_info_from_response(resp)
 
         if not FileService.is_file_size_within_limit(extension=file_info.extension, file_size=file_info.size):
-            raise FileTooLargeError
+            raise FileTooLargeError()
 
         content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url).content
 
@@ -129,7 +129,7 @@ class RemoteFileUploadApi(WebApiResource):
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
-            raise UnsupportedFileTypeError
+            raise UnsupportedFileTypeError()
 
         return {
             "id": upload_file.id,

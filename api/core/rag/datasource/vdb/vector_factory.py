@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class AbstractVectorFactory(ABC):
     @abstractmethod
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaseVector:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @staticmethod
     def gen_index_struct_dict(vector_type: VectorType, collection_name: str):

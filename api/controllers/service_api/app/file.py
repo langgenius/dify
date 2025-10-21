@@ -50,7 +50,7 @@ class FileApi(Resource):
             raise UnsupportedFileTypeError()
 
         if not file.filename:
-            raise FilenameNotExistsError
+            raise FilenameNotExistsError()
 
         try:
             upload_file = FileService(db.engine).upload_file(

@@ -13,27 +13,27 @@ class BaseKeyword(ABC):
 
     @abstractmethod
     def create(self, texts: list[Document], **kwargs) -> BaseKeyword:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def add_texts(self, texts: list[Document], **kwargs):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def text_exists(self, id: str) -> bool:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def delete_by_ids(self, ids: list[str]):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def delete(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def search(self, query: str, **kwargs: Any) -> list[Document]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:
         for text in texts.copy():

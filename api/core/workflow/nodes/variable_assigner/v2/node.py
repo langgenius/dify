@@ -216,7 +216,7 @@ class VariableAssignerNode(Node):
                 conversation_id = self.graph_runtime_state.variable_pool.get(["sys", "conversation_id"])
                 if not conversation_id:
                     if self.invoke_from != InvokeFrom.DEBUGGER:
-                        raise ConversationIDNotFoundError
+                        raise ConversationIDNotFoundError()
                 else:
                     conversation_id = conversation_id.value
                     conv_var_updater.update(

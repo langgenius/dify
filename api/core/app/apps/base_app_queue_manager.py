@@ -139,7 +139,7 @@ class AppQueueManager:
         :param pub_from:
         :return:
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @classmethod
     def set_stop_flag(cls, task_id: str, invoke_from: InvokeFrom, user_id: str):

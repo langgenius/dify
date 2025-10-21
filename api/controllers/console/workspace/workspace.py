@@ -219,7 +219,7 @@ class WebappLogoWorkspaceApi(Resource):
         # get file from request
         file = request.files["file"]
         if not file.filename:
-            raise FilenameNotExistsError
+            raise FilenameNotExistsError()
 
         extension = file.filename.split(".")[-1]
         if extension.lower() not in {"svg", "png"}:

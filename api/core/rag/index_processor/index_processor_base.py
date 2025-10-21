@@ -25,27 +25,27 @@ class BaseIndexProcessor(ABC):
 
     @abstractmethod
     def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def transform(self, documents: list[Document], **kwargs) -> list[Document]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True, **kwargs):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def format_preview(self, chunks: Any) -> Mapping[str, Any]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def retrieve(
@@ -57,7 +57,7 @@ class BaseIndexProcessor(ABC):
         score_threshold: float,
         reranking_model: dict,
     ) -> list[Document]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def _get_splitter(
         self,

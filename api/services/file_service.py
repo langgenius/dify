@@ -67,7 +67,7 @@ class FileService:
 
         # check if the file size is exceeded
         if not FileService.is_file_size_within_limit(extension=extension, file_size=file_size):
-            raise FileTooLargeError
+            raise FileTooLargeError()
 
         # generate file key
         file_uuid = str(uuid.uuid4())

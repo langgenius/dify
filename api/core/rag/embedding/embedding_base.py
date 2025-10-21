@@ -7,17 +7,17 @@ class Embeddings(ABC):
     @abstractmethod
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed search docs."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def embed_query(self, text: str) -> list[float]:
         """Embed query text."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         """Asynchronous Embed search docs."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     async def aembed_query(self, text: str) -> list[float]:
         """Asynchronous Embed query text."""
-        raise NotImplementedError
+        raise NotImplementedError()
