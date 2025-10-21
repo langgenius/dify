@@ -24,6 +24,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import cast
 
+import sqlalchemy as sa
 from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
@@ -281,3 +282,214 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
         logger.info("Total deleted %s workflow runs for app %s", total_deleted, app_id)
         return total_deleted
+
+    def get_daily_runs_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[dict]:
+        """
+        Get daily runs statistics using raw SQL for optimal performance.
+        """
+        sql_query = """SELECT
+    DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+    COUNT(id) AS runs
+FROM
+    workflow_runs
+WHERE
+    tenant_id = :tenant_id
+    AND app_id = :app_id
+    AND triggered_from = :triggered_from"""
+        
+        arg_dict = {
+            "tz": timezone,
+            "tenant_id": tenant_id,
+            "app_id": app_id,
+            "triggered_from": triggered_from,
+        }
+
+        if start_date:
+            sql_query += " AND created_at >= :start_date"
+            arg_dict["start_date"] = start_date
+
+        if end_date:
+            sql_query += " AND created_at < :end_date"
+            arg_dict["end_date"] = end_date
+
+        sql_query += " GROUP BY date ORDER BY date"
+
+        response_data = []
+        with self._session_maker() as session:
+            rs = session.execute(sa.text(sql_query), arg_dict)
+            for row in rs:
+                response_data.append({"date": str(row.date), "runs": row.runs})
+
+        return response_data
+
+    def get_daily_terminals_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[dict]:
+        """
+        Get daily terminals statistics using raw SQL for optimal performance.
+        """
+        sql_query = """SELECT
+    DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+    COUNT(DISTINCT created_by) AS terminal_count
+FROM
+    workflow_runs
+WHERE
+    tenant_id = :tenant_id
+    AND app_id = :app_id
+    AND triggered_from = :triggered_from"""
+        
+        arg_dict = {
+            "tz": timezone,
+            "tenant_id": tenant_id,
+            "app_id": app_id,
+            "triggered_from": triggered_from,
+        }
+
+        if start_date:
+            sql_query += " AND created_at >= :start_date"
+            arg_dict["start_date"] = start_date
+
+        if end_date:
+            sql_query += " AND created_at < :end_date"
+            arg_dict["end_date"] = end_date
+
+        sql_query += " GROUP BY date ORDER BY date"
+
+        response_data = []
+        with self._session_maker() as session:
+            rs = session.execute(sa.text(sql_query), arg_dict)
+            for row in rs:
+                response_data.append({"date": str(row.date), "terminal_count": row.terminal_count})
+
+        return response_data
+
+    def get_daily_token_cost_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[dict]:
+        """
+        Get daily token cost statistics using raw SQL for optimal performance.
+        """
+        sql_query = """SELECT
+    DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+    SUM(total_tokens) AS token_count
+FROM
+    workflow_runs
+WHERE
+    tenant_id = :tenant_id
+    AND app_id = :app_id
+    AND triggered_from = :triggered_from"""
+        
+        arg_dict = {
+            "tz": timezone,
+            "tenant_id": tenant_id,
+            "app_id": app_id,
+            "triggered_from": triggered_from,
+        }
+
+        if start_date:
+            sql_query += " AND created_at >= :start_date"
+            arg_dict["start_date"] = start_date
+
+        if end_date:
+            sql_query += " AND created_at < :end_date"
+            arg_dict["end_date"] = end_date
+
+        sql_query += " GROUP BY date ORDER BY date"
+
+        response_data = []
+        with self._session_maker() as session:
+            rs = session.execute(sa.text(sql_query), arg_dict)
+            for row in rs:
+                response_data.append(
+                    {
+                        "date": str(row.date),
+                        "token_count": row.token_count,
+                    }
+                )
+
+        return response_data
+
+    def get_average_app_interaction_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[dict]:
+        """
+        Get average app interaction statistics using raw SQL for optimal performance.
+        """
+        sql_query = """SELECT
+    AVG(sub.interactions) AS interactions,
+    sub.date
+FROM
+    (
+        SELECT
+            DATE(DATE_TRUNC('day', c.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+            c.created_by,
+            COUNT(c.id) AS interactions
+        FROM
+            workflow_runs c
+        WHERE
+            c.tenant_id = :tenant_id
+            AND c.app_id = :app_id
+            AND c.triggered_from = :triggered_from
+            {{start}}
+            {{end}}
+        GROUP BY
+            date, c.created_by
+    ) sub
+GROUP BY
+    sub.date"""
+        
+        arg_dict = {
+            "tz": timezone,
+            "tenant_id": tenant_id,
+            "app_id": app_id,
+            "triggered_from": triggered_from,
+        }
+
+        if start_date:
+            sql_query = sql_query.replace("{{start}}", " AND c.created_at >= :start_date")
+            arg_dict["start_date"] = start_date
+        else:
+            sql_query = sql_query.replace("{{start}}", "")
+
+        if end_date:
+            sql_query = sql_query.replace("{{end}}", " AND c.created_at < :end_date")
+            arg_dict["end_date"] = end_date
+        else:
+            sql_query = sql_query.replace("{{end}}", "")
+
+        response_data = []
+        with self._session_maker() as session:
+            rs = session.execute(sa.text(sql_query), arg_dict)
+            for row in rs:
+                from decimal import Decimal
+                response_data.append(
+                    {"date": str(row.date), "interactions": float(row.interactions.quantize(Decimal("0.01")))}
+                )
+
+        return response_data

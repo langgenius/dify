@@ -218,3 +218,119 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
             and ensure proper data retention policies are followed.
         """
         ...
+
+    def get_daily_runs_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[dict]:
+        """
+        Get daily runs statistics.
+
+        Retrieves daily workflow runs count grouped by date for a specific app
+        and trigger source. Used for workflow statistics dashboard.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            app_id: Application identifier
+            triggered_from: Filter by trigger source (e.g., "app-run")
+            start_date: Optional start date filter
+            end_date: Optional end date filter
+            timezone: Timezone for date grouping (default: "UTC")
+
+        Returns:
+            List of dictionaries containing date and runs count:
+            [{"date": "2024-01-01", "runs": 10}, ...]
+        """
+        ...
+
+    def get_daily_terminals_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[dict]:
+        """
+        Get daily terminals statistics.
+
+        Retrieves daily unique terminal count grouped by date for a specific app
+        and trigger source. Used for workflow statistics dashboard.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            app_id: Application identifier
+            triggered_from: Filter by trigger source (e.g., "app-run")
+            start_date: Optional start date filter
+            end_date: Optional end date filter
+            timezone: Timezone for date grouping (default: "UTC")
+
+        Returns:
+            List of dictionaries containing date and terminal count:
+            [{"date": "2024-01-01", "terminal_count": 5}, ...]
+        """
+        ...
+
+    def get_daily_token_cost_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[dict]:
+        """
+        Get daily token cost statistics.
+
+        Retrieves daily total token count grouped by date for a specific app
+        and trigger source. Used for workflow statistics dashboard.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            app_id: Application identifier
+            triggered_from: Filter by trigger source (e.g., "app-run")
+            start_date: Optional start date filter
+            end_date: Optional end date filter
+            timezone: Timezone for date grouping (default: "UTC")
+
+        Returns:
+            List of dictionaries containing date and token count:
+            [{"date": "2024-01-01", "token_count": 1000}, ...]
+        """
+        ...
+
+    def get_average_app_interaction_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[dict]:
+        """
+        Get average app interaction statistics.
+
+        Retrieves daily average interactions per user grouped by date for a specific app
+        and trigger source. Used for workflow statistics dashboard.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            app_id: Application identifier
+            triggered_from: Filter by trigger source (e.g., "app-run")
+            start_date: Optional start date filter
+            end_date: Optional end date filter
+            timezone: Timezone for date grouping (default: "UTC")
+
+        Returns:
+            List of dictionaries containing date and average interactions:
+            [{"date": "2024-01-01", "interactions": 2.5}, ...]
+        """
+        ...
