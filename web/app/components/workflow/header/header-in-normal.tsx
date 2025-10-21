@@ -25,6 +25,7 @@ export type HeaderInNormalProps = {
   components?: {
     left?: React.ReactNode
     middle?: React.ReactNode
+    chatVariableTrigger?: React.ReactNode
   }
   runAndHistoryProps?: RunAndHistoryProps
 }
@@ -69,9 +70,12 @@ const HeaderInNormal = ({
       </div>
       <div className='flex items-center gap-2'>
         {components?.left}
-        <EnvButton disabled={nodesReadOnly} />
         <Divider type='vertical' className='mx-auto h-3.5' />
         <RunAndHistory {...runAndHistoryProps} />
+        <div className='cursor-pointer rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px]'>
+          {components?.chatVariableTrigger}
+          <EnvButton disabled={nodesReadOnly} />
+        </div>
         {components?.middle}
         <VersionHistoryButton onClick={onStartRestoring} />
       </div>

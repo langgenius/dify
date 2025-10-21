@@ -25,6 +25,7 @@ const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
       )}
       disabled={disabled}
       onClick={handleClick}
+      variant='ghost'
     >
       <BubbleX className='h-4 w-4 text-components-button-secondary-text' />
     </Button>
