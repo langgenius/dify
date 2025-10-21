@@ -21,7 +21,7 @@ const ICON_MAP = {
 
 type CloudPlanItemProps = {
   currentPlan: BasicPlan
-  plan: BasicPlan
+  plan: Plan.sandbox | Plan.professional | Plan.team
   planRange: PlanRange
   canPay: boolean
 }

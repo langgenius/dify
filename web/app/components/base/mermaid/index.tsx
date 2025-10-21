@@ -187,7 +187,7 @@ const Flowchart = (props: FlowchartProps) => {
   }, [])
 
   // Update theme when prop changes, but allow internal override.
-  const prevThemeRef = useRef<string>()
+  const prevThemeRef = useRef<string | undefined>(undefined)
   useEffect(() => {
     // Only react if the theme prop from the outside has actually changed.
     if (props.theme && props.theme !== prevThemeRef.current) {
