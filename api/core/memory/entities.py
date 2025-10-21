@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-if TYPE_CHECKING:
-    from core.app.app_config.entities import ModelConfig
+from core.app.app_config.entities import ModelConfig
 
 
 class MemoryScope(StrEnum):
