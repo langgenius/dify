@@ -27,6 +27,7 @@ from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
+from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
@@ -55,7 +56,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         call_depth: int,
         triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
         root_node_id: Optional[str] = None,
-    ) -> Generator[Mapping | str, None, None]: ...
+        layers: Optional[Sequence[GraphEngineLayer]] = None,
+    ) -> Generator[Mapping[str, Any] | str, None, None]: ...
 
     @overload
     def generate(
@@ -70,6 +72,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         call_depth: int,
         triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
         root_node_id: Optional[str] = None,
+        layers: Optional[Sequence[GraphEngineLayer]] = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -85,7 +88,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         call_depth: int,
         triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
         root_node_id: Optional[str] = None,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
+        layers: Optional[Sequence[GraphEngineLayer]] = None,
+    ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]: ...
 
     def generate(
         self,
@@ -99,7 +103,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         call_depth: int = 0,
         triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
         root_node_id: Optional[str] = None,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]:
+        layers: Optional[Sequence[GraphEngineLayer]] = None,
+    ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]:
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
         # parse files
@@ -197,7 +202,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
             root_node_id=root_node_id,
+            layers=layers,
         )
+
+    def resume(self, *, workflow_run_id: str) -> None:
+        """
+        @TBD
+        """
+        pass
 
     def _generate(
         self,
@@ -212,6 +224,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         root_node_id: Optional[str] = None,
+        layers: Optional[Sequence[GraphEngineLayer]] = None,
     ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
         """
         Generate App response.
@@ -250,6 +263,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 "root_node_id": root_node_id,
                 "workflow_execution_repository": workflow_execution_repository,
                 "workflow_node_execution_repository": workflow_node_execution_repository,
+                "layers": layers,
             },
         )
 
@@ -444,6 +458,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         root_node_id: Optional[str] = None,
+        layers: Optional[Sequence[GraphEngineLayer]] = None,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -488,6 +503,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow_execution_repository=workflow_execution_repository,
                 workflow_node_execution_repository=workflow_node_execution_repository,
                 root_node_id=root_node_id,
+                layers=layers,
             )
 
             try:

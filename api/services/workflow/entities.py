@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import AppTriggerType, WorkflowRunTriggeredFrom
 
 
 class AsyncTriggerStatus(StrEnum):
@@ -28,7 +28,8 @@ class TriggerData(BaseModel):
     root_node_id: str
     inputs: Mapping[str, Any]
     files: Sequence[Mapping[str, Any]] = Field(default_factory=list)
-    trigger_type: WorkflowRunTriggeredFrom
+    trigger_type: AppTriggerType
+    trigger_from: WorkflowRunTriggeredFrom
 
     model_config = ConfigDict(use_enum_values=True)
 
@@ -36,24 +37,22 @@ class TriggerData(BaseModel):
 class WebhookTriggerData(TriggerData):
     """Webhook-specific trigger data"""
 
-    trigger_type: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.WEBHOOK
-    webhook_url: str
-    headers: Mapping[str, str] = Field(default_factory=dict)
-    method: str = "POST"
+    trigger_type: AppTriggerType = AppTriggerType.TRIGGER_WEBHOOK
+    trigger_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.WEBHOOK
 
 
 class ScheduleTriggerData(TriggerData):
     """Schedule-specific trigger data"""
 
-    trigger_type: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.SCHEDULE
-    schedule_id: str
-    cron_expression: str
+    trigger_type: AppTriggerType = AppTriggerType.TRIGGER_SCHEDULE
+    trigger_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.SCHEDULE
 
 
 class PluginTriggerData(TriggerData):
     """Plugin webhook trigger data"""
 
-    trigger_type: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.PLUGIN
+    trigger_type: AppTriggerType = AppTriggerType.TRIGGER_PLUGIN
+    trigger_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.PLUGIN
     plugin_id: str
     endpoint_id: str
 
@@ -125,3 +124,21 @@ class TriggerLogResponse(BaseModel):
     finished_at: Optional[str] = None
 
     model_config = ConfigDict(use_enum_values=True)
+
+
+class WorkflowScheduleCFSPlanEntity(BaseModel):
+    """
+    CFS plan entity.
+    Ensure each workflow run inside Dify is associated with a CFS(Completely Fair Scheduler) plan.
+
+    """
+
+    class Strategy(StrEnum):
+        """
+        CFS plan strategy.
+        """
+
+        TimeSlice = "time-slice"  # time-slice based plan
+
+    schedule_strategy: Strategy
+    granularity: int = Field(default=-1)  # -1 means infinite

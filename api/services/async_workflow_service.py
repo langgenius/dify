@@ -160,9 +160,6 @@ class AsyncWorkflowService:
         else:  # SANDBOX
             task = execute_workflow_sandbox.delay(task_data_dict)  # type: ignore
 
-        if not task:
-            raise ValueError(f"Failed to queue task for queue: {queue_name}")
-
         # 10. Update trigger log with task info
         trigger_log.status = WorkflowTriggerStatus.QUEUED
         trigger_log.celery_task_id = task.id

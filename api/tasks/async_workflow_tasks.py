@@ -5,7 +5,6 @@ These tasks handle workflow execution for different subscription tiers
 with appropriate retry policies and error handling.
 """
 
-import json
 from datetime import UTC, datetime
 from typing import Any
 
@@ -13,8 +12,9 @@ from celery import shared_task
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.app.engine_layers.timeslice_layer import TimesliceLayer
+from core.app.engine_layers.trigger_post_layer import TriggerPostLayer
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from models.account import Account
@@ -24,57 +24,64 @@ from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.errors.app import WorkflowNotFoundError
-from services.workflow.entities import AsyncTriggerExecutionResult, AsyncTriggerStatus, TriggerData, WorkflowTaskData
-
-# Determine queue names based on edition
-if dify_config.EDITION == "CLOUD":
-    # Cloud edition: separate queues for different tiers
-    _professional_queue = "workflow_professional"
-    _team_queue = "workflow_team"
-    _sandbox_queue = "workflow_sandbox"
-else:
-    # Community edition: single workflow queue (not dataset)
-    _professional_queue = "workflow"
-    _team_queue = "workflow"
-    _sandbox_queue = "workflow"
-
-# Define constants
-PROFESSIONAL_QUEUE = _professional_queue
-TEAM_QUEUE = _team_queue
-SANDBOX_QUEUE = _sandbox_queue
+from services.workflow.entities import (
+    TriggerData,
+    WorkflowScheduleCFSPlanEntity,
+    WorkflowTaskData,
+)
+from tasks.workflow_cfs_scheduler.cfs_scheduler import TriggerCFSPlanScheduler, TriggerWorkflowCFSPlanEntity
+from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
 
 
-@shared_task(queue=PROFESSIONAL_QUEUE)
-def execute_workflow_professional(task_data_dict: dict[str, Any]) -> dict[str, Any]:
+@shared_task(queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE)
+def execute_workflow_professional(task_data_dict: dict[str, Any]):
     """Execute workflow for professional tier with highest priority"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    return _execute_workflow_common(task_data).model_dump()
+    cfs_plan_scheduler_entity = TriggerWorkflowCFSPlanEntity(
+        queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE, schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice
+    )
+    _execute_workflow_common(
+        task_data,
+        TriggerCFSPlanScheduler(plan=cfs_plan_scheduler_entity),
+        cfs_plan_scheduler_entity,
+    )
 
 
-@shared_task(queue=TEAM_QUEUE)
-def execute_workflow_team(task_data_dict: dict[str, Any]) -> dict[str, Any]:
+@shared_task(queue=AsyncWorkflowQueue.TEAM_QUEUE)
+def execute_workflow_team(task_data_dict: dict[str, Any]):
     """Execute workflow for team tier"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    return _execute_workflow_common(task_data).model_dump()
+    cfs_plan_scheduler_entity = TriggerWorkflowCFSPlanEntity(
+        queue=AsyncWorkflowQueue.TEAM_QUEUE, schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice
+    )
+    _execute_workflow_common(
+        task_data,
+        TriggerCFSPlanScheduler(plan=cfs_plan_scheduler_entity),
+        cfs_plan_scheduler_entity,
+    )
 
 
-@shared_task(queue=SANDBOX_QUEUE)
-def execute_workflow_sandbox(task_data_dict: dict[str, Any]) -> dict[str, Any]:
+@shared_task(queue=AsyncWorkflowQueue.SANDBOX_QUEUE)
+def execute_workflow_sandbox(task_data_dict: dict[str, Any]):
     """Execute workflow for free tier with lower retry limit"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    return _execute_workflow_common(task_data).model_dump()
+    cfs_plan_scheduler_entity = TriggerWorkflowCFSPlanEntity(
+        queue=AsyncWorkflowQueue.SANDBOX_QUEUE, schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice
+    )
+    _execute_workflow_common(
+        task_data,
+        TriggerCFSPlanScheduler(plan=cfs_plan_scheduler_entity),
+        cfs_plan_scheduler_entity,
+    )
 
 
-def _execute_workflow_common(task_data: WorkflowTaskData) -> AsyncTriggerExecutionResult:
-    """
-    Common workflow execution logic with trigger log updates
+def _execute_workflow_common(
+    task_data: WorkflowTaskData,
+    cfs_plan_scheduler: TriggerCFSPlanScheduler,
+    cfs_plan_scheduler_entity: TriggerWorkflowCFSPlanEntity,
+):
+    """Execute workflow with common logic and trigger log updates."""
 
-    Args:
-        task_data: Validated Pydantic model with task data
-
-    Returns:
-        AsyncTriggerExecutionResult: Pydantic model with execution results
-    """
     # Create a new session for this task
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
@@ -86,11 +93,7 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> AsyncTriggerExecuti
 
         if not trigger_log:
             # This should not happen, but handle gracefully
-            return AsyncTriggerExecutionResult(
-                execution_id=task_data.workflow_trigger_log_id,
-                status=AsyncTriggerStatus.FAILED,
-                error=f"Trigger log not found: {task_data.workflow_trigger_log_id}",
-            )
+            return
 
         # Reconstruct execution data from trigger log
         trigger_data = TriggerData.model_validate_json(trigger_log.trigger_data)
@@ -126,7 +129,7 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> AsyncTriggerExecuti
                 args["workflow_id"] = str(trigger_data.workflow_id)
 
             # Execute the workflow with the trigger type
-            result = generator.generate(
+            generator.generate(
                 app_model=app_model,
                 workflow=workflow,
                 user=user,
@@ -136,38 +139,10 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> AsyncTriggerExecuti
                 call_depth=0,
                 triggered_from=trigger_data.trigger_type,
                 root_node_id=trigger_data.root_node_id,
-            )
-
-            # Calculate elapsed time
-            elapsed_time = (datetime.now(UTC) - start_time).total_seconds()
-
-            # Extract relevant data from result
-            if isinstance(result, dict):
-                workflow_run_id = result.get("workflow_run_id")
-                total_tokens = result.get("total_tokens")
-                outputs = result
-            else:
-                # Handle generator result - collect all data
-                workflow_run_id = None
-                total_tokens = None
-                outputs = {"data": "streaming_result"}
-
-            # Update trigger log with success
-            trigger_log.status = WorkflowTriggerStatus.SUCCEEDED
-            trigger_log.workflow_run_id = workflow_run_id
-            trigger_log.outputs = json.dumps(outputs)
-            trigger_log.elapsed_time = elapsed_time
-            trigger_log.total_tokens = total_tokens
-            trigger_log.finished_at = datetime.now(UTC)
-            trigger_log_repo.update(trigger_log)
-            session.commit()
-
-            return AsyncTriggerExecutionResult(
-                execution_id=trigger_log.id,
-                status=AsyncTriggerStatus.COMPLETED,
-                result=outputs,
-                elapsed_time=elapsed_time,
-                total_tokens=total_tokens,
+                layers=[
+                    TimesliceLayer(cfs_plan_scheduler),
+                    TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id),
+                ],
             )
 
         except Exception as e:
@@ -183,10 +158,6 @@ def _execute_workflow_common(task_data: WorkflowTaskData) -> AsyncTriggerExecuti
 
             # Final failure - no retry logic (simplified like RAG tasks)
             session.commit()
-
-            return AsyncTriggerExecutionResult(
-                execution_id=trigger_log.id, status=AsyncTriggerStatus.FAILED, error=str(e), elapsed_time=elapsed_time
-            )
 
 
 def _get_user(session: Session, trigger_log: WorkflowTriggerLog) -> Account | EndUser:

@@ -21,13 +21,13 @@ from core.workflow.enums import NodeType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
-from models.enums import AppTriggerStatus, AppTriggerType, WorkflowRunTriggeredFrom
+from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
-from services.workflow.entities import TriggerData
+from services.workflow.entities import WebhookTriggerData
 
 logger = logging.getLogger(__name__)
 
@@ -714,11 +714,10 @@ class WebhookService:
                 workflow_inputs = cls.build_workflow_inputs(webhook_data)
 
                 # Create trigger data
-                trigger_data = TriggerData(
+                trigger_data = WebhookTriggerData(
                     app_id=webhook_trigger.app_id,
                     workflow_id=workflow.id,
                     root_node_id=webhook_trigger.node_id,  # Start from the webhook node
-                    trigger_type=WorkflowRunTriggeredFrom.WEBHOOK,
                     inputs=workflow_inputs,
                     tenant_id=webhook_trigger.tenant_id,
                 )

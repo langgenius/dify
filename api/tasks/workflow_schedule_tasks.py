@@ -14,11 +14,10 @@ from core.workflow.nodes.trigger_schedule.exc import (
     TenantOwnerNotFoundError,
 )
 from extensions.ext_database import db
-from models.enums import WorkflowRunTriggeredFrom
 from models.trigger import WorkflowSchedulePlan
 from services.async_workflow_service import AsyncWorkflowService
 from services.trigger.schedule_service import ScheduleService
-from services.workflow.entities import TriggerData
+from services.workflow.entities import ScheduleTriggerData
 
 logger = logging.getLogger(__name__)
 
@@ -57,10 +56,9 @@ def run_schedule_trigger(schedule_id: str) -> None:
             response = AsyncWorkflowService.trigger_workflow_async(
                 session=session,
                 user=tenant_owner,
-                trigger_data=TriggerData(
+                trigger_data=ScheduleTriggerData(
                     app_id=schedule.app_id,
                     root_node_id=schedule.node_id,
-                    trigger_type=WorkflowRunTriggeredFrom.SCHEDULE,
                     inputs=inputs,
                     tenant_id=schedule.tenant_id,
                 ),

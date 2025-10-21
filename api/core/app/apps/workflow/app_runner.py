@@ -1,13 +1,16 @@
 import logging
 import time
+from collections.abc import Sequence
 from typing import Optional, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
+from core.app.engine_layers.suspend_layer import SuspendLayer
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
+from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
@@ -38,6 +41,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         root_node_id: Optional[str] = None,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        layers: Optional[Sequence[GraphEngineLayer]] = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -50,6 +54,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._root_node_id = root_node_id
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._layers = layers or []
 
     def run(self):
         """
@@ -137,7 +142,13 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             trace_manager=self.application_generate_entity.trace_manager,
         )
 
+        suspend_layer = SuspendLayer()
+
         workflow_entry.graph_engine.layer(persistence_layer)
+        workflow_entry.graph_engine.layer(suspend_layer)
+
+        for layer in self._layers:
+            workflow_entry.graph_engine.layer(layer)
 
         generator = workflow_entry.run()
 

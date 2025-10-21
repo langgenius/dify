@@ -23,7 +23,6 @@ from core.trigger.trigger_manager import TriggerManager
 from core.workflow.enums import NodeType
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from extensions.ext_database import db
-from models.enums import WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.provider_ids import TriggerProviderID
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
@@ -199,7 +198,6 @@ def dispatch_triggered_workflow(
                 tenant_id=subscription.tenant_id,
                 workflow_id=workflow.id,
                 root_node_id=plugin_trigger.node_id,
-                trigger_type=WorkflowRunTriggeredFrom.PLUGIN,
                 plugin_id=subscription.provider_id,
                 endpoint_id=subscription.endpoint_id,
                 inputs=invoke_response.variables,
