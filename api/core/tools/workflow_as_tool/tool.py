@@ -5,6 +5,7 @@ from typing import Any
 
 from flask import has_request_context
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.__base.tool import Tool
@@ -179,16 +180,17 @@ class WorkflowTool(Tool):
         """
         get the workflow by app id and version
         """
-        if not version:
-            workflow = (
-                db.session.query(Workflow)
-                .where(Workflow.app_id == app_id, Workflow.version != Workflow.VERSION_DRAFT)
-                .order_by(Workflow.created_at.desc())
-                .first()
-            )
-        else:
-            stmt = select(Workflow).where(Workflow.app_id == app_id, Workflow.version == version)
-            workflow = db.session.scalar(stmt)
+        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+            if not version:
+                stmt = (
+                    select(Workflow)
+                    .where(Workflow.app_id == app_id, Workflow.version != Workflow.VERSION_DRAFT)
+                    .order_by(Workflow.created_at.desc())
+                )
+                workflow = session.scalars(stmt).first()
+            else:
+                stmt = select(Workflow).where(Workflow.app_id == app_id, Workflow.version == version)
+                workflow = session.scalar(stmt)
 
         if not workflow:
             raise ValueError("workflow not found or not published")
@@ -200,7 +202,8 @@ class WorkflowTool(Tool):
         get the app by app id
         """
         stmt = select(App).where(App.id == app_id)
-        app = db.session.scalar(stmt)
+        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+            app = session.scalar(stmt)
         if not app:
             raise ValueError("app not found")
 

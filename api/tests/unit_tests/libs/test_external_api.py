@@ -14,36 +14,36 @@ def _create_api_app():
     api = ExternalApi(bp)
 
     @api.route("/bad-request")
-    class Bad(Resource):  # type: ignore
-        def get(self):  # type: ignore
+    class Bad(Resource):
+        def get(self):
             raise BadRequest("invalid input")
 
     @api.route("/unauth")
-    class Unauth(Resource):  # type: ignore
-        def get(self):  # type: ignore
+    class Unauth(Resource):
+        def get(self):
             raise Unauthorized("auth required")
 
     @api.route("/value-error")
-    class ValErr(Resource):  # type: ignore
-        def get(self):  # type: ignore
+    class ValErr(Resource):
+        def get(self):
             raise ValueError("boom")
 
     @api.route("/quota")
-    class Quota(Resource):  # type: ignore
-        def get(self):  # type: ignore
+    class Quota(Resource):
+        def get(self):
             raise AppInvokeQuotaExceededError("quota exceeded")
 
     @api.route("/general")
-    class Gen(Resource):  # type: ignore
-        def get(self):  # type: ignore
+    class Gen(Resource):
+        def get(self):
             raise RuntimeError("oops")
 
     # Note: We avoid altering default_mediatype to keep normal error paths
 
     # Special 400 message rewrite
     @api.route("/json-empty")
-    class JsonEmpty(Resource):  # type: ignore
-        def get(self):  # type: ignore
+    class JsonEmpty(Resource):
+        def get(self):
             e = BadRequest()
             # Force the specific message the handler rewrites
             e.description = "Failed to decode JSON object: Expecting value: line 1 column 1 (char 0)"
@@ -51,11 +51,11 @@ def _create_api_app():
 
     # 400 mapping payload path
     @api.route("/param-errors")
-    class ParamErrors(Resource):  # type: ignore
-        def get(self):  # type: ignore
+    class ParamErrors(Resource):
+        def get(self):
             e = BadRequest()
             # Coerce a mapping description to trigger param error shaping
-            e.description = {"field": "is required"}  # type: ignore[assignment]
+            e.description = {"field": "is required"}
             raise e
 
     app.register_blueprint(bp, url_prefix="/api")
@@ -105,7 +105,7 @@ def test_external_api_param_mapping_and_quota_and_exc_info_none():
 
     orig_exc_info = ext.sys.exc_info
     try:
-        ext.sys.exc_info = lambda: (None, None, None)  # type: ignore[assignment]
+        ext.sys.exc_info = lambda: (None, None, None)
 
         app = _create_api_app()
         client = app.test_client()

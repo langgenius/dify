@@ -1,7 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
-
 import type { ChatItem } from '../../types'
-import { mockedWorkflowProcess } from './__mocks__/workflowProcess'
 import { markdownContent } from './__mocks__/markdownContent'
 import { markdownContentSVG } from './__mocks__/markdownContentSVG'
 import Answer from '.'
@@ -33,6 +31,11 @@ const mockedBaseChatItem = {
   isAnswer: true,
   content: 'Hello, how can I assist you today?',
 } satisfies ChatItem
+
+const mockedWorkflowProcess = {
+  status: 'succeeded',
+  tracing: [],
+}
 
 export const Basic: Story = {
   args: {
