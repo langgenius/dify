@@ -66,33 +66,12 @@ export class CollaborationManager {
     return typeof dataContainer.getAttached === 'function' ? dataContainer.getAttached() ?? dataContainer : dataContainer
   }
 
-  private ensureVariableList(nodeContainer: LoroMap<any>): LoroList<any> {
-    console.log('variable list, for debug online')
+  private ensureList(nodeContainer: LoroMap<any>, key: string): LoroList<any> {
     const dataContainer = this.ensureDataContainer(nodeContainer)
-    let list = dataContainer.get('variables') as any
+    let list = dataContainer.get(key) as any
 
     if (!list || typeof list.kind !== 'function' || list.kind() !== 'List')
-      list = dataContainer.setContainer('variables', new LoroList())
-
-    return typeof list.getAttached === 'function' ? list.getAttached() ?? list : list
-  }
-
-  private ensurePromptTemplateList(nodeContainer: LoroMap<any>): LoroList<any> {
-    const dataContainer = this.ensureDataContainer(nodeContainer)
-    let list = dataContainer.get('prompt_template') as any
-
-    if (!list || typeof list.kind !== 'function' || list.kind() !== 'List')
-      list = dataContainer.setContainer('prompt_template', new LoroList())
-
-    return typeof list.getAttached === 'function' ? list.getAttached() ?? list : list
-  }
-
-  private ensureParametersList(nodeContainer: LoroMap<any>): LoroList<any> {
-    const dataContainer = this.ensureDataContainer(nodeContainer)
-    let list = dataContainer.get('parameters') as any
-
-    if (!list || typeof list.kind !== 'function' || list.kind() !== 'List')
-      list = dataContainer.setContainer('parameters', new LoroList())
+      list = dataContainer.setContainer(key, new LoroList())
 
     return typeof list.getAttached === 'function' ? list.getAttached() ?? list : list
   }
@@ -107,6 +86,7 @@ export class CollaborationManager {
   }
 
   private populateNodeContainer(container: LoroMap<any>, node: Node): void {
+    const listFields = new Set(['variables', 'prompt_template', 'parameters'])
     container.set('id', node.id)
     container.set('type', node.type)
     container.set('position', cloneDeep(node.position))
@@ -157,12 +137,8 @@ export class CollaborationManager {
       if (!this.shouldSyncDataKey(key)) return
       handledKeys.add(key)
 
-      if (key === 'variables')
-        this.syncVariables(container, Array.isArray(value) ? value : [])
-      else if (key === 'prompt_template')
-        this.syncPromptTemplate(container, Array.isArray(value) ? value : [])
-      else if (key === 'parameters')
-        this.syncParameters(container, Array.isArray(value) ? value : [])
+      if (listFields.has(key))
+        this.syncList(container, key, Array.isArray(value) ? value : [])
       else
         dataContainer.set(key, cloneDeep(value))
     })
@@ -172,15 +148,7 @@ export class CollaborationManager {
       if (!this.shouldSyncDataKey(key)) return
       if (handledKeys.has(key)) return
 
-      if (key === 'variables')
-        dataContainer.delete('variables')
-      else if (key === 'prompt_template')
-        dataContainer.delete('prompt_template')
-      else if (key === 'parameters')
-        dataContainer.delete('parameters')
-
-      else
-        dataContainer.delete(key)
+      dataContainer.delete(key)
     })
   }
 
@@ -189,52 +157,8 @@ export class CollaborationManager {
     return (syncDataAllowList.has(key) || !key.startsWith('_')) && key !== 'selected'
   }
 
-  private syncVariables(nodeContainer: LoroMap<any>, desired: any[]): void {
-    const list = this.ensureVariableList(nodeContainer)
-    const current = list.toJSON() as any[]
-    const target = Array.isArray(desired) ? desired : []
-    const minLength = Math.min(current.length, target.length)
-
-    for (let i = 0; i < minLength; i += 1) {
-      if (!isEqual(current[i], target[i])) {
-        list.delete(i, 1)
-        list.insert(i, cloneDeep(target[i]))
-      }
-    }
-
-    if (current.length > target.length) {
-      list.delete(target.length, current.length - target.length)
-    }
-    else if (target.length > current.length) {
-      for (let i = current.length; i < target.length; i += 1)
-        list.insert(i, cloneDeep(target[i]))
-    }
-  }
-
-  private syncPromptTemplate(nodeContainer: LoroMap<any>, desired: any[]): void {
-    const list = this.ensurePromptTemplateList(nodeContainer)
-    const current = list.toJSON() as any[]
-    const target = Array.isArray(desired) ? desired : []
-    const minLength = Math.min(current.length, target.length)
-
-    for (let i = 0; i < minLength; i += 1) {
-      if (!isEqual(current[i], target[i])) {
-        list.delete(i, 1)
-        list.insert(i, cloneDeep(target[i]))
-      }
-    }
-
-    if (current.length > target.length) {
-      list.delete(target.length, current.length - target.length)
-    }
-    else if (target.length > current.length) {
-      for (let i = current.length; i < target.length; i += 1)
-        list.insert(i, cloneDeep(target[i]))
-    }
-  }
-
-  private syncParameters(nodeContainer: LoroMap<any>, desired: any[]): void {
-    const list = this.ensureParametersList(nodeContainer)
+  private syncList(nodeContainer: LoroMap<any>, key: string, desired: any[]): void {
+    const list = this.ensureList(nodeContainer, key)
     const current = list.toJSON() as any[]
     const target = Array.isArray(desired) ? desired : []
     const minLength = Math.min(current.length, target.length)
