@@ -29,8 +29,6 @@ from libs.token import (
     clear_access_token_from_cookie,
     clear_csrf_token_from_cookie,
     clear_refresh_token_from_cookie,
-    extract_access_token,
-    extract_csrf_token,
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
