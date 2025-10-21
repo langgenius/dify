@@ -81,7 +81,7 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch
 
     # Mock user resolution to avoid database access
     from unittest.mock import Mock
-    
+
     mock_user = Mock()
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
 
@@ -145,7 +145,7 @@ def test_workflow_tool_should_handle_empty_outputs(monkeypatch: pytest.MonkeyPat
 
     # Mock user resolution to avoid database access
     from unittest.mock import Mock
-    
+
     mock_user = Mock()
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: mock_user)
 
