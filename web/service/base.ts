@@ -115,7 +115,10 @@ export type IOtherOptions = {
 }
 
 function jumpTo(url: string) {
-  if(url === globalThis.location.href)
+  if(!url)
+    return
+  const targetPath = new URL(url, globalThis.location.origin).pathname
+  if(targetPath === globalThis.location.pathname)
     return
   globalThis.location.href = url
 }
