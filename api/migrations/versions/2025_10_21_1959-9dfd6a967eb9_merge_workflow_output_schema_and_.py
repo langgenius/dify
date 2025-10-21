@@ -1,8 +1,8 @@
 """merge workflow output schema and message app mode migrations
 
-Revision ID: a7595d22aae0
+Revision ID: 9dfd6a967eb9
 Revises: 
-Create Date: 2025-10-21 14:26:01.054802
+Create Date: 2025-10-21 19:59:48.775165
 
 """
 from alembic import op
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'a7595d22aae0'
-down_revision = ('528502a5e3c8', 'd98acf217d43')
+revision = '9dfd6a967eb9'
+down_revision = None
 branch_labels = None
 depends_on = None
 
