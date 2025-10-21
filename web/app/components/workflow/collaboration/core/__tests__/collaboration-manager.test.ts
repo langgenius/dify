@@ -2,6 +2,7 @@ import { LoroDoc } from 'loro-crdt'
 import { CollaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { Edge, Node } from '@/app/components/workflow/types'
+import type { NodePanelPresenceMap, NodePanelPresenceUser } from '@/app/components/workflow/collaboration/types/collaboration'
 
 const NODE_ID = '1760342909316'
 
@@ -524,5 +525,135 @@ describe('CollaborationManager syncNodes', () => {
 
     ;(edgeManager as any).setEdges([updatedEdge], [])
     expect(edgeManager.getEdges()).toHaveLength(0)
+  })
+})
+
+describe('CollaborationManager public API wrappers', () => {
+  let manager: CollaborationManager
+  const baseNodes: Node[] = []
+  const updatedNodes: Node[] = [
+    { id: 'new-node', type: 'custom', position: { x: 0, y: 0 }, data: {} } as Node,
+  ]
+  const baseEdges: Edge[] = []
+  const updatedEdges: Edge[] = [
+    { id: 'edge-1', source: 'source', target: 'target', type: 'default', data: {} } as Edge,
+  ]
+
+  beforeEach(() => {
+    manager = new CollaborationManager()
+  })
+
+  it('setNodes delegates to syncNodes and commits the CRDT document', () => {
+    const commit = jest.fn()
+    ;(manager as any).doc = { commit }
+    const syncSpy = jest.spyOn(manager as any, 'syncNodes').mockImplementation(() => undefined)
+
+    manager.setNodes(baseNodes, updatedNodes)
+
+    expect(syncSpy).toHaveBeenCalledWith(baseNodes, updatedNodes)
+    expect(commit).toHaveBeenCalled()
+    syncSpy.mockRestore()
+  })
+
+  it('setNodes skips syncing when undo/redo replay is running', () => {
+    const commit = jest.fn()
+    ;(manager as any).doc = { commit }
+    ;(manager as any).isUndoRedoInProgress = true
+    const syncSpy = jest.spyOn(manager as any, 'syncNodes').mockImplementation(() => undefined)
+
+    manager.setNodes(baseNodes, updatedNodes)
+
+    expect(syncSpy).not.toHaveBeenCalled()
+    expect(commit).not.toHaveBeenCalled()
+    syncSpy.mockRestore()
+  })
+
+  it('setEdges delegates to syncEdges and commits the CRDT document', () => {
+    const commit = jest.fn()
+    ;(manager as any).doc = { commit }
+    const syncSpy = jest.spyOn(manager as any, 'syncEdges').mockImplementation(() => undefined)
+
+    manager.setEdges(baseEdges, updatedEdges)
+
+    expect(syncSpy).toHaveBeenCalledWith(baseEdges, updatedEdges)
+    expect(commit).toHaveBeenCalled()
+    syncSpy.mockRestore()
+  })
+
+  it('disconnect tears down the collaboration state only when last connection closes', () => {
+    const forceSpy = jest.spyOn(manager as any, 'forceDisconnect').mockImplementation(() => undefined)
+    ;(manager as any).activeConnections.add('conn-a')
+    ;(manager as any).activeConnections.add('conn-b')
+
+    manager.disconnect('conn-a')
+    expect(forceSpy).not.toHaveBeenCalled()
+
+    manager.disconnect('conn-b')
+    expect(forceSpy).toHaveBeenCalledTimes(1)
+    forceSpy.mockRestore()
+  })
+
+  it('applyNodePanelPresenceUpdate keeps a client visible on a single node at a time', () => {
+    const updates: NodePanelPresenceMap[] = []
+    manager.onNodePanelPresenceUpdate((presence) => {
+      updates.push(presence)
+    })
+
+    const user: NodePanelPresenceUser = { userId: 'user-1', username: 'Dana' }
+
+    ;(manager as any).applyNodePanelPresenceUpdate({
+      nodeId: 'node-a',
+      action: 'open',
+      user,
+      clientId: 'client-1',
+      timestamp: 100,
+    })
+
+    ;(manager as any).applyNodePanelPresenceUpdate({
+      nodeId: 'node-b',
+      action: 'open',
+      user,
+      clientId: 'client-1',
+      timestamp: 200,
+    })
+
+    const finalSnapshot = updates[updates.length - 1]!
+    expect(finalSnapshot).toEqual({
+      'node-b': {
+        'client-1': {
+          userId: 'user-1',
+          username: 'Dana',
+          clientId: 'client-1',
+          timestamp: 200,
+        },
+      },
+    })
+  })
+
+  it('applyNodePanelPresenceUpdate clears node entries when last viewer closes the panel', () => {
+    const updates: NodePanelPresenceMap[] = []
+    manager.onNodePanelPresenceUpdate((presence) => {
+      updates.push(presence)
+    })
+
+    const user: NodePanelPresenceUser = { userId: 'user-2', username: 'Kai' }
+
+    ;(manager as any).applyNodePanelPresenceUpdate({
+      nodeId: 'node-a',
+      action: 'open',
+      user,
+      clientId: 'client-9',
+      timestamp: 300,
+    })
+
+    ;(manager as any).applyNodePanelPresenceUpdate({
+      nodeId: 'node-a',
+      action: 'close',
+      user,
+      clientId: 'client-9',
+      timestamp: 301,
+    })
+
+    expect(updates[updates.length - 1]).toEqual({})
   })
 })
