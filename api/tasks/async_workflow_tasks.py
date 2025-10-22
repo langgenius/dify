@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from core.app.engine_layers.timeslice_layer import TimesliceLayer
+from core.app.engine_layers.timeslice_layer import TimeSliceLayer
 from core.app.engine_layers.trigger_post_layer import TriggerPostLayer
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
@@ -140,7 +140,7 @@ def _execute_workflow_common(
                 triggered_from=trigger_data.trigger_type,
                 root_node_id=trigger_data.root_node_id,
                 layers=[
-                    TimesliceLayer(cfs_plan_scheduler),
+                    TimeSliceLayer(cfs_plan_scheduler),
                     TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id),
                 ],
             )

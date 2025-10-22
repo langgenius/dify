@@ -13,7 +13,7 @@ from services.workflow.scheduler import CFSPlanScheduler, SchedulerCommand
 logger = logging.getLogger(__name__)
 
 
-class TimesliceLayer(GraphEngineLayer):
+class TimeSliceLayer(GraphEngineLayer):
     """
     CFS plan scheduler to control the timeslice of the workflow.
     """
@@ -25,8 +25,8 @@ class TimesliceLayer(GraphEngineLayer):
         CFS plan scheduler allows to control the timeslice of the workflow.
         """
 
-        if not TimesliceLayer.scheduler.running:
-            TimesliceLayer.scheduler.start()
+        if not TimeSliceLayer.scheduler.running:
+            TimeSliceLayer.scheduler.start()
 
         super().__init__()
         self.cfs_plan_scheduler = cfs_plan_scheduler
