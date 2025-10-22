@@ -196,7 +196,7 @@ class AsyncWorkflowConfig(BaseSettings):
         "to avoid this, workflow can be suspended if needed, to achieve"
         "this, a time-based checker is required, every granularity seconds, "
         "the checker will check the workflow queue and suspend the workflow",
-        default=1,
+        default=60,
         ge=1,
     )
 

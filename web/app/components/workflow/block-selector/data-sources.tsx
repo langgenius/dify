@@ -92,10 +92,10 @@ const DataSources = ({
   }, [searchText, enable_marketplace])
 
   return (
-    <div className={cn('min-w-[400px] max-w-[500px]', className)}>
+    <div className={cn('w-[400px] min-w-0 max-w-full', className)}>
       <div
         ref={wrapElemRef}
-        className='max-h-[464px] overflow-y-auto'
+        className='max-h-[464px] overflow-y-auto overflow-x-hidden'
         onScroll={pluginRef.current?.handleScroll}
       >
         <Tools

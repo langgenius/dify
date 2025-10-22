@@ -43,6 +43,7 @@ import useReferenceSetting from '@/app/components/plugins/plugin-page/use-refere
 import { uninstallPlugin } from '@/service/plugins'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { cloneDeep } from 'lodash-es'
+import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 
 const NAME_SPACE = 'plugins'
 
@@ -64,6 +65,50 @@ export const useCheckInstalled = ({
     enabled,
     staleTime: 0, // always fresh
   })
+}
+
+const useRecommendedMarketplacePluginsKey = [NAME_SPACE, 'recommendedMarketplacePlugins']
+export const useRecommendedMarketplacePlugins = ({
+  category = PluginCategoryEnum.tool,
+  enabled = true,
+  limit = 15,
+}: {
+  category?: string
+  enabled?: boolean
+  limit?: number
+} = {}) => {
+  return useQuery<Plugin[]>({
+    queryKey: [...useRecommendedMarketplacePluginsKey, category, limit],
+    queryFn: async () => {
+      const response = await postMarketplace<{ data: { plugins: Plugin[] } }>(
+        '/collections/__recommended-plugins-overall/plugins',
+        {
+          body: {
+            category,
+            limit,
+          },
+        },
+      )
+      return response.data.plugins.map(plugin => getFormattedPlugin(plugin))
+    },
+    enabled,
+    staleTime: 60 * 1000,
+  })
+}
+
+export const useFeaturedToolsRecommendations = (enabled: boolean, limit = 15) => {
+  const {
+    data: plugins = [],
+    isLoading,
+  } = useRecommendedMarketplacePlugins({
+    enabled,
+    limit,
+  })
+
+  return {
+    plugins,
+    isLoading,
+  }
 }
 
 export const useInstalledPluginList = (disable?: boolean, pageSize = 100) => {

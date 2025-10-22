@@ -309,7 +309,7 @@ const translation = {
   },
   panel: {
     userInputField: 'Campo de entrada do usuário',
-    helpLink: 'Link de ajuda',
+    helpLink: 'Ajuda',
     about: 'Sobre',
     createdBy: 'Criado por ',
     nextStep: 'Próximo passo',

@@ -277,6 +277,13 @@ const translation = {
     'addAll': 'Add all',
     'sources': 'Sources',
     'searchDataSource': 'Search Data Source',
+    'featuredTools': 'Featured',
+    'showMoreFeatured': 'Show more',
+    'installed': 'Installed',
+    'pluginByAuthor': 'By {{author}}',
+    'usePlugin': 'Select tool',
+    'hideActions': 'Hide tools',
+    'noFeaturedPlugins': 'Discover more tools in Marketplace',
   },
   blocks: {
     'start': 'User Input',
@@ -366,7 +373,7 @@ const translation = {
   panel: {
     userInputField: 'User Input Field',
     changeBlock: 'Change Node',
-    helpLink: 'Help Link',
+    helpLink: 'View Docs',
     about: 'About',
     createdBy: 'Created By ',
     nextStep: 'Next Step',

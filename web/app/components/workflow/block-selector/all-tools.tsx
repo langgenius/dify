@@ -25,10 +25,12 @@ import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import { useGetLanguage } from '@/context/i18n'
 import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import type { Plugin } from '../../plugins/types'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import RAGToolSuggestions from './rag-tool-suggestions'
+import FeaturedTools from './featured-tools'
 import Link from 'next/link'
 
 type AllToolsProps = {
@@ -47,6 +49,10 @@ type AllToolsProps = {
   canChooseMCPTool?: boolean
   onTagsChange?: Dispatch<SetStateAction<string[]>>
   isInRAGPipeline?: boolean
+  featuredPlugins?: Plugin[]
+  featuredLoading?: boolean
+  showFeatured?: boolean
+  onFeaturedInstallSuccess?: () => Promise<void> | void
 }
 
 const DEFAULT_TAGS: AllToolsProps['tags'] = []
@@ -67,6 +73,10 @@ const AllTools = ({
   canChooseMCPTool,
   onTagsChange,
   isInRAGPipeline = false,
+  featuredPlugins = [],
+  featuredLoading = false,
+  showFeatured = false,
+  onFeaturedInstallSuccess,
 }: AllToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -80,6 +90,16 @@ const AllTools = ({
   const isMatchingKeywords = (text: string, keywords: string) => {
     return text.toLowerCase().includes(keywords.toLowerCase())
   }
+  const allProviders = useMemo(() => [...buildInTools, ...customTools, ...workflowTools, ...mcpTools], [buildInTools, customTools, workflowTools, mcpTools])
+  const providerMap = useMemo(() => {
+    const map = new Map<string, ToolWithProvider>()
+    allProviders.forEach((provider) => {
+      const key = provider.plugin_id || provider.id
+      if (key)
+        map.set(key, provider)
+    })
+    return map
+  }, [allProviders])
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
     if (activeTab === ToolTypeEnum.All)
@@ -136,6 +156,7 @@ const AllTools = ({
   } = useMarketplacePlugins()
 
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+
   useEffect(() => {
     if (!enable_marketplace) return
     if (hasFilter) {
@@ -155,6 +176,12 @@ const AllTools = ({
   const hasToolsContent = tools.length > 0
   const hasPluginContent = enable_marketplace && notInstalledPlugins.length > 0
   const shouldShowEmptyState = hasFilter && !hasToolsContent && !hasPluginContent
+  const shouldShowFeatured = showFeatured
+    && enable_marketplace
+    && !isInRAGPipeline
+    && activeTab === ToolTypeEnum.All
+    && !hasFilter
+    && (featuredLoading || featuredPlugins.length > 0)
 
   return (
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
@@ -191,6 +218,19 @@ const AllTools = ({
               viewType={isSupportGroupView ? activeView : ViewType.flat}
               onSelect={onSelect}
               onTagsChange={onTagsChange}
+            />
+          )}
+          {shouldShowFeatured && (
+            <FeaturedTools
+              plugins={featuredPlugins}
+              providerMap={providerMap}
+              onSelect={onSelect}
+              selectedTools={selectedTools}
+              canChooseMCPTool={canChooseMCPTool}
+              isLoading={featuredLoading}
+              onInstallSuccess={async () => {
+                await onFeaturedInstallSuccess?.()
+              }}
             />
           )}
           <Tools

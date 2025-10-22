@@ -1,6 +1,6 @@
 import type { Dispatch, FC, SetStateAction } from 'react'
 import { memo } from 'react'
-import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
+import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import type {
   BlockEnum,
   NodeDefault,
@@ -13,6 +13,8 @@ import AllStartBlocks from './all-start-blocks'
 import AllTools from './all-tools'
 import DataSources from './data-sources'
 import cn from '@/utils/classnames'
+import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type TabsProps = {
   activeTab: TabsEnum
@@ -53,6 +55,13 @@ const Tabs: FC<TabsProps> = ({
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
+  const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const inRAGPipeline = dataSources.length > 0
+  const {
+    plugins: featuredPlugins = [],
+    isLoading: isFeaturedLoading,
+  } = useFeaturedToolsRecommendations(enable_marketplace && !inRAGPipeline)
 
   return (
     <div onClick={e => e.stopPropagation()}>
@@ -127,7 +136,13 @@ const Tabs: FC<TabsProps> = ({
             mcpTools={mcpTools || []}
             canChooseMCPTool
             onTagsChange={onTagsChange}
-            isInRAGPipeline={dataSources.length > 0}
+            isInRAGPipeline={inRAGPipeline}
+            featuredPlugins={featuredPlugins}
+            featuredLoading={isFeaturedLoading}
+            showFeatured={enable_marketplace && !inRAGPipeline}
+            onFeaturedInstallSuccess={async () => {
+              invalidateBuiltInTools()
+            }}
           />
         )
       }

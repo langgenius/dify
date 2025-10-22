@@ -181,7 +181,7 @@ const translation = {
     emailSupport: 'Email Support',
     workspace: 'Workspace',
     createWorkspace: 'Create Workspace',
-    helpCenter: 'Docs',
+    helpCenter: 'View Docs',
     support: 'Support',
     compliance: 'Compliance',
     communityFeedback: 'Feedback',

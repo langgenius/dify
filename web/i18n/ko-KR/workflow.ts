@@ -330,7 +330,7 @@ const translation = {
   },
   panel: {
     userInputField: '사용자 입력 필드',
-    helpLink: '도움말 링크',
+    helpLink: '도움말 센터',
     about: '정보',
     createdBy: '작성자 ',
     nextStep: '다음 단계',
