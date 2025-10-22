@@ -12,6 +12,7 @@ import Badge from '@/app/components/base/badge'
 import ActionButton from '@/app/components/base/action-button'
 import { useMemoryVariables } from './hooks/use-memory-variables'
 import Confirm from '@/app/components/base/confirm'
+import { Memory as MemoryIcon } from '@/app/components/base/icons/src/vender/line/others'
 
 type BlockMemoryProps = {
   payload: Memory
@@ -38,7 +39,7 @@ const BlockMemory = ({ payload }: BlockMemoryProps) => {
     })
   }
 
-  if (!block_id?.length) {
+  if (!memoryVariablesInUsed?.length) {
     return (
       <div className='system-xs-regular mt-2 flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary'>
         {t('workflow.nodes.common.memory.block.empty')}
@@ -47,13 +48,13 @@ const BlockMemory = ({ payload }: BlockMemoryProps) => {
   }
   return (
     <>
-      <div>
+      <div className='mt-2 space-y-1'>
         {
           memoryVariablesInUsed.map(memoryVariable => (
             <div
               key={memoryVariable.id}
               className='group flex h-8 items-center space-x-1 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-2 pr-1 shadow-xs hover:border hover:border-state-destructive-solid hover:bg-state-destructive-hover'>
-              <div className='h-4 w-4'></div>
+              <MemoryIcon className='h-4 w-4 text-util-colors-teal-teal-700' />
               <div
                 title={memoryVariable.name}
                 className='system-sm-medium grow truncate text-text-secondary'

@@ -58,10 +58,16 @@ export const useMemoryVariable = () => {
     const oldMemoryVariable = memoryVariables.find(v => v.id === memoryVariable.id)
     setMemoryVariables(memoryVariables.map(v => v.id === memoryVariable.id ? memoryVariable : v))
 
-    if (oldMemoryVariable && !oldMemoryVariable?.node && memoryVariable.node)
+    if (oldMemoryVariable && !oldMemoryVariable?.node && memoryVariable.node) {
       handleAddMemoryVariableToNode(memoryVariable.node, memoryVariable.id)
-    else if (oldMemoryVariable && oldMemoryVariable.node && !memoryVariable.node)
+    }
+    else if (oldMemoryVariable && oldMemoryVariable.node && !memoryVariable.node) {
       handleDeleteMemoryVariableFromNode(oldMemoryVariable.node, memoryVariable.id)
+    }
+    else if (oldMemoryVariable && oldMemoryVariable.node && memoryVariable.node && memoryVariable.node !== oldMemoryVariable.node) {
+      handleDeleteMemoryVariableFromNode(oldMemoryVariable.node, memoryVariable.id)
+      handleAddMemoryVariableToNode(memoryVariable.node, memoryVariable.id)
+    }
   }, [setMemoryVariables, workflowStore, handleAddMemoryVariableToNode, handleDeleteMemoryVariableFromNode])
 
   const handleDeleteMemoryVariable = useCallback((memoryVariable: MemoryVariable) => {

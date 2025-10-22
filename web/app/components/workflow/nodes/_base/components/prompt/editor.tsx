@@ -39,7 +39,7 @@ import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
 import AddMemoryButton from './add-memory-button'
 import { MEMORY_POPUP_SHOW_BY_EVENT_EMITTER } from './type'
 import type {
-  ConversationVariable,
+  MemoryVariable,
 } from '@/app/components/workflow/types'
 import MemoryCreateButton from '@/app/components/workflow/nodes/llm/components/memory-system/memory-create-button'
 
@@ -86,8 +86,8 @@ type Props = {
   titleClassName?: string
   required?: boolean
   isMemorySupported?: boolean
-  memoryVarInNode?: ConversationVariable[]
-  memoryVarInApp?: ConversationVariable[]
+  memoryVarInNode?: MemoryVariable[]
+  memoryVarInApp?: MemoryVariable[]
 }
 
 const Editor: FC<Props> = ({

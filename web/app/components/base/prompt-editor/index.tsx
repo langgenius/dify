@@ -81,7 +81,7 @@ import {
 } from './constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import type {
-  ConversationVariable,
+  MemoryVariable,
 } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
@@ -109,8 +109,8 @@ export type PromptEditorProps = {
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
   isMemorySupported?: boolean
-  memoryVarInNode?: ConversationVariable[]
-  memoryVarInApp?: ConversationVariable[]
+  memoryVarInNode?: MemoryVariable[]
+  memoryVarInApp?: MemoryVariable[]
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({

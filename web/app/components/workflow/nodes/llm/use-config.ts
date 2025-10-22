@@ -18,12 +18,11 @@ import {
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
-  const conversationVariables = useStore(s => s.conversationVariables)
+  const memoryVariables = useStore(s => s.memoryVariables)
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
@@ -346,17 +345,15 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   const memoryVarInNode = useMemo(() => {
     const idsInNode = inputs.memory?.block_id || []
-    return conversationVariables
-      .filter(varItem => varItem.value_type === ChatVarType.Memory)
+    return memoryVariables
       .filter(varItem => idsInNode.includes(varItem.id))
-  }, [inputs.memory?.block_id, conversationVariables])
+  }, [inputs.memory?.block_id, memoryVariables])
 
   const memoryVarInApp = useMemo(() => {
     const idsInApp = inputs.memory?.block_id || []
-    return conversationVariables
-      .filter(varItem => varItem.value_type === ChatVarType.Memory)
+    return memoryVariables
       .filter(varItem => !idsInApp.includes(varItem.id))
-  }, [inputs.memory?.block_id, conversationVariables])
+  }, [inputs.memory?.block_id, memoryVariables])
 
   return {
     readOnly,

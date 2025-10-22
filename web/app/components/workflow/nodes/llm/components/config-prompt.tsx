@@ -15,7 +15,7 @@ import Editor from '@/app/components/workflow/nodes/_base/components/prompt/edit
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
 import { DragHandle } from '@/app/components/base/icons/src/vender/line/others'
 import type {
-  ConversationVariable,
+  MemoryVariable,
 } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.llm'
@@ -38,8 +38,8 @@ type Props = {
   handleAddVariable: (payload: any) => void
   modelConfig: ModelConfig
   memoryVarSortFn?: (a: string, b: string) => number
-  memoryVarInNode?: ConversationVariable[]
-  memoryVarInApp?: ConversationVariable[]
+  memoryVarInNode?: MemoryVariable[]
+  memoryVarInApp?: MemoryVariable[]
 }
 
 const ConfigPrompt: FC<Props> = ({

@@ -10,7 +10,7 @@ import TypeSelector from '@/app/components/workflow/nodes/_base/components/selec
 import Tooltip from '@/app/components/base/tooltip'
 import { PromptRole } from '@/models/debug'
 import type {
-  ConversationVariable,
+  MemoryVariable,
 } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.llm'
@@ -42,8 +42,8 @@ type Props = {
   varList: Variable[]
   handleAddVariable: (payload: any) => void
   modelConfig?: ModelConfig
-  memoryVarInNode?: ConversationVariable[]
-  memoryVarInApp?: ConversationVariable[]
+  memoryVarInNode?: MemoryVariable[]
+  memoryVarInApp?: MemoryVariable[]
 }
 
 const roleOptions = [

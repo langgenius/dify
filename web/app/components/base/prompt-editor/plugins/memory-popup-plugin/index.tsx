@@ -29,7 +29,7 @@ import { MEMORY_POPUP_SHOW_BY_EVENT_EMITTER, MEMORY_VAR_CREATED_BY_MODAL_BY_EVEN
 import Divider from '@/app/components/base/divider'
 import VariableIcon from '@/app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-icon'
 import type {
-  ConversationVariable,
+  MemoryVariable,
 } from '@/app/components/workflow/types'
 import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../workflow-variable-block'
 
@@ -39,8 +39,8 @@ export type MemoryPopupProps = {
   className?: string
   container?: Element | null
   instanceId?: string
-  memoryVarInNode: ConversationVariable[]
-  memoryVarInApp: ConversationVariable[]
+  memoryVarInNode: MemoryVariable[]
+  memoryVarInApp: MemoryVariable[]
 }
 
 export default function MemoryPopupPlugin({
