@@ -14,8 +14,6 @@ from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_access_token
 from models.model import App, EndUser, Site
-from services.app_service import AppService
-from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
 
