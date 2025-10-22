@@ -85,7 +85,17 @@ export const useNodesSyncDraft = () => {
           },
           environment_variables: environmentVariables,
           conversation_variables: conversationVariables,
-          memory_blocks: memoryVariables.map(({ node, value_type, more, ...rest }) => rest),
+          memory_blocks: memoryVariables.map(({ node, value_type, more, model, ...rest }) => {
+            return {
+              ...rest,
+              model: model ? {
+                completion_params: model.completion_params,
+                mode: model.mode,
+                provider: model.provider,
+                name: model.model,
+              } : undefined,
+            }
+          }),
           hash: syncWorkflowDraftHash,
         },
       }

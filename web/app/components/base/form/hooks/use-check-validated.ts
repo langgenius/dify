@@ -15,13 +15,14 @@ export const useCheckValidated = (form: AnyFormApi, FormSchemas: FormSchema[]) =
       const errorArray = Object.keys(fields).reduce((acc: string[], key: string) => {
         const currentSchema = FormSchemas.find(schema => schema.name === key)
         const { show_on = [] } = currentSchema || {}
-        const showOnValues = show_on.reduce((acc, condition) => {
+        const showOn = typeof show_on === 'function' ? show_on(form) : show_on
+        const showOnValues = (showOn || []).reduce((acc, condition) => {
           acc[condition.variable] = values[condition.variable]
           return acc
         }, {} as Record<string, any>)
-        const show = show_on?.every((condition) => {
+        const show = (showOn || []).every((condition) => {
           const conditionValue = showOnValues[condition.variable]
-          return conditionValue === condition.value
+          return Array.isArray(condition.value) ? condition.value.includes(conditionValue) : conditionValue === condition.value
         })
         const errors: any[] = show ? fields[key].errors : []
 

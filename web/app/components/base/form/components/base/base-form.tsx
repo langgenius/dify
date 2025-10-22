@@ -88,6 +88,19 @@ const BaseForm = ({
     })
     return result
   })
+  const moreOnValues = useStore(form.store, (s: any) => {
+    const result: Record<string, any> = {}
+    formSchemas.forEach((schema) => {
+      const { more_on } = schema
+      const moreOn = typeof more_on === 'function' ? more_on(form) : more_on
+      if (moreOn?.length) {
+        moreOn?.forEach((condition) => {
+          result[condition.variable] = s.values[condition.variable]
+        })
+      }
+    })
+    return result
+  })
 
   useImperativeHandle(ref, () => {
     return {
@@ -104,11 +117,18 @@ const BaseForm = ({
     const formSchema = formSchemas?.find(schema => schema.name === field.name)
 
     if (formSchema) {
+      const { more_on = [] } = formSchema
+      const moreOn = typeof more_on === 'function' ? more_on(form) : more_on
+      const more = (moreOn || []).every((condition) => {
+        const conditionValue = moreOnValues[condition.variable]
+        return Array.isArray(condition.value) ? condition.value.includes(conditionValue) : conditionValue === condition.value
+      })
+
       return (
         <BaseField
           field={field}
           formSchema={formSchema}
-          fieldClassName={fieldClassName}
+          fieldClassName={cn(fieldClassName, !more ? 'absolute top-[-9999px]' : '')}
           labelClassName={labelClassName}
           inputContainerClassName={inputContainerClassName}
           inputClassName={inputClassName}
@@ -119,7 +139,7 @@ const BaseForm = ({
     }
 
     return null
-  }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName, disabled, onChange])
+  }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName, disabled, onChange, moreOnValues])
 
   const renderFieldWrapper = useCallback((formSchema: FormSchema) => {
     const validators = getValidators(formSchema)

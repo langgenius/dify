@@ -62,6 +62,7 @@ export type FormSchema = {
   default?: any
   tooltip?: string | TypeWithI18N
   show_on?: FormShowOnObject[] | ((form: AnyFormApi) => FormShowOnObject[])
+  more_on?: FormShowOnObject[] | ((form: AnyFormApi) => FormShowOnObject[])
   url?: string
   scope?: string
   help?: string | TypeWithI18N

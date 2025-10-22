@@ -70,6 +70,7 @@ export const useMemorySchema = () => {
       label: t('workflow.chatVariable.modal.updateEvery'),
       type: FormTypeEnum.textNumber,
       fieldClassName: 'flex justify-between',
+      required: true,
       show_on: [
         {
           variable: 'value_type',
@@ -175,11 +176,14 @@ export const useMemorySchema = () => {
       name: 'model',
       label: t('workflow.chatVariable.modal.memoryModel'),
       type: FormTypeEnum.modelSelector,
+      required: true,
       show_on: [
         {
           variable: 'value_type',
           value: [ChatVarType.Memory],
         },
+      ],
+      more_on: [
         {
           variable: 'more',
           value: true,
@@ -205,6 +209,8 @@ export const useMemorySchema = () => {
           variable: 'value_type',
           value: [ChatVarType.Memory],
         },
+      ],
+      more_on: [
         {
           variable: 'more',
           value: true,
@@ -221,6 +227,8 @@ export const useMemorySchema = () => {
           variable: 'value_type',
           value: [ChatVarType.Memory],
         },
+      ],
+      more_on: [
         {
           variable: 'more',
           value: true,
@@ -235,7 +243,8 @@ export const useMemoryDefaultValues = () => {
     template: '',
     instruction: '',
     strategy: 'on_turns',
-    update_turns: 0,
+    update_turns: 500,
+    preserved_turns: 10,
     scope: 'app',
     term: 'session',
     more: false,
