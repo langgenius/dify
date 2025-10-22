@@ -4,7 +4,6 @@ import { useAllTriggerPlugins } from '@/service/use-triggers'
 import TriggerPluginItem from './item'
 import type { BlockEnum } from '../../types'
 import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
-import { useGetLanguage } from '@/context/i18n'
 
 type TriggerPluginListProps = {
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
@@ -19,7 +18,6 @@ const TriggerPluginList = ({
   onContentStateChange,
 }: TriggerPluginListProps) => {
   const { data: triggerPluginsData } = useAllTriggerPlugins()
-  const language = useGetLanguage()
 
   const normalizedSearch = searchText.trim().toLowerCase()
   const triggerPlugins = useMemo(() => {
@@ -32,9 +30,7 @@ const TriggerPluginList = ({
       if (triggerWithProvider.events.length === 0)
         return acc
 
-      const providerLabel = triggerWithProvider.label?.[language] || ''
       const providerMatches = triggerWithProvider.name.toLowerCase().includes(normalizedSearch)
-        || (providerLabel && providerLabel.toLowerCase().includes(normalizedSearch))
 
       if (providerMatches) {
         acc.push(triggerWithProvider)
@@ -42,16 +38,7 @@ const TriggerPluginList = ({
       }
 
       const matchedEvents = triggerWithProvider.events.filter((event) => {
-        const rawLabel = event.label?.[language]
-        const eventLabel = typeof rawLabel === 'string' ? rawLabel.toLowerCase() : ''
-        const rawDescription = event.description?.[language]
-        const eventDescription = typeof rawDescription === 'string' ? rawDescription.toLowerCase() : ''
-
-        return (
-          eventLabel.includes(normalizedSearch)
-          || event.name.toLowerCase().includes(normalizedSearch)
-          || eventDescription.includes(normalizedSearch)
-        )
+        return event.name.toLowerCase().includes(normalizedSearch)
       })
 
       if (matchedEvents.length > 0) {
@@ -63,7 +50,7 @@ const TriggerPluginList = ({
 
       return acc
     }, [])
-  }, [triggerPluginsData, normalizedSearch, language])
+  }, [triggerPluginsData, normalizedSearch])
 
   const hasContent = triggerPlugins.length > 0
 

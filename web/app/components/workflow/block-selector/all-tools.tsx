@@ -22,7 +22,6 @@ import ViewTypeSelect, { ViewType } from './view-type-select'
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
-import { useGetLanguage } from '@/context/i18n'
 import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import type { Plugin } from '../../plugins/types'
@@ -80,7 +79,6 @@ const AllTools = ({
   onFeaturedInstallSuccess,
 }: AllToolsProps) => {
   const { t } = useTranslation()
-  const language = useGetLanguage()
   const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
   const [activeView, setActiveView] = useState<ViewType>(ViewType.flat)
@@ -120,9 +118,7 @@ const AllTools = ({
       return mergedTools.filter(toolWithProvider => toolWithProvider.tools.length > 0)
 
     return mergedTools.reduce<ToolWithProvider[]>((acc, toolWithProvider) => {
-      const providerLabel = toolWithProvider.label?.[language] || ''
       const providerMatches = isMatchingKeywords(toolWithProvider.name, normalizedSearch)
-        || (providerLabel && isMatchingKeywords(providerLabel, normalizedSearch))
 
       if (providerMatches) {
         if (toolWithProvider.tools.length > 0)
@@ -131,13 +127,7 @@ const AllTools = ({
       }
 
       const matchedTools = toolWithProvider.tools.filter((tool) => {
-        const toolLabel = tool.label?.[language] || ''
-        const toolDescription = typeof tool.description === 'object' ? tool.description?.[language] : ''
-        return (
-          (toolLabel && toolLabel.toLowerCase().includes(normalizedSearch))
-          || tool.name.toLowerCase().includes(normalizedSearch)
-          || (typeof toolDescription === 'string' && toolDescription.toLowerCase().includes(normalizedSearch))
-        )
+        return tool.name.toLowerCase().includes(normalizedSearch)
       })
 
       if (matchedTools.length > 0) {
@@ -149,7 +139,7 @@ const AllTools = ({
 
       return acc
     }, [])
-  }, [activeTab, buildInTools, customTools, workflowTools, mcpTools, trimmedSearchText, language, hasFilter])
+  }, [activeTab, buildInTools, customTools, workflowTools, mcpTools, trimmedSearchText, hasFilter])
 
   const {
     queryPluginsWithDebounced: fetchPlugins,
