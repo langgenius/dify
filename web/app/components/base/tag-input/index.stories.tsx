@@ -19,6 +19,10 @@ const meta = {
       control: 'object',
       description: 'Array of tag strings',
     },
+    onChange: {
+      action: 'changed',
+      description: 'Change handler',
+    },
     disableAdd: {
       control: 'boolean',
       description: 'Disable adding new tags',
@@ -39,6 +43,11 @@ const meta = {
     required: {
       control: 'boolean',
       description: 'Require non-empty tags',
+    },
+  },
+  args: {
+    onChange: (items) => {
+      console.log('Tags updated:', items)
     },
   },
 } satisfies Meta<typeof TagInput>
@@ -155,7 +164,8 @@ const SkillTagsDemo = () => {
 
 export const SkillTags: Story = {
   render: () => <SkillTagsDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Email tags
 const EmailTagsDemo = () => {
@@ -192,7 +202,8 @@ const EmailTagsDemo = () => {
 
 export const EmailTags: Story = {
   render: () => <EmailTagsDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Search filters
 const SearchFiltersDemo = () => {
@@ -246,7 +257,8 @@ const SearchFiltersDemo = () => {
 
 export const SearchFilters: Story = {
   render: () => <SearchFiltersDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Product categories
 const ProductCategoriesDemo = () => {
@@ -292,7 +304,8 @@ const ProductCategoriesDemo = () => {
 
 export const ProductCategories: Story = {
   render: () => <ProductCategoriesDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Keyword extraction
 const KeywordExtractionDemo = () => {
@@ -328,7 +341,8 @@ const KeywordExtractionDemo = () => {
 
 export const KeywordExtraction: Story = {
   render: () => <KeywordExtractionDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Tags with suggestions
 const TagsWithSuggestionsDemo = () => {
@@ -371,7 +385,8 @@ const TagsWithSuggestionsDemo = () => {
 
 export const TagsWithSuggestions: Story = {
   render: () => <TagsWithSuggestionsDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Stop sequences (Tab mode)
 const StopSequencesDemo = () => {
@@ -425,7 +440,8 @@ const StopSequencesDemo = () => {
 
 export const StopSequences: Story = {
   render: () => <StopSequencesDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Multi-language tags
 const MultiLanguageTagsDemo = () => {
@@ -461,7 +477,8 @@ const MultiLanguageTagsDemo = () => {
 
 export const MultiLanguageTags: Story = {
   render: () => <MultiLanguageTagsDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Validation showcase
 const ValidationShowcaseDemo = () => {
@@ -500,7 +517,8 @@ const ValidationShowcaseDemo = () => {
 
 export const ValidationShowcase: Story = {
   render: () => <ValidationShowcaseDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Interactive playground
 export const Playground: Story = {
