@@ -26,7 +26,7 @@ export const useVarIcon = (variables: string[], variableCategory?: VarInInspectT
   if (isConversationVar(variables) || variableCategory === VarInInspectType.conversation || variableCategory === 'conversation')
     return BubbleX
 
-  if (isGlobalVar(variables))
+  if (isGlobalVar(variables) || variableCategory === VarInInspectType.system)
     return GlobalVariable
 
   return Variable02
@@ -46,7 +46,7 @@ export const useVarColor = (variables: string[], isExceptionVariable?: boolean, 
     if (isConversationVar(variables) || variableCategory === VarInInspectType.conversation || variableCategory === 'conversation')
       return 'text-util-colors-teal-teal-700'
 
-    if (isGlobalVar(variables))
+    if (isGlobalVar(variables) || variableCategory === VarInInspectType.system)
       return 'text-util-colors-orange-orange-600'
 
     return 'text-text-accent'
