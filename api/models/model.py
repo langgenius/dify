@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 import sqlalchemy as sa
 from flask import request
-from flask_login import UserMixin  # type: ignore[import-untyped]
+from flask_login import UserMixin
 from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -1479,7 +1479,7 @@ class EndUser(Base, UserMixin):
         sa.Index("end_user_tenant_session_id_idx", "tenant_id", "session_id", "type"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id = mapped_column(StringUUID, nullable=True)
     type: Mapped[str] = mapped_column(String(255), nullable=False)

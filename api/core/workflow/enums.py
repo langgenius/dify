@@ -58,6 +58,7 @@ class NodeType(StrEnum):
     DOCUMENT_EXTRACTOR = "document-extractor"
     LIST_OPERATOR = "list-operator"
     AGENT = "agent"
+    HUMAN_INPUT = "human-input"
 
 
 class NodeExecutionType(StrEnum):
@@ -96,6 +97,7 @@ class WorkflowExecutionStatus(StrEnum):
     FAILED = "failed"
     STOPPED = "stopped"
     PARTIAL_SUCCEEDED = "partial-succeeded"
+    PAUSED = "paused"
 
 
 class WorkflowNodeExecutionMetadataKey(StrEnum):

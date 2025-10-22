@@ -48,11 +48,12 @@ class DatasetsHitTestingBase:
 
     @staticmethod
     def parse_args():
-        parser = reqparse.RequestParser()
-
-        parser.add_argument("query", type=str, location="json")
-        parser.add_argument("retrieval_model", type=dict, required=False, location="json")
-        parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("query", type=str, location="json")
+            .add_argument("retrieval_model", type=dict, required=False, location="json")
+            .add_argument("external_retrieval_model", type=dict, required=False, location="json")
+        )
         return parser.parse_args()
 
     @staticmethod
