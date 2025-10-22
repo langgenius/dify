@@ -38,19 +38,14 @@ class PassportResource(Resource):
         app_code = request.headers.get(HEADER_NAME_APP_CODE)
         user_id = request.args.get("user_id")
         access_token = extract_access_token(request)
-
         if app_code is None:
             raise Unauthorized("X-App-Code header is missing.")
-        app_id = AppService.get_app_id_by_code(app_code)
-
         if system_features.webapp_auth.enabled:
-            app_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id)
-            if not app_settings or app_settings.access_mode != "public":
-                enterprise_user_decoded = decode_enterprise_webapp_user_id(access_token)
-                if enterprise_user_decoded:
-                    return exchange_token_for_existing_web_user(
-                        app_code=app_code, enterprise_user_decoded=enterprise_user_decoded
-                    )
+            enterprise_user_decoded = decode_enterprise_webapp_user_id(access_token)
+            if enterprise_user_decoded:
+                return exchange_token_for_existing_web_user(
+                    app_code=app_code, enterprise_user_decoded=enterprise_user_decoded
+                )
 
         # get site from db and check if it is normal
         site = db.session.scalar(select(Site).where(Site.code == app_code, Site.status == "normal"))
