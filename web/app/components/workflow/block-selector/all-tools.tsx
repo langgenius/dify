@@ -29,6 +29,9 @@ import { PluginCategoryEnum } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import RAGToolSuggestions from './rag-tool-suggestions'
+import FeaturedTools from './featured-tools'
+import { useCheckInstalled, useRecommendedMarketplacePlugins } from '@/service/use-plugins'
+import { useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import Link from 'next/link'
 
 type AllToolsProps = {
@@ -80,6 +83,16 @@ const AllTools = ({
   const isMatchingKeywords = (text: string, keywords: string) => {
     return text.toLowerCase().includes(keywords.toLowerCase())
   }
+  const allProviders = useMemo(() => [...buildInTools, ...customTools, ...workflowTools, ...mcpTools], [buildInTools, customTools, workflowTools, mcpTools])
+  const providerMap = useMemo(() => {
+    const map = new Map<string, ToolWithProvider>()
+    allProviders.forEach((provider) => {
+      const key = provider.plugin_id || provider.id
+      if (key)
+        map.set(key, provider)
+    })
+    return map
+  }, [allProviders])
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
     if (activeTab === ToolTypeEnum.All)
@@ -136,6 +149,27 @@ const AllTools = ({
   } = useMarketplacePlugins()
 
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const {
+    data: recommendedPlugins = [],
+    isLoading: isLoadingRecommended,
+  } = useRecommendedMarketplacePlugins({
+    enabled: enable_marketplace,
+  })
+  const recommendedPluginIds = useMemo(
+    () => recommendedPlugins.map(plugin => plugin.plugin_id),
+    [recommendedPlugins],
+  )
+  const installedCheck = useCheckInstalled({
+    pluginIds: recommendedPluginIds,
+    enabled: recommendedPluginIds.length > 0,
+  })
+  const installedPluginIds = useMemo(
+    () => new Set(installedCheck.data?.plugins.map(plugin => plugin.plugin_id) ?? []),
+    [installedCheck.data],
+  )
+  const loadingRecommendedInstallStatus = installedCheck.isLoading || installedCheck.isRefetching
+  const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
+
   useEffect(() => {
     if (!enable_marketplace) return
     if (hasFilter) {
@@ -155,6 +189,11 @@ const AllTools = ({
   const hasToolsContent = tools.length > 0
   const hasPluginContent = enable_marketplace && notInstalledPlugins.length > 0
   const shouldShowEmptyState = hasFilter && !hasToolsContent && !hasPluginContent
+  const shouldShowFeatured = enable_marketplace
+    && activeTab === ToolTypeEnum.All
+    && !hasFilter
+    && !isLoadingRecommended
+    && recommendedPlugins.length > 0
 
   return (
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
@@ -191,6 +230,21 @@ const AllTools = ({
               viewType={isSupportGroupView ? activeView : ViewType.flat}
               onSelect={onSelect}
               onTagsChange={onTagsChange}
+            />
+          )}
+          {shouldShowFeatured && (
+            <FeaturedTools
+              plugins={recommendedPlugins}
+              providerMap={providerMap}
+              onSelect={onSelect}
+              selectedTools={selectedTools}
+              canChooseMCPTool={canChooseMCPTool}
+              installedPluginIds={installedPluginIds}
+              loadingInstalledStatus={loadingRecommendedInstallStatus}
+              onInstallSuccess={async () => {
+                invalidateBuiltInTools()
+                await installedCheck.refetch()
+              }}
             />
           )}
           <Tools

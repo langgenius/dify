@@ -263,6 +263,12 @@ const translation = {
     'sources': '数据源',
     'searchDataSource': '搜索数据源',
     'start': '开始',
+    'featuredTools': '精选推荐',
+    'showMoreFeatured': '查看更多',
+    'installed': '已安装',
+    'pluginByAuthor': '来自 {{author}}',
+    'usePlugin': '选择工具',
+    'hideActions': '收起工具',
   },
   blocks: {
     'start': '用户输入',

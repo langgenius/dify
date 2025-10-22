@@ -277,6 +277,12 @@ const translation = {
     'addAll': 'Add all',
     'sources': 'Sources',
     'searchDataSource': 'Search Data Source',
+    'featuredTools': 'Featured',
+    'showMoreFeatured': 'Show more',
+    'installed': 'Installed',
+    'pluginByAuthor': 'By {{author}}',
+    'usePlugin': 'Select tool',
+    'hideActions': 'Hide tools',
   },
   blocks: {
     'start': 'User Input',
