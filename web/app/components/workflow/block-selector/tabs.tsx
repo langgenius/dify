@@ -74,11 +74,18 @@ const Tabs: FC<TabsProps> = ({
         return list
       let changed = false
       const normalized = list.map((provider) => {
-        if (typeof provider.icon === 'string' && provider.icon && !provider.icon.includes(basePath)) {
-          changed = true
-          return {
-            ...provider,
-            icon: `${basePath}${provider.icon}`,
+        if (typeof provider.icon === 'string') {
+          const icon = provider.icon
+          const shouldPrefix = Boolean(basePath)
+            && icon.startsWith('/')
+            && !icon.startsWith(`${basePath}/`)
+
+          if (shouldPrefix) {
+            changed = true
+            return {
+              ...provider,
+              icon: `${basePath}${icon}`,
+            }
           }
         }
         return provider
