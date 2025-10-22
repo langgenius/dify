@@ -28,6 +28,8 @@ import TipPopup from './tip-popup'
 import ExportImage from './export-image'
 import { useOperator } from './hooks'
 import cn from '@/utils/classnames'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const Control = () => {
   const { t } = useTranslation()
@@ -41,6 +43,9 @@ const Control = () => {
     getNodesReadOnly,
   } = useNodesReadOnly()
   const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
+  const appDetail = useAppStore(state => state.appDetail)
+  const isCommentVisible = isCollaborationEnabled && (appDetail?.mode === 'workflow' || appDetail?.mode === 'advanced-chat')
 
   const addNote = (e: MouseEvent<HTMLDivElement>) => {
     if (getNodesReadOnly())
@@ -89,18 +94,20 @@ const Control = () => {
           <RiHand className='h-4 w-4' />
         </div>
       </TipPopup>
-      <TipPopup title={t('workflow.common.commentMode')} shortcuts={['c']}>
-        <div
-          className={cn(
-            'ml-[1px] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
-            controlMode === ControlMode.Comment ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
-          )}
-          onClick={handleModeComment}
-        >
-          <Comment className='h-4 w-4' />
-        </div>
-      </TipPopup>
+      {isCommentVisible && (
+        <TipPopup title={t('workflow.common.commentMode')} shortcuts={['c']}>
+          <div
+            className={cn(
+              'ml-[1px] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
+              controlMode === ControlMode.Comment ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
+              `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            )}
+            onClick={handleModeComment}
+          >
+            <Comment className='h-4 w-4' />
+          </div>
+        </TipPopup>
+      )}
       <Divider className='my-1 w-3.5' />
       <ExportImage />
       <TipPopup title={t('workflow.panel.organizeBlocks')} shortcuts={['ctrl', 'o']}>
