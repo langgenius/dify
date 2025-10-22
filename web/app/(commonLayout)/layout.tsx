@@ -29,8 +29,8 @@ const Layout = ({ children }: { children: ReactNode }) => {
             </ProviderContextProvider>
           </EventEmitterContextProvider>
         </AppContextProvider>
+        <Zendesk />
       </SwrInitializer>
-      <Zendesk />
     </>
   )
 }
