@@ -134,7 +134,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
       if (node.type === CUSTOM_NODE) {
         const checkData = getCheckData(node.data)
-        let { errorMessage } = nodesExtraData![node.data.type].checkValid(checkData, t, moreDataForCheckValid)
+        let { errorMessage } = nodesExtraData![node.data.type]?.checkValid(checkData, t, moreDataForCheckValid)
 
         if (!errorMessage) {
           const availableVars = map[node.id].availableVars
