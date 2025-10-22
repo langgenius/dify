@@ -153,7 +153,7 @@ const AllTools = ({
     data: recommendedPlugins = [],
     isLoading: isLoadingRecommended,
   } = useRecommendedMarketplacePlugins({
-    enabled: enable_marketplace,
+    enabled: enable_marketplace && !isInRAGPipeline,
   })
   const recommendedPluginIds = useMemo(
     () => recommendedPlugins.map(plugin => plugin.plugin_id),
@@ -193,6 +193,7 @@ const AllTools = ({
     && activeTab === ToolTypeEnum.All
     && !hasFilter
     && !isLoadingRecommended
+    && !isInRAGPipeline
     && recommendedPlugins.length > 0
 
   return (
@@ -241,6 +242,7 @@ const AllTools = ({
               canChooseMCPTool={canChooseMCPTool}
               installedPluginIds={installedPluginIds}
               loadingInstalledStatus={loadingRecommendedInstallStatus}
+              isLoading={isLoadingRecommended}
               onInstallSuccess={async () => {
                 invalidateBuiltInTools()
                 await installedCheck.refetch()
