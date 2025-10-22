@@ -872,6 +872,10 @@ services:
     networks:
       - ssrf_proxy_network
       - default
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
 
   # Certbot service
   # use `docker-compose --profile certbot up` to start the certbot service.
