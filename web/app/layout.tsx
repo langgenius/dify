@@ -3,7 +3,6 @@ import type { Viewport } from 'next'
 import I18nServer from './components/i18n-server'
 import BrowserInitializer from './components/browser-initializer'
 import SentryInitializer from './components/sentry-initializer'
-import Zendesk from './components/base/zendesk'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { ThemeProvider } from 'next-themes'
@@ -105,7 +104,6 @@ const LocaleLayout = async ({
           </BrowserInitializer>
         </ThemeProvider>
         <RoutePrefixHandle />
-        <Zendesk />
       </body>
     </html>
   )

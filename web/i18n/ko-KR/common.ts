@@ -165,6 +165,7 @@ const translation = {
     github: '깃허브',
     compliance: '컴플라이언스',
     support: '지원',
+    contactUs: '문의하기',
   },
   settings: {
     accountGroup: '계정',

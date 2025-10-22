@@ -116,7 +116,19 @@ export const useIsLogin = () => {
     queryKey: [NAME_SPACE, 'is-login'],
     staleTime: 0,
     gcTime: 0,
-    queryFn: () => get<isLogin>('/login/status'),
+    queryFn: async (): Promise<isLogin> => {
+      try {
+        await get('/account/profile', {}, {
+          silent: true,
+        })
+      }
+      catch (e: any) {
+        if(e.status === 401)
+          return { logged_in: false }
+        return { logged_in: true }
+      }
+      return { logged_in: true }
+    },
   })
 }
 
