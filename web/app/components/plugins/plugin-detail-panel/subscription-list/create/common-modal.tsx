@@ -146,7 +146,13 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   const autoCommonParametersSchema = detail?.declaration.trigger?.subscription_constructor?.parameters || [] // apikey and oauth
   const autoCommonParametersFormRef = React.useRef<FormRefObject>(null)
 
-  const apiKeyCredentialsSchema = detail?.declaration.trigger?.subscription_constructor?.credentials_schema || []
+  const rawApiKeyCredentialsSchema = detail?.declaration.trigger?.subscription_constructor?.credentials_schema || []
+  const apiKeyCredentialsSchema = useMemo(() => {
+    return rawApiKeyCredentialsSchema.map(schema => ({
+      ...schema,
+      tooltip: schema.help,
+    }))
+  }, [rawApiKeyCredentialsSchema])
   const apiKeyCredentialsFormRef = React.useRef<FormRefObject>(null)
 
   const { data: logData } = useTriggerSubscriptionBuilderLogs(
@@ -373,7 +379,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
               <BaseForm
                 formSchemas={apiKeyCredentialsSchema}
                 ref={apiKeyCredentialsFormRef}
-                labelClassName='system-sm-medium mb-2 block text-text-primary'
+                labelClassName='system-sm-medium mb-2 flex items-center gap-1 text-text-primary'
                 preventDefaultSubmit={true}
                 formClassName='space-y-4'
                 onChange={handleApiKeyCredentialsChange}
