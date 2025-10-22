@@ -1,5 +1,5 @@
 import type { Dispatch, FC, SetStateAction } from 'react'
-import { memo, useEffect } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import type {
   BlockEnum,
@@ -16,6 +16,7 @@ import cn from '@/utils/classnames'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWorkflowStore } from '../store'
+import { basePath } from '@/utils/var'
 
 export type TabsProps = {
   activeTab: TabsEnum
@@ -65,17 +66,43 @@ const Tabs: FC<TabsProps> = ({
     isLoading: isFeaturedLoading,
   } = useFeaturedToolsRecommendations(enable_marketplace && !inRAGPipeline)
 
+  const normalizeToolList = useMemo(() => {
+    return (list?: ToolWithProvider[]) => {
+      if (!list)
+        return list
+      if (!basePath)
+        return list
+      let changed = false
+      const normalized = list.map((provider) => {
+        if (typeof provider.icon === 'string' && provider.icon && !provider.icon.includes(basePath)) {
+          changed = true
+          return {
+            ...provider,
+            icon: `${basePath}${provider.icon}`,
+          }
+        }
+        return provider
+      })
+      return changed ? normalized : list
+    }
+  }, [basePath])
+
   useEffect(() => {
     workflowStore.setState((state) => {
       const updates: Partial<typeof state> = {}
-      if (buildInTools !== undefined && state.buildInTools !== buildInTools)
-        updates.buildInTools = buildInTools
-      if (customTools !== undefined && state.customTools !== customTools)
-        updates.customTools = customTools
-      if (workflowTools !== undefined && state.workflowTools !== workflowTools)
-        updates.workflowTools = workflowTools
-      if (mcpTools !== undefined && state.mcpTools !== mcpTools)
-        updates.mcpTools = mcpTools
+      const normalizedBuiltIn = normalizeToolList(buildInTools)
+      const normalizedCustom = normalizeToolList(customTools)
+      const normalizedWorkflow = normalizeToolList(workflowTools)
+      const normalizedMCP = normalizeToolList(mcpTools)
+
+      if (normalizedBuiltIn !== undefined && state.buildInTools !== normalizedBuiltIn)
+        updates.buildInTools = normalizedBuiltIn
+      if (normalizedCustom !== undefined && state.customTools !== normalizedCustom)
+        updates.customTools = normalizedCustom
+      if (normalizedWorkflow !== undefined && state.workflowTools !== normalizedWorkflow)
+        updates.workflowTools = normalizedWorkflow
+      if (normalizedMCP !== undefined && state.mcpTools !== normalizedMCP)
+        updates.mcpTools = normalizedMCP
       if (!Object.keys(updates).length)
         return state
       return {
@@ -83,7 +110,7 @@ const Tabs: FC<TabsProps> = ({
         ...updates,
       }
     })
-  }, [workflowStore, buildInTools, customTools, workflowTools, mcpTools])
+  }, [workflowStore, normalizeToolList, buildInTools, customTools, workflowTools, mcpTools])
 
   return (
     <div onClick={e => e.stopPropagation()}>
