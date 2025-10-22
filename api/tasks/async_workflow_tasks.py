@@ -12,6 +12,7 @@ from celery import shared_task
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.engine_layers.timeslice_layer import TimeSliceLayer
 from core.app.engine_layers.trigger_post_layer import TriggerPostLayer
@@ -38,7 +39,9 @@ def execute_workflow_professional(task_data_dict: dict[str, Any]):
     """Execute workflow for professional tier with highest priority"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
     cfs_plan_scheduler_entity = TriggerWorkflowCFSPlanEntity(
-        queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE, schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice
+        queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE,
+        schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice,
+        granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
     )
     _execute_workflow_common(
         task_data,
@@ -52,7 +55,9 @@ def execute_workflow_team(task_data_dict: dict[str, Any]):
     """Execute workflow for team tier"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
     cfs_plan_scheduler_entity = TriggerWorkflowCFSPlanEntity(
-        queue=AsyncWorkflowQueue.TEAM_QUEUE, schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice
+        queue=AsyncWorkflowQueue.TEAM_QUEUE,
+        schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice,
+        granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
     )
     _execute_workflow_common(
         task_data,
@@ -66,7 +71,9 @@ def execute_workflow_sandbox(task_data_dict: dict[str, Any]):
     """Execute workflow for free tier with lower retry limit"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
     cfs_plan_scheduler_entity = TriggerWorkflowCFSPlanEntity(
-        queue=AsyncWorkflowQueue.SANDBOX_QUEUE, schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice
+        queue=AsyncWorkflowQueue.SANDBOX_QUEUE,
+        schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice,
+        granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
     )
     _execute_workflow_common(
         task_data,

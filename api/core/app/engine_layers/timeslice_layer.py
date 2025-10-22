@@ -4,7 +4,6 @@ from typing import ClassVar
 
 from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore
 
-from configs import dify_config
 from core.workflow.graph_engine.entities.commands import CommandType, GraphEngineCommand
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events.base import GraphEngineEvent
@@ -70,9 +69,7 @@ class TimeSliceLayer(GraphEngineLayer):
             except Exception:
                 logger.exception("scheduler error during check if the workflow need to be suspended")
 
-        self.scheduler.add_job(
-            runner, "interval", seconds=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY, id=schedule_id
-        )
+        self.scheduler.add_job(runner, "interval", seconds=self.cfs_plan_scheduler.plan.granularity, id=schedule_id)
 
     def on_event(self, event: GraphEngineEvent):
         pass

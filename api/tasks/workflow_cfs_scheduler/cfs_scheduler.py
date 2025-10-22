@@ -24,7 +24,7 @@ class TriggerCFSPlanScheduler(CFSPlanScheduler):
 
         if self.plan.queue in [AsyncWorkflowQueue.PROFESSIONAL_QUEUE, AsyncWorkflowQueue.TEAM_QUEUE]:
             """
-            permitted all paid users to schedule the workflow
+            permitted all paid users to schedule the workflow any time
             """
             return SchedulerCommand.NONE
 
