@@ -23,7 +23,9 @@ import {
 } from '@/service/tools'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import Toast from '@/app/components/base/toast'
-import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllCustomTools } from '@/service/use-tools'
+import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools, useInvalidateAllCustomTools } from '@/service/use-tools'
+import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -61,11 +63,21 @@ const ToolPicker: FC<Props> = ({
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
 
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const invalidateCustomTools = useInvalidateAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
+  const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
+
+  const {
+    plugins: featuredPlugins = [],
+    isLoading: isFeaturedLoading,
+    installedIds: featuredInstalledIds,
+    installStatusLoading: featuredInstallLoading,
+    refetchInstallStatus: refetchFeaturedInstallStatus,
+  } = useFeaturedToolsRecommendations(enable_marketplace)
 
   const { builtinToolList, customToolList, workflowToolList } = useMemo(() => {
     if (scope === 'plugins') {
@@ -179,6 +191,15 @@ const ToolPicker: FC<Props> = ({
             selectedTools={selectedTools}
             canChooseMCPTool={canChooseMCPTool}
             onTagsChange={setTags}
+            featuredPlugins={featuredPlugins}
+            featuredLoading={isFeaturedLoading}
+            featuredInstalledPluginIds={featuredInstalledIds}
+            featuredInstallLoading={featuredInstallLoading}
+            showFeatured={scope === 'all' && enable_marketplace}
+            onFeaturedInstallSuccess={async () => {
+              invalidateBuiltInTools()
+              await refetchFeaturedInstallStatus()
+            }}
           />
         </div>
       </PortalToFollowElemContent>

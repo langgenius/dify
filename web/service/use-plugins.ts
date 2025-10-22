@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import type {
   FormOption,
   ModelProvider,
@@ -94,6 +94,36 @@ export const useRecommendedMarketplacePlugins = ({
     enabled,
     staleTime: 60 * 1000,
   })
+}
+
+export const useFeaturedToolsRecommendations = (enabled: boolean, limit = 15) => {
+  const {
+    data: plugins = [],
+    isLoading,
+  } = useRecommendedMarketplacePlugins({
+    enabled,
+    limit,
+  })
+  const pluginIds = useMemo(
+    () => plugins.map(plugin => plugin.plugin_id),
+    [plugins],
+  )
+  const installedCheck = useCheckInstalled({
+    pluginIds,
+    enabled: enabled && pluginIds.length > 0,
+  })
+  const installedIds = useMemo(
+    () => new Set(installedCheck.data?.plugins.map(plugin => plugin.plugin_id) ?? []),
+    [installedCheck.data],
+  )
+  const installStatusLoading = installedCheck.isLoading || installedCheck.isRefetching
+  return {
+    plugins,
+    isLoading,
+    installedIds,
+    installStatusLoading,
+    refetchInstallStatus: installedCheck.refetch,
+  }
 }
 
 export const useInstalledPluginList = (disable?: boolean, pageSize = 100) => {

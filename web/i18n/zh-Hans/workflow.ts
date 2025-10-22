@@ -269,6 +269,7 @@ const translation = {
     'pluginByAuthor': '来自 {{author}}',
     'usePlugin': '选择工具',
     'hideActions': '收起工具',
+    'noFeaturedPlugins': '前往插件市场查看更多工具',
   },
   blocks: {
     'start': '用户输入',
@@ -358,7 +359,7 @@ const translation = {
   panel: {
     userInputField: '用户输入字段',
     changeBlock: '更改节点',
-    helpLink: '帮助文档',
+    helpLink: '帮助链接',
     about: '关于',
     createdBy: '作者',
     nextStep: '下一步',

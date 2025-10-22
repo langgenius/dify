@@ -25,13 +25,12 @@ import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import { useGetLanguage } from '@/context/i18n'
 import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import type { Plugin } from '../../plugins/types'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import RAGToolSuggestions from './rag-tool-suggestions'
 import FeaturedTools from './featured-tools'
-import { useCheckInstalled, useRecommendedMarketplacePlugins } from '@/service/use-plugins'
-import { useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import Link from 'next/link'
 
 type AllToolsProps = {
@@ -50,6 +49,12 @@ type AllToolsProps = {
   canChooseMCPTool?: boolean
   onTagsChange?: Dispatch<SetStateAction<string[]>>
   isInRAGPipeline?: boolean
+  featuredPlugins?: Plugin[]
+  featuredLoading?: boolean
+  featuredInstalledPluginIds?: Set<string>
+  featuredInstallLoading?: boolean
+  showFeatured?: boolean
+  onFeaturedInstallSuccess?: () => Promise<void> | void
 }
 
 const DEFAULT_TAGS: AllToolsProps['tags'] = []
@@ -70,6 +75,12 @@ const AllTools = ({
   canChooseMCPTool,
   onTagsChange,
   isInRAGPipeline = false,
+  featuredPlugins = [],
+  featuredLoading = false,
+  featuredInstalledPluginIds = new Set<string>(),
+  featuredInstallLoading = false,
+  showFeatured = false,
+  onFeaturedInstallSuccess,
 }: AllToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -149,26 +160,6 @@ const AllTools = ({
   } = useMarketplacePlugins()
 
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
-  const {
-    data: recommendedPlugins = [],
-    isLoading: isLoadingRecommended,
-  } = useRecommendedMarketplacePlugins({
-    enabled: enable_marketplace && !isInRAGPipeline,
-  })
-  const recommendedPluginIds = useMemo(
-    () => recommendedPlugins.map(plugin => plugin.plugin_id),
-    [recommendedPlugins],
-  )
-  const installedCheck = useCheckInstalled({
-    pluginIds: recommendedPluginIds,
-    enabled: recommendedPluginIds.length > 0,
-  })
-  const installedPluginIds = useMemo(
-    () => new Set(installedCheck.data?.plugins.map(plugin => plugin.plugin_id) ?? []),
-    [installedCheck.data],
-  )
-  const loadingRecommendedInstallStatus = installedCheck.isLoading || installedCheck.isRefetching
-  const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
 
   useEffect(() => {
     if (!enable_marketplace) return
@@ -189,12 +180,12 @@ const AllTools = ({
   const hasToolsContent = tools.length > 0
   const hasPluginContent = enable_marketplace && notInstalledPlugins.length > 0
   const shouldShowEmptyState = hasFilter && !hasToolsContent && !hasPluginContent
-  const shouldShowFeatured = enable_marketplace
+  const shouldShowFeatured = showFeatured
+    && enable_marketplace
+    && !isInRAGPipeline
     && activeTab === ToolTypeEnum.All
     && !hasFilter
-    && !isLoadingRecommended
-    && !isInRAGPipeline
-    && recommendedPlugins.length > 0
+    && (featuredLoading || featuredPlugins.length > 0)
 
   return (
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
@@ -235,17 +226,16 @@ const AllTools = ({
           )}
           {shouldShowFeatured && (
             <FeaturedTools
-              plugins={recommendedPlugins}
+              plugins={featuredPlugins}
               providerMap={providerMap}
               onSelect={onSelect}
               selectedTools={selectedTools}
               canChooseMCPTool={canChooseMCPTool}
-              installedPluginIds={installedPluginIds}
-              loadingInstalledStatus={loadingRecommendedInstallStatus}
-              isLoading={isLoadingRecommended}
+              installedPluginIds={featuredInstalledPluginIds}
+              loadingInstalledStatus={featuredInstallLoading}
+              isLoading={featuredLoading}
               onInstallSuccess={async () => {
-                invalidateBuiltInTools()
-                await installedCheck.refetch()
+                await onFeaturedInstallSuccess?.()
               }}
             />
           )}

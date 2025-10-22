@@ -283,6 +283,7 @@ const translation = {
     'pluginByAuthor': 'By {{author}}',
     'usePlugin': 'Select tool',
     'hideActions': 'Hide tools',
+    'noFeaturedPlugins': 'Discover more tools in Marketplace',
   },
   blocks: {
     'start': 'User Input',
