@@ -949,6 +949,8 @@ const translation = {
       embeddingModelIsRequired: 'Ein Einbettungsmodell ist erforderlich',
       chunksVariableIsRequired: 'Die Variable \'Chunks\' ist erforderlich',
       rerankingModelIsRequired: 'Ein Reranking-Modell ist erforderlich',
+      embeddingModelIsInvalid: 'Einbettungsmodell ist ungültig',
+      rerankingModelIsInvalid: 'Das Reranking-Modell ist ungültig',
     },
   },
   tracing: {
