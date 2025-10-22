@@ -99,7 +99,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
   }, [value, onChange, disabled])
 
   return (
-    <div className={cn('flex flex-col gap-1', containerClassName)}>
+    <div className={cn('flex w-full flex-col gap-1', containerClassName)}>
       {label && (
         <div className='system-sm-medium text-text-secondary'>
           {label}
@@ -122,9 +122,9 @@ const CheckboxList: FC<CheckboxListProps> = ({
                 disabled={disabled}
               />
             )}
-            {!searchQuery ? <div className='flex flex-1 items-center gap-1'>
+            {!searchQuery ? <div className='flex min-w-0 flex-1 items-center gap-1'>
               {title && (
-                <span className='system-xs-semibold-uppercase leading-5 text-text-secondary'>
+                <span className='system-xs-semibold-uppercase truncate leading-5 text-text-secondary'>
                   {title}
                 </span>
               )}
