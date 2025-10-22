@@ -69,7 +69,12 @@ class TriggerPostLayer(GraphEngineLayer):
                 trigger_log.status = self._STATUS_MAP[type(event)]
                 trigger_log.workflow_run_id = workflow_run_id
                 trigger_log.outputs = TypeAdapter(dict[str, Any]).dump_json(outputs).decode()
-                trigger_log.elapsed_time = elapsed_time
+
+                if trigger_log.elapsed_time is None:
+                    trigger_log.elapsed_time = elapsed_time
+                else:
+                    trigger_log.elapsed_time += elapsed_time
+
                 trigger_log.total_tokens = total_tokens
                 trigger_log.finished_at = datetime.now(UTC)
                 repo.update(trigger_log)
