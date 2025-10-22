@@ -52,6 +52,7 @@ class WorkflowTriggerStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
     SUCCEEDED = "succeeded"
+    PAUSED = "paused"
     FAILED = "failed"
     RATE_LIMITED = "rate_limited"
     RETRYING = "retrying"
