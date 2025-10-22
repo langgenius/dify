@@ -174,9 +174,9 @@ const AllTools = ({
   const isSupportGroupView = [ToolTypeEnum.All, ToolTypeEnum.BuiltIn].includes(activeTab)
 
   const isShowRAGRecommendations = isInRAGPipeline && activeTab === ToolTypeEnum.All && !hasFilter
-  const hasToolsContent = tools.length > 0
+  const hasToolsListContent = tools.length > 0 || isShowRAGRecommendations
   const hasPluginContent = enable_marketplace && notInstalledPlugins.length > 0
-  const shouldShowEmptyState = hasFilter && !hasToolsContent && !hasPluginContent
+  const shouldShowEmptyState = hasFilter && !hasToolsListContent && !hasPluginContent
   const shouldShowFeatured = showFeatured
     && enable_marketplace
     && !isInRAGPipeline
@@ -239,32 +239,37 @@ const AllTools = ({
               </div>
             </>
           )}
-          <div className='px-3 pb-1 pt-2'>
-            <span className='system-xs-medium text-text-primary'>{t('tools.allTools')}</span>
-          </div>
-          <Tools
-            className={toolContentClassName}
-            tools={tools}
-            onSelect={onSelect}
-            canNotSelectMultiple={canNotSelectMultiple}
-            onSelectMultiple={onSelectMultiple}
-            toolType={activeTab}
-            viewType={isSupportGroupView ? activeView : ViewType.flat}
-            hasSearchText={hasSearchText}
-            selectedTools={selectedTools}
-            canChooseMCPTool={canChooseMCPTool}
-            isShowRAGRecommendations={isShowRAGRecommendations}
-          />
-          {/* Plugins from marketplace */}
-          {enable_marketplace && (
-            <PluginList
-              ref={pluginRef}
-              wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
-              list={notInstalledPlugins}
-              searchText={searchText}
-              toolContentClassName={toolContentClassName}
-              tags={tags}
-            />
+          {(hasToolsListContent || hasPluginContent) && (
+            <>
+              <div className='px-3 pb-1 pt-2'>
+                <span className='system-xs-medium text-text-primary'>{t('tools.allTools')}</span>
+              </div>
+              {hasToolsListContent && (
+                <Tools
+                  className={toolContentClassName}
+                  tools={tools}
+                  onSelect={onSelect}
+                  canNotSelectMultiple={canNotSelectMultiple}
+                  onSelectMultiple={onSelectMultiple}
+                  toolType={activeTab}
+                  viewType={isSupportGroupView ? activeView : ViewType.flat}
+                  hasSearchText={hasSearchText}
+                  selectedTools={selectedTools}
+                  canChooseMCPTool={canChooseMCPTool}
+                  isShowRAGRecommendations={isShowRAGRecommendations}
+                />
+              )}
+              {hasPluginContent && (
+                <PluginList
+                  ref={pluginRef}
+                  wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
+                  list={notInstalledPlugins}
+                  searchText={searchText}
+                  toolContentClassName={toolContentClassName}
+                  tags={tags}
+                />
+              )}
+            </>
           )}
         </div>
 
