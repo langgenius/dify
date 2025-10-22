@@ -181,7 +181,7 @@ const translation = {
     emailSupport: '邮件支持',
     workspace: '工作空间',
     createWorkspace: '创建工作空间',
-    helpCenter: '帮助文档',
+    helpCenter: '查看帮助文档',
     support: '支持',
     compliance: '合规',
     communityFeedback: '用户反馈',

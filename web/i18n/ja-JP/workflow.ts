@@ -349,7 +349,7 @@ const translation = {
   panel: {
     userInputField: 'ユーザー入力欄',
     changeBlock: 'ノード変更',
-    helpLink: 'ヘルプ',
+    helpLink: 'ドキュメントを見る',
     about: '詳細',
     createdBy: '作成者',
     nextStep: '次のステップ',

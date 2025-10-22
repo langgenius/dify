@@ -359,7 +359,7 @@ const translation = {
   panel: {
     userInputField: '用户输入字段',
     changeBlock: '更改节点',
-    helpLink: '帮助链接',
+    helpLink: '查看帮助文档',
     about: '关于',
     createdBy: '作者',
     nextStep: '下一步',

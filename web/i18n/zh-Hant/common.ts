@@ -160,7 +160,7 @@ const translation = {
     emailSupport: '電子郵件支援',
     workspace: '工作空間',
     createWorkspace: '建立工作空間',
-    helpCenter: '幫助文件',
+    helpCenter: '查看幫助文件',
     communityFeedback: '使用者反饋',
     roadmap: '路線圖',
     community: '社群',
