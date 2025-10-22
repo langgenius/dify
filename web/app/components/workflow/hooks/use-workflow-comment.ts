@@ -7,6 +7,7 @@ import type { WorkflowCommentDetail, WorkflowCommentList } from '@/service/workf
 import { createWorkflowComment, createWorkflowCommentReply, deleteWorkflowComment, deleteWorkflowCommentReply, fetchWorkflowComment, fetchWorkflowComments, resolveWorkflowComment, updateWorkflowComment, updateWorkflowCommentReply } from '@/service/workflow-comment'
 import { collaborationManager } from '@/app/components/workflow/collaboration'
 import { useAppContext } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export const useWorkflowComment = () => {
   const params = useParams()
@@ -34,6 +35,7 @@ export const useWorkflowComment = () => {
   const rightPanelWidth = useStore(s => s.rightPanelWidth)
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const { userProfile } = useAppContext()
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
   const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
   const activeCommentIdRef = useRef<string | null>(null)
 
@@ -60,7 +62,7 @@ export const useWorkflowComment = () => {
   }, [appId, setActiveComment, setCommentDetailCache])
 
   const loadComments = useCallback(async () => {
-    if (!appId) return
+    if (!appId || !isCollaborationEnabled) return
 
     setCommentsLoading(true)
     try {
@@ -73,11 +75,11 @@ export const useWorkflowComment = () => {
     finally {
       setCommentsLoading(false)
     }
-  }, [appId, setComments, setCommentsLoading])
+  }, [appId, isCollaborationEnabled, setComments, setCommentsLoading])
 
   // Setup collaboration
   useEffect(() => {
-    if (!appId) return
+    if (!appId || !isCollaborationEnabled) return
 
     const unsubscribe = collaborationManager.onCommentsUpdate(() => {
       loadComments()
@@ -86,7 +88,7 @@ export const useWorkflowComment = () => {
     })
 
     return unsubscribe
-  }, [appId, loadComments, refreshActiveComment])
+  }, [appId, isCollaborationEnabled, loadComments, refreshActiveComment])
 
   useEffect(() => {
     loadComments()
