@@ -40,9 +40,12 @@ class PassportResource(Resource):
             raise Unauthorized("X-App-Code header is missing.")
         if system_features.webapp_auth.enabled:
             enterprise_user_decoded = decode_enterprise_webapp_user_id(access_token)
-            if enterprise_user_decoded:
+            app_auth_type = WebAppAuthService.get_app_auth_type(app_code = app_code)
+            if app_auth_type != WebAppAuthType.PUBLIC:
+                if not enterprise_user_decoded:
+                    raise WebAppAuthRequiredError()
                 return exchange_token_for_existing_web_user(
-                    app_code=app_code, enterprise_user_decoded=enterprise_user_decoded
+                    app_code=app_code, enterprise_user_decoded=enterprise_user_decoded, auth_type=app_auth_type
                 )
 
         # get site from db and check if it is normal
@@ -114,7 +117,7 @@ def decode_enterprise_webapp_user_id(jwt_token: str | None):
     return decoded
 
 
-def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded: dict):
+def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded: dict, auth_type: WebAppAuthType):
     """
     Exchange a token for an existing web user session.
     """
@@ -135,13 +138,11 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     if not app_model or app_model.status != "normal" or not app_model.enable_site:
         raise NotFound()
 
-    app_auth_type = WebAppAuthService.get_app_auth_type(app_code=app_code)
-
-    if app_auth_type == WebAppAuthType.PUBLIC:
+    if auth_type == WebAppAuthType.PUBLIC:
         return _exchange_for_public_app_token(app_model, site, enterprise_user_decoded)
-    elif app_auth_type == WebAppAuthType.EXTERNAL and user_auth_type != "external":
+    elif auth_type == WebAppAuthType.EXTERNAL and user_auth_type != "external":
         raise WebAppAuthRequiredError("Please login as external user.")
-    elif app_auth_type == WebAppAuthType.INTERNAL and user_auth_type != "internal":
+    elif auth_type == WebAppAuthType.INTERNAL and user_auth_type != "internal":
         raise WebAppAuthRequiredError("Please login as internal user.")
 
     end_user = None
