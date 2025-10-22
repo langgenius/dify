@@ -34,8 +34,13 @@ const UninstalledItem = ({
         toolIcon={payload.icon}
       />
       <div className='ml-2 flex w-0 grow items-center'>
-        <div className='system-sm-medium h-4 w-0 grow truncate leading-4 text-text-primary'>
-          {getLocalizedText(payload.label)}
+        <div className='flex w-0 grow items-center gap-x-2'>
+          <span className='system-sm-regular truncate text-text-primary'>
+            {getLocalizedText(payload.label)}
+          </span>
+          <span className='system-xs-regular text-text-quaternary'>
+            {payload.org}
+          </span>
         </div>
         <div
           className='system-xs-medium cursor-pointer pl-1.5 text-components-button-secondary-accent-text'
