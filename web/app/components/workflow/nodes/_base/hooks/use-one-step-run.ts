@@ -28,7 +28,7 @@ import ParameterExtractorDefault from '@/app/components/workflow/nodes/parameter
 import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
 import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
 import LoopDefault from '@/app/components/workflow/nodes/loop/default'
-import { ssePost } from '@/service/base'
+import { post, ssePost } from '@/service/base'
 import { noop } from 'lodash-es'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
@@ -53,9 +53,6 @@ import { useInvalidLastRun } from '@/service/use-workflow'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 import type { FlowType } from '@/types/common'
 import useMatchSchemaType from '../components/variable/use-match-schema-type'
-import Cookies from 'js-cookie'
-import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
-import { getBaseOptions } from '@/service/fetch'
 // eslint-disable-next-line ts/no-unsafe-function-type
 const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.LLM]: checkLLMValid,
@@ -287,7 +284,6 @@ const useOneStepRun = <T>({
 
   const runWebhookSingleRun = useCallback(async (): Promise<any | null> => {
     const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
-    const urlWithPrefix = `${API_PREFIX}${urlPath.startsWith('/') ? urlPath : `/${urlPath}`}`
 
     webhookSingleRunActiveRef.current = true
     const token = ++webhookSingleRunTokenRef.current
@@ -297,15 +293,7 @@ const useOneStepRun = <T>({
       webhookSingleRunAbortRef.current = controller
 
       try {
-        const baseOptions = getBaseOptions()
-        const headers = new Headers(baseOptions.headers as Headers)
-        headers.set('Content-Type', 'application/json')
-        headers.set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
-
-        const response = await fetch(urlWithPrefix, {
-          ...baseOptions,
-          method: 'POST',
-          headers,
+        const response: any = await post(urlPath, {
           body: JSON.stringify({}),
           signal: controller.signal,
         })
@@ -313,18 +301,15 @@ const useOneStepRun = <T>({
         if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
           return null
 
-        const contentType = response.headers.get('Content-Type')?.toLowerCase() || ''
-        const responseData = contentType.includes('application/json') ? await response.json() : undefined
-
-        if (!response.ok) {
-          const message = responseData?.message || 'Webhook debug failed'
+        if (!response) {
+          const message = response?.message || 'Webhook debug failed'
           Toast.notify({ type: 'error', message })
           cancelWebhookSingleRun()
           throw new Error(message)
         }
 
-        if (responseData?.status === 'waiting') {
-          const delay = Number(responseData.retry_in) || 2000
+        if (response?.status === 'waiting') {
+          const delay = Number(response.retry_in) || 2000
           webhookSingleRunAbortRef.current = null
           if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
             return null
@@ -344,8 +329,8 @@ const useOneStepRun = <T>({
           continue
         }
 
-        if (responseData?.status === 'error') {
-          const message = responseData.message || 'Webhook debug failed'
+        if (response?.status === 'error') {
+          const message = response.message || 'Webhook debug failed'
           Toast.notify({ type: 'error', message })
           cancelWebhookSingleRun()
           throw new Error(message)
@@ -361,7 +346,7 @@ const useOneStepRun = <T>({
         })
 
         cancelWebhookSingleRun()
-        return responseData
+        return response
       }
       catch (error) {
         if (controller.signal.aborted && (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current))
@@ -386,7 +371,6 @@ const useOneStepRun = <T>({
 
   const runPluginSingleRun = useCallback(async (): Promise<any | null> => {
     const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
-    const urlWithPrefix = `${API_PREFIX}${urlPath.startsWith('/') ? urlPath : `/${urlPath}`}`
 
     pluginSingleRunActiveRef.current = true
     const token = ++pluginSingleRunTokenRef.current
@@ -396,33 +380,23 @@ const useOneStepRun = <T>({
       pluginSingleRunAbortRef.current = controller
 
       try {
-        const baseOptions = getBaseOptions()
-        const headers = new Headers(baseOptions.headers as Headers)
-        headers.set('Content-Type', 'application/json')
-        headers.set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
-
-        const response = await fetch(urlWithPrefix, {
-          ...baseOptions,
-          method: 'POST',
-          headers,
+        const response: any = await post(urlPath, {
+          body: JSON.stringify({}),
           signal: controller.signal,
         })
 
         if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
           return null
 
-        const contentType = response.headers.get('Content-Type')?.toLowerCase() || ''
-        const responseData = contentType.includes('application/json') ? await response.json() : undefined
-
-        if (!response.ok) {
-          const message = responseData?.message || 'Plugin debug failed'
+        if (!response) {
+          const message = response?.message || 'Plugin debug failed'
           Toast.notify({ type: 'error', message })
           cancelPluginSingleRun()
           throw new Error(message)
         }
 
-        if (responseData?.status === 'waiting') {
-          const delay = Number(responseData.retry_in) || 2000
+        if (response?.status === 'waiting') {
+          const delay = Number(response.retry_in) || 2000
           pluginSingleRunAbortRef.current = null
           if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
             return null
@@ -442,8 +416,8 @@ const useOneStepRun = <T>({
           continue
         }
 
-        if (responseData?.status === 'error') {
-          const message = responseData.message || 'Plugin debug failed'
+        if (response?.status === 'error') {
+          const message = response.message || 'Plugin debug failed'
           Toast.notify({ type: 'error', message })
           cancelPluginSingleRun()
           throw new Error(message)
@@ -459,7 +433,7 @@ const useOneStepRun = <T>({
         })
 
         cancelPluginSingleRun()
-        return responseData
+        return response
       }
       catch (error) {
         if (controller.signal.aborted && (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current))

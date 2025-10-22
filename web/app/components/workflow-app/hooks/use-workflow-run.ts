@@ -23,8 +23,8 @@ import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { useSetWorkflowVarsWithValue } from '../../workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useConfigsMap } from './use-configs-map'
-import { API_PREFIX } from '@/config'
-import { base } from '@/service/fetch'
+import { post } from '@/service/base'
+import { ContentType } from '@/service/fetch'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { AppModeEnum } from '@/types/app'
 
@@ -464,10 +464,6 @@ export const useWorkflowRun = () => {
     })
 
     const runTriggerDebug = async (debugType: TriggerType.Webhook | TriggerType.Plugin | TriggerType.All) => {
-      const urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
-        ? url
-        : `${API_PREFIX}${url.startsWith('/') ? url : `/${url}`}`
-
       const controller = new AbortController()
       abortControllerRef.current = controller
 
@@ -481,29 +477,42 @@ export const useWorkflowRun = () => {
 
       const poll = async (): Promise<void> => {
         try {
-          const response = await base<Response>(urlWithPrefix, {
-            method: 'POST',
-            body: JSON.stringify(requestBody),
+          const response = await post<Response>(url, {
+            body: requestBody,
             signal: controller.signal,
+          }, {
+            needAllResponseContent: true,
           })
 
           if (controller.signal.aborted)
             return
 
-          if (!response.ok) {
-            const message = `${debugLabel} debug request failed (${response.status})`
+          if (!response) {
+            const message = `${debugLabel} debug request failed`
             Toast.notify({ type: 'error', message })
             clearAbortController()
             return
           }
 
-          const contentType = response.headers.get('Content-Type')?.toLowerCase() || ''
-          if (contentType.includes('application/json')) {
-            const data = await response.json()
+          const contentType = response.headers.get('content-type') || ''
+
+          if (contentType.includes(ContentType.json)) {
+            let data: any = null
+            try {
+              data = await response.json()
+            }
+            catch (jsonError) {
+              console.error(`handleRun: ${debugLabel.toLowerCase()} debug response parse error`, jsonError)
+              Toast.notify({ type: 'error', message: `${debugLabel} debug request failed` })
+              clearAbortController()
+              clearListeningState()
+              return
+            }
+
             if (controller.signal.aborted)
               return
 
-            if (data.status === 'waiting') {
+            if (data?.status === 'waiting') {
               const delay = Number(data.retry_in) || 2000
               await waitWithAbort(controller.signal, delay)
               if (controller.signal.aborted)
@@ -512,7 +521,7 @@ export const useWorkflowRun = () => {
               return
             }
 
-            const errorMessage = data.message || `${debugLabel} debug failed`
+            const errorMessage = data?.message || `${debugLabel} debug failed`
             Toast.notify({ type: 'error', message: errorMessage })
             clearAbortController()
             setWorkflowRunningData({
