@@ -205,7 +205,7 @@ const useLastRun = <T>({
     })
   }
   const workflowStore = useWorkflowStore()
-  const { setInitShowLastRunTab } = workflowStore.getState()
+  const { setInitShowLastRunTab, setShowVariableInspectPanel } = workflowStore.getState()
   const initShowLastRunTab = useStore(s => s.initShowLastRunTab)
   const [tabType, setTabType] = useState<TabType>(initShowLastRunTab ? TabType.lastRun : TabType.settings)
   useEffect(() => {
@@ -318,6 +318,8 @@ const useLastRun = <T>({
     const { isValid } = checkValid()
     if (!isValid)
       return
+    if (blockType === BlockEnum.TriggerWebhook || blockType === BlockEnum.TriggerPlugin)
+      setShowVariableInspectPanel(true)
     if (isCustomRunNode) {
       showSingleRun()
       return
