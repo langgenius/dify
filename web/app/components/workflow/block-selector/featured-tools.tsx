@@ -228,9 +228,6 @@ function FeaturedToolUninstalledItem({
       >
         <div
           className='group flex h-8 w-full items-center rounded-lg pl-3 pr-1 hover:bg-state-base-hover'
-          onMouseLeave={() => {
-            setIsActionHovered(false)
-          }}
         >
           <div className='flex h-full min-w-0 items-center'>
             <BlockIcon type={BlockEnum.Tool} toolIcon={plugin.icon} />
