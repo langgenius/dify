@@ -42,6 +42,9 @@ import { fetchDatasets } from '@/service/datasets'
 import { MAX_TREE_DEPTH } from '@/config'
 import useNodesAvailableVarList, { useGetNodesAvailableVarList } from './use-nodes-available-var-list'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
@@ -57,6 +60,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const getToolIcon = useGetToolIcon()
 
   const map = useNodesAvailableVarList(nodes)
+  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
 
   const getCheckData = useCallback((data: CommonNodeType<{}>) => {
     let checkData = data
@@ -72,8 +77,17 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         _datasets,
       } as CommonNodeType<KnowledgeRetrievalNodeType>
     }
+    else if (data.type === BlockEnum.KnowledgeBase) {
+      const _embeddingModelList = [...embeddingModelList]
+      const _rerankModelList = [...rerankModelList]
+      checkData = {
+        ...data,
+        _embeddingModelList,
+        _rerankModelList,
+      } as CommonNodeType<KnowledgeBaseNodeType>
+    }
     return checkData
-  }, [datasetsDetail])
+  }, [datasetsDetail, embeddingModelList])
 
   const needWarningNodes = useMemo(() => {
     const list = []
