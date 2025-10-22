@@ -7,7 +7,7 @@ import type { Plugin } from '@/app/components/plugins/types'
 import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../block-icon'
 import Tooltip from '@/app/components/base/tooltip'
-import { RiArrowDownSLine, RiArrowRightSLine, RiLoader2Line, RiMoreLine } from '@remixicon/react'
+import { RiLoader2Line, RiMoreLine } from '@remixicon/react'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import Loading from '@/app/components/base/loading'
 import Link from 'next/link'
@@ -17,6 +17,7 @@ import { ViewType } from './view-type-select'
 import Tools from './tools'
 import { formatNumber } from '@/utils/format'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
+import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/arrows'
 
 const MAX_RECOMMENDED_COUNT = 15
 const INITIAL_VISIBLE_COUNT = 5
@@ -106,11 +107,11 @@ const FeaturedTools = ({
     <div className='px-3 pb-3 pt-2'>
       <button
         type='button'
-        className='flex w-full items-center justify-between rounded-md px-0 py-1 text-left text-text-primary'
+        className='flex w-full items-center rounded-md px-0 py-1 text-left text-text-primary'
         onClick={() => setIsCollapsed(prev => !prev)}
       >
-        <span className='system-xs-medium'>{t('workflow.tabs.featuredTools')}</span>
-        {isCollapsed ? <RiArrowRightSLine className='size-3.5 text-text-tertiary' /> : <RiArrowDownSLine className='size-3.5 text-text-tertiary' />}
+        <span className='system-xs-medium text-text-primary'>{t('workflow.tabs.featuredTools')}</span>
+        <ArrowDownRoundFill className={`ml-0.5 h-4 w-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
       </button>
 
       {!isCollapsed && (
