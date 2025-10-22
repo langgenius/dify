@@ -87,7 +87,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.3.0-local
+    image: langgenius/dify-plugin-daemon:0.3.3-local
     restart: always
     env_file:
       - ./middleware.env
