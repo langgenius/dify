@@ -7,6 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler  # type: ignor
 from core.workflow.graph_engine.entities.commands import CommandType, GraphEngineCommand
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events.base import GraphEngineEvent
+from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow.scheduler import CFSPlanScheduler, SchedulerCommand
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ class TimeSliceLayer(GraphEngineLayer):
         super().__init__()
         self.cfs_plan_scheduler = cfs_plan_scheduler
         self.stopped = False
+        self.schedule_id = ""
 
     def _checker_job(self, schedule_id: str):
         """
@@ -66,17 +68,21 @@ class TimeSliceLayer(GraphEngineLayer):
         Start timer to check if the workflow need to be suspended.
         """
 
-        schedule_id = uuid.uuid4().hex
+        if self.cfs_plan_scheduler.plan.schedule_strategy == WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice:
+            self.schedule_id = uuid.uuid4().hex
 
-        self.scheduler.add_job(
-            lambda: self._checker_job(schedule_id),
-            "interval",
-            seconds=self.cfs_plan_scheduler.plan.granularity,
-            id=schedule_id,
-        )
+            self.scheduler.add_job(
+                lambda: self._checker_job(self.schedule_id),
+                "interval",
+                seconds=self.cfs_plan_scheduler.plan.granularity,
+                id=self.schedule_id,
+            )
 
     def on_event(self, event: GraphEngineEvent):
         pass
 
     def on_graph_end(self, error: Exception | None) -> None:
         self.stopped = True
+        # remove the scheduler
+        if self.schedule_id:
+            self.scheduler.remove_job(self.schedule_id)
