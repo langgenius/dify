@@ -51,8 +51,6 @@ type AllToolsProps = {
   isInRAGPipeline?: boolean
   featuredPlugins?: Plugin[]
   featuredLoading?: boolean
-  featuredInstalledPluginIds?: Set<string>
-  featuredInstallLoading?: boolean
   showFeatured?: boolean
   onFeaturedInstallSuccess?: () => Promise<void> | void
 }
@@ -77,8 +75,6 @@ const AllTools = ({
   isInRAGPipeline = false,
   featuredPlugins = [],
   featuredLoading = false,
-  featuredInstalledPluginIds = new Set<string>(),
-  featuredInstallLoading = false,
   showFeatured = false,
   onFeaturedInstallSuccess,
 }: AllToolsProps) => {
@@ -231,8 +227,6 @@ const AllTools = ({
               onSelect={onSelect}
               selectedTools={selectedTools}
               canChooseMCPTool={canChooseMCPTool}
-              installedPluginIds={featuredInstalledPluginIds}
-              loadingInstalledStatus={featuredInstallLoading}
               isLoading={featuredLoading}
               onInstallSuccess={async () => {
                 await onFeaturedInstallSuccess?.()

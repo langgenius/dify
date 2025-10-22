@@ -6,15 +6,15 @@ import type { ToolDefaultValue, ToolValue } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { useGetLanguage } from '@/context/i18n'
 import Button from '@/app/components/base/button'
-import ActionItem from './tool/action-item'
-import type { Tool } from '@/app/components/tools/types'
-import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '../block-icon'
-import { RiArrowDownSLine, RiArrowRightSLine, RiArrowUpSLine, RiLoader2Line } from '@remixicon/react'
+import { RiArrowDownSLine, RiArrowRightSLine, RiLoader2Line, RiMoreLine } from '@remixicon/react'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import Loading from '@/app/components/base/loading'
 import Link from 'next/link'
 import { getMarketplaceUrl } from '@/utils/var'
+import { ToolTypeEnum } from './types'
+import { ViewType } from './view-type-select'
+import Tools from './tools'
 
 const MAX_RECOMMENDED_COUNT = 15
 const INITIAL_VISIBLE_COUNT = 5
@@ -25,16 +25,8 @@ type FeaturedToolsProps = {
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   selectedTools?: ToolValue[]
   canChooseMCPTool?: boolean
-  installedPluginIds: Set<string>
-  loadingInstalledStatus: boolean
   isLoading?: boolean
   onInstallSuccess?: () => void
-}
-
-function isToolSelected(tool: Tool, provider: ToolWithProvider, selectedTools?: ToolValue[]): boolean {
-  if (!selectedTools || !selectedTools.length)
-    return false
-  return selectedTools.some(item => (item.provider_name === provider.name || item.provider_name === provider.id) && item.tool_name === tool.name)
 }
 
 const STORAGE_KEY = 'workflow_tools_featured_collapsed'
@@ -45,8 +37,6 @@ const FeaturedTools = ({
   onSelect,
   selectedTools,
   canChooseMCPTool,
-  installedPluginIds,
-  loadingInstalledStatus,
   isLoading = false,
   onInstallSuccess,
 }: FeaturedToolsProps) => {
@@ -88,9 +78,22 @@ const FeaturedTools = ({
     [plugins, visibleCount],
   )
 
+  const installedProviders = useMemo(
+    () =>
+      visiblePlugins
+        .map(plugin => providerMap.get(plugin.plugin_id))
+        .filter((provider): provider is ToolWithProvider => Boolean(provider)),
+    [visiblePlugins, providerMap],
+  )
+
+  const uninstalledPlugins = useMemo(
+    () => visiblePlugins.filter(plugin => !providerMap.has(plugin.plugin_id)),
+    [visiblePlugins, providerMap],
+  )
+
   const showMore = visibleCount < Math.min(MAX_RECOMMENDED_COUNT, plugins.length)
   const isMutating = installMutation.isPending
-  const showEmptyState = !isLoading && !visiblePlugins.length
+  const showEmptyState = !isLoading && visiblePlugins.length === 0
 
   return (
     <div className='px-3 pb-3 pt-2'>
@@ -119,36 +122,58 @@ const FeaturedTools = ({
             </p>
           )}
 
-          {!isLoading && visiblePlugins.length > 0 && (
-            <div className='space-y-2'>
-              {visiblePlugins.map(plugin => renderFeaturedToolItem({
-                plugin,
-                providerMap,
-                installedPluginIds,
-                installMutationPending: isMutating,
-                installingIdentifier,
-                loadingInstalledStatus,
-                canChooseMCPTool,
-                onSelect,
-                selectedTools,
-                language,
-                installPlugin: installMutation.mutate,
-                setInstallingIdentifier,
-              }))}
-            </div>
+          {!showEmptyState && !isLoading && (
+            <>
+              {installedProviders.length > 0 && (
+                <Tools
+                  className='p-0'
+                  tools={installedProviders}
+                  onSelect={onSelect}
+                  canNotSelectMultiple
+                  toolType={ToolTypeEnum.All}
+                  viewType={ViewType.flat}
+                  hasSearchText={false}
+                  selectedTools={selectedTools}
+                  canChooseMCPTool={canChooseMCPTool}
+                />
+              )}
+
+              {uninstalledPlugins.length > 0 && (
+                <div className='mt-1 flex flex-col gap-1'>
+                  {uninstalledPlugins.map(plugin => (
+                    <FeaturedToolUninstalledItem
+                      key={plugin.plugin_id}
+                      plugin={plugin}
+                      language={language}
+                      installing={isMutating && installingIdentifier === plugin.latest_package_identifier}
+                      onInstall={() => {
+                        if (isMutating)
+                          return
+                        setInstallingIdentifier(plugin.latest_package_identifier)
+                        installMutation.mutate(plugin.latest_package_identifier)
+                      }}
+                      t={t}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           {!isLoading && visiblePlugins.length > 0 && showMore && (
-            <Button
-              className='mt-2 w-full'
-              size='small'
-              variant='ghost'
+            <div
+              className='mt-1 flex cursor-pointer items-center gap-x-2 py-1 pl-3 pr-2 text-text-tertiary hover:text-text-secondary'
               onClick={() => {
                 setVisibleCount(count => Math.min(count + INITIAL_VISIBLE_COUNT, MAX_RECOMMENDED_COUNT, plugins.length))
               }}
             >
-              {t('workflow.tabs.showMoreFeatured')}
-            </Button>
+              <div className='px-1'>
+                <RiMoreLine className='size-4' />
+              </div>
+              <div className='system-xs-regular'>
+                {t('common.operation.more')}
+              </div>
+            </div>
           )}
         </>
       )}
@@ -156,176 +181,50 @@ const FeaturedTools = ({
   )
 }
 
-type FeaturedToolItemProps = {
+type FeaturedToolUninstalledItemProps = {
   plugin: Plugin
-  provider: ToolWithProvider | undefined
-  isInstalled: boolean
-  installDisabled: boolean
-  canChooseMCPTool?: boolean
-  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
-  selectedTools?: ToolValue[]
   language: string
+  installing: boolean
   onInstall: () => void
-  isInstalling: boolean
+  t: (key: string, options?: Record<string, any>) => string
 }
 
-function FeaturedToolItem({
+function FeaturedToolUninstalledItem({
   plugin,
-  provider,
-  isInstalled,
-  installDisabled,
-  canChooseMCPTool,
-  onSelect,
-  selectedTools,
   language,
+  installing,
   onInstall,
-  isInstalling,
-}: FeaturedToolItemProps) {
-  const { t } = useTranslation()
-  const [isExpanded, setExpanded] = useState(false)
-  const hasProvider = Boolean(provider)
-  const installCountLabel = t('plugin.install', { num: plugin.install_count?.toLocaleString() ?? 0 })
+  t,
+}: FeaturedToolUninstalledItemProps) {
+  const label = plugin.label?.[language] || plugin.name
   const description = typeof plugin.brief === 'object' ? plugin.brief[language] : plugin.brief
-
-  useEffect(() => {
-    if (!hasProvider)
-      setExpanded(false)
-  }, [hasProvider])
-
-  let toggleLabel: string
-  if (!hasProvider)
-    toggleLabel = t('workflow.common.syncingData')
-  else if (isExpanded)
-    toggleLabel = t('workflow.tabs.hideActions')
-  else
-    toggleLabel = t('workflow.tabs.usePlugin')
+  const installCountLabel = t('plugin.install', { num: plugin.install_count?.toLocaleString() ?? 0 })
 
   return (
-    <div className='rounded-lg border border-divider-subtle bg-components-panel-bg-blur px-3 py-2'>
-      <div className='flex items-start gap-2'>
+    <div className='group flex items-center justify-between rounded-lg px-3 py-2 hover:bg-state-base-hover'>
+      <div className='flex min-w-0 items-center gap-3'>
         <BlockIcon type={BlockEnum.Tool} toolIcon={plugin.icon} />
-        <div className='min-w-0 flex-1'>
-          <div className='flex items-center gap-2'>
-            <div className='truncate text-sm font-medium text-text-primary'>
-              {plugin.label?.[language] || plugin.name}
-            </div>
-            {isInstalled && (
-              <span className='system-xs-regular rounded-full border border-divider-subtle px-2 py-0.5 text-text-tertiary'>
-                {t('workflow.tabs.installed')}
-              </span>
-            )}
-          </div>
-          <div className='system-xs-regular mt-0.5 line-clamp-2 text-text-secondary'>
-            {description}
-          </div>
-          <div className='system-xs-regular mt-1 flex items-center gap-2 text-text-tertiary'>
-            <span>{installCountLabel}</span>
-            {plugin.org && <span>{t('workflow.tabs.pluginByAuthor', { author: plugin.org })}</span>}
-          </div>
-        </div>
-        <div className='ml-2 flex shrink-0 flex-col items-end gap-1'>
-          {!isInstalled && (
-            <Button
-              size='small'
-              variant='primary'
-              disabled={installDisabled}
-              onClick={onInstall}
-              className='flex items-center gap-1'
-            >
-              {isInstalling ? t('workflow.nodes.agent.pluginInstaller.installing') : t('workflow.nodes.agent.pluginInstaller.install')}
-              {isInstalling && <RiLoader2Line className='size-3 animate-spin' />}
-            </Button>
-          )}
-          {isInstalled && (
-            <Button
-              size='small'
-              variant='secondary'
-              onClick={() => setExpanded(expanded => !expanded)}
-              disabled={!hasProvider}
-              className='flex items-center gap-1'
-            >
-              {toggleLabel}
-              {hasProvider && (isExpanded ? <RiArrowUpSLine className='size-3.5' /> : <RiArrowDownSLine className='size-3.5' />)}
-            </Button>
+        <div className='min-w-0'>
+          <div className='system-sm-medium truncate text-text-primary'>{label}</div>
+          {description && (
+            <div className='system-xs-regular truncate text-text-tertiary'>{description}</div>
           )}
         </div>
       </div>
-      {isInstalled && hasProvider && isExpanded && (
-        <div className='mt-2 space-y-1 border-t border-divider-subtle pt-2'>
-          {provider.tools.map((tool) => {
-            const isSelected = isToolSelected(tool, provider, selectedTools)
-            const isMCPTool = provider.type === CollectionType.mcp
-            const disabled = isSelected || (!canChooseMCPTool && isMCPTool)
-
-            return (
-              <ActionItem
-                key={tool.name}
-                provider={provider}
-                payload={tool}
-                onSelect={onSelect}
-                disabled={disabled}
-                isAdded={isSelected}
-              />
-            )
-          })}
-        </div>
-      )}
+      <div className='ml-3 flex items-center'>
+        <span className='system-xs-regular text-text-tertiary group-hover:hidden'>{installCountLabel}</span>
+        <Button
+          size='small'
+          variant='secondary'
+          className='hidden items-center gap-1 group-hover:flex'
+          disabled={installing}
+          onClick={onInstall}
+        >
+          {installing ? t('workflow.nodes.agent.pluginInstaller.installing') : t('workflow.nodes.agent.pluginInstaller.install')}
+          {installing && <RiLoader2Line className='size-3 animate-spin' />}
+        </Button>
+      </div>
     </div>
-  )
-}
-
-type RenderFeaturedToolParams = {
-  plugin: Plugin
-  providerMap: Map<string, ToolWithProvider>
-  installedPluginIds: Set<string>
-  installMutationPending: boolean
-  installingIdentifier: string | null
-  loadingInstalledStatus: boolean
-  canChooseMCPTool?: boolean
-  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
-  selectedTools?: ToolValue[]
-  language: string
-  installPlugin: (uniqueIdentifier: string) => void
-  setInstallingIdentifier: (identifier: string | null) => void
-}
-
-function renderFeaturedToolItem({
-  plugin,
-  providerMap,
-  installedPluginIds,
-  installMutationPending,
-  installingIdentifier,
-  loadingInstalledStatus,
-  canChooseMCPTool,
-  onSelect,
-  selectedTools,
-  language,
-  installPlugin,
-  setInstallingIdentifier,
-}: RenderFeaturedToolParams) {
-  const provider = providerMap.get(plugin.plugin_id)
-  const isInstalled = installedPluginIds.has(plugin.plugin_id)
-  const isInstalling = installMutationPending && installingIdentifier === plugin.latest_package_identifier
-
-  return (
-    <FeaturedToolItem
-      key={plugin.plugin_id}
-      plugin={plugin}
-      provider={provider}
-      isInstalled={isInstalled}
-      installDisabled={loadingInstalledStatus || installMutationPending}
-      canChooseMCPTool={canChooseMCPTool}
-      onSelect={onSelect}
-      selectedTools={selectedTools}
-      language={language}
-      onInstall={() => {
-        if (installMutationPending)
-          return
-        setInstallingIdentifier(plugin.latest_package_identifier)
-        installPlugin(plugin.latest_package_identifier)
-      }}
-      isInstalling={isInstalling}
-    />
   )
 }
 

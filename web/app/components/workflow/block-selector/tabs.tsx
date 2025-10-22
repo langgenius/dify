@@ -61,9 +61,6 @@ const Tabs: FC<TabsProps> = ({
   const {
     plugins: featuredPlugins = [],
     isLoading: isFeaturedLoading,
-    installedIds: featuredInstalledIds,
-    installStatusLoading: featuredInstallLoading,
-    refetchInstallStatus: refetchFeaturedInstallStatus,
   } = useFeaturedToolsRecommendations(enable_marketplace && !inRAGPipeline)
 
   return (
@@ -142,12 +139,9 @@ const Tabs: FC<TabsProps> = ({
             isInRAGPipeline={inRAGPipeline}
             featuredPlugins={featuredPlugins}
             featuredLoading={isFeaturedLoading}
-            featuredInstalledPluginIds={featuredInstalledIds}
-            featuredInstallLoading={featuredInstallLoading}
             showFeatured={enable_marketplace && !inRAGPipeline}
             onFeaturedInstallSuccess={async () => {
               invalidateBuiltInTools()
-              await refetchFeaturedInstallStatus()
             }}
           />
         )

@@ -74,9 +74,6 @@ const ToolPicker: FC<Props> = ({
   const {
     plugins: featuredPlugins = [],
     isLoading: isFeaturedLoading,
-    installedIds: featuredInstalledIds,
-    installStatusLoading: featuredInstallLoading,
-    refetchInstallStatus: refetchFeaturedInstallStatus,
   } = useFeaturedToolsRecommendations(enable_marketplace)
 
   const { builtinToolList, customToolList, workflowToolList } = useMemo(() => {
@@ -193,12 +190,9 @@ const ToolPicker: FC<Props> = ({
             onTagsChange={setTags}
             featuredPlugins={featuredPlugins}
             featuredLoading={isFeaturedLoading}
-            featuredInstalledPluginIds={featuredInstalledIds}
-            featuredInstallLoading={featuredInstallLoading}
             showFeatured={scope === 'all' && enable_marketplace}
             onFeaturedInstallSuccess={async () => {
               invalidateBuiltInTools()
-              await refetchFeaturedInstallStatus()
             }}
           />
         </div>
