@@ -84,13 +84,10 @@ def extract_access_token(request: Request) -> str | None:
 
 def extract_webapp_access_token(request: Request) -> str | None:
     """
-    Try to extract webapp access token from cookie.
+    Try to extract webapp access token from cookie, then header.
     """
 
-    def _try_extract_from_cookie(request: Request) -> str | None:
-        return request.cookies.get(_real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN))
-
-    return _try_extract_from_cookie(request) or _try_extract_from_header(request)
+    return request.cookies.get(_real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN)) or _try_extract_from_header(request)
 
 
 def extract_webapp_passport(app_code: str, request: Request) -> str | None:
