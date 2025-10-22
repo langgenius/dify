@@ -63,11 +63,14 @@ class TriggerEventNode(Node):
         """
 
         # Get trigger data passed when workflow was triggered
-        trigger_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs.get("inputs", {}))
+        inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
+        
+        # The event already ran before workflow execution, so we can get the outputs from the inputs
+        outputs = inputs.get("inputs", {})
 
         metadata = {
             WorkflowNodeExecutionMetadataKey.TRIGGER_INFO: {
-                **trigger_inputs,
+                **inputs,
                 "provider_id": self._node_data.provider_id,
                 "event_name": self._node_data.event_name,
                 "plugin_unique_identifier": self._node_data.plugin_unique_identifier,
@@ -75,7 +78,7 @@ class TriggerEventNode(Node):
         }
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs=trigger_inputs,
-            outputs=trigger_inputs,
+            inputs=inputs,
+            outputs=outputs,
             metadata=metadata,
         )
