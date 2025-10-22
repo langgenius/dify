@@ -30,6 +30,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 enum ZoomType {
   zoomIn = 'zoomIn',
@@ -78,6 +79,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
     workflowReadOnly,
     getWorkflowReadOnly,
   } = useWorkflowReadOnly()
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
 
   const ZOOM_IN_OUT_OPTIONS = [
     [
@@ -106,20 +108,27 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
         text: t('workflow.operator.zoomToFit'),
       },
     ],
-    [
-      {
-        key: ZoomType.toggleUserComments,
-        text: t('workflow.operator.showUserComments'),
-      },
-      {
-        key: ZoomType.toggleUserCursors,
-        text: t('workflow.operator.showUserCursors'),
-      },
-      {
-        key: ZoomType.toggleMiniMap,
-        text: t('workflow.operator.showMiniMap'),
-      },
-    ],
+    isCollaborationEnabled
+      ? [
+        {
+          key: ZoomType.toggleUserComments,
+          text: t('workflow.operator.showUserComments'),
+        },
+        {
+          key: ZoomType.toggleUserCursors,
+          text: t('workflow.operator.showUserCursors'),
+        },
+        {
+          key: ZoomType.toggleMiniMap,
+          text: t('workflow.operator.showMiniMap'),
+        },
+      ]
+      : [
+        {
+          key: ZoomType.toggleMiniMap,
+          text: t('workflow.operator.showMiniMap'),
+        },
+      ],
   ]
 
   const handleZoom = (type: string) => {
