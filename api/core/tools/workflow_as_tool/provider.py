@@ -204,7 +204,7 @@ class WorkflowToolProviderController(ToolProviderController):
                 session.query(WorkflowToolProvider)
                 .where(
                     WorkflowToolProvider.tenant_id == tenant_id,
-                    WorkflowToolProvider.app_id == self.provider_id,
+                    WorkflowToolProvider.id == self.provider_id,
                 )
                 .first()
             )
