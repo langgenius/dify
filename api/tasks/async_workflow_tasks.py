@@ -27,11 +27,10 @@ from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWo
 from services.errors.app import WorkflowNotFoundError
 from services.workflow.entities import (
     TriggerData,
-    WorkflowScheduleCFSPlanEntity,
     WorkflowTaskData,
 )
 from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity, AsyncWorkflowCFSPlanScheduler
-from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
+from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkflowSystemStrategy
 
 
 @shared_task(queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE)
@@ -40,7 +39,7 @@ def execute_workflow_professional(task_data_dict: dict[str, Any]):
     task_data = WorkflowTaskData.model_validate(task_data_dict)
     cfs_plan_scheduler_entity = AsyncWorkflowCFSPlanEntity(
         queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE,
-        schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice,
+        schedule_strategy=AsyncWorkflowSystemStrategy,
         granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
     )
     _execute_workflow_common(
@@ -56,7 +55,7 @@ def execute_workflow_team(task_data_dict: dict[str, Any]):
     task_data = WorkflowTaskData.model_validate(task_data_dict)
     cfs_plan_scheduler_entity = AsyncWorkflowCFSPlanEntity(
         queue=AsyncWorkflowQueue.TEAM_QUEUE,
-        schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice,
+        schedule_strategy=AsyncWorkflowSystemStrategy,
         granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
     )
     _execute_workflow_common(
@@ -72,7 +71,7 @@ def execute_workflow_sandbox(task_data_dict: dict[str, Any]):
     task_data = WorkflowTaskData.model_validate(task_data_dict)
     cfs_plan_scheduler_entity = AsyncWorkflowCFSPlanEntity(
         queue=AsyncWorkflowQueue.SANDBOX_QUEUE,
-        schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice,
+        schedule_strategy=AsyncWorkflowSystemStrategy,
         granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
     )
     _execute_workflow_common(

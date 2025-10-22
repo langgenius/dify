@@ -139,6 +139,7 @@ class WorkflowScheduleCFSPlanEntity(BaseModel):
         """
 
         TimeSlice = "time-slice"  # time-slice based plan
+        Nop = "nop"  # no plan, just run the workflow
 
     schedule_strategy: Strategy
     granularity: int = Field(default=-1)  # -1 means infinite
