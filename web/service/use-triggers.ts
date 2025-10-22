@@ -76,6 +76,8 @@ export const useAllTriggerPlugins = (enabled = true) => {
       return response.map(convertToTriggerWithProvider)
     },
     enabled,
+    staleTime: 0,
+    gcTime: 0,
   })
 }
 
@@ -101,6 +103,8 @@ export const useTriggerProviderInfo = (provider: string, enabled = true) => {
     queryKey: [NAME_SPACE, 'provider-info', provider],
     queryFn: () => get<TriggerProviderApiEntity>(`/workspaces/current/trigger-provider/${provider}/info`),
     enabled: enabled && !!provider,
+    staleTime: 0,
+    gcTime: 0,
   })
 }
 

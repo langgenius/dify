@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import type { BlockEnum, OnSelectBlock } from '../types'
 import type { TriggerDefaultValue } from './types'
 import StartBlocks from './start-blocks'
-import TriggerPluginSelector from './trigger-plugin-selector'
+import TriggerPluginList from './trigger-plugin/list'
 import { ENTRY_NODE_TYPES } from './constants'
 import cn from '@/utils/classnames'
 import Link from 'next/link'
@@ -76,7 +76,7 @@ const AllStartBlocks = ({
             />
 
             {enableTriggerPlugin && (
-              <TriggerPluginSelector
+              <TriggerPluginList
                 onSelect={onSelect}
                 searchText={searchText}
                 onContentStateChange={handlePluginContentChange}
