@@ -42,11 +42,13 @@ class TriggerEventNode(Node):
         return {
             "type": "plugin",
             "config": {
+                "title": "",
                 "plugin_id": "",
                 "provider_id": "",
                 "event_name": "",
                 "subscription_id": "",
-                "parameters": {},
+                "plugin_unique_identifier": "",
+                "event_parameters": {},
             },
         }
 
@@ -64,7 +66,7 @@ class TriggerEventNode(Node):
 
         # Get trigger data passed when workflow was triggered
         inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
-        
+
         # The event already ran before workflow execution, so we can get the outputs from the inputs
         outputs = inputs.get("inputs", {})
 
