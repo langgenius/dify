@@ -7,8 +7,7 @@ import type { Plugin } from '@/app/components/plugins/types'
 import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../block-icon'
 import Tooltip from '@/app/components/base/tooltip'
-import { RiLoader2Line, RiMoreLine } from '@remixicon/react'
-import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
+import { RiMoreLine } from '@remixicon/react'
 import Loading from '@/app/components/base/loading'
 import Link from 'next/link'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -18,6 +17,7 @@ import Tools from './tools'
 import { formatNumber } from '@/utils/format'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
 import { ArrowDownDoubleLine, ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/arrows'
+import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 
 const MAX_RECOMMENDED_COUNT = 15
 const INITIAL_VISIBLE_COUNT = 5
@@ -46,21 +46,11 @@ const FeaturedTools = ({
   const { t } = useTranslation()
   const language = useGetLanguage()
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
-  const [installingIdentifier, setInstallingIdentifier] = useState<string | null>(null)
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined')
       return false
     const stored = window.localStorage.getItem(STORAGE_KEY)
     return stored === 'true'
-  })
-
-  const installMutation = useInstallPackageFromMarketPlace({
-    onSuccess: async () => {
-      await onInstallSuccess?.()
-    },
-    onSettled: () => {
-      setInstallingIdentifier(null)
-    },
   })
 
   useEffect(() => {
@@ -100,7 +90,6 @@ const FeaturedTools = ({
   )
 
   const showMore = visibleCount < Math.min(MAX_RECOMMENDED_COUNT, plugins.length)
-  const isMutating = installMutation.isPending
   const showEmptyState = !isLoading && visiblePlugins.length === 0
 
   return (
@@ -153,12 +142,8 @@ const FeaturedTools = ({
                       key={plugin.plugin_id}
                       plugin={plugin}
                       language={language}
-                      installing={isMutating && installingIdentifier === plugin.latest_package_identifier}
-                      onInstall={() => {
-                        if (isMutating)
-                          return
-                        setInstallingIdentifier(plugin.latest_package_identifier)
-                        installMutation.mutate(plugin.latest_package_identifier)
+                      onInstallSuccess={async () => {
+                        await onInstallSuccess?.()
                       }}
                       t={t}
                     />
@@ -193,16 +178,14 @@ const FeaturedTools = ({
 type FeaturedToolUninstalledItemProps = {
   plugin: Plugin
   language: string
-  installing: boolean
-  onInstall: () => void
+  onInstallSuccess?: () => Promise<void> | void
   t: (key: string, options?: Record<string, any>) => string
 }
 
 function FeaturedToolUninstalledItem({
   plugin,
   language,
-  installing,
-  onInstall,
+  onInstallSuccess,
   t,
 }: FeaturedToolUninstalledItemProps) {
   const label = plugin.label?.[language] || plugin.name
@@ -210,6 +193,7 @@ function FeaturedToolUninstalledItem({
   const installCountLabel = t('plugin.install', { num: formatNumber(plugin.install_count || 0) })
   const [actionOpen, setActionOpen] = useState(false)
   const [isActionHovered, setIsActionHovered] = useState(false)
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false)
 
   useEffect(() => {
     if (!actionOpen)
@@ -228,52 +212,53 @@ function FeaturedToolUninstalledItem({
   }, [actionOpen])
 
   return (
-    <Tooltip
-      position='right'
-      needsDelay={false}
-      popupClassName='!p-0 !px-3 !py-2.5 !w-[224px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
-      popupContent={(
-        <div>
-          <BlockIcon size='md' className='mb-2' type={BlockEnum.Tool} toolIcon={plugin.icon} />
-          <div className='mb-1 text-sm leading-5 text-text-primary'>{label}</div>
-          <div className='text-xs leading-[18px] text-text-secondary'>{description}</div>
-        </div>
-      )}
-      disabled={!description || isActionHovered || actionOpen}
-    >
-      <div
-        className='group flex h-8 w-full items-center rounded-lg pl-3 pr-1 hover:bg-state-base-hover'
-        onMouseLeave={() => {
-          if (!actionOpen)
-            setIsActionHovered(false)
-        }}
-      >
-        <div className='flex h-full min-w-0 items-center'>
-          <BlockIcon type={BlockEnum.Tool} toolIcon={plugin.icon} />
-          <div className='ml-2 min-w-0'>
-            <div className='system-sm-medium truncate text-text-secondary'>{label}</div>
+    <>
+      <Tooltip
+        position='right'
+        needsDelay={false}
+        popupClassName='!p-0 !px-3 !py-2.5 !w-[224px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
+        popupContent={(
+          <div>
+            <BlockIcon size='md' className='mb-2' type={BlockEnum.Tool} toolIcon={plugin.icon} />
+            <div className='mb-1 text-sm leading-5 text-text-primary'>{label}</div>
+            <div className='text-xs leading-[18px] text-text-secondary'>{description}</div>
           </div>
-        </div>
-        <div className='ml-auto flex h-full items-center gap-1 pl-1'>
-          <span className='system-xs-regular text-text-tertiary group-hover:hidden'>{installCountLabel}</span>
-          <div
-            className={`h-full items-center gap-1 [&_.action-btn]:h-6 [&_.action-btn]:min-h-0 [&_.action-btn]:w-6 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? 'flex' : 'hidden group-hover:flex'}`}
-            onMouseEnter={() => setIsActionHovered(true)}
-            onMouseLeave={() => {
-              if (!actionOpen)
-                setIsActionHovered(false)
-            }}
-          >
-            <button
-              type='button'
-              className='system-xs-medium flex h-6 cursor-pointer items-center gap-1 rounded px-1.5 text-components-button-secondary-accent-text hover:bg-state-base-hover'
-              disabled={installing}
-              onClick={onInstall}
+        )}
+        disabled={!description || isActionHovered || actionOpen || isInstallModalOpen}
+      >
+        <div
+          className='group flex h-8 w-full items-center rounded-lg pl-3 pr-1 hover:bg-state-base-hover'
+          onMouseLeave={() => {
+            setIsActionHovered(false)
+          }}
+        >
+          <div className='flex h-full min-w-0 items-center'>
+            <BlockIcon type={BlockEnum.Tool} toolIcon={plugin.icon} />
+            <div className='ml-2 min-w-0'>
+              <div className='system-sm-medium truncate text-text-secondary'>{label}</div>
+            </div>
+          </div>
+          <div className='ml-auto flex h-full items-center gap-1 pl-1'>
+            <span className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}>{installCountLabel}</span>
+            <div
+              className={`system-xs-medium flex h-full items-center gap-1 text-components-button-secondary-accent-text [&_.action-btn]:h-6 [&_.action-btn]:min-h-0 [&_.action-btn]:w-6 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? 'flex' : 'hidden group-hover:flex'}`}
+              onMouseEnter={() => setIsActionHovered(true)}
+              onMouseLeave={() => {
+                if (!actionOpen)
+                  setIsActionHovered(false)
+              }}
             >
-              {installing ? t('workflow.nodes.agent.pluginInstaller.installing') : t('workflow.nodes.agent.pluginInstaller.install')}
-              {installing && <RiLoader2Line className='size-3 animate-spin' />}
-            </button>
-            <div className='flex items-center'>
+              <button
+                type='button'
+                className='cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover'
+                onClick={() => {
+                  setActionOpen(false)
+                  setIsInstallModalOpen(true)
+                  setIsActionHovered(true)
+                }}
+              >
+                {t('plugin.installAction')}
+              </button>
               <Action
                 open={actionOpen}
                 onOpenChange={(value) => {
@@ -287,8 +272,23 @@ function FeaturedToolUninstalledItem({
             </div>
           </div>
         </div>
-      </div>
-    </Tooltip>
+      </Tooltip>
+      {isInstallModalOpen && (
+        <InstallFromMarketplace
+          uniqueIdentifier={plugin.latest_package_identifier}
+          manifest={plugin}
+          onSuccess={async () => {
+            setIsInstallModalOpen(false)
+            setIsActionHovered(false)
+            await onInstallSuccess?.()
+          }}
+          onClose={() => {
+            setIsInstallModalOpen(false)
+            setIsActionHovered(false)
+          }}
+        />
+      )}
+    </>
   )
 }
 
