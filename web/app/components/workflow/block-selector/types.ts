@@ -57,7 +57,8 @@ export type ToolDefaultValue = PluginCommonDefaultValue & {
   output_schema?: Record<string, any>
   credential_id?: string
   meta?: PluginMeta
-  output_schema?: Record<string, any>
+  plugin_id?: string
+  provider_icon?: Collection['icon']
 }
 
 export type DataSourceDefaultValue = Omit<PluginCommonDefaultValue, 'provider_id'> & {

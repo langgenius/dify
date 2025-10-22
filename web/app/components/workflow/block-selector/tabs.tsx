@@ -1,5 +1,5 @@
 import type { Dispatch, FC, SetStateAction } from 'react'
-import { memo } from 'react'
+import { memo, useEffect } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import type {
   BlockEnum,
@@ -15,6 +15,7 @@ import DataSources from './data-sources'
 import cn from '@/utils/classnames'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useWorkflowStore } from '../store'
 
 export type TabsProps = {
   activeTab: TabsEnum
@@ -57,11 +58,32 @@ const Tabs: FC<TabsProps> = ({
   const { data: mcpTools } = useAllMCPTools()
   const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const workflowStore = useWorkflowStore()
   const inRAGPipeline = dataSources.length > 0
   const {
     plugins: featuredPlugins = [],
     isLoading: isFeaturedLoading,
   } = useFeaturedToolsRecommendations(enable_marketplace && !inRAGPipeline)
+
+  useEffect(() => {
+    workflowStore.setState((state) => {
+      const updates: Partial<typeof state> = {}
+      if (buildInTools !== undefined && state.buildInTools !== buildInTools)
+        updates.buildInTools = buildInTools
+      if (customTools !== undefined && state.customTools !== customTools)
+        updates.customTools = customTools
+      if (workflowTools !== undefined && state.workflowTools !== workflowTools)
+        updates.workflowTools = workflowTools
+      if (mcpTools !== undefined && state.mcpTools !== mcpTools)
+        updates.mcpTools = mcpTools
+      if (!Object.keys(updates).length)
+        return state
+      return {
+        ...state,
+        ...updates,
+      }
+    })
+  }, [workflowStore, buildInTools, customTools, workflowTools, mcpTools])
 
   return (
     <div onClick={e => e.stopPropagation()}>

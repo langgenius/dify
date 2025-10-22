@@ -4,6 +4,7 @@ import {
 } from 'react'
 import type {
   Node,
+  ToolWithProvider,
 } from '../types'
 import {
   BlockEnum,
@@ -69,17 +70,51 @@ export const useToolIcon = (data?: Node['data']) => {
       return icon || ''
     }
     if (isToolNode(data)) {
-      // eslint-disable-next-line sonarjs/no-dead-store
-      let targetTools = buildInTools
-      if (data.provider_type === CollectionType.builtIn)
-        targetTools = buildInTools
-      else if (data.provider_type === CollectionType.custom)
-        targetTools = customTools
-      else if (data.provider_type === CollectionType.mcp)
-        targetTools = mcpTools
-      else
-        targetTools = workflowTools
-      return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon || ''
+      let primaryCollection: ToolWithProvider[] | undefined
+      switch (data.provider_type) {
+        case CollectionType.custom:
+          primaryCollection = customTools
+          break
+        case CollectionType.mcp:
+          primaryCollection = mcpTools
+          break
+        case CollectionType.workflow:
+          primaryCollection = workflowTools
+          break
+        case CollectionType.builtIn:
+        default:
+          primaryCollection = buildInTools
+          break
+      }
+
+      const collectionsToSearch = [
+        primaryCollection,
+        buildInTools,
+        customTools,
+        workflowTools,
+        mcpTools,
+      ] as Array<ToolWithProvider[] | undefined>
+
+      const seen = new Set<ToolWithProvider[]>()
+      for (const collection of collectionsToSearch) {
+        if (!collection || seen.has(collection))
+          continue
+        seen.add(collection)
+        const matched = collection.find((toolWithProvider) => {
+          if (canFindTool(toolWithProvider.id, data.provider_id))
+            return true
+          if (data.plugin_id && toolWithProvider.plugin_id === data.plugin_id)
+            return true
+          return data.provider_name === toolWithProvider.name
+        })
+        if (matched?.icon)
+          return matched.icon
+      }
+
+      if (data.provider_icon)
+        return data.provider_icon
+
+      return ''
     }
     if (isDataSourceNode(data))
       return dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)?.icon || ''
@@ -114,17 +149,51 @@ export const useGetToolIcon = () => {
     }
 
     if (isToolNode(data)) {
-      // eslint-disable-next-line sonarjs/no-dead-store
-      let targetTools = buildInTools
-      if (data.provider_type === CollectionType.builtIn)
-        targetTools = buildInTools
-      else if (data.provider_type === CollectionType.custom)
-        targetTools = customTools
-      else if (data.provider_type === CollectionType.mcp)
-        targetTools = mcpTools
-      else
-        targetTools = workflowTools
-      return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
+      let primaryCollection: ToolWithProvider[] | undefined
+      switch (data.provider_type) {
+        case CollectionType.custom:
+          primaryCollection = customTools
+          break
+        case CollectionType.mcp:
+          primaryCollection = mcpTools
+          break
+        case CollectionType.workflow:
+          primaryCollection = workflowTools
+          break
+        case CollectionType.builtIn:
+        default:
+          primaryCollection = buildInTools
+          break
+      }
+
+      const collectionsToSearch = [
+        primaryCollection,
+        buildInTools,
+        customTools,
+        workflowTools,
+        mcpTools,
+      ] as Array<ToolWithProvider[] | undefined>
+
+      const seen = new Set<ToolWithProvider[]>()
+      for (const collection of collectionsToSearch) {
+        if (!collection || seen.has(collection))
+          continue
+        seen.add(collection)
+        const matched = collection.find((toolWithProvider) => {
+          if (canFindTool(toolWithProvider.id, data.provider_id))
+            return true
+          if (data.plugin_id && toolWithProvider.plugin_id === data.plugin_id)
+            return true
+          return data.provider_name === toolWithProvider.name
+        })
+        if (matched?.icon)
+          return matched.icon
+      }
+
+      if (data.provider_icon)
+        return data.provider_icon
+
+      return undefined
     }
 
     if (isDataSourceNode(data))

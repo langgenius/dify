@@ -64,6 +64,8 @@ const ToolItem: FC<Props> = ({
             provider_id: provider.id,
             provider_type: provider.type,
             provider_name: provider.name,
+            plugin_id: provider.plugin_id,
+            provider_icon: provider.icon,
             tool_name: payload.name,
             tool_label: payload.label[language],
             tool_description: payload.description[language],
