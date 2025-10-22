@@ -321,7 +321,7 @@ const translation = {
     userInputField: 'Bidang Input Pengguna',
     checklistResolved: 'Semua masalah terselesaikan',
     createdBy: 'Dibuat oleh',
-    helpLink: 'Tautan Bantuan',
+    helpLink: 'Docs',
     changeBlock: 'Ubah Node',
     runThisStep: 'Jalankan langkah ini',
     maximize: 'Maksimalkan Kanvas',

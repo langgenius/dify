@@ -320,7 +320,7 @@ const translation = {
   },
   panel: {
     userInputField: 'उपयोगकर्ता इनपुट फ़ील्ड',
-    helpLink: 'सहायता लिंक',
+    helpLink: 'सहायता',
     about: 'के बारे में',
     createdBy: 'द्वारा बनाया गया ',
     nextStep: 'अगला कदम',

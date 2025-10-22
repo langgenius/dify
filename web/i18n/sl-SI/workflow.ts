@@ -324,7 +324,7 @@ const translation = {
     addNextStep: 'Dodajte naslednji korak v ta delovni potek',
     checklistTip: 'Prepričajte se, da so vse težave rešene, preden objavite.',
     selectNextStep: 'Izberi naslednji korak',
-    helpLink: 'Pomočna povezava',
+    helpLink: 'Pomoč',
     checklist: 'Kontrolni seznam',
     checklistResolved: 'Vse težave so rešene',
     createdBy: 'Ustvarjeno z',

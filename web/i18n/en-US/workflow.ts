@@ -372,7 +372,7 @@ const translation = {
   panel: {
     userInputField: 'User Input Field',
     changeBlock: 'Change Node',
-    helpLink: 'Help Link',
+    helpLink: 'Docs',
     about: 'About',
     createdBy: 'Created By ',
     nextStep: 'Next Step',

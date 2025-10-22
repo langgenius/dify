@@ -309,7 +309,7 @@ const translation = {
   },
   panel: {
     userInputField: 'Kullanıcı Giriş Alanı',
-    helpLink: 'Yardım Linki',
+    helpLink: 'Yardım',
     about: 'Hakkında',
     createdBy: 'Oluşturan: ',
     nextStep: 'Sonraki Adım',

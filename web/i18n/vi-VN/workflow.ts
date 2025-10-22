@@ -309,7 +309,7 @@ const translation = {
   },
   panel: {
     userInputField: 'Trường đầu vào của người dùng',
-    helpLink: 'Liên kết trợ giúp',
+    helpLink: 'Trung tâm trợ giúp',
     about: 'Giới thiệu',
     createdBy: 'Tạo bởi ',
     nextStep: 'Bước tiếp theo',
