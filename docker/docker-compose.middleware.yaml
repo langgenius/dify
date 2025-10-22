@@ -180,6 +180,10 @@ services:
     networks:
       - ssrf_proxy_network
       - default
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
 
   # The Weaviate vector store.
   weaviate:
