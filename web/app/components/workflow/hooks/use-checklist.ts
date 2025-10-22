@@ -78,16 +78,14 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       } as CommonNodeType<KnowledgeRetrievalNodeType>
     }
     else if (data.type === BlockEnum.KnowledgeBase) {
-      const _embeddingModelList = [...embeddingModelList]
-      const _rerankModelList = [...rerankModelList]
       checkData = {
         ...data,
-        _embeddingModelList,
-        _rerankModelList,
+        _embeddingModelList: embeddingModelList,
+        _rerankModelList: rerankModelList,
       } as CommonNodeType<KnowledgeBaseNodeType>
     }
     return checkData
-  }, [datasetsDetail, embeddingModelList])
+  }, [datasetsDetail, embeddingModelList, rerankModelList])
 
   const needWarningNodes = useMemo(() => {
     const list = []
