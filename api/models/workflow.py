@@ -13,8 +13,10 @@ from core.file.constants import maybe_file_object
 from core.file.models import File
 from core.variables import utils as variable_utils
 from core.variables.variables import FloatVariable, IntegerVariable, StringVariable
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities.workflow_suspension import StateVersion
+from core.workflow.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from core.workflow.enums import NodeType, WorkflowExecutionStatus
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
@@ -248,7 +250,9 @@ class Workflow(Base):
         return node_type
 
     @staticmethod
-    def get_enclosing_node_type_and_id(node_config: Mapping[str, Any]) -> tuple[NodeType, str] | None:
+    def get_enclosing_node_type_and_id(
+        node_config: Mapping[str, Any],
+    ) -> tuple[NodeType, str] | None:
         in_loop = node_config.get("isInLoop", False)
         in_iteration = node_config.get("isInIteration", False)
         if in_loop:
@@ -307,7 +311,10 @@ class Workflow(Base):
         if "nodes" not in graph_dict:
             return []
 
-        start_node = next((node for node in graph_dict["nodes"] if node["data"]["type"] == "start"), None)
+        start_node = next(
+            (node for node in graph_dict["nodes"] if node["data"]["type"] == "start"),
+            None,
+        )
         if not start_node:
             return []
 
@@ -360,7 +367,9 @@ class Workflow(Base):
         return db.session.execute(stmt).scalar_one()
 
     @property
-    def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
+    def environment_variables(
+        self,
+    ) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
         # TODO: find some way to init `self._environment_variables` when instance created.
         if self._environment_variables is None:
             self._environment_variables = "{}"
@@ -377,7 +386,9 @@ class Workflow(Base):
         ]
 
         # decrypt secret variables value
-        def decrypt_func(var: Variable) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable:
+        def decrypt_func(
+            var: Variable,
+        ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable:
             if isinstance(var, SecretVariable):
                 return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
             elif isinstance(var, (StringVariable, IntegerVariable, FloatVariable)):
@@ -557,13 +568,13 @@ class WorkflowRun(Base):
     # This field is non-null when `status == PAUSED` and null otherwise.
     pause_id: Mapped[StringUUID | None] = mapped_column(StringUUID, nullable=True)
 
-    pause_state: Mapped["WorkflowPauseState"] = orm.relationship(
+    pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
         back_populates="workflow_run",
         # require explicit preloading.
         lazy="raise",
         foreign_keys=[pause_id],
         uselist=False,
-        primaryjoin="WorkflowRun.pause_state_id == UploadFile.id",
+        primaryjoin="WorkflowRun.pause_id == WorkflowPause.id",
     )
 
     @property
@@ -1090,7 +1101,10 @@ class ConversationVariable(Base):
         DateTime, nullable=False, server_default=func.current_timestamp(), index=True
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
     )
 
     def __init__(self, *, id: str, app_id: str, conversation_id: str, data: str):
@@ -1598,8 +1612,8 @@ def is_system_variable_editable(name: str) -> bool:
     return name in _EDITABLE_SYSTEM_VARIABLE
 
 
-class WorkflowPauseState(ModelMixin, Base):
-    __tablename__ = "workflow_pause_states"
+class WorkflowPause(ModelMixin, Base):
+    __tablename__ = "workflow_pauses"
 
     # `tenant_id` identifies the tenant associated with this pause,
     # corresponding to the `id` field in the `Tenant` model.
@@ -1642,12 +1656,6 @@ class WorkflowPauseState(ModelMixin, Base):
     resumed_at: Mapped[Optional[datetime]] = mapped_column(
         sa.DateTime,
         nullable=True,
-    )
-
-    # The version of the serialized execution state data. Currently, the only supported value is `v1`.
-    state_version: Mapped[StateVersion] = mapped_column(
-        EnumText(StateVersion),
-        nullable=False,
     )
 
     # `state_file_id` is the id of File containing the serialized runtime state of the `GraphEngine`,
