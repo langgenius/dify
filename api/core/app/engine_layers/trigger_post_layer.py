@@ -11,7 +11,7 @@ from core.workflow.graph_events.graph import GraphRunFailedEvent, GraphRunPaused
 from models.engine import db
 from models.enums import WorkflowTriggerStatus
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from tasks.workflow_cfs_scheduler.cfs_scheduler import TriggerWorkflowCFSPlanEntity
+from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class TriggerPostLayer(GraphEngineLayer):
 
     def __init__(
         self,
-        cfs_plan_scheduler_entity: TriggerWorkflowCFSPlanEntity,
+        cfs_plan_scheduler_entity: AsyncWorkflowCFSPlanEntity,
         start_time: datetime,
         trigger_log_id: str,
     ):

@@ -3,7 +3,7 @@ from services.workflow.scheduler import CFSPlanScheduler, SchedulerCommand
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
 
 
-class TriggerWorkflowCFSPlanEntity(WorkflowScheduleCFSPlanEntity):
+class AsyncWorkflowCFSPlanEntity(WorkflowScheduleCFSPlanEntity):
     """
     Trigger workflow CFS plan entity.
     """
@@ -11,17 +11,17 @@ class TriggerWorkflowCFSPlanEntity(WorkflowScheduleCFSPlanEntity):
     queue: AsyncWorkflowQueue
 
 
-class TriggerCFSPlanScheduler(CFSPlanScheduler):
+class AsyncWorkflowCFSPlanScheduler(CFSPlanScheduler):
     """
     Trigger workflow CFS plan scheduler.
     """
+
+    plan: AsyncWorkflowCFSPlanEntity
 
     def can_schedule(self) -> SchedulerCommand:
         """
         Check if the workflow can be scheduled.
         """
-        assert isinstance(self.plan, TriggerWorkflowCFSPlanEntity)
-
         if self.plan.queue in [AsyncWorkflowQueue.PROFESSIONAL_QUEUE, AsyncWorkflowQueue.TEAM_QUEUE]:
             """
             permitted all paid users to schedule the workflow any time
@@ -29,5 +29,4 @@ class TriggerCFSPlanScheduler(CFSPlanScheduler):
             return SchedulerCommand.NONE
 
         # FIXME: avoid the sandbox user's workflow at a running state for ever
-
-        return SchedulerCommand.NONE
+        return SchedulerCommand.RESOURCE_LIMIT_REACHED

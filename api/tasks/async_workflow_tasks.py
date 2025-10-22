@@ -30,7 +30,7 @@ from services.workflow.entities import (
     WorkflowScheduleCFSPlanEntity,
     WorkflowTaskData,
 )
-from tasks.workflow_cfs_scheduler.cfs_scheduler import TriggerCFSPlanScheduler, TriggerWorkflowCFSPlanEntity
+from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntity, AsyncWorkflowCFSPlanScheduler
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
 
 
@@ -38,14 +38,14 @@ from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue
 def execute_workflow_professional(task_data_dict: dict[str, Any]):
     """Execute workflow for professional tier with highest priority"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    cfs_plan_scheduler_entity = TriggerWorkflowCFSPlanEntity(
+    cfs_plan_scheduler_entity = AsyncWorkflowCFSPlanEntity(
         queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE,
         schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice,
         granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
     )
     _execute_workflow_common(
         task_data,
-        TriggerCFSPlanScheduler(plan=cfs_plan_scheduler_entity),
+        AsyncWorkflowCFSPlanScheduler(plan=cfs_plan_scheduler_entity),
         cfs_plan_scheduler_entity,
     )
 
@@ -54,14 +54,14 @@ def execute_workflow_professional(task_data_dict: dict[str, Any]):
 def execute_workflow_team(task_data_dict: dict[str, Any]):
     """Execute workflow for team tier"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    cfs_plan_scheduler_entity = TriggerWorkflowCFSPlanEntity(
+    cfs_plan_scheduler_entity = AsyncWorkflowCFSPlanEntity(
         queue=AsyncWorkflowQueue.TEAM_QUEUE,
         schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice,
         granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
     )
     _execute_workflow_common(
         task_data,
-        TriggerCFSPlanScheduler(plan=cfs_plan_scheduler_entity),
+        AsyncWorkflowCFSPlanScheduler(plan=cfs_plan_scheduler_entity),
         cfs_plan_scheduler_entity,
     )
 
@@ -70,22 +70,22 @@ def execute_workflow_team(task_data_dict: dict[str, Any]):
 def execute_workflow_sandbox(task_data_dict: dict[str, Any]):
     """Execute workflow for free tier with lower retry limit"""
     task_data = WorkflowTaskData.model_validate(task_data_dict)
-    cfs_plan_scheduler_entity = TriggerWorkflowCFSPlanEntity(
+    cfs_plan_scheduler_entity = AsyncWorkflowCFSPlanEntity(
         queue=AsyncWorkflowQueue.SANDBOX_QUEUE,
         schedule_strategy=WorkflowScheduleCFSPlanEntity.Strategy.TimeSlice,
         granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
     )
     _execute_workflow_common(
         task_data,
-        TriggerCFSPlanScheduler(plan=cfs_plan_scheduler_entity),
+        AsyncWorkflowCFSPlanScheduler(plan=cfs_plan_scheduler_entity),
         cfs_plan_scheduler_entity,
     )
 
 
 def _execute_workflow_common(
     task_data: WorkflowTaskData,
-    cfs_plan_scheduler: TriggerCFSPlanScheduler,
-    cfs_plan_scheduler_entity: TriggerWorkflowCFSPlanEntity,
+    cfs_plan_scheduler: AsyncWorkflowCFSPlanScheduler,
+    cfs_plan_scheduler_entity: AsyncWorkflowCFSPlanEntity,
 ):
     """Execute workflow with common logic and trigger log updates."""
 
