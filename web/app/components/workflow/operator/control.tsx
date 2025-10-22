@@ -28,14 +28,17 @@ import TipPopup from './tip-popup'
 import ExportImage from './export-image'
 import { useOperator } from './hooks'
 import cn from '@/utils/classnames'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const Control = () => {
   const { t } = useTranslation()
   const controlMode = useStore(s => s.controlMode)
   const maximizeCanvas = useStore(s => s.maximizeCanvas)
-  const { handleModePointer, handleModeHand, handleModeComment } = useWorkflowMoveMode()
+  const {
+    handleModePointer,
+    handleModeHand,
+    handleModeComment,
+    isCommentModeAvailable,
+  } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
   const { handleAddNote } = useOperator()
   const {
@@ -43,9 +46,6 @@ const Control = () => {
     getNodesReadOnly,
   } = useNodesReadOnly()
   const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
-  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
-  const appDetail = useAppStore(state => state.appDetail)
-  const isCommentVisible = isCollaborationEnabled && (appDetail?.mode === 'workflow' || appDetail?.mode === 'advanced-chat')
 
   const addNote = (e: MouseEvent<HTMLDivElement>) => {
     if (getNodesReadOnly())
@@ -94,7 +94,7 @@ const Control = () => {
           <RiHand className='h-4 w-4' />
         </div>
       </TipPopup>
-      {isCommentVisible && (
+      {isCommentModeAvailable && (
         <TipPopup title={t('workflow.common.commentMode')} shortcuts={['c']}>
           <div
             className={cn(

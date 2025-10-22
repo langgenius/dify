@@ -37,6 +37,7 @@ export const useShortcuts = (): void => {
     handleModeHand,
     handleModePointer,
     handleModeComment,
+    isCommentModeAvailable,
   } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
   const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
@@ -146,7 +147,7 @@ export const useShortcuts = (): void => {
   })
 
   useKeyPress('c', (e) => {
-    if (shouldHandleShortcut(e)) {
+    if (shouldHandleShortcut(e) && isCommentModeAvailable) {
       e.preventDefault()
       handleModeComment()
     }

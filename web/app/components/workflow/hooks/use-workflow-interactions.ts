@@ -30,6 +30,8 @@ import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export const useWorkflowInteractions = () => {
   const workflowStore = useWorkflowStore()
@@ -56,6 +58,9 @@ export const useWorkflowMoveMode = () => {
     getNodesReadOnly,
   } = useNodesReadOnly()
   const { handleSelectionCancel } = useSelectionInteractions()
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
+  const appDetail = useAppStore(state => state.appDetail)
+  const isCommentModeAvailable = isCollaborationEnabled && (appDetail?.mode === 'workflow' || appDetail?.mode === 'advanced-chat')
 
   const handleModePointer = useCallback(() => {
     if (getNodesReadOnly())
@@ -73,17 +78,18 @@ export const useWorkflowMoveMode = () => {
   }, [getNodesReadOnly, setControlMode, handleSelectionCancel])
 
   const handleModeComment = useCallback(() => {
-    if (getNodesReadOnly())
+    if (getNodesReadOnly() || !isCommentModeAvailable)
       return
 
     setControlMode(ControlMode.Comment)
     handleSelectionCancel()
-  }, [getNodesReadOnly, setControlMode, handleSelectionCancel])
+  }, [getNodesReadOnly, setControlMode, handleSelectionCancel, isCommentModeAvailable])
 
   return {
     handleModePointer,
     handleModeHand,
     handleModeComment,
+    isCommentModeAvailable,
   }
 }
 
