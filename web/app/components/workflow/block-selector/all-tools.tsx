@@ -32,6 +32,7 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import RAGToolSuggestions from './rag-tool-suggestions'
 import FeaturedTools from './featured-tools'
 import Link from 'next/link'
+import Divider from '@/app/components/base/divider'
 
 type AllToolsProps = {
   className?: string
@@ -221,18 +222,26 @@ const AllTools = ({
             />
           )}
           {shouldShowFeatured && (
-            <FeaturedTools
-              plugins={featuredPlugins}
-              providerMap={providerMap}
-              onSelect={onSelect}
-              selectedTools={selectedTools}
-              canChooseMCPTool={canChooseMCPTool}
-              isLoading={featuredLoading}
-              onInstallSuccess={async () => {
-                await onFeaturedInstallSuccess?.()
-              }}
-            />
+            <>
+              <FeaturedTools
+                plugins={featuredPlugins}
+                providerMap={providerMap}
+                onSelect={onSelect}
+                selectedTools={selectedTools}
+                canChooseMCPTool={canChooseMCPTool}
+                isLoading={featuredLoading}
+                onInstallSuccess={async () => {
+                  await onFeaturedInstallSuccess?.()
+                }}
+              />
+              <div className='px-3'>
+                <Divider className='!h-px' />
+              </div>
+            </>
           )}
+          <div className='px-3 pb-1 pt-2'>
+            <span className='system-xs-medium text-text-primary'>{t('tools.allTools')}</span>
+          </div>
           <Tools
             className={toolContentClassName}
             tools={tools}
