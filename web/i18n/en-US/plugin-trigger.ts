@@ -176,6 +176,11 @@ const translation = {
     },
     output: 'Output',
   },
+  node: {
+    status: {
+      warning: 'Disconnect',
+    },
+  },
 }
 
 export default translation

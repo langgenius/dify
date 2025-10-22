@@ -176,6 +176,11 @@ const translation = {
     },
     output: '输出',
   },
+  node: {
+    status: {
+      warning: '未连接',
+    },
+  },
 }
 
 export default translation
