@@ -17,7 +17,7 @@ import { ViewType } from './view-type-select'
 import Tools from './tools'
 import { formatNumber } from '@/utils/format'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/arrows'
+import { ArrowDownDoubleLine, ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/arrows'
 
 const MAX_RECOMMENDED_COUNT = 15
 const INITIAL_VISIBLE_COUNT = 5
@@ -170,16 +170,17 @@ const FeaturedTools = ({
 
           {!isLoading && visiblePlugins.length > 0 && showMore && (
             <div
-              className='mt-1 flex cursor-pointer items-center gap-x-2 py-1 pl-3 pr-2 text-text-tertiary hover:text-text-secondary'
+              className='group mt-1 flex cursor-pointer items-center gap-x-2 rounded-lg py-1 pl-3 pr-2 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary'
               onClick={() => {
                 setVisibleCount(count => Math.min(count + INITIAL_VISIBLE_COUNT, MAX_RECOMMENDED_COUNT, plugins.length))
               }}
             >
-              <div className='px-1'>
-                <RiMoreLine className='size-4' />
+              <div className='flex items-center px-1 text-text-tertiary transition-colors group-hover:text-text-secondary'>
+                <RiMoreLine className='size-4 group-hover:hidden' />
+                <ArrowDownDoubleLine className='hidden size-4 group-hover:block' />
               </div>
               <div className='system-xs-regular'>
-                {t('common.operation.more')}
+                {t('workflow.tabs.showMoreFeatured')}
               </div>
             </div>
           )}
