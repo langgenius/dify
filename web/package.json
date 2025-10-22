@@ -222,6 +222,8 @@
   },
   "pnpm": {
     "overrides": {
+      "lexical": "0.37.0",
+      "@lexical/*": "0.37.0",
       "@eslint/plugin-kit@<0.3.4": "0.3.4",
       "brace-expansion@<2.0.2": "2.0.2",
       "devalue@<5.3.2": "5.3.2",
