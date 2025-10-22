@@ -86,6 +86,7 @@ def extract_webapp_access_token(request: Request) -> str | None:
     """
     Try to extract webapp access token from cookie.
     """
+
     def _try_extract_from_cookie(request: Request) -> str | None:
         return request.cookies.get(_real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN))
 
