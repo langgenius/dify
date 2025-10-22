@@ -78,7 +78,7 @@ class TriggerEventNode(Node):
         }
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs=inputs,
+            inputs={},
             outputs=outputs,
             metadata=metadata,
         )
