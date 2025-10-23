@@ -12,6 +12,8 @@ import type { BlockEnum } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
 import type { FlowType } from '@/types/common'
 import { getFlowPrefix } from './utils'
+import { sanitizeWorkflowDraftPayload } from './workflow-payload'
+import type { WorkflowDraftSyncParams } from './workflow-payload'
 
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
@@ -19,9 +21,10 @@ export const fetchWorkflowDraft = (url: string) => {
 
 export const syncWorkflowDraft = ({ url, params }: {
   url: string
-  params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'>
+  params: WorkflowDraftSyncParams
 }) => {
-  return post<CommonResponse & { updated_at: number; hash: string }>(url, { body: params }, { silent: true })
+  const sanitizedParams = sanitizeWorkflowDraftPayload(params)
+  return post<CommonResponse & { updated_at: number; hash: string }>(url, { body: sanitizedParams }, { silent: true })
 }
 
 export const fetchNodesDefaultConfigs: Fetcher<NodesDefaultConfigsResponse, string> = (url) => {
