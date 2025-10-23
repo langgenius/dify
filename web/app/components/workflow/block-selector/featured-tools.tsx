@@ -16,7 +16,7 @@ import { ViewType } from './view-type-select'
 import Tools from './tools'
 import { formatNumber } from '@/utils/format'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
-import { ArrowDownDoubleLine, ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/arrows'
+import { ArrowDownDoubleLine, ArrowDownRoundFill, ArrowUpDoubleLine } from '@/app/components/base/icons/src/vender/solid/arrows'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 
 const MAX_RECOMMENDED_COUNT = 15
@@ -119,7 +119,9 @@ const FeaturedTools = ({
 
   const totalVisible = visibleInstalledProviders.length + visibleUninstalledPlugins.length
   const maxAvailable = Math.min(MAX_RECOMMENDED_COUNT, installedProviders.length + uninstalledPlugins.length)
-  const showMore = totalVisible < maxAvailable
+  const hasMoreToShow = totalVisible < maxAvailable
+  const canToggleVisibility = maxAvailable > INITIAL_VISIBLE_COUNT
+  const isExpanded = canToggleVisibility && !hasMoreToShow
   const showEmptyState = !isLoading && totalVisible === 0
 
   return (
@@ -183,19 +185,28 @@ const FeaturedTools = ({
             </>
           )}
 
-          {!isLoading && totalVisible > 0 && showMore && (
+          {!isLoading && totalVisible > 0 && canToggleVisibility && (
             <div
               className='group mt-1 flex cursor-pointer items-center gap-x-2 rounded-lg py-1 pl-3 pr-2 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary'
               onClick={() => {
-                setVisibleCount(count => Math.min(count + INITIAL_VISIBLE_COUNT, maxAvailable))
+                setVisibleCount((count) => {
+                  if (count >= maxAvailable)
+                    return INITIAL_VISIBLE_COUNT
+
+                  return Math.min(count + INITIAL_VISIBLE_COUNT, maxAvailable)
+                })
               }}
             >
               <div className='flex items-center px-1 text-text-tertiary transition-colors group-hover:text-text-secondary'>
                 <RiMoreLine className='size-4 group-hover:hidden' />
-                <ArrowDownDoubleLine className='hidden size-4 group-hover:block' />
+                {isExpanded ? (
+                  <ArrowUpDoubleLine className='hidden size-4 group-hover:block' />
+                ) : (
+                  <ArrowDownDoubleLine className='hidden size-4 group-hover:block' />
+                )}
               </div>
               <div className='system-xs-regular'>
-                {t('workflow.tabs.showMoreFeatured')}
+                {t(isExpanded ? 'workflow.tabs.showLessFeatured' : 'workflow.tabs.showMoreFeatured')}
               </div>
             </div>
           )}

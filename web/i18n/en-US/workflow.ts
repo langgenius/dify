@@ -279,6 +279,7 @@ const translation = {
     'searchDataSource': 'Search Data Source',
     'featuredTools': 'Featured',
     'showMoreFeatured': 'Show more',
+    'showLessFeatured': 'Show less',
     'installed': 'Installed',
     'pluginByAuthor': 'By {{author}}',
     'usePlugin': 'Select tool',
