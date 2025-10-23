@@ -191,9 +191,7 @@ class TestOpenSearchVector:
         self.vector.delete()
 
         # Verify that exists was called but delete was not
-        self.vector._client.indices.exists.assert_called_once_with(
-            index=self.collection_name.lower()
-        )
+        self.vector._client.indices.exists.assert_called_once_with(index=self.collection_name.lower())
         self.vector._client.indices.delete.assert_not_called()
 
     def test_delete_existing_index(self):
@@ -203,12 +201,8 @@ class TestOpenSearchVector:
         self.vector.delete()
 
         # Verify both exists and delete were called
-        self.vector._client.indices.exists.assert_called_once_with(
-            index=self.collection_name.lower()
-        )
-        self.vector._client.indices.delete.assert_called_once_with(
-            index=self.collection_name.lower()
-        )
+        self.vector._client.indices.exists.assert_called_once_with(index=self.collection_name.lower())
+        self.vector._client.indices.delete.assert_called_once_with(index=self.collection_name.lower())
 
 
 @pytest.mark.usefixtures("setup_mock_redis")
