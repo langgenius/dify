@@ -139,7 +139,7 @@ const LocalFile = ({
       onprogress: onProgress,
     }, false, undefined, '?source=datasets')
       .then((res: UploadResult) => {
-        const updatedFile = Object.assign(fileItem.file, {
+        const updatedFile = Object.assign({}, fileItem.file, {
           id: res.id,
           ...(res as Partial<File>),
         }) as File
