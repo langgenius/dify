@@ -22,6 +22,7 @@ Implementation Notes:
 import logging
 from collections.abc import Sequence
 from datetime import datetime
+from decimal import Decimal
 from typing import cast
 
 import sqlalchemy as sa
@@ -82,12 +83,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             )
 
             # Handle triggered_from values
-            if isinstance(triggered_from, list):
-                from sqlalchemy import or_
-
-                base_stmt = base_stmt.where(or_(*[WorkflowRun.triggered_from == tf for tf in triggered_from]))
-            else:
-                base_stmt = base_stmt.where(WorkflowRun.triggered_from == triggered_from)
+            if not isinstance(triggered_from, list):
+                triggered_from = [triggered_from]
+            if triggered_from:
+                base_stmt = base_stmt.where(WorkflowRun.triggered_from.in_(triggered_from))
 
             # Add optional status filter
             if status:
@@ -499,8 +498,6 @@ GROUP BY
         with self._session_maker() as session:
             rs = session.execute(sa.text(sql_query), arg_dict)
             for row in rs:
-                from decimal import Decimal
-
                 response_data.append(
                     {"date": str(row.date), "interactions": float(row.interactions.quantize(Decimal("0.01")))}
                 )
