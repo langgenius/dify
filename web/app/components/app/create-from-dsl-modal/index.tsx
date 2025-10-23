@@ -84,7 +84,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       handleFile(droppedFile)
   }, [droppedFile])
 
-  const onCreate: MouseEventHandler = async () => {
+  const onCreate = async (_e?: React.MouseEvent) => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
       return
     if (currentTab === CreateFromDSLModalTab.FROM_URL && !dslUrlValue)
@@ -154,7 +154,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
     if (show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && dslUrlValue)))
-      handleCreateApp()
+      handleCreateApp(undefined)
   })
 
   useKeyPress('esc', () => {

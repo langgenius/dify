@@ -10,7 +10,7 @@ export enum Priority {
   topPriority = 'top-priority',
 }
 
-export type BasicPlan = Plan.sandbox | Plan.professional | Plan.team | Plan.enterprise
+export type BasicPlan = Plan.sandbox | Plan.professional | Plan.team
 
 export type PlanInfo = {
   level: number
