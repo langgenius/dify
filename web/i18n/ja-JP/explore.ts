@@ -31,6 +31,12 @@ const translation = {
     try: '詳細',
     customize: 'カスタマイズ',
   },
+  tryApp: {
+    tabHeader: {
+      try: 'お試し',
+      detail: 'オーケストレーション詳細',
+    },
+  },
   appCustomize: {
     title: '{{name}}からアプリを作成',
     subTitle: 'アプリアイコンと名前',
