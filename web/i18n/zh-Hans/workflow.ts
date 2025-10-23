@@ -245,6 +245,7 @@ const translation = {
     'blocks': '节点',
     'searchTool': '搜索工具',
     'searchTrigger': '搜索触发器...',
+    'allTriggers': '全部触发器',
     'tools': '工具',
     'allTool': '全部',
     'plugin': '插件',
@@ -271,6 +272,7 @@ const translation = {
     'usePlugin': '选择工具',
     'hideActions': '收起工具',
     'noFeaturedPlugins': '前往插件市场查看更多工具',
+    'noFeaturedTriggers': '前往插件市场查看更多触发器',
   },
   blocks: {
     'start': '用户输入',

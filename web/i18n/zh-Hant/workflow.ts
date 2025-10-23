@@ -222,6 +222,8 @@ const translation = {
     'searchBlock': '搜索節點',
     'blocks': '節點',
     'tools': '工具',
+    'searchTrigger': '搜尋觸發器...',
+    'allTriggers': '所有觸發器',
     'allTool': '全部',
     'customTool': '自定義',
     'workflowTool': '工作流',
@@ -237,6 +239,8 @@ const translation = {
     'addAll': '全部添加',
     'sources': '來源',
     'searchDataSource': '搜尋資料來源',
+    'noFeaturedPlugins': '前往 Marketplace 查看更多工具',
+    'noFeaturedTriggers': '前往 Marketplace 查看更多觸發器',
   },
   blocks: {
     'start': '開始',

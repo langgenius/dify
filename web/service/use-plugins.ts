@@ -111,6 +111,22 @@ export const useFeaturedToolsRecommendations = (enabled: boolean, limit = 15) =>
   }
 }
 
+export const useFeaturedTriggersRecommendations = (enabled: boolean, limit = 15) => {
+  const {
+    data: plugins = [],
+    isLoading,
+  } = useRecommendedMarketplacePlugins({
+    category: PluginCategoryEnum.trigger,
+    enabled,
+    limit,
+  })
+
+  return {
+    plugins,
+    isLoading,
+  }
+}
+
 export const useInstalledPluginList = (disable?: boolean, pageSize = 100) => {
   const fetchPlugins = async ({ pageParam = 1 }) => {
     const response = await get<InstalledPluginListWithTotalResponse>(

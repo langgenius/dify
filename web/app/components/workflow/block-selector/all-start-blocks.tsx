@@ -2,12 +2,13 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BlockEnum, OnSelectBlock } from '../types'
-import type { TriggerDefaultValue } from './types'
+import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import StartBlocks from './start-blocks'
 import TriggerPluginList from './trigger-plugin/list'
 import { ENTRY_NODE_TYPES } from './constants'
@@ -18,6 +19,11 @@ import { getMarketplaceUrl } from '@/utils/var'
 import Button from '@/app/components/base/button'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import { BlockEnum as BlockEnumValue } from '../types'
+import FeaturedTriggers from './featured-triggers'
+import Divider from '@/app/components/base/divider'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
+import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
 
 type AllStartBlocksProps = {
   className?: string
@@ -38,11 +44,39 @@ const AllStartBlocks = ({
   const wrapElemRef = useRef<HTMLDivElement>(null)
   const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
   const [hasPluginContent, setHasPluginContent] = useState(false)
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   const entryNodeTypes = availableBlocksTypes?.length
     ? availableBlocksTypes
     : ENTRY_NODE_TYPES
   const enableTriggerPlugin = entryNodeTypes.includes(BlockEnumValue.TriggerPlugin)
+  const { data: triggerProviders = [] } = useAllTriggerPlugins(enableTriggerPlugin)
+  const providerMap = useMemo(() => {
+    const map = new Map<string, TriggerWithProvider>()
+    triggerProviders.forEach((provider) => {
+      const keys = [
+        provider.plugin_id,
+        provider.plugin_unique_identifier,
+        provider.id,
+      ].filter(Boolean) as string[]
+      keys.forEach((key) => {
+        if (!map.has(key))
+          map.set(key, provider)
+      })
+    })
+    return map
+  }, [triggerProviders])
+  const invalidateTriggers = useInvalidateAllTriggerPlugins()
+  const trimmedSearchText = searchText.trim()
+  const hasSearchText = trimmedSearchText.length > 0
+  const {
+    plugins: featuredPlugins = [],
+    isLoading: featuredLoading,
+  } = useFeaturedTriggersRecommendations(enableTriggerPlugin && enable_marketplace && !hasSearchText)
+
+  const shouldShowFeatured = enableTriggerPlugin
+    && enable_marketplace
+    && !hasSearchText
 
   const handleStartBlocksContentChange = useCallback((hasContent: boolean) => {
     setHasStartBlocksContent(hasContent)
@@ -52,8 +86,8 @@ const AllStartBlocks = ({
     setHasPluginContent(hasContent)
   }, [])
 
-  const hasAnyContent = hasStartBlocksContent || hasPluginContent
-  const shouldShowEmptyState = searchText && !hasAnyContent
+  const hasAnyContent = hasStartBlocksContent || hasPluginContent || shouldShowFeatured
+  const shouldShowEmptyState = hasSearchText && !hasAnyContent
 
   useEffect(() => {
     if (!enableTriggerPlugin && hasPluginContent)
@@ -68,8 +102,27 @@ const AllStartBlocks = ({
       >
         <div className='flex-1'>
           <div className={cn(shouldShowEmptyState && 'hidden')}>
+            {shouldShowFeatured && (
+              <>
+                <FeaturedTriggers
+                  plugins={featuredPlugins}
+                  providerMap={providerMap}
+                  onSelect={onSelect}
+                  isLoading={featuredLoading}
+                  onInstallSuccess={async () => {
+                    invalidateTriggers()
+                  }}
+                />
+                <div className='px-3'>
+                  <Divider className='!h-px' />
+                </div>
+              </>
+            )}
+            <div className='px-3 pb-1 pt-2'>
+              <span className='system-xs-medium text-text-primary'>{t('workflow.tabs.allTriggers')}</span>
+            </div>
             <StartBlocks
-              searchText={searchText}
+              searchText={trimmedSearchText}
               onSelect={onSelect as OnSelectBlock}
               availableBlocksTypes={entryNodeTypes as unknown as BlockEnum[]}
               onContentStateChange={handleStartBlocksContentChange}
@@ -78,7 +131,7 @@ const AllStartBlocks = ({
             {enableTriggerPlugin && (
               <TriggerPluginList
                 onSelect={onSelect}
-                searchText={searchText}
+                searchText={trimmedSearchText}
                 onContentStateChange={handlePluginContentChange}
                 tags={tags}
               />
