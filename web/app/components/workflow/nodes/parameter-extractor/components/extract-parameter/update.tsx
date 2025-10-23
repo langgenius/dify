@@ -35,7 +35,7 @@ type Props = {
   onCancel?: () => void
 }
 
-const TYPES = [ParamType.string, ParamType.number, ParamType.arrayString, ParamType.arrayNumber, ParamType.arrayObject]
+const TYPES = [ParamType.string, ParamType.number, ParamType.bool, ParamType.arrayString, ParamType.arrayNumber, ParamType.arrayObject, ParamType.arrayBool]
 
 const AddExtractParameter: FC<Props> = ({
   type,

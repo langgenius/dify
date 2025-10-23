@@ -11,7 +11,6 @@ import VisualEditor from './visual-editor'
 import SchemaEditor from './schema-editor'
 import {
   checkJsonSchemaDepth,
-  convertBooleanToString,
   getValidationErrorMessage,
   jsonToSchema,
   preValidateSchema,
@@ -21,8 +20,8 @@ import { MittProvider, VisualEditorContextProvider, useMittContext } from './vis
 import ErrorMessage from './error-message'
 import { useVisualEditorStore } from './visual-editor/store'
 import Toast from '@/app/components/base/toast'
-import { useGetDocLanguage } from '@/context/i18n'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
+import { useDocLink } from '@/context/i18n'
 
 type JsonSchemaConfigProps = {
   defaultSchema?: SchemaRoot
@@ -53,10 +52,10 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation()
-  const docLanguage = useGetDocLanguage()
+  const docLink = useDocLink()
   const [currentTab, setCurrentTab] = useState(SchemaView.VisualEditor)
   const [jsonSchema, setJsonSchema] = useState(defaultSchema || DEFAULT_SCHEMA)
-  const [json, setJson] = useState(JSON.stringify(jsonSchema, null, 2))
+  const [json, setJson] = useState(() => JSON.stringify(jsonSchema, null, 2))
   const [btnWidth, setBtnWidth] = useState(0)
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
@@ -87,7 +86,6 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
           setValidationError(`Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`)
           return
         }
-        convertBooleanToString(schema)
         const validationErrors = validateSchemaAgainstDraft7(schema)
         if (validationErrors.length > 0) {
           setValidationError(getValidationErrorMessage(validationErrors))
@@ -122,7 +120,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       setJson(JSON.stringify(schema, null, 2))
   }, [currentTab])
 
-  const handleSubmit = useCallback((schema: any) => {
+  const handleSubmit = useCallback((schema: Record<string, unknown>) => {
     const jsonSchema = jsonToSchema(schema) as SchemaRoot
     if (currentTab === SchemaView.VisualEditor)
       setJsonSchema(jsonSchema)
@@ -141,8 +139,10 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   const handleResetDefaults = useCallback(() => {
     if (currentTab === SchemaView.VisualEditor) {
       setHoveringProperty(null)
-      advancedEditing && setAdvancedEditing(false)
-      isAddingNewField && setIsAddingNewField(false)
+      if (advancedEditing)
+        setAdvancedEditing(false)
+      if (isAddingNewField)
+        setIsAddingNewField(false)
     }
     setJsonSchema(DEFAULT_SCHEMA)
     setJson(JSON.stringify(DEFAULT_SCHEMA, null, 2))
@@ -168,7 +168,6 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
           setValidationError(`Schema exceeds maximum depth of ${JSON_SCHEMA_MAX_DEPTH}.`)
           return
         }
-        convertBooleanToString(schema)
         const validationErrors = validateSchemaAgainstDraft7(schema)
         if (validationErrors.length > 0) {
           setValidationError(getValidationErrorMessage(validationErrors))
@@ -252,7 +251,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       <div className='flex items-center gap-x-2 p-6 pt-5'>
         <a
           className='flex grow items-center gap-x-1 text-text-accent'
-          href={`https://docs.dify.ai/${docLanguage}/guides/workflow/structured-outputs`}
+          href={docLink('/guides/workflow/structured-outputs')}
           target='_blank'
           rel='noopener noreferrer'
         >

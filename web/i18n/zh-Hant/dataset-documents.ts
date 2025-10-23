@@ -28,6 +28,8 @@ const translation = {
       delete: '刪除',
       enableWarning: '歸檔的檔案無法啟用',
       sync: '同步',
+      resume: '恢復',
+      pause: '暫停',
     },
     index: {
       enable: '啟用中',
@@ -96,6 +98,9 @@ const translation = {
       upload_file: '檔案上傳',
       notion: '從 Notion 同步的文件',
       github: '從 Github 同步的程式碼',
+      local_file: '本機檔案',
+      website_crawl: '網站抓取',
+      online_document: '線上文件',
     },
     type: {
       book: '書籍',
@@ -333,13 +338,13 @@ const translation = {
     parentMaxTokens: '父母',
     childMaxTokens: '孩子',
     pause: '暫停',
+    waiting: '嵌入等待中...',
   },
   segment: {
     paragraphs: '段落',
     keywords: '關鍵詞',
     addKeyWord: '新增關鍵詞',
     keywordError: '關鍵詞最大長度為 20',
-    characters: '字元',
     hitCount: '召回次數',
     vectorHash: '向量雜湊：',
     questionPlaceholder: '在這裡新增問題',
@@ -367,6 +372,7 @@ const translation = {
     expandChunks: '擴展塊',
     chunkAdded: '添加了 1 個數據塊',
     editedAt: '編輯於',
+    dateTimeFormat: 'YYYY/MM/DD HH:mm',
     regeneratingMessage: '這可能需要一些時間，請稍候...',
     editChunk: '編輯數據塊',
     regenerationSuccessMessage: '您可以關閉此視窗。',
@@ -388,6 +394,8 @@ const translation = {
     searchResults_zero: '結果',
     parentChunks_other: '父塊',
     newChildChunk: '新兒童塊',
+    keywordEmpty: '關鍵字不能為空',
+    keywordDuplicate: '關鍵字已經存在',
   },
 }
 

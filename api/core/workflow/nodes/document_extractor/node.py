@@ -5,15 +5,15 @@ import logging
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
 import chardet
 import docx
 import pandas as pd
-import pypandoc  # type: ignore
-import pypdfium2  # type: ignore
-import webvtt  # type: ignore
-import yaml  # type: ignore
+import pypandoc
+import pypdfium2
+import webvtt
+import yaml
 from docx.document import Document
 from docx.oxml.table import CT_Tbl
 from docx.oxml.text.paragraph import CT_P
@@ -24,11 +24,11 @@ from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
 from core.helper import ssrf_proxy
 from core.variables import ArrayFileSegment
-from core.variables.segments import FileSegment
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.enums import NodeType
+from core.variables.segments import ArrayStringSegment, FileSegment
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.base.node import Node
 
 from .entities import DocumentExtractorNodeData
 from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError, UnsupportedFileTypeError
@@ -36,17 +36,43 @@ from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError,
 logger = logging.getLogger(__name__)
 
 
-class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
+class DocumentExtractorNode(Node):
     """
     Extracts text content from various file types.
     Supports plain text, PDF, and DOC/DOCX files.
     """
 
-    _node_data_cls = DocumentExtractorNodeData
-    _node_type = NodeType.DOCUMENT_EXTRACTOR
+    node_type = NodeType.DOCUMENT_EXTRACTOR
+
+    _node_data: DocumentExtractorNodeData
+
+    def init_node_data(self, data: Mapping[str, Any]):
+        self._node_data = DocumentExtractorNodeData.model_validate(data)
+
+    def _get_error_strategy(self) -> ErrorStrategy | None:
+        return self._node_data.error_strategy
+
+    def _get_retry_config(self) -> RetryConfig:
+        return self._node_data.retry_config
+
+    def _get_title(self) -> str:
+        return self._node_data.title
+
+    def _get_description(self) -> str | None:
+        return self._node_data.desc
+
+    def _get_default_value_dict(self) -> dict[str, Any]:
+        return self._node_data.default_value_dict
+
+    def get_base_node_data(self) -> BaseNodeData:
+        return self._node_data
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self):
-        variable_selector = self.node_data.variable_selector
+        variable_selector = self._node_data.variable_selector
         variable = self.graph_runtime_state.variable_pool.get(variable_selector)
 
         if variable is None:
@@ -67,7 +93,7 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=inputs,
                     process_data=process_data,
-                    outputs={"text": extracted_text_list},
+                    outputs={"text": ArrayStringSegment(value=extracted_text_list)},
                 )
             elif isinstance(value, File):
                 extracted_text = _extract_text_from_file(value)
@@ -93,16 +119,12 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: DocumentExtractorNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
-        return {node_id + ".files": node_data.variable_selector}
+        # Create typed NodeData from dict
+        typed_node_data = DocumentExtractorNodeData.model_validate(node_data)
+
+        return {node_id + ".files": typed_node_data.variable_selector}
 
 
 def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
@@ -145,7 +167,57 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
 def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str) -> str:
     """Extract text from a file based on its file extension."""
     match file_extension:
-        case ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml":
+        case (
+            ".txt"
+            | ".markdown"
+            | ".md"
+            | ".html"
+            | ".htm"
+            | ".xml"
+            | ".c"
+            | ".h"
+            | ".cpp"
+            | ".hpp"
+            | ".cc"
+            | ".cxx"
+            | ".c++"
+            | ".py"
+            | ".js"
+            | ".ts"
+            | ".jsx"
+            | ".tsx"
+            | ".java"
+            | ".php"
+            | ".rb"
+            | ".go"
+            | ".rs"
+            | ".swift"
+            | ".kt"
+            | ".scala"
+            | ".sh"
+            | ".bash"
+            | ".bat"
+            | ".ps1"
+            | ".sql"
+            | ".r"
+            | ".m"
+            | ".pl"
+            | ".lua"
+            | ".vim"
+            | ".asm"
+            | ".s"
+            | ".css"
+            | ".scss"
+            | ".less"
+            | ".sass"
+            | ".ini"
+            | ".cfg"
+            | ".conf"
+            | ".toml"
+            | ".env"
+            | ".log"
+            | ".vtt"
+        ):
             return _extract_text_from_plain_text(file_content)
         case ".json":
             return _extract_text_from_json(file_content)
@@ -171,8 +243,6 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             return _extract_text_from_eml(file_content)
         case ".msg":
             return _extract_text_from_msg(file_content)
-        case ".vtt":
-            return _extract_text_from_vtt(file_content)
         case ".properties":
             return _extract_text_from_properties(file_content)
         case _:
@@ -231,12 +301,12 @@ def _extract_text_from_yaml(file_content: bytes) -> str:
             encoding = "utf-8"
 
         yaml_data = yaml.safe_load_all(file_content.decode(encoding, errors="ignore"))
-        return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
+        return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
     except (UnicodeDecodeError, LookupError, yaml.YAMLError) as e:
         # If decoding fails, try with utf-8 as last resort
         try:
             yaml_data = yaml.safe_load_all(file_content.decode("utf-8", errors="ignore"))
-            return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
+            return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
         except (UnicodeDecodeError, yaml.YAMLError):
             raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
 
@@ -282,7 +352,7 @@ def _extract_text_from_doc(file_content: bytes) -> str:
         raise TextExtractionError(f"Failed to extract text from DOC: {str(e)}") from e
 
 
-def paser_docx_part(block, doc: Document, content_items, i):
+def parser_docx_part(block, doc: Document, content_items, i):
     if isinstance(block, CT_P):
         content_items.append((i, "paragraph", Paragraph(block, doc)))
     elif isinstance(block, CT_Tbl):
@@ -306,7 +376,7 @@ def _extract_text_from_docx(file_content: bytes) -> str:
         part = next(it, None)
         i = 0
         while part is not None:
-            paser_docx_part(part, doc, content_items, i)
+            parser_docx_part(part, doc, content_items, i)
             i = i + 1
             part = next(it, None)
 
@@ -340,7 +410,7 @@ def _extract_text_from_docx(file_content: bytes) -> str:
 
                         text.append(markdown_table)
                 except Exception as e:
-                    logger.warning(f"Failed to extract table from DOC: {e}")
+                    logger.warning("Failed to extract table from DOC: %s", e)
                     continue
 
         return "\n".join(text)
@@ -357,9 +427,9 @@ def _download_file_content(file: File) -> bytes:
                 raise FileDownloadError("Missing URL for remote file")
             response = ssrf_proxy.get(file.remote_url)
             response.raise_for_status()
-            return cast(bytes, response.content)
+            return response.content
         else:
-            return cast(bytes, file_manager.download(file))
+            return file_manager.download(file)
     except Exception as e:
         raise FileDownloadError(f"Error downloading file: {str(e)}") from e
 
@@ -444,14 +514,14 @@ def _extract_text_from_excel(file_content: bytes) -> str:
                 df.dropna(how="all", inplace=True)
 
                 # Combine multi-line text in each cell into a single line
-                df = df.applymap(lambda x: " ".join(str(x).splitlines()) if isinstance(x, str) else x)  # type: ignore
+                df = df.map(lambda x: " ".join(str(x).splitlines()) if isinstance(x, str) else x)
 
                 # Combine multi-line text in column names into a single line
-                df.columns = pd.Index([" ".join(col.splitlines()) for col in df.columns])
+                df.columns = pd.Index([" ".join(str(col).splitlines()) for col in df.columns])
 
                 # Manually construct the Markdown table
                 markdown_table += _construct_markdown_table(df) + "\n\n"
-            except Exception as e:
+            except Exception:
                 continue
         return markdown_table
     except Exception as e:
@@ -574,7 +644,7 @@ def _extract_text_from_vtt(vtt_bytes: bytes) -> str:
 
         for i in range(1, len(raw_results)):
             spk, txt = raw_results[i]
-            if spk == None:
+            if spk is None:
                 merged_results.append((None, current_text))
                 continue
 

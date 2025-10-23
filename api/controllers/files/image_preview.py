@@ -1,16 +1,18 @@
 from urllib.parse import quote
 
 from flask import Response, request
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from werkzeug.exceptions import NotFound
 
 import services
-from controllers.files import api
-from controllers.files.error import UnsupportedFileTypeError
+from controllers.common.errors import UnsupportedFileTypeError
+from controllers.files import files_ns
+from extensions.ext_database import db
 from services.account_service import TenantService
 from services.file_service import FileService
 
 
+@files_ns.route("/<uuid:file_id>/image-preview")
 class ImagePreviewApi(Resource):
     """
     Deprecated
@@ -27,7 +29,7 @@ class ImagePreviewApi(Resource):
             return {"content": "Invalid request."}, 400
 
         try:
-            generator, mimetype = FileService.get_image_preview(
+            generator, mimetype = FileService(db.engine).get_image_preview(
                 file_id=file_id,
                 timestamp=timestamp,
                 nonce=nonce,
@@ -39,15 +41,18 @@ class ImagePreviewApi(Resource):
         return Response(generator, mimetype=mimetype)
 
 
+@files_ns.route("/<uuid:file_id>/file-preview")
 class FilePreviewApi(Resource):
     def get(self, file_id):
         file_id = str(file_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("timestamp", type=str, required=True, location="args")
-        parser.add_argument("nonce", type=str, required=True, location="args")
-        parser.add_argument("sign", type=str, required=True, location="args")
-        parser.add_argument("as_attachment", type=bool, required=False, default=False, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("timestamp", type=str, required=True, location="args")
+            .add_argument("nonce", type=str, required=True, location="args")
+            .add_argument("sign", type=str, required=True, location="args")
+            .add_argument("as_attachment", type=bool, required=False, default=False, location="args")
+        )
 
         args = parser.parse_args()
 
@@ -55,7 +60,7 @@ class FilePreviewApi(Resource):
             return {"content": "Invalid request."}, 400
 
         try:
-            generator, upload_file = FileService.get_file_generator_by_file_id(
+            generator, upload_file = FileService(db.engine).get_file_generator_by_file_id(
                 file_id=file_id,
                 timestamp=args["timestamp"],
                 nonce=args["nonce"],
@@ -94,6 +99,7 @@ class FilePreviewApi(Resource):
         return response
 
 
+@files_ns.route("/workspaces/<uuid:workspace_id>/webapp-logo")
 class WorkspaceWebappLogoApi(Resource):
     def get(self, workspace_id):
         workspace_id = str(workspace_id)
@@ -105,15 +111,10 @@ class WorkspaceWebappLogoApi(Resource):
             raise NotFound("webapp logo is not found")
 
         try:
-            generator, mimetype = FileService.get_public_image_preview(
+            generator, mimetype = FileService(db.engine).get_public_image_preview(
                 webapp_logo_file_id,
             )
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
         return Response(generator, mimetype=mimetype)
-
-
-api.add_resource(ImagePreviewApi, "/files/<uuid:file_id>/image-preview")
-api.add_resource(FilePreviewApi, "/files/<uuid:file_id>/file-preview")
-api.add_resource(WorkspaceWebappLogoApi, "/files/workspaces/<uuid:workspace_id>/webapp-logo")

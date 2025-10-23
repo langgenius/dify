@@ -1,7 +1,7 @@
 import enum
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import Any, Optional, cast
+from typing import Any
 
 from werkzeug.exceptions import NotFound, Unauthorized
 
@@ -10,7 +10,7 @@ from extensions.ext_database import db
 from libs.helper import TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password
-from models.account import Account, AccountStatus
+from models import Account, AccountStatus
 from models.model import App, EndUser, Site
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -36,13 +36,13 @@ class WebAppAuthService:
         if not account:
             raise AccountNotFoundError()
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise AccountLoginError("Account is banned.")
 
         if account.password is None or not compare_password(password, account.password, account.password_salt):
             raise AccountPasswordError("Invalid email or password.")
 
-        return cast(Account, account)
+        return account
 
     @classmethod
     def login(cls, account: Account) -> str:
@@ -52,18 +52,18 @@ class WebAppAuthService:
 
     @classmethod
     def get_user_through_email(cls, email: str):
-        account = db.session.query(Account).filter(Account.email == email).first()
+        account = db.session.query(Account).where(Account.email == email).first()
         if not account:
             return None
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
         return account
 
     @classmethod
     def send_email_code_login_email(
-        cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
+        cls, account: Account | None = None, email: str | None = None, language: str = "en-US"
     ):
         email = account.email if account else email
         if email is None:
@@ -82,7 +82,7 @@ class WebAppAuthService:
         return token
 
     @classmethod
-    def get_email_code_login_data(cls, token: str) -> Optional[dict[str, Any]]:
+    def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
         return TokenManager.get_token_data(token, "email_code_login")
 
     @classmethod
@@ -91,10 +91,10 @@ class WebAppAuthService:
 
     @classmethod
     def create_end_user(cls, app_code, email) -> EndUser:
-        site = db.session.query(Site).filter(Site.code == app_code).first()
+        site = db.session.query(Site).where(Site.code == app_code).first()
         if not site:
             raise NotFound("Site not found.")
-        app_model = db.session.query(App).filter(App.id == site.app_id).first()
+        app_model = db.session.query(App).where(App.id == site.app_id).first()
         if not app_model:
             raise NotFound("App not found.")
         end_user = EndUser(
@@ -113,7 +113,7 @@ class WebAppAuthService:
 
     @classmethod
     def _get_account_jwt_token(cls, account: Account) -> str:
-        exp_dt = datetime.now(UTC) + timedelta(hours=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 24)
+        exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 24)
         exp = int(exp_dt.timestamp())
 
         payload = {
@@ -130,7 +130,7 @@ class WebAppAuthService:
 
     @classmethod
     def is_app_require_permission_check(
-        cls, app_code: Optional[str] = None, app_id: Optional[str] = None, access_mode: Optional[str] = None
+        cls, app_code: str | None = None, app_id: str | None = None, access_mode: str | None = None
     ) -> bool:
         """
         Check if the app requires permission check based on its access mode.
@@ -172,7 +172,8 @@ class WebAppAuthService:
                 return WebAppAuthType.EXTERNAL
 
         if app_code:
-            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code)
+            app_id = AppService.get_app_id_by_code(app_code)
+            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id)
             return cls.get_app_auth_type(access_mode=webapp_settings.access_mode)
 
         raise ValueError("Could not determine app authentication type.")

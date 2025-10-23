@@ -48,6 +48,10 @@ const translation = {
     },
     change: 'Zmień',
     changeRetrievalMethod: 'Zmień metodę odzyskiwania',
+    keyword_search: {
+      title: 'Odwrócony indeks',
+      description: 'Inverted Index to struktura używana do efektywnego wyszukiwania. Uporządkowany według terminów, każdy termin wskazuje dokumenty lub strony internetowe, które go zawierają.',
+    },
   },
   docsFailedNotice: 'nie udało się zindeksować dokumentów',
   retry: 'Ponów',
@@ -155,6 +159,8 @@ const translation = {
   chunkingMode: {
     parentChild: 'Rodzic-dziecko',
     general: 'Ogólne',
+    graph: 'Wykres',
+    qa: 'Pytania i odpowiedziQ&A',
   },
   parentMode: {
     fullDoc: 'Pełna wersja dokumentu',
@@ -185,6 +191,7 @@ const translation = {
     checkName: {
       empty: 'Nazwa metadanych nie może być pusta',
       invalid: 'Nazwa metadanych może zawierać tylko małe litery, cyfry i podkreślenia oraz musi zaczynać się od małej litery',
+      tooLong: 'Nazwa metadanych nie może przekraczać {{max}} znaków',
     },
     batchEditMetadata: {
       multipleValue: 'Wielokrotna wartość',
@@ -222,6 +229,20 @@ const translation = {
     chooseTime: 'Wybierz czas...',
   },
   embeddingModelNotAvailable: 'Model osadzający jest niedostępny.',
+  updated: 'Aktualizowano',
+  createFromPipeline: 'Tworzenie na podstawie potoku wiedzy',
+  externalKnowledgeBase: 'Zewnętrzna baza wiedzy',
+  serviceApi: {
+    card: {
+      apiKey: 'Klucz API',
+      title: 'Usługa backendowa API',
+      apiReference: 'Dokumentacja API',
+      endpoint: 'Punkt końcowy API usługi',
+    },
+    title: 'Interfejs API usługi',
+    disabled: 'Niepełnosprawny',
+    enabled: 'W serwisie',
+  },
 }
 
 export default translation

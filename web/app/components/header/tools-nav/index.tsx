@@ -22,16 +22,18 @@ const ToolsNav = ({
   return (
     <Link href="/tools" className={classNames(
       'group text-sm font-medium',
-      activated && 'font-semibold bg-components-main-nav-nav-button-bg-active hover:bg-components-main-nav-nav-button-bg-active-hover shadow-md',
+      activated && 'hover:bg-components-main-nav-nav-button-bg-active-hover bg-components-main-nav-nav-button-bg-active font-semibold shadow-md',
       activated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover',
       className,
     )}>
       {
         activated
-          ? <RiHammerFill className='mr-2 h-4 w-4' />
-          : <RiHammerLine className='mr-2 h-4 w-4' />
+          ? <RiHammerFill className='h-4 w-4' />
+          : <RiHammerLine className='h-4 w-4' />
       }
-      {t('common.menus.tools')}
+      <div className='ml-2 max-[1024px]:hidden'>
+        {t('common.menus.tools')}
+      </div>
     </Link>
   )
 }

@@ -42,6 +42,10 @@ const translation = {
     },
     change: 'Изменить',
     changeRetrievalMethod: 'Изменить метод поиска',
+    keyword_search: {
+      title: 'Инвертированный индекс',
+      description: 'Инвертированный индекс — это структура, используемая для эффективного извлечения. Каждый термин упорядочен по терминам и указывает на документы или веб-страницы, содержащие его.',
+    },
   },
   docsFailedNotice: 'документов не удалось проиндексировать',
   retry: 'Повторить попытку',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     general: 'Общее',
     parentChild: 'Родитель-дочерний',
+    graph: 'График',
+    qa: 'Вопросы и ответы',
   },
   parentMode: {
     fullDoc: 'Полный документ',
@@ -179,6 +185,7 @@ const translation = {
     checkName: {
       empty: 'Имя метаданных не может быть пустым',
       invalid: 'Имя метаданных может содержать только строчные буквы, цифры и знаки нижнего подчеркивания и должно начинаться со строчной буквы.',
+      tooLong: 'Имя метаданных не может превышать {{max}} символов',
     },
     batchEditMetadata: {
       applyToAllSelectDocumentTip: 'Автоматически создайте все вышеуказанные редактируемые и новые метаданные для всех выбранных документов, иначе редактирование метаданных будет применяться только к документам с ними.',
@@ -216,6 +223,20 @@ const translation = {
     addMetadata: 'Добавить метаданные',
   },
   embeddingModelNotAvailable: 'Модель встраивания недоступна.',
+  updated: 'Обновлено',
+  externalKnowledgeBase: 'Внешняя база знаний',
+  createFromPipeline: 'Создание из конвейера знаний',
+  serviceApi: {
+    card: {
+      apiReference: 'Справочник API',
+      title: 'API бэкенд-сервиса',
+      apiKey: 'API ключ',
+      endpoint: 'Конечная точка API сервиса',
+    },
+    enabled: 'На службе',
+    title: 'Сервисный API',
+    disabled: 'Отключено',
+  },
 }
 
 export default translation

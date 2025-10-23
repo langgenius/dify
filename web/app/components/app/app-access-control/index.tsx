@@ -72,7 +72,7 @@ export default function AccessControl(props: AccessControlProps) {
       </div>
       <div className='flex flex-col gap-y-1 px-6 pb-3'>
         <div className='leading-6'>
-          <p className='system-sm-medium'>{t('app.accessControlDialog.accessLabel')}</p>
+          <p className='system-sm-medium text-text-tertiary'>{t('app.accessControlDialog.accessLabel')}</p>
         </div>
         <AccessControlItem type={AccessMode.ORGANIZATION}>
           <div className='flex items-center p-3'>

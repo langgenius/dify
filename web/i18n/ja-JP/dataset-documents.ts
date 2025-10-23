@@ -30,6 +30,8 @@ const translation = {
       delete: '削除',
       enableWarning: 'アーカイブされたファイルは有効にできません',
       sync: '同期',
+      pause: '一時停止',
+      resume: '再開',
     },
     index: {
       enable: '有効にする',
@@ -97,6 +99,9 @@ const translation = {
       upload_file: 'ファイルをアップロード',
       notion: 'Notion から同期',
       github: 'GitHub から同期',
+      website_crawl: 'ウェブサイトクロール',
+      online_document: 'オンライン文書',
+      local_file: 'ローカルファイル',
     },
     type: {
       book: '書籍',
@@ -334,6 +339,7 @@ const translation = {
     previewTip: '埋め込みが完了した後、段落のプレビューが利用可能になります',
     parentMaxTokens: '親',
     childMaxTokens: '子',
+    waiting: '埋め込み待機中...',
   },
   segment: {
     paragraphs: '段落',
@@ -386,8 +392,11 @@ const translation = {
     regenerationSuccessMessage: 'ウィンドウを閉じても大丈夫です',
     edited: '編集済み',
     editedAt: '編集日時',
+    dateTimeFormat: 'YYYY/MM/DD HH:mm',
     expandChunks: 'チャンクを展開',
     collapseChunks: 'チャンクを折りたたむ',
+    keywordDuplicate: 'そのキーワードは既に存在しています',
+    keywordEmpty: 'キーワードは空であってはいけません',
   },
 }
 

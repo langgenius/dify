@@ -3,13 +3,11 @@ import type { FC } from 'react'
 import React from 'react'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { useDocLink } from '@/context/i18n'
 import type { AppMode } from '@/types/app'
-import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import Tag from '@/app/components/base/tag'
-import { LanguagesSupported } from '@/i18n/language'
 
 type IShareLinkProps = {
   isShow: boolean
@@ -43,7 +41,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
   mode,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const docLink = useDocLink()
   const isChatApp = mode === 'chat' || mode === 'advanced-chat'
 
   return <Modal
@@ -70,7 +68,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
       <div className='flex pt-4'>
         <StepNum>2</StepNum>
         <div className='flex flex-col'>
-          <div className='text-text-primary'>{t(`${prefixCustomize}.way1.step3`)}</div>
+          <div className='text-text-primary'>{t(`${prefixCustomize}.way1.step2`)}</div>
           <div className='mb-2 mt-1 text-xs text-text-tertiary'>{t(`${prefixCustomize}.way1.step2Tip`)}</div>
           <a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target='_blank' rel='noopener noreferrer'>
             <Button>
@@ -101,10 +99,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
         className='mt-2'
         onClick={() =>
           window.open(
-            `https://docs.dify.ai/${locale !== LanguagesSupported[1]
-              ? 'user-guide/launching-dify-apps/developing-with-apis'
-              : `${locale.toLowerCase()}/guides/application-publishing/developing-with-apis`
-            }`,
+            docLink('/guides/application-publishing/developing-with-apis'),
             '_blank',
           )
         }

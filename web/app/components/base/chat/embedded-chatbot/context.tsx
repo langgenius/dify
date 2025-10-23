@@ -17,12 +17,9 @@ import type {
 import { noop } from 'lodash-es'
 
 export type EmbeddedChatbotContextValue = {
-  userCanAccess?: boolean
-  appInfoError?: any
-  appInfoLoading?: boolean
-  appMeta?: AppMeta
-  appData?: AppData
-  appParams?: ChatConfig
+  appMeta: AppMeta | null
+  appData: AppData | null
+  appParams: ChatConfig | null
   appChatListDataLoading?: boolean
   currentConversationId: string
   currentConversationItem?: ConversationItem
@@ -52,10 +49,17 @@ export type EmbeddedChatbotContextValue = {
   currentConversationInputs: Record<string, any> | null,
   setCurrentConversationInputs: (v: Record<string, any>) => void,
   allInputsHidden: boolean
+  initUserVariables?: {
+    name?: string
+    avatar_url?: string
+  }
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
-  userCanAccess: false,
+  appData: null,
+  appMeta: null,
+  appParams: null,
+  appChatListDataLoading: false,
   currentConversationId: '',
   appPrevChatList: [],
   pinnedConversationList: [],
@@ -81,5 +85,6 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   currentConversationInputs: {},
   setCurrentConversationInputs: noop,
   allInputsHidden: false,
+  initUserVariables: {},
 })
 export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)

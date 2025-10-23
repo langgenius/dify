@@ -1,7 +1,8 @@
 const translation = {
   title: 'ログ',
   description: 'ログは、アプリケーションの実行状態を記録します。ユーザーの入力や AI の応答などが含まれます。',
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  dateTimeFormat: 'YYYY/MM/DD hh:mm:ss A',
+  dateFormat: 'YYYY/MM/DD',
   table: {
     header: {
       updatedTime: '更新時間',
@@ -82,6 +83,7 @@ const translation = {
     workflowTitle: 'ログの詳細',
     fileListLabel: 'ファイルの詳細',
     fileListDetail: '詳細',
+    testWithParams: 'パラメータ付きテスト',
   },
   promptLog: 'プロンプトログ',
   agentLog: 'エージェントログ',

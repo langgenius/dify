@@ -42,6 +42,10 @@ const translation = {
     },
     change: '更改',
     changeRetrievalMethod: '更改檢索方法',
+    keyword_search: {
+      title: '倒掛索引',
+      description: '倒掛索引是一種用於高效檢索的結構。依字詞組織，每個字詞都指向包含它的文件或網頁。',
+    },
   },
   docsFailedNotice: '文件無法被索引',
   retry: '重試',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     parentChild: '父子',
     general: '常規',
+    graph: '圖形',
+    qa: '問與答',
   },
   parentMode: {
     paragraph: '段',
@@ -179,6 +185,7 @@ const translation = {
     checkName: {
       empty: '元數據名稱不能為空',
       invalid: '元數據名稱只能包含小寫字母、數字和底線，並且必須以小寫字母開頭',
+      tooLong: '元數據名稱不能超過 {{max}} 個字符',
     },
     batchEditMetadata: {
       applyToAllSelectDocumentTip: '自動為所有選定文檔創建上述所有編輯和新元數據，否則編輯元數據將僅適用於具有該元數據的文檔。',
@@ -216,6 +223,20 @@ const translation = {
     addMetadata: '添加元數據',
   },
   embeddingModelNotAvailable: '嵌入模型無法使用。',
+  externalKnowledgeBase: '外部知識庫',
+  createFromPipeline: '從知識管線建立',
+  updated: '更新時間',
+  serviceApi: {
+    card: {
+      title: '後端服務 API',
+      apiReference: 'API 參考',
+      endpoint: '服務 API 端點',
+      apiKey: 'API 金鑰',
+    },
+    enabled: '使用中',
+    title: '服務 API',
+    disabled: '已停用',
+  },
 }
 
 export default translation

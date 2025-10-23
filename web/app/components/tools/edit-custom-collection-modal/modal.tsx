@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce, useGetState } from 'ahooks'
-import produce from 'immer'
+import { produce } from 'immer'
 import { LinkExternal02, Settings01 } from '../../base/icons/src/vender/line/general'
 import type { Credential, CustomCollectionBackend, CustomParamSchema, Emoji } from '../types'
 import { AuthHeaderPrefix, AuthType } from '../types'
@@ -184,6 +184,7 @@ const EditCustomCollectionModal: FC<Props> = ({
         onClose={onHide}
         closable
         className='!h-[calc(100vh-16px)] !max-w-[630px] !p-0'
+        wrapperClassName='z-[1000]'
       >
         <div className='flex h-full flex-col'>
           <div className='ml-6 mt-6 text-base font-semibold text-text-primary'>

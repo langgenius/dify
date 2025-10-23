@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import pytz
 
@@ -14,9 +14,9 @@ class LocaltimeToTimestampTool(BuiltinTool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Convert localtime to timestamp
@@ -34,15 +34,16 @@ class LocaltimeToTimestampTool(BuiltinTool):
 
         yield self.create_text_message(f"{timestamp}")
 
+    # TODO: this method's type is messy
     @staticmethod
     def localtime_to_timestamp(localtime: str, time_format: str, local_tz=None) -> int | None:
         try:
-            if local_tz is None:
-                local_tz = datetime.now().astimezone().tzinfo
-            if isinstance(local_tz, str):
-                local_tz = pytz.timezone(local_tz)
             local_time = datetime.strptime(localtime, time_format)
-            localtime = local_tz.localize(local_time)  # type: ignore
+            if local_tz is None:
+                localtime = local_time.astimezone()  # type: ignore
+            elif isinstance(local_tz, str):
+                local_tz = pytz.timezone(local_tz)
+                localtime = local_tz.localize(local_time)  # type: ignore
             timestamp = int(localtime.timestamp())  # type: ignore
             return timestamp
         except Exception as e:

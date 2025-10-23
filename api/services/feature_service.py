@@ -88,6 +88,30 @@ class WebAppAuthModel(BaseModel):
     allow_email_password_login: bool = False
 
 
+class KnowledgePipeline(BaseModel):
+    publish_enabled: bool = False
+
+
+class PluginInstallationScope(StrEnum):
+    NONE = "none"
+    OFFICIAL_ONLY = "official_only"
+    OFFICIAL_AND_SPECIFIC_PARTNERS = "official_and_specific_partners"
+    ALL = "all"
+
+
+class PluginInstallationPermissionModel(BaseModel):
+    # Plugin installation scope – possible values:
+    #   none: prohibit all plugin installations
+    #   official_only: allow only Dify official plugins
+    #   official_and_specific_partners: allow official and specific partner plugins
+    #   all: allow installation of all plugins
+    plugin_installation_scope: PluginInstallationScope = PluginInstallationScope.ALL
+
+    # If True, restrict plugin installation to the marketplace only
+    # Equivalent to ForceEnablePluginVerification
+    restrict_to_marketplace_only: bool = False
+
+
 class FeatureModel(BaseModel):
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
@@ -103,15 +127,20 @@ class FeatureModel(BaseModel):
     dataset_operator_enabled: bool = False
     webapp_copyright_enabled: bool = False
     workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
-
+    is_allow_transfer_workspace: bool = True
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+    knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
 
 
 class KnowledgeRateLimitModel(BaseModel):
     enabled: bool = False
     limit: int = 10
     subscription_plan: str = ""
+
+
+class PluginManagerModel(BaseModel):
+    enabled: bool = False
 
 
 class SystemFeatureModel(BaseModel):
@@ -128,6 +157,9 @@ class SystemFeatureModel(BaseModel):
     license: LicenseModel = LicenseModel()
     branding: BrandingModel = BrandingModel()
     webapp_auth: WebAppAuthModel = WebAppAuthModel()
+    plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
+    enable_change_email: bool = True
+    plugin_manager: PluginManagerModel = PluginManagerModel()
 
 
 class FeatureService:
@@ -142,6 +174,7 @@ class FeatureService:
 
         if dify_config.ENTERPRISE_ENABLED:
             features.webapp_copyright_enabled = True
+            features.knowledge_pipeline.publish_enabled = True
             cls._fulfill_params_from_workspace_info(features, tenant_id)
 
         return features
@@ -165,6 +198,8 @@ class FeatureService:
         if dify_config.ENTERPRISE_ENABLED:
             system_features.branding.enabled = True
             system_features.webapp_auth.enabled = True
+            system_features.enable_change_email = False
+            system_features.plugin_manager.enabled = True
             cls._fulfill_params_from_enterprise(system_features)
 
         if dify_config.MARKETPLACE_ENABLED:
@@ -207,6 +242,8 @@ class FeatureService:
 
         if features.billing.subscription.plan != "sandbox":
             features.webapp_copyright_enabled = True
+        else:
+            features.is_allow_transfer_workspace = False
 
         if "members" in billing_info:
             features.members.size = billing_info["members"]["size"]
@@ -239,6 +276,9 @@ class FeatureService:
 
         if "knowledge_rate_limit" in billing_info:
             features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
+
+        if "knowledge_pipeline_publish_enabled" in billing_info:
+            features.knowledge_pipeline.publish_enabled = billing_info["knowledge_pipeline_publish_enabled"]
 
     @classmethod
     def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel):
@@ -291,3 +331,12 @@ class FeatureService:
                 features.license.workspaces.enabled = license_info["workspaces"]["enabled"]
                 features.license.workspaces.limit = license_info["workspaces"]["limit"]
                 features.license.workspaces.size = license_info["workspaces"]["used"]
+
+        if "PluginInstallationPermission" in enterprise_info:
+            plugin_installation_info = enterprise_info["PluginInstallationPermission"]
+            features.plugin_installation_permission.plugin_installation_scope = plugin_installation_info[
+                "pluginInstallationScope"
+            ]
+            features.plugin_installation_permission.restrict_to_marketplace_only = plugin_installation_info[
+                "restrictToMarketplaceOnly"
+            ]

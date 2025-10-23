@@ -13,6 +13,8 @@ type Props = {
   readonly: boolean
   value: string
   onChange: (value: string | number, varKindType: VarKindType, varInfo?: Var) => void
+  onOpenChange?: (open: boolean) => void
+  isLoading?: boolean
 }
 
 const DEFAULT_SCHEMA = {} as CredentialFormSchema
@@ -22,6 +24,8 @@ const ConstantField: FC<Props> = ({
   readonly,
   value,
   onChange,
+  onOpenChange,
+  isLoading,
 }) => {
   const language = useLanguage()
   const placeholder = (schema as CredentialFormSchemaSelect).placeholder
@@ -36,7 +40,7 @@ const ConstantField: FC<Props> = ({
 
   return (
     <>
-      {schema.type === FormTypeEnum.select && (
+      {(schema.type === FormTypeEnum.select || schema.type === FormTypeEnum.dynamicSelect) && (
         <SimpleSelect
           wrapperClassName='w-full !h-8'
           className='flex items-center'
@@ -45,6 +49,8 @@ const ConstantField: FC<Props> = ({
           items={(schema as CredentialFormSchemaSelect).options.map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
           onSelect={item => handleSelectChange(item.value)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
+          onOpenChange={onOpenChange}
+          isLoading={isLoading}
         />
       )}
       {schema.type === FormTypeEnum.textNumber && (

@@ -1,4 +1,4 @@
-import React, { type FC, useCallback, useEffect, useRef } from 'react'
+import React, { type FC, useCallback, useEffect, useMemo, useRef } from 'react'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import classNames from '@/utils/classnames'
@@ -14,6 +14,10 @@ type CodeEditorProps = {
   showFormatButton?: boolean
   editorWrapperClassName?: string
   readOnly?: boolean
+  hideTopMenu?: boolean
+  onFocus?: () => void
+  onBlur?: () => void
+  topContent?: React.ReactNode
 } & React.HTMLAttributes<HTMLDivElement>
 
 const CodeEditor: FC<CodeEditorProps> = ({
@@ -22,12 +26,17 @@ const CodeEditor: FC<CodeEditorProps> = ({
   showFormatButton = true,
   editorWrapperClassName,
   readOnly = false,
+  hideTopMenu = false,
+  topContent,
   className,
+  onFocus,
+  onBlur,
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
   const monacoRef = useRef<any>(null)
   const editorRef = useRef<any>(null)
+  const [isMounted, setIsMounted] = React.useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -42,6 +51,14 @@ const CodeEditor: FC<CodeEditorProps> = ({
   const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
     editorRef.current = editor
     monacoRef.current = monaco
+
+    editor.onDidFocusEditorText(() => {
+      onFocus?.()
+    })
+    editor.onDidBlurEditorText(() => {
+      onBlur?.()
+    })
+
     monaco.editor.defineTheme('light-theme', {
       base: 'vs',
       inherit: true,
@@ -63,6 +80,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
       },
     })
     monaco.editor.setTheme('light-theme')
+    setIsMounted(true)
   }, [])
 
   const formatJsonContent = useCallback(() => {
@@ -75,6 +93,11 @@ const CodeEditor: FC<CodeEditorProps> = ({
       onUpdate?.(value)
   }, [onUpdate])
 
+  const editorTheme = useMemo(() => {
+    if (theme === Theme.light)
+      return 'light-theme'
+    return 'dark-theme'
+  }, [theme])
   useEffect(() => {
     const resizeObserver = new ResizeObserver(() => {
       editorRef.current?.layout()
@@ -89,39 +112,40 @@ const CodeEditor: FC<CodeEditorProps> = ({
   }, [])
 
   return (
-    <div className={classNames('flex flex-col h-full bg-components-input-bg-normal overflow-hidden', className)}>
-      <div className='flex items-center justify-between pl-2 pr-1 pt-1'>
-        <div className='system-xs-semibold-uppercase py-0.5 text-text-secondary'>
-          <span className='px-1 py-0.5'>JSON</span>
-        </div>
-        <div className='flex items-center gap-x-0.5'>
-          {showFormatButton && (
-            <Tooltip popupContent={t('common.operation.format')}>
+    <div className={classNames('flex h-full flex-col overflow-hidden bg-components-input-bg-normal', hideTopMenu && 'pt-2', className)}>
+      {!hideTopMenu && (
+        <div className='flex items-center justify-between pl-2 pr-1 pt-1'>
+          <div className='system-xs-semibold-uppercase py-0.5 text-text-secondary'>
+            <span className='px-1 py-0.5'>JSON</span>
+          </div>
+          <div className='flex items-center gap-x-0.5'>
+            {showFormatButton && (
+              <Tooltip popupContent={t('common.operation.format')}>
+                <button
+                  type='button'
+                  className='flex h-6 w-6 items-center justify-center'
+                  onClick={formatJsonContent}
+                >
+                  <RiIndentIncrease className='h-4 w-4 text-text-tertiary' />
+                </button>
+              </Tooltip>
+            )}
+            <Tooltip popupContent={t('common.operation.copy')}>
               <button
                 type='button'
                 className='flex h-6 w-6 items-center justify-center'
-                onClick={formatJsonContent}
-              >
-                <RiIndentIncrease className='h-4 w-4 text-text-tertiary' />
+                onClick={() => copy(value)}>
+                <RiClipboardLine className='h-4 w-4 text-text-tertiary' />
               </button>
             </Tooltip>
-          )}
-          <Tooltip popupContent={t('common.operation.copy')}>
-            <button
-              type='button'
-              className='flex h-6 w-6 items-center justify-center'
-              onClick={() => copy(value)}>
-              <RiClipboardLine className='h-4 w-4 text-text-tertiary' />
-            </button>
-          </Tooltip>
+          </div>
         </div>
-      </div>
-      <div
-        ref={containerRef}
-        className={classNames('relative overflow-hidden', editorWrapperClassName)}
-      >
+      )}
+      {topContent}
+      <div className={classNames('relative overflow-hidden', editorWrapperClassName)}>
         <Editor
           defaultLanguage='json'
+          theme={isMounted ? editorTheme : 'default-theme'} // sometimes not load the default theme
           value={value}
           onChange={handleEditorChange}
           onMount={handleEditorDidMount}

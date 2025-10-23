@@ -2,7 +2,6 @@ from collections.abc import Sequence
 
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
-    GenericProviderID,
     MissingPluginDependency,
     PluginDeclaration,
     PluginEntity,
@@ -10,12 +9,13 @@ from core.plugin.entities.plugin import (
     PluginInstallationSource,
 )
 from core.plugin.entities.plugin_daemon import (
+    PluginDecodeResponse,
     PluginInstallTask,
     PluginInstallTaskStartResponse,
     PluginListResponse,
-    PluginUploadResponse,
 )
 from core.plugin.impl.base import BasePluginClient
+from models.provider_ids import GenericProviderID
 
 
 class PluginInstaller(BasePluginClient):
@@ -36,7 +36,7 @@ class PluginInstaller(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/management/list",
             PluginListResponse,
-            params={"page": 1, "page_size": 256},
+            params={"page": 1, "page_size": 256, "response_type": "paged"},
         )
         return result.list
 
@@ -45,7 +45,7 @@ class PluginInstaller(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/management/list",
             PluginListResponse,
-            params={"page": page, "page_size": page_size},
+            params={"page": page, "page_size": page_size, "response_type": "paged"},
         )
 
     def upload_pkg(
@@ -53,7 +53,7 @@ class PluginInstaller(BasePluginClient):
         tenant_id: str,
         pkg: bytes,
         verify_signature: bool = False,
-    ) -> PluginUploadResponse:
+    ) -> PluginDecodeResponse:
         """
         Upload a plugin package and return the plugin unique identifier.
         """
@@ -68,7 +68,7 @@ class PluginInstaller(BasePluginClient):
         return self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/management/install/upload/package",
-            PluginUploadResponse,
+            PluginDecodeResponse,
             files=body,
             data=data,
         )
@@ -174,6 +174,18 @@ class PluginInstaller(BasePluginClient):
             f"plugin/{tenant_id}/management/fetch/manifest",
             PluginDeclaration,
             params={"plugin_unique_identifier": plugin_unique_identifier},
+        )
+
+    def decode_plugin_from_identifier(self, tenant_id: str, plugin_unique_identifier: str) -> PluginDecodeResponse:
+        """
+        Decode a plugin from an identifier.
+        """
+        return self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/decode/from_identifier",
+            PluginDecodeResponse,
+            data={"plugin_unique_identifier": plugin_unique_identifier},
+            headers={"Content-Type": "application/json"},
         )
 
     def fetch_plugin_installation_by_ids(

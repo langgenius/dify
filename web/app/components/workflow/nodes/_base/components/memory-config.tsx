@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { Memory } from '../../../types'
 import { MemoryRole } from '../../../types'
 import cn from '@/utils/classnames'
@@ -53,7 +53,7 @@ type Props = {
 
 const MEMORY_DEFAULT: Memory = {
   window: { enabled: false, size: WINDOW_SIZE_DEFAULT },
-  query_prompt_template: '{{#sys.query#}}',
+  query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
 }
 
 const MemoryConfig: FC<Props> = ({

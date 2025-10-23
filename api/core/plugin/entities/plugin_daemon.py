@@ -1,14 +1,16 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.agent.plugin_entities import AgentProviderEntityWithPlugin
+from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
+from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
@@ -23,7 +25,7 @@ class PluginDaemonBasicResponse(BaseModel, Generic[T]):
 
     code: int
     message: str
-    data: Optional[T]
+    data: T | None = None
 
 
 class InstallPluginMessage(BaseModel):
@@ -47,11 +49,20 @@ class PluginToolProviderEntity(BaseModel):
     declaration: ToolProviderEntityWithPlugin
 
 
+class PluginDatasourceProviderEntity(BaseModel):
+    provider: str
+    plugin_unique_identifier: str
+    plugin_id: str
+    is_authorized: bool = False
+    declaration: DatasourceProviderEntityWithPlugin
+
+
 class PluginAgentProviderEntity(BaseModel):
     provider: str
     plugin_unique_identifier: str
     plugin_id: str
     declaration: AgentProviderEntityWithPlugin
+    meta: PluginDeclaration.Meta
 
 
 class PluginBasicBooleanResponse(BaseModel):
@@ -156,9 +167,23 @@ class PluginInstallTaskStartResponse(BaseModel):
     task_id: str = Field(description="The ID of the install task.")
 
 
-class PluginUploadResponse(BaseModel):
+class PluginVerification(BaseModel):
+    """
+    Verification of the plugin.
+    """
+
+    class AuthorizedCategory(StrEnum):
+        Langgenius = "langgenius"
+        Partner = "partner"
+        Community = "community"
+
+    authorized_category: AuthorizedCategory = Field(description="The authorized category of the plugin.")
+
+
+class PluginDecodeResponse(BaseModel):
     unique_identifier: str = Field(description="The unique identifier of the plugin.")
     manifest: PluginDeclaration
+    verification: PluginVerification | None = Field(default=None, description="Basic verification information")
 
 
 class PluginOAuthAuthorizationUrlResponse(BaseModel):
@@ -166,9 +191,17 @@ class PluginOAuthAuthorizationUrlResponse(BaseModel):
 
 
 class PluginOAuthCredentialsResponse(BaseModel):
+    metadata: Mapping[str, Any] = Field(
+        default_factory=dict, description="The metadata of the OAuth, like avatar url, name, etc."
+    )
+    expires_at: int = Field(default=-1, description="The expires at time of the credentials. UTC timestamp.")
     credentials: Mapping[str, Any] = Field(description="The credentials of the OAuth.")
 
 
 class PluginListResponse(BaseModel):
     list: list[PluginEntity]
     total: int
+
+
+class PluginDynamicSelectOptionsResponse(BaseModel):
+    options: Sequence[PluginParameterOption] = Field(description="The options of the dynamic select.")

@@ -1,4 +1,5 @@
-from typing import Annotated, Literal, Optional
+from enum import StrEnum
+from typing import Literal
 
 from pydantic import (
     AliasChoices,
@@ -32,6 +33,21 @@ class SecurityConfig(BaseSettings):
         default=5,
     )
 
+    EMAIL_REGISTER_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a email register token remains valid",
+        default=5,
+    )
+
+    CHANGE_EMAIL_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a change email token remains valid",
+        default=5,
+    )
+
+    OWNER_TRANSFER_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a owner transfer token remains valid",
+        default=5,
+    )
+
     LOGIN_DISABLED: bool = Field(
         description="Whether to disable login checks",
         default=False,
@@ -42,7 +58,7 @@ class SecurityConfig(BaseSettings):
         default=False,
     )
 
-    ADMIN_API_KEY: Optional[str] = Field(
+    ADMIN_API_KEY: str | None = Field(
         description="admin api key for authentication",
         default=None,
     )
@@ -82,19 +98,34 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default="dify-sandbox",
     )
 
-    CODE_EXECUTION_CONNECT_TIMEOUT: Optional[float] = Field(
+    CODE_EXECUTION_CONNECT_TIMEOUT: float | None = Field(
         description="Connection timeout in seconds for code execution requests",
         default=10.0,
     )
 
-    CODE_EXECUTION_READ_TIMEOUT: Optional[float] = Field(
+    CODE_EXECUTION_READ_TIMEOUT: float | None = Field(
         description="Read timeout in seconds for code execution requests",
         default=60.0,
     )
 
-    CODE_EXECUTION_WRITE_TIMEOUT: Optional[float] = Field(
+    CODE_EXECUTION_WRITE_TIMEOUT: float | None = Field(
         description="Write timeout in seconds for code execution request",
         default=10.0,
+    )
+
+    CODE_EXECUTION_POOL_MAX_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of concurrent connections for the code execution HTTP client",
+        default=100,
+    )
+
+    CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of persistent keep-alive connections for the code execution HTTP client",
+        default=20,
+    )
+
+    CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY: PositiveFloat | None = Field(
+        description="Keep-alive expiry in seconds for idle connections (set to None to disable)",
+        default=5.0,
     )
 
     CODE_MAX_NUMBER: PositiveInt = Field(
@@ -119,7 +150,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
 
     CODE_MAX_STRING_LENGTH: PositiveInt = Field(
         description="Maximum allowed length for strings in code execution",
-        default=80000,
+        default=400_000,
     )
 
     CODE_MAX_STRING_ARRAY_LENGTH: PositiveInt = Field(
@@ -137,6 +168,11 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default=1000,
     )
 
+    CODE_EXECUTION_SSL_VERIFY: bool = Field(
+        description="Enable or disable SSL verification for code execution requests",
+        default=True,
+    )
+
 
 class PluginConfig(BaseSettings):
     """
@@ -151,6 +187,11 @@ class PluginConfig(BaseSettings):
     PLUGIN_DAEMON_KEY: str = Field(
         description="Plugin API key",
         default="plugin-api-key",
+    )
+
+    PLUGIN_DAEMON_TIMEOUT: PositiveFloat | None = Field(
+        description="Timeout in seconds for requests to the plugin daemon (set to None to disable)",
+        default=300.0,
     )
 
     INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
@@ -237,6 +278,13 @@ class FileAccessConfig(BaseSettings):
         default="",
     )
 
+    INTERNAL_FILES_URL: str = Field(
+        description="Internal base URL for file access within Docker network,"
+        " used for plugin daemon and internal service communication."
+        " Falls back to FILES_URL if not specified.",
+        default="",
+    )
+
     FILES_ACCESS_TIMEOUT: int = Field(
         description="Expiration time in seconds for file access URLs",
         default=300,
@@ -314,17 +362,17 @@ class HttpConfig(BaseSettings):
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
-    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=10, description="Maximum connection timeout in seconds for HTTP requests")
-    ] = 10
+    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = Field(
+        ge=1, description="Maximum connection timeout in seconds for HTTP requests", default=10
+    )
 
-    HTTP_REQUEST_MAX_READ_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=60, description="Maximum read timeout in seconds for HTTP requests")
-    ] = 60
+    HTTP_REQUEST_MAX_READ_TIMEOUT: int = Field(
+        ge=1, description="Maximum read timeout in seconds for HTTP requests", default=600
+    )
 
-    HTTP_REQUEST_MAX_WRITE_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=10, description="Maximum write timeout in seconds for HTTP requests")
-    ] = 20
+    HTTP_REQUEST_MAX_WRITE_TIMEOUT: int = Field(
+        ge=1, description="Maximum write timeout in seconds for HTTP requests", default=600
+    )
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
         description="Maximum allowed size in bytes for binary data in HTTP requests",
@@ -346,17 +394,17 @@ class HttpConfig(BaseSettings):
         default=3,
     )
 
-    SSRF_PROXY_ALL_URL: Optional[str] = Field(
+    SSRF_PROXY_ALL_URL: str | None = Field(
         description="Proxy URL for HTTP or HTTPS requests to prevent Server-Side Request Forgery (SSRF)",
         default=None,
     )
 
-    SSRF_PROXY_HTTP_URL: Optional[str] = Field(
+    SSRF_PROXY_HTTP_URL: str | None = Field(
         description="Proxy URL for HTTP requests to prevent Server-Side Request Forgery (SSRF)",
         default=None,
     )
 
-    SSRF_PROXY_HTTPS_URL: Optional[str] = Field(
+    SSRF_PROXY_HTTPS_URL: str | None = Field(
         description="Proxy URL for HTTPS requests to prevent Server-Side Request Forgery (SSRF)",
         default=None,
     )
@@ -381,6 +429,21 @@ class HttpConfig(BaseSettings):
         default=5,
     )
 
+    SSRF_POOL_MAX_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of concurrent connections for the SSRF HTTP client",
+        default=100,
+    )
+
+    SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of persistent keep-alive connections for the SSRF HTTP client",
+        default=20,
+    )
+
+    SSRF_POOL_KEEPALIVE_EXPIRY: PositiveFloat | None = Field(
+        description="Keep-alive expiry in seconds for idle SSRF connections (set to None to disable)",
+        default=5.0,
+    )
+
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
         description="Enable handling of X-Forwarded-For, X-Forwarded-Proto, and X-Forwarded-Port headers"
         " when the app is behind a single trusted reverse proxy.",
@@ -398,7 +461,7 @@ class InnerAPIConfig(BaseSettings):
         default=False,
     )
 
-    INNER_API_KEY: Optional[str] = Field(
+    INNER_API_KEY: str | None = Field(
         description="API key for accessing the internal API",
         default=None,
     )
@@ -414,7 +477,7 @@ class LoggingConfig(BaseSettings):
         default="INFO",
     )
 
-    LOG_FILE: Optional[str] = Field(
+    LOG_FILE: str | None = Field(
         description="File path for log output.",
         default=None,
     )
@@ -434,12 +497,12 @@ class LoggingConfig(BaseSettings):
         default="%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s",
     )
 
-    LOG_DATEFORMAT: Optional[str] = Field(
+    LOG_DATEFORMAT: str | None = Field(
         description="Date format string for log timestamps",
         default=None,
     )
 
-    LOG_TZ: Optional[str] = Field(
+    LOG_TZ: str | None = Field(
         description="Timezone for log timestamps (e.g., 'America/New_York')",
         default="UTC",
     )
@@ -483,6 +546,22 @@ class UpdateConfig(BaseSettings):
     )
 
 
+class WorkflowVariableTruncationConfig(BaseSettings):
+    WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE: PositiveInt = Field(
+        # 1000 KiB
+        1024_000,
+        description="Maximum size for variable to trigger final truncation.",
+    )
+    WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH: PositiveInt = Field(
+        100000,
+        description="maximum length for string to trigger tuncation, measure in number of characters",
+    )
+    WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH: PositiveInt = Field(
+        1000,
+        description="maximum length for array to trigger truncation.",
+    )
+
+
 class WorkflowConfig(BaseSettings):
     """
     Configuration for workflow execution
@@ -503,14 +582,36 @@ class WorkflowConfig(BaseSettings):
         default=5,
     )
 
-    WORKFLOW_PARALLEL_DEPTH_LIMIT: PositiveInt = Field(
-        description="Maximum allowed depth for nested parallel executions",
-        default=3,
-    )
-
     MAX_VARIABLE_SIZE: PositiveInt = Field(
         description="Maximum size in bytes for a single variable in workflows. Default to 200 KB.",
         default=200 * 1024,
+    )
+
+    TEMPLATE_TRANSFORM_MAX_LENGTH: PositiveInt = Field(
+        description="Maximum number of characters allowed in Template Transform node output",
+        default=400_000,
+    )
+
+    # GraphEngine Worker Pool Configuration
+    GRAPH_ENGINE_MIN_WORKERS: PositiveInt = Field(
+        description="Minimum number of workers per GraphEngine instance",
+        default=1,
+    )
+
+    GRAPH_ENGINE_MAX_WORKERS: PositiveInt = Field(
+        description="Maximum number of workers per GraphEngine instance",
+        default=10,
+    )
+
+    GRAPH_ENGINE_SCALE_UP_THRESHOLD: PositiveInt = Field(
+        description="Queue depth threshold that triggers worker scale up",
+        default=3,
+    )
+
+    GRAPH_ENGINE_SCALE_DOWN_IDLE_TIME: float = Field(
+        description="Seconds of idle time before scaling down workers",
+        default=5.0,
+        ge=0.1,
     )
 
 
@@ -530,6 +631,39 @@ class WorkflowNodeExecutionConfig(BaseSettings):
     )
 
 
+class RepositoryConfig(BaseSettings):
+    """
+    Configuration for repository implementations
+    """
+
+    CORE_WORKFLOW_EXECUTION_REPOSITORY: str = Field(
+        description="Repository implementation for WorkflowExecution. Options: "
+        "'core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository' (default), "
+        "'core.repositories.celery_workflow_execution_repository.CeleryWorkflowExecutionRepository'",
+        default="core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository",
+    )
+
+    CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
+        description="Repository implementation for WorkflowNodeExecution. Options: "
+        "'core.repositories.sqlalchemy_workflow_node_execution_repository."
+        "SQLAlchemyWorkflowNodeExecutionRepository' (default), "
+        "'core.repositories.celery_workflow_node_execution_repository."
+        "CeleryWorkflowNodeExecutionRepository'",
+        default="core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository",
+    )
+
+    API_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
+        description="Service-layer repository implementation for WorkflowNodeExecutionModel operations. "
+        "Specify as a module path",
+        default="repositories.sqlalchemy_api_workflow_node_execution_repository.DifyAPISQLAlchemyWorkflowNodeExecutionRepository",
+    )
+
+    API_WORKFLOW_RUN_REPOSITORY: str = Field(
+        description="Service-layer repository implementation for WorkflowRun operations. Specify as a module path",
+        default="repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository",
+    )
+
+
 class AuthConfig(BaseSettings):
     """
     Configuration for authentication and OAuth
@@ -540,22 +674,22 @@ class AuthConfig(BaseSettings):
         default="/console/api/oauth/authorize",
     )
 
-    GITHUB_CLIENT_ID: Optional[str] = Field(
+    GITHUB_CLIENT_ID: str | None = Field(
         description="GitHub OAuth client ID",
         default=None,
     )
 
-    GITHUB_CLIENT_SECRET: Optional[str] = Field(
+    GITHUB_CLIENT_SECRET: str | None = Field(
         description="GitHub OAuth client secret",
         default=None,
     )
 
-    GOOGLE_CLIENT_ID: Optional[str] = Field(
+    GOOGLE_CLIENT_ID: str | None = Field(
         description="Google OAuth client ID",
         default=None,
     )
 
-    GOOGLE_CLIENT_SECRET: Optional[str] = Field(
+    GOOGLE_CLIENT_SECRET: str | None = Field(
         description="Google OAuth client secret",
         default=None,
     )
@@ -577,6 +711,21 @@ class AuthConfig(BaseSettings):
 
     FORGOT_PASSWORD_LOCKOUT_DURATION: PositiveInt = Field(
         description="Time (in seconds) a user must wait before retrying password reset after exceeding the rate limit.",
+        default=86400,
+    )
+
+    CHANGE_EMAIL_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying change email after exceeding the rate limit.",
+        default=86400,
+    )
+
+    OWNER_TRANSFER_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying owner transfer after exceeding the rate limit.",
+        default=86400,
+    )
+
+    EMAIL_REGISTER_LOCKOUT_DURATION: PositiveInt = Field(
+        description="Time (in seconds) a user must wait before retrying email register after exceeding the rate limit.",
         default=86400,
     )
 
@@ -603,47 +752,71 @@ class ToolConfig(BaseSettings):
     )
 
 
+class TemplateMode(StrEnum):
+    # unsafe mode allows flexible operations in templates, but may cause security vulnerabilities
+    UNSAFE = "unsafe"
+
+    # sandbox mode restricts some unsafe operations like accessing __class__.
+    # however, it is still not 100% safe, for example, cpu exploitation can happen.
+    SANDBOX = "sandbox"
+
+    # templating is disabled
+    DISABLED = "disabled"
+
+
 class MailConfig(BaseSettings):
     """
     Configuration for email services
     """
 
-    MAIL_TYPE: Optional[str] = Field(
-        description="Email service provider type ('smtp' or 'resend'), default to None.",
+    MAIL_TEMPLATING_MODE: TemplateMode = Field(
+        description="Template mode for email services",
+        default=TemplateMode.SANDBOX,
+    )
+
+    MAIL_TEMPLATING_TIMEOUT: int = Field(
+        description="""
+        Timeout for email templating in seconds. Used to prevent infinite loops in malicious templates.
+        Only available in sandbox mode.""",
+        default=3,
+    )
+
+    MAIL_TYPE: str | None = Field(
+        description="Email service provider type ('smtp' or 'resend' or 'sendGrid), default to None.",
         default=None,
     )
 
-    MAIL_DEFAULT_SEND_FROM: Optional[str] = Field(
+    MAIL_DEFAULT_SEND_FROM: str | None = Field(
         description="Default email address to use as the sender",
         default=None,
     )
 
-    RESEND_API_KEY: Optional[str] = Field(
+    RESEND_API_KEY: str | None = Field(
         description="API key for Resend email service",
         default=None,
     )
 
-    RESEND_API_URL: Optional[str] = Field(
+    RESEND_API_URL: str | None = Field(
         description="API URL for Resend email service",
         default=None,
     )
 
-    SMTP_SERVER: Optional[str] = Field(
+    SMTP_SERVER: str | None = Field(
         description="SMTP server hostname",
         default=None,
     )
 
-    SMTP_PORT: Optional[int] = Field(
+    SMTP_PORT: int | None = Field(
         description="SMTP server port number",
         default=465,
     )
 
-    SMTP_USERNAME: Optional[str] = Field(
+    SMTP_USERNAME: str | None = Field(
         description="Username for SMTP authentication",
         default=None,
     )
 
-    SMTP_PASSWORD: Optional[str] = Field(
+    SMTP_PASSWORD: str | None = Field(
         description="Password for SMTP authentication",
         default=None,
     )
@@ -661,6 +834,11 @@ class MailConfig(BaseSettings):
     EMAIL_SEND_IP_LIMIT_PER_MINUTE: PositiveInt = Field(
         description="Maximum number of emails allowed to be sent from the same IP address in a minute",
         default=50,
+    )
+
+    SENDGRID_API_KEY: str | None = Field(
+        description="API key for SendGrid service",
+        default=None,
     )
 
 
@@ -681,17 +859,17 @@ class RagEtlConfig(BaseSettings):
         default="database",
     )
 
-    UNSTRUCTURED_API_URL: Optional[str] = Field(
+    UNSTRUCTURED_API_URL: str | None = Field(
         description="API URL for Unstructured.io service",
         default=None,
     )
 
-    UNSTRUCTURED_API_KEY: Optional[str] = Field(
+    UNSTRUCTURED_API_KEY: str | None = Field(
         description="API key for Unstructured.io service",
         default="",
     )
 
-    SCARF_NO_ANALYTICS: Optional[str] = Field(
+    SCARF_NO_ANALYTICS: str | None = Field(
         description="This is about whether to disable Scarf analytics in Unstructured library.",
         default="false",
     )
@@ -730,6 +908,11 @@ class DataSetConfig(BaseSettings):
     PLAN_SANDBOX_CLEAN_MESSAGE_DAY_SETTING: PositiveInt = Field(
         description="Interval in days for message cleanup operations - plan: sandbox",
         default=30,
+    )
+
+    DSL_EXPORT_ENCRYPT_DATASET_ID: bool = Field(
+        description="Enable or disable dataset ID encryption when exporting DSL files",
+        default=True,
     )
 
 
@@ -771,6 +954,41 @@ class CeleryBeatConfig(BaseSettings):
     CELERY_BEAT_SCHEDULER_TIME: int = Field(
         description="Interval in days for Celery Beat scheduler execution, default to 1 day",
         default=1,
+    )
+
+
+class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_CLEAN_EMBEDDING_CACHE_TASK: bool = Field(
+        description="Enable clean embedding cache task",
+        default=False,
+    )
+    ENABLE_CLEAN_UNUSED_DATASETS_TASK: bool = Field(
+        description="Enable clean unused datasets task",
+        default=False,
+    )
+    ENABLE_CREATE_TIDB_SERVERLESS_TASK: bool = Field(
+        description="Enable create tidb service job task",
+        default=False,
+    )
+    ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK: bool = Field(
+        description="Enable update tidb service job status task",
+        default=False,
+    )
+    ENABLE_CLEAN_MESSAGES: bool = Field(
+        description="Enable clean messages task",
+        default=False,
+    )
+    ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(
+        description="Enable mail clean document notify task",
+        default=False,
+    )
+    ENABLE_DATASETS_QUEUE_MONITOR: bool = Field(
+        description="Enable queue monitor task",
+        default=False,
+    )
+    ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: bool = Field(
+        description="Enable check upgradable plugin task",
+        default=True,
     )
 
 
@@ -869,6 +1087,26 @@ class AccountConfig(BaseSettings):
     )
 
 
+class WorkflowLogConfig(BaseSettings):
+    WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(default=True, description="Enable workflow run log cleanup")
+    WORKFLOW_LOG_RETENTION_DAYS: int = Field(default=30, description="Retention days for workflow run logs")
+    WORKFLOW_LOG_CLEANUP_BATCH_SIZE: int = Field(
+        default=100, description="Batch size for workflow run log cleanup operations"
+    )
+
+
+class SwaggerUIConfig(BaseSettings):
+    SWAGGER_UI_ENABLED: bool = Field(
+        description="Whether to enable Swagger UI in api module",
+        default=True,
+    )
+
+    SWAGGER_UI_PATH: str = Field(
+        description="Swagger UI page path in api module",
+        default="/swagger-ui.html",
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -891,6 +1129,7 @@ class FeatureConfig(
     MultiModalTransferConfig,
     PositionConfig,
     RagEtlConfig,
+    RepositoryConfig,
     SecurityConfig,
     ToolConfig,
     UpdateConfig,
@@ -899,8 +1138,12 @@ class FeatureConfig(
     WorkspaceConfig,
     LoginConfig,
     AccountConfig,
+    SwaggerUIConfig,
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,
+    CeleryScheduleTasksConfig,
+    WorkflowLogConfig,
+    WorkflowVariableTruncationConfig,
 ):
     pass

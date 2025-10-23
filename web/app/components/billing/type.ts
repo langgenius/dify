@@ -99,7 +99,11 @@ export type CurrentPlanInfoBackend = {
   workspace_members: {
     size: number
     limit: number
-  }
+  },
+  is_allow_transfer_workspace: boolean
+  knowledge_pipeline: {
+    publish_enabled: boolean
+  },
 }
 
 export type SubscriptionItem = {

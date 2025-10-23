@@ -46,6 +46,7 @@ const translation = {
     setVarValuePlaceholder: '変数値を設定',
     needConnectTip: '接続されていないステップがあります',
     maxTreeDepth: '1 ブランチあたりの最大ノード数：{{depth}}',
+    needAdd: '{{node}}ノードを追加する必要があります',
     needEndNode: '終了ブロックを追加する必要があります',
     needAnswerNode: '回答ブロックを追加する必要があります',
     workflowProcess: 'ワークフロー処理',
@@ -74,6 +75,8 @@ const translation = {
     exportPNG: 'PNG で出力',
     exportJPEG: 'JPEG で出力',
     exportSVG: 'SVG で出力',
+    currentView: '現在のビュー',
+    currentWorkflow: '現在のワークフロー',
     model: 'モデル',
     workflowAsTool: 'ワークフローをツールとして公開する',
     configureRequired: '設定が必要',
@@ -91,7 +94,6 @@ const translation = {
     importWarning: '注意事項',
     importWarningDetails: 'DSL バージョンの違いにより機能に影響が出る可能性があります',
     importSuccess: 'インポート成功',
-    parallelRun: '並列実行',
     parallelTip: {
       click: {
         title: 'クリック',
@@ -113,6 +115,7 @@ const translation = {
     addFailureBranch: '失敗ブランチを追加',
     loadMore: 'さらに読み込む',
     noHistory: '履歴がありません',
+    tagBound: 'このタグを使用しているアプリの数',
   },
   env: {
     envPanelTitle: '環境変数',
@@ -127,6 +130,8 @@ const translation = {
       value: '値',
       valuePlaceholder: '変数値を入力',
       secretTip: 'この変数は機密情報やデータを定義するために使用されます。DSL をエクスポートするときに漏洩防止メカニズムを設定されます。',
+      description: '説明',
+      descriptionPlaceholder: '変数の説明を入力',
     },
     export: {
       title: 'シークレット環境変数をエクスポートしますか？',
@@ -134,6 +139,10 @@ const translation = {
       ignore: 'DSL をエクスポート',
       export: 'シークレット値付きでエクスポート',
     },
+  },
+  sidebar: {
+    exportWarning: '現在保存されているバージョンをエクスポート',
+    exportWarningDesc: 'これは現在保存されているワークフローのバージョンをエクスポートします。エディターで未保存の変更がある場合は、まずワークフローキャンバスのエクスポートオプションを使用して保存してください。',
   },
   chatVariable: {
     panelTitle: '会話変数',
@@ -210,10 +219,11 @@ const translation = {
     startRun: '実行開始',
     running: '実行中',
     testRunIteration: 'テスト実行（イテレーション）',
-    testRunLoop: 'テスト実行（ループ）',
     back: '戻る',
     iteration: 'イテレーション',
     loop: 'ループ',
+    reRun: '再実行',
+    preparingDataSource: 'データソースの準備',
   },
   tabs: {
     'searchBlock': 'ブロック検索',
@@ -230,6 +240,10 @@ const translation = {
     'noResult': '該当なし',
     'plugin': 'プラグイン',
     'agent': 'エージェント戦略',
+    'addAll': 'すべてを追加する',
+    'allAdded': 'すべて追加されました',
+    'searchDataSource': 'データソースを検索',
+    'sources': 'ソース',
   },
   blocks: {
     'start': '開始',
@@ -254,6 +268,8 @@ const translation = {
     'loop-start': 'ループ開始',
     'loop': 'ループ',
     'loop-end': 'ループ完了',
+    'knowledge-index': '知識ベース',
+    'datasource': 'データソース',
   },
   blocksAbout: {
     'start': 'ワークフロー開始時の初期パラメータを定義します。',
@@ -276,6 +292,8 @@ const translation = {
     'document-extractor': 'アップロード文書を LLM 処理用に最適化されたテキストに変換します。',
     'list-operator': '配列のフィルタリングやソート処理を行います。',
     'agent': '大規模言語モデルを活用した質問応答や自然言語処理を実行します。',
+    'knowledge-index': '知識ベースについて',
+    'datasource': 'データソースについて',
   },
   operator: {
     zoomIn: '拡大',
@@ -283,6 +301,18 @@ const translation = {
     zoomTo50: '50% サイズ',
     zoomTo100: '等倍表示',
     zoomToFit: '画面に合わせる',
+    horizontal: '水平',
+    alignBottom: '下',
+    alignNodes: 'ノードを整列',
+    vertical: '垂直',
+    alignLeft: '左',
+    alignTop: '上',
+    alignRight: '右',
+    alignMiddle: '中央',
+    distributeVertical: '垂直方向に等間隔配置',
+    alignCenter: '中央',
+    selectionAlignment: '選択の整列',
+    distributeHorizontal: '水平方向に等間隔配置',
   },
   variableReference: {
     noAvailableVars: '利用可能な変数がありません',
@@ -308,6 +338,9 @@ const translation = {
     change: '変更',
     optional: '（任意）',
     moveToThisNode: 'このノードに移動する',
+    maximize: 'キャンバスを最大化する',
+    minimize: '全画面を終了する',
+    optional_and_hidden: '（オプションおよび非表示）',
   },
   nodes: {
     common: {
@@ -365,6 +398,11 @@ const translation = {
         ms: 'ミリ秒',
         retries: '再試行回数：{{num}}',
       },
+      typeSwitch: {
+        input: '入力値',
+        variable: '変数を使用する',
+      },
+      inputVars: '入力変数',
     },
     start: {
       required: '必須',
@@ -419,6 +457,7 @@ const translation = {
       },
       outputVars: {
         output: '生成内容',
+        reasoning_content: '推論内容',
         usage: 'モデル使用量',
       },
       singleRun: {
@@ -452,6 +491,12 @@ const translation = {
         warningTips: {
           saveSchema: '編集中のフィールドを確定してから保存してください。',
         },
+      },
+      reasoningFormat: {
+        tagged: 'タグを考え続けてください',
+        separated: '思考タグを分ける',
+        title: '推論タグの分離を有効にする',
+        tooltip: 'thinkタグから内容を抽出し、それをreasoning_contentフィールドに保存します。',
       },
     },
     knowledgeRetrieval: {
@@ -541,6 +586,10 @@ const translation = {
         title: 'cURL からインポート',
         placeholder: 'ここに cURL 文字列を貼り付けます',
       },
+      verifySSL: {
+        title: 'SSL証明書を確認する',
+        warningTooltip: 'SSL検証を無効にすることは、本番環境では推奨されません。これは開発またはテストのみに使用すべきであり、中間者攻撃などのセキュリティ脅威に対して接続を脆弱にするためです。',
+      },
     },
     code: {
       inputVars: '入力変数',
@@ -548,6 +597,7 @@ const translation = {
       advancedDependencies: '高度な依存関係',
       advancedDependenciesTip: '消費に時間がかかる、またはデフォルトで組み込まれていない事前ロードされた依存関係を追加します',
       searchDependencies: '依存関係を検索',
+      syncFunctionSignature: 'コードの関数署名を同期',
     },
     templateTransform: {
       inputVars: '入力変数',
@@ -576,7 +626,6 @@ const translation = {
         'not empty': '空でない',
         'null': 'null',
         'not null': 'null でない',
-        'regex match': '正規表現マッチ',
         'in': '含まれている',
         'not in': '含まれていない',
         'all of': 'すべての',
@@ -603,7 +652,6 @@ const translation = {
     variableAssigner: {
       title: '変数を代入する',
       outputType: '出力タイプ',
-      outputVarType: '出力変数のタイプ',
       varNotSet: '変数が設定されていません',
       noVarTip: '代入された変数を追加してください',
       type: {
@@ -667,12 +715,16 @@ const translation = {
         json: 'ツールで生成された JSON',
       },
       authorize: '認証する',
+      settings: '設定',
+      insertPlaceholder1: 'タイプするか押してください',
+      insertPlaceholder2: '変数を挿入する',
     },
     questionClassifiers: {
       model: 'モデル',
       inputVars: '入力変数',
       outputVars: {
         className: 'クラス名',
+        usage: 'モデル使用量',
       },
       class: 'クラス',
       classNamePlaceholder: 'クラス名を入力してください',
@@ -686,6 +738,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: '入力変数',
+      outputVars: {
+        isSuccess: '成功。成功した場合の値は 1、失敗した場合の値は 0 です。',
+        errorReason: 'エラーの理由',
+        usage: 'モデル使用量',
+      },
       extractParameters: 'パラメーターを抽出',
       importFromTool: 'ツールからインポート',
       addExtractParameter: '抽出パラメーターを追加',
@@ -705,8 +762,6 @@ const translation = {
       advancedSetting: '高度な設定',
       reasoningMode: '推論モード',
       reasoningModeTip: '関数呼び出しやプロンプトの指示に応答するモデルの能力に基づいて、適切な推論モードを選択できます。',
-      isSuccess: '成功。成功した場合の値は 1、失敗した場合の値は 0 です。',
-      errorReason: 'エラーの理由',
     },
     iteration: {
       deleteTitle: 'イテレーションノードを削除しますか？',
@@ -848,6 +903,7 @@ const translation = {
         },
         text: 'エージェント生成コンテンツ',
         json: 'エージェント生成の JSON',
+        usage: 'モデル使用量',
       },
       checkList: {
         strategyNotSelected: '戦略が選択されていません',
@@ -864,7 +920,7 @@ const translation = {
       modelNotSelected: 'モデルが選択されていません',
       toolNotAuthorizedTooltip: '{{tool}} 認可されていません',
       toolNotInstallTooltip: '{{tool}}はインストールされていません',
-      tools: '道具',
+      tools: 'ツール',
       learnMore: 'もっと学ぶ',
       configureModel: 'モデルを設定する',
       model: 'モデル',
@@ -879,6 +935,34 @@ const translation = {
       unsupportedStrategy: 'サポートされていない戦略',
       pluginNotFoundDesc: 'このプラグインは GitHub からインストールされています。再インストールするにはプラグインに移動してください。',
       strategyNotFoundDesc: 'インストールされたプラグインのバージョンは、この戦略を提供していません。',
+      parameterSchema: 'パラメータスキーマ',
+      clickToViewParameterSchema: 'パラメータースキーマを見るにはクリックしてください',
+    },
+    dataSource: {
+      add: 'データソースを追加',
+      supportedFileFormats: 'サポートされているファイル形式',
+      supportedFileFormatsPlaceholder: 'ファイル拡張子、例：doc',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        title: 'チャンク構造を選択してください',
+        learnMore: 'もっと学ぶ',
+        message: 'Difyナレッジベースは、一般的な、親子関係、Q&Aの3つのチャンク構造をサポートしています。各ナレッジベースには一つの構造のみが持てます。前のノードからの出力は、選択されたチャンク構造と一致する必要があります。チャンク構造の選択が利用可能なインデックス方式に影響を与えることに注意してください。',
+      },
+      aboutRetrieval: '取得方法について。',
+      chooseChunkStructure: 'チャンク構造を選択する',
+      chunkStructure: 'チャンク構造',
+      chunkIsRequired: 'チャンク構造が必要です',
+      retrievalSettingIsRequired: 'リトリーバル設定が必要です',
+      changeChunkStructure: 'チャンク構造を変更する',
+      indexMethodIsRequired: 'インデックスメソッドが必要です',
+      chunksInput: 'チャンク',
+      chunksInputTip: '知識ベースノードの入力変数はチャンクです。変数のタイプは、選択されたチャンク構造と一貫性のある特定のJSONスキーマを持つオブジェクトです。',
+      chunksVariableIsRequired: 'Chunks変数は必須です',
+      embeddingModelIsRequired: '埋め込みモデルが必要です',
+      rerankingModelIsRequired: '再ランキングモデルが必要です',
+      embeddingModelIsInvalid: '埋め込みモデルが無効です',
+      rerankingModelIsInvalid: 'リランキングモデルは無効です',
     },
   },
   tracing: {
@@ -914,7 +998,57 @@ const translation = {
       deleteFailure: '削除に失敗しました',
       updateSuccess: '更新が完了しました',
       updateFailure: '更新に失敗しました',
+      copyIdSuccess: 'IDがクリップボードにコピーされました',
     },
+    copyId: 'IDをコピー',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'このノードを実行してください',
+      description: '最後の実行の結果がここに表示されます',
+    },
+    variableInspect: {
+      trigger: {
+        clear: 'クリア',
+        running: 'キャッシング実行状況',
+        cached: 'キャッシュされた変数を表示',
+        stop: '走るのを止めて',
+        normal: '変数検査',
+      },
+      clearAll: 'すべてリセット',
+      emptyLink: 'もっと学ぶ',
+      systemNode: 'システム',
+      view: 'ログを表示',
+      resetConversationVar: '会話の変数をデフォルト値にリセットする',
+      chatNode: '会話',
+      reset: '最後の実行値にリセットする',
+      clearNode: 'キャッシュされた変数をクリアする',
+      edited: '編集された',
+      title: '変数検査',
+      envNode: '環境',
+      emptyTip: 'キャンバス上でノードをステップ実行するか、ノードを一歩ずつ実行した後、変数インスペクトでノード変数の現在の値を確認できます。',
+      export: '輸出',
+      largeDataNoExport: '大規模データ - 一部プレビューのみ',
+      exportToolTip: '変数をファイルとしてエクスポートする',
+      largeData: '大きなデータ、読み取り専用のプレビュー。すべてを表示するにはエクスポートしてください。',
+    },
+    settingsTab: '設定',
+    lastRunTab: '最後の実行',
+    relationsTab: '関係',
+    relations: {
+      dependencies: '依存元',
+      dependents: '依存先',
+      dependenciesDescription: 'このノードが依存している他のノード',
+      dependentsDescription: 'このノードに依存している他のノード',
+      noDependencies: '依存元なし',
+      noDependents: '依存先なし',
+    },
+    copyLastRun: '最後の実行をコピー',
+    noLastRunFound: '以前の実行が見つかりませんでした。',
+    copyLastRunError: '最後の実行の入力をコピーできませんでした',
+    noMatchingInputsFound: '前回の実行から一致する入力が見つかりませんでした。',
+    lastRunInputsCopied: '前回の実行から{{count}}個の入力をコピーしました',
+    lastOutput: '最後の出力',
   },
 }
 

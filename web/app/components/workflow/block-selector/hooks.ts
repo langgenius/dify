@@ -1,40 +1,70 @@
+import {
+  useMemo,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
-import { BLOCKS } from './constants'
 import {
   TabsEnum,
   ToolTypeEnum,
 } from './types'
 
-export const useBlocks = () => {
+export const useTabs = (noBlocks?: boolean, noSources?: boolean, noTools?: boolean) => {
   const { t } = useTranslation()
+  const tabs = useMemo(() => {
+    return [
+      ...(
+        noBlocks
+          ? []
+          : [
+            {
+              key: TabsEnum.Blocks,
+              name: t('workflow.tabs.blocks'),
+            },
+          ]
+      ),
+      ...(
+        noSources
+          ? []
+          : [
+            {
+              key: TabsEnum.Sources,
+              name: t('workflow.tabs.sources'),
+            },
+          ]
+      ),
+      ...(
+        noTools
+          ? []
+          : [
+            {
+              key: TabsEnum.Tools,
+              name: t('workflow.tabs.tools'),
+            },
+          ]
+      ),
+    ]
+  }, [t, noBlocks, noSources, noTools])
+  const initialTab = useMemo(() => {
+    if (noBlocks)
+      return noTools ? TabsEnum.Sources : TabsEnum.Tools
 
-  return BLOCKS.map((block) => {
-    return {
-      ...block,
-      title: t(`workflow.blocks.${block.type}`),
-    }
-  })
+    if (noTools)
+      return noBlocks ? TabsEnum.Sources : TabsEnum.Blocks
+
+    return TabsEnum.Blocks
+  }, [noBlocks, noSources, noTools])
+  const [activeTab, setActiveTab] = useState(initialTab)
+
+  return {
+    tabs,
+    activeTab,
+    setActiveTab,
+  }
 }
 
-export const useTabs = () => {
+export const useToolTabs = (isHideMCPTools?: boolean) => {
   const { t } = useTranslation()
-
-  return [
-    {
-      key: TabsEnum.Blocks,
-      name: t('workflow.tabs.blocks'),
-    },
-    {
-      key: TabsEnum.Tools,
-      name: t('workflow.tabs.tools'),
-    },
-  ]
-}
-
-export const useToolTabs = () => {
-  const { t } = useTranslation()
-
-  return [
+  const tabs = [
     {
       key: ToolTypeEnum.All,
       name: t('workflow.tabs.allTool'),
@@ -52,4 +82,12 @@ export const useToolTabs = () => {
       name: t('workflow.tabs.workflowTool'),
     },
   ]
+  if (!isHideMCPTools) {
+    tabs.push({
+      key: ToolTypeEnum.MCP,
+      name: 'MCP',
+    })
+  }
+
+  return tabs
 }

@@ -42,6 +42,10 @@ const translation = {
     },
     change: 'Thay đổi',
     changeRetrievalMethod: 'Thay đổi phương pháp truy xuất',
+    keyword_search: {
+      title: 'Chỉ số đảo ngược',
+      description: 'Chỉ số đảo ngược là một cấu trúc được sử dụng để truy xuất hiệu quả. Được sắp xếp theo thuật ngữ, mỗi thuật ngữ trỏ đến các tài liệu hoặc trang web có chứa nó.',
+    },
   },
   docsFailedNotice: 'tài liệu không được lập chỉ mục',
   retry: 'Thử lại',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     general: 'Tổng quát',
     parentChild: 'Cha mẹ-con cái',
+    graph: 'Đồ thị',
+    qa: 'Hỏi & Đáp',
   },
   parentMode: {
     paragraph: 'Đoạn',
@@ -179,6 +185,7 @@ const translation = {
     checkName: {
       invalid: 'Tên siêu dữ liệu chỉ có thể chứa chữ cái thường, số và dấu gạch dưới, và phải bắt đầu bằng một chữ cái thường.',
       empty: 'Tên siêu dữ liệu không được để trống',
+      tooLong: 'Tên siêu dữ liệu không được vượt quá {{max}} ký tự',
     },
     batchEditMetadata: {
       applyToAllSelectDocumentTip: 'Tự động tạo tất cả các siêu dữ liệu đã chỉnh sửa và mới cho tất cả các tài liệu được chọn, nếu không, việc chỉnh sửa siêu dữ liệu sẽ chỉ áp dụng cho các tài liệu có nó.',
@@ -216,6 +223,20 @@ const translation = {
     metadata: 'Siêu dữ liệu',
   },
   embeddingModelNotAvailable: 'Mô hình nhúng không khả dụng.',
+  updated: 'Cập nhật',
+  createFromPipeline: 'Tạo từ quy trình kiến thức',
+  externalKnowledgeBase: 'Cơ sở kiến thức bên ngoài',
+  serviceApi: {
+    card: {
+      title: 'API dịch vụ backend',
+      endpoint: 'Điểm cuối API dịch vụ',
+      apiKey: 'Khóa API',
+      apiReference: 'Tham chiếu API',
+    },
+    enabled: 'Đang phục vụ',
+    disabled: 'Vô hiệu hóa',
+    title: 'Giao diện lập trình dịch vụ',
+  },
 }
 
 export default translation

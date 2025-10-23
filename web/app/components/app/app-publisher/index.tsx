@@ -5,7 +5,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import dayjs from 'dayjs'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -19,7 +18,7 @@ import {
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
-import { getKeyboardKeyCodeBySystem } from '../../workflow/utils'
+import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
 import Toast from '../../base/toast'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import Divider from '../../base/divider'
@@ -38,7 +37,6 @@ import { basePath } from '@/utils/var'
 import { fetchInstalledAppList } from '@/service/explore'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useGetLanguage } from '@/context/i18n'
 import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import type { InputVar } from '@/app/components/workflow/types'
@@ -48,6 +46,7 @@ import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/acces
 import { AccessMode } from '@/models/access-control'
 import { fetchAppDetail } from '@/service/apps'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -67,7 +66,7 @@ export type AppPublisherProps = {
   onRefreshData?: () => void
 }
 
-const PUBLISH_SHORTCUT = ['⌘', '⇧', 'P']
+const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 
 const AppPublisher = ({
   disabled = false,
@@ -90,6 +89,7 @@ const AppPublisher = ({
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(s => s.setAppDetail)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
   const appURL = `${appBaseURL}${basePath}/${appMode}/${accessToken}`
@@ -115,10 +115,6 @@ const AppPublisher = ({
       setIsAppAccessSet(true)
     }
   }, [appAccessSubjects, appDetail])
-  const language = useGetLanguage()
-  const formatTimeFromNow = useCallback((time: number) => {
-    return dayjs(time).locale(language === 'zh_Hans' ? 'zh-cn' : language.replace('_', '-')).fromNow()
-  }, [language])
 
   const handlePublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {
     try {
@@ -180,8 +176,7 @@ const AppPublisher = ({
     if (publishDisabled || published)
       return
     handlePublish()
-  },
-    { exactMatch: true, useCapture: true })
+  }, { exactMatch: true, useCapture: true })
 
   return (
     <>
@@ -255,7 +250,7 @@ const AppPublisher = ({
                             <div className='flex gap-0.5'>
                               {PUBLISH_SHORTCUT.map(key => (
                                 <span key={key} className='system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface'>
-                                  {key}
+                                  {getKeyboardKeyNameBySystem(key)}
                                 </span>
                               ))}
                             </div>
@@ -314,10 +309,10 @@ const AppPublisher = ({
                   {!isAppAccessSet && <p className='system-xs-regular mt-1 text-text-warning'>{t('app.publishApp.notSetDesc')}</p>}
                 </div>}
                 <div className='flex flex-col gap-y-1 border-t-[0.5px] border-t-divider-regular p-4 pt-3'>
-                  <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                  <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || appDetail?.access_mode === AccessMode.EXTERNAL_MEMBERS || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
                     <SuggestedAction
                       className='flex-1'
-                      disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && !userCanAccessApp?.result)}
+                      disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && appDetail?.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result)}
                       link={appURL}
                       icon={<RiPlayCircleLine className='h-4 w-4' />}
                     >
@@ -326,10 +321,10 @@ const AppPublisher = ({
                   </Tooltip>
                   {appDetail?.mode === 'workflow' || appDetail?.mode === 'completion'
                     ? (
-                      <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                      <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || appDetail.access_mode === AccessMode.EXTERNAL_MEMBERS || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
                         <SuggestedAction
                           className='flex-1'
-                          disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && !userCanAccessApp?.result)}
+                          disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result)}
                           link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
                           icon={<RiPlayList2Line className='h-4 w-4' />}
                         >
@@ -353,7 +348,8 @@ const AppPublisher = ({
                     <SuggestedAction
                       className='flex-1'
                       onClick={() => {
-                        publishedAt && handleOpenInExplore()
+                        if (publishedAt)
+                          handleOpenInExplore()
                       }}
                       disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && !userCanAccessApp?.result)}
                       icon={<RiPlanetLine className='h-4 w-4' />}

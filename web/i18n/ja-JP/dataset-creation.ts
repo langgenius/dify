@@ -31,6 +31,7 @@ const translation = {
     uploader: {
       title: 'テキストファイルをアップロード',
       button: 'ファイルまたはフォルダをドラッグアンドドロップする',
+      buttonSingleFile: 'ファイルをドラッグアンドドロップする',
       browse: '参照',
       tip: '{{supportTypes}}をサポートしています。1 つあたりの最大サイズは{{size}}MB です。',
       validation: {
@@ -72,7 +73,6 @@ const translation = {
       run: '実行',
       firecrawlTitle: '🔥Firecrawl を使っでウエブコンテンツを抽出',
       firecrawlDoc: 'Firecrawl ドキュメント',
-      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       jinaReaderTitle: 'サイト全体を Markdown に変換する',
       jinaReaderDoc: 'Jina Reader の詳細',
       jinaReaderDocLink: 'https://jina.ai/reader',
@@ -98,7 +98,7 @@ const translation = {
       watercrawlDoc: 'ウォータークローリングの文書',
       watercrawlTitle: 'Watercrawl を使用してウェブコンテンツを抽出する',
       waterCrawlNotConfigured: 'Watercrawl は設定されていません',
-      watercrawlDocLink: 'https://docs.dify.ai/ja/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
+      running: '走る',
     },
   },
   stepTwo: {
@@ -183,6 +183,7 @@ const translation = {
     notAvailableForQA: 'Q&A インデックスでは利用できません',
     parentChildDelimiterTip: '区切り文字とは、テキストを分割するために使用される文字です。\\n\\n は、元のドキュメントを大きな親チャンクに分割する際におすすめです。独自の区切り文字も使用できます。',
     parentChildChunkDelimiterTip: '区切り文字とは、テキストを分割するために使用される文字です。\\n は、親チャンクを小さな子チャンクに分割する際におすすめです。独自の区切り文字も使用できます。',
+    qaTip: '構造化されたQ&Aデータを使用する場合、質問と回答を組み合わせたドキュメントを作成できます。これらのドキュメントは質問部分に基づいてインデックスされ、システムはクエリの類似性に基づいて関連する回答を取得できるようになります。',
   },
   stepThree: {
     creationTitle: '🎉 ナレッジベースが作成されました',

@@ -4,17 +4,19 @@ import cn from '@/utils/classnames'
 type OptionListItemProps = {
   isSelected: boolean
   onClick: () => void
+  noAutoScroll?: boolean
 } & React.LiHTMLAttributes<HTMLLIElement>
 
 const OptionListItem: FC<OptionListItemProps> = ({
   isSelected,
   onClick,
+  noAutoScroll,
   children,
 }) => {
   const listItemRef = useRef<HTMLLIElement>(null)
 
   useEffect(() => {
-    if (isSelected)
+    if (isSelected && !noAutoScroll)
       listItemRef.current?.scrollIntoView({ behavior: 'instant' })
   }, [])
 

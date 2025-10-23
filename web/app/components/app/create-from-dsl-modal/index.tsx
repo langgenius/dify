@@ -1,7 +1,7 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
@@ -35,6 +35,7 @@ type CreateFromDSLModalProps = {
   onClose: () => void
   activeTab?: string
   dslUrl?: string
+  droppedFile?: File
 }
 
 export enum CreateFromDSLModalTab {
@@ -42,11 +43,11 @@ export enum CreateFromDSLModalTab {
   FROM_URL = 'from-url',
 }
 
-const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '' }: CreateFromDSLModalProps) => {
+const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '', droppedFile }: CreateFromDSLModalProps) => {
   const { push } = useRouter()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const [currentFile, setDSLFile] = useState<File>()
+  const [currentFile, setDSLFile] = useState<File | undefined>(droppedFile)
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [dslUrlValue, setDslUrlValue] = useState(dslUrl)
@@ -78,7 +79,12 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   const isCreatingRef = useRef(false)
 
-  const onCreate: MouseEventHandler = async () => {
+  useEffect(() => {
+    if (droppedFile)
+      handleFile(droppedFile)
+  }, [droppedFile])
+
+  const onCreate = async (_e?: React.MouseEvent) => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
       return
     if (currentTab === CreateFromDSLModalTab.FROM_URL && !dslUrlValue)
@@ -148,7 +154,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
     if (show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && dslUrlValue)))
-      handleCreateApp()
+      handleCreateApp(undefined)
   })
 
   useKeyPress('esc', () => {

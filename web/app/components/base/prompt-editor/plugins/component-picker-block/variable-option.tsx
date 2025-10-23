@@ -44,6 +44,10 @@ export const VariableMenuItem = memo(({
       tabIndex={-1}
       ref={setRefElement}
       onMouseEnter={onMouseEnter}
+      onMouseDown={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
       onClick={onClick}>
       <div className='mr-2'>
         {icon}

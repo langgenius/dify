@@ -2,9 +2,19 @@
 
 set -e
 
+# Set UTF-8 encoding to address potential encoding issues in containerized environments
+export LANG=${LANG:-en_US.UTF-8}
+export LC_ALL=${LC_ALL:-en_US.UTF-8}
+export PYTHONIOENCODING=${PYTHONIOENCODING:-utf-8}
+
 if [[ "${MIGRATION_ENABLED}" == "true" ]]; then
   echo "Running migrations"
   flask upgrade-db
+  # Pure migration mode
+  if [[ "${MODE}" == "migration" ]]; then
+  echo "Migration completed, exiting normally"
+  exit 0
+  fi
 fi
 
 if [[ "${MODE}" == "worker" ]]; then
@@ -20,9 +30,10 @@ if [[ "${MODE}" == "worker" ]]; then
     CONCURRENCY_OPTION="-c ${CELERY_WORKER_AMOUNT:-1}"
   fi
 
-  exec celery -A app.celery worker -P ${CELERY_WORKER_CLASS:-gevent} $CONCURRENCY_OPTION \
-    --max-tasks-per-child ${MAX_TASK_PRE_CHILD:-50} --loglevel ${LOG_LEVEL:-INFO} \
-    -Q ${CELERY_QUEUES:-dataset,mail,ops_trace,app_deletion}
+  exec celery -A celery_entrypoint.celery worker -P ${CELERY_WORKER_CLASS:-gevent} $CONCURRENCY_OPTION \
+    --max-tasks-per-child ${MAX_TASKS_PER_CHILD:-50} --loglevel ${LOG_LEVEL:-INFO} \
+    -Q ${CELERY_QUEUES:-dataset,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation} \
+    --prefetch-multiplier=1
 
 elif [[ "${MODE}" == "beat" ]]; then
   exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO}

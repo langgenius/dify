@@ -49,6 +49,10 @@ const translation = {
     },
     change: 'Cambia',
     changeRetrievalMethod: 'Cambia metodo di recupero',
+    keyword_search: {
+      title: 'Indice invertito',
+      description: 'L\'indice invertito è una struttura utilizzata per un recupero efficiente. Organizzato per termini, ogni termine rimanda a documenti o pagine web che lo contengono.',
+    },
   },
   docsFailedNotice: 'documenti non riusciti a essere indicizzati',
   retry: 'Riprova',
@@ -156,6 +160,8 @@ const translation = {
   chunkingMode: {
     general: 'Generale',
     parentChild: 'Genitore-figlio',
+    graph: 'Grafico',
+    qa: 'Domande e risposte',
   },
   parentMode: {
     paragraph: 'Paragrafo',
@@ -186,6 +192,7 @@ const translation = {
     checkName: {
       invalid: 'Il nome dei metadati può contenere solo lettere minuscole, numeri e underscore e deve iniziare con una lettera minuscola.',
       empty: 'Il nome dei metadati non può essere vuoto',
+      tooLong: 'Il nome dei metadati non può superare {{max}} caratteri.',
     },
     batchEditMetadata: {
       multipleValue: 'Valore Multiplo',
@@ -210,6 +217,7 @@ const translation = {
       deleteContent: 'Sei sicuro di voler eliminare i metadati "{{name}}"?',
       builtInDescription: 'I metadati incorporati vengono estratti e generati automaticamente. Devono essere abilitati prima dell\'uso e non possono essere modificati.',
       description: 'Puoi gestire tutti i metadati in questa conoscenza qui. Le modifiche saranno sincronizzate con ogni documento.',
+      builtIn: 'Integrato',
     },
     documentMetadata: {
       documentInformation: 'Informazioni sul documento',
@@ -222,6 +230,20 @@ const translation = {
     chooseTime: 'Scegli un orario...',
   },
   embeddingModelNotAvailable: 'Il modello di embedding non è disponibile.',
+  updated: 'Aggiornato',
+  externalKnowledgeBase: 'Base di conoscenza esterna',
+  createFromPipeline: 'Creazione da pipeline di conoscenza',
+  serviceApi: {
+    card: {
+      endpoint: 'Endpoint dell\'API di servizio',
+      apiKey: 'Chiave API',
+      title: 'API del servizio backend',
+      apiReference: 'Riferimento API',
+    },
+    disabled: 'Disabilitato',
+    title: 'API di servizio',
+    enabled: 'In servizio',
+  },
 }
 
 export default translation

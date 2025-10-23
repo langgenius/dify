@@ -8,49 +8,11 @@ and don't contain implementation details like tenant_id, app_id, etc.
 
 from collections.abc import Mapping
 from datetime import datetime
-from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 
-from core.workflow.nodes.enums import NodeType
-
-
-class WorkflowNodeExecutionMetadataKey(StrEnum):
-    """
-    Node Run Metadata Key.
-    """
-
-    TOTAL_TOKENS = "total_tokens"
-    TOTAL_PRICE = "total_price"
-    CURRENCY = "currency"
-    TOOL_INFO = "tool_info"
-    AGENT_LOG = "agent_log"
-    ITERATION_ID = "iteration_id"
-    ITERATION_INDEX = "iteration_index"
-    LOOP_ID = "loop_id"
-    LOOP_INDEX = "loop_index"
-    PARALLEL_ID = "parallel_id"
-    PARALLEL_START_NODE_ID = "parallel_start_node_id"
-    PARENT_PARALLEL_ID = "parent_parallel_id"
-    PARENT_PARALLEL_START_NODE_ID = "parent_parallel_start_node_id"
-    PARALLEL_MODE_RUN_ID = "parallel_mode_run_id"
-    ITERATION_DURATION_MAP = "iteration_duration_map"  # single iteration duration if iteration node runs
-    LOOP_DURATION_MAP = "loop_duration_map"  # single loop duration if loop node runs
-    ERROR_STRATEGY = "error_strategy"  # node in continue on error mode return the field
-    LOOP_VARIABLE_MAP = "loop_variable_map"  # single loop variable output
-
-
-class WorkflowNodeExecutionStatus(StrEnum):
-    """
-    Node Execution Status Enum.
-    """
-
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    EXCEPTION = "exception"
-    RETRY = "retry"
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 
 
 class WorkflowNodeExecution(BaseModel):
@@ -66,43 +28,106 @@ class WorkflowNodeExecution(BaseModel):
     but they are not stored in the model.
     """
 
-    # Core identification fields
-    id: str  # Unique identifier for this execution record
-    node_execution_id: Optional[str] = None  # Optional secondary ID for cross-referencing
+    # --------- Core identification fields ---------
+
+    # Unique identifier for this execution record, used when persisting to storage.
+    # Value is a UUID string (e.g., '09b3e04c-f9ae-404c-ad82-290b8d7bd382').
+    id: str
+
+    # Optional secondary ID for cross-referencing purposes.
+    #
+    # NOTE: For referencing the persisted record, use `id` rather than `node_execution_id`.
+    # While `node_execution_id` may sometimes be a UUID string, this is not guaranteed.
+    # In most scenarios, `id` should be used as the primary identifier.
+    node_execution_id: str | None = None
     workflow_id: str  # ID of the workflow this node belongs to
-    workflow_execution_id: Optional[str] = None  # ID of the specific workflow run (null for single-step debugging)
+    workflow_execution_id: str | None = None  # ID of the specific workflow run (null for single-step debugging)
+    # --------- Core identification fields ends ---------
 
     # Execution positioning and flow
     index: int  # Sequence number for ordering in trace visualization
-    predecessor_node_id: Optional[str] = None  # ID of the node that executed before this one
+    predecessor_node_id: str | None = None  # ID of the node that executed before this one
     node_id: str  # ID of the node being executed
     node_type: NodeType  # Type of node (e.g., start, llm, knowledge)
     title: str  # Display title of the node
 
     # Execution data
-    inputs: Optional[Mapping[str, Any]] = None  # Input variables used by this node
-    process_data: Optional[Mapping[str, Any]] = None  # Intermediate processing data
-    outputs: Optional[Mapping[str, Any]] = None  # Output variables produced by this node
+    # The `inputs` and `outputs` fields hold the full content
+    inputs: Mapping[str, Any] | None = None  # Input variables used by this node
+    process_data: Mapping[str, Any] | None = None  # Intermediate processing data
+    outputs: Mapping[str, Any] | None = None  # Output variables produced by this node
 
     # Execution state
     status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.RUNNING  # Current execution status
-    error: Optional[str] = None  # Error message if execution failed
+    error: str | None = None  # Error message if execution failed
     elapsed_time: float = Field(default=0.0)  # Time taken for execution in seconds
 
     # Additional metadata
-    metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None  # Execution metadata (tokens, cost, etc.)
+    metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None  # Execution metadata (tokens, cost, etc.)
 
     # Timing information
     created_at: datetime  # When execution started
-    finished_at: Optional[datetime] = None  # When execution completed
+    finished_at: datetime | None = None  # When execution completed
+
+    _truncated_inputs: Mapping[str, Any] | None = PrivateAttr(None)
+    _truncated_outputs: Mapping[str, Any] | None = PrivateAttr(None)
+    _truncated_process_data: Mapping[str, Any] | None = PrivateAttr(None)
+
+    def get_truncated_inputs(self) -> Mapping[str, Any] | None:
+        return self._truncated_inputs
+
+    def get_truncated_outputs(self) -> Mapping[str, Any] | None:
+        return self._truncated_outputs
+
+    def get_truncated_process_data(self) -> Mapping[str, Any] | None:
+        return self._truncated_process_data
+
+    def set_truncated_inputs(self, truncated_inputs: Mapping[str, Any] | None):
+        self._truncated_inputs = truncated_inputs
+
+    def set_truncated_outputs(self, truncated_outputs: Mapping[str, Any] | None):
+        self._truncated_outputs = truncated_outputs
+
+    def set_truncated_process_data(self, truncated_process_data: Mapping[str, Any] | None):
+        self._truncated_process_data = truncated_process_data
+
+    def get_response_inputs(self) -> Mapping[str, Any] | None:
+        inputs = self.get_truncated_inputs()
+        if inputs:
+            return inputs
+        return self.inputs
+
+    @property
+    def inputs_truncated(self):
+        return self._truncated_inputs is not None
+
+    @property
+    def outputs_truncated(self):
+        return self._truncated_outputs is not None
+
+    @property
+    def process_data_truncated(self):
+        return self._truncated_process_data is not None
+
+    def get_response_outputs(self) -> Mapping[str, Any] | None:
+        outputs = self.get_truncated_outputs()
+        if outputs is not None:
+            return outputs
+        return self.outputs
+
+    def get_response_process_data(self) -> Mapping[str, Any] | None:
+        process_data = self.get_truncated_process_data()
+        if process_data is not None:
+            return process_data
+        return self.process_data
 
     def update_from_mapping(
         self,
-        inputs: Optional[Mapping[str, Any]] = None,
-        process_data: Optional[Mapping[str, Any]] = None,
-        outputs: Optional[Mapping[str, Any]] = None,
-        metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None,
-    ) -> None:
+        inputs: Mapping[str, Any] | None = None,
+        process_data: Mapping[str, Any] | None = None,
+        outputs: Mapping[str, Any] | None = None,
+        metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = None,
+    ):
         """
         Update the model from mappings.
 

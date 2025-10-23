@@ -3,10 +3,13 @@
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
+import type { PropsWithChildren } from 'react'
+import { useTranslation } from 'react-i18next'
 
-export default function SignInLayout({ children }: any) {
-  const { systemFeatures } = useGlobalPublicStore()
-  useDocumentTitle('')
+export default function SignInLayout({ children }: PropsWithChildren) {
+  const { t } = useTranslation()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  useDocumentTitle(t('login.webapp.login'))
   return <>
     <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>
       <div className={cn('flex w-full shrink-0 flex-col rounded-2xl border border-effects-highlight bg-background-default-subtle')}>

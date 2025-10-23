@@ -29,6 +29,8 @@ const translation = {
       delete: 'Удалить',
       enableWarning: 'Архивный файл не может быть включен',
       sync: 'Синхронизировать',
+      resume: 'Возобновить',
+      pause: 'Пауза',
     },
     index: {
       enable: 'Включить',
@@ -97,6 +99,9 @@ const translation = {
       upload_file: 'Загрузить файл',
       notion: 'Синхронизировать из Notion',
       github: 'Синхронизировать из Github',
+      local_file: 'Локальный файл',
+      online_document: 'Онлайн-документ',
+      website_crawl: 'Сканирование сайта',
     },
     type: {
       book: 'Книга',
@@ -334,13 +339,13 @@ const translation = {
     childMaxTokens: 'Ребёнок',
     hierarchical: 'Родитель-дочерний',
     pause: 'Пауза',
+    waiting: 'Ожидание встраивания...',
   },
   segment: {
     paragraphs: 'Абзацы',
     keywords: 'Ключевые слова',
     addKeyWord: 'Добавить ключевое слово',
     keywordError: 'Максимальная длина ключевого слова - 20',
-    characters: 'символов',
     hitCount: 'Количество обращений',
     vectorHash: 'Векторный хэш: ',
     questionPlaceholder: 'добавьте вопрос здесь',
@@ -363,6 +368,7 @@ const translation = {
     parentChunks_one: 'РОДИТЕЛЬСКИЙ БЛОК',
     childChunk: 'Чайлд-Чанк',
     editedAt: 'Отредактировано в',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     editChildChunk: 'Редактирование дочернего фрагмента',
     parentChunks_other: 'РОДИТЕЛЬСКИЕ БЛОКИ',
     regenerationSuccessTitle: 'Регенерация завершена',
@@ -389,6 +395,8 @@ const translation = {
     characters_one: 'характер',
     addChildChunk: 'Добавить дочерний чанк',
     newChildChunk: 'Новый дочерний чанк',
+    keywordEmpty: 'Ключевое слово не может быть пустым',
+    keywordDuplicate: 'Ключевое слово уже существует',
   },
 }
 

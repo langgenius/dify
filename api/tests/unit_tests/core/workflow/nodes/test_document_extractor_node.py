@@ -5,11 +5,14 @@ import pandas as pd
 import pytest
 from docx.oxml.text.paragraph import CT_P
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod
 from core.variables import ArrayFileSegment
+from core.variables.segments import ArrayStringSegment
 from core.variables.variables import StringVariable
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
+from core.workflow.entities import GraphInitParams
+from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
 from core.workflow.nodes.document_extractor.node import (
     _extract_text_from_docx,
@@ -17,22 +20,39 @@ from core.workflow.nodes.document_extractor.node import (
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
 )
-from core.workflow.nodes.enums import NodeType
+from models.enums import UserFrom
 
 
 @pytest.fixture
-def document_extractor_node():
+def graph_init_params() -> GraphInitParams:
+    return GraphInitParams(
+        tenant_id="test_tenant",
+        app_id="test_app",
+        workflow_id="test_workflow",
+        graph_config={},
+        user_id="test_user",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
+        call_depth=0,
+    )
+
+
+@pytest.fixture
+def document_extractor_node(graph_init_params):
     node_data = DocumentExtractorNodeData(
         title="Test Document Extractor",
         variable_selector=["node_id", "variable_name"],
     )
-    return DocumentExtractorNode(
+    node_config = {"id": "test_node_id", "data": node_data.model_dump()}
+    node = DocumentExtractorNode(
         id="test_node_id",
-        config={"id": "test_node_id", "data": node_data.model_dump()},
-        graph_init_params=Mock(),
-        graph=Mock(),
+        config=node_config,
+        graph_init_params=graph_init_params,
         graph_runtime_state=Mock(),
     )
+    # Initialize node data
+    node.init_node_data(node_config["data"])
+    return node
 
 
 @pytest.fixture
@@ -69,7 +89,13 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
 @pytest.mark.parametrize(
     ("mime_type", "file_content", "expected_text", "transfer_method", "extension"),
     [
-        ("text/plain", b"Hello, world!", ["Hello, world!"], FileTransferMethod.LOCAL_FILE, ".txt"),
+        (
+            "text/plain",
+            b"Hello, world!",
+            ["Hello, world!"],
+            FileTransferMethod.LOCAL_FILE,
+            ".txt",
+        ),
         (
             "application/pdf",
             b"%PDF-1.5\n%Test PDF content",
@@ -84,7 +110,13 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
             FileTransferMethod.REMOTE_URL,
             "",
         ),
-        ("text/plain", b"Remote content", ["Remote content"], FileTransferMethod.REMOTE_URL, None),
+        (
+            "text/plain",
+            b"Remote content",
+            ["Remote content"],
+            FileTransferMethod.REMOTE_URL,
+            None,
+        ),
     ],
 )
 def test_run_extract_text(
@@ -131,7 +163,7 @@ def test_run_extract_text(
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
     assert result.outputs is not None
-    assert result.outputs["text"] == expected_text
+    assert result.outputs["text"] == ArrayStringSegment(value=expected_text)
 
     if transfer_method == FileTransferMethod.REMOTE_URL:
         mock_ssrf_proxy_get.assert_called_once_with("https://example.com/file.txt")
@@ -184,7 +216,7 @@ def test_extract_text_from_docx(mock_document):
 
 
 def test_node_type(document_extractor_node):
-    assert document_extractor_node._node_type == NodeType.DOCUMENT_EXTRACTOR
+    assert document_extractor_node.node_type == NodeType.DOCUMENT_EXTRACTOR
 
 
 @patch("pandas.ExcelFile")
@@ -329,3 +361,26 @@ def test_extract_text_from_excel_all_sheets_fail(mock_excel_file):
     assert result == ""
 
     assert mock_excel_instance.parse.call_count == 2
+
+
+@patch("pandas.ExcelFile")
+def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
+    """Test extracting text from Excel file with numeric column names."""
+
+    # Test numeric type column
+    data = {1: ["Test"], 1.1: ["Test"]}
+
+    df = pd.DataFrame(data)
+
+    # Mock ExcelFile
+    mock_excel_instance = Mock()
+    mock_excel_instance.sheet_names = ["Sheet1"]
+    mock_excel_instance.parse.return_value = df
+    mock_excel_file.return_value = mock_excel_instance
+
+    file_content = b"fake_excel_content"
+    result = _extract_text_from_excel(file_content)
+
+    expected_manual = "| 1.0 | 1.1 |\n| --- | --- |\n| Test | Test |\n\n"
+
+    assert expected_manual == result

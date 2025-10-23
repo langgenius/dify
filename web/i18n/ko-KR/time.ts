@@ -1,12 +1,12 @@
 const translation = {
   daysInWeek: {
+    Sun: '일요일',
+    Mon: '월요일',
+    Tue: '화요일',
     Wed: '수요일',
     Thu: '목요일',
-    Fri: '자유',
+    Fri: '금요일',
     Sat: '토요일',
-    Sun: '태양',
-    Tue: '화요일',
-    Mon: '몬',
   },
   months: {
     May: '5 월',
@@ -26,12 +26,19 @@ const translation = {
     pickDate: '날짜 선택',
     cancel: '취소',
     ok: '좋아요',
-    now: '지금',
+    now: '오늘',
   },
   title: {
     pickTime: '시간 선택',
   },
   defaultPlaceholder: '시간을 선택하세요...',
+  dateFormats: {
+    input: 'YYYY-MM-DD',
+    display: 'MMMM D, YYYY',
+    outputWithTime: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
+    displayWithTime: 'MMMM D, YYYY hh:mm A',
+    output: 'YYYY-MM-DD',
+  },
 }
 
 export default translation

@@ -73,7 +73,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
           ELIF
         </Button>
       </div>
-      <div className='mx-3 my-2 h-[1px] bg-divider-subtle'></div>
+      <div className='mx-3 my-2 h-px bg-divider-subtle'></div>
       <Field
         title={t(`${i18nPrefix}.else`)}
         className='px-4 py-2'

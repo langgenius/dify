@@ -1,10 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
-import produce from 'immer'
+import { produce } from 'immer'
+import { ReactSortable } from 'react-sortablejs'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
 import VarItem from './var-item'
@@ -12,7 +13,7 @@ import SelectVarType from './select-var-type'
 import Tooltip from '@/app/components/base/tooltip'
 import type { PromptVariable } from '@/models/debug'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
-import { getNewVar } from '@/utils/var'
+import { getNewVar, hasDuplicateStr } from '@/utils/var'
 import Toast from '@/app/components/base/toast'
 import Confirm from '@/app/components/base/confirm'
 import ConfigContext from '@/context/debug-configuration'
@@ -22,6 +23,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import type { InputVar } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
+import cn from '@/utils/classnames'
 
 export const ADD_EXTERNAL_DATA_TOOL = 'ADD_EXTERNAL_DATA_TOOL'
 
@@ -80,7 +82,28 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         delete draft[currIndex].options
     })
 
+    const newList = newPromptVariables
+    let errorMsgKey = ''
+    let typeName = ''
+    if (hasDuplicateStr(newList.map(item => item.key))) {
+      errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
+      typeName = 'appDebug.variableConfig.varName'
+    }
+    else if (hasDuplicateStr(newList.map(item => item.name as string))) {
+      errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
+      typeName = 'appDebug.variableConfig.labelName'
+    }
+
+    if (errorMsgKey) {
+      Toast.notify({
+        type: 'error',
+        message: t(errorMsgKey, { key: t(typeName) }),
+      })
+      return false
+    }
+
     onPromptVariablesChange?.(newPromptVariables)
+    return true
   }
 
   const { setShowExternalDataToolModal } = useModalContext()
@@ -98,7 +121,9 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         icon,
         icon_background,
       },
-      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+      onSaveCallback: (newExternalDataTool?: ExternalDataTool) => {
+        if (!newExternalDataTool)
+          return
         const newPromptVariables = oldPromptVariables.map((item, i) => {
           if (i === index) {
             return {
@@ -190,13 +215,23 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const handleConfig = ({ key, type, index, name, config, icon, icon_background }: ExternalDataToolParams) => {
     // setCurrKey(key)
     setCurrIndex(index)
-    if (type !== 'string' && type !== 'paragraph' && type !== 'select' && type !== 'number') {
+    if (type !== 'string' && type !== 'paragraph' && type !== 'select' && type !== 'number' && type !== 'checkbox') {
       handleOpenExternalDataToolModal({ key, type, index, name, config, icon, icon_background }, promptVariables)
       return
     }
 
     showEditModal()
   }
+
+  const promptVariablesWithIds = useMemo(() => promptVariables.map((item) => {
+    return {
+      id: item.key,
+      variable: { ...item },
+    }
+  }), [promptVariables])
+
+  const canDrag = !readonly && promptVariables.length > 1
+
   return (
     <Panel
       className="mt-2"
@@ -224,18 +259,32 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       )}
       {hasVar && (
         <div className='mt-1 px-3 pb-3'>
-          {promptVariables.map(({ key, name, type, required, config, icon, icon_background }, index) => (
-            <VarItem
-              key={index}
-              readonly={readonly}
-              name={key}
-              label={name}
-              required={!!required}
-              type={type}
-              onEdit={() => handleConfig({ type, key, index, name, config, icon, icon_background })}
-              onRemove={() => handleRemoveVar(index)}
-            />
-          ))}
+          <ReactSortable
+            className='space-y-1'
+            list={promptVariablesWithIds}
+            setList={(list) => { onPromptVariablesChange?.(list.map(item => item.variable)) }}
+            handle='.handle'
+            ghostClass='opacity-50'
+            animation={150}
+          >
+            {promptVariablesWithIds.map((item, index) => {
+              const { key, name, type, required, config, icon, icon_background } = item.variable
+              return (
+                <VarItem
+                  className={cn(canDrag && 'handle')}
+                  key={key}
+                  readonly={readonly}
+                  name={key}
+                  label={name}
+                  required={!!required}
+                  type={type}
+                  onEdit={() => handleConfig({ type, key, index, name, config, icon, icon_background })}
+                  onRemove={() => handleRemoveVar(index)}
+                  canDrag={canDrag}
+                />
+              )
+            })}
+          </ReactSortable>
         </div>
       )}
 
@@ -245,7 +294,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           isShow={isShowEditModal}
           onClose={hideEditModal}
           onConfirm={(item) => {
-            updatePromptVariableItem(item)
+            const isValid = updatePromptVariableItem(item)
+            if (!isValid) return
             hideEditModal()
           }}
           varKeys={promptVariables.map(v => v.key)}

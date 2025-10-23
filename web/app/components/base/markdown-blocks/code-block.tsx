@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactEcharts from 'echarts-for-react'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import {
@@ -8,12 +8,14 @@ import {
 import ActionButton from '@/app/components/base/action-button'
 import CopyIcon from '@/app/components/base/copy-icon'
 import SVGBtn from '@/app/components/base/svg'
-import Flowchart from '@/app/components/base/mermaid'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
 import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
+import dynamic from 'next/dynamic'
+
+const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -62,6 +64,17 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 
+// Define ECharts event parameter types
+type EChartsEventParams = {
+  type: string;
+  seriesIndex?: number;
+  dataIndex?: number;
+  name?: string;
+  value?: any;
+  currentIndex?: number; // Added for timeline events
+  [key: string]: any;
+}
+
 const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
   const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
@@ -70,6 +83,10 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   const echartsRef = useRef<any>(null)
   const contentRef = useRef<string>('')
   const processedRef = useRef<boolean>(false) // Track if content was successfully processed
+  const isInitialRenderRef = useRef<boolean>(true) // Track if this is initial render
+  const chartInstanceRef = useRef<any>(null) // Direct reference to ECharts instance
+  const resizeTimerRef = useRef<NodeJS.Timeout | null>(null) // For debounce handling
+  const finishedEventCountRef = useRef<number>(0) // Track finished event trigger count
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
@@ -85,36 +102,64 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     width: 'auto',
   }) as any, [])
 
-  const echartsOnEvents = useMemo(() => ({
-    finished: () => {
-      const instance = echartsRef.current?.getEchartsInstance?.()
-      if (instance)
-        instance.resize()
+  // Debounce resize operations
+  const debouncedResize = useCallback(() => {
+    if (resizeTimerRef.current)
+      clearTimeout(resizeTimerRef.current)
+
+    resizeTimerRef.current = setTimeout(() => {
+      if (chartInstanceRef.current)
+        chartInstanceRef.current.resize()
+      resizeTimerRef.current = null
+    }, 200)
+  }, [])
+
+  // Handle ECharts instance initialization
+  const handleChartReady = useCallback((instance: any) => {
+    chartInstanceRef.current = instance
+
+    // Force resize to ensure timeline displays correctly
+    setTimeout(() => {
+      if (chartInstanceRef.current)
+        chartInstanceRef.current.resize()
+    }, 200)
+  }, [])
+
+  // Store event handlers in useMemo to avoid recreating them
+  const echartsEvents = useMemo(() => ({
+    finished: (_params: EChartsEventParams) => {
+      // Limit finished event frequency to avoid infinite loops
+      finishedEventCountRef.current++
+      if (finishedEventCountRef.current > 3) {
+        // Stop processing after 3 times to avoid infinite loops
+        return
+      }
+
+      if (chartInstanceRef.current) {
+        // Use debounced resize
+        debouncedResize()
+      }
     },
-  }), [echartsRef]) // echartsRef is stable, so this effectively runs once.
+  }), [debouncedResize])
 
   // Handle container resize for echarts
   useEffect(() => {
-    if (language !== 'echarts' || !echartsRef.current) return
+    if (language !== 'echarts' || !chartInstanceRef.current) return
 
     const handleResize = () => {
-      // This gets the echarts instance from the component
-      const instance = echartsRef.current?.getEchartsInstance?.()
-      if (instance)
-        instance.resize()
+      if (chartInstanceRef.current)
+        // Use debounced resize
+        debouncedResize()
     }
 
     window.addEventListener('resize', handleResize)
 
-    // Also manually trigger resize after a short delay to ensure proper sizing
-    const resizeTimer = setTimeout(handleResize, 200)
-
     return () => {
       window.removeEventListener('resize', handleResize)
-      clearTimeout(resizeTimer)
+      if (resizeTimerRef.current)
+        clearTimeout(resizeTimerRef.current)
     }
-  }, [language, echartsRef.current])
-
+  }, [language, debouncedResize])
   // Process chart data when content changes
   useEffect(() => {
     // Only process echarts content
@@ -222,13 +267,12 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     }
   }, [language, children])
 
+  // Cache rendered content to avoid unnecessary re-renders
   const renderCodeContent = useMemo(() => {
     const content = String(children).replace(/\n$/, '')
     switch (language) {
       case 'mermaid':
-        if (isSVG)
-          return <Flowchart PrimitiveCode={content} />
-        break
+        return <Flowchart PrimitiveCode={content} theme={theme as 'light' | 'dark'} />
       case 'echarts': {
         // Loading state: show loading indicator
         if (chartState === 'loading') {
@@ -274,6 +318,9 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
         // Success state: show the chart
         if (chartState === 'success' && finalChartOption) {
+          // Reset finished event counter
+          finishedEventCountRef.current = 0
+
           return (
             <div style={{
               minWidth: '300px',
@@ -286,13 +333,20 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
             }}>
               <ErrorBoundary>
                 <ReactEcharts
-                  ref={echartsRef}
+                  ref={(e) => {
+                    if (e && isInitialRenderRef.current) {
+                      echartsRef.current = e
+                      isInitialRenderRef.current = false
+                    }
+                  }}
                   option={finalChartOption}
                   style={echartsStyle}
                   theme={isDarkMode ? 'dark' : undefined}
                   opts={echartsOpts}
-                  notMerge={true}
-                  onEvents={echartsOnEvents}
+                  notMerge={false}
+                  lazyUpdate={false}
+                  onEvents={echartsEvents}
+                  onChartReady={handleChartReady}
                 />
               </ErrorBoundary>
             </div>
@@ -363,7 +417,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
           </SyntaxHighlighter>
         )
     }
-  }, [children, language, isSVG, finalChartOption, props, theme, match, chartState, isDarkMode, echartsStyle, echartsOpts, echartsOnEvents])
+  }, [children, language, isSVG, finalChartOption, props, theme, match, chartState, isDarkMode, echartsStyle, echartsOpts, handleChartReady, echartsEvents])
 
   if (inline || !match)
     return <code {...props} className={className}>{children}</code>
@@ -373,7 +427,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
       <div className='flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3'>
         <div className='system-xs-semibold-uppercase text-text-secondary'>{languageShowName}</div>
         <div className='flex items-center gap-1'>
-          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
+          {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
           <ActionButton>
             <CopyIcon content={String(children).replace(/\n$/, '')} />
           </ActionButton>

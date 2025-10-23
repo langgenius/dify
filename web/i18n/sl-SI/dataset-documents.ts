@@ -29,6 +29,8 @@ const translation = {
       delete: 'Izbriši',
       enableWarning: 'Arhivirane datoteke ni mogoče omogočiti',
       sync: 'Sinhroniziraj',
+      pause: 'Zaustavi',
+      resume: 'Nadaljuj',
     },
     index: {
       enable: 'Omogoči',
@@ -97,6 +99,9 @@ const translation = {
       upload_file: 'Naloži datoteko',
       notion: 'Sinhroniziraj iz Notion',
       github: 'Sinhroniziraj iz Github',
+      local_file: 'Lokalna datoteka',
+      online_document: 'Spletni dokument',
+      website_crawl: 'Iskanje po spletnih mestih',
     },
     type: {
       book: 'Knjiga',
@@ -332,15 +337,15 @@ const translation = {
     previewTip: 'Predogled odstavkov bo na voljo po zaključku vdelave',
     hierarchical: 'Starš-otrok',
     childMaxTokens: 'Otrok',
-    pause: 'Pavza',
+    pause: 'Zaustavi',
     parentMaxTokens: 'Starš',
+    waiting: 'Čakanje na zajemanje...',
   },
   segment: {
     paragraphs: 'Odstavki',
     keywords: 'Ključne besede',
     addKeyWord: 'Dodaj ključno besedo',
     keywordError: 'Največja dolžina ključne besede je 20',
-    characters: 'znakov',
     hitCount: 'Število pridobitev',
     vectorHash: 'Vektorski hash: ',
     questionPlaceholder: 'dodajte vprašanje tukaj',
@@ -356,6 +361,7 @@ const translation = {
     expandChunks: 'Razširitev kosov',
     childChunk: 'Otroški kos',
     editedAt: 'Urejeno na',
+    dateTimeFormat: 'MM/DD/YYYY h:mm',
     edited: 'UREJATI',
     addAnother: 'Dodajanje še enega',
     childChunks_one: 'OTROŠKI KOS',
@@ -389,6 +395,8 @@ const translation = {
     chunk: 'Kos',
     addChunk: 'Dodajanje kosa',
     childChunkAdded: 'Dodan je 1 kos otroka',
+    keywordDuplicate: 'Ključna beseda že obstaja',
+    keywordEmpty: 'Ključna beseda ne more biti prazna',
   },
 }
 

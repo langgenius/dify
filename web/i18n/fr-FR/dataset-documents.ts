@@ -28,6 +28,9 @@ const translation = {
       delete: 'Supprimer',
       enableWarning: 'Le fichier archivé ne peut pas être activé',
       sync: 'Synchroniser',
+      pause: 'Pause',
+      resume: 'Reprendre',
+      download: 'Télécharger le fichier',
     },
     index: {
       enable: 'Activer',
@@ -97,6 +100,9 @@ const translation = {
       upload_file: 'Télécharger le fichier',
       notion: 'Synchroniser le formulaire depuis Notion',
       github: 'Synchroniser à partir de Github',
+      local_file: 'Fichier local',
+      online_document: 'Document en ligne',
+      website_crawl: 'Exploration du site Web',
     },
     type: {
       book: 'Livre',
@@ -334,6 +340,7 @@ const translation = {
     hierarchical: 'Parent-enfant',
     pause: 'Pause',
     parentMaxTokens: 'Parent',
+    waiting: 'En attente d\'incorporation...',
   },
   segment: {
     paragraphs: 'Paragraphes',
@@ -372,6 +379,7 @@ const translation = {
     expandChunks: 'Développer des blocs',
     characters_other: 'caractères',
     editedAt: 'Édité le',
+    dateTimeFormat: 'DD/MM/YYYY HH:mm',
     searchResults_other: 'RÉSULTATS',
     regenerationSuccessMessage: 'Vous pouvez fermer cette fenêtre.',
     parentChunks_one: 'MORCEAU PARENT',
@@ -389,6 +397,8 @@ const translation = {
     searchResults_zero: 'RÉSULTAT',
     empty: 'Aucun Chunk trouvé',
     editChildChunk: 'Modifier le morceau enfant',
+    keywordDuplicate: 'Le mot-clé existe déjà',
+    keywordEmpty: 'Le mot-clé ne peut pas être vide.',
   },
 }
 

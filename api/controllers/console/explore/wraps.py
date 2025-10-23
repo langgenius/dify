@@ -1,36 +1,31 @@
+from collections.abc import Callable
 from functools import wraps
+from typing import Concatenate, ParamSpec, TypeVar
 
-from flask_login import current_user
-from flask_restful import Resource
+from flask_restx import Resource
 from werkzeug.exceptions import NotFound
 
 from controllers.console.explore.error import AppAccessDeniedError
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models import InstalledApp
-from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
+P = ParamSpec("P")
+R = TypeVar("R")
+T = TypeVar("T")
 
-def installed_app_required(view=None):
-    def decorator(view):
+
+def installed_app_required(view: Callable[Concatenate[InstalledApp, P], R] | None = None):
+    def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
-        def decorated(*args, **kwargs):
-            if not kwargs.get("installed_app_id"):
-                raise ValueError("missing installed_app_id in path parameters")
-
-            installed_app_id = kwargs.get("installed_app_id")
-            installed_app_id = str(installed_app_id)
-
-            del kwargs["installed_app_id"]
-
+        def decorated(installed_app_id: str, *args: P.args, **kwargs: P.kwargs):
+            _, current_tenant_id = current_account_with_tenant()
             installed_app = (
                 db.session.query(InstalledApp)
-                .filter(
-                    InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_user.current_tenant_id
-                )
+                .where(InstalledApp.id == str(installed_app_id), InstalledApp.tenant_id == current_tenant_id)
                 .first()
             )
 
@@ -52,17 +47,17 @@ def installed_app_required(view=None):
     return decorator
 
 
-def user_allowed_to_access_app(view=None):
-    def decorator(view):
+def user_allowed_to_access_app(view: Callable[Concatenate[InstalledApp, P], R] | None = None):
+    def decorator(view: Callable[Concatenate[InstalledApp, P], R]):
         @wraps(view)
-        def decorated(installed_app: InstalledApp, *args, **kwargs):
+        def decorated(installed_app: InstalledApp, *args: P.args, **kwargs: P.kwargs):
+            current_user, _ = current_account_with_tenant()
             feature = FeatureService.get_system_features()
             if feature.webapp_auth.enabled:
                 app_id = installed_app.app_id
-                app_code = AppService.get_app_code_by_id(app_id)
                 res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
                     user_id=str(current_user.id),
-                    app_code=app_code,
+                    app_id=app_id,
                 )
                 if not res:
                     raise AppAccessDeniedError()

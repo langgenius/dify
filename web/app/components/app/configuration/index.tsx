@@ -6,7 +6,7 @@ import { basePath } from '@/utils/var'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import { clone, isEqual } from 'lodash-es'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
@@ -60,7 +60,6 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { fetchCollectionList } from '@/service/tools'
 import type { Collection } from '@/app/components/tools/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
@@ -80,6 +79,10 @@ import {
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { MittProvider } from '@/context/mitt-context'
+import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import Toast from '@/app/components/base/toast'
+import { fetchCollectionList } from '@/service/tools'
+import { useAppContext } from '@/context/app-context'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -89,9 +92,11 @@ type PublishConfig = {
 const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { appDetail, showAppConfigureFeaturesModal, setAppSiderbarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
+  const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+
+  const { appDetail, showAppConfigureFeaturesModal, setAppSidebarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
-    setAppSiderbarExpand: state.setAppSiderbarExpand,
+    setAppSidebarExpand: state.setAppSidebarExpand,
     showAppConfigureFeaturesModal: state.showAppConfigureFeaturesModal,
     setShowAppConfigureFeaturesModal: state.setShowAppConfigureFeaturesModal,
   })))
@@ -279,18 +284,28 @@ const Configuration: FC = () => {
       setRerankSettingModalOpen(true)
 
     const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
+    const {
+      top_k,
+      score_threshold,
+      reranking_model,
+      reranking_mode,
+      weights,
+      reranking_enable,
+    } = restConfigs
 
-    const retrievalConfig = getMultipleRetrievalConfig({
-      top_k: restConfigs.top_k,
-      score_threshold: restConfigs.score_threshold,
-      reranking_model: restConfigs.reranking_model && {
-        provider: restConfigs.reranking_model.reranking_provider_name,
-        model: restConfigs.reranking_model.reranking_model_name,
-      },
-      reranking_mode: restConfigs.reranking_mode,
-      weights: restConfigs.weights,
-      reranking_enable: restConfigs.reranking_enable,
-    }, newDatasets, dataSets, {
+    const oldRetrievalConfig = {
+      top_k,
+      score_threshold,
+      reranking_model: (reranking_model.reranking_provider_name && reranking_model.reranking_model_name) ? {
+        provider: reranking_model.reranking_provider_name,
+        model: reranking_model.reranking_model_name,
+      } : undefined,
+      reranking_mode,
+      weights,
+      reranking_enable,
+    }
+
+    const retrievalConfig = getMultipleRetrievalConfig(oldRetrievalConfig, newDatasets, dataSets, {
       provider: currentRerankProvider?.provider,
       model: currentRerankModel?.model,
     })
@@ -453,11 +468,27 @@ const Configuration: FC = () => {
       ...visionConfig,
       enabled: supportVision,
     }, true)
-    setCompletionParams({})
+
+    try {
+      const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
+        provider,
+        modelId,
+        completionParams,
+        isAdvancedMode,
+      )
+      if (Object.keys(removedDetails).length)
+        Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}` })
+      setCompletionParams(filtered)
+    }
+    catch {
+      Toast.notify({ type: 'error', message: t('common.error') })
+      setCompletionParams({})
+    }
   }
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
   const isShowDocumentConfig = !!currModel?.features?.includes(ModelFeatureEnum.document)
+  const isShowAudioConfig = !!currModel?.features?.includes(ModelFeatureEnum.audio)
   const isAllowVideoUpload = !!currModel?.features?.includes(ModelFeatureEnum.video)
   // *** web app features ***
   const featuresData: FeaturesData = useMemo(() => {
@@ -676,7 +707,6 @@ const Configuration: FC = () => {
         setHasFetchedDetail(true)
       })
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appId])
 
   const promptEmpty = (() => {
@@ -823,91 +853,91 @@ const Configuration: FC = () => {
         { id: `${Date.now()}-no-repeat`, model: '', provider: '', parameters: {} },
       ],
     )
-    setAppSiderbarExpand('collapse')
+    setAppSidebarExpand('collapse')
   }
 
-  if (isLoading) {
+  if (isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return <div className='flex h-full items-center justify-center'>
       <Loading type='area' />
     </div>
   }
-
+  const value = {
+    appId,
+    isAPIKeySet,
+    isTrailFinished: false,
+    mode,
+    modelModeType,
+    promptMode,
+    isAdvancedMode,
+    isAgent,
+    isOpenAI,
+    isFunctionCall,
+    collectionList,
+    setPromptMode,
+    canReturnToSimpleMode,
+    setCanReturnToSimpleMode,
+    chatPromptConfig,
+    completionPromptConfig,
+    currentAdvancedPrompt,
+    setCurrentAdvancedPrompt,
+    conversationHistoriesRole: completionPromptConfig.conversation_histories_role,
+    showHistoryModal,
+    setConversationHistoriesRole,
+    hasSetBlockStatus,
+    conversationId,
+    introduction,
+    setIntroduction,
+    suggestedQuestions,
+    setSuggestedQuestions,
+    setConversationId,
+    controlClearChatMessage,
+    setControlClearChatMessage,
+    prevPromptConfig,
+    setPrevPromptConfig,
+    moreLikeThisConfig,
+    setMoreLikeThisConfig,
+    suggestedQuestionsAfterAnswerConfig,
+    setSuggestedQuestionsAfterAnswerConfig,
+    speechToTextConfig,
+    setSpeechToTextConfig,
+    textToSpeechConfig,
+    setTextToSpeechConfig,
+    citationConfig,
+    setCitationConfig,
+    annotationConfig,
+    setAnnotationConfig,
+    moderationConfig,
+    setModerationConfig,
+    externalDataToolsConfig,
+    setExternalDataToolsConfig,
+    formattingChanged,
+    setFormattingChanged,
+    inputs,
+    setInputs,
+    query,
+    setQuery,
+    completionParams,
+    setCompletionParams,
+    modelConfig,
+    setModelConfig,
+    showSelectDataSet,
+    dataSets,
+    setDataSets,
+    datasetConfigs,
+    datasetConfigsRef,
+    setDatasetConfigs,
+    hasSetContextVar,
+    isShowVisionConfig,
+    visionConfig,
+    setVisionConfig: handleSetVisionConfig,
+    isAllowVideoUpload,
+    isShowDocumentConfig,
+    isShowAudioConfig,
+    rerankSettingModalOpen,
+    setRerankSettingModalOpen,
+  }
   return (
-    <ConfigContext.Provider value={{
-      appId,
-      isAPIKeySet,
-      isTrailFinished: false,
-      mode,
-      modelModeType,
-      promptMode,
-      isAdvancedMode,
-      isAgent,
-      isOpenAI,
-      isFunctionCall,
-      collectionList,
-      setPromptMode,
-      canReturnToSimpleMode,
-      setCanReturnToSimpleMode,
-      chatPromptConfig,
-      completionPromptConfig,
-      currentAdvancedPrompt,
-      setCurrentAdvancedPrompt,
-      conversationHistoriesRole: completionPromptConfig.conversation_histories_role,
-      showHistoryModal,
-      setConversationHistoriesRole,
-      hasSetBlockStatus,
-      conversationId,
-      introduction,
-      setIntroduction,
-      suggestedQuestions,
-      setSuggestedQuestions,
-      setConversationId,
-      controlClearChatMessage,
-      setControlClearChatMessage,
-      prevPromptConfig,
-      setPrevPromptConfig,
-      moreLikeThisConfig,
-      setMoreLikeThisConfig,
-      suggestedQuestionsAfterAnswerConfig,
-      setSuggestedQuestionsAfterAnswerConfig,
-      speechToTextConfig,
-      setSpeechToTextConfig,
-      textToSpeechConfig,
-      setTextToSpeechConfig,
-      citationConfig,
-      setCitationConfig,
-      annotationConfig,
-      setAnnotationConfig,
-      moderationConfig,
-      setModerationConfig,
-      externalDataToolsConfig,
-      setExternalDataToolsConfig,
-      formattingChanged,
-      setFormattingChanged,
-      inputs,
-      setInputs,
-      query,
-      setQuery,
-      completionParams,
-      setCompletionParams,
-      modelConfig,
-      setModelConfig,
-      showSelectDataSet,
-      dataSets,
-      setDataSets,
-      datasetConfigs,
-      datasetConfigsRef,
-      setDatasetConfigs,
-      hasSetContextVar,
-      isShowVisionConfig,
-      visionConfig,
-      setVisionConfig: handleSetVisionConfig,
-      isAllowVideoUpload,
-      isShowDocumentConfig,
-      rerankSettingModalOpen,
-      setRerankSettingModalOpen,
-    }}
-    >
+    <ConfigContext.Provider value={value}>
       <FeaturesProvider features={featuresData}>
         <MittProvider>
           <div className="flex h-full flex-col">

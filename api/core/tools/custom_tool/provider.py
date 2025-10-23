@@ -1,4 +1,5 @@
 from pydantic import Field
+from sqlalchemy import select
 
 from core.entities.provider_entities import ProviderConfig
 from core.tools.__base.tool_provider import ToolProviderController
@@ -24,7 +25,7 @@ class ApiToolProviderController(ToolProviderController):
     tenant_id: str
     tools: list[ApiTool] = Field(default_factory=list)
 
-    def __init__(self, entity: ToolProviderEntity, provider_id: str, tenant_id: str) -> None:
+    def __init__(self, entity: ToolProviderEntity, provider_id: str, tenant_id: str):
         super().__init__(entity)
         self.provider_id = provider_id
         self.tenant_id = tenant_id
@@ -39,19 +40,22 @@ class ApiToolProviderController(ToolProviderController):
                 type=ProviderConfig.Type.SELECT,
                 options=[
                     ProviderConfig.Option(value="none", label=I18nObject(en_US="None", zh_Hans="无")),
-                    ProviderConfig.Option(value="api_key", label=I18nObject(en_US="api_key", zh_Hans="api_key")),
+                    ProviderConfig.Option(value="api_key_header", label=I18nObject(en_US="Header", zh_Hans="请求头")),
+                    ProviderConfig.Option(
+                        value="api_key_query", label=I18nObject(en_US="Query Param", zh_Hans="查询参数")
+                    ),
                 ],
                 default="none",
                 help=I18nObject(en_US="The auth type of the api provider", zh_Hans="api provider 的认证类型"),
             )
         ]
-        if auth_type == ApiProviderAuthType.API_KEY:
+        if auth_type == ApiProviderAuthType.API_KEY_HEADER:
             credentials_schema = [
                 *credentials_schema,
                 ProviderConfig(
                     name="api_key_header",
                     required=False,
-                    default="api_key",
+                    default="Authorization",
                     type=ProviderConfig.Type.TEXT_INPUT,
                     help=I18nObject(en_US="The header name of the api key", zh_Hans="携带 api key 的 header 名称"),
                 ),
@@ -72,6 +76,25 @@ class ApiToolProviderController(ToolProviderController):
                         ProviderConfig.Option(value="bearer", label=I18nObject(en_US="Bearer", zh_Hans="Bearer")),
                         ProviderConfig.Option(value="custom", label=I18nObject(en_US="Custom", zh_Hans="Custom")),
                     ],
+                ),
+            ]
+        elif auth_type == ApiProviderAuthType.API_KEY_QUERY:
+            credentials_schema = [
+                *credentials_schema,
+                ProviderConfig(
+                    name="api_key_query_param",
+                    required=False,
+                    default="key",
+                    type=ProviderConfig.Type.TEXT_INPUT,
+                    help=I18nObject(
+                        en_US="The query parameter name of the api key", zh_Hans="携带 api key 的查询参数名称"
+                    ),
+                ),
+                ProviderConfig(
+                    name="api_key_value",
+                    required=True,
+                    type=ProviderConfig.Type.SECRET_INPUT,
+                    help=I18nObject(en_US="The api key", zh_Hans="api key 的值"),
                 ),
             ]
         elif auth_type == ApiProviderAuthType.NONE:
@@ -154,11 +177,11 @@ class ApiToolProviderController(ToolProviderController):
         tools: list[ApiTool] = []
 
         # get tenant api providers
-        db_providers: list[ApiToolProvider] = (
-            db.session.query(ApiToolProvider)
-            .filter(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name)
-            .all()
-        )
+        db_providers = db.session.scalars(
+            select(ApiToolProvider).where(
+                ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.name == self.entity.identity.name
+            )
+        ).all()
 
         if db_providers and len(db_providers) != 0:
             for db_provider in db_providers:
@@ -169,7 +192,7 @@ class ApiToolProviderController(ToolProviderController):
         self.tools = tools
         return tools
 
-    def get_tool(self, tool_name: str):
+    def get_tool(self, tool_name: str) -> ApiTool:
         """
         get tool by name
 

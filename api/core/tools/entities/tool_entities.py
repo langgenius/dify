@@ -1,13 +1,14 @@
 import base64
-import enum
+import contextlib
 from collections.abc import Mapping
-from enum import Enum
-from typing import Any, Optional, Union
+from enum import StrEnum, auto
+from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
 
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.parameters import (
+    MCPServerParameterType,
     PluginParameter,
     PluginParameterOption,
     PluginParameterType,
@@ -15,11 +16,12 @@ from core.plugin.entities.parameters import (
     cast_parameter_value,
     init_frontend_parameter,
 )
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.constants import TOOL_SELECTOR_MODEL_IDENTITY
 
 
-class ToolLabelEnum(Enum):
+class ToolLabelEnum(StrEnum):
     SEARCH = "search"
     IMAGE = "image"
     VIDEOS = "videos"
@@ -35,20 +37,22 @@ class ToolLabelEnum(Enum):
     BUSINESS = "business"
     ENTERTAINMENT = "entertainment"
     UTILITIES = "utilities"
+    RAG = "rag"
     OTHER = "other"
 
 
-class ToolProviderType(enum.StrEnum):
+class ToolProviderType(StrEnum):
     """
     Enum class for tool provider
     """
 
-    PLUGIN = "plugin"
+    PLUGIN = auto()
     BUILT_IN = "builtin"
-    WORKFLOW = "workflow"
-    API = "api"
-    APP = "app"
+    WORKFLOW = auto()
+    API = auto()
+    APP = auto()
     DATASET_RETRIEVAL = "dataset-retrieval"
+    MCP = auto()
 
     @classmethod
     def value_of(cls, value: str) -> "ToolProviderType":
@@ -64,15 +68,15 @@ class ToolProviderType(enum.StrEnum):
         raise ValueError(f"invalid mode value {value}")
 
 
-class ApiProviderSchemaType(Enum):
+class ApiProviderSchemaType(StrEnum):
     """
     Enum class for api provider schema type.
     """
 
-    OPENAPI = "openapi"
-    SWAGGER = "swagger"
-    OPENAI_PLUGIN = "openai_plugin"
-    OPENAI_ACTIONS = "openai_actions"
+    OPENAPI = auto()
+    SWAGGER = auto()
+    OPENAI_PLUGIN = auto()
+    OPENAI_ACTIONS = auto()
 
     @classmethod
     def value_of(cls, value: str) -> "ApiProviderSchemaType":
@@ -88,13 +92,14 @@ class ApiProviderSchemaType(Enum):
         raise ValueError(f"invalid mode value {value}")
 
 
-class ApiProviderAuthType(Enum):
+class ApiProviderAuthType(StrEnum):
     """
     Enum class for api provider auth type.
     """
 
-    NONE = "none"
-    API_KEY = "api_key"
+    NONE = auto()
+    API_KEY_HEADER = auto()
+    API_KEY_QUERY = auto()
 
     @classmethod
     def value_of(cls, value: str) -> "ApiProviderAuthType":
@@ -104,10 +109,18 @@ class ApiProviderAuthType(Enum):
         :param value: mode value
         :return: mode
         """
+        # 'api_key' deprecated in PR #21656
+        # normalize & tiny alias for backward compatibility
+        v = (value or "").strip().lower()
+        if v == "api_key":
+            v = cls.API_KEY_HEADER
+
         for mode in cls:
-            if mode.value == value:
+            if mode.value == v:
                 return mode
-        raise ValueError(f"invalid mode value {value}")
+
+        valid = ", ".join(m.value for m in cls)
+        raise ValueError(f"invalid mode value '{value}', expected one of: {valid}")
 
 
 class ToolInvokeMessage(BaseModel):
@@ -137,7 +150,7 @@ class ToolInvokeMessage(BaseModel):
 
         @model_validator(mode="before")
         @classmethod
-        def transform_variable_value(cls, values) -> Any:
+        def transform_variable_value(cls, values):
             """
             Only basic types and lists are allowed.
             """
@@ -163,38 +176,56 @@ class ToolInvokeMessage(BaseModel):
             return value
 
     class LogMessage(BaseModel):
-        class LogStatus(Enum):
-            START = "start"
-            ERROR = "error"
-            SUCCESS = "success"
+        class LogStatus(StrEnum):
+            START = auto()
+            ERROR = auto()
+            SUCCESS = auto()
 
         id: str
         label: str = Field(..., description="The label of the log")
-        parent_id: Optional[str] = Field(default=None, description="Leave empty for root log")
-        error: Optional[str] = Field(default=None, description="The error message")
+        parent_id: str | None = Field(default=None, description="Leave empty for root log")
+        error: str | None = Field(default=None, description="The error message")
         status: LogStatus = Field(..., description="The status of the log")
         data: Mapping[str, Any] = Field(..., description="Detailed log data")
-        metadata: Optional[Mapping[str, Any]] = Field(default=None, description="The metadata of the log")
+        metadata: Mapping[str, Any] = Field(default_factory=dict, description="The metadata of the log")
 
-    class MessageType(Enum):
-        TEXT = "text"
-        IMAGE = "image"
-        LINK = "link"
-        BLOB = "blob"
-        JSON = "json"
-        IMAGE_LINK = "image_link"
-        BINARY_LINK = "binary_link"
-        VARIABLE = "variable"
-        FILE = "file"
-        LOG = "log"
-        BLOB_CHUNK = "blob_chunk"
+        @field_validator("metadata", mode="before")
+        @classmethod
+        def _normalize_metadata(cls, value: Mapping[str, Any] | None) -> Mapping[str, Any]:
+            return value or {}
+
+    class RetrieverResourceMessage(BaseModel):
+        retriever_resources: list[RetrievalSourceMetadata] = Field(..., description="retriever resources")
+        context: str = Field(..., description="context")
+
+    class MessageType(StrEnum):
+        TEXT = auto()
+        IMAGE = auto()
+        LINK = auto()
+        BLOB = auto()
+        JSON = auto()
+        IMAGE_LINK = auto()
+        BINARY_LINK = auto()
+        VARIABLE = auto()
+        FILE = auto()
+        LOG = auto()
+        BLOB_CHUNK = auto()
+        RETRIEVER_RESOURCES = auto()
 
     type: MessageType = MessageType.TEXT
     """
         plain text, image url or link url
     """
     message: (
-        JsonMessage | TextMessage | BlobChunkMessage | BlobMessage | LogMessage | FileMessage | None | VariableMessage
+        JsonMessage
+        | TextMessage
+        | BlobChunkMessage
+        | BlobMessage
+        | LogMessage
+        | FileMessage
+        | None
+        | VariableMessage
+        | RetrieverResourceMessage
     )
     meta: dict[str, Any] | None = None
 
@@ -202,10 +233,8 @@ class ToolInvokeMessage(BaseModel):
     @classmethod
     def decode_blob_message(cls, v):
         if isinstance(v, dict) and "blob" in v:
-            try:
+            with contextlib.suppress(Exception):
                 v["blob"] = base64.b64decode(v["blob"])
-            except Exception:
-                pass
         return v
 
     @field_serializer("message")
@@ -218,7 +247,7 @@ class ToolInvokeMessage(BaseModel):
 class ToolInvokeMessageBinary(BaseModel):
     mimetype: str = Field(..., description="The mimetype of the binary")
     url: str = Field(..., description="The url of the binary")
-    file_var: Optional[dict[str, Any]] = None
+    file_var: dict[str, Any] | None = None
 
 
 class ToolParameter(PluginParameter):
@@ -226,23 +255,29 @@ class ToolParameter(PluginParameter):
     Overrides type
     """
 
-    class ToolParameterType(enum.StrEnum):
+    class ToolParameterType(StrEnum):
         """
         removes TOOLS_SELECTOR from PluginParameterType
         """
 
-        STRING = PluginParameterType.STRING.value
-        NUMBER = PluginParameterType.NUMBER.value
-        BOOLEAN = PluginParameterType.BOOLEAN.value
-        SELECT = PluginParameterType.SELECT.value
-        SECRET_INPUT = PluginParameterType.SECRET_INPUT.value
-        FILE = PluginParameterType.FILE.value
-        FILES = PluginParameterType.FILES.value
-        APP_SELECTOR = PluginParameterType.APP_SELECTOR.value
-        MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR.value
+        STRING = PluginParameterType.STRING
+        NUMBER = PluginParameterType.NUMBER
+        BOOLEAN = PluginParameterType.BOOLEAN
+        SELECT = PluginParameterType.SELECT
+        SECRET_INPUT = PluginParameterType.SECRET_INPUT
+        FILE = PluginParameterType.FILE
+        FILES = PluginParameterType.FILES
+        APP_SELECTOR = PluginParameterType.APP_SELECTOR
+        MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR
+        ANY = PluginParameterType.ANY
+        DYNAMIC_SELECT = PluginParameterType.DYNAMIC_SELECT
+
+        # MCP object and array type parameters
+        ARRAY = MCPServerParameterType.ARRAY
+        OBJECT = MCPServerParameterType.OBJECT
 
         # deprecated, should not use.
-        SYSTEM_FILES = PluginParameterType.SYSTEM_FILES.value
+        SYSTEM_FILES = PluginParameterType.SYSTEM_FILES
 
         def as_normal_type(self):
             return as_normal_type(self)
@@ -250,15 +285,17 @@ class ToolParameter(PluginParameter):
         def cast_value(self, value: Any):
             return cast_parameter_value(self, value)
 
-    class ToolParameterForm(Enum):
-        SCHEMA = "schema"  # should be set while adding tool
-        FORM = "form"  # should be set before invoking tool
-        LLM = "llm"  # will be set by LLM
+    class ToolParameterForm(StrEnum):
+        SCHEMA = auto()  # should be set while adding tool
+        FORM = auto()  # should be set before invoking tool
+        LLM = auto()  # will be set by LLM
 
     type: ToolParameterType = Field(..., description="The type of the parameter")
-    human_description: Optional[I18nObject] = Field(default=None, description="The description presented to the user")
+    human_description: I18nObject | None = Field(default=None, description="The description presented to the user")
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
-    llm_description: Optional[str] = None
+    llm_description: str | None = None
+    # MCP object and array type parameters use this field to store the schema
+    input_schema: dict | None = None
 
     @classmethod
     def get_simple_instance(
@@ -267,7 +304,7 @@ class ToolParameter(PluginParameter):
         llm_description: str,
         typ: ToolParameterType,
         required: bool,
-        options: Optional[list[str]] = None,
+        options: list[str] | None = None,
     ) -> "ToolParameter":
         """
         get a simple tool parameter
@@ -308,8 +345,9 @@ class ToolProviderIdentity(BaseModel):
     name: str = Field(..., description="The name of the tool")
     description: I18nObject = Field(..., description="The description of the tool")
     icon: str = Field(..., description="The icon of the tool")
+    icon_dark: str | None = Field(default=None, description="The dark icon of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
-    tags: Optional[list[ToolLabelEnum]] = Field(
+    tags: list[ToolLabelEnum] | None = Field(
         default=[],
         description="The tags of the tool",
     )
@@ -320,7 +358,7 @@ class ToolIdentity(BaseModel):
     name: str = Field(..., description="The name of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
     provider: str = Field(..., description="The provider of the tool")
-    icon: Optional[str] = None
+    icon: str | None = None
 
 
 class ToolDescription(BaseModel):
@@ -330,9 +368,9 @@ class ToolDescription(BaseModel):
 
 class ToolEntity(BaseModel):
     identity: ToolIdentity
-    parameters: list[ToolParameter] = Field(default_factory=list)
-    description: Optional[ToolDescription] = None
-    output_schema: Optional[dict] = None
+    parameters: list[ToolParameter] = Field(default_factory=list[ToolParameter])
+    description: ToolDescription | None = None
+    output_schema: Mapping[str, object] = Field(default_factory=dict)
     has_runtime_parameters: bool = Field(default=False, description="Whether the tool has runtime parameters")
 
     # pydantic configs
@@ -343,15 +381,30 @@ class ToolEntity(BaseModel):
     def set_parameters(cls, v, validation_info: ValidationInfo) -> list[ToolParameter]:
         return v or []
 
+    @field_validator("output_schema", mode="before")
+    @classmethod
+    def _normalize_output_schema(cls, value: Mapping[str, object] | None) -> Mapping[str, object]:
+        return value or {}
+
+
+class OAuthSchema(BaseModel):
+    client_schema: list[ProviderConfig] = Field(
+        default_factory=list[ProviderConfig], description="The schema of the OAuth client"
+    )
+    credentials_schema: list[ProviderConfig] = Field(
+        default_factory=list[ProviderConfig], description="The schema of the OAuth credentials"
+    )
+
 
 class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
-    plugin_id: Optional[str] = None
-    credentials_schema: list[ProviderConfig] = Field(default_factory=list)
+    plugin_id: str | None = None
+    credentials_schema: list[ProviderConfig] = Field(default_factory=list[ProviderConfig])
+    oauth_schema: OAuthSchema | None = None
 
 
 class ToolProviderEntityWithPlugin(ToolProviderEntity):
-    tools: list[ToolEntity] = Field(default_factory=list)
+    tools: list[ToolEntity] = Field(default_factory=list[ToolEntity])
 
 
 class WorkflowToolParameterConfiguration(BaseModel):
@@ -370,8 +423,8 @@ class ToolInvokeMeta(BaseModel):
     """
 
     time_cost: float = Field(..., description="The time cost of the tool invoke")
-    error: Optional[str] = None
-    tool_config: Optional[dict] = None
+    error: str | None = None
+    tool_config: dict | None = None
 
     @classmethod
     def empty(cls) -> "ToolInvokeMeta":
@@ -387,7 +440,7 @@ class ToolInvokeMeta(BaseModel):
         """
         return cls(time_cost=0.0, error=error, tool_config={})
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return {
             "time_cost": self.time_cost,
             "error": self.error,
@@ -405,14 +458,14 @@ class ToolLabel(BaseModel):
     icon: str = Field(..., description="The icon of the tool")
 
 
-class ToolInvokeFrom(Enum):
+class ToolInvokeFrom(StrEnum):
     """
     Enum class for tool invoke
     """
 
-    WORKFLOW = "workflow"
-    AGENT = "agent"
-    PLUGIN = "plugin"
+    WORKFLOW = auto()
+    AGENT = auto()
+    PLUGIN = auto()
 
 
 class ToolSelector(BaseModel):
@@ -423,10 +476,11 @@ class ToolSelector(BaseModel):
         type: ToolParameter.ToolParameterType = Field(..., description="The type of the parameter")
         required: bool = Field(..., description="Whether the parameter is required")
         description: str = Field(..., description="The description of the parameter")
-        default: Optional[Union[int, float, str]] = None
-        options: Optional[list[PluginParameterOption]] = None
+        default: Union[int, float, str] | None = None
+        options: list[PluginParameterOption] | None = None
 
     provider_id: str = Field(..., description="The id of the provider")
+    credential_id: str | None = Field(default=None, description="The id of the credential")
     tool_name: str = Field(..., description="The name of the tool")
     tool_description: str = Field(..., description="The description of the tool")
     tool_configuration: Mapping[str, Any] = Field(..., description="Configuration, type form")
@@ -434,3 +488,36 @@ class ToolSelector(BaseModel):
 
     def to_plugin_parameter(self) -> dict[str, Any]:
         return self.model_dump()
+
+
+class CredentialType(StrEnum):
+    API_KEY = "api-key"
+    OAUTH2 = auto()
+
+    def get_name(self):
+        if self == CredentialType.API_KEY:
+            return "API KEY"
+        elif self == CredentialType.OAUTH2:
+            return "AUTH"
+        else:
+            return self.value.replace("-", " ").upper()
+
+    def is_editable(self):
+        return self == CredentialType.API_KEY
+
+    def is_validate_allowed(self):
+        return self == CredentialType.API_KEY
+
+    @classmethod
+    def values(cls):
+        return [item.value for item in cls]
+
+    @classmethod
+    def of(cls, credential_type: str) -> "CredentialType":
+        type_name = credential_type.lower()
+        if type_name in {"api-key", "api_key"}:
+            return cls.API_KEY
+        elif type_name in {"oauth2", "oauth"}:
+            return cls.OAUTH2
+        else:
+            raise ValueError(f"Invalid credential type: {credential_type}")

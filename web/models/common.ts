@@ -1,8 +1,20 @@
-import type { I18nText } from '@/i18n/language'
+import type { I18nText } from '@/i18n-config/language'
 import type { Model } from '@/types/app'
 
 export type CommonResponse = {
   result: 'success' | 'fail'
+}
+
+export type FileDownloadResponse = {
+  id: string
+  name: string
+  size: number
+  extension: string
+  url: string
+  download_url: string
+  mime_type: string
+  created_by: string
+  created_at: number
 }
 
 export type OauthResponse = {
@@ -290,7 +302,7 @@ export type ModerationService = (
   body: {
     app_id: string
     text: string
-  }
+  },
 ) => Promise<ModerateResponse>
 
 export type StructuredOutputRulesRequestBody = {

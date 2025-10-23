@@ -28,6 +28,8 @@ const translation = {
       delete: 'Видалити',
       enableWarning: 'Архівований файл неможливо активувати',
       sync: 'Синхронізувати',
+      pause: 'Пауза',
+      resume: 'Продовжити',
     },
     index: {
       enable: 'Активувати',
@@ -96,6 +98,9 @@ const translation = {
       upload_file: 'Завантажити файл',
       notion: 'Синхронізувати з Notion',
       github: 'Синхронізувати з Github',
+      online_document: 'Онлайн-документ',
+      local_file: 'Локальний файл',
+      website_crawl: 'Сканування веб-сайту',
     },
     type: {
       book: 'Книга',
@@ -251,7 +256,6 @@ const translation = {
       cs: 'Чеська',
       th: 'Тайська',
       id: 'Індонезійська',
-      uk: 'Українська',
     },
     categoryMap: {
       book: {
@@ -334,13 +338,13 @@ const translation = {
     pause: 'Пауза',
     parentMaxTokens: 'Родитель',
     hierarchical: 'Батьки-діти',
+    waiting: 'Виконання очікує...',
   },
   segment: {
     paragraphs: 'Параграфи',
     keywords: 'Ключові слова',
     addKeyWord: 'Додати ключове слово',
     keywordError: 'Максимальна довжина ключового слова – 20 символів',
-    characters: 'символів',
     hitCount: 'Кількість пошуку',
     vectorHash: 'Векторний хеш: ',
     questionPlaceholder: 'додайте запитання тут',
@@ -367,6 +371,7 @@ const translation = {
     empty: 'Шматок не знайдено',
     chunks_other: 'ШМАТКИ',
     editedAt: 'За редакцією',
+    dateTimeFormat: 'DD.MM.YYYY HH:mm',
     searchResults_zero: 'РЕЗУЛЬТАТ',
     collapseChunks: 'Згортання шматків',
     childChunkAdded: 'Додано 1 дочірній фрагмент',
@@ -389,6 +394,8 @@ const translation = {
     regenerationSuccessMessage: 'Ви можете закрити це вікно.',
     expandChunks: 'Розгортання фрагментів',
     regenerationConfirmTitle: 'Хочете регенерувати дитячі шматки?',
+    keywordEmpty: 'Ключове слово не може бути порожнім',
+    keywordDuplicate: 'Ключове слово вже існує',
   },
 }
 

@@ -94,7 +94,7 @@ const ImageInput: FC<UploaderProps> = ({
       <div
         className={classNames(
           isDragActive && 'border-primary-600',
-          'relative aspect-square border-[1.5px] border-dashed rounded-lg flex flex-col justify-center items-center text-gray-500')}
+          'relative flex aspect-square flex-col items-center justify-center rounded-lg border-[1.5px] border-dashed text-gray-500')}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -106,7 +106,7 @@ const ImageInput: FC<UploaderProps> = ({
               <ImagePlus className="pointer-events-none mb-3 h-[30px] w-[30px]" />
               <div className="mb-[2px] text-sm font-medium">
                 <span className="pointer-events-none">{t('common.imageInput.dropImageHere')}&nbsp;</span>
-                <button className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>{t('common.imageInput.browse')}</button>
+                <button type="button" className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>{t('common.imageInput.browse')}</button>
                 <input
                   ref={inputRef} type="file" className="hidden"
                   onClick={e => ((e.target as HTMLInputElement).value = '')}
