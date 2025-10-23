@@ -80,7 +80,6 @@ const AppCard = ({
             </Button>
           )}
           {isTrialApp && (
-            // /try/app/${app.app_id}
             <Button className='w-full' onClick={showTryAPPPanel(app.app_id)}>
               <RiInformation2Line className='mr-1 size-4' />
               <span>{t('explore.appCard.try')}</span>

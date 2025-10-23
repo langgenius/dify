@@ -11,7 +11,7 @@ import type { DataSetListResponse } from '@/models/datasets'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { Viewport } from 'reactflow'
 
-type TryAppInfo = {
+export type TryAppInfo = {
   name: string
   mode: AppMode
   site: SiteInfo

@@ -1,25 +1,20 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { useGetTryAppInfo } from '@/service/use-try-app'
 import BasicAppPreview from './basic-app-preview'
 import FlowAppPreview from './flow-app-preview'
-import Loading from '@/app/components/base/loading'
+import type { TryAppInfo } from '@/service/try-app'
 
 type Props = {
   appId: string
+  appDetail: TryAppInfo
 }
 
 const Preview: FC<Props> = ({
   appId,
+  appDetail,
 }) => {
-  const { data: appDetail, isLoading } = useGetTryAppInfo(appId)
-  const isBasicApp = appDetail ? ['agent-chat', 'chat', 'completion'].includes(appDetail.mode) : false
-  if (isLoading) {
-    return <div className='flex h-full items-center justify-center'>
-      <Loading type='area' />
-    </div>
-  }
+  const isBasicApp = ['agent-chat', 'chat', 'completion'].includes(appDetail.mode)
 
   return isBasicApp ? <BasicAppPreview appId={appId} /> : <FlowAppPreview appId={appId} className='h-[80vh]' />
 }
