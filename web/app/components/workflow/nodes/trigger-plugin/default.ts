@@ -53,33 +53,6 @@ const extractSchemaType = (schema: any, _schemaTypeDefinitions?: SchemaTypeDefin
   return undefined
 }
 
-const NORMALIZED_TYPE_TO_VAR_TYPE: Record<string, VarType> = {
-  string: VarType.string,
-  number: VarType.number,
-  integer: VarType.integer,
-  boolean: VarType.boolean,
-  object: VarType.object,
-  array: VarType.array,
-}
-
-const VAR_TYPE_TO_ARRAY_TYPE: Partial<Record<VarType, VarType>> = {
-  [VarType.string]: VarType.arrayString,
-  [VarType.number]: VarType.arrayNumber,
-  [VarType.integer]: VarType.arrayNumber,
-  [VarType.boolean]: VarType.arrayBoolean,
-  [VarType.object]: VarType.arrayObject,
-  [VarType.file]: VarType.arrayFile,
-}
-
-const NORMALIZED_TYPE_TO_FIELD_TYPE: Record<string, Type> = {
-  string: Type.string,
-  number: Type.number,
-  integer: Type.number,
-  boolean: Type.boolean,
-  object: Type.object,
-  array: Type.array,
-}
-
 const resolveVarType = (
   schema: any,
   schemaTypeDefinitions?: SchemaTypeDefinition[],
@@ -87,27 +60,67 @@ const resolveVarType = (
   const schemaType = extractSchemaType(schema, schemaTypeDefinitions)
   const normalizedType = normalizeJsonSchemaType(schema)
 
-  if (normalizedType === 'array') {
-    const itemSchema = pickItemSchema(schema)
-    if (!itemSchema)
-      return { type: VarType.array, schemaType }
+  switch (normalizedType) {
+    case 'string':
+      return { type: VarType.string, schemaType }
+    case 'number':
+      return { type: VarType.number, schemaType }
+    case 'integer':
+      return { type: VarType.integer, schemaType }
+    case 'boolean':
+      return { type: VarType.boolean, schemaType }
+    case 'object':
+      return { type: VarType.object, schemaType }
+    case 'array': {
+      const itemSchema = pickItemSchema(schema)
+      if (!itemSchema)
+        return { type: VarType.array, schemaType }
 
-    const { type: itemType, schemaType: itemSchemaType } = resolveVarType(itemSchema, schemaTypeDefinitions)
-    const resolvedSchemaType = schemaType || itemSchemaType
+      const { type: itemType, schemaType: itemSchemaType } = resolveVarType(itemSchema, schemaTypeDefinitions)
+      const resolvedSchemaType = schemaType || itemSchemaType
 
-    const arrayType = VAR_TYPE_TO_ARRAY_TYPE[itemType] ?? VarType.array
-    return { type: arrayType, schemaType: resolvedSchemaType }
+      if (itemSchemaType === 'file')
+        return { type: VarType.arrayFile, schemaType: resolvedSchemaType }
+
+      switch (itemType) {
+        case VarType.string:
+          return { type: VarType.arrayString, schemaType: resolvedSchemaType }
+        case VarType.number:
+        case VarType.integer:
+          return { type: VarType.arrayNumber, schemaType: resolvedSchemaType }
+        case VarType.boolean:
+          return { type: VarType.arrayBoolean, schemaType: resolvedSchemaType }
+        case VarType.object:
+          return { type: VarType.arrayObject, schemaType: resolvedSchemaType }
+        case VarType.file:
+          return { type: VarType.arrayFile, schemaType: resolvedSchemaType }
+        default:
+          return { type: VarType.array, schemaType: resolvedSchemaType }
+      }
+    }
+    default:
+      return { type: VarType.any, schemaType }
   }
-
-  const type = normalizedType ? NORMALIZED_TYPE_TO_VAR_TYPE[normalizedType] ?? VarType.any : VarType.any
-  return { type, schemaType }
 }
 
 const toFieldType = (normalizedType: string | undefined, schemaType?: string): Type => {
   if (schemaType === 'file')
     return normalizedType === 'array' ? Type.array : Type.file
 
-  return normalizedType ? NORMALIZED_TYPE_TO_FIELD_TYPE[normalizedType] ?? Type.string : Type.string
+  switch (normalizedType) {
+    case 'number':
+    case 'integer':
+      return Type.number
+    case 'boolean':
+      return Type.boolean
+    case 'object':
+      return Type.object
+    case 'array':
+      return Type.array
+    case 'string':
+    default:
+      return Type.string
+  }
 }
 
 const toArrayItemType = (type: Type): Exclude<Type, Type.array> => {
@@ -161,10 +174,52 @@ const convertJsonSchemaToField = (schema: any, schemaTypeDefinitions?: SchemaTyp
   return field
 }
 
+const buildOutputVars = (schema: Record<string, any>, schemaTypeDefinitions?: SchemaTypeDefinition[]): Var[] => {
+  if (!schema || typeof schema !== 'object')
+    return []
+
+  const properties = schema.properties as Record<string, any> | undefined
+  if (!properties)
+    return []
+
+  return Object.entries(properties).map(([name, propertySchema]) => {
+    const { type, schemaType } = resolveVarType(propertySchema, schemaTypeDefinitions)
+    const normalizedType = normalizeJsonSchemaType(propertySchema)
+
+    const varItem: Var = {
+      variable: name,
+      type,
+      des: propertySchema?.description,
+      ...(schemaType ? { schemaType } : {}),
+    }
+
+    if (normalizedType === 'object') {
+      const childProperties = propertySchema?.properties
+        ? Object.entries(propertySchema.properties).reduce((acc, [key, value]) => {
+          acc[key] = convertJsonSchemaToField(value, schemaTypeDefinitions)
+          return acc
+        }, {} as Record<string, Field>)
+        : {}
+
+      const required = Array.isArray(propertySchema?.required) ? propertySchema.required.filter(Boolean) : undefined
+
+      varItem.children = {
+        schema: {
+          type: Type.object,
+          properties: childProperties,
+          required: required && required.length > 0 ? required : undefined,
+          additionalProperties: false,
+        },
+      } as StructuredOutput
+    }
+
+    return varItem
+  })
+}
+
 const metaData = genNodeMetaData({
   sort: 1,
   type: BlockEnum.TriggerPlugin,
-  helpLinkUri: 'plugin-trigger',
   isStart: true,
 })
 
@@ -230,47 +285,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
   },
   getOutputVars(payload, _allPluginInfoList, _ragVars, { schemaTypeDefinitions } = { schemaTypeDefinitions: [] }) {
     const schema = payload.output_schema || {}
-
-    if (!schema || typeof schema !== 'object')
-      return []
-
-    const properties = schema.properties as Record<string, any> | undefined
-    if (!properties)
-      return []
-
-    return Object.entries(properties).map(([name, propertySchema]) => {
-      const { type, schemaType } = resolveVarType(propertySchema, schemaTypeDefinitions)
-      const normalizedType = normalizeJsonSchemaType(propertySchema)
-
-      const varItem: Var = {
-        variable: name,
-        type,
-        des: propertySchema?.description,
-        ...(schemaType && { schemaType }),
-      }
-
-      if (normalizedType === 'object' && propertySchema?.properties) {
-        const childProperties = Object.entries(propertySchema.properties).reduce((acc, [key, value]) => {
-          acc[key] = convertJsonSchemaToField(value, schemaTypeDefinitions)
-          return acc
-        }, {} as Record<string, Field>)
-
-        const required = Array.isArray(propertySchema?.required)
-          ? propertySchema.required.filter(Boolean)
-          : undefined
-
-        varItem.children = {
-          schema: {
-            type: Type.object,
-            properties: childProperties,
-            required: required && required.length > 0 ? required : undefined,
-            additionalProperties: false,
-          },
-        } as StructuredOutput
-      }
-
-      return varItem
-    })
+    return buildOutputVars(schema, schemaTypeDefinitions)
   },
 }
 
