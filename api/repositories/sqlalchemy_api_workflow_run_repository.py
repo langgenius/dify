@@ -133,6 +133,17 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             )
             return session.scalar(stmt)
 
+    def get_workflow_run_by_id_without_tenant(
+        self,
+        run_id: str,
+    ) -> WorkflowRun | None:
+        """
+        Get a specific workflow run by ID without tenant/app context.
+        """
+        with self._session_maker() as session:
+            stmt = select(WorkflowRun).where(WorkflowRun.id == run_id)
+            return session.scalar(stmt)
+
     def get_workflow_runs_count(
         self,
         tenant_id: str,
