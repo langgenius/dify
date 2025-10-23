@@ -30,6 +30,12 @@ const translation = {
     addToWorkspace: 'Use template',
     try: 'Details',
   },
+  tryApp: {
+    tabHeader: {
+      try: 'Try it',
+      detail: 'Orchestration Details',
+    },
+  },
   appCustomize: {
     title: 'Create app from {{name}}',
     subTitle: 'App icon & name',

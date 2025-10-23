@@ -3,6 +3,8 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import Modal from '@/app/components/base/modal/index'
 import Tab, { TypeEnum } from './tab'
+import Button from '../../base/button'
+import { RiCloseLine } from '@remixicon/react'
 
 type Props = {
   appId: string
@@ -19,12 +21,23 @@ const TryApp: FC<Props> = ({
     <Modal
       isShow
       onClose={onClose}
-      className='h-[calc(100vh-32px)] max-w-[calc(100vw-32px)]'
+      className='h-[calc(100vh-32px)] max-w-[calc(100vw-32px)] p-2'
     >
-      <Tab
-        value={type}
-        onChange={setType}
-      />
+      <div className='flex items-center justify-between pl-4'>
+        <Tab
+          value={type}
+          onChange={setType}
+        />
+        <Button
+          size='large'
+          variant='tertiary'
+          className='flex size-7 items-center justify-center rounded-[10px] p-0 text-components-button-tertiary-text'
+          onClick={onClose}
+        >
+          <RiCloseLine className='size-5' onClick={onClose} />
+        </Button>
+      </div>
+
       {appId}
     </Modal>
   )

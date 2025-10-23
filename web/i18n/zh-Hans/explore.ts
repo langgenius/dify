@@ -31,6 +31,12 @@ const translation = {
     try: '详情',
     customize: '自定义',
   },
+  tryApp: {
+    tabHeader: {
+      try: '试用',
+      detail: '编排详情',
+    },
+  },
   appCustomize: {
     title: '从 {{name}} 创建应用程序',
     subTitle: '应用程序图标和名称',
