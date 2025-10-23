@@ -9,10 +9,8 @@ from werkzeug.exceptions import NotFound
 from controllers.console.explore.error import AppAccessDeniedError, TrialAppLimitExceeded, TrialAppNotAllowed
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
-from libs.login import current_account_with_tenant, login_required
-from models import InstalledApp
+from libs.login import current_account_with_tenant, current_user, login_required
 from models import AccountTrialAppRecord, App, InstalledApp, TrialApp
-from libs.login import current_user
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
