@@ -71,26 +71,56 @@ const FeaturedTools = ({
     setVisibleCount(INITIAL_VISIBLE_COUNT)
   }, [plugins])
 
-  const visiblePlugins = useMemo(
-    () => plugins.slice(0, Math.min(MAX_RECOMMENDED_COUNT, visibleCount)),
-    [plugins, visibleCount],
+  const limitedPlugins = useMemo(
+    () => plugins.slice(0, MAX_RECOMMENDED_COUNT),
+    [plugins],
   )
 
-  const installedProviders = useMemo(
-    () =>
-      visiblePlugins
-        .map(plugin => providerMap.get(plugin.plugin_id))
-        .filter((provider): provider is ToolWithProvider => Boolean(provider)),
-    [visiblePlugins, providerMap],
+  const {
+    installedProviders,
+    uninstalledPlugins,
+  } = useMemo(() => {
+    const installed: ToolWithProvider[] = []
+    const uninstalled: Plugin[] = []
+    const visitedProviderIds = new Set<string>()
+
+    limitedPlugins.forEach((plugin) => {
+      const provider = providerMap.get(plugin.plugin_id)
+      if (provider) {
+        if (!visitedProviderIds.has(provider.id)) {
+          installed.push(provider)
+          visitedProviderIds.add(provider.id)
+        }
+      }
+      else {
+        uninstalled.push(plugin)
+      }
+    })
+
+    return {
+      installedProviders: installed,
+      uninstalledPlugins: uninstalled,
+    }
+  }, [limitedPlugins, providerMap])
+
+  const totalQuota = Math.min(visibleCount, MAX_RECOMMENDED_COUNT)
+
+  const visibleInstalledProviders = useMemo(
+    () => installedProviders.slice(0, totalQuota),
+    [installedProviders, totalQuota],
   )
 
-  const uninstalledPlugins = useMemo(
-    () => visiblePlugins.filter(plugin => !providerMap.has(plugin.plugin_id)),
-    [visiblePlugins, providerMap],
+  const remainingSlots = Math.max(totalQuota - visibleInstalledProviders.length, 0)
+
+  const visibleUninstalledPlugins = useMemo(
+    () => (remainingSlots > 0 ? uninstalledPlugins.slice(0, remainingSlots) : []),
+    [uninstalledPlugins, remainingSlots],
   )
 
-  const showMore = visibleCount < Math.min(MAX_RECOMMENDED_COUNT, plugins.length)
-  const showEmptyState = !isLoading && visiblePlugins.length === 0
+  const totalVisible = visibleInstalledProviders.length + visibleUninstalledPlugins.length
+  const maxAvailable = Math.min(MAX_RECOMMENDED_COUNT, installedProviders.length + uninstalledPlugins.length)
+  const showMore = totalVisible < maxAvailable
+  const showEmptyState = !isLoading && totalVisible === 0
 
   return (
     <div className='px-3 pb-3 pt-2'>
@@ -121,10 +151,10 @@ const FeaturedTools = ({
 
           {!showEmptyState && !isLoading && (
             <>
-              {installedProviders.length > 0 && (
+              {visibleInstalledProviders.length > 0 && (
                 <Tools
                   className='p-0'
-                  tools={installedProviders}
+                  tools={visibleInstalledProviders}
                   onSelect={onSelect}
                   canNotSelectMultiple
                   toolType={ToolTypeEnum.All}
@@ -135,9 +165,9 @@ const FeaturedTools = ({
                 />
               )}
 
-              {uninstalledPlugins.length > 0 && (
+              {visibleUninstalledPlugins.length > 0 && (
                 <div className='mt-1 flex flex-col gap-1'>
-                  {uninstalledPlugins.map(plugin => (
+                  {visibleUninstalledPlugins.map(plugin => (
                     <FeaturedToolUninstalledItem
                       key={plugin.plugin_id}
                       plugin={plugin}
@@ -153,11 +183,11 @@ const FeaturedTools = ({
             </>
           )}
 
-          {!isLoading && visiblePlugins.length > 0 && showMore && (
+          {!isLoading && totalVisible > 0 && showMore && (
             <div
               className='group mt-1 flex cursor-pointer items-center gap-x-2 rounded-lg py-1 pl-3 pr-2 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary'
               onClick={() => {
-                setVisibleCount(count => Math.min(count + INITIAL_VISIBLE_COUNT, MAX_RECOMMENDED_COUNT, plugins.length))
+                setVisibleCount(count => Math.min(count + INITIAL_VISIBLE_COUNT, maxAvailable))
               }}
             >
               <div className='flex items-center px-1 text-text-tertiary transition-colors group-hover:text-text-secondary'>

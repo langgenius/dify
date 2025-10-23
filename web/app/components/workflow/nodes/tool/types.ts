@@ -1,4 +1,4 @@
-import type { CollectionType } from '@/app/components/tools/types'
+import type { Collection, CollectionType } from '@/app/components/tools/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import type { ResourceVarInputs } from '../_base/types'
 
@@ -20,4 +20,6 @@ export type ToolNodeType = CommonNodeType & {
   tool_description?: string
   is_team_authorization?: boolean
   params?: Record<string, any>
+  plugin_id?: string
+  provider_icon?: Collection['icon']
 }

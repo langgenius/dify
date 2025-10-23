@@ -1,5 +1,5 @@
 import type { Dispatch, FC, SetStateAction } from 'react'
-import { memo } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import type {
   BlockEnum,
@@ -15,6 +15,8 @@ import DataSources from './data-sources'
 import cn from '@/utils/classnames'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useWorkflowStore } from '../store'
+import { basePath } from '@/utils/var'
 
 export type TabsProps = {
   activeTab: TabsEnum
@@ -57,11 +59,65 @@ const Tabs: FC<TabsProps> = ({
   const { data: mcpTools } = useAllMCPTools()
   const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const workflowStore = useWorkflowStore()
   const inRAGPipeline = dataSources.length > 0
   const {
     plugins: featuredPlugins = [],
     isLoading: isFeaturedLoading,
   } = useFeaturedToolsRecommendations(enable_marketplace && !inRAGPipeline)
+
+  const normalizeToolList = useMemo(() => {
+    return (list?: ToolWithProvider[]) => {
+      if (!list)
+        return list
+      if (!basePath)
+        return list
+      let changed = false
+      const normalized = list.map((provider) => {
+        if (typeof provider.icon === 'string') {
+          const icon = provider.icon
+          const shouldPrefix = Boolean(basePath)
+            && icon.startsWith('/')
+            && !icon.startsWith(`${basePath}/`)
+
+          if (shouldPrefix) {
+            changed = true
+            return {
+              ...provider,
+              icon: `${basePath}${icon}`,
+            }
+          }
+        }
+        return provider
+      })
+      return changed ? normalized : list
+    }
+  }, [basePath])
+
+  useEffect(() => {
+    workflowStore.setState((state) => {
+      const updates: Partial<typeof state> = {}
+      const normalizedBuiltIn = normalizeToolList(buildInTools)
+      const normalizedCustom = normalizeToolList(customTools)
+      const normalizedWorkflow = normalizeToolList(workflowTools)
+      const normalizedMCP = normalizeToolList(mcpTools)
+
+      if (normalizedBuiltIn !== undefined && state.buildInTools !== normalizedBuiltIn)
+        updates.buildInTools = normalizedBuiltIn
+      if (normalizedCustom !== undefined && state.customTools !== normalizedCustom)
+        updates.customTools = normalizedCustom
+      if (normalizedWorkflow !== undefined && state.workflowTools !== normalizedWorkflow)
+        updates.workflowTools = normalizedWorkflow
+      if (normalizedMCP !== undefined && state.mcpTools !== normalizedMCP)
+        updates.mcpTools = normalizedMCP
+      if (!Object.keys(updates).length)
+        return state
+      return {
+        ...state,
+        ...updates,
+      }
+    })
+  }, [workflowStore, normalizeToolList, buildInTools, customTools, workflowTools, mcpTools])
 
   return (
     <div onClick={e => e.stopPropagation()}>
