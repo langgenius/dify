@@ -283,7 +283,7 @@ class VariableTruncator:
                 break
 
             remaining_budget = target_size - used_size
-            if item is None or isinstance(item, (str, list, dict, bool, int, float)):
+            if item is None or isinstance(item, (str, list, dict, bool, int, float, UpdatedVariable)):
                 part_result = self._truncate_json_primitives(item, remaining_budget)
             else:
                 raise UnknownTypeError(f"got unknown type {type(item)} in array truncation")
@@ -372,6 +372,11 @@ class VariableTruncator:
                 truncated = True
 
         return _PartResult(truncated_obj, used_size, truncated)
+
+    @overload
+    def _truncate_json_primitives(
+        self, val: UpdatedVariable, target_size: int
+    ) -> _PartResult[Mapping[str, object]]: ...
 
     @overload
     def _truncate_json_primitives(self, val: str, target_size: int) -> _PartResult[str]: ...
