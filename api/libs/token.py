@@ -12,6 +12,7 @@ from constants import (
     COOKIE_NAME_CSRF_TOKEN,
     COOKIE_NAME_PASSPORT,
     COOKIE_NAME_REFRESH_TOKEN,
+    COOKIE_NAME_WEBAPP_ACCESS_TOKEN,
     HEADER_NAME_CSRF_TOKEN,
     HEADER_NAME_PASSPORT,
 )
@@ -79,6 +80,14 @@ def extract_access_token(request: Request) -> str | None:
         return request.cookies.get(_real_cookie_name(COOKIE_NAME_ACCESS_TOKEN))
 
     return _try_extract_from_cookie(request) or _try_extract_from_header(request)
+
+
+def extract_webapp_access_token(request: Request) -> str | None:
+    """
+    Try to extract webapp access token from cookie, then header.
+    """
+
+    return request.cookies.get(_real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN)) or _try_extract_from_header(request)
 
 
 def extract_webapp_passport(app_code: str, request: Request) -> str | None:
@@ -153,6 +162,10 @@ def _clear_cookie(
 
 def clear_access_token_from_cookie(response: Response, samesite: str = "Lax"):
     _clear_cookie(response, COOKIE_NAME_ACCESS_TOKEN, samesite)
+
+
+def clear_webapp_access_token_from_cookie(response: Response, samesite: str = "Lax"):
+    _clear_cookie(response, COOKIE_NAME_WEBAPP_ACCESS_TOKEN, samesite)
 
 
 def clear_refresh_token_from_cookie(response: Response):

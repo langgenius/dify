@@ -17,8 +17,8 @@ from libs.helper import email
 from libs.passport import PassportService
 from libs.password import valid_password
 from libs.token import (
-    clear_access_token_from_cookie,
-    extract_access_token,
+    clear_webapp_access_token_from_cookie,
+    extract_webapp_access_token,
 )
 from services.account_service import AccountService
 from services.app_service import AppService
@@ -81,7 +81,7 @@ class LoginStatusApi(Resource):
     )
     def get(self):
         app_code = request.args.get("app_code")
-        token = extract_access_token(request)
+        token = extract_webapp_access_token(request)
         if not app_code:
             return {
                 "logged_in": bool(token),
@@ -128,7 +128,7 @@ class LogoutApi(Resource):
         response = make_response({"result": "success"})
         # enterprise SSO sets same site to None in https deployment
         # so we need to logout by calling api
-        clear_access_token_from_cookie(response, samesite="None")
+        clear_webapp_access_token_from_cookie(response, samesite="None")
         return response
 
 
