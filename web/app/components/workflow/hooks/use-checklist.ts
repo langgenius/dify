@@ -221,7 +221,7 @@ export const useChecklistBeforePublish = () => {
       } as CommonNodeType<KnowledgeBaseNodeType>
     }
     return checkData
-  }, [])
+  }, [embeddingModelList, rerankModelList])
 
   const handleCheckBeforePublish = useCallback(async () => {
     const {
