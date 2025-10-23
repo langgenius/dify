@@ -23,7 +23,7 @@ import logging
 from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
-from typing import cast
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy import delete, func, select
@@ -316,7 +316,7 @@ WHERE
     AND app_id = :app_id
     AND triggered_from = :triggered_from"""
 
-        arg_dict = {
+        arg_dict: dict[str, Any] = {
             "tz": timezone,
             "tenant_id": tenant_id,
             "app_id": app_id,
@@ -363,7 +363,7 @@ WHERE
     AND app_id = :app_id
     AND triggered_from = :triggered_from"""
 
-        arg_dict = {
+        arg_dict: dict[str, Any] = {
             "tz": timezone,
             "tenant_id": tenant_id,
             "app_id": app_id,
@@ -410,7 +410,7 @@ WHERE
     AND app_id = :app_id
     AND triggered_from = :triggered_from"""
 
-        arg_dict = {
+        arg_dict: dict[str, Any] = {
             "tz": timezone,
             "tenant_id": tenant_id,
             "app_id": app_id,
@@ -475,7 +475,7 @@ FROM
 GROUP BY
     sub.date"""
 
-        arg_dict = {
+        arg_dict: dict[str, Any] = {
             "tz": timezone,
             "tenant_id": tenant_id,
             "app_id": app_id,
