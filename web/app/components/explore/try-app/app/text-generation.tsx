@@ -6,7 +6,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import AppIcon from '@/app/components/base/app-icon'
 import Loading from '@/app/components/base/loading'
 import { appDefaultIconBackground } from '@/config'
-import RunOnce from '../../share/text-generation/run-once'
+import RunOnce from '../../../share/text-generation/run-once'
 import { useWebAppStore } from '@/context/web-app-context'
 import type { AppData, SiteInfo } from '@/models/share'
 import { useGetTryAppParams } from '@/service/use-try-app'
@@ -16,7 +16,7 @@ import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
 import { useBoolean } from 'ahooks'
 import { noop } from 'lodash'
-import type { Task } from '../../share/text-generation/types'
+import type { Task } from '../../../share/text-generation/types'
 import Res from '@/app/components/share/text-generation/result'
 import { AppSourceType } from '@/service/share'
 import { TaskStatus } from '@/app/components/share/text-generation/types'
@@ -97,10 +97,10 @@ const TextGeneration: FC<Props> = ({
 
       const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
       setVisionConfig({
-          // legacy of image upload compatible
+        // legacy of image upload compatible
         ...file_upload,
         transfer_methods: file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
-          // legacy of image upload compatible
+        // legacy of image upload compatible
         image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
       } as any)
@@ -162,7 +162,7 @@ const TextGeneration: FC<Props> = ({
     </div>
   )
 
-  if(!siteInfo || !promptConfig) {
+  if (!siteInfo || !promptConfig) {
     return (
       <div className={cn('flex h-screen items-center', className)}>
         <Loading type='app' />

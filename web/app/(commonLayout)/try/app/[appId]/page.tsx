@@ -1,5 +1,5 @@
 import React from 'react'
-import Main from '@/app/components/try/app/index'
+import Main from '@/app/components/explore/try-app/app/index'
 
 export type IInstalledAppProps = {
   params: {

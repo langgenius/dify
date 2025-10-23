@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
-import { useThemeContext } from '../../base/chat/embedded-chatbot/theme/theme-context'
+import { useThemeContext } from '../../../base/chat/embedded-chatbot/theme/theme-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import {
   EmbeddedChatbotContext,

@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React from 'react'
 import Chat from './chat'
 import TextGeneration from './text-generation'
-import Loading from '../../base/loading'
+import Loading from '../../../base/loading'
 import { useGetTryAppInfo } from '@/service/use-try-app'
 import type { AppData } from '@/models/share'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -30,7 +30,7 @@ const TryApp: FC<Props> = ({
     )
   }
   return (
-    <div className='flex h-full'>
+    <div className='flex h-full w-full'>
       {isChat && (
         <Chat appId={appId} className='h-full grow' />
       )}
@@ -46,9 +46,6 @@ const TryApp: FC<Props> = ({
           } as AppData}
         />
       )}
-      <div className='w-[360px]'>
-        Right panel
-      </div>
     </div>
   )
 }
