@@ -11,6 +11,7 @@ import { RiAddLine } from '@remixicon/react'
 
 type Props = {
   appDetail: TryAppInfo
+  category?: string
   className?: string
 }
 
@@ -18,6 +19,7 @@ const headerClassName = 'system-sm-semibold-uppercase text-text-secondary mb-3'
 
 const AppInfo: FC<Props> = ({
   className,
+  category,
   appDetail,
 }) => {
   const { t } = useTranslation()
@@ -50,18 +52,20 @@ const AppInfo: FC<Props> = ({
           </div>
         </div>
       </div>
-      <div className='system-sm-regular mt-[14px] shrink-0 text-text-secondary' >
-        A workflow designed to translate a full book up to 15000 tokens per run. Uses Code node to separate text into chunks
-      </div>
+      {appDetail.description && (
+        <div className='system-sm-regular mt-[14px] shrink-0 text-text-secondary'>{appDetail.description}</div>
+      )}
       <Button variant='primary' className='mt-3 flex w-full max-w-full'>
         <RiAddLine className='mr-1 size-4 shrink-0' />
         <span className='truncate'>Create from this sample app</span>
       </Button>
 
-      <div className='mt-6 shrink-0'>
-        <div className={headerClassName}>Category</div>
-        <div className='system-md-regular text-text-secondary'>AI Coding</div>
-      </div>
+      {category && (
+        <div className='mt-6 shrink-0'>
+          <div className={headerClassName}>Category</div>
+          <div className='system-md-regular text-text-secondary'>{category}</div>
+        </div>
+      )}
 
       <div className='mt-5 grow overflow-y-auto'>
         <div className={headerClassName}>Requirements</div>

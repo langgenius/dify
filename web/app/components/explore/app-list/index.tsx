@@ -148,7 +148,7 @@ const Apps = ({
   const hideTryAppPanel = useCallback(() => {
     setShowTryAppPanel(false)
   }, [setShowTryAppPanel])
-  const appId = useContextSelector(ExploreContext, ctx => ctx.currentApp?.appId) as string
+  const appParams = useContextSelector(ExploreContext, ctx => ctx.currentApp)
   if (!categories || categories.length === 0) {
     return (
       <div className="flex h-full items-center">
@@ -244,7 +244,12 @@ const Apps = ({
         )
       }
 
-      {isShowTryAppPanel && <TryApp appId={appId} onClose={hideTryAppPanel} />}
+      {isShowTryAppPanel && (
+        <TryApp appId={appParams?.appId || ''}
+          category={appParams?.category}
+          onClose={hideTryAppPanel}
+        />
+      )}
     </div>
   )
 }

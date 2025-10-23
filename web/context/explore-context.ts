@@ -4,6 +4,7 @@ import { noop } from 'lodash-es'
 
 export type CurrentTryAppParams = {
   appId: string
+  category?: string
 }
 
 type IExplore = {

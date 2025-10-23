@@ -13,11 +13,13 @@ import Loading from '@/app/components/base/loading'
 
 type Props = {
   appId: string
+  category?: string
   onClose: () => void
 }
 
 const TryApp: FC<Props> = ({
   appId,
+  category,
   onClose,
 }) => {
   const [type, setType] = useState<TypeEnum>(TypeEnum.TRY)
@@ -50,7 +52,7 @@ const TryApp: FC<Props> = ({
           {/* Main content */}
           <div className='mt-2 flex h-0 grow justify-between space-x-2'>
             {type === TypeEnum.TRY ? <App appId={appId} appDetail={appDetail!} /> : <Preview appId={appId} appDetail={appDetail!} />}
-            <AppInfo className='w-[360px] shrink-0' appDetail={appDetail!} />
+            <AppInfo className='w-[360px] shrink-0' appDetail={appDetail!} category={category} />
           </div>
         </div>
       )}

@@ -13,6 +13,7 @@ import type { Viewport } from 'reactflow'
 
 export type TryAppInfo = {
   name: string
+  description: string
   mode: AppMode
   site: SiteInfo
   model_config: ModelConfig

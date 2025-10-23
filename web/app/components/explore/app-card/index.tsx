@@ -32,9 +32,9 @@ const AppCard = ({
   const setShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.setShowTryAppPanel)
   const showTryAPPPanel = useCallback((appId: string) => {
     return () => {
-      setShowTryAppPanel?.(true, { appId })
+      setShowTryAppPanel?.(true, { appId, category: app.category })
     }
-  }, [setShowTryAppPanel])
+  }, [setShowTryAppPanel, app.category])
 
   return (
     <div className={cn('group relative col-span-1 flex cursor-pointer flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-2 shadow-sm transition-all duration-200 ease-in-out hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-lg')}>
