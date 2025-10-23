@@ -1108,75 +1108,6 @@ class TestMCPToolManageService:
         assert icon_data["content"] == "🚀"
         assert icon_data["background"] == "#4ECDC4"
 
-    def test_update_mcp_provider_with_server_url_change(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test successful update of MCP provider with server URL change.
-
-        This test verifies:
-        - Proper handling of server URL changes
-        - Correct reconnection logic
-        - Database state updates
-        - External service integration
-        """
-        # Arrange: Create test data
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        # Create MCP provider
-        mcp_provider = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
-        )
-
-        from extensions.ext_database import db
-
-        db.session.commit()
-
-        # Mock the reconnection method
-        with patch.object(MCPToolManageService, "_reconnect_provider") as mock_reconnect:
-            mock_reconnect.return_value = {
-                "authed": True,
-                "tools": '[{"name": "test_tool"}]',
-                "encrypted_credentials": "{}",
-            }
-
-            # Act: Execute the method under test
-            from core.entities.mcp_provider import MCPConfiguration
-            from extensions.ext_database import db
-
-            service = MCPToolManageService(db.session())
-            service.update_provider(
-                tenant_id=tenant.id,
-                provider_id=mcp_provider.id,
-                name="Updated MCP Provider",
-                server_url="https://new-example.com/mcp",
-                icon="🚀",
-                icon_type="emoji",
-                icon_background="#4ECDC4",
-                server_identifier="updated_identifier_123",
-                configuration=MCPConfiguration(
-                    timeout=45.0,
-                    sse_read_timeout=400.0,
-                ),
-            )
-
-        # Assert: Verify the expected outcomes
-        db.session.refresh(mcp_provider)
-        assert mcp_provider.name == "Updated MCP Provider"
-        assert mcp_provider.server_identifier == "updated_identifier_123"
-        assert mcp_provider.timeout == 45.0
-        assert mcp_provider.sse_read_timeout == 400.0
-        assert mcp_provider.updated_at is not None
-
-        # Verify reconnection was called
-        mock_reconnect.assert_called_once_with(
-            server_url="https://new-example.com/mcp",
-            provider=mcp_provider,
-        )
-
     def test_update_mcp_provider_duplicate_name(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test error handling when updating MCP provider with duplicate name.
@@ -1387,14 +1318,14 @@ class TestMCPToolManageService:
 
         # Assert: Verify the expected outcomes
         assert result is not None
-        assert result["authed"] is True
-        assert result["tools"] is not None
-        assert result["encrypted_credentials"] == "{}"
+        assert result.authed is True
+        assert result.tools is not None
+        assert result.encrypted_credentials == "{}"
 
         # Verify tools were properly serialized
         import json
 
-        tools_data = json.loads(result["tools"])
+        tools_data = json.loads(result.tools)
         assert len(tools_data) == 2
         assert tools_data[0]["name"] == "test_tool_1"
         assert tools_data[1]["name"] == "test_tool_2"
@@ -1441,9 +1372,9 @@ class TestMCPToolManageService:
 
         # Assert: Verify the expected outcomes
         assert result is not None
-        assert result["authed"] is False
-        assert result["tools"] == "[]"
-        assert result["encrypted_credentials"] == "{}"
+        assert result.authed is False
+        assert result.tools == "[]"
+        assert result.encrypted_credentials == "{}"
 
     def test_re_connect_mcp_provider_connection_error(
         self, db_session_with_containers, mock_external_service_dependencies

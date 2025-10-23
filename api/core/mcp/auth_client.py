@@ -7,15 +7,15 @@ authentication failures and retries operations after refreshing tokens.
 
 import logging
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any
+
+from sqlalchemy.orm import Session
 
 from core.entities.mcp_provider import MCPProviderEntity
 from core.mcp.error import MCPAuthError
 from core.mcp.mcp_client import MCPClient
 from core.mcp.types import CallToolResult, Tool
-
-if TYPE_CHECKING:
-    from services.tools.mcp_tools_manage_service import MCPToolManageService
+from extensions.ext_database import db
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,9 @@ class MCPClientWithAuthRetry(MCPClient):
 
     This class extends MCPClient and intercepts MCPAuthError exceptions
     to refresh authentication before retrying failed operations.
+
+    Note: This class uses lazy session creation - database sessions are only
+    created when authentication retry is actually needed, not on every request.
     """
 
     def __init__(
@@ -35,11 +38,8 @@ class MCPClientWithAuthRetry(MCPClient):
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
         provider_entity: MCPProviderEntity | None = None,
-        auth_callback: Callable[[MCPProviderEntity, "MCPToolManageService", Optional[str]], dict[str, str]]
-        | None = None,
         authorization_code: str | None = None,
         by_server_id: bool = False,
-        mcp_service: Optional["MCPToolManageService"] = None,
     ):
         """
         Initialize the MCP client with auth retry capability.
@@ -50,23 +50,22 @@ class MCPClientWithAuthRetry(MCPClient):
             timeout: Request timeout
             sse_read_timeout: SSE read timeout
             provider_entity: Provider entity for authentication
-            auth_callback: Authentication callback function
             authorization_code: Optional authorization code for initial auth
             by_server_id: Whether to look up provider by server ID
-            mcp_service: MCP service instance
         """
         super().__init__(server_url, headers, timeout, sse_read_timeout)
 
         self.provider_entity = provider_entity
-        self.auth_callback = auth_callback
         self.authorization_code = authorization_code
         self.by_server_id = by_server_id
-        self.mcp_service = mcp_service
         self._has_retried = False
 
     def _handle_auth_error(self, error: MCPAuthError) -> None:
         """
         Handle authentication error by refreshing tokens.
+
+        This method creates a short-lived database session only when authentication
+        retry is needed, minimizing database connection hold time.
 
         Args:
             error: The authentication error
@@ -74,7 +73,7 @@ class MCPClientWithAuthRetry(MCPClient):
         Raises:
             MCPAuthError: If authentication fails or max retries reached
         """
-        if not self.provider_entity or not self.auth_callback or not self.mcp_service:
+        if not self.provider_entity:
             raise error
         if self._has_retried:
             raise error
@@ -82,13 +81,23 @@ class MCPClientWithAuthRetry(MCPClient):
         self._has_retried = True
 
         try:
-            # Perform authentication
-            self.auth_callback(self.provider_entity, self.mcp_service, self.authorization_code)
+            # Create a temporary session only for auth retry
+            # This session is short-lived and only exists during the auth operation
 
-            # Retrieve new tokens
-            self.provider_entity = self.mcp_service.get_provider_entity(
-                self.provider_entity.id, self.provider_entity.tenant_id, by_server_id=self.by_server_id
-            )
+            from services.tools.mcp_tools_manage_service import MCPToolManageService
+
+            with Session(db.engine) as session, session.begin():
+                mcp_service = MCPToolManageService(session=session)
+
+                # Perform authentication using the service's auth method
+                mcp_service.auth_with_actions(self.provider_entity, self.authorization_code)
+
+                # Retrieve new tokens
+                self.provider_entity = mcp_service.get_provider_entity(
+                    self.provider_entity.id, self.provider_entity.tenant_id, by_server_id=self.by_server_id
+                )
+
+            # Session is closed here, before we update headers
             token = self.provider_entity.retrieve_tokens()
             if not token:
                 raise MCPAuthError("Authentication failed - no token received")
