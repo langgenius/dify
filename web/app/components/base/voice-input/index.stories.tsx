@@ -29,7 +29,7 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
       <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-[14px] pl-[14.5px] pr-[6.5px]">
         {/* Waveform visualization placeholder */}
         <div className="absolute bottom-0 left-0 flex h-4 w-full items-end gap-[3px] px-2">
-          {new Array(40).fill().map((_, i) => (
+          {new Array(40).fill(0).map((_, i) => (
             <div
               key={i}
               className="w-[2px] rounded-t bg-blue-200"
@@ -81,7 +81,7 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
 }
 
 const meta = {
-  title: 'Base/VoiceInput',
+  title: 'Base/Input/VoiceInput',
   component: VoiceInputMock,
   parameters: {
     layout: 'centered',

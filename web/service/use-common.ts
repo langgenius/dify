@@ -118,7 +118,7 @@ export const useIsLogin = () => {
     gcTime: 0,
     queryFn: async (): Promise<isLogin> => {
       try {
-        await get('/account/profile', {
+        await get('/account/profile', {}, {
           silent: true,
         })
       }

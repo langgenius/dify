@@ -3,7 +3,7 @@ import { useState } from 'react'
 import Slider from '.'
 
 const meta = {
-  title: 'Base/Slider',
+  title: 'Base/Input/Slider',
   component: Slider,
   parameters: {
     layout: 'centered',
@@ -34,6 +34,11 @@ const meta = {
     disabled: {
       control: 'boolean',
       description: 'Disabled state',
+    },
+  },
+  args: {
+    onChange: (value) => {
+      console.log('Slider value:', value)
     },
   },
 } satisfies Meta<typeof Slider>
@@ -157,7 +162,8 @@ const VolumeControlDemo = () => {
 
 export const VolumeControl: Story = {
   render: () => <VolumeControlDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Brightness control
 const BrightnessControlDemo = () => {
@@ -187,7 +193,8 @@ const BrightnessControlDemo = () => {
 
 export const BrightnessControl: Story = {
   render: () => <BrightnessControlDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Price range filter
 const PriceRangeFilterDemo = () => {
@@ -239,7 +246,8 @@ const PriceRangeFilterDemo = () => {
 
 export const PriceRangeFilter: Story = {
   render: () => <PriceRangeFilterDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Temperature selector
 const TemperatureSelectorDemo = () => {
@@ -279,7 +287,8 @@ const TemperatureSelectorDemo = () => {
 
 export const TemperatureSelector: Story = {
   render: () => <TemperatureSelectorDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Progress/completion slider
 const ProgressSliderDemo = () => {
@@ -325,7 +334,8 @@ const ProgressSliderDemo = () => {
 
 export const ProgressSlider: Story = {
   render: () => <ProgressSliderDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Zoom control
 const ZoomControlDemo = () => {
@@ -371,7 +381,8 @@ const ZoomControlDemo = () => {
 
 export const ZoomControl: Story = {
   render: () => <ZoomControlDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - AI model parameters
 const AIModelParametersDemo = () => {
@@ -445,7 +456,8 @@ const AIModelParametersDemo = () => {
 
 export const AIModelParameters: Story = {
   render: () => <AIModelParametersDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Image quality selector
 const ImageQualitySelectorDemo = () => {
@@ -488,7 +500,8 @@ const ImageQualitySelectorDemo = () => {
 
 export const ImageQualitySelector: Story = {
   render: () => <ImageQualitySelectorDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Multiple sliders
 const MultipleSlidersDemo = () => {
@@ -545,7 +558,8 @@ const MultipleSlidersDemo = () => {
 
 export const MultipleSliders: Story = {
   render: () => <MultipleSlidersDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Interactive playground
 export const Playground: Story = {

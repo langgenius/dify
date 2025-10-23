@@ -13,7 +13,7 @@ const createToggleItem = <T extends { id: string; checked: boolean }>(
 }
 
 const meta = {
-  title: 'Base/Checkbox',
+  title: 'Base/Input/Checkbox',
   component: Checkbox,
   parameters: {
     layout: 'centered',
