@@ -1,0 +1,32 @@
+name: Sync Upstream Tags (Releases)
+
+# 触发条件：
+# 1. 每天 UTC 时间 0 点自动运行
+# 2. 可手动在 Actions 页面触发
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 每天同步一次
+  workflow_dispatch:     # 允许手动触发
+
+jobs:
+  sync-tags:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取当前仓库代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 拉取完整历史（包含标签）
+
+      - name: 添加上游仓库并同步标签
+        run: |
+          # 添加上游仓库地址（替换为原仓库 URL）
+          git remote add upstream https://github.com/langgenius/dify.git
+
+          # 拉取上游仓库的所有标签
+          git fetch upstream --tags
+
+          # 推送标签到你的 fork 仓库
+          git push origin --tags
+        env:
+          # 使用 GitHub 提供的令牌（自动拥有当前仓库的推送权限）
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
