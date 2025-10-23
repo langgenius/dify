@@ -229,7 +229,7 @@ const AllTools = ({
               </div>
             </>
           )}
-          {(hasToolsListContent || hasPluginContent) && (
+          {(hasToolsListContent || enable_marketplace) && (
             <>
               <div className='px-3 pb-1 pt-2'>
                 <span className='system-xs-medium text-text-primary'>{t('tools.allTools')}</span>
@@ -249,7 +249,7 @@ const AllTools = ({
                   isShowRAGRecommendations={isShowRAGRecommendations}
                 />
               )}
-              {hasPluginContent && (
+              {enable_marketplace && (
                 <PluginList
                   ref={pluginRef}
                   wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
