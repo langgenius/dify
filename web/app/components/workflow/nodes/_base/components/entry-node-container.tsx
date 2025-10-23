@@ -13,23 +13,19 @@ type EntryNodeContainerProps = {
 
 const EntryNodeContainer: FC<EntryNodeContainerProps> = ({
   children,
-  status = 'enabled',
   customLabel,
   nodeType = 'trigger',
 }) => {
   const { t } = useTranslation()
 
   const statusConfig = useMemo(() => {
-    const isDisabled = status === 'disabled'
     const translationKey = nodeType === 'start' ? 'entryNodeStatus' : 'triggerStatus'
 
     return {
-      label: customLabel || (isDisabled ? t(`workflow.${translationKey}.disabled`) : t(`workflow.${translationKey}.enabled`)),
-      dotClasses: isDisabled
-        ? 'bg-components-badge-status-light-disabled-bg border-components-badge-status-light-disabled-border-inner'
-        : 'bg-components-badge-status-light-success-bg border-components-badge-status-light-success-border-inner',
+      label: customLabel || t(`workflow.${translationKey}.enabled`),
+      dotClasses: 'bg-components-badge-status-light-success-bg border-components-badge-status-light-success-border-inner',
     }
-  }, [status, customLabel, nodeType, t])
+  }, [customLabel, nodeType, t])
 
   return (
     <div className="w-fit min-w-[242px] rounded-2xl bg-workflow-block-wrapper-bg-1 px-0 pb-0 pt-0.5">
