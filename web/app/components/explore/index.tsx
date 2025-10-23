@@ -43,8 +43,8 @@ const Explore: FC<IExploreProps> = ({
       return router.replace('/datasets')
   }, [isCurrentWorkspaceDatasetOperator])
 
-  const [currentTryAppParams, setCurrentTryAppParams] = useState<CurrentTryAppParams | undefined>({ appId: '47b94c61-5b0d-402b-b5bb-482ee406bc68' })
-  const [isShowTryAppPanel, setIsShowTryAppPanel] = useState(true)
+  const [currentTryAppParams, setCurrentTryAppParams] = useState<CurrentTryAppParams | undefined>(undefined)
+  const [isShowTryAppPanel, setIsShowTryAppPanel] = useState(false)
   const setShowTryAppPanel = (showTryAppPanel: boolean, params?: CurrentTryAppParams) => {
     if (showTryAppPanel)
       setCurrentTryAppParams(params)
