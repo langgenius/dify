@@ -7,7 +7,7 @@ import type { App } from '@/models/explore'
 import AppIcon from '@/app/components/base/app-icon'
 import { AppTypeIcon } from '../../app/type-selector'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { RiArrowRightUpLine } from '@remixicon/react'
+import { RiInformation2Line } from '@remixicon/react'
 import { useCallback } from 'react'
 import ExploreContext from '@/context/explore-context'
 import { useContextSelector } from 'use-context-selector'
@@ -82,8 +82,8 @@ const AppCard = ({
           {isTrialApp && (
             // /try/app/${app.app_id}
             <Button className='w-full' onClick={showTryAPPPanel(app.app_id)}>
+              <RiInformation2Line className='mr-1 size-4' />
               <span>{t('explore.appCard.try')}</span>
-              <RiArrowRightUpLine className='size-4' />
             </Button>
           )}
         </div>
