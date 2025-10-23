@@ -38,6 +38,8 @@ const CSVUploader: FC<Props> = ({
     file_size_limit: 15,
   }, [fileUploadConfigResponse])
 
+  type UploadResult = Awaited<ReturnType<typeof upload>>
+
   const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     fileItem.progress = 0
 
@@ -58,10 +60,14 @@ const CSVUploader: FC<Props> = ({
       data: formData,
       onprogress: onProgress,
     }, false, undefined, '?source=datasets')
-      .then((res: File) => {
-        const completeFile = {
+      .then((res: UploadResult) => {
+        const updatedFile = Object.assign(fileItem.file, {
+          id: res.id,
+          ...(res as Partial<File>),
+        }) as File
+        const completeFile: FileItem = {
           fileID: fileItem.fileID,
-          file: res,
+          file: updatedFile,
           progress: 100,
         }
         updateFile(completeFile)

@@ -23,6 +23,13 @@ import type { Tool } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import type { AgentTool } from '@/types/app'
 import { MAX_TOOLS_NUM } from '@/config'
+import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
+
+const getI18nText = (value: TypeWithI18N | string | undefined, language: string): string => {
+  if (!value)
+    return ''
+  return typeof value === 'string' ? value : value[language] || ''
+}
 
 type ToolsProps = {
   showWorkflowEmpty: boolean
@@ -53,7 +60,7 @@ const Blocks = ({
         className='group mb-1 last-of-type:mb-0'
       >
         <div className='flex h-[22px] w-full items-center justify-between pl-3 pr-1 text-xs font-medium text-gray-500'>
-          {toolWithProvider.label[language]}
+          {getI18nText(toolWithProvider.label, language)}
           <a className='hidden cursor-pointer items-center group-hover:flex' href={`${basePath}/tools?category=${toolWithProvider.type}`} target='_blank'>{t('tools.addToolModal.manageInTools')}<ArrowUpRight className='ml-0.5 h-3 w-3' /></a>
         </div>
         {list.map((tool) => {
@@ -62,7 +69,7 @@ const Blocks = ({
               return ''
             return tool.labels.map((name) => {
               const label = labelList.find(item => item.name === name)
-              return label?.label[language]
+              return getI18nText(label?.label, language)
             }).filter(Boolean).join(', ')
           })()
           const added = !!addedTools?.find(v => v.provider_id === toolWithProvider.id && v.provider_type === toolWithProvider.type && v.tool_name === tool.name)
@@ -79,8 +86,8 @@ const Blocks = ({
                     type={BlockEnum.Tool}
                     toolIcon={toolWithProvider.icon}
                   />
-                  <div className='mb-1 text-sm leading-5 text-gray-900'>{tool.label[language]}</div>
-                  <div className='text-xs leading-[18px] text-gray-700'>{tool.description[language]}</div>
+                  <div className='mb-1 text-sm leading-5 text-gray-900'>{getI18nText(tool.label, language)}</div>
+                  <div className='text-xs leading-[18px] text-gray-700'>{getI18nText(tool.description, language)}</div>
                   {tool.labels?.length > 0 && (
                     <div className='mt-1 flex shrink-0 items-center'>
                       <div className='relative flex w-full items-center gap-1 rounded-md py-1 text-gray-500' title={labelContent}>
@@ -98,7 +105,7 @@ const Blocks = ({
                   type={BlockEnum.Tool}
                   toolIcon={toolWithProvider.icon}
                 />
-                <div className={cn('grow truncate text-sm text-gray-900', needAuth && 'opacity-30')}>{tool.label[language]}</div>
+                <div className={cn('grow truncate text-sm text-gray-900', needAuth && 'opacity-30')}>{getI18nText(tool.label, language)}</div>
                 {!needAuth && added && (
                   <div className='flex items-center gap-1 rounded-[6px] border border-gray-100 bg-white px-2 py-[3px] text-xs font-medium leading-[18px] text-gray-300'>
                     <Check className='h-3 w-3' />

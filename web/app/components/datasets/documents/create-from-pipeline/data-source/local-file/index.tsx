@@ -121,6 +121,8 @@ const LocalFile = ({
     return isValidType && isValidSize
   }, [fileUploadConfig, notify, t, ACCEPTS])
 
+  type UploadResult = Awaited<ReturnType<typeof upload>>
+
   const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     const formData = new FormData()
     formData.append('file', fileItem.file)
@@ -136,10 +138,14 @@ const LocalFile = ({
       data: formData,
       onprogress: onProgress,
     }, false, undefined, '?source=datasets')
-      .then((res: File) => {
-        const completeFile = {
+      .then((res: UploadResult) => {
+        const updatedFile = Object.assign(fileItem.file, {
+          id: res.id,
+          ...(res as Partial<File>),
+        }) as File
+        const completeFile: FileItem = {
           fileID: fileItem.fileID,
-          file: res,
+          file: updatedFile,
           progress: -1,
         }
         const index = fileListRef.current.findIndex(item => item.fileID === fileItem.fileID)

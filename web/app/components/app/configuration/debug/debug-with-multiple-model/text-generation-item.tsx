@@ -15,6 +15,8 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { noop } from 'lodash-es'
+import cloneDeep from 'lodash-es/cloneDeep'
+import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 
 type TextGenerationItemProps = {
   modelAndParameter: ModelAndParameter
@@ -50,8 +52,8 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
   const config: TextGenerationConfig = {
     pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
     prompt_type: promptMode,
-    chat_prompt_config: isAdvancedMode ? chatPromptConfig : {},
-    completion_prompt_config: isAdvancedMode ? completionPromptConfig : {},
+    chat_prompt_config: isAdvancedMode ? chatPromptConfig : cloneDeep(DEFAULT_CHAT_PROMPT_CONFIG),
+    completion_prompt_config: isAdvancedMode ? completionPromptConfig : cloneDeep(DEFAULT_COMPLETION_PROMPT_CONFIG),
     user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
     dataset_query_variable: contextVar || '',
     // features
@@ -74,6 +76,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
         datasets: [...postDatasets],
       } as any,
     },
+    system_parameters: modelConfig.system_parameters,
   }
   const {
     completion,
