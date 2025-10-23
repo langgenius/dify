@@ -113,6 +113,22 @@ class PluginIconApi(Resource):
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 
+class PluginAssetApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        req = reqparse.RequestParser()
+        req.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+        req.add_argument("file_name", type=str, required=True, location="args")
+        args = req.parse_args()
+
+        tenant_id = current_user.current_tenant_id
+        try:
+            binary = PluginService.extract_asset(tenant_id, args["plugin_unique_identifier"], args["file_name"])
+            return send_file(io.BytesIO(binary), mimetype="application/octet-stream")
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
 
 @console_ns.route("/workspaces/current/plugin/upload/pkg")
 class PluginUploadFromPkgApi(Resource):
@@ -688,3 +704,58 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
         args = req.parse_args()
 
         return jsonable_encoder({"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args["plugin_id"])})
+
+
+class PluginReadmeApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        tenant_id = current_user.current_tenant_id
+        parser = reqparse.RequestParser()
+        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+        parser.add_argument("language", type=str, required=False, location="args")
+        args = parser.parse_args()
+        return jsonable_encoder(
+            {
+                "readme": PluginService.fetch_plugin_readme(
+                    tenant_id,
+                    args["plugin_unique_identifier"],
+                    args.get("language", "en-US")
+                )
+            }
+        )
+
+
+api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
+api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
+api.add_resource(PluginReadmeApi, "/workspaces/current/plugin/readme")
+api.add_resource(PluginListLatestVersionsApi, "/workspaces/current/plugin/list/latest-versions")
+api.add_resource(PluginListInstallationsFromIdsApi, "/workspaces/current/plugin/list/installations/ids")
+api.add_resource(PluginIconApi, "/workspaces/current/plugin/icon")
+api.add_resource(PluginAssetApi, "/workspaces/current/plugin/asset")
+api.add_resource(PluginUploadFromPkgApi, "/workspaces/current/plugin/upload/pkg")
+api.add_resource(PluginUploadFromGithubApi, "/workspaces/current/plugin/upload/github")
+api.add_resource(PluginUploadFromBundleApi, "/workspaces/current/plugin/upload/bundle")
+api.add_resource(PluginInstallFromPkgApi, "/workspaces/current/plugin/install/pkg")
+api.add_resource(PluginInstallFromGithubApi, "/workspaces/current/plugin/install/github")
+api.add_resource(PluginUpgradeFromMarketplaceApi, "/workspaces/current/plugin/upgrade/marketplace")
+api.add_resource(PluginUpgradeFromGithubApi, "/workspaces/current/plugin/upgrade/github")
+api.add_resource(PluginInstallFromMarketplaceApi, "/workspaces/current/plugin/install/marketplace")
+api.add_resource(PluginFetchManifestApi, "/workspaces/current/plugin/fetch-manifest")
+api.add_resource(PluginFetchInstallTasksApi, "/workspaces/current/plugin/tasks")
+api.add_resource(PluginFetchInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>")
+api.add_resource(PluginDeleteInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>/delete")
+api.add_resource(PluginDeleteAllInstallTaskItemsApi, "/workspaces/current/plugin/tasks/delete_all")
+api.add_resource(PluginDeleteInstallTaskItemApi, "/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
+api.add_resource(PluginUninstallApi, "/workspaces/current/plugin/uninstall")
+api.add_resource(PluginFetchMarketplacePkgApi, "/workspaces/current/plugin/marketplace/pkg")
+
+api.add_resource(PluginChangePermissionApi, "/workspaces/current/plugin/permission/change")
+api.add_resource(PluginFetchPermissionApi, "/workspaces/current/plugin/permission/fetch")
+
+api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")
+
+api.add_resource(PluginFetchPreferencesApi, "/workspaces/current/plugin/preferences/fetch")
+api.add_resource(PluginChangePreferencesApi, "/workspaces/current/plugin/preferences/change")
+api.add_resource(PluginAutoUpgradeExcludePluginApi, "/workspaces/current/plugin/preferences/autoupgrade/exclude")
