@@ -22,10 +22,10 @@ const FlowAppPreview: FC<Props> = ({
       <Loading type='area' />
     </div>
   }
-  if(!data)
+  if (!data)
     return null
   return (
-    <div>
+    <div className='w-full'>
       <WorkflowPreview
         {...data.graph}
         className={cn(className)}

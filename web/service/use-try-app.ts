@@ -7,7 +7,7 @@ const NAME_SPACE = 'try-app'
 
 export const useGetTryAppInfo = (appId: string) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'appInfo'],
+    queryKey: [NAME_SPACE, 'appInfo', appId],
     queryFn: () => {
       return fetchTryAppInfo(appId)
     },
@@ -16,7 +16,7 @@ export const useGetTryAppInfo = (appId: string) => {
 
 export const useGetTryAppParams = (appId: string) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'appParams'],
+    queryKey: [NAME_SPACE, 'appParams', appId],
     queryFn: () => {
       return fetchAppParams(AppSourceType.tryApp, appId)
     },
@@ -25,7 +25,7 @@ export const useGetTryAppParams = (appId: string) => {
 
 export const useGetTryAppDataSets = (appId: string, ids: string[]) => {
   return useQuery<DataSetListResponse>({
-    queryKey: [NAME_SPACE, 'dataSets', ids],
+    queryKey: [NAME_SPACE, 'dataSets', appId, ids],
     queryFn: () => {
       return fetchTryAppDatasets(appId, ids)
     },

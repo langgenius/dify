@@ -7,6 +7,7 @@ import Button from '../../base/button'
 import { RiCloseLine } from '@remixicon/react'
 import AppInfo from './app-info'
 import App from './app'
+import Preview from './preview'
 
 type Props = {
   appId: string
@@ -18,7 +19,6 @@ const TryApp: FC<Props> = ({
   onClose,
 }) => {
   const [type, setType] = useState<TypeEnum>(TypeEnum.TRY)
-
   return (
     <Modal
       isShow
@@ -42,7 +42,7 @@ const TryApp: FC<Props> = ({
         </div>
         {/* Main content */}
         <div className='mt-2 flex grow justify-between space-x-2'>
-          <App appId={appId} />
+          {type === TypeEnum.TRY ? <App appId={appId} /> : <Preview appId={appId} />}
           <AppInfo className='w-[360px]' />
         </div>
       </div>
