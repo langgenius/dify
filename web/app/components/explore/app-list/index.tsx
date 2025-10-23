@@ -108,6 +108,18 @@ const Apps = ({
     isFetching,
   } = useImportDSL()
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
+
+  const isShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.isShowTryAppPanel)
+  const setShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.setShowTryAppPanel)
+  const hideTryAppPanel = useCallback(() => {
+    setShowTryAppPanel(false)
+  }, [setShowTryAppPanel])
+  const appParams = useContextSelector(ExploreContext, ctx => ctx.currentApp)
+  const handleShowFromTryApp = useCallback(() => {
+    setCurrApp(appParams?.app || null)
+    setIsShowCreateModal(true)
+  }, [appParams?.app])
+
   const onCreate: CreateAppModalProps['onConfirm'] = async ({
     name,
     icon_type,
@@ -115,6 +127,8 @@ const Apps = ({
     icon_background,
     description,
   }) => {
+    hideTryAppPanel()
+
     const { export_data } = await fetchAppDetail(
       currApp?.app.id as string,
     )
@@ -142,17 +156,6 @@ const Apps = ({
       onSuccess,
     })
   }, [handleImportDSLConfirm, onSuccess])
-
-  const isShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.isShowTryAppPanel)
-  const setShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.setShowTryAppPanel)
-  const hideTryAppPanel = useCallback(() => {
-    setShowTryAppPanel(false)
-  }, [setShowTryAppPanel])
-  const appParams = useContextSelector(ExploreContext, ctx => ctx.currentApp)
-  const handleShowFromTryApp = useCallback(() => {
-    setCurrApp(appParams?.app || null)
-    setIsShowCreateModal(true)
-  }, [appParams?.app])
 
   if (!categories || categories.length === 0) {
     return (
