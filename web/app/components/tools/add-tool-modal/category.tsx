@@ -9,6 +9,7 @@ import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { useStore as useLabelStore } from '@/app/components/tools/labels/store'
 import { fetchLabelList } from '@/service/tools'
+import { renderI18nObject } from '@/i18n-config'
 
 type Props = {
   value: string
@@ -56,7 +57,9 @@ const Category = ({
         {t('tools.type.all')}
       </div>
       {labelList.map((label) => {
-        const labelText = typeof label.label === 'string' ? label.label : (label.label[language] || '')
+        const labelText = typeof label.label === 'string'
+          ? label.label
+          : (label.label ? renderI18nObject(label.label, language) : '')
         return (
           <div
             key={label.name}
