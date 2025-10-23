@@ -4,7 +4,7 @@ import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import copy from 'copy-to-clipboard'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,

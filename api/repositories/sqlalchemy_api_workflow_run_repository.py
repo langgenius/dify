@@ -22,11 +22,14 @@ Implementation Notes:
 import logging
 from collections.abc import Sequence
 from datetime import datetime
+from typing import cast
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from libs.time_parser import get_time_threshold
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 
@@ -61,6 +64,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         triggered_from: str,
         limit: int = 20,
         last_id: str | None = None,
+        status: str | None = None,
     ) -> InfiniteScrollPagination:
         """
         Get paginated workflow runs with filtering.
@@ -76,6 +80,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 WorkflowRun.app_id == app_id,
                 WorkflowRun.triggered_from == triggered_from,
             )
+
+            # Add optional status filter
+            if status:
+                base_stmt = base_stmt.where(WorkflowRun.status == status)
 
             if last_id:
                 # Get the last workflow run for cursor-based pagination
@@ -118,6 +126,73 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             )
             return session.scalar(stmt)
 
+    def get_workflow_runs_count(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        status: str | None = None,
+        time_range: str | None = None,
+    ) -> dict[str, int]:
+        """
+        Get workflow runs count statistics grouped by status.
+        """
+        _initial_status_counts = {
+            "running": 0,
+            "succeeded": 0,
+            "failed": 0,
+            "stopped": 0,
+            "partial-succeeded": 0,
+        }
+
+        with self._session_maker() as session:
+            # Build base where conditions
+            base_conditions = [
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.app_id == app_id,
+                WorkflowRun.triggered_from == triggered_from,
+            ]
+
+            # Add time range filter if provided
+            if time_range:
+                time_threshold = get_time_threshold(time_range)
+                if time_threshold:
+                    base_conditions.append(WorkflowRun.created_at >= time_threshold)
+
+            # If status filter is provided, return simple count
+            if status:
+                count_stmt = select(func.count(WorkflowRun.id)).where(*base_conditions, WorkflowRun.status == status)
+                total = session.scalar(count_stmt) or 0
+
+                result = {"total": total} | _initial_status_counts
+
+                # Set the count for the filtered status
+                if status in result:
+                    result[status] = total
+
+                return result
+
+            # No status filter - get counts grouped by status
+            base_stmt = (
+                select(WorkflowRun.status, func.count(WorkflowRun.id).label("count"))
+                .where(*base_conditions)
+                .group_by(WorkflowRun.status)
+            )
+
+            # Execute query
+            results = session.execute(base_stmt).all()
+
+            # Build response dictionary
+            status_counts = _initial_status_counts.copy()
+
+            total = 0
+            for status_val, count in results:
+                total += count
+                if status_val in status_counts:
+                    status_counts[status_val] = count
+
+            return {"total": total} | status_counts
+
     def get_expired_runs_batch(
         self,
         tenant_id: str,
@@ -150,7 +225,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
         with self._session_maker() as session:
             stmt = delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids))
-            result = session.execute(stmt)
+            result = cast(CursorResult, session.execute(stmt))
             session.commit()
 
             deleted_count = result.rowcount
@@ -186,7 +261,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
                 # Delete the batch
                 delete_stmt = delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids))
-                result = session.execute(delete_stmt)
+                result = cast(CursorResult, session.execute(delete_stmt))
                 session.commit()
 
                 batch_deleted = result.rowcount

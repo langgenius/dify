@@ -1,3 +1,4 @@
+import type { FC, Ref } from 'react'
 import { memo } from 'react'
 import {
   RiMicLine,
@@ -20,21 +21,18 @@ type OperationProps = {
   speechToTextConfig?: EnableType
   onShowVoiceInput?: () => void
   onSend: () => void
-  theme?: Theme | null
+  theme?: Theme | null,
+  ref?: Ref<HTMLDivElement>;
 }
-const Operation = (
-  {
-    readonly,
-    ref,
-    fileConfig,
-    speechToTextConfig,
-    onShowVoiceInput,
-    onSend,
-    theme,
-  }: OperationProps & {
-    ref: React.RefObject<HTMLDivElement>;
-  },
-) => {
+const Operation: FC<OperationProps> = ({
+  readonly,
+  ref,
+  fileConfig,
+  speechToTextConfig,
+  onShowVoiceInput,
+  onSend,
+  theme,
+}) => {
   return (
     <div
       className={cn(

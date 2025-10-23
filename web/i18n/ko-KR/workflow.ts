@@ -349,6 +349,7 @@ const translation = {
     addNextStep: '이 워크플로우에 다음 단계를 추가하세요.',
     minimize: '전체 화면 종료',
     maximize: '캔버스 전체 화면',
+    optional_and_hidden: '(선택 사항 및 숨김)',
   },
   nodes: {
     common: {
@@ -996,6 +997,8 @@ const translation = {
       chunksVariableIsRequired: 'Chunks 변수는 필수입니다',
       embeddingModelIsRequired: '임베딩 모델이 필요합니다',
       rerankingModelIsRequired: '재순위 모델이 필요합니다',
+      rerankingModelIsInvalid: '재정렬 모델이 유효하지 않습니다',
+      embeddingModelIsInvalid: '임베딩 모델이 유효하지 않습니다',
     },
   },
   tracing: {

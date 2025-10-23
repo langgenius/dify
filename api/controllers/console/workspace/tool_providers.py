@@ -2,7 +2,6 @@ import io
 from urllib.parse import urlparse
 
 from flask import make_response, redirect, request, send_file
-from flask_login import current_user
 from flask_restx import (
     Resource,
     reqparse,
@@ -24,7 +23,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.tool_entities import CredentialType
 from libs.helper import StrLen, alphanumeric, uuid_value
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import ToolProviderID
 from services.plugin.oauth_service import OAuthProxyService
 from services.tools.api_tools_manage_service import ApiToolManageService
@@ -53,13 +52,11 @@ class ToolProviderListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        req = reqparse.RequestParser()
-        req.add_argument(
+        req = reqparse.RequestParser().add_argument(
             "type",
             type=str,
             choices=["builtin", "model", "api", "workflow", "mcp"],
@@ -78,9 +75,7 @@ class ToolBuiltinProviderListToolsApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        user = current_user
-
-        tenant_id = user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         return jsonable_encoder(
             BuiltinToolManageService.list_builtin_tool_provider_tools(
@@ -96,9 +91,7 @@ class ToolBuiltinProviderInfoApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        user = current_user
-
-        tenant_id = user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         return jsonable_encoder(BuiltinToolManageService.get_builtin_tool_provider_info(tenant_id, provider))
 
@@ -109,13 +102,13 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        tenant_id = user.current_tenant_id
-        req = reqparse.RequestParser()
-        req.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        req = reqparse.RequestParser().add_argument(
+            "credential_id", type=str, required=True, nullable=False, location="json"
+        )
         args = req.parse_args()
 
         return BuiltinToolManageService.delete_builtin_tool_provider(
@@ -131,15 +124,16 @@ class ToolBuiltinProviderAddApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=StrLen(30), required=False, nullable=False, location="json")
-        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+            .add_argument("name", type=StrLen(30), required=False, nullable=False, location="json")
+            .add_argument("type", type=str, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         if args["type"] not in CredentialType.values():
@@ -161,18 +155,19 @@ class ToolBuiltinProviderUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         if not user.is_admin_or_owner:
             raise Forbidden()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("credentials", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+            .add_argument("credentials", type=dict, required=False, nullable=True, location="json")
+            .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
+        )
 
         args = parser.parse_args()
 
@@ -193,7 +188,7 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credentials(
@@ -218,23 +213,24 @@ class ToolApiProviderAddApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         if not user.is_admin_or_owner:
             raise Forbidden()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("schema_type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("schema", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("provider", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("icon", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("privacy_policy", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("labels", type=list[str], required=False, nullable=True, location="json", default=[])
-        parser.add_argument("custom_disclaimer", type=str, required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+            .add_argument("schema_type", type=str, required=True, nullable=False, location="json")
+            .add_argument("schema", type=str, required=True, nullable=False, location="json")
+            .add_argument("provider", type=str, required=True, nullable=False, location="json")
+            .add_argument("icon", type=dict, required=True, nullable=False, location="json")
+            .add_argument("privacy_policy", type=str, required=False, nullable=True, location="json")
+            .add_argument("labels", type=list[str], required=False, nullable=True, location="json", default=[])
+            .add_argument("custom_disclaimer", type=str, required=False, nullable=True, location="json")
+        )
 
         args = parser.parse_args()
 
@@ -258,14 +254,11 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        parser = reqparse.RequestParser()
-
-        parser.add_argument("url", type=str, required=True, nullable=False, location="args")
+        parser = reqparse.RequestParser().add_argument("url", type=str, required=True, nullable=False, location="args")
 
         args = parser.parse_args()
 
@@ -282,14 +275,13 @@ class ToolApiProviderListToolsApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        parser = reqparse.RequestParser()
-
-        parser.add_argument("provider", type=str, required=True, nullable=False, location="args")
+        parser = reqparse.RequestParser().add_argument(
+            "provider", type=str, required=True, nullable=False, location="args"
+        )
 
         args = parser.parse_args()
 
@@ -308,24 +300,25 @@ class ToolApiProviderUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         if not user.is_admin_or_owner:
             raise Forbidden()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("schema_type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("schema", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("provider", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("original_provider", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("icon", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("privacy_policy", type=str, required=True, nullable=True, location="json")
-        parser.add_argument("labels", type=list[str], required=False, nullable=True, location="json")
-        parser.add_argument("custom_disclaimer", type=str, required=True, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+            .add_argument("schema_type", type=str, required=True, nullable=False, location="json")
+            .add_argument("schema", type=str, required=True, nullable=False, location="json")
+            .add_argument("provider", type=str, required=True, nullable=False, location="json")
+            .add_argument("original_provider", type=str, required=True, nullable=False, location="json")
+            .add_argument("icon", type=dict, required=True, nullable=False, location="json")
+            .add_argument("privacy_policy", type=str, required=True, nullable=True, location="json")
+            .add_argument("labels", type=list[str], required=False, nullable=True, location="json")
+            .add_argument("custom_disclaimer", type=str, required=True, nullable=True, location="json")
+        )
 
         args = parser.parse_args()
 
@@ -350,17 +343,16 @@ class ToolApiProviderDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         if not user.is_admin_or_owner:
             raise Forbidden()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        parser = reqparse.RequestParser()
-
-        parser.add_argument("provider", type=str, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "provider", type=str, required=True, nullable=False, location="json"
+        )
 
         args = parser.parse_args()
 
@@ -377,14 +369,13 @@ class ToolApiProviderGetApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        parser = reqparse.RequestParser()
-
-        parser.add_argument("provider", type=str, required=True, nullable=False, location="args")
+        parser = reqparse.RequestParser().add_argument(
+            "provider", type=str, required=True, nullable=False, location="args"
+        )
 
         args = parser.parse_args()
 
@@ -401,8 +392,7 @@ class ToolBuiltinProviderCredentialsSchemaApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider, credential_type):
-        user = current_user
-        tenant_id = user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         return jsonable_encoder(
             BuiltinToolManageService.list_builtin_provider_credentials_schema(
@@ -417,9 +407,9 @@ class ToolApiProviderSchemaApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-
-        parser.add_argument("schema", type=str, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "schema", type=str, required=True, nullable=False, location="json"
+        )
 
         args = parser.parse_args()
 
@@ -434,19 +424,20 @@ class ToolApiProviderPreviousTestApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-
-        parser.add_argument("tool_name", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("provider_name", type=str, required=False, nullable=False, location="json")
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("parameters", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("schema_type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("schema", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("tool_name", type=str, required=True, nullable=False, location="json")
+            .add_argument("provider_name", type=str, required=False, nullable=False, location="json")
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+            .add_argument("parameters", type=dict, required=True, nullable=False, location="json")
+            .add_argument("schema_type", type=str, required=True, nullable=False, location="json")
+            .add_argument("schema", type=str, required=True, nullable=False, location="json")
+        )
 
         args = parser.parse_args()
-
+        _, current_tenant_id = current_account_with_tenant()
         return ApiToolManageService.test_api_tool_preview(
-            current_user.current_tenant_id,
+            current_tenant_id,
             args["provider_name"] or "",
             args["tool_name"],
             args["credentials"],
@@ -462,23 +453,24 @@ class ToolWorkflowProviderCreateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         if not user.is_admin_or_owner:
             raise Forbidden()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        reqparser = reqparse.RequestParser()
-        reqparser.add_argument("workflow_app_id", type=uuid_value, required=True, nullable=False, location="json")
-        reqparser.add_argument("name", type=alphanumeric, required=True, nullable=False, location="json")
-        reqparser.add_argument("label", type=str, required=True, nullable=False, location="json")
-        reqparser.add_argument("description", type=str, required=True, nullable=False, location="json")
-        reqparser.add_argument("icon", type=dict, required=True, nullable=False, location="json")
-        reqparser.add_argument("parameters", type=list[dict], required=True, nullable=False, location="json")
-        reqparser.add_argument("privacy_policy", type=str, required=False, nullable=True, location="json", default="")
-        reqparser.add_argument("labels", type=list[str], required=False, nullable=True, location="json")
+        reqparser = (
+            reqparse.RequestParser()
+            .add_argument("workflow_app_id", type=uuid_value, required=True, nullable=False, location="json")
+            .add_argument("name", type=alphanumeric, required=True, nullable=False, location="json")
+            .add_argument("label", type=str, required=True, nullable=False, location="json")
+            .add_argument("description", type=str, required=True, nullable=False, location="json")
+            .add_argument("icon", type=dict, required=True, nullable=False, location="json")
+            .add_argument("parameters", type=list[dict], required=True, nullable=False, location="json")
+            .add_argument("privacy_policy", type=str, required=False, nullable=True, location="json", default="")
+            .add_argument("labels", type=list[str], required=False, nullable=True, location="json")
+        )
 
         args = reqparser.parse_args()
 
@@ -502,23 +494,24 @@ class ToolWorkflowProviderUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         if not user.is_admin_or_owner:
             raise Forbidden()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        reqparser = reqparse.RequestParser()
-        reqparser.add_argument("workflow_tool_id", type=uuid_value, required=True, nullable=False, location="json")
-        reqparser.add_argument("name", type=alphanumeric, required=True, nullable=False, location="json")
-        reqparser.add_argument("label", type=str, required=True, nullable=False, location="json")
-        reqparser.add_argument("description", type=str, required=True, nullable=False, location="json")
-        reqparser.add_argument("icon", type=dict, required=True, nullable=False, location="json")
-        reqparser.add_argument("parameters", type=list[dict], required=True, nullable=False, location="json")
-        reqparser.add_argument("privacy_policy", type=str, required=False, nullable=True, location="json", default="")
-        reqparser.add_argument("labels", type=list[str], required=False, nullable=True, location="json")
+        reqparser = (
+            reqparse.RequestParser()
+            .add_argument("workflow_tool_id", type=uuid_value, required=True, nullable=False, location="json")
+            .add_argument("name", type=alphanumeric, required=True, nullable=False, location="json")
+            .add_argument("label", type=str, required=True, nullable=False, location="json")
+            .add_argument("description", type=str, required=True, nullable=False, location="json")
+            .add_argument("icon", type=dict, required=True, nullable=False, location="json")
+            .add_argument("parameters", type=list[dict], required=True, nullable=False, location="json")
+            .add_argument("privacy_policy", type=str, required=False, nullable=True, location="json", default="")
+            .add_argument("labels", type=list[str], required=False, nullable=True, location="json")
+        )
 
         args = reqparser.parse_args()
 
@@ -545,16 +538,16 @@ class ToolWorkflowProviderDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         if not user.is_admin_or_owner:
             raise Forbidden()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        reqparser = reqparse.RequestParser()
-        reqparser.add_argument("workflow_tool_id", type=uuid_value, required=True, nullable=False, location="json")
+        reqparser = reqparse.RequestParser().add_argument(
+            "workflow_tool_id", type=uuid_value, required=True, nullable=False, location="json"
+        )
 
         args = reqparser.parse_args()
 
@@ -571,14 +564,15 @@ class ToolWorkflowProviderGetApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("workflow_tool_id", type=uuid_value, required=False, nullable=True, location="args")
-        parser.add_argument("workflow_app_id", type=uuid_value, required=False, nullable=True, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("workflow_tool_id", type=uuid_value, required=False, nullable=True, location="args")
+            .add_argument("workflow_app_id", type=uuid_value, required=False, nullable=True, location="args")
+        )
 
         args = parser.parse_args()
 
@@ -606,13 +600,13 @@ class ToolWorkflowProviderListToolApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("workflow_tool_id", type=uuid_value, required=True, nullable=False, location="args")
+        parser = reqparse.RequestParser().add_argument(
+            "workflow_tool_id", type=uuid_value, required=True, nullable=False, location="args"
+        )
 
         args = parser.parse_args()
 
@@ -631,10 +625,9 @@ class ToolBuiltinListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
         return jsonable_encoder(
             [
@@ -653,8 +646,7 @@ class ToolApiListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user = current_user
-        tenant_id = user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         return jsonable_encoder(
             [
@@ -672,10 +664,9 @@ class ToolWorkflowListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         user_id = user.id
-        tenant_id = user.current_tenant_id
 
         return jsonable_encoder(
             [
@@ -709,19 +700,18 @@ class ToolPluginOAuthApi(Resource):
         provider_name = tool_provider.provider_name
 
         # todo check permission
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        tenant_id = user.current_tenant_id
         oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id=tenant_id, provider=provider)
         if oauth_client_params is None:
             raise Forbidden("no oauth available client config found for this tool provider")
 
         oauth_handler = OAuthHandler()
         context_id = OAuthProxyService.create_proxy_context(
-            user_id=current_user.id, tenant_id=tenant_id, plugin_id=plugin_id, provider=provider_name
+            user_id=user.id, tenant_id=tenant_id, plugin_id=plugin_id, provider=provider_name
         )
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
         authorization_url_response = oauth_handler.get_authorization_url(
@@ -800,11 +790,11 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider):
-        parser = reqparse.RequestParser()
-        parser.add_argument("id", type=str, required=True, nullable=False, location="json")
+        current_user, current_tenant_id = current_account_with_tenant()
+        parser = reqparse.RequestParser().add_argument("id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         return BuiltinToolManageService.set_default_provider(
-            tenant_id=current_user.current_tenant_id, user_id=current_user.id, provider=provider, id=args["id"]
+            tenant_id=current_tenant_id, user_id=current_user.id, provider=provider, id=args["id"]
         )
 
 
@@ -814,18 +804,20 @@ class ToolOAuthCustomClient(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider):
-        parser = reqparse.RequestParser()
-        parser.add_argument("client_params", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("enable_oauth_custom_client", type=bool, required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("client_params", type=dict, required=False, nullable=True, location="json")
+            .add_argument("enable_oauth_custom_client", type=bool, required=False, nullable=True, location="json")
+        )
         args = parser.parse_args()
 
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
 
         if not user.is_admin_or_owner:
             raise Forbidden()
 
         return BuiltinToolManageService.save_custom_oauth_client_params(
-            tenant_id=user.current_tenant_id,
+            tenant_id=tenant_id,
             provider=provider,
             client_params=args.get("client_params", {}),
             enable_oauth_custom_client=args.get("enable_oauth_custom_client", True),
@@ -835,20 +827,18 @@ class ToolOAuthCustomClient(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
+        _, current_tenant_id = current_account_with_tenant()
         return jsonable_encoder(
-            BuiltinToolManageService.get_custom_oauth_client_params(
-                tenant_id=current_user.current_tenant_id, provider=provider
-            )
+            BuiltinToolManageService.get_custom_oauth_client_params(tenant_id=current_tenant_id, provider=provider)
         )
 
     @setup_required
     @login_required
     @account_initialization_required
     def delete(self, provider):
+        _, current_tenant_id = current_account_with_tenant()
         return jsonable_encoder(
-            BuiltinToolManageService.delete_custom_oauth_client_params(
-                tenant_id=current_user.current_tenant_id, provider=provider
-            )
+            BuiltinToolManageService.delete_custom_oauth_client_params(tenant_id=current_tenant_id, provider=provider)
         )
 
 
@@ -858,9 +848,10 @@ class ToolBuiltinProviderGetOauthClientSchemaApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
+        _, current_tenant_id = current_account_with_tenant()
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_oauth_client_schema(
-                tenant_id=current_user.current_tenant_id, provider_name=provider
+                tenant_id=current_tenant_id, provider_name=provider
             )
         )
 
@@ -871,7 +862,7 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credential_info(
@@ -887,25 +878,25 @@ class ToolProviderMCPApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("server_url", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("icon", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("icon_type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json", default="")
-        parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("timeout", type=float, required=False, nullable=False, location="json", default=30)
-        parser.add_argument(
-            "sse_read_timeout", type=float, required=False, nullable=False, location="json", default=300
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("server_url", type=str, required=True, nullable=False, location="json")
+            .add_argument("name", type=str, required=True, nullable=False, location="json")
+            .add_argument("icon", type=str, required=True, nullable=False, location="json")
+            .add_argument("icon_type", type=str, required=True, nullable=False, location="json")
+            .add_argument("icon_background", type=str, required=False, nullable=True, location="json", default="")
+            .add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
+            .add_argument("timeout", type=float, required=False, nullable=False, location="json", default=30)
+            .add_argument("sse_read_timeout", type=float, required=False, nullable=False, location="json", default=300)
+            .add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
         )
-        parser.add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
         args = parser.parse_args()
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
         if not is_valid_url(args["server_url"]):
             raise ValueError("Server URL is not valid.")
         return jsonable_encoder(
             MCPToolManageService.create_mcp_provider(
-                tenant_id=user.current_tenant_id,
+                tenant_id=tenant_id,
                 server_url=args["server_url"],
                 name=args["name"],
                 icon=args["icon"],
@@ -923,25 +914,28 @@ class ToolProviderMCPApi(Resource):
     @login_required
     @account_initialization_required
     def put(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("server_url", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("icon", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("icon_type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("timeout", type=float, required=False, nullable=True, location="json")
-        parser.add_argument("sse_read_timeout", type=float, required=False, nullable=True, location="json")
-        parser.add_argument("headers", type=dict, required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("server_url", type=str, required=True, nullable=False, location="json")
+            .add_argument("name", type=str, required=True, nullable=False, location="json")
+            .add_argument("icon", type=str, required=True, nullable=False, location="json")
+            .add_argument("icon_type", type=str, required=True, nullable=False, location="json")
+            .add_argument("icon_background", type=str, required=False, nullable=True, location="json")
+            .add_argument("provider_id", type=str, required=True, nullable=False, location="json")
+            .add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
+            .add_argument("timeout", type=float, required=False, nullable=True, location="json")
+            .add_argument("sse_read_timeout", type=float, required=False, nullable=True, location="json")
+            .add_argument("headers", type=dict, required=False, nullable=True, location="json")
+        )
         args = parser.parse_args()
         if not is_valid_url(args["server_url"]):
             if "[__HIDDEN__]" in args["server_url"]:
                 pass
             else:
                 raise ValueError("Server URL is not valid.")
+        _, current_tenant_id = current_account_with_tenant()
         MCPToolManageService.update_mcp_provider(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             provider_id=args["provider_id"],
             server_url=args["server_url"],
             name=args["name"],
@@ -959,10 +953,12 @@ class ToolProviderMCPApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "provider_id", type=str, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
-        MCPToolManageService.delete_mcp_tool(tenant_id=current_user.current_tenant_id, provider_id=args["provider_id"])
+        _, current_tenant_id = current_account_with_tenant()
+        MCPToolManageService.delete_mcp_tool(tenant_id=current_tenant_id, provider_id=args["provider_id"])
         return {"result": "success"}
 
 
@@ -972,12 +968,14 @@ class ToolMCPAuthApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("authorization_code", type=str, required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("provider_id", type=str, required=True, nullable=False, location="json")
+            .add_argument("authorization_code", type=str, required=False, nullable=True, location="json")
+        )
         args = parser.parse_args()
         provider_id = args["provider_id"]
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
         provider = MCPToolManageService.get_mcp_provider_by_provider_id(provider_id, tenant_id)
         if not provider:
             raise ValueError("provider not found")
@@ -1018,8 +1016,8 @@ class ToolMCPDetailApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider_id):
-        user = current_user
-        provider = MCPToolManageService.get_mcp_provider_by_provider_id(provider_id, user.current_tenant_id)
+        _, tenant_id = current_account_with_tenant()
+        provider = MCPToolManageService.get_mcp_provider_by_provider_id(provider_id, tenant_id)
         return jsonable_encoder(ToolTransformService.mcp_provider_to_user_provider(provider, for_list=True))
 
 
@@ -1029,8 +1027,7 @@ class ToolMCPListAllApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user = current_user
-        tenant_id = user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         tools = MCPToolManageService.retrieve_mcp_tools(tenant_id=tenant_id)
 
@@ -1043,7 +1040,7 @@ class ToolMCPUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider_id):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
         tools = MCPToolManageService.list_mcp_tool_from_remote_server(
             tenant_id=tenant_id,
             provider_id=provider_id,
@@ -1054,9 +1051,11 @@ class ToolMCPUpdateApi(Resource):
 @console_ns.route("/mcp/oauth/callback")
 class ToolMCPCallbackApi(Resource):
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("code", type=str, required=True, nullable=False, location="args")
-        parser.add_argument("state", type=str, required=True, nullable=False, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("code", type=str, required=True, nullable=False, location="args")
+            .add_argument("state", type=str, required=True, nullable=False, location="args")
+        )
         args = parser.parse_args()
         state_key = args["state"]
         authorization_code = args["code"]

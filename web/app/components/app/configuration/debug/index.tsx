@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import produce, { setAutoFreeze } from 'immer'
+import { produce, setAutoFreeze } from 'immer'
 import { useBoolean } from 'ahooks'
 import {
   RiAddLine,
@@ -110,7 +110,7 @@ const Debug: FC<IDebug> = ({
       setIsShowFormattingChangeConfirm(true)
   }, [formattingChanged])
 
-  const debugWithSingleModelRef = React.useRef<DebugWithSingleModelRefType | null>(null)
+  const debugWithSingleModelRef = React.useRef<DebugWithSingleModelRefType>(null!)
   const handleClearConversation = () => {
     debugWithSingleModelRef.current?.handleRestart()
   }

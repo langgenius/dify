@@ -179,6 +179,7 @@ const translation = {
     about: 'Dify について',
     logout: 'ログアウト',
     github: 'GitHub',
+    contactUs: 'お問い合わせ',
   },
   compliance: {
     soc2Type1: 'SOC 2 Type I 報告書',

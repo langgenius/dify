@@ -29,6 +29,8 @@ import type {
 } from '@/models/share'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
+import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import { getWebAppAccessToken } from './webapp-auth'
 
 export enum AppSourceType {
   webApp = 'webApp',
@@ -275,16 +277,16 @@ export const textToAudioStream = (url: string, appSourceType: AppSourceType, hea
   return (getAction('post', appSourceType))(url, { body, header }, { needAllResponseContent: true })
 }
 
-export const fetchAccessToken = async ({ appCode, userId, webAppAccessToken }: { appCode: string, userId?: string, webAppAccessToken?: string | null }) => {
+export const fetchAccessToken = async ({ userId, appCode }: { userId?: string, appCode: string }) => {
   const headers = new Headers()
-  headers.append('X-App-Code', appCode)
+  headers.append(WEB_APP_SHARE_CODE_HEADER_NAME, appCode)
+  const accessToken = getWebAppAccessToken()
+  if (accessToken)
+    headers.append('Authorization', `Bearer ${accessToken}`)
   const params = new URLSearchParams()
-  if (webAppAccessToken)
-    params.append('web_app_access_token', webAppAccessToken)
-  if (userId)
-    params.append('user_id', userId)
+  userId && params.append('user_id', userId)
   const url = `/passport?${params.toString()}`
-  return get(url, { headers }) as Promise<{ access_token: string }>
+  return get<{ access_token: string }>(url, { headers }) as Promise<{ access_token: string }>
 }
 
 export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {

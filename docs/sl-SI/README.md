@@ -128,6 +128,14 @@ Star Dify on GitHub and be instantly notified of new releases.
 
 Če morate prilagoditi konfiguracijo, si oglejte komentarje v naši datoteki .env.example in posodobite ustrezne vrednosti v svoji .env datoteki. Poleg tega boste morda morali prilagoditi docker-compose.yamlsamo datoteko, na primer spremeniti različice slike, preslikave vrat ali namestitve nosilca, glede na vaše specifično okolje in zahteve za uvajanje. Po kakršnih koli spremembah ponovno zaženite docker-compose up -d. Celoten seznam razpoložljivih spremenljivk okolja najdete tukaj .
 
+### Spremljanje metrik z Grafana
+
+Uvoz nadzorne plošče v Grafana, z uporabo Difyjeve PostgreSQL baze podatkov kot vir podatkov, za spremljanje metrike glede na podrobnost aplikacij, najemnikov, sporočil in drugega.
+
+- [Nadzorna plošča Grafana avtorja @bowenliang123](https://github.com/bowenliang123/dify-grafana-dashboard)
+
+### Namestitev s Kubernetes
+
 Če želite konfigurirati visoko razpoložljivo nastavitev, so na voljo Helm Charts in datoteke YAML, ki jih prispeva skupnost, ki omogočajo uvedbo Difyja v Kubernetes.
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)

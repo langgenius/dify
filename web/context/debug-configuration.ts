@@ -244,7 +244,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   },
   datasetConfigsRef: {
     current: null,
-  },
+  } as unknown as RefObject<DatasetConfigs>,
   setDatasetConfigs: noop,
   hasSetContextVar: false,
   isShowVisionConfig: false,

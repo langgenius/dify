@@ -1,4 +1,3 @@
-export { default as AiText } from './AiText'
 export { default as ChatBotSlim } from './ChatBotSlim'
 export { default as ChatBot } from './ChatBot'
 export { default as CuteRobot } from './CuteRobot'

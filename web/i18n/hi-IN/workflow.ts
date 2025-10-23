@@ -340,6 +340,7 @@ const translation = {
     organizeBlocks: 'नोड्स का आयोजन करें',
     minimize: 'पूर्ण स्क्रीन से बाहर निकलें',
     maximize: 'कैनवास का अधिकतम लाभ उठाएँ',
+    optional_and_hidden: '(वैकल्पिक और छिपा हुआ)',
   },
   nodes: {
     common: {
@@ -968,6 +969,8 @@ const translation = {
       chunksVariableIsRequired: 'टुकड़े चर आवश्यक है',
       embeddingModelIsRequired: 'एम्बेडिंग मॉडल आवश्यक है',
       rerankingModelIsRequired: 'पुनः क्रमांकन मॉडल की आवश्यकता है',
+      rerankingModelIsInvalid: 'पुनः क्रमांकन मॉडल अमान्य है',
+      embeddingModelIsInvalid: 'एम्बेडिंग मॉडल अमान्य है',
     },
   },
   tracing: {

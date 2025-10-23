@@ -340,6 +340,7 @@ const translation = {
     moveToThisNode: '定位至此节点',
     maximize: '最大化画布',
     minimize: '退出最大化',
+    optional_and_hidden: '（选填 & 隐藏）',
   },
   nodes: {
     common: {
@@ -958,8 +959,10 @@ const translation = {
       indexMethodIsRequired: '索引方法是必需的',
       chunksVariableIsRequired: 'Chunks 变量是必需的',
       embeddingModelIsRequired: 'Embedding 模型是必需的',
+      embeddingModelIsInvalid: '无效的 Embedding 模型',
       retrievalSettingIsRequired: '检索设置是必需的',
       rerankingModelIsRequired: 'Reranking 模型是必需的',
+      rerankingModelIsInvalid: '无效的 Reranking 模型',
     },
   },
   tracing: {

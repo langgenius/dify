@@ -2,7 +2,6 @@ import json
 from typing import cast
 
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource, fields
 from werkzeug.exceptions import Forbidden
 
@@ -15,8 +14,7 @@ from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from libs.login import login_required
-from models.account import Account
+from libs.login import current_account_with_tenant, login_required
 from models.model import AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 
@@ -54,16 +52,14 @@ class ModelConfigResource(Resource):
     @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
     def post(self, app_model):
         """Modify app model config"""
-        if not isinstance(current_user, Account):
-            raise Forbidden()
+        current_user, current_tenant_id = current_account_with_tenant()
 
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        assert current_user.current_tenant_id is not None, "The tenant information should be loaded."
         # validate config
         model_configuration = AppModelConfigService.validate_configuration(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             config=cast(dict, request.json),
             app_mode=AppMode.value_of(app_model.mode),
         )
@@ -95,12 +91,12 @@ class ModelConfigResource(Resource):
                 # get tool
                 try:
                     tool_runtime = ToolManager.get_agent_tool_runtime(
-                        tenant_id=current_user.current_tenant_id,
+                        tenant_id=current_tenant_id,
                         app_id=app_model.id,
                         agent_tool=agent_tool_entity,
                     )
                     manager = ToolParameterConfigurationManager(
-                        tenant_id=current_user.current_tenant_id,
+                        tenant_id=current_tenant_id,
                         tool_runtime=tool_runtime,
                         provider_name=agent_tool_entity.provider_id,
                         provider_type=agent_tool_entity.provider_type,
@@ -134,7 +130,7 @@ class ModelConfigResource(Resource):
                 else:
                     try:
                         tool_runtime = ToolManager.get_agent_tool_runtime(
-                            tenant_id=current_user.current_tenant_id,
+                            tenant_id=current_tenant_id,
                             app_id=app_model.id,
                             agent_tool=agent_tool_entity,
                         )
@@ -142,7 +138,7 @@ class ModelConfigResource(Resource):
                         continue
 
                 manager = ToolParameterConfigurationManager(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     tool_runtime=tool_runtime,
                     provider_name=agent_tool_entity.provider_id,
                     provider_type=agent_tool_entity.provider_type,
