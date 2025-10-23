@@ -31,8 +31,14 @@ class TokenBufferMemory:
     ):
         self.conversation = conversation
         self.model_instance = model_instance
-        self._session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_maker)
+        self._workflow_run_repo = None
+
+    @property
+    def workflow_run_repo(self):
+        if self._workflow_run_repo is None:
+            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+            self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        return self._workflow_run_repo
 
     def _build_prompt_message_with_files(
         self,
@@ -58,7 +64,7 @@ class TokenBufferMemory:
             if not app:
                 raise ValueError("App not found for conversation")
 
-            workflow_run = self._workflow_run_repo.get_workflow_run_by_id(
+            workflow_run = self.workflow_run_repo.get_workflow_run_by_id(
                 tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id
             )
             if not workflow_run:
