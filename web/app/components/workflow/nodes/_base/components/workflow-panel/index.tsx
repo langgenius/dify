@@ -79,6 +79,7 @@ import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useAppContext } from '@/context/app-context'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { useAllBuiltInTools } from '@/service/use-tools'
 
 const getCustomRunForm = (params: CustomRunFormProps): React.JSX.Element => {
   const nodeType = params.payload.type
@@ -303,9 +304,9 @@ const BasePanel: FC<BasePanelProps> = ({
     return {}
   })()
 
-  const buildInTools = useStore(s => s.buildInTools)
+  const { data: buildInTools } = useAllBuiltInTools()
   const currCollection = useMemo(() => {
-    return buildInTools.find(item => canFindTool(item.id, data.provider_id))
+    return buildInTools?.find(item => canFindTool(item.id, data.provider_id))
   }, [buildInTools, data.provider_id])
   const showPluginAuth = useMemo(() => {
     return data.type === BlockEnum.Tool && currCollection?.allow_delete

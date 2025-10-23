@@ -1,27 +1,27 @@
 import type { Dispatch, SetStateAction } from 'react'
 import React, { useCallback, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import type { OnSelectBlock } from '../types'
-import Tools from './tools'
-import { ToolTypeEnum } from './types'
-import type { ViewType } from './view-type-select'
+import type { OnSelectBlock } from '@/app/components/workflow/types'
+import type { ViewType } from '@/app/components/workflow/block-selector/view-type-select'
 import { RiMoreLine } from '@remixicon/react'
 import Loading from '@/app/components/base/loading'
 import Link from 'next/link'
 import { getMarketplaceUrl } from '@/utils/var'
 import { useRAGRecommendedPlugins } from '@/service/use-tools'
+import List from './list'
+import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 
-type RAGToolSuggestionsProps = {
+type RAGToolRecommendationsProps = {
   viewType: ViewType
   onSelect: OnSelectBlock
   onTagsChange: Dispatch<SetStateAction<string[]>>
 }
 
-const RAGToolSuggestions: React.FC<RAGToolSuggestionsProps> = ({
+const RAGToolRecommendations = ({
   viewType,
   onSelect,
   onTagsChange,
-}) => {
+}: RAGToolRecommendationsProps) => {
   const { t } = useTranslation()
 
   const {
@@ -31,7 +31,13 @@ const RAGToolSuggestions: React.FC<RAGToolSuggestionsProps> = ({
 
   const recommendedPlugins = useMemo(() => {
     if (ragRecommendedPlugins)
-      return [...ragRecommendedPlugins.installed_recommended_plugins]
+      return ragRecommendedPlugins.installed_recommended_plugins
+    return []
+  }, [ragRecommendedPlugins])
+
+  const unInstalledPlugins = useMemo(() => {
+    if (ragRecommendedPlugins)
+      return (ragRecommendedPlugins.uninstalled_recommended_plugins).map(getFormattedPlugin)
     return []
   }, [ragRecommendedPlugins])
 
@@ -53,10 +59,10 @@ const RAGToolSuggestions: React.FC<RAGToolSuggestionsProps> = ({
           <Loading type='app' />
         </div>
       )}
-      {!isFetchingRAGRecommendedPlugins && recommendedPlugins.length === 0 && (
+      {!isFetchingRAGRecommendedPlugins && recommendedPlugins.length === 0 && unInstalledPlugins.length === 0 && (
         <p className='system-xs-regular px-3 py-1 text-text-tertiary'>
           <Trans
-            i18nKey='pipeline.ragToolSuggestions.noRecommendationPluginsInstalled'
+            i18nKey='pipeline.ragToolSuggestions.noRecommendationPlugins'
             components={{
               CustomLink: (
                 <Link
@@ -70,16 +76,13 @@ const RAGToolSuggestions: React.FC<RAGToolSuggestionsProps> = ({
           />
         </p>
       )}
-      {!isFetchingRAGRecommendedPlugins && recommendedPlugins.length > 0 && (
+      {!isFetchingRAGRecommendedPlugins && (recommendedPlugins.length > 0 || unInstalledPlugins.length > 0) && (
         <>
-          <Tools
-            className='p-0'
+          <List
             tools={recommendedPlugins}
+            unInstalledPlugins={unInstalledPlugins}
             onSelect={onSelect}
-            canNotSelectMultiple
-            toolType={ToolTypeEnum.All}
             viewType={viewType}
-            hasSearchText={false}
           />
           <div
             className='flex cursor-pointer items-center gap-x-2 py-1 pl-3 pr-2'
@@ -98,4 +101,4 @@ const RAGToolSuggestions: React.FC<RAGToolSuggestionsProps> = ({
   )
 }
 
-export default React.memo(RAGToolSuggestions)
+export default React.memo(RAGToolRecommendations)

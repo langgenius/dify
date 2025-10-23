@@ -39,7 +39,6 @@ import {
 } from './types'
 import {
   useEdgesInteractions,
-  useFetchToolsData,
   useNodesInteractions,
   useNodesReadOnly,
   useNodesSyncDraft,
@@ -98,6 +97,12 @@ import useMatchSchemaType from './nodes/_base/components/variable/use-match-sche
 import type { VarInInspect } from '@/types/workflow'
 import { fetchAllInspectVars } from '@/service/workflow'
 import cn from '@/utils/classnames'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 
 const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
   ssr: false,
@@ -307,13 +312,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
       setIsMouseOverCanvas(onPane)
     }
   })
-  const { handleFetchAllTools } = useFetchToolsData()
-  useEffect(() => {
-    handleFetchAllTools('builtin')
-    handleFetchAllTools('custom')
-    handleFetchAllTools('workflow')
-    handleFetchAllTools('mcp')
-  }, [handleFetchAllTools])
 
   const {
     handleNodeDragStart,
@@ -364,10 +362,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
   const { schemaTypeDefinitions } = useMatchSchemaType()
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
-  const mcpTools = useStore(s => s.mcpTools)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
   const dataSourceList = useStore(s => s.dataSourceList)
   // buildInTools, customTools, workflowTools, mcpTools, dataSourceList
   const configsMap = useHooksStore(s => s.configsMap)
@@ -388,10 +386,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
         passInVars: true,
         vars,
         passedInAllPluginInfoList: {
-          buildInTools,
-          customTools,
-          workflowTools,
-          mcpTools,
+          buildInTools: buildInTools || [],
+          customTools: customTools || [],
+          workflowTools: workflowTools || [],
+          mcpTools: mcpTools || [],
           dataSourceList: dataSourceList ?? [],
         },
         passedInSchemaTypeDefinitions: schemaTypeDefinitions,
