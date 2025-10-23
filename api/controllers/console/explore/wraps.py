@@ -76,6 +76,8 @@ def trial_app_required(view: Callable[Concatenate[App, P], R] | None = None):
     def decorator(view: Callable[Concatenate[App, P], R]):
         @wraps(view)
         def decorated(app_id: str, *args: P.args, **kwargs: P.kwargs):
+            current_user, _ = current_account_with_tenant()
+
             trial_app = db.session.query(TrialApp).where(TrialApp.app_id == str(app_id)).first()
 
             if trial_app is None:
@@ -84,8 +86,6 @@ def trial_app_required(view: Callable[Concatenate[App, P], R] | None = None):
 
             if app is None:
                 raise TrialAppNotAllowed()
-
-            assert isinstance(current_user, Account)
 
             account_trial_app_record = (
                 db.session.query(AccountTrialAppRecord)
