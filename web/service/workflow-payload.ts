@@ -4,7 +4,7 @@ import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 
 export type TriggerPluginNodePayload = {
   title: string
-  desc?: string
+  desc: string
   plugin_id: string
   provider_id: string
   event_name: string
@@ -27,7 +27,7 @@ const sanitizeTriggerPluginNode = (node: Node<TriggerPluginNodePayload>): Node<T
   const sanitizedData: TriggerPluginNodePayload & { type: BlockEnum.TriggerPlugin } = {
     type: BlockEnum.TriggerPlugin,
     title: data.title ?? '',
-    desc: data.desc,
+    desc: data.desc ?? '',
     plugin_id: data.plugin_id ?? '',
     provider_id: data.provider_id ?? '',
     event_name: data.event_name ?? '',
