@@ -81,7 +81,6 @@ class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
         """
         Stop workflow task
         """
-        _, _ = current_account_with_tenant()
         app_model = installed_app.app
         if not app_model:
             raise NotWorkflowAppError()
