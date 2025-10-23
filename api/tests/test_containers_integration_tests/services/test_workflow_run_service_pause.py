@@ -525,9 +525,7 @@ class TestWorkflowRunServiceTestContainersEdgeCases:
         return WorkflowRunService(engine, file_service)
 
     @pytest.fixture(autouse=True)
-    def setup_test_data(
-        self, db_session_with_containers, flask_req_ctx_with_containers, engine, file_service, workflow_run_service
-    ):
+    def setup_test_data(self, db_session_with_containers, file_service, workflow_run_service):
         """Set up test data for edge case tests using TestContainers."""
         # Create test tenant and account
         from models.account import Tenant, TenantAccountJoin, TenantAccountRole
@@ -717,10 +715,11 @@ class TestWorkflowRunServiceTestContainersEdgeCases:
 
         # Act - Try to resume again
         with pytest.raises(_InvalidStateTransitionError):
-            self.workflow_run_service.mark_as_resumed(pause_entity)  # Should not raise an error
+            # Should raise an `_InvalidStateTransitionError` error
+            self.workflow_run_service.mark_as_resumed(pause_entity)
 
     def test_pause_already_paused_workflow(self):
-        """Test resuming an already resumed pause state."""
+        """Test pausing an already paused workflow."""
         # Create a workflow run for this test
         test_workflow_run = WorkflowRun(
             id=str(uuid.uuid4()),

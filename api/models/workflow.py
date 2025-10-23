@@ -569,7 +569,6 @@ class WorkflowRun(Base):
     pause_id: Mapped[StringUUID | None] = mapped_column(StringUUID, nullable=True)
 
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
-        back_populates="workflow_run",
         # require explicit preloading.
         lazy="raise",
         foreign_keys=[pause_id],
@@ -1645,7 +1644,7 @@ class WorkflowPause(ModelMixin, Base):
     )
 
     # `workflow_run_id` represents the identifier of the execution of workflow,
-    # correspond to the `id` field of `WorkflowNodeExecutionModel`.
+    # correspond to the `id` field of `WorkflowRun`.
     workflow_run_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,

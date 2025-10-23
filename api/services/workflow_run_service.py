@@ -238,10 +238,9 @@ class WorkflowRunService:
             return None
         if pause_model.state_file is None:
             msg = (
-                "StateFile not exists for PauseState, workflow_run_id={}, pause_state_id={}, upload_file_id={}".format(
-                    run.id, pause_model.id, pause_model.state_file_id
-                )
-            )
+                "StateFile not exists for PauseState, WorkflowRun.id={}, "
+                "WorkflowPause.id={}, WorkflowPause.state_file_id={}"
+            ).format(run.id, pause_model.id, pause_model.state_file_id)
             raise _StateFileNotExistError(msg)
         return WorkflowPauseEntity(model=pause_model, upload_file=pause_model.state_file)
 
