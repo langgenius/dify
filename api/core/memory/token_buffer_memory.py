@@ -20,6 +20,7 @@ from extensions.ext_database import db
 from factories import file_factory
 from models.model import AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
 
 
@@ -31,10 +32,10 @@ class TokenBufferMemory:
     ):
         self.conversation = conversation
         self.model_instance = model_instance
-        self._workflow_run_repo = None
+        self._workflow_run_repo: APIWorkflowRunRepository | None = None
 
     @property
-    def workflow_run_repo(self):
+    def workflow_run_repo(self) -> APIWorkflowRunRepository:
         if self._workflow_run_repo is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
             self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
