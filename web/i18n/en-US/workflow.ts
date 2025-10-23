@@ -1054,8 +1054,10 @@ const translation = {
       indexMethodIsRequired: 'Index method is required',
       chunksVariableIsRequired: 'Chunks variable is required',
       embeddingModelIsRequired: 'Embedding model is required',
+      embeddingModelIsInvalid: 'Embedding model is invalid',
       retrievalSettingIsRequired: 'Retrieval setting is required',
       rerankingModelIsRequired: 'Reranking model is required',
+      rerankingModelIsInvalid: 'Reranking model is invalid',
     },
     triggerSchedule: {
       title: 'Schedule',

@@ -121,7 +121,9 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         icon,
         icon_background,
       },
-      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+      onSaveCallback: (newExternalDataTool?: ExternalDataTool) => {
+        if (!newExternalDataTool)
+          return
         const newPromptVariables = oldPromptVariables.map((item, i) => {
           if (i === index) {
             return {

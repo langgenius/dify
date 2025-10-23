@@ -64,7 +64,8 @@ if [[ "${MODE}" == "worker" ]]; then
 
   exec celery -A app.celery worker -P ${WORKER_POOL} $CONCURRENCY_OPTION \
     --max-tasks-per-child ${MAX_TASKS_PER_CHILD:-50} --loglevel ${LOG_LEVEL:-INFO} \
-    -Q ${DEFAULT_QUEUES}
+    -Q ${DEFAULT_QUEUES} \
+    --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-1}
 
 elif [[ "${MODE}" == "beat" ]]; then
   exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO}

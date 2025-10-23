@@ -947,6 +947,8 @@ const translation = {
       chunksVariableIsRequired: 'Переменная chunks обязательна',
       embeddingModelIsRequired: 'Требуется модель встраивания',
       rerankingModelIsRequired: 'Требуется модель перераспределения рангов',
+      rerankingModelIsInvalid: 'Модель повторной ранжировки недействительна',
+      embeddingModelIsInvalid: 'Модель встраивания недействительна',
     },
   },
   tracing: {

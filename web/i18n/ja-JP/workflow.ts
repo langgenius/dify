@@ -988,6 +988,8 @@ const translation = {
       chunksVariableIsRequired: 'Chunks変数は必須です',
       embeddingModelIsRequired: '埋め込みモデルが必要です',
       rerankingModelIsRequired: '再ランキングモデルが必要です',
+      embeddingModelIsInvalid: '埋め込みモデルが無効です',
+      rerankingModelIsInvalid: 'リランキングモデルは無効です',
     },
     triggerSchedule: {
       frequency: {

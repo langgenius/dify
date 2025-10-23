@@ -320,7 +320,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
           {type === InputVarType.paragraph && (
             <Field title={t('appDebug.variableConfig.defaultValue')}>
               <Textarea
-                value={tempPayload.default || ''}
+                value={String(tempPayload.default ?? '')}
                 onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
                 placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               />

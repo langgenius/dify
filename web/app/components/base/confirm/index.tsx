@@ -7,7 +7,7 @@ import Tooltip from '../tooltip'
 export type IConfirm = {
   className?: string
   isShow: boolean
-  type?: 'info' | 'warning'
+  type?: 'info' | 'warning' | 'danger'
   title: string
   content?: React.ReactNode
   confirmText?: string | null

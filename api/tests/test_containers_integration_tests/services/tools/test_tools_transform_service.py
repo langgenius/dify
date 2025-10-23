@@ -6,6 +6,7 @@ from faker import Faker
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
+from libs.uuid_utils import uuidv7
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
@@ -67,6 +68,7 @@ class TestToolTransformService:
             )
         elif provider_type == "workflow":
             provider = WorkflowToolProvider(
+                id=str(uuidv7()),
                 name=fake.company(),
                 description=fake.text(max_nb_chars=100),
                 icon='{"background": "#FF6B6B", "content": "🔧"}',
@@ -759,6 +761,7 @@ class TestToolTransformService:
 
         # Create workflow tool provider
         provider = WorkflowToolProvider(
+            id=str(uuidv7()),
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             icon='{"background": "#FF6B6B", "content": "🔧"}',

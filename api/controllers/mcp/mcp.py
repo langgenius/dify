@@ -9,9 +9,10 @@ from controllers.console.app.mcp_server import AppMCPServerStatus
 from controllers.mcp import mcp_ns
 from core.app.app_config.entities import VariableEntity
 from core.mcp import types as mcp_types
+from core.mcp.server.streamable_http import handle_mcp_request
 from extensions.ext_database import db
 from libs import helper
-from models.model import App, AppMCPServer, AppMode
+from models.model import App, AppMCPServer, AppMode, EndUser
 
 
 class MCPRequestError(Exception):
@@ -192,6 +193,51 @@ class MCPAppApi(Resource):
             except ValidationError as e:
                 raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid MCP request: {str(e)}")
 
-        mcp_server_handler = MCPServerStreamableHTTPRequestHandler(app, request, converted_user_input_form)
-        response = mcp_server_handler.handle()
-        return helper.compact_generate_response(response)
+    def _retrieve_end_user(self, tenant_id: str, mcp_server_id: str) -> EndUser | None:
+        """Get end user - manages its own database session"""
+        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+            return (
+                session.query(EndUser)
+                .where(EndUser.tenant_id == tenant_id)
+                .where(EndUser.session_id == mcp_server_id)
+                .where(EndUser.type == "mcp")
+                .first()
+            )
+
+    def _create_end_user(
+        self, client_name: str, tenant_id: str, app_id: str, mcp_server_id: str, session: Session
+    ) -> EndUser:
+        """Create end user in existing session"""
+        end_user = EndUser(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            type="mcp",
+            name=client_name,
+            session_id=mcp_server_id,
+        )
+        session.add(end_user)
+        session.flush()  # Use flush instead of commit to keep transaction open
+        session.refresh(end_user)
+        return end_user
+
+    def _handle_mcp_request(
+        self,
+        app: App,
+        mcp_server: AppMCPServer,
+        mcp_request: mcp_types.ClientRequest,
+        user_input_form: list[VariableEntity],
+        session: Session,
+        request_id: Union[int, str],
+    ) -> mcp_types.JSONRPCResponse | mcp_types.JSONRPCError | None:
+        """Handle MCP request and return response"""
+        end_user = self._retrieve_end_user(mcp_server.tenant_id, mcp_server.id)
+
+        if not end_user and isinstance(mcp_request.root, mcp_types.InitializeRequest):
+            client_info = mcp_request.root.params.clientInfo
+            client_name = f"{client_info.name}@{client_info.version}"
+            # Commit the session before creating end user to avoid transaction conflicts
+            session.commit()
+            with Session(db.engine, expire_on_commit=False) as create_session, create_session.begin():
+                end_user = self._create_end_user(client_name, app.tenant_id, app.id, mcp_server.id, create_session)
+
+        return handle_mcp_request(app, mcp_request, user_input_form, mcp_server, end_user, request_id)

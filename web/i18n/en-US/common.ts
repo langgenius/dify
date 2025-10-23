@@ -178,6 +178,7 @@ const translation = {
   },
   userProfile: {
     settings: 'Settings',
+    contactUs: 'Contact Us',
     emailSupport: 'Email Support',
     workspace: 'Workspace',
     createWorkspace: 'Create Workspace',

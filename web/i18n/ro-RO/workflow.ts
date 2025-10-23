@@ -947,6 +947,8 @@ const translation = {
       chunksVariableIsRequired: 'Variabila Chunks este obligatorie',
       embeddingModelIsRequired: 'Este necesar un model de încorporare',
       rerankingModelIsRequired: 'Este necesar un model de reordonare',
+      rerankingModelIsInvalid: 'Modelul de reordonare este invalid',
+      embeddingModelIsInvalid: 'Modelul de încorporare este invalid',
     },
   },
   tracing: {
