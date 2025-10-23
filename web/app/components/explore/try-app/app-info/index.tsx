@@ -13,6 +13,7 @@ type Props = {
   appDetail: TryAppInfo
   category?: string
   className?: string
+  onCreate: () => void
 }
 
 const headerClassName = 'system-sm-semibold-uppercase text-text-secondary mb-3'
@@ -21,6 +22,7 @@ const AppInfo: FC<Props> = ({
   className,
   category,
   appDetail,
+  onCreate,
 }) => {
   const { t } = useTranslation()
   const mode = appDetail?.mode
@@ -55,7 +57,7 @@ const AppInfo: FC<Props> = ({
       {appDetail.description && (
         <div className='system-sm-regular mt-[14px] shrink-0 text-text-secondary'>{appDetail.description}</div>
       )}
-      <Button variant='primary' className='mt-3 flex w-full max-w-full'>
+      <Button variant='primary' className='mt-3 flex w-full max-w-full' onClick={onCreate}>
         <RiAddLine className='mr-1 size-4 shrink-0' />
         <span className='truncate'>Create from this sample app</span>
       </Button>

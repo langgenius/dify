@@ -149,6 +149,11 @@ const Apps = ({
     setShowTryAppPanel(false)
   }, [setShowTryAppPanel])
   const appParams = useContextSelector(ExploreContext, ctx => ctx.currentApp)
+  const handleShowFromTryApp = useCallback(() => {
+    setCurrApp(appParams?.app || null)
+    setIsShowCreateModal(true)
+  }, [appParams?.app])
+
   if (!categories || categories.length === 0) {
     return (
       <div className="flex h-full items-center">
@@ -246,8 +251,9 @@ const Apps = ({
 
       {isShowTryAppPanel && (
         <TryApp appId={appParams?.appId || ''}
-          category={appParams?.category}
+          category={appParams?.app?.category}
           onClose={hideTryAppPanel}
+          onCreate={handleShowFromTryApp}
         />
       )}
     </div>

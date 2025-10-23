@@ -1,10 +1,10 @@
 import { createContext } from 'use-context-selector'
-import type { InstalledApp } from '@/models/explore'
+import type { App, InstalledApp } from '@/models/explore'
 import { noop } from 'lodash-es'
 
 export type CurrentTryAppParams = {
   appId: string
-  category?: string
+  app: App
 }
 
 type IExplore = {

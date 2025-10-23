@@ -32,7 +32,7 @@ const AppCard = ({
   const setShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.setShowTryAppPanel)
   const showTryAPPPanel = useCallback((appId: string) => {
     return () => {
-      setShowTryAppPanel?.(true, { appId, category: app.category })
+      setShowTryAppPanel?.(true, { appId, app })
     }
   }, [setShowTryAppPanel, app.category])
 
