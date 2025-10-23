@@ -1,11 +1,20 @@
-import React from 'react'
 import type { Preview } from '@storybook/react'
 import { withThemeByDataAttribute } from '@storybook/addon-themes'
-import I18nServer from '../app/components/i18n-server'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import I18N from '../app/components/i18n'
+import { ToastProvider } from '../app/components/base/toast'
 
 import '../app/styles/globals.css'
 import '../app/styles/markdown.scss'
 import './storybook.css'
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+    },
+  },
+})
 
 export const decorators = [
   withThemeByDataAttribute({
@@ -17,9 +26,15 @@ export const decorators = [
     attributeName: 'data-theme',
   }),
   (Story) => {
-    return <I18nServer>
-      <Story />
-    </I18nServer>
+    return (
+      <QueryClientProvider client={queryClient}>
+        <I18N locale="en-US">
+          <ToastProvider>
+            <Story />
+          </ToastProvider>
+        </I18N>
+      </QueryClientProvider>
+    )
   },
 ]
 
@@ -31,7 +46,11 @@ const preview: Preview = {
         date: /Date$/i,
       },
     },
+    docs: {
+      toc: true,
+    },
   },
+  tags: ['autodocs'],
 }
 
 export default preview

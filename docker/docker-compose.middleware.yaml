@@ -15,6 +15,8 @@ services:
                -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
                -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
                -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
+               -c 'statement_timeout=${POSTGRES_STATEMENT_TIMEOUT:-60000}'
+               -c 'idle_in_transaction_session_timeout=${POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT:-60000}'
     volumes:
       - ${PGDATA_HOST_VOLUME:-./volumes/db/data}:/var/lib/postgresql/data
     ports:
@@ -85,7 +87,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.3.0-local
+    image: langgenius/dify-plugin-daemon:0.3.3-local
     restart: always
     env_file:
       - ./middleware.env
@@ -181,7 +183,7 @@ services:
 
   # The Weaviate vector store.
   weaviate:
-    image: semitechnologies/weaviate:1.19.0
+    image: semitechnologies/weaviate:1.27.0
     profiles:
       - ""
       - weaviate
@@ -206,6 +208,7 @@ services:
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
     ports:
       - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
+      - "${EXPOSE_WEAVIATE_GRPC_PORT:-50051}:50051"
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.

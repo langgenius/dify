@@ -86,12 +86,16 @@ class WorkflowAppService:
                 ),
             )
         if created_by_account:
+            account = session.scalar(select(Account).where(Account.email == created_by_account))
+            if not account:
+                raise ValueError(f"Account not found: {created_by_account}")
+
             stmt = stmt.join(
                 Account,
                 and_(
                     WorkflowAppLog.created_by == Account.id,
                     WorkflowAppLog.created_by_role == CreatorUserRole.ACCOUNT,
-                    Account.email == created_by_account,
+                    Account.id == account.id,
                 ),
             )
 

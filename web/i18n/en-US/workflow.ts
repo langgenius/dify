@@ -340,6 +340,7 @@ const translation = {
     optional: '(optional)',
     maximize: 'Maximize Canvas',
     minimize: 'Exit Full Screen',
+    optional_and_hidden: '(optional & hidden)',
   },
   nodes: {
     common: {
@@ -958,8 +959,10 @@ const translation = {
       indexMethodIsRequired: 'Index method is required',
       chunksVariableIsRequired: 'Chunks variable is required',
       embeddingModelIsRequired: 'Embedding model is required',
+      embeddingModelIsInvalid: 'Embedding model is invalid',
       retrievalSettingIsRequired: 'Retrieval setting is required',
       rerankingModelIsRequired: 'Reranking model is required',
+      rerankingModelIsInvalid: 'Reranking model is invalid',
     },
   },
   tracing: {

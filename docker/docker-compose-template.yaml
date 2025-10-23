@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.9.1
+    image: langgenius/dify-api:1.9.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -31,7 +31,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.9.1
+    image: langgenius/dify-api:1.9.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -58,7 +58,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.9.1
+    image: langgenius/dify-api:1.9.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -76,7 +76,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.9.1
+    image: langgenius/dify-web:1.9.2
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -115,6 +115,8 @@ services:
                -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
                -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
                -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
+               -c 'statement_timeout=${POSTGRES_STATEMENT_TIMEOUT:-60000}'
+               -c 'idle_in_transaction_session_timeout=${POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT:-60000}'
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     healthcheck:
@@ -177,7 +179,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.3.0-local
+    image: langgenius/dify-plugin-daemon:0.3.3-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -329,9 +331,8 @@ services:
 
   # The Weaviate vector store.
   weaviate:
-    image: semitechnologies/weaviate:1.19.0
+    image: semitechnologies/weaviate:1.27.0
     profiles:
-      - ""
       - weaviate
     restart: always
     volumes:

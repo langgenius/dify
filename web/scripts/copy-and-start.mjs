@@ -31,23 +31,20 @@ const pathExists = async (path) => {
     console.debug(`Path exists: ${path}`)
     return true
   }
-  catch {
-    console.warn(`Path does not exist: ${path}`)
-    return false
+  catch (err) {
+    if (err.code === 'ENOENT') {
+      console.warn(`Path does not exist: ${path}`)
+      return false
+    }
+    throw err
   }
 }
 
 // Function to recursively copy directories
 const copyDir = async (src, dest) => {
-  try {
-    console.debug(`Copying directory from ${src} to ${dest}`)
-    await cp(src, dest, { recursive: true })
-    console.info(`Successfully copied ${src} to ${dest}`)
-  }
-  catch (err) {
-    console.error(`Error copying ${src} to ${dest}:`, err.message)
-    process.exit(1)
-  }
+  console.debug(`Copying directory from ${src} to ${dest}`)
+  await cp(src, dest, { recursive: true })
+  console.info(`Successfully copied ${src} to ${dest}`)
 }
 
 // Process each directory copy operation
@@ -55,8 +52,11 @@ const copyAllDirs = async () => {
   console.debug('Starting directory copy operations')
   for (const { src, dest } of DIRS_TO_COPY) {
     try {
-      console.debug(`Ensuring destination directory exists: ${dest}`)
-      await mkdir(dest, { recursive: true })
+      // Instead of pre-creating destination directory, we ensure parent directory exists
+      const destParent = path.dirname(dest)
+      console.debug(`Ensuring destination parent directory exists: ${destParent}`)
+      await mkdir(destParent, { recursive: true })
+      
       if (await pathExists(src))
         await copyDir(src, dest)
       else
@@ -77,7 +77,7 @@ const main = async () => {
 
   // Start server
   const port = process.env.npm_config_port || process.env.PORT || '3000'
-  const host = process.env.npm_config_host || process.env.HOSTNAME || 'localhost'
+  const host = process.env.npm_config_host || process.env.HOSTNAME || '0.0.0.0'
 
   console.info(`Starting server on ${host}:${port}`)
   console.debug(`Server script path: ${SERVER_SCRIPT_PATH}`)

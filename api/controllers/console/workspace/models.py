@@ -24,8 +24,7 @@ class DefaultModelApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
+        parser = reqparse.RequestParser().add_argument(
             "model_type",
             type=str,
             required=True,
@@ -51,8 +50,9 @@ class DefaultModelApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model_settings", type=list, required=True, nullable=False, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "model_settings", type=list, required=True, nullable=False, location="json"
+        )
         args = parser.parse_args()
         model_provider_service = ModelProviderService()
         model_settings = args["model_settings"]
@@ -107,19 +107,21 @@ class ModelProviderModelApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("load_balancing", type=dict, required=False, nullable=True, location="json")
+            .add_argument("config_from", type=str, required=False, nullable=True, location="json")
+            .add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="json")
         )
-        parser.add_argument("load_balancing", type=dict, required=False, nullable=True, location="json")
-        parser.add_argument("config_from", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="json")
         args = parser.parse_args()
 
         if args.get("config_from", "") == "custom-model":
@@ -167,15 +169,17 @@ class ModelProviderModelApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
         )
         args = parser.parse_args()
 
@@ -195,18 +199,20 @@ class ModelProviderModelCredentialApi(Resource):
     def get(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="args")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="args",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="args")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="args",
+            )
+            .add_argument("config_from", type=str, required=False, nullable=True, location="args")
+            .add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="args")
         )
-        parser.add_argument("config_from", type=str, required=False, nullable=True, location="args")
-        parser.add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="args")
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -260,18 +266,20 @@ class ModelProviderModelCredentialApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         )
-        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -305,19 +313,21 @@ class ModelProviderModelCredentialApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+            .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
         )
-        parser.add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -345,17 +355,19 @@ class ModelProviderModelCredentialApi(Resource):
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
         )
-        parser.add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -380,17 +392,19 @@ class ModelProviderModelCredentialSwitchApi(Resource):
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("credential_id", type=str, required=True, nullable=False, location="json")
         )
-        parser.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
         service = ModelProviderService()
@@ -414,15 +428,17 @@ class ModelProviderModelEnableApi(Resource):
     def patch(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
         )
         args = parser.parse_args()
 
@@ -444,15 +460,17 @@ class ModelProviderModelDisableApi(Resource):
     def patch(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
         )
         args = parser.parse_args()
 
@@ -472,17 +490,19 @@ class ModelProviderModelValidateApi(Resource):
     def post(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "model_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=[mt.value for mt in ModelType],
-            location="json",
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("model", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "model_type",
+                type=str,
+                required=True,
+                nullable=False,
+                choices=[mt.value for mt in ModelType],
+                location="json",
+            )
+            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         )
-        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -516,8 +536,9 @@ class ModelProviderModelParameterRuleApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider: str):
-        parser = reqparse.RequestParser()
-        parser.add_argument("model", type=str, required=True, nullable=False, location="args")
+        parser = reqparse.RequestParser().add_argument(
+            "model", type=str, required=True, nullable=False, location="args"
+        )
         args = parser.parse_args()
         _, tenant_id = current_account_with_tenant()
 
