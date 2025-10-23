@@ -79,7 +79,7 @@ const FeaturedTriggers = ({
     const visitedProviderIds = new Set<string>()
 
     limitedPlugins.forEach((plugin) => {
-      const provider = providerMap.get(plugin.plugin_id) || providerMap.get(plugin.plugin_unique_identifier)
+      const provider = providerMap.get(plugin.plugin_id) || providerMap.get(plugin.latest_package_identifier)
       if (provider) {
         if (!visitedProviderIds.has(provider.id)) {
           installed.push(provider)
