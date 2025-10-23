@@ -193,6 +193,9 @@ class QuestionClassifierNode(Node):
                     finish_reason = event.finish_reason
                     break
 
+            for class_ in node_data.classes:
+                class_.name = variable_pool.convert_template(class_.name).text
+
             category_name = node_data.classes[0].name
             category_id = node_data.classes[0].id
             if "<think>" in result_text:
