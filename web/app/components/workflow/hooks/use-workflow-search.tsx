@@ -8,7 +8,6 @@ import { workflowNodesAction } from '@/app/components/goto-anything/actions/work
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { setupNodeSelectionListener } from '../utils/node-navigation'
 import { BlockEnum } from '../types'
-import { useStore } from '../store'
 import type { Emoji } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { canFindTool } from '@/utils'
@@ -16,6 +15,7 @@ import type { LLMNodeType } from '../nodes/llm/types'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
+  useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
 
@@ -30,7 +30,7 @@ export const useWorkflowSearch = () => {
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
-  const mcpTools = useStore(s => s.mcpTools)
+  const { data: mcpTools } = useAllMCPTools()
 
   // Extract tool icon logic - clean separation of concerns
   const getToolIcon = useCallback((nodeData: CommonNodeType): string | Emoji | undefined => {

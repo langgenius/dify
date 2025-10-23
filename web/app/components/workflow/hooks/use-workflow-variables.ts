@@ -93,10 +93,6 @@ export const useWorkflowVariables = () => {
       conversationVariables,
       environmentVariables,
       ragPipelineVariables,
-      buildInTools,
-      customTools,
-      workflowTools,
-      mcpTools,
       dataSourceList,
     } = workflowStore.getState()
     return getVarType({
@@ -111,16 +107,16 @@ export const useWorkflowVariables = () => {
       conversationVariables,
       ragVariables: ragPipelineVariables,
       allPluginInfoList: {
-        buildInTools,
-        customTools,
-        workflowTools,
-        mcpTools,
+        buildInTools: buildInTools || [],
+        customTools: customTools || [],
+        workflowTools: workflowTools || [],
+        mcpTools: mcpTools || [],
         dataSourceList: dataSourceList ?? [],
       },
       schemaTypeDefinitions,
       preferSchemaType,
     })
-  }, [workflowStore, getVarType, schemaTypeDefinitions])
+  }, [workflowStore, getVarType, schemaTypeDefinitions, buildInTools, customTools, workflowTools, mcpTools])
 
   return {
     getNodeAvailableVars,
