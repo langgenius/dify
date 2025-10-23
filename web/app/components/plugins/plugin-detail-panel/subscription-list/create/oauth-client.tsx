@@ -189,7 +189,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
       onCancel={() => handleSave(false)}
       onConfirm={() => handleSave(true)}
       footerSlot={
-        oauthConfig?.custom_enabled && oauthConfig?.params && (
+        oauthConfig?.custom_enabled && oauthConfig?.params && clientType === ClientTypeEnum.Custom && (
           <div className='grow'>
             <Button
               variant='secondary'

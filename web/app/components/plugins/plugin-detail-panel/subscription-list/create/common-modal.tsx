@@ -370,6 +370,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
       disabled={isVerifyingCredentials || isBuilding}
       bottomSlot={currentStep === ApiKeyStep.Verify ? <EncryptedBottom /> : null}
       size={createType === SupportedCreationMethods.MANUAL ? 'md' : 'sm'}
+      containerClassName='min-h-[360px]'
     >
       {createType === SupportedCreationMethods.APIKEY && <MultiSteps currentStep={currentStep} />}
       {currentStep === ApiKeyStep.Verify && (
@@ -432,6 +433,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
                   credential_id: subscriptionBuilder?.id || '',
                 } : undefined,
                 fieldClassName: schema.type === FormTypeEnum.boolean ? 'flex items-center justify-between' : undefined,
+                labelClassName: schema.type === FormTypeEnum.boolean ? 'mb-0' : undefined,
               }
             })}
             ref={autoCommonParametersFormRef}

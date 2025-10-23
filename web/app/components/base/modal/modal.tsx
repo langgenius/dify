@@ -26,6 +26,7 @@ type ModalProps = {
   footerSlot?: React.ReactNode
   bottomSlot?: React.ReactNode
   disabled?: boolean
+  containerClassName?: string
 }
 const Modal = ({
   onClose,
@@ -44,6 +45,7 @@ const Modal = ({
   footerSlot,
   bottomSlot,
   disabled,
+  containerClassName,
 }: ModalProps) => {
   const { t } = useTranslation()
 
@@ -55,9 +57,10 @@ const Modal = ({
       >
         <div
           className={cn(
-            'flex max-h-[80%] min-h-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs',
+            'flex max-h-[80%] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs',
             size === 'sm' && 'w-[480px]',
             size === 'md' && 'w-[640px]',
+            containerClassName,
           )}
           onClick={e => e.stopPropagation()}
         >
