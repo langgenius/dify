@@ -4,7 +4,7 @@ import Confirm from '.'
 import Button from '../button'
 
 const meta = {
-  title: 'Base/General/Confirm',
+  title: 'Base/Dialog/Confirm',
   component: Confirm,
   parameters: {
     layout: 'centered',
