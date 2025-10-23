@@ -22,7 +22,7 @@ from core.errors.error import (
 from core.model_runtime.errors.invoke import InvokeError
 from core.workflow.graph_engine.manager import GraphEngineManager
 from libs import helper
-from libs.login import current_user as current_user_
+from libs.login import current_account_with_tenant
 from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
@@ -31,8 +31,6 @@ from .. import console_ns
 
 logger = logging.getLogger(__name__)
 
-current_user = current_user_._get_current_object()  # type: ignore
-
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
 class InstalledAppWorkflowRunApi(InstalledAppResource):
@@ -40,6 +38,7 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
         """
         Run workflow
         """
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         if not app_model:
             raise NotWorkflowAppError()
@@ -53,7 +52,6 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
             .add_argument("files", type=list, required=False, location="json")
         )
         args = parser.parse_args()
-        assert current_user is not None
         try:
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
@@ -83,13 +81,13 @@ class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
         """
         Stop workflow task
         """
+        _, _ = current_account_with_tenant()
         app_model = installed_app.app
         if not app_model:
             raise NotWorkflowAppError()
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
-        assert current_user is not None
 
         # Stop using both mechanisms for backward compatibility
         # Legacy stop flag mechanism (without user check)
