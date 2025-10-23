@@ -14,8 +14,7 @@ import { TransferMethod } from '@/app/components/base/chat/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { noop } from 'lodash-es'
-import cloneDeep from 'lodash-es/cloneDeep'
+import { cloneDeep, noop } from 'lodash-es'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 
 type TextGenerationItemProps = {
