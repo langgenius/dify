@@ -68,7 +68,7 @@ export default function AppSelector() {
     <div className="">
       <Menu as="div" className="relative inline-block text-left">
         {
-          ({ open }) => (
+          ({ open, close }) => (
             <>
               <MenuButton className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', open && 'bg-background-default-dodge')}>
                 <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
@@ -142,7 +142,7 @@ export default function AppSelector() {
                           <RiArrowRightUpLine className='size-[14px] shrink-0 text-text-tertiary' />
                         </Link>
                       </MenuItem>
-                      <Support />
+                      <Support closeAccountDropdown={close} />
                       {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
                     </div>
                     <div className='p-1'>
