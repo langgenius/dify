@@ -164,6 +164,9 @@ export const useWorkflowRun = () => {
     } = workflowStore.getState()
     setWorkflowRunningData({
       result: {
+        inputs_truncated: false,
+        process_data_truncated: false,
+        outputs_truncated: false,
         status: WorkflowRunningStatus.Running,
       },
       tracing: [],

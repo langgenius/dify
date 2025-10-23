@@ -4,7 +4,7 @@ from flask_restx import Resource, reqparse
 
 import services
 from configs import dify_config
-from constants.languages import languages
+from constants.languages import get_valid_language
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -207,10 +207,12 @@ class EmailCodeLoginApi(Resource):
             .add_argument("email", type=str, required=True, location="json")
             .add_argument("code", type=str, required=True, location="json")
             .add_argument("token", type=str, required=True, location="json")
+            .add_argument("language", type=str, required=False, location="json")
         )
         args = parser.parse_args()
 
         user_email = args["email"]
+        language = args["language"]
 
         token_data = AccountService.get_email_code_login_data(args["token"])
         if token_data is None:
@@ -244,7 +246,9 @@ class EmailCodeLoginApi(Resource):
         if account is None:
             try:
                 account = AccountService.create_account_and_tenant(
-                    email=user_email, name=user_email, interface_language=languages[0]
+                    email=user_email,
+                    name=user_email,
+                    interface_language=get_valid_language(language),
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()

@@ -984,6 +984,8 @@ const translation = {
       embeddingModelIsRequired: 'Se requiere un modelo de incrustación',
       rerankingModelIsRequired: 'Se requiere un modelo de reordenamiento',
       chunksVariableIsRequired: 'La variable Chunks es obligatoria',
+      rerankingModelIsInvalid: 'El modelo de reordenación no es válido',
+      embeddingModelIsInvalid: 'El modelo de incrustación no es válido',
     },
   },
   tracing: {

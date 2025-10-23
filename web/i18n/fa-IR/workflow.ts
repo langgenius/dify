@@ -984,6 +984,8 @@ const translation = {
       embeddingModelIsRequired: 'مدل جاسازی مورد نیاز است',
       chunksVariableIsRequired: 'متغیر تکه‌ها الزامی است',
       rerankingModelIsRequired: 'مدل رتبه‌بندی مجدد مورد نیاز است',
+      embeddingModelIsInvalid: 'مدل جاسازی نامعتبر است',
+      rerankingModelIsInvalid: 'مدل رتبه‌بندی مجدد نامعتبر است',
     },
   },
   tracing: {

@@ -48,8 +48,8 @@ type FormProps<
   fieldMoreInfo?: (payload: CredentialFormSchema | CustomFormSchema) => ReactNode
   customRenderField?: (
     formSchema: CustomFormSchema,
-    props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>
-  ) => ReactNode
+    props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>,
+  ) => ReactNode,
   // If return falsy value, this field will fallback to default render
   override?: [Array<FormTypeEnum>, (formSchema: CredentialFormSchema, props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>) => ReactNode]
   nodeId?: string

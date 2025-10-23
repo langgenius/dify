@@ -380,7 +380,7 @@ export type OnNodeAdd = (
     prevNodeSourceHandle?: string
     nextNodeId?: string
     nextNodeTargetHandle?: string
-  }
+  },
 ) => void
 
 export type CheckValidRes = {

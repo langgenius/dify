@@ -1,5 +1,6 @@
 import './types/i18n'
 import './types/jsx'
+import './types/mdx'
 
 declare module 'lamejs';
 declare module 'lamejs/src/js/MPEGMode';

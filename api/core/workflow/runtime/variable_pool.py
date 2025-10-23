@@ -277,7 +277,7 @@ class VariablePool(BaseModel):
             # This ensures that we can keep the id of the system variables intact.
             if self._has(selector):
                 continue
-            self.add(selector, value)  # type: ignore
+            self.add(selector, value)
 
     @classmethod
     def empty(cls) -> "VariablePool":

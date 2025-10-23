@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
-from constants.languages import language_timezone_mapping, languages
+from constants.languages import get_valid_language, language_timezone_mapping
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
@@ -1264,7 +1264,7 @@ class RegisterService:
         return f"member_invite:token:{token}"
 
     @classmethod
-    def setup(cls, email: str, name: str, password: str, ip_address: str):
+    def setup(cls, email: str, name: str, password: str, ip_address: str, language: str):
         """
         Setup dify
 
@@ -1274,11 +1274,10 @@ class RegisterService:
         :param ip_address: ip address
         """
         try:
-            # Register
             account = AccountService.create_account(
                 email=email,
                 name=name,
-                interface_language=languages[0],
+                interface_language=get_valid_language(language),
                 password=password,
                 is_setup=True,
             )
@@ -1320,7 +1319,7 @@ class RegisterService:
             account = AccountService.create_account(
                 email=email,
                 name=name,
-                interface_language=language or languages[0],
+                interface_language=get_valid_language(language),
                 password=password,
                 is_setup=is_setup,
             )

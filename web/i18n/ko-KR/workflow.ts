@@ -1032,6 +1032,8 @@ const translation = {
       chunksVariableIsRequired: 'Chunks 변수는 필수입니다',
       embeddingModelIsRequired: '임베딩 모델이 필요합니다',
       rerankingModelIsRequired: '재순위 모델이 필요합니다',
+      rerankingModelIsInvalid: '재정렬 모델이 유효하지 않습니다',
+      embeddingModelIsInvalid: '임베딩 모델이 유효하지 않습니다',
     },
   },
   tracing: {

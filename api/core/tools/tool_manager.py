@@ -331,7 +331,8 @@ class ToolManager:
             workflow_provider_stmt = select(WorkflowToolProvider).where(
                 WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id
             )
-            workflow_provider = db.session.scalar(workflow_provider_stmt)
+            with Session(db.engine, expire_on_commit=False) as session, session.begin():
+                workflow_provider = session.scalar(workflow_provider_stmt)
 
             if workflow_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")

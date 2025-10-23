@@ -952,6 +952,8 @@ const translation = {
       chunksVariableIsRequired: 'Змінна chunks є обов\'язковою',
       embeddingModelIsRequired: 'Потрібна модель вбудовування',
       rerankingModelIsRequired: 'Потрібна модель повторного ранжування',
+      embeddingModelIsInvalid: 'Модель вбудовування недійсна',
+      rerankingModelIsInvalid: 'Модель переналаштування недійсна',
     },
   },
   tracing: {

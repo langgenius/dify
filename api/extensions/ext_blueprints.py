@@ -2,6 +2,11 @@ from configs import dify_config
 from constants import HEADER_NAME_APP_CODE, HEADER_NAME_CSRF_TOKEN, HEADER_NAME_PASSPORT
 from dify_app import DifyApp
 
+BASE_CORS_HEADERS: tuple[str, ...] = ("Content-Type", HEADER_NAME_APP_CODE, HEADER_NAME_PASSPORT)
+SERVICE_API_HEADERS: tuple[str, ...] = (*BASE_CORS_HEADERS, "Authorization")
+AUTHENTICATED_HEADERS: tuple[str, ...] = (*SERVICE_API_HEADERS, HEADER_NAME_CSRF_TOKEN)
+FILES_HEADERS: tuple[str, ...] = (*BASE_CORS_HEADERS, HEADER_NAME_CSRF_TOKEN)
+
 
 def init_app(app: DifyApp):
     # register blueprint routers
@@ -17,7 +22,7 @@ def init_app(app: DifyApp):
 
     CORS(
         service_api_bp,
-        allow_headers=["Content-Type", "Authorization", HEADER_NAME_APP_CODE],
+        allow_headers=list(SERVICE_API_HEADERS),
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
     )
     app.register_blueprint(service_api_bp)
@@ -27,11 +32,11 @@ def init_app(app: DifyApp):
         resources={r"/*": {"origins": dify_config.WEB_API_CORS_ALLOW_ORIGINS}},
         supports_credentials=True,
         allow_headers=[
-            "Content-Type", 
-            "Authorization", 
-            HEADER_NAME_APP_CODE, 
-            HEADER_NAME_CSRF_TOKEN, 
-            HEADER_NAME_PASSPORT
+            "Content-Type",
+            "Authorization",
+            HEADER_NAME_APP_CODE,
+            HEADER_NAME_CSRF_TOKEN,
+            HEADER_NAME_PASSPORT,
         ],
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
         expose_headers=["X-Version", "X-Env"],
@@ -42,7 +47,7 @@ def init_app(app: DifyApp):
         console_app_bp,
         resources={r"/*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
         supports_credentials=True,
-        allow_headers=["Content-Type", "Authorization", HEADER_NAME_CSRF_TOKEN],
+        allow_headers=list(AUTHENTICATED_HEADERS),
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
         expose_headers=["X-Version", "X-Env"],
     )
@@ -50,7 +55,7 @@ def init_app(app: DifyApp):
 
     CORS(
         files_bp,
-        allow_headers=["Content-Type", HEADER_NAME_CSRF_TOKEN],
+        allow_headers=list(FILES_HEADERS),
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
     )
     app.register_blueprint(files_bp)

@@ -21,6 +21,7 @@ from core.mcp.auth.auth_flow import (
     register_client,
     start_authorization,
 )
+from core.mcp.entities import AuthActionType, AuthResult
 from core.mcp.types import (
     OAuthClientInformation,
     OAuthClientInformationFull,
@@ -527,9 +528,10 @@ class TestCallbackHandling:
         # Setup service
         mock_service = Mock()
 
-        result = handle_callback("state-key", "auth-code", mock_service)
+        state_result, tokens_result = handle_callback("state-key", "auth-code")
 
-        assert result == state_data
+        assert state_result == state_data
+        assert tokens_result == tokens
 
         # Verify calls
         mock_retrieve_state.assert_called_once_with("state-key")
@@ -541,9 +543,8 @@ class TestCallbackHandling:
             "test-verifier",
             "https://redirect.example.com",
         )
-        mock_service.save_oauth_data.assert_called_once_with(
-            "test-provider", "test-tenant", tokens.model_dump(), "tokens"
-        )
+        # Note: handle_callback no longer saves tokens directly, it just returns them
+        # The caller (e.g., controller) is responsible for saving via execute_auth_actions
 
 
 class TestAuthOrchestration:
@@ -589,21 +590,28 @@ class TestAuthOrchestration:
         )
         mock_start_auth.return_value = ("https://auth.example.com/authorize?...", "code-verifier")
 
-        result = auth(mock_provider, mock_service)
+        result = auth(mock_provider)
 
-        assert result == {"authorization_url": "https://auth.example.com/authorize?..."}
+        # auth() now returns AuthResult
+        assert isinstance(result, AuthResult)
+        assert result.response == {"authorization_url": "https://auth.example.com/authorize?..."}
+
+        # Verify that the result contains the correct actions
+        assert len(result.actions) == 2
+        # Check for SAVE_CLIENT_INFO action
+        client_info_action = next(a for a in result.actions if a.action_type == AuthActionType.SAVE_CLIENT_INFO)
+        assert client_info_action.data == {"client_information": mock_register.return_value.model_dump()}
+        assert client_info_action.provider_id == "provider-id"
+        assert client_info_action.tenant_id == "tenant-id"
+
+        # Check for SAVE_CODE_VERIFIER action
+        verifier_action = next(a for a in result.actions if a.action_type == AuthActionType.SAVE_CODE_VERIFIER)
+        assert verifier_action.data == {"code_verifier": "code-verifier"}
+        assert verifier_action.provider_id == "provider-id"
+        assert verifier_action.tenant_id == "tenant-id"
 
         # Verify calls
         mock_register.assert_called_once()
-        mock_service.save_oauth_data.assert_any_call(
-            "provider-id",
-            "tenant-id",
-            {"client_information": mock_register.return_value.model_dump()},
-            "client_info",
-        )
-        mock_service.save_oauth_data.assert_any_call(
-            "provider-id", "tenant-id", {"code_verifier": "code-verifier"}, "code_verifier"
-        )
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     @patch("core.mcp.auth.auth_flow._retrieve_redis_state")
@@ -637,12 +645,18 @@ class TestAuthOrchestration:
         tokens = OAuthTokens(access_token="new-token", token_type="Bearer", expires_in=3600)
         mock_exchange.return_value = tokens
 
-        result = auth(mock_provider, mock_service, authorization_code="auth-code", state_param="state-key")
+        result = auth(mock_provider, authorization_code="auth-code", state_param="state-key")
 
-        assert result == {"result": "success"}
+        # auth() now returns AuthResult, not a dict
+        assert isinstance(result, AuthResult)
+        assert result.response == {"result": "success"}
 
-        # Verify token save
-        mock_service.save_oauth_data.assert_called_with("provider-id", "tenant-id", tokens.model_dump(), "tokens")
+        # Verify that the result contains the correct action
+        assert len(result.actions) == 1
+        assert result.actions[0].action_type == AuthActionType.SAVE_TOKENS
+        assert result.actions[0].data == tokens.model_dump()
+        assert result.actions[0].provider_id == "provider-id"
+        assert result.actions[0].tenant_id == "tenant-id"
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     def test_auth_exchange_code_without_state(self, mock_discover, mock_provider, mock_service):
@@ -658,7 +672,7 @@ class TestAuthOrchestration:
         mock_provider.retrieve_client_information.return_value = OAuthClientInformation(client_id="existing-client")
 
         with pytest.raises(ValueError) as exc_info:
-            auth(mock_provider, mock_service, authorization_code="auth-code")
+            auth(mock_provider, authorization_code="auth-code")
 
         assert "State parameter is required" in str(exc_info.value)
 
@@ -691,15 +705,21 @@ class TestAuthOrchestration:
                 grant_types_supported=["authorization_code"],
             )
 
-            result = auth(mock_provider, mock_service)
+            result = auth(mock_provider)
 
-            assert result == {"result": "success"}
+            # auth() now returns AuthResult
+            assert isinstance(result, AuthResult)
+            assert result.response == {"result": "success"}
+
+            # Verify that the result contains the correct action
+            assert len(result.actions) == 1
+            assert result.actions[0].action_type == AuthActionType.SAVE_TOKENS
+            assert result.actions[0].data == new_tokens.model_dump()
+            assert result.actions[0].provider_id == "provider-id"
+            assert result.actions[0].tenant_id == "tenant-id"
 
             # Verify refresh was called
             mock_refresh.assert_called_once()
-            mock_service.save_oauth_data.assert_called_with(
-                "provider-id", "tenant-id", new_tokens.model_dump(), "tokens"
-            )
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     def test_auth_registration_fails_with_code(self, mock_discover, mock_provider, mock_service):
@@ -715,6 +735,6 @@ class TestAuthOrchestration:
         mock_provider.retrieve_client_information.return_value = None
 
         with pytest.raises(ValueError) as exc_info:
-            auth(mock_provider, mock_service, authorization_code="auth-code")
+            auth(mock_provider, authorization_code="auth-code")
 
         assert "Existing OAuth client information is required" in str(exc_info.value)

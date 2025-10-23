@@ -4,14 +4,14 @@ import json
 import os
 import secrets
 import urllib.parse
-from typing import TYPE_CHECKING
 from urllib.parse import urljoin, urlparse
 
 from httpx import ConnectError, HTTPStatusError, RequestError
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 from core.entities.mcp_provider import MCPProviderEntity, MCPSupportGrantType
 from core.helper import ssrf_proxy
+from core.mcp.entities import AuthAction, AuthActionType, AuthResult, OAuthCallbackState
 from core.mcp.error import MCPRefreshTokenError
 from core.mcp.types import (
     LATEST_PROTOCOL_VERSION,
@@ -23,21 +23,8 @@ from core.mcp.types import (
 )
 from extensions.ext_redis import redis_client
 
-if TYPE_CHECKING:
-    from services.tools.mcp_tools_manage_service import MCPToolManageService
-
 OAUTH_STATE_EXPIRY_SECONDS = 5 * 60  # 5 minutes expiry
 OAUTH_STATE_REDIS_KEY_PREFIX = "oauth_state:"
-
-
-class OAuthCallbackState(BaseModel):
-    provider_id: str
-    tenant_id: str
-    server_url: str
-    metadata: OAuthMetadata | None = None
-    client_information: OAuthClientInformation
-    code_verifier: str
-    redirect_uri: str
 
 
 def generate_pkce_challenge() -> tuple[str, str]:
@@ -86,8 +73,13 @@ def _retrieve_redis_state(state_key: str) -> OAuthCallbackState:
         raise ValueError(f"Invalid state parameter: {str(e)}")
 
 
-def handle_callback(state_key: str, authorization_code: str, mcp_service: "MCPToolManageService") -> OAuthCallbackState:
-    """Handle the callback from the OAuth provider."""
+def handle_callback(state_key: str, authorization_code: str) -> tuple[OAuthCallbackState, OAuthTokens]:
+    """
+    Handle the callback from the OAuth provider.
+
+    Returns:
+        A tuple of (callback_state, tokens) that can be used by the caller to save data.
+    """
     # Retrieve state data from Redis (state is automatically deleted after retrieval)
     full_state_data = _retrieve_redis_state(state_key)
 
@@ -100,10 +92,7 @@ def handle_callback(state_key: str, authorization_code: str, mcp_service: "MCPTo
         full_state_data.redirect_uri,
     )
 
-    # Save tokens using the service layer
-    mcp_service.save_oauth_data(full_state_data.provider_id, full_state_data.tenant_id, tokens.model_dump(), "tokens")
-
-    return full_state_data
+    return full_state_data, tokens
 
 
 def check_support_resource_discovery(server_url: str) -> tuple[bool, str]:
@@ -361,11 +350,24 @@ def register_client(
 
 def auth(
     provider: MCPProviderEntity,
-    mcp_service: "MCPToolManageService",
     authorization_code: str | None = None,
     state_param: str | None = None,
-) -> dict[str, str]:
-    """Orchestrates the full auth flow with a server using secure Redis state storage."""
+) -> AuthResult:
+    """
+    Orchestrates the full auth flow with a server using secure Redis state storage.
+
+    This function performs only network operations and returns actions that need
+    to be performed by the caller (such as saving data to database).
+
+    Args:
+        provider: The MCP provider entity
+        authorization_code: Optional authorization code from OAuth callback
+        state_param: Optional state parameter from OAuth callback
+
+    Returns:
+        AuthResult containing actions to be performed and response data
+    """
+    actions: list[AuthAction] = []
     server_url = provider.decrypt_server_url()
     server_metadata = discover_oauth_metadata(server_url)
     client_metadata = provider.client_metadata
@@ -407,9 +409,14 @@ def auth(
         except RequestError as e:
             raise ValueError(f"Could not register OAuth client: {e}")
 
-        # Save client information using service layer
-        mcp_service.save_oauth_data(
-            provider_id, tenant_id, {"client_information": full_information.model_dump()}, "client_info"
+        # Return action to save client information
+        actions.append(
+            AuthAction(
+                action_type=AuthActionType.SAVE_CLIENT_INFO,
+                data={"client_information": full_information.model_dump()},
+                provider_id=provider_id,
+                tenant_id=tenant_id,
+            )
         )
 
         client_information = full_information
@@ -426,12 +433,20 @@ def auth(
                 scope,
             )
 
-            # Save tokens and grant type
+            # Return action to save tokens and grant type
             token_data = tokens.model_dump()
             token_data["grant_type"] = MCPSupportGrantType.CLIENT_CREDENTIALS.value
-            mcp_service.save_oauth_data(provider_id, tenant_id, token_data, "tokens")
 
-            return {"result": "success"}
+            actions.append(
+                AuthAction(
+                    action_type=AuthActionType.SAVE_TOKENS,
+                    data=token_data,
+                    provider_id=provider_id,
+                    tenant_id=tenant_id,
+                )
+            )
+
+            return AuthResult(actions=actions, response={"result": "success"})
         except (RequestError, ValueError, KeyError) as e:
             # RequestError: HTTP request failed
             # ValueError: Invalid response data
@@ -465,10 +480,17 @@ def auth(
             redirect_uri,
         )
 
-        # Save tokens using service layer
-        mcp_service.save_oauth_data(provider_id, tenant_id, tokens.model_dump(), "tokens")
+        # Return action to save tokens
+        actions.append(
+            AuthAction(
+                action_type=AuthActionType.SAVE_TOKENS,
+                data=tokens.model_dump(),
+                provider_id=provider_id,
+                tenant_id=tenant_id,
+            )
+        )
 
-        return {"result": "success"}
+        return AuthResult(actions=actions, response={"result": "success"})
 
     provider_tokens = provider.retrieve_tokens()
 
@@ -479,10 +501,17 @@ def auth(
                 server_url, server_metadata, client_information, provider_tokens.refresh_token
             )
 
-            # Save new tokens using service layer
-            mcp_service.save_oauth_data(provider_id, tenant_id, new_tokens.model_dump(), "tokens")
+            # Return action to save new tokens
+            actions.append(
+                AuthAction(
+                    action_type=AuthActionType.SAVE_TOKENS,
+                    data=new_tokens.model_dump(),
+                    provider_id=provider_id,
+                    tenant_id=tenant_id,
+                )
+            )
 
-            return {"result": "success"}
+            return AuthResult(actions=actions, response={"result": "success"})
         except (RequestError, ValueError, KeyError) as e:
             # RequestError: HTTP request failed
             # ValueError: Invalid response data
@@ -499,7 +528,14 @@ def auth(
         tenant_id,
     )
 
-    # Save code verifier using service layer
-    mcp_service.save_oauth_data(provider_id, tenant_id, {"code_verifier": code_verifier}, "code_verifier")
+    # Return action to save code verifier
+    actions.append(
+        AuthAction(
+            action_type=AuthActionType.SAVE_CODE_VERIFIER,
+            data={"code_verifier": code_verifier},
+            provider_id=provider_id,
+            tenant_id=tenant_id,
+        )
+    )
 
-    return {"authorization_url": authorization_url}
+    return AuthResult(actions=actions, response={"authorization_url": authorization_url})

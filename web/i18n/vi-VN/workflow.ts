@@ -952,6 +952,8 @@ const translation = {
       chunksVariableIsRequired: 'Biến Chunks là bắt buộc',
       embeddingModelIsRequired: 'Cần có mô hình nhúng',
       rerankingModelIsRequired: 'Cần có mô hình sắp xếp lại',
+      embeddingModelIsInvalid: 'Mô hình nhúng không hợp lệ',
+      rerankingModelIsInvalid: 'Mô hình xếp hạng lại không hợp lệ',
     },
   },
   tracing: {

@@ -1010,6 +1010,8 @@ const translation = {
       chunksVariableIsRequired: 'La variabile Chunks è richiesta',
       rerankingModelIsRequired: 'È richiesto un modello di riordinamento',
       embeddingModelIsRequired: 'È necessario un modello di embedding',
+      embeddingModelIsInvalid: 'Il modello di embedding non è valido',
+      rerankingModelIsInvalid: 'Il modello di riorganizzazione è non valido',
     },
   },
   tracing: {

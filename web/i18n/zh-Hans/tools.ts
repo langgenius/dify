@@ -249,6 +249,10 @@ const translation = {
       },
       publishTip: '应用未发布。请先发布应用。',
     },
+    toolItem: {
+      parameters: '参数',
+      noDescription: '暂无描述',
+    },
   },
   allTools: '全部工具',
 }

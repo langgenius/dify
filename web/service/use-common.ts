@@ -118,12 +118,14 @@ export const useIsLogin = () => {
     gcTime: 0,
     queryFn: async (): Promise<isLogin> => {
       try {
-        await get('/api/account/profile', {
+        await get('/account/profile', {}, {
           silent: true,
-        }) // if code is 401, not logged in
+        })
       }
-      catch {
-        return { logged_in: false }
+      catch (e: any) {
+        if(e.status === 401)
+          return { logged_in: false }
+        return { logged_in: true }
       }
       return { logged_in: true }
     },

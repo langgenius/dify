@@ -1004,6 +1004,8 @@ const translation = {
       chunksVariableIsRequired: 'टुकड़े चर आवश्यक है',
       embeddingModelIsRequired: 'एम्बेडिंग मॉडल आवश्यक है',
       rerankingModelIsRequired: 'पुनः क्रमांकन मॉडल की आवश्यकता है',
+      rerankingModelIsInvalid: 'पुनः क्रमांकन मॉडल अमान्य है',
+      embeddingModelIsInvalid: 'एम्बेडिंग मॉडल अमान्य है',
     },
   },
   tracing: {
