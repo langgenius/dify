@@ -59,18 +59,18 @@ const AppInfo: FC<Props> = ({
       )}
       <Button variant='primary' className='mt-3 flex w-full max-w-full' onClick={onCreate}>
         <RiAddLine className='mr-1 size-4 shrink-0' />
-        <span className='truncate'>Create from this sample app</span>
+        <span className='truncate'>{t('explore.tryApp.createFromSampleApp')}</span>
       </Button>
 
       {category && (
         <div className='mt-6 shrink-0'>
-          <div className={headerClassName}>Category</div>
+          <div className={headerClassName}>{t('explore.tryApp.category')}</div>
           <div className='system-md-regular text-text-secondary'>{category}</div>
         </div>
       )}
 
       <div className='mt-5 grow overflow-y-auto'>
-        <div className={headerClassName}>Requirements</div>
+        <div className={headerClassName}>{t('explore.tryApp.requirements')}</div>
         <div className='space-y-0.5'>
           <div className='flex items-center space-x-2 py-1'>
             <div className='size-5 rounded-md bg-gray-200 shadow-xs'></div>

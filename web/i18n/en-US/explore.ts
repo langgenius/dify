@@ -35,6 +35,9 @@ const translation = {
       try: 'Try it',
       detail: 'Orchestration Details',
     },
+    createFromSampleApp: 'Create from this sample app',
+    category: 'Category',
+    requirements: 'Requirements',
   },
   appCustomize: {
     title: 'Create app from {{name}}',

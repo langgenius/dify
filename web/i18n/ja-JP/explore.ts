@@ -36,6 +36,9 @@ const translation = {
       try: 'お試し',
       detail: 'オーケストレーション詳細',
     },
+    createFromSampleApp: 'テンプレートから作成',
+    category: 'カテゴリー',
+    requirements: '必要項目',
   },
   appCustomize: {
     title: '{{name}}からアプリを作成',

@@ -36,6 +36,9 @@ const translation = {
       try: '试用',
       detail: '编排详情',
     },
+    createFromSampleApp: '从此模板创建应用',
+    category: '分类',
+    requirements: '必须配置项',
   },
   appCustomize: {
     title: '从 {{name}} 创建应用程序',
