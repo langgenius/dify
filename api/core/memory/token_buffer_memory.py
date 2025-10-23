@@ -59,9 +59,7 @@ class TokenBufferMemory:
                 raise ValueError("App not found for conversation")
 
             workflow_run = self._workflow_run_repo.get_workflow_run_by_id(
-                tenant_id=app.tenant_id,
-                app_id=app.id,
-                run_id=message.workflow_run_id
+                tenant_id=app.tenant_id, app_id=app.id, run_id=message.workflow_run_id
             )
             if not workflow_run:
                 raise ValueError(f"Workflow run not found: {message.workflow_run_id}")

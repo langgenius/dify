@@ -84,6 +84,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             # Handle triggered_from values
             if isinstance(triggered_from, list):
                 from sqlalchemy import or_
+
                 base_stmt = base_stmt.where(or_(*[WorkflowRun.triggered_from == tf for tf in triggered_from]))
             else:
                 base_stmt = base_stmt.where(WorkflowRun.triggered_from == triggered_from)
@@ -315,7 +316,7 @@ WHERE
     tenant_id = :tenant_id
     AND app_id = :app_id
     AND triggered_from = :triggered_from"""
-        
+
         arg_dict = {
             "tz": timezone,
             "tenant_id": tenant_id,
@@ -362,7 +363,7 @@ WHERE
     tenant_id = :tenant_id
     AND app_id = :app_id
     AND triggered_from = :triggered_from"""
-        
+
         arg_dict = {
             "tz": timezone,
             "tenant_id": tenant_id,
@@ -409,7 +410,7 @@ WHERE
     tenant_id = :tenant_id
     AND app_id = :app_id
     AND triggered_from = :triggered_from"""
-        
+
         arg_dict = {
             "tz": timezone,
             "tenant_id": tenant_id,
@@ -474,7 +475,7 @@ FROM
     ) sub
 GROUP BY
     sub.date"""
-        
+
         arg_dict = {
             "tz": timezone,
             "tenant_id": tenant_id,
@@ -499,6 +500,7 @@ GROUP BY
             rs = session.execute(sa.text(sql_query), arg_dict)
             for row in rs:
                 from decimal import Decimal
+
                 response_data.append(
                     {"date": str(row.date), "interactions": float(row.interactions.quantize(Decimal("0.01")))}
                 )

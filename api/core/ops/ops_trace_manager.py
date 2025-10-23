@@ -429,9 +429,7 @@ class TraceTask:
             with cls._repo_lock:
                 if cls._workflow_run_repo is None:
                     session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-                    cls._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
-                        session_maker
-                    )
+                    cls._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
         return cls._workflow_run_repo
 
     def __init__(
