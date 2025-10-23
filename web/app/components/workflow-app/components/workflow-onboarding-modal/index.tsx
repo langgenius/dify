@@ -63,7 +63,7 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
             <div className="body-xs-regular leading-4 text-text-tertiary">
               {t('workflow.onboarding.description')}{' '}
               <a
-                href={docLink('guides/workflow/node/start')}
+                href={docLink('/guides/workflow/node/start')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-text-accent-hover cursor-pointer text-text-accent underline"

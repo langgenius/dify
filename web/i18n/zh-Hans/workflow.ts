@@ -265,6 +265,7 @@ const translation = {
     'start': '开始',
     'featuredTools': '精选推荐',
     'showMoreFeatured': '查看更多',
+    'showLessFeatured': '收起',
     'installed': '已安装',
     'pluginByAuthor': '来自 {{author}}',
     'usePlugin': '选择工具',

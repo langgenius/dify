@@ -18,6 +18,7 @@ import { canFindTool } from '@/utils'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useDocLink } from '@/context/i18n'
 
 export type ITriggerCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
@@ -83,6 +84,7 @@ const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
 
 function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const appId = appInfo.id
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { data: triggersResponse, isLoading } = useAppTriggers(appId)
@@ -134,10 +136,6 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
       // Error toast notification
       onToggleResult?.(error as Error)
     }
-  }
-
-  const handleLearnMoreClick = () => {
-    console.log('Learn about Triggers clicked')
   }
 
   if (isLoading) {
@@ -209,8 +207,9 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
             <div className="system-xs-regular leading-4 text-text-tertiary">
               {t('appOverview.overview.triggerInfo.triggerStatusDescription')}{' '}
               <Link
-                href="#"
-                onClick={handleLearnMoreClick}
+                href={docLink('/guides/workflow/node/trigger')}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-text-accent hover:underline"
               >
                 {t('appOverview.overview.triggerInfo.learnAboutTriggers')}

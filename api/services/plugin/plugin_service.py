@@ -194,6 +194,11 @@ class PluginService:
         return manager.fetch_asset(tenant_id, asset_file), mime_type or "application/octet-stream"
 
     @staticmethod
+    def extract_asset(tenant_id: str, plugin_unique_identifier: str, file_name: str) -> bytes:
+        manager = PluginAssetManager()
+        return manager.extract_asset(tenant_id, plugin_unique_identifier, file_name)
+
+    @staticmethod
     def check_plugin_unique_identifier(tenant_id: str, plugin_unique_identifier: str) -> bool:
         """
         check if the plugin unique identifier is already installed by other tenant
@@ -510,3 +515,11 @@ class PluginService:
         """
         manager = PluginInstaller()
         return manager.check_tools_existence(tenant_id, provider_ids)
+
+    @staticmethod
+    def fetch_plugin_readme(tenant_id: str, plugin_unique_identifier: str, language: str) -> str:
+        """
+        Fetch plugin readme
+        """
+        manager = PluginInstaller()
+        return manager.fetch_plugin_readme(tenant_id, plugin_unique_identifier, language)

@@ -252,3 +252,7 @@ class CredentialType(enum.StrEnum):
             return cls.UNAUTHORIZED
         else:
             raise ValueError(f"Invalid credential type: {credential_type}")
+
+class PluginReadmeResponse(BaseModel):
+    content: str = Field(description="The readme of the plugin.")
+    language: str = Field(description="The language of the readme.")

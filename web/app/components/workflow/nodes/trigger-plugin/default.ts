@@ -164,6 +164,7 @@ const convertJsonSchemaToField = (schema: any, schemaTypeDefinitions?: SchemaTyp
 const metaData = genNodeMetaData({
   sort: 1,
   type: BlockEnum.TriggerPlugin,
+  helpLinkUri: 'plugin-trigger',
   isStart: true,
 })
 
