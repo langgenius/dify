@@ -1653,7 +1653,7 @@ class WorkflowPause(ModelMixin, Base):
 
     # `resumed_at` records the timestamp when the suspended workflow was resumed.
     # It is set to `NULL` if the workflow has not been resumed.
-    resumed_at: Mapped[Optional[datetime]] = mapped_column(
+    resumed_at: Mapped[datetime | None] = mapped_column(
         sa.DateTime,
         nullable=True,
     )
