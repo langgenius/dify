@@ -48,9 +48,9 @@ const TryApp: FC<Props> = ({
             </Button>
           </div>
           {/* Main content */}
-          <div className='mt-2 flex grow justify-between space-x-2'>
+          <div className='mt-2 flex h-0 grow justify-between space-x-2'>
             {type === TypeEnum.TRY ? <App appId={appId} appDetail={appDetail!} /> : <Preview appId={appId} appDetail={appDetail!} />}
-            <AppInfo className='w-[360px]' appDetail={appDetail!} />
+            <AppInfo className='w-[360px] shrink-0' appDetail={appDetail!} />
           </div>
         </div>
       )}

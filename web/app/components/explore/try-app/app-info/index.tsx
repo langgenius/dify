@@ -6,11 +6,15 @@ import { AppTypeIcon } from '@/app/components/app/type-selector'
 import { useTranslation } from 'react-i18next'
 import type { TryAppInfo } from '@/service/try-app'
 import cn from '@/utils/classnames'
+import Button from '@/app/components/base/button'
+import { RiAddLine } from '@remixicon/react'
 
 type Props = {
   appDetail: TryAppInfo
   className?: string
 }
+
+const headerClassName = 'system-sm-semibold-uppercase text-text-secondary mb-3'
 
 const AppInfo: FC<Props> = ({
   className,
@@ -19,9 +23,9 @@ const AppInfo: FC<Props> = ({
   const { t } = useTranslation()
   const mode = appDetail?.mode
   return (
-    <div className={cn('px-4 pt-4', className)}>
+    <div className={cn('flex h-full flex-col px-4 pt-2', className)}>
       {/* name and icon */}
-      <div className='flex h-[66px] shrink-0 grow-0 items-center gap-3 pb-3'>
+      <div className='flex shrink-0 grow-0 items-center gap-3'>
         <div className='relative shrink-0'>
           <AppIcon
             size='large'
@@ -43,6 +47,32 @@ const AppInfo: FC<Props> = ({
             {mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
             {mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
             {mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
+          </div>
+        </div>
+      </div>
+      <div className='system-sm-regular mt-[14px] shrink-0 text-text-secondary' >
+        A workflow designed to translate a full book up to 15000 tokens per run. Uses Code node to separate text into chunks
+      </div>
+      <Button variant='primary' className='mt-3 flex w-full max-w-full'>
+        <RiAddLine className='mr-1 size-4 shrink-0' />
+        <span className='truncate'>Create from this sample app</span>
+      </Button>
+
+      <div className='mt-6 shrink-0'>
+        <div className={headerClassName}>Category</div>
+        <div className='system-md-regular text-text-secondary'>AI Coding</div>
+      </div>
+
+      <div className='mt-5 grow overflow-y-auto'>
+        <div className={headerClassName}>Requirements</div>
+        <div className='space-y-0.5'>
+          <div className='flex items-center space-x-2 py-1'>
+            <div className='size-5 rounded-md bg-gray-200 shadow-xs'></div>
+            <div className='system-md-regular w-0 grow truncate text-text-secondary'>LLM Vision supported</div>
+          </div>
+          <div className='flex items-center space-x-2 py-1'>
+            <div className='size-5 rounded-md bg-gray-200 shadow-xs'></div>
+            <div className='system-md-regular w-0 grow truncate text-text-secondary'>xxx</div>
           </div>
         </div>
       </div>
