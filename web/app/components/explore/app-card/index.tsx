@@ -8,7 +8,10 @@ import AppIcon from '@/app/components/base/app-icon'
 import { AppTypeIcon } from '../../app/type-selector'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { RiArrowRightUpLine } from '@remixicon/react'
-import Link from 'next/link'
+import { useCallback } from 'react'
+import ExploreContext from '@/context/explore-context'
+import { useContextSelector } from 'use-context-selector'
+
 export type AppCardProps = {
   app: App
   canCreate: boolean
@@ -26,6 +29,12 @@ const AppCard = ({
   const { app: appBasicInfo } = app
   const { systemFeatures } = useGlobalPublicStore()
   const isTrialApp = app.can_trial && systemFeatures.enable_trial_app
+  const setShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.setShowTryAppPanel)
+  const showTryAPPPanel = useCallback((appId: string) => {
+    return () => {
+      setShowTryAppPanel?.(true, { appId })
+    }
+  }, [setShowTryAppPanel])
 
   return (
     <div className={cn('group relative col-span-1 flex cursor-pointer flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-2 shadow-sm transition-all duration-200 ease-in-out hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-lg')}>
@@ -71,12 +80,11 @@ const AppCard = ({
             </Button>
           )}
           {isTrialApp && (
-            <Link href={`/try/app/${app.app_id}`} target='_blank' rel='noreferrer'>
-              <Button className='w-full'>
-                <span>{t('explore.appCard.try')}</span>
-                <RiArrowRightUpLine className='size-4' />
-              </Button>
-            </Link>
+            // /try/app/${app.app_id}
+            <Button className='w-full' onClick={showTryAPPPanel(app.app_id)}>
+              <span>{t('explore.appCard.try')}</span>
+              <RiArrowRightUpLine className='size-4' />
+            </Button>
           )}
         </div>
       )}

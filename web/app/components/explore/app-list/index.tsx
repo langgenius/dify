@@ -25,6 +25,8 @@ import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-conf
 import Banner from '@/app/components/explore/banner/banner'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import Button from '@/app/components/base/button'
+import { useContextSelector } from 'use-context-selector'
+import TryApp from '../try-app'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -141,6 +143,12 @@ const Apps = ({
     })
   }, [handleImportDSLConfirm, onSuccess])
 
+  const isShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.isShowTryAppPanel)
+  const setShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.setShowTryAppPanel)
+  const hideTryAppPanel = useCallback(() => {
+    setShowTryAppPanel(false)
+  }, [setShowTryAppPanel])
+  const appId = useContextSelector(ExploreContext, ctx => ctx.currentApp?.appId) as string
   if (!categories || categories.length === 0) {
     return (
       <div className="flex h-full items-center">
@@ -235,6 +243,8 @@ const Apps = ({
           />
         )
       }
+
+      {isShowTryAppPanel && <TryApp appId={appId} onClose={hideTryAppPanel} />}
     </div>
   )
 }

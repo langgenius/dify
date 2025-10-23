@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { CurrentTryAppParams } from '@/context/explore-context'
 import ExploreContext from '@/context/explore-context'
 import Sidebar from '@/app/components/explore/sidebar'
 import { useAppContext } from '@/context/app-context'
@@ -42,6 +43,16 @@ const Explore: FC<IExploreProps> = ({
       return router.replace('/datasets')
   }, [isCurrentWorkspaceDatasetOperator])
 
+  const [currentTryAppParams, setCurrentTryAppParams] = useState<CurrentTryAppParams | undefined>({ appId: '47b94c61-5b0d-402b-b5bb-482ee406bc68' })
+  const [isShowTryAppPanel, setIsShowTryAppPanel] = useState(true)
+  const setShowTryAppPanel = (showTryAppPanel: boolean, params?: CurrentTryAppParams) => {
+    if (showTryAppPanel)
+      setCurrentTryAppParams(params)
+    else
+      setCurrentTryAppParams(undefined)
+    setIsShowTryAppPanel(showTryAppPanel)
+  }
+
   return (
     <div className='flex h-full overflow-hidden border-t border-divider-regular bg-background-body'>
       <ExploreContext.Provider
@@ -54,6 +65,9 @@ const Explore: FC<IExploreProps> = ({
             setInstalledApps,
             isFetchingInstalledApps,
             setIsFetchingInstalledApps,
+            currentApp: currentTryAppParams,
+            isShowTryAppPanel,
+            setShowTryAppPanel,
           }
         }
       >
