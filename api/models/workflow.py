@@ -1662,7 +1662,7 @@ class WorkflowPause(ModelMixin, Base):
     #
     # The value of `state` is a JSON-formatted string representing a JSON object (e.g., `{}`).
 
-    state_file_id: Mapped[str | None] = mapped_column(
+    state_file_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
     )
