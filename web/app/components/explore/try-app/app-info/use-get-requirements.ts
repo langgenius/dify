@@ -1,5 +1,8 @@
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import type { TryAppInfo } from '@/service/try-app'
+import { useGetTryAppFlowPreview } from '@/service/use-try-app'
 import type { AgentTool } from '@/types/app'
 import { uniqBy } from 'lodash-es'
 
@@ -19,6 +22,8 @@ const getIconUrl = (provider: string, tool: string) => {
 const useGetRequirements = ({ appDetail, appId }: Params) => {
   const isBasic = ['chat', 'completion', 'agent-chat'].includes(appDetail.mode)
   const isAgent = appDetail.mode === 'agent-chat'
+  const isAdvanced = !isBasic
+  const { data: flowData } = useGetTryAppFlowPreview(appId, isBasic)
 
   const requirements: RequirementItem[] = []
   if(isBasic) {
@@ -35,6 +40,18 @@ const useGetRequirements = ({ appDetail, appId }: Params) => {
       const modelProviderAndName = tool.provider_id.split('/')
       return {
         name: tool.tool_label,
+        iconUrl: getIconUrl(modelProviderAndName[0], modelProviderAndName[1]),
+      }
+    }))
+  }
+  if(isAdvanced && flowData && flowData?.graph?.nodes?.length > 0) {
+    const nodes = flowData.graph.nodes
+    const llmNodes = nodes.filter(node => node.data.type === BlockEnum.LLM)
+    requirements.push(...llmNodes.map((node) => {
+      const data = node.data as LLMNodeType
+      const modelProviderAndName = data.model.provider.split('/')
+      return {
+        name: data.model.name,
         iconUrl: getIconUrl(modelProviderAndName[0], modelProviderAndName[1]),
       }
     }))

@@ -77,7 +77,7 @@ const AppInfo: FC<Props> = ({
           <div className={headerClassName}>{t('explore.tryApp.requirements')}</div>
           <div className='space-y-0.5'>
             {requirements.map(item => (
-              <div className='flex items-center space-x-2 py-1'>
+              <div className='flex items-center space-x-2 py-1' key={item.name}>
                 <div className='size-5 rounded-md bg-cover shadow-xs' style={{ backgroundImage: `url(${item.iconUrl})` }} />
                 <div className='system-md-regular w-0 grow truncate text-text-secondary'>{item.name}</div>
               </div>

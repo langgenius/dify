@@ -33,9 +33,10 @@ export const useGetTryAppDataSets = (appId: string, ids: string[]) => {
   })
 }
 
-export const useGetTryAppFlowPreview = (appId: string) => {
+export const useGetTryAppFlowPreview = (appId: string, disabled?: boolean) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'preview', appId],
+    enabled: !disabled,
     queryFn: () => {
       return fetchTryAppFlowPreview(appId)
     },
