@@ -175,7 +175,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
         metadata: (docDetail?.doc_metadata || {}) as Record<string, string>,
       })
     }
-  }, [docDetail?.doc_type, doc_type])
+  }, [docDetail?.doc_type, docDetail?.doc_metadata, doc_type])
 
   // confirm doc type
   const confirmDocType = () => {
@@ -213,7 +213,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
             <span className={s.title}>{t('datasetDocuments.metadata.docTypeChangeTitle')}</span>
             <span className={s.changeTip}>{t('datasetDocuments.metadata.docTypeSelectWarning')}</span>
           </>}
-          <Radio.Group value={tempDocType || documentType || ''} onChange={value => setTempDocType(value)} className={s.radioGroup}>
+          <Radio.Group value={tempDocType ?? documentType ?? ''} onChange={setTempDocType} className={s.radioGroup}>
             {CUSTOMIZABLE_DOC_TYPES.map((type, index) => {
               const currValue = tempDocType ?? documentType
               return <Radio key={index} value={type} className={`${s.radio} ${currValue === type ? 'shadow-none' : ''}`}>
