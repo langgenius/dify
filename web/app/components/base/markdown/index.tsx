@@ -3,7 +3,7 @@ import 'katex/dist/katex.min.css'
 import { flow } from 'lodash-es'
 import cn from '@/utils/classnames'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
-import type { ReactMarkdownWrapperProps } from './react-markdown-wrapper'
+import type { ReactMarkdownWrapperProps, SimplePluginInfo } from './react-markdown-wrapper'
 
 const ReactMarkdown = dynamic(() => import('./react-markdown-wrapper').then(mod => mod.ReactMarkdownWrapper), { ssr: false })
 
@@ -17,11 +17,11 @@ const ReactMarkdown = dynamic(() => import('./react-markdown-wrapper').then(mod 
 export type MarkdownProps = {
   content: string
   className?: string
-  pluginUniqueIdentifier?: string
+  pluginInfo?: SimplePluginInfo
 } & Pick<ReactMarkdownWrapperProps, 'customComponents' | 'customDisallowedElements'>
 
 export const Markdown = (props: MarkdownProps) => {
-  const { customComponents = {}, pluginUniqueIdentifier } = props
+  const { customComponents = {}, pluginInfo } = props
   const latexContent = flow([
     preprocessThinkTag,
     preprocessLaTeX,
@@ -29,7 +29,7 @@ export const Markdown = (props: MarkdownProps) => {
 
   return (
     <div className={cn('markdown-body', '!text-text-primary', props.className)}>
-      <ReactMarkdown pluginUniqueIdentifier={pluginUniqueIdentifier} latexContent={latexContent} customComponents={customComponents} customDisallowedElements={props.customDisallowedElements} />
+      <ReactMarkdown pluginInfo={pluginInfo} latexContent={latexContent} customComponents={customComponents} customDisallowedElements={props.customDisallowedElements} />
     </div>
   )
 }

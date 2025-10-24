@@ -7,24 +7,25 @@ import React, { useEffect, useMemo } from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
 import { getMarkdownImageURL } from './utils'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
+import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
 
-const Img = ({ src, pluginUniqueIdentifier }: { src: string, pluginUniqueIdentifier?: string }) => {
-  const imgURL = getMarkdownImageURL(src, pluginUniqueIdentifier)
-  const { data: asset } = usePluginReadmeAsset({ plugin_unique_identifier: pluginUniqueIdentifier, file_name: src })
+const Img = ({ src, pluginInfo }: { src: string, pluginInfo?: SimplePluginInfo }) => {
+  const { plugin_unique_identifier, plugin_id } = pluginInfo || {}
+  const { data: assetData } = usePluginReadmeAsset({ plugin_unique_identifier, file_name: src })
 
   const blobUrl = useMemo(() => {
-    if (asset)
-      return URL.createObjectURL(asset)
+    if (assetData)
+      return URL.createObjectURL(assetData)
 
-    return imgURL
-  }, [asset, imgURL])
+    return getMarkdownImageURL(src, plugin_id)
+  }, [assetData, plugin_id, src])
 
   useEffect(() => {
     return () => {
-      if (blobUrl && asset)
+      if (blobUrl && assetData)
         URL.revokeObjectURL(blobUrl)
     }
-  }, [blobUrl])
+  }, [blobUrl, assetData])
 
   return (
     <div className='markdown-img-wrapper'>

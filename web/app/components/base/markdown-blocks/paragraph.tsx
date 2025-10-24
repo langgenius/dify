@@ -7,26 +7,30 @@ import React, { useEffect, useMemo } from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
 import { getMarkdownImageURL } from './utils'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
+import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
 
-const Paragraph = (props: { pluginUniqueIdentifier?: string, node?: any, children?: any }) => {
-  const { node, pluginUniqueIdentifier, children } = props
+const Paragraph = (props: { pluginInfo?: SimplePluginInfo, node?: any, children?: any }) => {
+  const { node, pluginInfo, children } = props
+  const { plugin_unique_identifier, plugin_id } = pluginInfo || {}
   const children_node = node.children
-  const imgURL = getMarkdownImageURL(children_node[0].properties?.src, pluginUniqueIdentifier)
-  const { data: asset } = usePluginReadmeAsset({ plugin_unique_identifier: pluginUniqueIdentifier, file_name: children_node[0].properties?.src })
+  const { data: assetData } = usePluginReadmeAsset({ plugin_unique_identifier, file_name: children_node?.[0]?.tagName !== 'img' ? '' : children_node[0].properties?.src })
 
   const blobUrl = useMemo(() => {
-    if (asset)
-      return URL.createObjectURL(asset)
+    if (assetData)
+      return URL.createObjectURL(assetData)
 
-    return imgURL
-  }, [asset, imgURL])
+    if (children_node?.[0]?.tagName === 'img' && children_node[0].properties?.src)
+      return getMarkdownImageURL(children_node[0].properties.src, plugin_id)
+
+    return ''
+  }, [assetData, children_node, plugin_id])
 
   useEffect(() => {
     return () => {
-      if (blobUrl && asset)
+      if (blobUrl && assetData)
         URL.revokeObjectURL(blobUrl)
     }
-  }, [blobUrl])
+  }, [blobUrl, assetData])
 
   if (children_node?.[0]?.tagName === 'img') {
     return (

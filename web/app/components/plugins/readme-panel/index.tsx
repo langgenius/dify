@@ -74,7 +74,7 @@ const ReadmePanel: FC = () => {
               <Markdown
                 content={readmeData.readme}
                 className="prose-sm prose max-w-none"
-                pluginUniqueIdentifier={pluginUniqueIdentifier}
+                pluginInfo={{ plugin_unique_identifier: pluginUniqueIdentifier, plugin_id: detail.plugin_id }}
               />
             )
           }
