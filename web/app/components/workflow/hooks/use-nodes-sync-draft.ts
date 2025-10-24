@@ -1,10 +1,6 @@
 import { useCallback } from 'react'
-import {
-  useStore,
-} from '../store'
-import {
-  useNodesReadOnly,
-} from './use-workflow'
+import { useStore } from '../store'
+import { useNodesReadOnly } from './use-workflow'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 
 export type SyncCallback = {
