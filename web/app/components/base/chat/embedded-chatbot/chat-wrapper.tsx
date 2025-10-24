@@ -167,7 +167,8 @@ const ChatWrapper = () => {
     return chatList.filter(item => !item.isOpeningStatement)
   }, [chatList, currentConversationId])
 
-  const [collapsed, setCollapsed] = useState(!!currentConversationId)
+  const isTryApp = appSourceType === AppSourceType.tryApp
+  const [collapsed, setCollapsed] = useState(!!currentConversationId && !isTryApp) // try app always use the new chat
 
   const chatNode = useMemo(() => {
     if (allInputsHidden || !inputsForms.length)
@@ -240,7 +241,7 @@ const ChatWrapper = () => {
 
   return (
     <Chat
-      isTryApp={appSourceType === AppSourceType.tryApp}
+      isTryApp={isTryApp}
       appData={appData || undefined}
       config={appConfig}
       chatList={messageList}
