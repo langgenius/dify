@@ -183,6 +183,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
       cancelButtonText={t('plugin.auth.saveOnly')}
       extraButtonText={t('common.operation.cancel')}
       showExtraButton
+      clickOutsideNotClose
       extraButtonVariant='secondary'
       onExtraButtonClick={onClose}
       onClose={onClose}

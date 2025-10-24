@@ -372,6 +372,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
       bottomSlot={currentStep === ApiKeyStep.Verify ? <EncryptedBottom /> : null}
       size={createType === SupportedCreationMethods.MANUAL ? 'md' : 'sm'}
       containerClassName='min-h-[360px]'
+      clickOutsideNotClose
     >
       {createType === SupportedCreationMethods.APIKEY && <MultiSteps currentStep={currentStep} />}
       {currentStep === ApiKeyStep.Verify && (

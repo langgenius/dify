@@ -701,7 +701,7 @@ export const usePluginReadme = ({ plugin_unique_identifier, language }: { plugin
 export const usePluginReadmeAsset = ({ file_name, plugin_unique_identifier }: { file_name?: string, plugin_unique_identifier?: string }) => {
   return useQuery({
     queryKey: ['pluginReadmeAsset', plugin_unique_identifier, file_name],
-    queryFn: () => get<Blob>('/workspaces/current/plugin/asset', { params: { plugin_unique_identifier, file_name } }),
+    queryFn: () => get<Blob>('/workspaces/current/plugin/asset', { params: { plugin_unique_identifier, file_name } }, { silent: true }),
     enabled: !!plugin_unique_identifier && !!file_name && /(^\.\/_assets|^_assets)/.test(file_name),
   })
 }
