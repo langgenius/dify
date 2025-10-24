@@ -32,6 +32,7 @@ from libs.token import (
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
+    extract_refresh_token,
 )
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
@@ -270,7 +271,7 @@ class EmailCodeLoginApi(Resource):
 class RefreshTokenApi(Resource):
     def post(self):
         # Get refresh token from cookie instead of request body
-        refresh_token = request.cookies.get("refresh_token")
+        refresh_token = extract_refresh_token(request)
 
         if not refresh_token:
             return {"result": "fail", "message": "No refresh token provided"}, 401

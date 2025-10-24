@@ -55,6 +55,12 @@ def _try_extract_from_header(request: Request) -> str | None:
     return None
 
 
+def extract_refresh_token(request: Request) -> str | None:
+    """
+    Try to extract refresh token from cookie or header.
+    """
+    return request.cookies.get(_real_cookie_name(COOKIE_NAME_REFRESH_TOKEN))
+
 def extract_csrf_token(request: Request) -> str | None:
     """
     Try to extract CSRF token from header or cookie.
