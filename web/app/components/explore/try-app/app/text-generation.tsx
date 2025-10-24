@@ -21,6 +21,7 @@ import Res from '@/app/components/share/text-generation/result'
 import { AppSourceType } from '@/service/share'
 import { TaskStatus } from '@/app/components/share/text-generation/types'
 import Alert from '@/app/components/base/alert'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   appId: string
@@ -35,6 +36,7 @@ const TextGeneration: FC<Props> = ({
   isWorkflow,
   appData,
 }) => {
+  const { t } = useTranslation()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
 
@@ -115,7 +117,13 @@ const TextGeneration: FC<Props> = ({
     })()
   }, [appData, appParams])
 
-  const handleCompleted = noop
+  const [isCompleted, setIsCompleted] = useState(false)
+  const handleCompleted = useCallback(() => {
+    setIsCompleted(true)
+  }, [])
+  const [isHideTryNotice, {
+    setTrue: hideTryNotice,
+  }] = useBoolean(false)
 
   const renderRes = (task?: Task) => (<Res
     key={task?.id}
@@ -145,13 +153,15 @@ const TextGeneration: FC<Props> = ({
     <div
       className={cn(
         'relative flex h-full flex-col',
-        'bg-chatbot-bg',
+        'rounded-r-2xl bg-chatbot-bg',
       )}
     >
       <div className={cn(
         'flex h-0 grow flex-col overflow-y-auto p-6',
       )}>
-        <Alert className='mb-3 shrink-0' message='This is a sample app. You can try up to 5 messages. To keep using it, click “Create form this sample app” and set it up!' onHide={noop} />
+        {isCompleted && !isHideTryNotice && (
+          <Alert className='mb-3 shrink-0' message={t('explore.tryApp.tryInfo')} onHide={hideTryNotice} />
+        )}
         {renderRes()}
       </div>
     </div>
@@ -167,7 +177,7 @@ const TextGeneration: FC<Props> = ({
 
   return (
     <div className={cn(
-      'bg-background-default-burn',
+      'rounded-2xl border border-components-panel-border bg-background-section-burn',
       isPC && 'flex',
       !isPC && 'flex-col',
       'h-full rounded-2xl shadow-md',
@@ -176,11 +186,11 @@ const TextGeneration: FC<Props> = ({
       {/* Left */}
       <div className={cn(
         'relative flex h-full shrink-0 flex-col',
-        isPC ? 'w-[600px] max-w-[50%]' : resultExisted ? 'h-[calc(100%_-_64px)]' : '',
-        'rounded-l-2xl',
+        isPC && 'w-[600px] max-w-[50%]',
+        'rounded-l-2xl bg-components-panel-bg',
       )}>
         {/* Header */}
-        <div className={cn('shrink-0 space-y-4 pb-2', isPC ? 'bg-components-panel-bg p-8 pb-0' : 'p-4 pb-0')}>
+        <div className={cn('shrink-0 space-y-4 pb-2', isPC ? ' p-8 pb-0' : 'p-4 pb-0')}>
           <div className='flex items-center gap-3'>
             <AppIcon
               size={isPC ? 'large' : 'small'}
@@ -197,7 +207,7 @@ const TextGeneration: FC<Props> = ({
         </div>
         {/* form */}
         <div className={cn(
-          'h-0 grow overflow-y-auto bg-components-panel-bg',
+          'h-0 grow overflow-y-auto',
           isPC ? 'px-8' : 'px-4',
           !isPC && resultExisted && customConfig?.remove_webapp_brand && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
         )}>

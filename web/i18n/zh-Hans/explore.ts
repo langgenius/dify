@@ -39,6 +39,7 @@ const translation = {
     createFromSampleApp: '从此模板创建应用',
     category: '分类',
     requirements: '必须配置项',
+    tryInfo: '这是一个示例应用，您可以试用最多 5 条消息。如需继续使用，请点击 “从此模板创建应用” 并完成配置！',
   },
   appCustomize: {
     title: '从 {{name}} 创建应用程序',

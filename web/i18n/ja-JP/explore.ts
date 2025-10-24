@@ -39,6 +39,7 @@ const translation = {
     createFromSampleApp: 'テンプレートから作成',
     category: 'カテゴリー',
     requirements: '必要項目',
+    tryInfo: 'これはサンプルアプリです。最大5件のメッセージまでお試しいただけます。引き続き利用するには、「テンプレートから作成」 をクリックして設定を行ってください。',
   },
   appCustomize: {
     title: '{{name}}からアプリを作成',

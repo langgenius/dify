@@ -38,6 +38,7 @@ const translation = {
     createFromSampleApp: 'Create from this sample app',
     category: 'Category',
     requirements: 'Requirements',
+    tryInfo: 'This is a sample app. You can try up to 5 messages. To keep using it, click "Create form this sample app" and set it up!',
   },
   appCustomize: {
     title: 'Create app from {{name}}',
