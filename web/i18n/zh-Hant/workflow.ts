@@ -1004,6 +1004,11 @@ const translation = {
       description: '上次運行的結果將顯示在這裡',
     },
     variableInspect: {
+      listening: {
+        title: '正在監聽觸發器事件…',
+        tip: '您現在可以向 HTTP {{nodeName}} 端點發送測試請求來模擬事件觸發，或將其作為即時事件除錯的回呼 URL。所有輸出都可在變數檢視器中直接查看。',
+        stopButton: '停止',
+      },
       trigger: {
         cached: '查看緩存的變量',
         stop: '停止跑步',

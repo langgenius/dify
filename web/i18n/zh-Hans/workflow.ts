@@ -1195,6 +1195,11 @@ const translation = {
       view: '查看记录',
       edited: '已编辑',
       reset: '还原至上一次运行',
+      listening: {
+        title: '正在监听触发器事件…',
+        tip: '您现在可以向 HTTP {{nodeName}} 端点发送测试请求以模拟事件触发，或将其用作实时事件调试的回调 URL。所有输出都可以在变量检查器中直接查看。',
+        stopButton: '停止',
+      },
       trigger: {
         normal: '变量检查',
         running: '缓存中',

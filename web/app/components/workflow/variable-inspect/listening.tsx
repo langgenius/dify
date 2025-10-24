@@ -21,7 +21,8 @@ const resolveListeningDescription = (
   if (nodeDescription)
     return nodeDescription
 
-  return t('workflow.debug.variableInspect.listening.tip')
+  const nodeName = (triggerNode?.data as { title?: string })?.title
+  return t('workflow.debug.variableInspect.listening.tip', { nodeName })
 }
 
 const resolveMultipleListeningDescription = (
@@ -29,16 +30,16 @@ const resolveMultipleListeningDescription = (
   t: TFunction,
 ): string => {
   if (!nodes.length)
-    return t('workflow.debug.variableInspect.listening.tip')
+    return t('workflow.debug.variableInspect.listening.tip', { nodeName: t('workflow.debug.variableInspect.listening.selectedTriggers') })
 
   const titles = nodes
     .map(node => (node.data as { title?: string })?.title)
     .filter((title): title is string => Boolean(title))
 
   if (titles.length)
-    return titles.join(', ')
+    return t('workflow.debug.variableInspect.listening.tip', { nodeName: titles.join(', ') })
 
-  return t('workflow.debug.variableInspect.listening.tip')
+  return t('workflow.debug.variableInspect.listening.tip', { nodeName: t('workflow.debug.variableInspect.listening.selectedTriggers') })
 }
 
 export type ListeningProps = {

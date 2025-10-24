@@ -1166,6 +1166,11 @@ const translation = {
       description: '最後の実行の結果がここに表示されます',
     },
     variableInspect: {
+      listening: {
+        title: 'トリガーからのイベントを待機中…',
+        tip: 'HTTP {{nodeName}} エンドポイントにテストリクエストを送信するか、ライブイベントデバッグ用のコールバック URL として利用してイベントトリガーをシミュレートできます。すべての出力は Variable Inspector で直接確認できます。',
+        stopButton: '停止',
+      },
       trigger: {
         clear: 'クリア',
         running: 'キャッシング実行状況',
