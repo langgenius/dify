@@ -92,7 +92,7 @@ const MemorySystem = ({
             }
             {
               memoryType === MemoryMode.block && !collapsed && (
-                <BlockMemory payload={memory as Memory} />
+                <BlockMemory id={id} payload={memory as Memory} />
               )
             }
           </>

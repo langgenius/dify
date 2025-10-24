@@ -395,6 +395,7 @@ export enum VarInInspectType {
   environment = 'env',
   node = 'node',
   system = 'sys',
+  memory = 'memory_block',
 }
 
 export type FullContent = {

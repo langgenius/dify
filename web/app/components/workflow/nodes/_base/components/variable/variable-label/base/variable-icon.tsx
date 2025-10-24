@@ -7,15 +7,13 @@ export type VariableIconProps = {
   className?: string
   variables?: string[]
   variableCategory?: VarInInspectType | string
-  isMemoryVariable?: boolean
 }
 const VariableIcon = ({
   className,
   variables = [],
   variableCategory,
-  isMemoryVariable,
 }: VariableIconProps) => {
-  const VarIcon = useVarIcon(variables, variableCategory, isMemoryVariable)
+  const VarIcon = useVarIcon(variables, variableCategory)
 
   return VarIcon && (
     <VarIcon

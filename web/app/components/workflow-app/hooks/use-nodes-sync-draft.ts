@@ -85,7 +85,7 @@ export const useNodesSyncDraft = () => {
           },
           environment_variables: environmentVariables,
           conversation_variables: conversationVariables,
-          memory_blocks: memoryVariables.map(({ node, value_type, more, model, ...rest }) => {
+          memory_blocks: memoryVariables.map(({ value_type, more, model, ...rest }) => {
             return {
               ...rest,
               model: model ? {

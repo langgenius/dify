@@ -118,7 +118,7 @@ export const useMemorySchema = () => {
       },
     },
     {
-      name: 'node',
+      name: 'node_id',
       label: 'Node',
       type: FormTypeEnum.nodeSelector,
       fieldClassName: 'flex justify-between',

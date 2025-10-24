@@ -130,7 +130,7 @@ const UpdateDSLModal = ({
         hash,
         conversation_variables: conversation_variables || [],
         environment_variables: environment_variables || [],
-        memory_blocks: formatMemoryVariables(memory_blocks || [], formattedNodes),
+        memory_blocks: formatMemoryVariables(memory_blocks || []),
       },
     } as any)
   }, [eventEmitter, formatMemoryVariables])

@@ -18,7 +18,7 @@ import {
   DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND,
   UPDATE_WORKFLOW_NODES_MAP,
 } from './index'
-import { isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isConversationVar as isConversationVariable, isENV, isMemoryVariable, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
@@ -34,6 +34,7 @@ type WorkflowVariableBlockComponentProps = {
   workflowNodesMap: WorkflowNodesMap
   environmentVariables?: Var[]
   conversationVariables?: Var[]
+  memoryVariables?: Var[]
   ragVariables?: Var[]
   getVarType?: (payload: {
     nodeId: string,
@@ -48,6 +49,7 @@ const WorkflowVariableBlockComponent = ({
   getVarType,
   environmentVariables,
   conversationVariables,
+  memoryVariables,
   ragVariables,
 }: WorkflowVariableBlockComponentProps) => {
   const { t } = useTranslation()
@@ -66,17 +68,22 @@ const WorkflowVariableBlockComponent = ({
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
   const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
   const isEnv = isENV(variables)
-  // const isChatVar = isConversationVar(variables) && conversationVariables?.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}` && v.type !== 'memory')
-  const isMemoryVar = isConversationVar(variables) && conversationVariables?.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}` && v.type === 'memory')
+  const isConversationVar = isConversationVariable(variables)
+  const isMemoryVar = isMemoryVariable(variables)
   const isException = isExceptionVariable(varName, node?.type)
+
   let variableValid = true
   if (isEnv) {
     if (environmentVariables)
       variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
   }
-  else if (isConversationVar(variables)) {
+  else if (isConversationVar) {
     if (conversationVariables)
       variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+  }
+  else if (isMemoryVar) {
+    if (memoryVariables)
+      variableValid = memoryVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
   }
   else if (isRagVar) {
     if (ragVariables)
@@ -136,7 +143,6 @@ const WorkflowVariableBlockComponent = ({
         handleVariableJump()
       }}
       isExceptionVariable={isException}
-      isMemoryVariable={isMemoryVar}
       errorMsg={!variableValid ? t('workflow.errorMsg.invalidVariable') : undefined}
       isSelected={isSelected}
       ref={ref}

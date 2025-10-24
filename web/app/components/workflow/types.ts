@@ -176,10 +176,10 @@ export type MemoryVariable = {
   strategy?: string
   update_turns?: number
   scope?: string
+  node_id?: string
   term?: string
   end_user_editable?: boolean
   value_type: ChatVarType
-  node?: string
   more?: boolean
 }
 

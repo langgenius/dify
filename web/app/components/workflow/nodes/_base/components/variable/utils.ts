@@ -72,6 +72,10 @@ export const isConversationVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'conversation'
 }
 
+export const isMemoryVariable = (valueSelector: ValueSelector) => {
+  return valueSelector[0] === 'memory_block'
+}
+
 export const isRagVariableVar = (valueSelector: ValueSelector) => {
   if (!valueSelector) return false
   return valueSelector[0] === 'rag'

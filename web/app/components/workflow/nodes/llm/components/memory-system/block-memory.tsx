@@ -15,12 +15,12 @@ import Confirm from '@/app/components/base/confirm'
 import { Memory as MemoryIcon } from '@/app/components/base/icons/src/vender/line/others'
 
 type BlockMemoryProps = {
+  id: string
   payload: Memory
 }
-const BlockMemory = ({ payload }: BlockMemoryProps) => {
+const BlockMemory = ({ id }: BlockMemoryProps) => {
   const { t } = useTranslation()
-  const { block_id } = payload
-  const { memoryVariablesInUsed } = useMemoryVariables(block_id || [])
+  const { memoryVariablesInUsed } = useMemoryVariables(id)
   const [showConfirm, setShowConfirm] = useState<{
     title: string
     desc: string

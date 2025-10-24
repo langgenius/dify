@@ -6,12 +6,13 @@ import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import {
   isConversationVar,
   isENV,
+  isMemoryVariable,
   isRagVariableVar,
   isSystemVar,
 } from '../utils'
 import { VarInInspectType } from '@/types/workflow'
 
-export const useVarIcon = (variables: string[], variableCategory?: VarInInspectType | string, isMemoryVariable?: boolean) => {
+export const useVarIcon = (variables: string[], variableCategory?: VarInInspectType | string) => {
   if (variableCategory === 'loop')
     return Loop
 
@@ -21,7 +22,7 @@ export const useVarIcon = (variables: string[], variableCategory?: VarInInspectT
   if (isENV(variables) || variableCategory === VarInInspectType.environment || variableCategory === 'environment')
     return Env
 
-  if (isMemoryVariable)
+  if (isMemoryVariable(variables) || variableCategory === VarInInspectType.memory || variableCategory === 'memory_block')
     return Memory
 
   if (isConversationVar(variables) || variableCategory === VarInInspectType.conversation || variableCategory === 'conversation')
@@ -42,6 +43,9 @@ export const useVarColor = (variables: string[], isExceptionVariable?: boolean, 
       return 'text-util-colors-violet-violet-600'
 
     if (isConversationVar(variables) || variableCategory === VarInInspectType.conversation || variableCategory === 'conversation')
+      return 'text-util-colors-teal-teal-700'
+
+    if (isMemoryVariable(variables) || variableCategory === VarInInspectType.memory || variableCategory === 'memory_block')
       return 'text-util-colors-teal-teal-700'
 
     return 'text-text-accent'
@@ -84,6 +88,15 @@ export const useVarBgColorInEditor = (variables: string[], hasError?: boolean) =
   }
 
   if (isConversationVar(variables)) {
+    return {
+      hoverBorderColor: 'hover:border-util-colors-teal-teal-100',
+      hoverBgColor: 'hover:bg-util-colors-teal-teal-50',
+      selectedBorderColor: 'border-util-colors-teal-teal-600',
+      selectedBgColor: 'bg-util-colors-teal-teal-50',
+    }
+  }
+
+  if (isMemoryVariable(variables)) {
     return {
       hoverBorderColor: 'hover:border-util-colors-teal-teal-100',
       hoverBgColor: 'hover:bg-util-colors-teal-teal-50',

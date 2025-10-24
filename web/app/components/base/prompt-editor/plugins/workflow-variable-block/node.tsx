@@ -22,6 +22,7 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
   __getVarType?: GetVarType
   __environmentVariables?: Var[]
   __conversationVariables?: Var[]
+  __memoryVariables?: Var[]
   __ragVariables?: Var[]
 
   static getType(): string {
@@ -36,7 +37,16 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
     return true
   }
 
-  constructor(variables: string[], workflowNodesMap: WorkflowNodesMap, getVarType: any, key?: NodeKey, environmentVariables?: Var[], conversationVariables?: Var[], ragVariables?: Var[]) {
+  constructor(
+    variables: string[],
+    workflowNodesMap: WorkflowNodesMap,
+    getVarType: any,
+    key?: NodeKey,
+    environmentVariables?: Var[],
+    conversationVariables?: Var[],
+    memoryVariables?: Var[],
+    ragVariables?: Var[],
+  ) {
     super(key)
 
     this.__variables = variables
@@ -44,6 +54,7 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
     this.__getVarType = getVarType
     this.__environmentVariables = environmentVariables
     this.__conversationVariables = conversationVariables
+    this.__memoryVariables = memoryVariables
     this.__ragVariables = ragVariables
   }
 
@@ -66,6 +77,7 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
         getVarType={this.__getVarType!}
         environmentVariables={this.__environmentVariables}
         conversationVariables={this.__conversationVariables}
+        memoryVariables={this.__memoryVariables}
         ragVariables={this.__ragVariables}
       />
     )
@@ -115,6 +127,11 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
     return self.__conversationVariables
   }
 
+  getMemoryVariables(): any {
+    const self = this.getLatest()
+    return self.__memoryVariables
+  }
+
   getRagVariables(): any {
     const self = this.getLatest()
     return self.__ragVariables
@@ -124,8 +141,8 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
     return `{{#${this.getVariables().join('.')}#}}`
   }
 }
-export function $createWorkflowVariableBlockNode(variables: string[], workflowNodesMap: WorkflowNodesMap, getVarType?: GetVarType, environmentVariables?: Var[], conversationVariables?: Var[], ragVariables?: Var[]): WorkflowVariableBlockNode {
-  return new WorkflowVariableBlockNode(variables, workflowNodesMap, getVarType, undefined, environmentVariables, conversationVariables, ragVariables)
+export function $createWorkflowVariableBlockNode(variables: string[], workflowNodesMap: WorkflowNodesMap, getVarType?: GetVarType, environmentVariables?: Var[], conversationVariables?: Var[], memoryVariables?: Var[], ragVariables?: Var[]): WorkflowVariableBlockNode {
+  return new WorkflowVariableBlockNode(variables, workflowNodesMap, getVarType, undefined, environmentVariables, conversationVariables, memoryVariables, ragVariables)
 }
 
 export function $isWorkflowVariableBlockNode(

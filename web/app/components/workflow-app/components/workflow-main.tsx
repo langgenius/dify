@@ -53,7 +53,7 @@ const WorkflowMain = ({
     }
     if (memory_blocks) {
       const { setMemoryVariables } = workflowStore.getState()
-      setMemoryVariables(formatMemoryVariables(memory_blocks, nodes))
+      setMemoryVariables(formatMemoryVariables(memory_blocks))
     }
   }, [featuresStore, workflowStore, formatMemoryVariables])
 

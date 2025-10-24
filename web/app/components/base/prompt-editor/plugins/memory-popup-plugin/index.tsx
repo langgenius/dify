@@ -212,10 +212,13 @@ export default function MemoryPopupPlugin({
               </div>
               <div className='p-1'>
                 {memoryVarInNode.map(variable => (
-                  <div key={variable.id} className='flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover' onClick={() => handleSelectVariable(['conversation', variable.name])}>
+                  <div
+                    key={variable.id}
+                    className='flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover'
+                    onClick={() => handleSelectVariable(['memory_block', variable.id])}
+                  >
                     <VariableIcon
-                      isMemoryVariable
-                      variables={['conversation', variable.name]}
+                      variables={['memory_block', variable.id]}
                       className='text-util-colors-teal-teal-700'
                     />
                     <div title={variable.name} className='system-sm-medium shrink-0 truncate text-text-secondary'>{variable.name}</div>
@@ -233,10 +236,13 @@ export default function MemoryPopupPlugin({
               </div>
               <div className='p-1'>
                 {memoryVarInApp.map(variable => (
-                  <div key={variable.id} className='flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover' onClick={() => handleSelectVariable(['conversation', variable.name])}>
+                  <div
+                    key={variable.id}
+                    className='flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover'
+                    onClick={() => handleSelectVariable(['memory_block', variable.id])}
+                  >
                     <VariableIcon
-                      isMemoryVariable
-                      variables={['conversation', variable.name]}
+                      variables={['memory_block', variable.id]}
                       className='text-util-colors-teal-teal-700'
                     />
                     <div title={variable.name} className='system-sm-medium shrink-0 truncate text-text-secondary'>{variable.name}</div>

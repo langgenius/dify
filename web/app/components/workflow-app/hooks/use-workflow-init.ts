@@ -55,7 +55,7 @@ export const useWorkflowInit = () => {
         }, {} as Record<string, string>),
         environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
         conversationVariables: res.conversation_variables || [],
-        memoryVariables: formatMemoryVariables((res.memory_blocks || []), res.graph.nodes),
+        memoryVariables: formatMemoryVariables((res.memory_blocks || [])),
       })
       setSyncWorkflowDraftHash(res.hash)
       setIsLoading(false)
