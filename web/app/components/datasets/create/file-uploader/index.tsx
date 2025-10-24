@@ -70,7 +70,7 @@ const FileUploader = ({
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
     file_size_limit: 15,
     batch_count_limit: 5,
-    batch_upload_limit: 5,
+    file_upload_limit: 5,
   }, [fileUploadConfigResponse])
 
   const fileListRef = useRef<FileItem[]>([])
@@ -162,7 +162,7 @@ const FileUploader = ({
   }, [fileUploadConfig, uploadBatchFiles])
 
   const initialUpload = useCallback((files: File[]) => {
-    const filesCountLimit = fileUploadConfig.batch_upload_limit
+    const filesCountLimit = fileUploadConfig.file_upload_limit
     if (!files.length)
       return false
 
@@ -327,7 +327,7 @@ const FileUploader = ({
             size: fileUploadConfig.file_size_limit,
             supportTypes: supportTypesShowNames,
             batchCount: fileUploadConfig.batch_count_limit,
-            totalCount: fileUploadConfig.batch_upload_limit,
+            totalCount: fileUploadConfig.file_upload_limit,
           })}</div>
           {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
         </div>
