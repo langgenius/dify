@@ -16,7 +16,6 @@ class PluginAssetManager(BasePluginClient):
             method="GET",
             path=f"plugin/{tenant_id}/extract-asset/",
             params={
-                "tenant_id": tenant_id,
                 "plugin_unique_identifier": plugin_unique_identifier,
                 "file_path": filename
             }
