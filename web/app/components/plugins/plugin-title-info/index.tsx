@@ -67,7 +67,7 @@ const PluginInfo: FC<PluginInfoProps> = ({
           <Badge
             className="mx-1"
             uppercase={false}
-            text={version}
+            text={version ?? detail.plugin_unique_identifier.split(':')[1]?.split('@')?.[0]}
           />
         </div>
 
