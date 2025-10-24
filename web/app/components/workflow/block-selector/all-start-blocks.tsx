@@ -2,7 +2,6 @@
 import {
   useCallback,
   useEffect,
-  useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,6 +17,8 @@ import { getMarketplaceUrl } from '@/utils/var'
 import Button from '@/app/components/base/button'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import { BlockEnum as BlockEnumValue } from '../types'
+
+const marketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
 
 type AllStartBlocksProps = {
   className?: string
@@ -35,7 +36,6 @@ const AllStartBlocks = ({
   tags = [],
 }: AllStartBlocksProps) => {
   const { t } = useTranslation()
-  const wrapElemRef = useRef<HTMLDivElement>(null)
   const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
   const [hasPluginContent, setHasPluginContent] = useState(false)
 
@@ -62,11 +62,8 @@ const AllStartBlocks = ({
 
   return (
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
-      <div
-        ref={wrapElemRef}
-        className='flex max-h-[640px] flex-col overflow-y-auto'
-      >
-        <div className='flex-1'>
+      <div className='flex max-h-[640px] flex-col'>
+        <div className='flex-1 overflow-y-auto'>
           <div className={cn(shouldShowEmptyState && 'hidden')}>
             <StartBlocks
               searchText={searchText}
@@ -110,7 +107,7 @@ const AllStartBlocks = ({
         {!shouldShowEmptyState && (
           // Footer - Same as Tools tab marketplace footer
           <Link
-            className='system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
+            className={marketplaceFooterClassName}
             href={getMarketplaceUrl('')}
             target='_blank'
           >

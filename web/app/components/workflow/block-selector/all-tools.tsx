@@ -32,6 +32,10 @@ import RAGToolSuggestions from './rag-tool-suggestions'
 import FeaturedTools from './featured-tools'
 import Link from 'next/link'
 import Divider from '@/app/components/base/divider'
+import { RiArrowRightUpLine } from '@remixicon/react'
+import { getMarketplaceUrl } from '@/utils/var'
+
+const marketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
 
 type AllToolsProps = {
   className?: string
@@ -173,6 +177,7 @@ const AllTools = ({
     && activeTab === ToolTypeEnum.All
     && !hasFilter
     && (featuredLoading || featuredPlugins.length > 0)
+  const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
 
   return (
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
@@ -198,90 +203,103 @@ const AllTools = ({
           <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
         )}
       </div>
-      <div
-        ref={wrapElemRef}
-        className='flex max-h-[464px] flex-col overflow-y-auto'
-        onScroll={pluginRef.current?.handleScroll}
-      >
-        <div className={cn('flex-1', shouldShowEmptyState && 'hidden')}>
-          {isShowRAGRecommendations && onTagsChange && (
-            <RAGToolSuggestions
-              viewType={isSupportGroupView ? activeView : ViewType.flat}
-              onSelect={onSelect}
-              onTagsChange={onTagsChange}
-            />
-          )}
-          {shouldShowFeatured && (
-            <>
-              <FeaturedTools
-                plugins={featuredPlugins}
-                providerMap={providerMap}
+      <div className='flex max-h-[464px] flex-col'>
+        <div
+          ref={wrapElemRef}
+          className='flex-1 overflow-y-auto'
+          onScroll={pluginRef.current?.handleScroll}
+        >
+          <div className={cn(shouldShowEmptyState && 'hidden')}>
+            {isShowRAGRecommendations && onTagsChange && (
+              <RAGToolSuggestions
+                viewType={isSupportGroupView ? activeView : ViewType.flat}
                 onSelect={onSelect}
-                selectedTools={selectedTools}
-                canChooseMCPTool={canChooseMCPTool}
-                isLoading={featuredLoading}
-                onInstallSuccess={async () => {
-                  await onFeaturedInstallSuccess?.()
-                }}
+                onTagsChange={onTagsChange}
               />
-              <div className='px-3'>
-                <Divider className='!h-px' />
-              </div>
-            </>
-          )}
-          {(hasToolsListContent || enable_marketplace) && (
-            <>
-              <div className='px-3 pb-1 pt-2'>
-                <span className='system-xs-medium text-text-primary'>{t('tools.allTools')}</span>
-              </div>
-              {hasToolsListContent && (
-                <Tools
-                  className={toolContentClassName}
-                  tools={tools}
+            )}
+            {shouldShowFeatured && (
+              <>
+                <FeaturedTools
+                  plugins={featuredPlugins}
+                  providerMap={providerMap}
                   onSelect={onSelect}
-                  canNotSelectMultiple={canNotSelectMultiple}
-                  onSelectMultiple={onSelectMultiple}
-                  toolType={activeTab}
-                  viewType={isSupportGroupView ? activeView : ViewType.flat}
-                  hasSearchText={hasSearchText}
                   selectedTools={selectedTools}
                   canChooseMCPTool={canChooseMCPTool}
-                  isShowRAGRecommendations={isShowRAGRecommendations}
+                  isLoading={featuredLoading}
+                  onInstallSuccess={async () => {
+                    await onFeaturedInstallSuccess?.()
+                  }}
                 />
-              )}
-              {enable_marketplace && (
-                <PluginList
-                  ref={pluginRef}
-                  wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
-                  list={notInstalledPlugins}
-                  searchText={searchText}
-                  toolContentClassName={toolContentClassName}
-                  tags={tags}
-                />
-              )}
-            </>
+                <div className='px-3'>
+                  <Divider className='!h-px' />
+                </div>
+              </>
+            )}
+            {(hasToolsListContent || enable_marketplace) && (
+              <>
+                <div className='px-3 pb-1 pt-2'>
+                  <span className='system-xs-medium text-text-primary'>{t('tools.allTools')}</span>
+                </div>
+                {hasToolsListContent && (
+                  <Tools
+                    className={toolContentClassName}
+                    tools={tools}
+                    onSelect={onSelect}
+                    canNotSelectMultiple={canNotSelectMultiple}
+                    onSelectMultiple={onSelectMultiple}
+                    toolType={activeTab}
+                    viewType={isSupportGroupView ? activeView : ViewType.flat}
+                    hasSearchText={hasSearchText}
+                    selectedTools={selectedTools}
+                    canChooseMCPTool={canChooseMCPTool}
+                    isShowRAGRecommendations={isShowRAGRecommendations}
+                  />
+                )}
+                {enable_marketplace && (
+                  <PluginList
+                    ref={pluginRef}
+                    wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
+                    list={notInstalledPlugins}
+                    searchText={searchText}
+                    toolContentClassName={toolContentClassName}
+                    tags={tags}
+                    hideFindMoreFooter
+                  />
+                )}
+              </>
+            )}
+          </div>
+
+          {shouldShowEmptyState && (
+            <div className='flex h-full flex-col items-center justify-center gap-3 py-12 text-center'>
+              <SearchMenu className='h-8 w-8 text-text-quaternary' />
+              <div className='text-sm font-medium text-text-secondary'>
+                {t('workflow.tabs.noPluginsFound')}
+              </div>
+              <Link
+                href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
+                target='_blank'
+              >
+                <Button
+                  size='small'
+                  variant='secondary-accent'
+                  className='h-6 cursor-pointer px-3 text-xs'
+                >
+                  {t('workflow.tabs.requestToCommunity')}
+                </Button>
+              </Link>
+            </div>
           )}
         </div>
-
-        {shouldShowEmptyState && (
-          <div className='flex h-full flex-col items-center justify-center gap-3 py-12 text-center'>
-            <SearchMenu className='h-8 w-8 text-text-quaternary' />
-            <div className='text-sm font-medium text-text-secondary'>
-              {t('workflow.tabs.noPluginsFound')}
-            </div>
-            <Link
-              href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
-              target='_blank'
-            >
-              <Button
-                size='small'
-                variant='secondary-accent'
-                className='h-6 cursor-pointer px-3 text-xs'
-              >
-                {t('workflow.tabs.requestToCommunity')}
-              </Button>
-            </Link>
-          </div>
+        {shouldShowMarketplaceFooter && (
+          <Link
+            className={marketplaceFooterClassName}
+            href={getMarketplaceUrl('')}
+            target='_blank'
+          >
+            <span>{t('plugin.findMoreInMarketplace')}</span>
+            <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
+          </Link>
         )}
       </div>
     </div>
