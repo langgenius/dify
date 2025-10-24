@@ -8,8 +8,10 @@ import type { TryAppInfo } from '@/service/try-app'
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import { RiAddLine } from '@remixicon/react'
+import useGetRequirements from './use-get-requirements'
 
 type Props = {
+  appId: string
   appDetail: TryAppInfo
   category?: string
   className?: string
@@ -19,6 +21,7 @@ type Props = {
 const headerClassName = 'system-sm-semibold-uppercase text-text-secondary mb-3'
 
 const AppInfo: FC<Props> = ({
+  appId,
   className,
   category,
   appDetail,
@@ -26,6 +29,7 @@ const AppInfo: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const mode = appDetail?.mode
+  const { requirements } = useGetRequirements({ appDetail, appId })
   return (
     <div className={cn('flex h-full flex-col px-4 pt-2', className)}>
       {/* name and icon */}
@@ -68,20 +72,20 @@ const AppInfo: FC<Props> = ({
           <div className='system-md-regular text-text-secondary'>{category}</div>
         </div>
       )}
-
-      <div className='mt-5 grow overflow-y-auto'>
-        <div className={headerClassName}>{t('explore.tryApp.requirements')}</div>
-        <div className='space-y-0.5'>
-          <div className='flex items-center space-x-2 py-1'>
-            <div className='size-5 rounded-md bg-gray-200 shadow-xs'></div>
-            <div className='system-md-regular w-0 grow truncate text-text-secondary'>LLM Vision supported</div>
-          </div>
-          <div className='flex items-center space-x-2 py-1'>
-            <div className='size-5 rounded-md bg-gray-200 shadow-xs'></div>
-            <div className='system-md-regular w-0 grow truncate text-text-secondary'>xxx</div>
+      {requirements.length > 0 && (
+        <div className='mt-5 grow overflow-y-auto'>
+          <div className={headerClassName}>{t('explore.tryApp.requirements')}</div>
+          <div className='space-y-0.5'>
+            {requirements.map(item => (
+              <div className='flex items-center space-x-2 py-1'>
+                <div className='size-5 rounded-md bg-cover shadow-xs' style={{ backgroundImage: `url(${item.iconUrl})` }} />
+                <div className='system-md-regular w-0 grow truncate text-text-secondary'>{item.name}</div>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
+
     </div>
   )
 }
