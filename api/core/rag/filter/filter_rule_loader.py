@@ -540,6 +540,15 @@ class FilterRuleLoader:
                         # - Penalize length mismatch from entity
                         score = (1000 if is_exact else 0) + matched_length - abs(matched_length - entity_length)
                         candidates.append((entity, match, score, start, end))
+                        logger.debug(
+                            "[FILTER_LOADER] Candidate entity '%s' at %s-%s, matched='%s', score=%d (exact=%s)",
+                            entity,
+                            start,
+                            end,
+                            matched_text,
+                            score,
+                            is_exact,
+                        )
 
                 # Remove overlapping candidates: for overlapping matches, keep only the longest one
                 if candidates:
@@ -555,11 +564,24 @@ class FilterRuleLoader:
                         if not any(pos in used_positions for pos in range(start, end)):
                             non_overlapping.append((entity, match, score))
                             used_positions.update(range(start, end))
+                            logger.debug(
+                                "[FILTER_LOADER] Kept non-overlapping entity '%s' at %s-%s (score=%d)",
+                                entity,
+                                start,
+                                end,
+                                score,
+                            )
                     
                     if non_overlapping:
                         best_entity, best_match, best_score = non_overlapping[0]
                         all_entities = [best_entity]
                         entity_spans = [best_match.span()]
+                        logger.debug(
+                            "[FILTER_LOADER] Selected best entity '%s' at %s (score=%d)",
+                            best_entity,
+                            best_match.span(),
+                            best_score,
+                        )
 
         # Use the first entity as base_entity (for backward compatibility)
         base_entity = all_entities[0] if all_entities else None
