@@ -1198,6 +1198,11 @@ const translation = {
       listening: {
         title: '正在监听触发器事件…',
         tip: '您现在可以向 HTTP {{nodeName}} 端点发送测试请求以模拟事件触发，或将其用作实时事件调试的回调 URL。所有输出都可以在变量检查器中直接查看。',
+        tipPlugin: '现在您可以在 {{pluginName}} 中创建事件，并在变量检查器中查看这些事件的输出。',
+        tipFallback: '正在等待触发器事件，输出结果将在此显示。',
+        defaultNodeName: '此触发器',
+        defaultPluginName: '此插件触发器',
+        selectedTriggers: '所选触发器',
         stopButton: '停止',
       },
       trigger: {

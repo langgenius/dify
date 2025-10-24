@@ -12,6 +12,7 @@ import type { TFunction } from 'i18next'
 const resolveListeningDescription = (
   message: string | undefined,
   triggerNode: Node | undefined,
+  triggerType: BlockEnum,
   t: TFunction,
 ): string => {
   if (message)
@@ -21,8 +22,19 @@ const resolveListeningDescription = (
   if (nodeDescription)
     return nodeDescription
 
-  const nodeName = (triggerNode?.data as { title?: string })?.title
-  return t('workflow.debug.variableInspect.listening.tip', { nodeName })
+  if (triggerType === BlockEnum.TriggerPlugin) {
+    const pluginName = (triggerNode?.data as { provider_name?: string; title?: string })?.provider_name
+      || (triggerNode?.data as { title?: string })?.title
+      || t('workflow.debug.variableInspect.listening.defaultPluginName')
+    return t('workflow.debug.variableInspect.listening.tipPlugin', { pluginName })
+  }
+
+  if (triggerType === BlockEnum.TriggerWebhook) {
+    const nodeName = (triggerNode?.data as { title?: string })?.title || t('workflow.debug.variableInspect.listening.defaultNodeName')
+    return t('workflow.debug.variableInspect.listening.tip', { nodeName })
+  }
+
+  return t('workflow.debug.variableInspect.listening.tipFallback')
 }
 
 const resolveMultipleListeningDescription = (
@@ -30,7 +42,7 @@ const resolveMultipleListeningDescription = (
   t: TFunction,
 ): string => {
   if (!nodes.length)
-    return t('workflow.debug.variableInspect.listening.tip', { nodeName: t('workflow.debug.variableInspect.listening.selectedTriggers') })
+    return t('workflow.debug.variableInspect.listening.tipFallback')
 
   const titles = nodes
     .map(node => (node.data as { title?: string })?.title)
@@ -39,7 +51,7 @@ const resolveMultipleListeningDescription = (
   if (titles.length)
     return t('workflow.debug.variableInspect.listening.tip', { nodeName: titles.join(', ') })
 
-  return t('workflow.debug.variableInspect.listening.tip', { nodeName: t('workflow.debug.variableInspect.listening.selectedTriggers') })
+  return t('workflow.debug.variableInspect.listening.tipFallback')
 }
 
 export type ListeningProps = {
@@ -109,7 +121,7 @@ const Listening: FC<ListeningProps> = ({
 
   const description = listeningTriggerIsAll
     ? resolveMultipleListeningDescription(displayNodes, t)
-    : resolveListeningDescription(message, triggerNode, t)
+    : resolveListeningDescription(message, triggerNode, triggerType, t)
 
   return (
     <div className='flex h-full flex-col gap-4 rounded-xl bg-background-section p-8'>

@@ -1169,6 +1169,11 @@ const translation = {
       listening: {
         title: 'トリガーからのイベントを待機中…',
         tip: 'HTTP {{nodeName}} エンドポイントにテストリクエストを送信するか、ライブイベントデバッグ用のコールバック URL として利用してイベントトリガーをシミュレートできます。すべての出力は Variable Inspector で直接確認できます。',
+        tipPlugin: '{{pluginName}} でイベントを作成し、これらのイベントの出力を Variable Inspector で取得できます。',
+        tipFallback: 'トリガーイベントを待機しています。出力はここに表示されます。',
+        defaultNodeName: 'このトリガー',
+        defaultPluginName: 'このプラグイントリガー',
+        selectedTriggers: '選択したトリガー',
         stopButton: '停止',
       },
       trigger: {
