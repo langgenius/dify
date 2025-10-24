@@ -4,7 +4,7 @@ import Select, { PortalSelect, SimpleSelect } from '.'
 import type { Item } from '.'
 
 const meta = {
-  title: 'Base/Select',
+  title: 'Base/Input/Select',
   component: SimpleSelect,
   parameters: {
     layout: 'centered',
