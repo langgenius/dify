@@ -114,6 +114,7 @@ class PluginIconApi(Resource):
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 
 
+@console_ns.route("/workspaces/current/plugin/asset")
 class PluginAssetApi(Resource):
     @setup_required
     @login_required
