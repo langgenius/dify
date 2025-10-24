@@ -132,6 +132,8 @@ const translation = {
     },
     change: 'Change',
     changeRetrievalMethod: 'Change retrieval method',
+    embedding_model: 'Vector Retrieval Model',
+    embedding_model_tip: 'Select the embedding model for vector similarity search in hybrid retrieval. Must match the indexing model to avoid dimension mismatch.',
   },
   docsFailedNotice: 'documents indexed failed',
   retry: 'Retry',

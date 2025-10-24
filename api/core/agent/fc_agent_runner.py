@@ -463,3 +463,18 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             # clear messages after the first iteration
             prompt_messages = self._clear_user_prompt_image_messages(prompt_messages)
         return prompt_messages
+
+    def _clear_tool_prompt_messages(self, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
+        if not self.app_config.agent.clear_history_tool_response:
+            return prompt_messages
+
+        prompt_messages_cleared = [
+            prompt_message
+            for prompt_message in prompt_messages
+            if not (
+                (isinstance(prompt_message, AssistantPromptMessage) and len(prompt_message.tool_calls) > 0)
+                or (isinstance(prompt_message, ToolPromptMessage))
+            )
+        ]
+
+        return prompt_messages_cleared

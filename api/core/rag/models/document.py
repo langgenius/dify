@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -10,7 +10,7 @@ class ChildDocument(BaseModel):
 
     page_content: str
 
-    vector: list[float] | None = None
+    vector: Optional[list[float]] = None
 
     """Arbitrary metadata about the page content (e.g., source, relationships to other
         documents, etc.).
@@ -23,16 +23,16 @@ class Document(BaseModel):
 
     page_content: str
 
-    vector: list[float] | None = None
+    vector: Optional[list[float]] = None
 
     """Arbitrary metadata about the page content (e.g., source, relationships to other
         documents, etc.).
     """
     metadata: dict = Field(default_factory=dict)
 
-    provider: str | None = "dify"
+    provider: Optional[str] = "dify"
 
-    children: list[ChildDocument] | None = None
+    children: Optional[list[ChildDocument]] = None
 
 
 class GeneralStructureChunk(BaseModel):

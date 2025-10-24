@@ -132,6 +132,8 @@ const translation = {
     },
     change: '更改',
     changeRetrievalMethod: '更改检索方法',
+    embedding_model: '向量检索模型',
+    embedding_model_tip: '选择混合检索中用于向量相似度搜索的 Embedding 模型。必须与索引模型一致以避免维度不匹配。',
   },
   docsFailedNotice: '文档索引失败',
   retry: '重试',

@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class ParentMode(StrEnum):
@@ -82,6 +82,16 @@ class WeightVectorSetting(BaseModel):
     vector_weight: float
     embedding_provider_name: str
     embedding_model_name: str
+
+    @model_validator(mode="after")
+    def validate_embedding_config(self):
+        """Validate that embedding provider and model are not empty for hybrid search"""
+        if not self.embedding_provider_name or not self.embedding_model_name:
+            raise ValueError(
+                "embedding_provider_name and embedding_model_name are required for hybrid search. "
+                "Please explicitly select an embedding model in the retrieval settings."
+            )
+        return self
 
 
 class WeightKeywordSetting(BaseModel):

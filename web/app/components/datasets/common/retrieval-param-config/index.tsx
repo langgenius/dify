@@ -45,12 +45,26 @@ const RetrievalParamConfig: FC<Props> = ({
   } = useModelListAndDefaultModel(ModelTypeEnum.rerank)
 
   const {
+    modelList: embeddingModelList,
+  } = useModelListAndDefaultModel(ModelTypeEnum.textEmbedding)
+
+  const {
     currentModel,
   } = useCurrentProviderAndModel(
     rerankModelList,
     {
       provider: value.reranking_model?.reranking_provider_name ?? '',
       model: value.reranking_model?.reranking_model_name ?? '',
+    },
+  )
+
+  const {
+    currentModel: currentEmbeddingModel,
+  } = useCurrentProviderAndModel(
+    embeddingModelList,
+    {
+      provider: value.weights?.vector_setting?.embedding_provider_name ?? '',
+      model: value.weights?.vector_setting?.embedding_model_name ?? '',
     },
   )
 
@@ -211,30 +225,61 @@ const RetrievalParamConfig: FC<Props> = ({
             </div>
             {
               value.reranking_mode === RerankingModeEnum.WeightedScore && (
-                <WeightedScore
-                  value={{
-                    value: [
-                      value.weights!.vector_setting.vector_weight,
-                      value.weights!.keyword_setting.keyword_weight,
-                    ],
-                  }}
-                  onChange={(v) => {
-                    onChange({
-                      ...value,
-                      weights: {
-                        ...value.weights!,
-                        vector_setting: {
-                          ...value.weights!.vector_setting,
-                          vector_weight: v.value[0],
+                <>
+                  <WeightedScore
+                    value={{
+                      value: [
+                        value.weights!.vector_setting.vector_weight,
+                        value.weights!.keyword_setting.keyword_weight,
+                      ],
+                    }}
+                    onChange={(v) => {
+                      onChange({
+                        ...value,
+                        weights: {
+                          ...value.weights!,
+                          vector_setting: {
+                            ...value.weights!.vector_setting,
+                            vector_weight: v.value[0],
+                          },
+                          keyword_setting: {
+                            ...value.weights!.keyword_setting,
+                            keyword_weight: v.value[1],
+                          },
                         },
-                        keyword_setting: {
-                          ...value.weights!.keyword_setting,
-                          keyword_weight: v.value[1],
-                        },
-                      },
-                    })
-                  }}
-                />
+                      })
+                    }}
+                  />
+                  <div className='mt-4'>
+                    <div className='mb-2 system-sm-semibold text-text-secondary'>
+                      {t('dataset.retrieval.embedding_model')}
+                      <span className='ml-1 text-text-destructive'>*</span>
+                    </div>
+                    <div className='mb-2 system-xs-regular text-text-tertiary'>
+                      {t('dataset.retrieval.embedding_model_tip')}
+                    </div>
+                    <ModelSelector
+                      defaultModel={currentEmbeddingModel && {
+                        provider: value.weights!.vector_setting.embedding_provider_name,
+                        model: value.weights!.vector_setting.embedding_model_name,
+                      }}
+                      modelList={embeddingModelList}
+                      onSelect={(v) => {
+                        onChange({
+                          ...value,
+                          weights: {
+                            ...value.weights!,
+                            vector_setting: {
+                              ...value.weights!.vector_setting,
+                              embedding_provider_name: v.provider,
+                              embedding_model_name: v.model,
+                            },
+                          },
+                        })
+                      }}
+                    />
+                  </div>
+                </>
               )
             }
             {

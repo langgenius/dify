@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-# ruff: noqa: T201
 """
 Quick verification script for multiple recall and filtering strategies.
 
 Usage:
-    cd /Users/sunfuwei/IdeaProjects/dify-1
     uv run --project api python api/core/rag/retrieval/verify_strategies.py
 """
 

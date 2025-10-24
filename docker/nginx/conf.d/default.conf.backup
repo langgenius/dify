@@ -1,58 +1,48 @@
 # Please do not directly edit this file. Instead, modify the .env variables related to NGINX configuration.
 
-# Use Docker's internal DNS resolver
-resolver 127.0.0.11 valid=10s ipv6=off;
-
 server {
     listen 80;
     server_name _;
 
-    # Use variables to force dynamic DNS resolution
-    set $api_upstream api:5001;
-    set $web_upstream web:3000;
-    set $plugin_upstream plugin_daemon:5002;
-
     location /console/api {
-      proxy_pass http://$api_upstream;
+      proxy_pass http://api:5001;
       include proxy.conf;
     }
 
     location /api {
-      proxy_pass http://$api_upstream;
+      proxy_pass http://api:5001;
       include proxy.conf;
     }
 
     location /v1 {
-      proxy_pass http://$api_upstream;
+      proxy_pass http://api:5001;
       include proxy.conf;
     }
 
     location /files {
-      proxy_pass http://$api_upstream;
+      proxy_pass http://api:5001;
       include proxy.conf;
     }
 
     location /explore {
-      proxy_pass http://$web_upstream;
+      proxy_pass http://web:3000;
       include proxy.conf;
     }
 
     location /e/ {
-      proxy_pass http://$plugin_upstream;
+      proxy_pass http://plugin_daemon:5002;
       proxy_set_header Dify-Hook-Url $scheme://$host$request_uri;
       include proxy.conf;
     }
 
     location / {
-      proxy_pass http://$web_upstream;
+      proxy_pass http://web:3000;
       include proxy.conf;
     }
-    
     location /mcp {
-      proxy_pass http://$api_upstream;
+      proxy_pass http://api:5001;
       include proxy.conf;
     }
-    
     # placeholder for acme challenge location
     
 
