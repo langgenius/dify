@@ -16,6 +16,8 @@ const Preview: FC<Props> = ({
 }) => {
   const isBasicApp = ['agent-chat', 'chat', 'completion'].includes(appDetail.mode)
 
-  return isBasicApp ? <BasicAppPreview appId={appId} /> : <FlowAppPreview appId={appId} className='h-[80vh]' />
+  return <div className='h-full w-full'>
+    {isBasicApp ? <BasicAppPreview appId={appId} /> : <FlowAppPreview appId={appId} className='h-full' />}
+  </div>
 }
 export default React.memo(Preview)
