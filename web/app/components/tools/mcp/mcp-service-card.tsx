@@ -186,7 +186,7 @@ function MCPServiceCard({
                   ) : ''
                 }
                 position="right"
-                popupClassName="w-58 max-w-60 rounded-xl border-[0.5px] p-3.5 shadow-lg backdrop-blur-[10px]"
+                popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
                 offset={24}
               >
                 <div>
