@@ -1,9 +1,7 @@
 const translation = {
   title: 'Badać',
   sidebar: {
-    discovery: 'Descoberta',
     chat: 'Chat',
-    workspace: 'Espaço de Trabalho',
     action: {
       pin: 'Fixar',
       unpin: 'Desafixar',
@@ -16,12 +14,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'Explorar Aplicações por Dify',
-    description: 'Use esses aplicativos modelo instantaneamente ou personalize seus próprios aplicativos com base nos modelos.',
-    allCategories: 'Recomendado',
   },
   appCard: {
-    addToWorkspace: 'Adicionar ao Espaço de Trabalho',
     customize: 'Personalizar',
   },
   appCustomize: {

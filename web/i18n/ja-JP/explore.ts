@@ -1,9 +1,9 @@
 const translation = {
   title: '探索',
   sidebar: {
-    discovery: '探索',
+    title: 'アプリギャラリー',
     chat: 'チャット',
-    workspace: 'ワークスペース',
+    webApps: 'Webアプリ',
     action: {
       pin: 'ピン留め',
       unpin: 'ピン留め解除',
@@ -14,15 +14,32 @@ const translation = {
       title: 'アプリを削除',
       content: 'このアプリを削除してもよろしいですか？',
     },
+    noApps: {
+      title: 'Webアプリなし',
+      description: '公開されたWebアプリがここに表示されます',
+      learnMore: '詳細',
+    },
   },
   apps: {
-    title: 'アプリを探索',
-    description: 'これらのテンプレートアプリを即座に使用するか、テンプレートに基づいて独自のアプリをカスタマイズしてください。',
-    allCategories: '推奨',
+    title: 'Difyの厳選アプリを試して、ビジネス向けのAIソリューションを見つけましょう',
+    allCategories: '全て',
+    resultNum: '{{num}}件の結果',
+    resetFilter: 'クリア',
   },
   appCard: {
-    addToWorkspace: 'ワークスペースに追加',
+    addToWorkspace: 'テンプレートを使用',
+    try: '詳細',
     customize: 'カスタマイズ',
+  },
+  tryApp: {
+    tabHeader: {
+      try: 'お試し',
+      detail: 'オーケストレーション詳細',
+    },
+    createFromSampleApp: 'テンプレートから作成',
+    category: 'カテゴリー',
+    requirements: '必要項目',
+    tryInfo: 'これはサンプルアプリです。最大5件のメッセージまでお試しいただけます。引き続き利用するには、「テンプレートから作成」 をクリックして設定を行ってください。',
   },
   appCustomize: {
     title: '{{name}}からアプリを作成',
@@ -38,6 +55,9 @@ const translation = {
     Workflow: 'ワークフロー',
     Agent: 'エージェント',
     Entertainment: 'エンターテイメント',
+  },
+  banner: {
+    viewMore: 'もっと見る',
   },
 }
 

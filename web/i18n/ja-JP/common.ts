@@ -657,6 +657,7 @@ const translation = {
       hitScore: '検索スコア：',
     },
     inputPlaceholder: '{{botName}} と話す',
+    inputDisabledPlaceholder: 'プレビューのみ',
     thought: '思考',
     thinking: '考え中...',
     resend: '再送信してください',

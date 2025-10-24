@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchAppInfo, fetchAppMeta, fetchAppParams, getAppAccessModeByAppCode } from './share'
+import { AppSourceType, fetchAppInfo, fetchAppMeta, fetchAppParams, getAppAccessModeByAppCode } from './share'
 
 const NAME_SPACE = 'webapp'
 
@@ -26,7 +26,7 @@ export const useGetWebAppParams = () => {
   return useQuery({
     queryKey: [NAME_SPACE, 'appParams'],
     queryFn: () => {
-      return fetchAppParams(false)
+      return fetchAppParams(AppSourceType.webApp)
     },
   })
 }
@@ -35,7 +35,7 @@ export const useGetWebAppMeta = () => {
   return useQuery({
     queryKey: [NAME_SPACE, 'appMeta'],
     queryFn: () => {
-      return fetchAppMeta(false)
+      return fetchAppMeta(AppSourceType.webApp)
     },
   })
 }

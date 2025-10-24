@@ -9,6 +9,7 @@ type Props = {
   value: boolean
   required?: boolean
   onChange: (value: boolean) => void
+  readonly?: boolean
 }
 
 const BoolInput: FC<Props> = ({
@@ -16,6 +17,7 @@ const BoolInput: FC<Props> = ({
   onChange,
   name,
   required,
+  readonly,
 }) => {
   const { t } = useTranslation()
   const handleChange = useCallback(() => {
@@ -27,6 +29,7 @@ const BoolInput: FC<Props> = ({
         className='!h-4 !w-4'
         checked={!!value}
         onCheck={handleChange}
+        disabled={readonly}
       />
       <div className='system-sm-medium flex items-center gap-1 text-text-secondary'>
         {name}

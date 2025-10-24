@@ -258,9 +258,9 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         </div>
       )}
       {hasVar && (
-        <div className='mt-1 px-3 pb-3'>
+        <div className={cn('mt-1 grid px-3 pb-3')}>
           <ReactSortable
-            className='space-y-1'
+            className={cn('grid-col-1 grid space-y-1', readonly && 'grid-cols-2 gap-1 space-y-0')}
             list={promptVariablesWithIds}
             setList={(list) => { onPromptVariablesChange?.(list.map(item => item.variable)) }}
             handle='.handle'

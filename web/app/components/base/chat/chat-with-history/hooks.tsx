@@ -20,6 +20,7 @@ import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInpu
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import {
+  AppSourceType,
   delConversation,
   fetchChatList,
   fetchConversations,
@@ -70,6 +71,7 @@ function getFormattedChatList(messages: any[]) {
 
 export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
+  const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const appInfo = useWebAppStore(s => s.appInfo)
   const appParams = useWebAppStore(s => s.appParams)
   const appMeta = useWebAppStore(s => s.appMeta)
@@ -176,17 +178,17 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
   const { data: appPinnedConversationData, mutate: mutateAppPinnedConversationData } = useSWR(
     appId ? ['appConversationData', isInstalledApp, appId, true] : null,
-    () => fetchConversations(isInstalledApp, appId, undefined, true, 100),
+    () => fetchConversations(appSourceType, appId, undefined, true, 100),
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   )
   const { data: appConversationData, isLoading: appConversationDataLoading, mutate: mutateAppConversationData } = useSWR(
     appId ? ['appConversationData', isInstalledApp, appId, false] : null,
-    () => fetchConversations(isInstalledApp, appId, undefined, false, 100),
+    () => fetchConversations(appSourceType, appId, undefined, false, 100),
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   )
   const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(
-    chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null,
-    () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId),
+    chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, appSourceType, appId] : null,
+    () => fetchChatList(chatShouldReloadKey, appSourceType, appId),
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   )
 
@@ -309,7 +311,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
 
-  const { data: newConversation } = useSWR(newConversationId ? [isInstalledApp, appId, newConversationId] : null, () => generationConversationName(isInstalledApp, appId, newConversationId), { revalidateOnFocus: false })
+  const { data: newConversation } = useSWR(newConversationId ? [isInstalledApp, appId, newConversationId] : null, () => generationConversationName(appSourceType, appId, newConversationId), { revalidateOnFocus: false })
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {
     if (appConversationData?.data && !appConversationDataLoading)
@@ -434,16 +436,16 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [mutateAppConversationData, mutateAppPinnedConversationData])
 
   const handlePinConversation = useCallback(async (conversationId: string) => {
-    await pinConversation(isInstalledApp, appId, conversationId)
+    await pinConversation(appSourceType, appId, conversationId)
     notify({ type: 'success', message: t('common.api.success') })
     handleUpdateConversationList()
-  }, [isInstalledApp, appId, notify, t, handleUpdateConversationList])
+  }, [appSourceType, appId, notify, t, handleUpdateConversationList])
 
   const handleUnpinConversation = useCallback(async (conversationId: string) => {
-    await unpinConversation(isInstalledApp, appId, conversationId)
+    await unpinConversation(appSourceType, appId, conversationId)
     notify({ type: 'success', message: t('common.api.success') })
     handleUpdateConversationList()
-  }, [isInstalledApp, appId, notify, t, handleUpdateConversationList])
+  }, [appSourceType, appId, notify, t, handleUpdateConversationList])
 
   const [conversationDeleting, setConversationDeleting] = useState(false)
   const handleDeleteConversation = useCallback(async (
@@ -457,7 +459,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
     try {
       setConversationDeleting(true)
-      await delConversation(isInstalledApp, appId, conversationId)
+      await delConversation(appSourceType, appId, conversationId)
       notify({ type: 'success', message: t('common.api.success') })
       onSuccess()
     }
@@ -492,7 +494,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
     setConversationRenaming(true)
     try {
-      await renameConversation(isInstalledApp, appId, conversationId, newName)
+      await renameConversation(appSourceType, appId, conversationId, newName)
 
       notify({
         type: 'success',
@@ -522,9 +524,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [mutateAppConversationData, handleConversationIdInfoChange])
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, appId)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
     notify({ type: 'success', message: t('common.api.success') })
-  }, [isInstalledApp, appId, t, notify])
+  }, [appSourceType, appId, t, notify])
 
   return {
     isInstalledApp,

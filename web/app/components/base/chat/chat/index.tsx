@@ -36,6 +36,8 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import type { AppData } from '@/models/share'
 
 export type ChatProps = {
+  isTryApp?: boolean
+  readonly?: boolean
   appData?: AppData
   chatList: ChatItem[]
   config?: ChatConfig
@@ -60,6 +62,7 @@ export type ChatProps = {
   onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string, index: number) => void
   onAnnotationRemoved?: (index: number) => void
   chatNode?: ReactNode
+  disableFeedback?: boolean
   onFeedback?: (messageId: string, feedback: Feedback) => void
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
@@ -76,6 +79,8 @@ export type ChatProps = {
 }
 
 const Chat: FC<ChatProps> = ({
+  isTryApp,
+  readonly = false,
   appData,
   config,
   onSend,
@@ -99,6 +104,7 @@ const Chat: FC<ChatProps> = ({
   onAnnotationEdited,
   onAnnotationRemoved,
   chatNode,
+  disableFeedback,
   onFeedback,
   chatAnswerContainerInner,
   hideProcessDetail,
@@ -219,6 +225,7 @@ const Chat: FC<ChatProps> = ({
 
   return (
     <ChatContextProvider
+      readonly={readonly}
       config={config}
       chatList={chatList}
       isResponding={isResponding}
@@ -230,17 +237,18 @@ const Chat: FC<ChatProps> = ({
       onAnnotationAdded={onAnnotationAdded}
       onAnnotationEdited={onAnnotationEdited}
       onAnnotationRemoved={onAnnotationRemoved}
+      disableFeedback={disableFeedback}
       onFeedback={onFeedback}
     >
-      <div className='relative h-full'>
+      <div className={cn('relative h-full', isTryApp && 'flex flex-col')}>
         <div
           ref={chatContainerRef}
-          className={cn('relative h-full overflow-y-auto overflow-x-hidden', chatContainerClassName)}
+          className={cn('relative h-full overflow-y-auto overflow-x-hidden', isTryApp && 'h-0 grow', chatContainerClassName)}
         >
           {chatNode}
           <div
             ref={chatContainerInnerRef}
-            className={cn('w-full', !noSpacing && 'px-8', chatContainerInnerClassName)}
+            className={cn('w-full', !noSpacing && 'px-8', chatContainerInnerClassName, isTryApp && 'px-0')}
           >
             {
               chatList.map((item, index) => {
@@ -284,7 +292,7 @@ const Chat: FC<ChatProps> = ({
         >
           <div
             ref={chatFooterInnerRef}
-            className={cn('relative', chatFooterInnerClassName)}
+            className={cn('relative', chatFooterInnerClassName, isTryApp && 'px-0')}
           >
             {
               !noStopResponding && isResponding && (
@@ -321,6 +329,7 @@ const Chat: FC<ChatProps> = ({
                   inputsForm={inputsForm}
                   theme={themeBuilder?.theme}
                   isResponding={isResponding}
+                  readonly={readonly}
                 />
               )
             }
