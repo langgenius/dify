@@ -23,7 +23,7 @@ export const FormStoryWrapper = ({
   const [submitCount, setSubmitCount] = useState(0)
 
   const form = useAppForm({
-    ...(options ?? {}),
+    ...options,
     onSubmit: (context) => {
       setSubmitCount(count => count + 1)
       setLastSubmitted(context.value)
