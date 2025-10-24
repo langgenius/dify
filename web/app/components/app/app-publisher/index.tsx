@@ -8,8 +8,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
-import type { CommonNodeType } from '@/app/components/workflow/types'
-import { BlockEnum, type InputVar } from '@/app/components/workflow/types'
+import type { InputVar } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -41,7 +40,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
 import Divider from '../../base/divider'
 import Loading from '../../base/loading'
 import Toast from '../../base/toast'
@@ -106,6 +104,7 @@ export type AppPublisherProps = {
   inputs?: InputVar[]
   onRefreshData?: () => void
   workflowToolAvailable?: boolean
+  missingStartNode?: boolean
 }
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
@@ -125,6 +124,7 @@ const AppPublisher = ({
   inputs,
   onRefreshData,
   workflowToolAvailable = true,
+  missingStartNode = false,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
 
@@ -146,9 +146,6 @@ const AppPublisher = ({
 
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
-
-  const nodes = useNodes<CommonNodeType>()
-  const missingStartNode = !nodes.some(node => node.data.type === BlockEnum.Start)
 
   const noAccessPermission = useMemo(() => systemFeatures.webapp_auth.enabled && appDetail && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result, [systemFeatures, appDetail, userCanAccessApp])
   const disabledFunctionButton = useMemo(() => (!publishedAt || missingStartNode || noAccessPermission), [publishedAt, missingStartNode, noAccessPermission])

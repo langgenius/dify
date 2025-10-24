@@ -40,6 +40,7 @@ import {
   AuthCategory,
   PluginAuthInAgent,
 } from '@/app/components/plugins/plugin-auth'
+import { ReadmeEntrance } from '../../readme-panel/entrance'
 
 type Props = {
   disabled?: boolean
@@ -272,7 +273,10 @@ const ToolSelector: FC<Props> = ({
               {/* base form */}
               <div className='flex flex-col gap-3 px-4 py-2'>
                 <div className='flex flex-col gap-1'>
-                  <div className='system-sm-semibold flex h-6 items-center text-text-secondary'>{t('plugin.detailPanel.toolSelector.toolLabel')}</div>
+                  <div className='system-sm-semibold flex h-6 items-center justify-between text-text-secondary'>
+                    {t('plugin.detailPanel.toolSelector.toolLabel')}
+                    <ReadmeEntrance pluginDetail={currentProvider as any} showShortTip className='pb-0' />
+                  </div>
                   <ToolPicker
                     placement='bottom'
                     offset={offset}
@@ -314,6 +318,7 @@ const ToolSelector: FC<Props> = ({
                       pluginPayload={{
                         provider: currentProvider.name,
                         category: AuthCategory.tool,
+                        detail: currentProvider as any,
                       }}
                       credentialId={value?.credential_id}
                       onAuthorizationItemClick={handleAuthorizationItemClick}

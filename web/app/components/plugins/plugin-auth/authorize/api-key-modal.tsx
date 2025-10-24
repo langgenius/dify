@@ -6,7 +6,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Modal from '@/app/components/base/modal/modal'
 import { CredentialTypeEnum } from '../types'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
@@ -23,6 +22,9 @@ import {
   useGetPluginCredentialSchemaHook,
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
+import { ReadmeEntrance } from '../../readme-panel/entrance'
+import { ReadmeShowType } from '../../readme-panel/store'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 
 export type ApiKeyModalProps = {
   pluginPayload: PluginPayload
@@ -134,25 +136,14 @@ const ApiKeyModal = ({
       footerSlot={
         (<div></div>)
       }
-      bottomSlot={
-        <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>
-          <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
-          {t('common.modelProvider.encrypted.front')}
-          <a
-            className='mx-1 text-text-accent'
-            target='_blank' rel='noopener noreferrer'
-            href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
-          >
-            PKCS1_OAEP
-          </a>
-          {t('common.modelProvider.encrypted.back')}
-        </div>
-      }
+      bottomSlot={<EncryptedBottom />}
       onConfirm={handleConfirm}
       showExtraButton={!!editValues}
       onExtraButtonClick={onRemove}
       disabled={disabled || isLoading || doingAction}
+      clickOutsideNotClose={true}
     >
+      <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
       {
         isLoading && (
           <div className='flex h-40 items-center justify-center'>

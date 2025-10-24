@@ -2,7 +2,7 @@ import React, { useCallback } from 'react'
 import { act, render } from '@testing-library/react'
 import { useTriggerStatusStore } from '../store/trigger-status'
 import { isTriggerNode } from '../types'
-import type { EntryNodeStatus } from '../nodes/_base/components/entry-node-container'
+import type { EntryNodeStatus } from '../store/trigger-status'
 
 // Mock the isTriggerNode function
 jest.mock('../types', () => ({

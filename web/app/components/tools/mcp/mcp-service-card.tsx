@@ -177,7 +177,7 @@ function MCPServiceCard({
                         </div>
                         <div
                           className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
-                          onClick={() => window.open(docLink('/guides/workflow/node/start'), '_blank')}
+                          onClick={() => window.open(docLink('/guides/workflow/node/user-input'), '_blank')}
                         >
                           {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
                         </div>
@@ -186,7 +186,7 @@ function MCPServiceCard({
                   ) : ''
                 }
                 position="right"
-                popupClassName="w-58 max-w-60 rounded-xl border-[0.5px] p-3.5 shadow-lg backdrop-blur-[10px]"
+                popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
                 offset={24}
               >
                 <div>

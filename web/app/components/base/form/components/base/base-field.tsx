@@ -19,6 +19,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const getExtraProps = (type: FormTypeEnum) => {
   switch (type) {
@@ -91,6 +92,7 @@ const BaseField = ({
   fieldState,
 }: BaseFieldProps) => {
   const renderI18nObject = useRenderI18nObject()
+  const { t } = useTranslation()
   const {
     name,
     label,
@@ -111,13 +113,15 @@ const BaseField = ({
   const disabled = propsDisabled || formSchemaDisabled
 
   const [translatedLabel, translatedPlaceholder, translatedTooltip, translatedDescription, translatedHelp] = useMemo(() => {
-    return [
+    const results = [
       label,
       placeholder,
       tooltip,
       description,
       help,
     ].map(v => getTranslatedContent({ content: v, render: renderI18nObject }))
+    if (!results[1]) results[1] = t('common.placeholder.input')
+    return results
   }, [label, placeholder, tooltip, description, help, renderI18nObject])
 
   const watchedVariables = useMemo(() => {

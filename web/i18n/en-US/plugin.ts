@@ -309,6 +309,11 @@ const translation = {
     connectedWorkspace: 'Connected Workspace',
     emptyAuth: 'Please configure authentication',
   },
+  readmeInfo: {
+    title: 'README',
+    needHelpCheckReadme: 'Need help? Check the README.',
+    noReadmeAvailable: 'No README available',
+  },
 }
 
 export default translation

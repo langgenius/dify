@@ -23,7 +23,8 @@ import { debounce } from 'lodash-es'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import LogViewer from '../log-viewer'
-import { usePluginStore, usePluginSubscriptionStore } from '../store'
+import { usePluginSubscriptionStore } from '../store'
+import { usePluginStore } from '../../store'
 
 type Props = {
   onClose: () => void

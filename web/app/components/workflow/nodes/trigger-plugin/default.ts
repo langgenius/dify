@@ -3,7 +3,6 @@ import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { NodeDefault, Var } from '../../types'
 import { BlockEnum, VarType } from '../../types'
 import { genNodeMetaData } from '../../utils'
-import { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
 import { VarKindType } from '../_base/types'
 import { type Field, type StructuredOutput, Type } from '../llm/types'
 import type { PluginTriggerNodeType } from './types'
@@ -43,15 +42,23 @@ const pickItemSchema = (schema: any) => {
   return Array.isArray(schema.items) ? schema.items[0] : schema.items
 }
 
-const resolveVarType = (schema: any, schemaTypeDefinitions?: SchemaTypeDefinition[]): { type: VarType; schemaType: string } => {
-  const schemaType = getMatchedSchemaType(schema, schemaTypeDefinitions)
-  const normalizedType = normalizeJsonSchemaType(schema)
+const extractSchemaType = (schema: any, _schemaTypeDefinitions?: SchemaTypeDefinition[]): string | undefined => {
+  if (!schema)
+    return undefined
 
-  if (schemaType === 'file') {
-    if (normalizedType === 'array')
-      return { type: VarType.arrayFile, schemaType }
-    return { type: VarType.file, schemaType }
-  }
+  const schemaTypeFromSchema = schema.schema_type || schema.schemaType
+  if (typeof schemaTypeFromSchema === 'string' && schemaTypeFromSchema.trim().length > 0)
+    return schemaTypeFromSchema
+
+  return undefined
+}
+
+const resolveVarType = (
+  schema: any,
+  schemaTypeDefinitions?: SchemaTypeDefinition[],
+): { type: VarType; schemaType?: string } => {
+  const schemaType = extractSchemaType(schema, schemaTypeDefinitions)
+  const normalizedType = normalizeJsonSchemaType(schema)
 
   switch (normalizedType) {
     case 'string':
@@ -70,24 +77,25 @@ const resolveVarType = (schema: any, schemaTypeDefinitions?: SchemaTypeDefinitio
         return { type: VarType.array, schemaType }
 
       const { type: itemType, schemaType: itemSchemaType } = resolveVarType(itemSchema, schemaTypeDefinitions)
+      const resolvedSchemaType = schemaType || itemSchemaType
 
       if (itemSchemaType === 'file')
-        return { type: VarType.arrayFile, schemaType }
+        return { type: VarType.arrayFile, schemaType: resolvedSchemaType }
 
       switch (itemType) {
         case VarType.string:
-          return { type: VarType.arrayString, schemaType }
+          return { type: VarType.arrayString, schemaType: resolvedSchemaType }
         case VarType.number:
         case VarType.integer:
-          return { type: VarType.arrayNumber, schemaType }
+          return { type: VarType.arrayNumber, schemaType: resolvedSchemaType }
         case VarType.boolean:
-          return { type: VarType.arrayBoolean, schemaType }
+          return { type: VarType.arrayBoolean, schemaType: resolvedSchemaType }
         case VarType.object:
-          return { type: VarType.arrayObject, schemaType }
+          return { type: VarType.arrayObject, schemaType: resolvedSchemaType }
         case VarType.file:
-          return { type: VarType.arrayFile, schemaType }
+          return { type: VarType.arrayFile, schemaType: resolvedSchemaType }
         default:
-          return { type: VarType.array, schemaType }
+          return { type: VarType.array, schemaType: resolvedSchemaType }
       }
     }
     default:
@@ -122,7 +130,7 @@ const toArrayItemType = (type: Type): Exclude<Type, Type.array> => {
 }
 
 const convertJsonSchemaToField = (schema: any, schemaTypeDefinitions?: SchemaTypeDefinition[]): Field => {
-  const schemaType = getMatchedSchemaType(schema, schemaTypeDefinitions)
+  const schemaType = extractSchemaType(schema, schemaTypeDefinitions)
   const normalizedType = normalizeJsonSchemaType(schema)
   const fieldType = toFieldType(normalizedType, schemaType)
 
@@ -182,7 +190,7 @@ const buildOutputVars = (schema: Record<string, any>, schemaTypeDefinitions?: Sc
       variable: name,
       type,
       des: propertySchema?.description,
-      schemaType,
+      ...(schemaType ? { schemaType } : {}),
     }
 
     if (normalizedType === 'object') {
@@ -212,7 +220,6 @@ const buildOutputVars = (schema: Record<string, any>, schemaTypeDefinitions?: Sc
 const metaData = genNodeMetaData({
   sort: 1,
   type: BlockEnum.TriggerPlugin,
-  helpLinkUri: 'plugin-trigger',
   isStart: true,
 })
 

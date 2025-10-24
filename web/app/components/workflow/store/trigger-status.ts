@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import type { EntryNodeStatus } from '../nodes/_base/components/entry-node-container'
+
+export type EntryNodeStatus = 'enabled' | 'disabled'
 
 type TriggerStatusState = {
   // Map of nodeId to trigger status

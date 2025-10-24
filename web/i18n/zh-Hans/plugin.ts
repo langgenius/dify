@@ -309,6 +309,11 @@ const translation = {
     connectedWorkspace: '已连接的工作区',
     emptyAuth: '请配置凭据',
   },
+  readmeInfo: {
+    title: 'README',
+    needHelpCheckReadme: '需要帮助？查看 README。',
+    noReadmeAvailable: 'README 文档不可用',
+  },
 }
 
 export default translation

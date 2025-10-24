@@ -689,3 +689,19 @@ export const useFetchDynamicOptions = (plugin_id: string, provider: string, acti
     }),
   })
 }
+
+export const usePluginReadme = ({ plugin_unique_identifier, language }: { plugin_unique_identifier: string, language?: string }) => {
+  return useQuery({
+    queryKey: ['pluginReadme', plugin_unique_identifier, language],
+    queryFn: () => get<{ readme: string }>('/workspaces/current/plugin/readme', { params: { plugin_unique_identifier, language } }),
+    enabled: !!plugin_unique_identifier,
+  })
+}
+
+export const usePluginReadmeAsset = ({ file_name, plugin_unique_identifier }: { file_name?: string, plugin_unique_identifier?: string }) => {
+  return useQuery({
+    queryKey: ['pluginReadmeAsset', plugin_unique_identifier, file_name],
+    queryFn: () => get<Blob>('/workspaces/current/plugin/asset', { params: { plugin_unique_identifier, file_name } }),
+    enabled: !!plugin_unique_identifier && !!file_name && /(^\.\/_assets|^_assets)/.test(file_name),
+  })
+}
