@@ -23,7 +23,7 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 
 import { useGetTryAppDataSets, useGetTryAppInfo } from '@/service/use-try-app'
-import { noop } from 'lodash'
+import { noop } from 'lodash-es'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../../header/account-setting/model-provider-page/hooks'
@@ -70,10 +70,10 @@ const BasicAppPreview: FC<Props> = ({
     }
   })
   const datasetIds = (() => {
-    if(isLoadingAppDetail)
+    if (isLoadingAppDetail)
       return []
     const modelConfig = appDetail?.model_config
-    if(!modelConfig)
+    if (!modelConfig)
       return []
     let datasets: any = null
 
@@ -93,7 +93,7 @@ const BasicAppPreview: FC<Props> = ({
   const isLoading = isLoadingAppDetail || isLoadingDatasets || isLoadingToolProviders
 
   const modelConfig: ModelConfig = ((modelConfig?: BackendModelConfig) => {
-    if(isLoading || !modelConfig)
+    if (isLoading || !modelConfig)
       return defaultModelConfig
 
     const model = modelConfig.model
@@ -144,7 +144,7 @@ const BasicAppPreview: FC<Props> = ({
       agentConfig: appDetail?.mode === 'agent-chat' ? {
         max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
         ...modelConfig.agent_mode,
-                      // remove dataset
+        // remove dataset
         enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true
         tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
           return !tool.dataset
@@ -331,7 +331,7 @@ const BasicAppPreview: FC<Props> = ({
   return (
     <ConfigContext.Provider value={value as any}>
       <FeaturesProvider features={featuresData}>
-        <div className="flex h-full flex-col bg-components-panel-on-panel-item-bg">
+        <div className="flex h-full w-full flex-col bg-components-panel-on-panel-item-bg">
           <div className='relative flex h-[200px] grow'>
             <div className={'flex h-full w-full shrink-0 flex-col sm:w-1/2'}>
               <Config />
