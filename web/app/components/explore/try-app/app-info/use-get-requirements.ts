@@ -1,4 +1,5 @@
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
+import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import type { TryAppInfo } from '@/service/try-app'
@@ -53,6 +54,16 @@ const useGetRequirements = ({ appDetail, appId }: Params) => {
       return {
         name: data.model.name,
         iconUrl: getIconUrl(modelProviderAndName[0], modelProviderAndName[1]),
+      }
+    }))
+
+    const toolNodes = nodes.filter(node => node.data.type === BlockEnum.Tool)
+    requirements.push(...toolNodes.map((node) => {
+      const data = node.data as ToolNodeType
+      const toolProviderAndName = data.provider_id.split('/')
+      return {
+        name: data.tool_label,
+        iconUrl: getIconUrl(toolProviderAndName[0], toolProviderAndName[1]),
       }
     }))
   }
