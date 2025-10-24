@@ -15,7 +15,7 @@ import Switch from '@/app/components/base/switch'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { Resolution } from '@/types/app'
-import { noop } from 'lodash'
+import { noop } from 'lodash-es'
 import cn from '@/utils/classnames'
 
 const ConfigVision: FC = () => {

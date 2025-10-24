@@ -13,7 +13,7 @@ import ActionButton from '@/app/components/base/action-button'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
 import type { FileUpload } from '@/app/components/base/features/types'
 import cn from '@/utils/classnames'
-import { noop } from 'lodash'
+import { noop } from 'lodash-es'
 
 type OperationProps = {
   readonly?: boolean

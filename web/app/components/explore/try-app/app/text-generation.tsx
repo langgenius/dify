@@ -15,11 +15,12 @@ import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
 import { useBoolean } from 'ahooks'
-import { noop } from 'lodash'
+import { noop } from 'lodash-es'
 import type { Task } from '../../../share/text-generation/types'
 import Res from '@/app/components/share/text-generation/result'
 import { AppSourceType } from '@/service/share'
 import { TaskStatus } from '@/app/components/share/text-generation/types'
+import Alert from '@/app/components/base/alert'
 
 type Props = {
   appId: string
@@ -144,19 +145,13 @@ const TextGeneration: FC<Props> = ({
     <div
       className={cn(
         'relative flex h-full flex-col',
-        !isPC && 'h-[calc(100vh_-_36px)] rounded-t-2xl shadow-lg backdrop-blur-sm',
-        !isPC
-          ? isShowResultPanel
-            ? 'bg-background-default-burn'
-            : 'border-t-[0.5px] border-divider-regular bg-components-panel-bg'
-          : 'bg-chatbot-bg',
+        'bg-chatbot-bg',
       )}
     >
       <div className={cn(
-        'flex h-0 grow flex-col overflow-y-auto',
-        isPC && 'px-14 py-8',
-        !isPC && 'p-0 pb-2',
+        'flex h-0 grow flex-col overflow-y-auto p-6',
       )}>
+        <Alert className='mb-3 shrink-0' message='This is a sample app. You can try up to 5 messages. To keep using it, click “Create form this sample app” and set it up!' onHide={noop} />
         {renderRes()}
       </div>
     </div>
@@ -220,15 +215,7 @@ const TextGeneration: FC<Props> = ({
       </div>
 
       {/* Result */}
-      <div className={cn(
-        isPC
-          ? 'h-full w-0 grow'
-          : isShowResultPanel
-            ? 'fixed inset-0 z-50 bg-background-overlay backdrop-blur-sm'
-            : resultExisted
-              ? 'relative h-16 shrink-0 overflow-hidden bg-background-default-burn pt-2.5'
-              : '',
-      )}>
+      <div className={cn('h-full w-0 grow')}>
         {!isPC && (
           <div
             className={cn(

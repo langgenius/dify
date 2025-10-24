@@ -31,7 +31,7 @@ const TryApp: FC<Props> = ({
     <Modal
       isShow
       onClose={onClose}
-      className='h-[calc(100vh-32px)] max-w-[calc(100vw-32px)] p-2'
+      className='h-[calc(100vh-32px)] min-w-[1280px] max-w-[calc(100vw-32px)] overflow-x-auto p-2'
     >
       {isLoading ? (<div className='flex h-full items-center justify-center'>
         <Loading type='area' />
