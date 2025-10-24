@@ -14,7 +14,7 @@ class PluginAssetManager(BasePluginClient):
     def extract_asset(self, tenant_id: str, plugin_unique_identifier: str, filename: str) -> bytes:
         response = self._request(
             method="GET",
-            path=f"plugin/{tenant_id}/asset",
+            path=f"plugin/{tenant_id}/extract",
             params={
                 "plugin_unique_identifier": plugin_unique_identifier,
                 "file_name": filename
