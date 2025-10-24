@@ -56,7 +56,6 @@ const copyAllDirs = async () => {
       const destParent = path.dirname(dest)
       console.debug(`Ensuring destination parent directory exists: ${destParent}`)
       await mkdir(destParent, { recursive: true })
-      
       if (await pathExists(src))
         await copyDir(src, dest)
       else
