@@ -37,6 +37,7 @@
     "check:i18n-types": "node ./i18n-config/check-i18n-sync.js",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:gen": "node scripts/analyze-component.js",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "preinstall": "npx only-allow pnpm",
