@@ -16,8 +16,9 @@ class PluginAssetManager(BasePluginClient):
             method="GET",
             path=f"plugin/{tenant_id}/asset/extract",
             params={
+                "tenant_id": tenant_id,
                 "plugin_unique_identifier": plugin_unique_identifier,
-                "file_name": filename
+                "file_path": filename
             }
         )
         if response.status_code != 200:
