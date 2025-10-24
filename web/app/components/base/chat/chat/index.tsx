@@ -248,7 +248,7 @@ const Chat: FC<ChatProps> = ({
           {chatNode}
           <div
             ref={chatContainerInnerRef}
-            className={cn('w-full', !noSpacing && 'px-8', chatContainerInnerClassName)}
+            className={cn('w-full', !noSpacing && 'px-8', chatContainerInnerClassName, isTryApp && 'px-0')}
           >
             {
               chatList.map((item, index) => {
@@ -292,7 +292,7 @@ const Chat: FC<ChatProps> = ({
         >
           <div
             ref={chatFooterInnerRef}
-            className={cn('relative', chatFooterInnerClassName)}
+            className={cn('relative', chatFooterInnerClassName, isTryApp && 'px-0')}
           >
             {
               !noStopResponding && isResponding && (

@@ -33,7 +33,7 @@ const InputsFormNode = ({
     return null
 
   return (
-    <div className={cn('mb-6 flex flex-col items-center px-4 pt-6', isMobile && 'mb-4 pt-4', isTryApp && 'px-0')}>
+    <div className={cn('mb-6 flex flex-col items-center px-4 pt-6', isMobile && 'mb-4 pt-4', isTryApp && 'mb-0 px-0')}>
       <div className={cn(
         'w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md',
         collapsed && 'border border-components-card-border bg-components-card-bg shadow-none',
