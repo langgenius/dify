@@ -379,6 +379,7 @@ export type OnNodeAdd = (
     prevNodeSourceHandle?: string
     nextNodeId?: string
     nextNodeTargetHandle?: string
+    skipAutoConnect?: boolean
   },
 ) => void
 

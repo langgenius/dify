@@ -737,7 +737,7 @@ export const useNodesInteractions = () => {
         targetHandle = 'target',
         toolDefaultValue,
       },
-      { prevNodeId, prevNodeSourceHandle, nextNodeId, nextNodeTargetHandle },
+      { prevNodeId, prevNodeSourceHandle, nextNodeId, nextNodeTargetHandle, skipAutoConnect },
     ) => {
       if (getNodesReadOnly()) return
 
@@ -830,7 +830,7 @@ export const useNodesInteractions = () => {
         }
 
         let newEdge = null
-        if (nodeType !== BlockEnum.DataSource) {
+        if (nodeType !== BlockEnum.DataSource && !skipAutoConnect) {
           newEdge = {
             id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
             type: CUSTOM_EDGE,
@@ -970,6 +970,7 @@ export const useNodesInteractions = () => {
           nodeType !== BlockEnum.IfElse
           && nodeType !== BlockEnum.QuestionClassifier
           && nodeType !== BlockEnum.LoopEnd
+          && !skipAutoConnect
         ) {
           newEdge = {
             id: `${newNode.id}-${sourceHandle}-${nextNodeId}-${nextNodeTargetHandle}`,
@@ -1119,7 +1120,7 @@ export const useNodesInteractions = () => {
         )
         let newPrevEdge = null
 
-        if (nodeType !== BlockEnum.DataSource) {
+        if (nodeType !== BlockEnum.DataSource && !skipAutoConnect) {
           newPrevEdge = {
             id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
             type: CUSTOM_EDGE,
@@ -1159,6 +1160,7 @@ export const useNodesInteractions = () => {
           nodeType !== BlockEnum.IfElse
           && nodeType !== BlockEnum.QuestionClassifier
           && nodeType !== BlockEnum.LoopEnd
+          && !skipAutoConnect
         ) {
           newNextEdge = {
             id: `${newNode.id}-${sourceHandle}-${nextNodeId}-${nextNodeTargetHandle}`,
