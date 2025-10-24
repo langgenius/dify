@@ -2,8 +2,7 @@ import type { StorybookConfig } from '@storybook/nextjs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const storybookDir = path.dirname(fileURLToPath(import.meta.url))
 
 const config: StorybookConfig = {
   stories: ['../app/components/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
@@ -36,9 +35,9 @@ const config: StorybookConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       // Mock the plugin index files to avoid circular dependencies
-      [path.resolve(__dirname, '../app/components/base/prompt-editor/plugins/context-block/index.tsx')]: path.resolve(__dirname, '__mocks__/context-block.tsx'),
-      [path.resolve(__dirname, '../app/components/base/prompt-editor/plugins/history-block/index.tsx')]: path.resolve(__dirname, '__mocks__/history-block.tsx'),
-      [path.resolve(__dirname, '../app/components/base/prompt-editor/plugins/query-block/index.tsx')]: path.resolve(__dirname, '__mocks__/query-block.tsx'),
+      [path.resolve(storybookDir, '../app/components/base/prompt-editor/plugins/context-block/index.tsx')]: path.resolve(storybookDir, '__mocks__/context-block.tsx'),
+      [path.resolve(storybookDir, '../app/components/base/prompt-editor/plugins/history-block/index.tsx')]: path.resolve(storybookDir, '__mocks__/history-block.tsx'),
+      [path.resolve(storybookDir, '../app/components/base/prompt-editor/plugins/query-block/index.tsx')]: path.resolve(storybookDir, '__mocks__/query-block.tsx'),
     }
     return config
   },

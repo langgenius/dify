@@ -237,7 +237,7 @@ const ChatWrapper = () => {
 
   return (
     <Chat
-      appData={appData}
+      appData={appData || undefined}
       config={appConfig}
       chatList={messageList}
       isResponding={respondingState}

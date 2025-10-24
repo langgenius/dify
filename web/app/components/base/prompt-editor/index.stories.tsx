@@ -25,7 +25,7 @@ const PromptEditorMock = ({ value, onChange, placeholder, editable, compact, cla
 }
 
 const meta = {
-  title: 'Base/PromptEditor',
+  title: 'Base/Input/PromptEditor',
   component: PromptEditorMock,
   parameters: {
     layout: 'centered',

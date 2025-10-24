@@ -68,14 +68,14 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
     updateShareCode(shareCode)
   }, [shareCode, updateShareCode])
 
-  const { isFetching, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
+  const { isLoading, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
 
   useEffect(() => {
     if (accessModeResult?.accessMode)
       updateWebAppAccessMode(accessModeResult.accessMode)
   }, [accessModeResult, updateWebAppAccessMode, shareCode])
 
-  if (isGlobalPending || isFetching) {
+  if (isGlobalPending || isLoading) {
     return <div className='flex h-full w-full items-center justify-center'>
       <Loading />
     </div>

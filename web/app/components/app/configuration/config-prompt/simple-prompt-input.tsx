@@ -76,7 +76,9 @@ const Prompt: FC<ISimplePromptInput> = ({
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({
       payload: {},
-      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+      onSaveCallback: (newExternalDataTool?: ExternalDataTool) => {
+        if (!newExternalDataTool)
+          return
         eventEmitter?.emit({
           type: ADD_EXTERNAL_DATA_TOOL,
           payload: newExternalDataTool,

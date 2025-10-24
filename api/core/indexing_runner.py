@@ -415,7 +415,6 @@ class IndexingRunner:
             document_id=dataset_document.id,
             after_indexing_status="splitting",
             extra_update_params={
-                DatasetDocument.word_count: sum(len(text_doc.page_content) for text_doc in text_docs),
                 DatasetDocument.parsing_completed_at: naive_utc_now(),
             },
         )
@@ -755,6 +754,7 @@ class IndexingRunner:
             extra_update_params={
                 DatasetDocument.cleaning_completed_at: cur_time,
                 DatasetDocument.splitting_completed_at: cur_time,
+                DatasetDocument.word_count: sum(len(doc.page_content) for doc in documents),
             },
         )
 
