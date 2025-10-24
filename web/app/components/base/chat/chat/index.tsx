@@ -240,10 +240,10 @@ const Chat: FC<ChatProps> = ({
       disableFeedback={disableFeedback}
       onFeedback={onFeedback}
     >
-      <div className='relative h-full'>
+      <div className={cn('relative h-full', isTryApp && 'flex flex-col')}>
         <div
           ref={chatContainerRef}
-          className={cn('relative h-full overflow-y-auto overflow-x-hidden', isTryApp && 'grow', chatContainerClassName)}
+          className={cn('relative h-full overflow-y-auto overflow-x-hidden', isTryApp && 'h-0 grow', chatContainerClassName)}
         >
           {chatNode}
           <div

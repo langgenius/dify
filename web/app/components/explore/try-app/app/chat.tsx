@@ -57,7 +57,7 @@ const TryApp: FC<Props> = ({
             <div className='system-md-semibold grow truncate text-text-primary' title={appDetail.name}>{appDetail.name}</div>
           </div>
         </div>
-        <div className='mx-auto mt-4 flex w-[769px] grow flex-col'>
+        <div className='mx-auto mt-4 flex h-[0] w-[769px] grow flex-col'>
           {!isHideTryNotice && (
             <Alert className='mb-4 shrink-0' message={t('explore.tryApp.tryInfo')} onHide={hideTryNotice} />
           )}
