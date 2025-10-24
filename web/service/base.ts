@@ -118,10 +118,10 @@ export type IOtherOptions = {
 }
 
 function jumpTo(url: string) {
-  if(!url)
+  if (!url)
     return
   const targetPath = new URL(url, globalThis.location.origin).pathname
-  if(targetPath === globalThis.location.pathname)
+  if (targetPath === globalThis.location.pathname)
     return
   globalThis.location.href = url
 }
@@ -139,7 +139,7 @@ const WBB_APP_LOGIN_PATH = '/webapp-signin'
 function requiredWebSSOLogin(message?: string, code?: number) {
   const params = new URLSearchParams()
   // prevent redirect loop
-  if(globalThis.location.pathname === WBB_APP_LOGIN_PATH)
+  if (globalThis.location.pathname === WBB_APP_LOGIN_PATH)
     return
 
   params.append('redirect_url', encodeURIComponent(`${globalThis.location.pathname}${globalThis.location.search}`))
