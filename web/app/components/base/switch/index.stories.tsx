@@ -3,7 +3,7 @@ import { useState } from 'react'
 import Switch from '.'
 
 const meta = {
-  title: 'Base/Switch',
+  title: 'Base/Input/Switch',
   component: Switch,
   parameters: {
     layout: 'centered',
