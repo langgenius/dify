@@ -240,6 +240,7 @@ const ChatWrapper = () => {
 
   return (
     <Chat
+      isTryApp={appSourceType === AppSourceType.tryApp}
       appData={appData || undefined}
       config={appConfig}
       chatList={messageList}

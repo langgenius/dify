@@ -78,7 +78,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const [userId, setUserId] = useState<string>()
   const [conversationId, setConversationId] = useState<string>()
   useEffect(() => {
-    if(isTryApp) return
+    if (isTryApp) return
     getProcessedSystemVariablesFromUrlParams().then(({ user_id, conversation_id }) => {
       setUserId(user_id)
       setConversationId(conversation_id)
@@ -86,7 +86,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   }, [])
 
   useEffect(() => {
-    if(isTryApp) return
+    if (isTryApp) return
     const setLanguageFromParams = async () => {
       // Check URL parameters for language override
       const urlParams = new URLSearchParams(window.location.search)
@@ -251,7 +251,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   useEffect(() => {
     // init inputs from url params
     (async () => {
-      if(isTryApp)
+      if (isTryApp)
         return
       const inputs = await getProcessedInputsFromUrlParams()
       const userVariables = await getProcessedUserVariablesFromUrlParams()

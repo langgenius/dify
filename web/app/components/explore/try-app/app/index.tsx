@@ -24,7 +24,7 @@ const TryApp: FC<Props> = ({
   return (
     <div className='flex h-full w-full'>
       {isChat && (
-        <Chat appId={appId} className='h-full grow' />
+        <Chat appId={appId} appDetail={appDetail} className='h-full grow' />
       )}
       {isCompletion && (
         <TextGeneration

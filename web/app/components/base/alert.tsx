@@ -31,7 +31,7 @@ const Alert: React.FC<Props> = ({
   className,
 }) => {
   return (
-    <div className={cn('pointer-events-none flex w-full', className)}>
+    <div className={cn('pointer-events-none w-full', className)}>
       <div
         className='relative flex space-x-1 overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg'
       >

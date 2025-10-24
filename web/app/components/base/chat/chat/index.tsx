@@ -36,6 +36,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import type { AppData } from '@/models/share'
 
 export type ChatProps = {
+  isTryApp?: boolean
   readonly?: boolean
   appData?: AppData
   chatList: ChatItem[]
@@ -78,6 +79,7 @@ export type ChatProps = {
 }
 
 const Chat: FC<ChatProps> = ({
+  isTryApp,
   readonly = false,
   appData,
   config,
@@ -241,7 +243,7 @@ const Chat: FC<ChatProps> = ({
       <div className='relative h-full'>
         <div
           ref={chatContainerRef}
-          className={cn('relative h-full overflow-y-auto overflow-x-hidden', chatContainerClassName)}
+          className={cn('relative h-full overflow-y-auto overflow-x-hidden', isTryApp && 'grow', chatContainerClassName)}
         >
           {chatNode}
           <div
