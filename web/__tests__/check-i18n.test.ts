@@ -576,7 +576,7 @@ export default translation
         // Find the key line (simplified for single-level keys in test)
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i]
-          const keyPattern = new RegExp(`^\\s*${keyToRemove}\\s*:`)
+          const keyPattern = new RegExp(`^\s*${keyToRemove}\s*:`)
           if (keyPattern.test(line)) {
             targetLineIndex = i
             break
@@ -591,7 +591,7 @@ export default translation
           const trimmedKeyLine = keyLine.trim()
 
           // If key line ends with ":" (not complete value), it's likely multiline
-          if (trimmedKeyLine.endsWith(':') && !trimmedKeyLine.includes('{') && !trimmedKeyLine.match(/:\s*['"`]/)) {
+          if (trimmedKeyLine.endsWith(':') && !trimmedKeyLine.includes('{') && !trimmedKeyLine.match(/:\s*['"\]/)) {
             // Find the value lines that belong to this key
             let currentLine = targetLineIndex + 1
             let foundValue = false
@@ -616,7 +616,8 @@ export default translation
                 foundValue = true
 
                 // Check if this line ends the value (ends with quote and comma/no comma)
-                if ((trimmed.endsWith('\',') || trimmed.endsWith('",') || trimmed.endsWith('`,')
+                if ((trimmed.endsWith(\'\',
+                     trimmed.endsWith('",') || trimmed.endsWith('`,
                      || trimmed.endsWith('\'') || trimmed.endsWith('"') || trimmed.endsWith('`'))
                     && !trimmed.startsWith('//'))
                   break
@@ -655,7 +656,7 @@ export default translation`
 
       expect(result).toContain('keepThis: \'This should stay\'')
       expect(result).toContain('alsoKeep: \'This should also stay\'')
-      expect(result).not.toContain('removeThis: \'This should be removed\'')
+      expect(result).not.toContain('removeThis: \'This should be removed\'' )
     })
 
     it('should remove multiline key-value pairs completely', () => {
@@ -750,7 +751,7 @@ export default translation`
       const result = removeExtraKeysFromFile(polishContent, ['captionAppType', 'chatbotDescription', 'agentDescription'])
 
       expect(result).toContain('createApp: \'UTWÓRZ APLIKACJĘ\'')
-      expect(result).toContain('basic: \'Podstawowy\'')
+      expect(result).toContain('basic: \'Podstawowy\'' )
       expect(result).not.toContain('captionAppType:')
       expect(result).not.toContain('chatbotDescription:')
       expect(result).not.toContain('agentDescription:')
@@ -759,4 +760,18 @@ export default translation`
       expect(result).not.toContain('Zbuduj inteligentnego agenta')
     })
   })
+  describe('Compare all languages with en-US', () => {
+    const languages = ['de-DE', 'es-ES', 'fa-IR', 'fr-FR', 'hi-IN', 'id-ID', 'it-IT', 'ja-JP', 'ko-KR', 'pl-PL', 'pt-BR', 'ro-RO', 'ru-RU', 'sl-SI', 'th-TH', 'tr-TR', 'uk-UA', 'vi-VN', 'zh-Hans', 'zh-Hant'];
+
+    it.each(languages)('should have the same keys as en-US in %s', async (lang) => {
+      const enKeys = await getKeysFromLanguage('en-US', path.join(__dirname, '../i18n'));
+      const langKeys = await getKeysFromLanguage(lang, path.join(__dirname, '../i18n'));
+
+      const missingKeys = enKeys.filter(key => !langKeys.includes(key));
+      const extraKeys = langKeys.filter(key => !enKeys.includes(key));
+
+      expect(missingKeys).toEqual([]);
+      expect(extraKeys).toEqual([]);
+    });
+  });
 })
