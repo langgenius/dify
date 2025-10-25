@@ -148,17 +148,15 @@ const FeaturedTriggers = ({
           {!showEmptyState && !isLoading && (
             <>
               {visibleInstalledProviders.length > 0 && (
-                <div className='-mx-1 mt-1'>
-                  <div className='p-1'>
-                    {visibleInstalledProviders.map(provider => (
-                      <TriggerPluginItem
-                        key={provider.id}
-                        payload={provider}
-                        hasSearchText={false}
-                        onSelect={onSelect}
-                      />
-                    ))}
-                  </div>
+                <div className='mt-1'>
+                  {visibleInstalledProviders.map(provider => (
+                    <TriggerPluginItem
+                      key={provider.id}
+                      payload={provider}
+                      hasSearchText={false}
+                      onSelect={onSelect}
+                    />
+                  ))}
                 </div>
               )}
 
