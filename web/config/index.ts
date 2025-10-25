@@ -218,6 +218,7 @@ export const DEFAULT_AGENT_SETTING = {
   enabled: false,
   max_iteration: 10,
   strategy: AgentStrategy.functionCall,
+  clear_history_tool_response: false,
   tools: [],
 }
 
