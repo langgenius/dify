@@ -249,6 +249,7 @@ export type TriggerInfo = {
   workflow_trigger_log_id?: string
   provider_id?: string
   provider_name?: string
+  provider_label?: Record<string, string>
   subscription_id?: string
   event_name?: string
   plugin_id?: string

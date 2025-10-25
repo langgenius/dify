@@ -93,16 +93,26 @@ const getTriggerIcon = (triggeredFrom: string, triggerInfo?: TriggerInfo) => {
   }
 }
 
+const pickLabel = (labelMap?: Record<string, string>, language?: string) => {
+  if (!labelMap)
+    return ''
+  if (language && labelMap[language])
+    return labelMap[language]
+  return labelMap.en_US || labelMap['en-US'] || Object.values(labelMap)[0] || ''
+}
+
 const TriggerByDisplay: FC<TriggerByDisplayProps> = ({
   triggeredFrom,
   className = '',
   showText = true,
   triggerInfo,
 }) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const resolvedType = resolveTriggerType(triggerInfo?.type || triggeredFrom)
-  const displayName = triggerInfo?.provider_name || getTriggerDisplayName(resolvedType, t)
+  const providerDisplayName = pickLabel(triggerInfo?.provider_label, i18n.language)
+    || triggerInfo?.provider_name
+  const displayName = providerDisplayName || getTriggerDisplayName(resolvedType, t)
   const icon = getTriggerIcon(resolvedType, triggerInfo)
 
   return (
