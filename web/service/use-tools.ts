@@ -335,6 +335,11 @@ export type AppTrigger = {
   title: string
   node_id: string
   provider_name: string
+  provider_id?: string
+  subscription_id?: string
+  plugin_id?: string
+  plugin_unique_identifier?: string
+  event_name?: string
   icon: string
   status: 'enabled' | 'disabled' | 'unauthorized'
   created_at: string
