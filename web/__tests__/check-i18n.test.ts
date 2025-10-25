@@ -312,7 +312,7 @@ export default translation
       expect(keys).toContain('complex.level1.directValue')
       expect(keys).toContain('complex.rootValue')
 
-      // Should not include intermediate objects
+      // Should not include intermediate object keys
       expect(keys).not.toContain('complex.level1')
       expect(keys).not.toContain('complex.level1.level2')
       expect(keys).not.toContain('complex.level1.level2.level3')
@@ -591,7 +591,7 @@ export default translation
           const trimmedKeyLine = keyLine.trim()
 
           // If key line ends with ":" (not complete value), it's likely multiline
-          if (trimmedKeyLine.endsWith(':') && !trimmedKeyLine.includes('{') && !trimmedKeyLine.match(/:\s*['"\]/)) {
+          if (trimmedKeyLine.endsWith(':') && !trimmedKeyLine.includes('{') && !trimmedKeyLine.match(/:\s*['"\\]/)) {
             // Find the value lines that belong to this key
             let currentLine = targetLineIndex + 1
             let foundValue = false
@@ -616,9 +616,8 @@ export default translation
                 foundValue = true
 
                 // Check if this line ends the value (ends with quote and comma/no comma)
-                if ((trimmed.endsWith(\'\',
-                     trimmed.endsWith('",') || trimmed.endsWith('`,
-                     || trimmed.endsWith('\'') || trimmed.endsWith('"') || trimmed.endsWith('`'))
+                if ((trimmed.endsWith("',") || trimmed.endsWith('",') || trimmed.endsWith('`,')
+                     || trimmed.endsWith("'" ) || trimmed.endsWith('"') || trimmed.endsWith('`'))
                     && !trimmed.startsWith('//'))
                   break
               }
