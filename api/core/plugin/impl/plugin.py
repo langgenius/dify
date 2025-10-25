@@ -32,7 +32,7 @@ class PluginInstaller(BasePluginClient):
                 f"plugin/{tenant_id}/management/fetch/readme",
                 PluginReadmeResponse,
                 params={
-                    "tenant_id":tenant_id,
+                    "tenant_id": tenant_id,
                     "plugin_unique_identifier": plugin_unique_identifier,
                     "language": language
                 }
