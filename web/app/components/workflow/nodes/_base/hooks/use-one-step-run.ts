@@ -15,6 +15,7 @@ import {
   InputVarType,
   NodeRunningStatus,
   VarType,
+  WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
 import type { TriggerNodeType } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
@@ -204,6 +205,45 @@ const useOneStepRun = <T>({
     setListeningTriggerIsAll,
     setShowVariableInspectPanel,
   } = workflowStore.getState()
+  const updateNodeInspectRunningState = useCallback((nodeId: string, isRunning: boolean) => {
+    const {
+      nodesWithInspectVars,
+      setNodesWithInspectVars,
+    } = workflowStore.getState()
+
+    let hasChanges = false
+    const nodes = produce(nodesWithInspectVars, (draft) => {
+      const index = draft.findIndex(node => node.nodeId === nodeId)
+      if (index !== -1) {
+        const targetNode = draft[index]
+        if (targetNode.isSingRunRunning !== isRunning) {
+          targetNode.isSingRunRunning = isRunning
+          if (isRunning)
+            targetNode.isValueFetched = false
+          hasChanges = true
+        }
+      }
+      else if (isRunning) {
+        const { getNodes } = store.getState()
+        const target = getNodes().find(node => node.id === nodeId)
+        if (target) {
+          draft.unshift({
+            nodeId,
+            nodeType: target.data.type,
+            title: target.data.title,
+            vars: [],
+            nodePayload: target.data,
+            isSingRunRunning: true,
+            isValueFetched: false,
+          })
+          hasChanges = true
+        }
+      }
+    })
+
+    if (hasChanges)
+      setNodesWithInspectVars(nodes)
+  }, [workflowStore, store])
   const invalidLastRun = useInvalidLastRun(flowType, flowId!, id)
   const [runResult, doSetRunResult] = useState<NodeRunResult | null>(null)
   const {
@@ -246,13 +286,14 @@ const useOneStepRun = <T>({
     const { getNodes } = store.getState()
     const nodes = getNodes()
     appendNodeInspectVars(id, vars, nodes)
+    updateNodeInspectRunningState(id, false)
     if (data?.status === NodeRunningStatus.Succeeded) {
       invalidLastRun()
       if (isStartNode)
         invalidateSysVarValues()
       invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
     }
-  }, [isRunAfterSingleRun, runningStatus, flowId, id, store, appendNodeInspectVars, invalidLastRun, isStartNode, invalidateSysVarValues, invalidateConversationVarValues])
+  }, [isRunAfterSingleRun, runningStatus, flowId, id, store, appendNodeInspectVars, updateNodeInspectRunningState, invalidLastRun, isStartNode, invalidateSysVarValues, invalidateConversationVarValues])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const setNodeRunning = () => {
@@ -581,6 +622,8 @@ const useOneStepRun = <T>({
     if (isPluginTriggerNode)
       cancelPluginSingleRun()
 
+    updateNodeInspectRunningState(id, true)
+
     if (isTriggerNode)
       startTriggerListening()
     else
@@ -883,6 +926,8 @@ const useOneStepRun = <T>({
         cancelPluginSingleRun()
       if (isTriggerNode)
         stopTriggerListening()
+      if (!isIteration && !isLoop)
+        updateNodeInspectRunningState(id, false)
       if (!isPausedRef.current && !isIteration && !isLoop && res) {
         setRunResult({
           ...res,
@@ -930,6 +975,16 @@ const useOneStepRun = <T>({
       },
     })
     stopTriggerListening()
+    updateNodeInspectRunningState(id, false)
+    const {
+      workflowRunningData,
+      setWorkflowRunningData,
+    } = workflowStore.getState()
+    if (workflowRunningData) {
+      setWorkflowRunningData(produce(workflowRunningData, (draft) => {
+        draft.result.status = WorkflowRunningStatus.Stopped
+      }))
+    }
   }, [
     isTriggerNode,
     runningStatus,
@@ -938,6 +993,8 @@ const useOneStepRun = <T>({
     handleNodeDataUpdate,
     id,
     stopTriggerListening,
+    updateNodeInspectRunningState,
+    workflowStore,
   ])
 
   const toVarInputs = (variables: Variable[]): InputVar[] => {

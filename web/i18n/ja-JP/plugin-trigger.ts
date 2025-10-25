@@ -32,6 +32,7 @@ const translation = {
             contentWithApps: 'このサブスクリプションは {{count}} 個のアプリで使用されています。「{{name}}」を削除してもよろしいですか？',
             confirm: '削除',
             cancel: 'キャンセル',
+            confirmInputWarning: '確認するために正しい名前を入力してください。',
           },
         },
         status: {
@@ -53,14 +54,27 @@ const translation = {
         oauth: {
           title: 'OAuth 経由',
           description: 'サードパーティプラットフォームで認証してサブスクリプションを作成',
+          custom: 'カスタム',
+          default: 'デフォルト',
+          clientSettings: 'OAuthクライアント設定',
+          clientTitle: 'OAuth クライアント',
         },
         manual: {
           title: '手動設定',
           description: 'URL を貼り付けて新しいサブスクリプションを作成',
           tip: 'サードパーティプラットフォームで URL を手動設定',
         },
+        apikey: {
+          title: 'APIキーで作成',
+          description: 'API資格情報を使用してサブスクリプションを自動的に作成する',
+        },
       },
     },
+    subscriptionRemoved: 'サブスクリプションが解除されました',
+    createSuccess: 'サブスクリプションが正常に作成されました',
+    noSubscriptionSelected: 'サブスクリプションが選択されていません',
+    selectPlaceholder: 'サブスクリプションを選択',
+    createFailed: 'サブスクリプションの作成に失敗しました',
   },
   modal: {
     steps: {
@@ -103,11 +117,20 @@ const translation = {
         waitingAuth: '認証を待機中...',
         authSuccess: '認証が成功しました',
         authFailed: '認証に失敗しました',
+        waitingJump: '承認済み、ジャンプ待機中',
       },
       configuration: {
         title: 'サブスクリプションを設定',
         description: '認証後にサブスクリプションパラメータを設定',
         success: 'OAuth設定が成功しました',
+        failed: 'OAuthの設定に失敗しました',
+      },
+      remove: {
+        success: 'OAuthの削除に成功しました',
+        failed: 'OAuthの削除に失敗しました',
+      },
+      save: {
+        success: 'OAuth の設定が正常に保存されました',
       },
     },
     manual: {
@@ -138,6 +161,7 @@ const translation = {
         headers: 'ヘッダー',
         body: 'ボディ',
         response: 'レスポンス',
+        request: 'リクエスト',
       },
     },
     form: {
@@ -151,6 +175,9 @@ const translation = {
         description: 'この URL で Webhook イベントを受信します',
         copy: 'コピー',
         copied: 'コピーしました！',
+        placeholder: '生成中...',
+        privateAddressWarning: 'このURLは内部アドレスのようで、Webhookリクエストが失敗する可能性があります。',
+        tooltip: 'トリガープロバイダーからのコールバックリクエストを受信できる、公開アクセス可能なエンドポイントを提供してください。',
       },
     },
     errors: {
@@ -169,13 +196,20 @@ const translation = {
     actionNum: '{{num}} {{event}} が含まれています',
     item: {
       parameters: '{{count}} パラメータ',
+      noParameters: 'パラメータなし',
     },
+    output: '出力',
   },
   provider: {
     github: 'GitHub',
     gitlab: 'GitLab',
     notion: 'Notion',
     webhook: 'Webhook',
+  },
+  node: {
+    status: {
+      warning: '切断',
+    },
   },
 }
 

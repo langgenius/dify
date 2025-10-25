@@ -1008,6 +1008,16 @@ const translation = {
       description: '上次運行的結果將顯示在這裡',
     },
     variableInspect: {
+      listening: {
+        title: '正在監聽觸發器事件…',
+        tip: '您現在可以向 HTTP {{nodeName}} 端點發送測試請求來模擬事件觸發，或將其作為即時事件除錯的回呼 URL。所有輸出都可在變數檢視器中直接查看。',
+        tipPlugin: '您現在可以在 {{pluginName}} 中建立事件，並在變數檢視器中檢視這些事件的輸出。',
+        tipFallback: '正在等待觸發器事件，輸出會顯示在此處。',
+        defaultNodeName: '此觸發器',
+        defaultPluginName: '此插件觸發器',
+        selectedTriggers: '已選觸發器',
+        stopButton: '停止',
+      },
       trigger: {
         cached: '查看緩存的變量',
         stop: '停止跑步',

@@ -242,6 +242,20 @@ export type WorkflowRunDetail = {
   total_steps: number
   finished_at: number
 }
+
+export type TriggerInfo = {
+  type: string
+  node_id?: string
+  workflow_trigger_log_id?: string
+  provider_id?: string
+  provider_name?: string
+  provider_label?: Record<string, string>
+  subscription_id?: string
+  event_name?: string
+  plugin_id?: string
+  plugin_unique_identifier?: string
+  icon?: string
+}
 export type AccountInfo = {
   id: string
   name: string
@@ -262,6 +276,7 @@ export type WorkflowAppLogDetail = {
   created_by_end_user?: EndUserInfo
   created_at: number
   read_at?: number
+  trigger_info?: TriggerInfo
 }
 export type WorkflowLogsResponse = {
   data: Array<WorkflowAppLogDetail>

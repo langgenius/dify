@@ -11,11 +11,26 @@ import {
 } from '@/app/components/base/icons/src/vender/workflow'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
+import type { TriggerInfo } from '@/models/log'
 
 type TriggerByDisplayProps = {
   triggeredFrom: string
   className?: string
   showText?: boolean
+  triggerInfo?: TriggerInfo
+}
+
+const resolveTriggerType = (value: string) => {
+  switch (value) {
+    case 'trigger-plugin':
+      return 'plugin'
+    case 'trigger-webhook':
+      return 'webhook'
+    case 'trigger-schedule':
+      return 'schedule'
+    default:
+      return value
+  }
 }
 
 const getTriggerDisplayName = (triggeredFrom: string, t: any) => {
@@ -32,7 +47,7 @@ const getTriggerDisplayName = (triggeredFrom: string, t: any) => {
   return nameMap[triggeredFrom] || triggeredFrom
 }
 
-const getTriggerIcon = (triggeredFrom: string) => {
+const getTriggerIcon = (triggeredFrom: string, triggerInfo?: TriggerInfo) => {
   switch (triggeredFrom) {
     case 'webhook':
       return (
@@ -47,12 +62,11 @@ const getTriggerIcon = (triggeredFrom: string) => {
         </div>
       )
     case 'plugin':
-      // For plugin triggers in logs, use a generic plugin icon since we don't have specific plugin info
-      // This matches the standard BlockIcon styling for TriggerPlugin
       return (
         <BlockIcon
           type={BlockEnum.TriggerPlugin}
           size="md"
+          toolIcon={triggerInfo?.icon}
         />
       )
     case 'debugging':
@@ -79,15 +93,44 @@ const getTriggerIcon = (triggeredFrom: string) => {
   }
 }
 
+const pickLabel = (labelMap?: Record<string, string>, language?: string) => {
+  if (!labelMap)
+    return ''
+
+  const candidates: string[] = []
+  if (language) {
+    candidates.push(language)
+    const underscored = language.replace('-', '_')
+    candidates.push(underscored)
+    const parts = underscored.split('_')
+    if (parts.length > 1)
+      candidates.push(`${parts[0]}_${parts[1].toUpperCase()}`)
+    candidates.push(parts[0])
+  }
+  candidates.push('en_US', 'en-US', 'en')
+
+  for (const key of candidates) {
+    if (key && labelMap[key])
+      return labelMap[key]
+  }
+
+  const firstValue = Object.values(labelMap)[0]
+  return firstValue || ''
+}
+
 const TriggerByDisplay: FC<TriggerByDisplayProps> = ({
   triggeredFrom,
   className = '',
   showText = true,
+  triggerInfo,
 }) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
-  const displayName = getTriggerDisplayName(triggeredFrom, t)
-  const icon = getTriggerIcon(triggeredFrom)
+  const resolvedType = resolveTriggerType(triggerInfo?.type || triggeredFrom)
+  const providerDisplayName = pickLabel(triggerInfo?.provider_label, i18n.language)
+    || triggerInfo?.provider_name
+  const displayName = providerDisplayName || getTriggerDisplayName(resolvedType, t)
+  const icon = getTriggerIcon(resolvedType, triggerInfo)
 
   return (
     <div className={`flex items-center gap-1.5 ${className}`}>

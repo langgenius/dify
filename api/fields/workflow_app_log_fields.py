@@ -13,6 +13,7 @@ workflow_app_log_partial_fields = {
     "created_by_account": fields.Nested(simple_account_fields, attribute="created_by_account", allow_null=True),
     "created_by_end_user": fields.Nested(simple_end_user_fields, attribute="created_by_end_user", allow_null=True),
     "created_at": TimestampField,
+    "trigger_info": fields.Raw(attribute="trigger_info"),
 }
 
 

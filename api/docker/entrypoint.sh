@@ -34,10 +34,10 @@ if [[ "${MODE}" == "worker" ]]; then
   if [[ -z "${CELERY_QUEUES}" ]]; then
     if [[ "${EDITION}" == "CLOUD" ]]; then
       # Cloud edition: separate queues for dataset and trigger tasks
-      DEFAULT_QUEUES="dataset,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor"
+      DEFAULT_QUEUES="dataset,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor"
     else
       # Community edition (SELF_HOSTED): dataset, pipeline and workflow have separate queues
-      DEFAULT_QUEUES="dataset,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor"
+      DEFAULT_QUEUES="dataset,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor"
     fi
   else
     DEFAULT_QUEUES="${CELERY_QUEUES}"
@@ -62,7 +62,7 @@ if [[ "${MODE}" == "worker" ]]; then
   WORKER_POOL="${CELERY_WORKER_POOL:-${CELERY_WORKER_CLASS:-gevent}}"
   echo "Starting Celery worker with queues: ${DEFAULT_QUEUES}"
 
-  exec celery -A app.celery worker -P ${WORKER_POOL} $CONCURRENCY_OPTION \
+  exec celery -A celery_entrypoint.celery worker -P ${WORKER_POOL} $CONCURRENCY_OPTION \
     --max-tasks-per-child ${MAX_TASKS_PER_CHILD:-50} --loglevel ${LOG_LEVEL:-INFO} \
     -Q ${DEFAULT_QUEUES} \
     --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-1}

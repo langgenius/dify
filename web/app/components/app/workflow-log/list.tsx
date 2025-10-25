@@ -162,7 +162,10 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
               </td>
               {isWorkflow && (
                 <td className='p-3 pr-2'>
-                  <TriggerByDisplay triggeredFrom={log.workflow_run.triggered_from || 'app-run'} />
+                  <TriggerByDisplay
+                    triggeredFrom={log.workflow_run.triggered_from || 'app-run'}
+                    triggerInfo={log.trigger_info}
+                  />
                 </td>
               )}
             </tr>
@@ -176,7 +179,11 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         footer={null}
         panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-components-panel-border'
       >
-        <DetailPanel onClose={onCloseDrawer} runID={currentLog?.workflow_run.id || ''} />
+        <DetailPanel
+          onClose={onCloseDrawer}
+          runID={currentLog?.workflow_run.id || ''}
+          canReplay={currentLog?.workflow_run.triggered_from === 'app-run' || currentLog?.workflow_run.triggered_from === 'debugging'}
+        />
       </Drawer>
     </div>
   )
