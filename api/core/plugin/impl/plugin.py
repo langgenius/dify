@@ -34,8 +34,8 @@ class PluginInstaller(BasePluginClient):
                 params={
                     "tenant_id": tenant_id,
                     "plugin_unique_identifier": plugin_unique_identifier,
-                    "language": language
-                }
+                    "language": language,
+                },
             )
             return response.content
         except HTTPError as e:

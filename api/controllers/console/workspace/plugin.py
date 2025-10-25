@@ -723,9 +723,7 @@ class PluginReadmeApi(Resource):
         return jsonable_encoder(
             {
                 "readme": PluginService.fetch_plugin_readme(
-                    tenant_id,
-                    args["plugin_unique_identifier"],
-                    args.get("language", "en-US")
+                    tenant_id, args["plugin_unique_identifier"], args.get("language", "en-US")
                 )
             }
         )
