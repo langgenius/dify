@@ -132,8 +132,6 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           importedVersion: imported_dsl_version ?? '',
           systemVersion: current_dsl_version ?? '',
         })
-        if (onClose)
-          onClose()
         setTimeout(() => {
           setShowErrorModal(true)
         }, 300)
