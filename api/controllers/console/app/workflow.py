@@ -1050,7 +1050,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
                 )
                 event = poller.poll()
             except PluginInvokeError as e:
-                raise ValueError(e.to_user_friendly_error())
+                return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 500
             except Exception as e:
                 logger.exception("Error polling trigger debug event")
                 raise e
@@ -1077,12 +1077,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
             return jsonable_encoder(node_execution)
         except Exception as e:
             logger.exception("Error running draft workflow trigger node")
-            return jsonable_encoder(
-                {
-                    "status": "error",
-                    "error": str(e),
-                }
-            ), 500
+            return jsonable_encoder({"status": "error", "error": str(e)}), 500
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run-all")
