@@ -56,10 +56,13 @@ const copyAllDirs = async () => {
       const destParent = path.dirname(dest)
       console.debug(`Ensuring destination parent directory exists: ${destParent}`)
       await mkdir(destParent, { recursive: true })
-      if (await pathExists(src))
+      if (await pathExists(src)) {
         await copyDir(src, dest)
-      else
-        console.warn(`Warning: ${src} directory does not exist`)
+      }
+      else {
+        console.error(`Error: ${src} directory does not exist. This is a required build artifact.`)
+        process.exit(1)
+      }
     }
     catch (err) {
       console.error(`Error processing ${src}:`, err.message)

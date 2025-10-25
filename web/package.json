@@ -22,7 +22,7 @@
     "dev": "cross-env NODE_OPTIONS='--inspect' next dev --turbopack",
     "build": "next build",
     "build:docker": "next build && node scripts/optimize-standalone.js",
-    "start": "node scripts/copy-and-start.mjs",
+    "start": "node ./scripts/copy-and-start.mjs",
     "lint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
     "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
     "lint:quiet": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
