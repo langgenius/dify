@@ -157,8 +157,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const { data: documentsRes, isLoading: isListLoading } = useDocumentList({
     datasetId,
     query: {
-      page: currPage + 1,
-      limit,
+      page: query.page,
+      limit: query.limit,
       keyword: debouncedSearchValue,
     },
     refetchInterval: timerCanRun ? 2500 : 0,
