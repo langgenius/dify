@@ -16,6 +16,7 @@ from fields.annotation_fields import (
     annotation_fields,
     annotation_hit_history_fields,
 )
+from libs.helper import uuid_value
 from libs.login import login_required
 from services.annotation_service import AppAnnotationService
 
