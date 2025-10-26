@@ -168,11 +168,12 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   useEffect(() => {
     if (documentsRes) {
-      const totalPages = Math.ceil(documentsRes.total / limit)
-      if (totalPages < currPage + 1)
-        setCurrPage(totalPages === 0 ? 0 : totalPages - 1)
+      const totalPages = Math.ceil(documentsRes.total / query.limit)
+      const targetPage = totalPages === 0 ? 1 : totalPages
+      if (query.page > targetPage)
+        updateQuery({ page: targetPage })
     }
-  }, [documentsRes])
+  }, [documentsRes, query.limit, query.page, updateQuery])
 
   const invalidDocumentDetail = useInvalidDocumentDetail()
   const invalidChunkList = useInvalid(useSegmentListKey)
