@@ -1,7 +1,10 @@
 import copy
 import logging
 
-from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
+from core.rag.index_processor.constant.built_in_field import (
+    BuiltInField,
+    get_safe_data_source_value,
+)
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -157,10 +160,10 @@ class MetadataService:
                     else:
                         doc_metadata = copy.deepcopy(document.doc_metadata)
                     doc_metadata[BuiltInField.document_name] = document.name
-                    doc_metadata[BuiltInField.uploader] = document.uploader
+                    doc_metadata[BuiltInField.uploader] = document.uploader or "Unknown"
                     doc_metadata[BuiltInField.upload_date] = document.upload_date.timestamp()
                     doc_metadata[BuiltInField.last_update_date] = document.last_update_date.timestamp()
-                    doc_metadata[BuiltInField.source] = MetadataDataSource[document.data_source_type]
+                    doc_metadata[BuiltInField.source] = get_safe_data_source_value(document.data_source_type)
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
             dataset.built_in_field_enabled = True
@@ -219,10 +222,10 @@ class MetadataService:
                     doc_metadata[metadata_value.name] = metadata_value.value
                 if dataset.built_in_field_enabled:
                     doc_metadata[BuiltInField.document_name] = document.name
-                    doc_metadata[BuiltInField.uploader] = document.uploader
+                    doc_metadata[BuiltInField.uploader] = document.uploader or "Unknown"
                     doc_metadata[BuiltInField.upload_date] = document.upload_date.timestamp()
                     doc_metadata[BuiltInField.last_update_date] = document.last_update_date.timestamp()
-                    doc_metadata[BuiltInField.source] = MetadataDataSource[document.data_source_type]
+                    doc_metadata[BuiltInField.source] = get_safe_data_source_value(document.data_source_type)
                 document.doc_metadata = doc_metadata
                 db.session.add(document)
                 db.session.commit()
