@@ -169,7 +169,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   useEffect(() => {
     if (documentsRes) {
       const totalPages = Math.ceil(documentsRes.total / query.limit)
-      const targetPage = totalPages === 0 ? 1 : totalPages
+      const targetPage = Math.max(1, totalPages)
       if (query.page > targetPage)
         updateQuery({ page: targetPage })
     }
