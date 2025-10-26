@@ -195,7 +195,7 @@ class AnnotationApi(Resource):
         app_id = str(app_id)
         parser = (
             reqparse.RequestParser()
-            .add_argument("message_id", required=False, type=str, location="json")
+            .add_argument("message_id", required=False, type=uuid_value, location="json")
             .add_argument("question", required=False, type=str, location="json")
             .add_argument("answer", required=False, type=str, location="json")
             .add_argument("content", required=False, type=str, location="json")
