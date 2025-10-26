@@ -1,8 +1,8 @@
 """Add workflow trigger logs table
 
 Revision ID: 4558cfabe44e
-Revises: 0e154742a5fa
-Create Date: 2025-08-23 20:38:20.059323
+Revises: ae662b25d9bc
+Create Date: 2025-10-27 12:01:00.000000
 
 """
 from alembic import op
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '4558cfabe44e'
-down_revision = '68519ad5cd18'
+down_revision = 'ae662b25d9bc'
 branch_labels = None
 depends_on = None
 
