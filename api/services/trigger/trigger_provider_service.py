@@ -232,8 +232,7 @@ class TriggerProviderService:
                     subscription=subscription,
                 )
                 subscription.properties = dict(properties_encrypter.decrypt(subscription.properties))
-                return subscription
-            return None
+            return subscription
 
     @classmethod
     def delete_trigger_provider(cls, session: Session, tenant_id: str, subscription_id: str):
