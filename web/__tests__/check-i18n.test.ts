@@ -576,7 +576,7 @@ export default translation
         // Find the key line (simplified for single-level keys in test)
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i]
-          const keyPattern = new RegExp(`^\s*${keyToRemove}\s*:`)
+          const keyPattern = new RegExp(`^s*${keyToRemove}s*:`)
           if (keyPattern.test(line)) {
             targetLineIndex = i
             break
