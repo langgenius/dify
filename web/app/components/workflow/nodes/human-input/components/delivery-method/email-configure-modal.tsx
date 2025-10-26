@@ -135,7 +135,7 @@ const EmailConfigureModal = ({
           <div className='rounded-[4px] border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5'>
             <RiBugLine className='h-3.5 w-3.5 text-text-primary-on-surface' />
           </div>
-          <div className='space-y-1'>
+          <div className='grow space-y-1'>
             <div className='system-sm-medium text-text-secondary'>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`)}</div>
             <div className='body-xs-regular text-text-tertiary'>
               <Trans

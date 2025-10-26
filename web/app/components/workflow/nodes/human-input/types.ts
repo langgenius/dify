@@ -14,6 +14,8 @@ export enum DeliveryMethodType {
   WebApp = 'webapp',
   Email = 'email',
   Slack = 'slack',
+  Teams = 'teams',
+  Discord = 'discord',
 }
 
 export type Recipient = {

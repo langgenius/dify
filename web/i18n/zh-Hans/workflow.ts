@@ -960,7 +960,17 @@ const translation = {
             title: 'Slack',
             description: '通过 Slack 发送输入请求',
           },
+          teams: {
+            title: 'Teams',
+            description: '通过 Teams 发送输入请求',
+          },
+          discord: {
+            title: 'Discord',
+            description: '通过 Discord 发送输入请求',
+          },
         },
+        contactTip1: '缺少所需的提交方式？',
+        contactTip2: '请告诉我们 <email>support@dify.ai</email>',
         added: '已添加',
         notConfigured: '未配置',
         emailConfigure: {
