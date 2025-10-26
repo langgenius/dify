@@ -22,7 +22,7 @@
     "dev": "cross-env NODE_OPTIONS='--inspect' next dev --turbopack",
     "build": "next build",
     "build:docker": "next build && node scripts/optimize-standalone.js",
-    "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
+    "start": "node ./scripts/copy-and-start.mjs",
     "lint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
     "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
     "lint:quiet": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
