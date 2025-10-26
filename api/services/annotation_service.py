@@ -34,7 +34,7 @@ class AppAnnotationService:
             raise NotFound("App not found")
 
         answer = args.get("answer") or args.get("content")
-        if not answer:
+        if answer is None:
             raise ValueError("Either 'answer' or 'content' must be provided")
 
         if args.get("message_id"):
