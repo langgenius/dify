@@ -159,7 +159,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     query: {
       page: query.page,
       limit: query.limit,
-      keyword: debouncedSearchValue,
+      keyword: query.keyword,
     },
     refetchInterval: timerCanRun ? 2500 : 0,
   })
