@@ -91,7 +91,9 @@ class MetadataService:
             db.session.commit()
             return metadata
         except Exception:
+            db.session.rollback()
             logger.exception("Update metadata name failed")
+            raise
         finally:
             redis_client.delete(lock_key)
 
@@ -123,7 +125,9 @@ class MetadataService:
             db.session.commit()
             return metadata
         except Exception:
+            db.session.rollback()
             logger.exception("Delete metadata failed")
+            raise
         finally:
             redis_client.delete(lock_key)
 
@@ -162,7 +166,9 @@ class MetadataService:
             dataset.built_in_field_enabled = True
             db.session.commit()
         except Exception:
+            db.session.rollback()
             logger.exception("Enable built-in field failed")
+            raise
         finally:
             redis_client.delete(lock_key)
 
@@ -193,7 +199,9 @@ class MetadataService:
             dataset.built_in_field_enabled = False
             db.session.commit()
         except Exception:
+            db.session.rollback()
             logger.exception("Disable built-in field failed")
+            raise
         finally:
             redis_client.delete(lock_key)
 
@@ -232,7 +240,9 @@ class MetadataService:
                     db.session.add(dataset_metadata_binding)
                 db.session.commit()
             except Exception:
+                db.session.rollback()
                 logger.exception("Update documents metadata failed")
+                raise
             finally:
                 redis_client.delete(lock_key)
 
