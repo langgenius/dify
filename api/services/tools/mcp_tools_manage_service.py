@@ -252,8 +252,16 @@ class MCPToolManageService:
         mcp_tool = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
         self._session.delete(mcp_tool)
 
-    def list_providers(self, *, tenant_id: str, for_list: bool = False) -> list[ToolProviderApiEntity]:
-        """List all MCP providers for a tenant."""
+    def list_providers(
+        self, *, tenant_id: str, for_list: bool = False, include_sensitive: bool = True
+    ) -> list[ToolProviderApiEntity]:
+        """List all MCP providers for a tenant.
+
+        Args:
+            tenant_id: Tenant ID
+            for_list: If True, return provider ID; if False, return server identifier
+            include_sensitive: If False, skip expensive decryption operations (default: True for backward compatibility)
+        """
         from models.account import Account
 
         stmt = select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id).order_by(MCPToolProvider.name)
@@ -269,7 +277,10 @@ class MCPToolManageService:
 
         return [
             ToolTransformService.mcp_provider_to_user_provider(
-                provider, for_list=for_list, user_name=user_name_map.get(provider.user_id)
+                provider,
+                for_list=for_list,
+                user_name=user_name_map.get(provider.user_id),
+                include_sensitive=include_sensitive,
             )
             for provider in mcp_providers
         ]

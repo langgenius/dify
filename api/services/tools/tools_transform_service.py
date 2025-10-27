@@ -234,7 +234,10 @@ class ToolTransformService:
 
     @staticmethod
     def mcp_provider_to_user_provider(
-        db_provider: MCPToolProvider, for_list: bool = False, user_name: str | None = None
+        db_provider: MCPToolProvider,
+        for_list: bool = False,
+        user_name: str | None = None,
+        include_sensitive: bool = True,
     ) -> ToolProviderApiEntity:
         # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
         if user_name is None:
@@ -244,7 +247,7 @@ class ToolTransformService:
         # Convert to entity and use its API response method
         provider_entity = db_provider.to_entity()
 
-        response = provider_entity.to_api_response(user_name=user_name)
+        response = provider_entity.to_api_response(user_name=user_name, include_sensitive=include_sensitive)
 
         # Add additional fields specific to the transform
         response["id"] = db_provider.server_identifier if not for_list else db_provider.id
