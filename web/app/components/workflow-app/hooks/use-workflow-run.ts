@@ -7,6 +7,7 @@ import { produce } from 'immer'
 import { v4 as uuidV4 } from 'uuid'
 import { usePathname } from 'next/navigation'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import type { Node } from '@/app/components/workflow/types'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
@@ -116,7 +117,7 @@ export const useWorkflowRun = () => {
       getNodes,
       setNodes,
     } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
+    const newNodes = produce(getNodes(), (draft: Node[]) => {
       draft.forEach((node) => {
         node.data.selected = false
         node.data._runningStatus = undefined
