@@ -324,7 +324,7 @@ const FileUploader = ({
           <div>{t('datasetCreation.stepOne.uploader.tip', {
             size: fileUploadConfig.file_size_limit,
             supportTypes: supportTypesShowNames,
-            batchCount: fileUploadConfig.batch_count_limit,
+            batchCount: notSupportBatchUpload ? 1 : fileUploadConfig.batch_count_limit,
           })}</div>
           {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
         </div>

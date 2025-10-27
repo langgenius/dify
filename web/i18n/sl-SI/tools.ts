@@ -243,6 +243,10 @@ const translation = {
       },
       publishTip: 'Aplikacija ni objavljena. Najprej objavite aplikacijo.',
     },
+    toolItem: {
+      parameters: 'Parametri',
+      noDescription: 'Brez opisa',
+    },
   },
   allTools: 'Vsa orodja',
 }
