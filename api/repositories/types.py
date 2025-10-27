@@ -19,4 +19,3 @@ class DailyTokenCostStats(TypedDict):
 class AverageInteractionStats(TypedDict):
     date: str
     interactions: float
-
