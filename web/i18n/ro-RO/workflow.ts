@@ -36,7 +36,9 @@ const translation = {
     searchVar: 'Caută variabilă',
     variableNamePlaceholder: 'Nume variabilă',
     setVarValuePlaceholder: 'Setează valoarea variabilei',
-    needConnectTip: 'Acest pas nu este conectat la nimic', maxTreeDepth: 'Limită maximă de {{depth}} noduri pe ramură',
+    needConnectTip: 'Acest pas nu este conectat la nimic',
+    maxTreeDepth: 'Limită maximă de {{depth}} noduri pe ramură',
+    needAdd: 'Trebuie adăugat nodul {{node}}',
     workflowProcess: 'Proces de flux de lucru',
     notRunning: 'Încă nu rulează',
     previewPlaceholder: 'Introduceți conținutul în caseta de mai jos pentru a începe depanarea Chatbotului',
@@ -1041,6 +1043,7 @@ const translation = {
     copyLastRun: 'Copiază ultima execuție',
     noLastRunFound: 'Niciun rulament anterior găsit',
     copyLastRunError: 'Nu s-au putut copia ultimele intrări de rulare',
+    lastRunInputsCopied: '{{count}} intrări copiate din rularea anterioară',
     lastOutput: 'Ultimul rezultat',
   },
   sidebar: {

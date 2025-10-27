@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'خط لوله دانش منتشر شد',
+      tip: '<CustomLink>به اسناد بروید</CustomLink> تا اسناد را اضافه یا مدیریت کنید.',
     },
     error: {
       message: 'انتشار پایپ لاین دانش ناموفق است',

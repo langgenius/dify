@@ -40,7 +40,9 @@ const translation = {
     searchVar: 'ตัวแปรการค้นหา',
     variableNamePlaceholder: 'ชื่อตัวแปร',
     setVarValuePlaceholder: 'ตั้งค่าตัวแปร',
-    needConnectTip: 'ขั้นตอนนี้ไม่ได้เชื่อมต่อกับสิ่งใด', maxTreeDepth: 'ขีดจํากัดสูงสุดของ {{depth}} โหนดต่อสาขา',
+    needConnectTip: 'ขั้นตอนนี้ไม่ได้เชื่อมต่อกับสิ่งใด',
+    maxTreeDepth: 'ขีดจํากัดสูงสุดของ {{depth}} โหนดต่อสาขา',
+    needAdd: 'ต้องเพิ่มโหนด {{node}}',
     workflowProcess: 'กระบวนการเวิร์กโฟลว์',
     notRunning: 'ยังไม่ได้ทํางาน',
     previewPlaceholder: 'ป้อนเนื้อหาในช่องด้านล่างเพื่อเริ่มแก้ไขข้อบกพร่องของแชทบอท',
@@ -1041,6 +1043,7 @@ const translation = {
     noLastRunFound: 'ไม่พบการทำงานก่อนหน้า',
     copyLastRunError: 'ไม่สามารถคัดลอกข้อมูลการทำงานครั้งสุดท้ายได้',
     noMatchingInputsFound: 'ไม่พบข้อมูลที่ตรงกันจากการรันครั้งล่าสุด',
+    lastRunInputsCopied: 'คัดลอกอินพุต {{count}} รายการจากการรันครั้งก่อน',
     lastOutput: 'ผลลัพธ์สุดท้าย',
   },
   sidebar: {
