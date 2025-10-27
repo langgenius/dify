@@ -375,6 +375,11 @@ export const ENABLE_WEBSITE_WATERCRAWL = getBooleanConfig(
   DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL,
   false,
 )
+export const ENABLE_SINGLE_DOLLAR_LATEX = getBooleanConfig(
+  process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX,
+  DatasetAttr.DATA_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX,
+  false,
+)
 
 export const VALUE_SELECTOR_DELIMITER = '@@@'
 
