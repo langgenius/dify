@@ -26,6 +26,7 @@ const RAGToolRecommendations = ({
 
   const {
     data: ragRecommendedPlugins,
+    isLoading: isLoadingRAGRecommendedPlugins,
     isFetching: isFetchingRAGRecommendedPlugins,
   } = useRAGRecommendedPlugins()
 
@@ -54,7 +55,8 @@ const RAGToolRecommendations = ({
       <div className='system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary'>
         {t('pipeline.ragToolSuggestions.title')}
       </div>
-      {isFetchingRAGRecommendedPlugins && (
+      {/* For first time loading, show loading */}
+      {isLoadingRAGRecommendedPlugins && (
         <div className='py-2'>
           <Loading type='app' />
         </div>
@@ -76,7 +78,7 @@ const RAGToolRecommendations = ({
           />
         </p>
       )}
-      {!isFetchingRAGRecommendedPlugins && (recommendedPlugins.length > 0 || unInstalledPlugins.length > 0) && (
+      {(recommendedPlugins.length > 0 || unInstalledPlugins.length > 0) && (
         <>
           <List
             tools={recommendedPlugins}
