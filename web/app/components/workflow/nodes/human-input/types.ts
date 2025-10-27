@@ -33,13 +33,14 @@ export type EmailConfig = {
   recipients: RecipientData
   subject: string
   body: string
-  debug: boolean
+  debug_mode: boolean
 }
 
 export type DeliveryMethod = {
+  id: string
   type: DeliveryMethodType
   enabled: boolean
-  config?: EmailConfig
+  config?: EmailConfig | {}
 }
 
 export type FormInputItemPlaceholder = {

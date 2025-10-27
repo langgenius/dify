@@ -39,24 +39,24 @@ type EmailConfigureModalProps = {
 
 const getOriginVar = (valueSelector: string[], list: NodeOutPutVar[]) => {
   const targetVar = list.find(item => item.nodeId === valueSelector[0])
-    if (!targetVar)
-      return undefined
-
-    let curr: any = targetVar.vars
-    for (let i = 1; i < valueSelector.length; i++) {
-      const key = valueSelector[i]
-      const isLast = i === valueSelector.length - 1
-
-      if (Array.isArray(curr))
-        curr = curr.find((v: any) => v.variable.replace('conversation.', '') === key)
-
-      if (isLast)
-        return curr
-      else if (curr?.type === VarType.object || curr?.type === VarType.file)
-        curr = curr.children
-    }
-
+  if (!targetVar)
     return undefined
+
+  let curr: any = targetVar.vars
+  for (let i = 1; i < valueSelector.length; i++) {
+    const key = valueSelector[i]
+    const isLast = i === valueSelector.length - 1
+
+    if (Array.isArray(curr))
+      curr = curr.find((v: any) => v.variable.replace('conversation.', '') === key)
+
+    if (isLast)
+      return curr
+    else if (curr?.type === VarType.object || curr?.type === VarType.file)
+      curr = curr.children
+  }
+
+  return undefined
 }
 
 const EmailSenderModal = ({
@@ -70,7 +70,7 @@ const EmailSenderModal = ({
   const { t } = useTranslation()
   const { userProfile, currentWorkspace } = useAppContext()
 
-  const debugEnabled = !!config?.debug
+  const debugEnabled = !!config?.debug_mode
   const onlyWholeTeam = config?.recipients?.whole_workspace && (!config?.recipients?.items || config?.recipients?.items.length === 0)
   const onlySpecificUsers = !config?.recipients?.whole_workspace && config?.recipients?.items && config?.recipients?.items.length > 0
   const combinedRecipients = config?.recipients?.whole_workspace && config?.recipients?.items && config?.recipients?.items.length > 0

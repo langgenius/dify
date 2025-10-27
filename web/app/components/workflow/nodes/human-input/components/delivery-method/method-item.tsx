@@ -13,7 +13,7 @@ import Button from '@/app/components/base/button'
 import Switch from '@/app/components/base/switch'
 import Indicator from '@/app/components/header/indicator'
 import EmailConfigureModal from './email-configure-modal'
-import type { DeliveryMethod } from '../../types'
+import type { DeliveryMethod, EmailConfig } from '../../types'
 import { DeliveryMethodType } from '../../types'
 import type {
   Node,
@@ -75,7 +75,7 @@ const DeliveryMethodItem: React.FC<Props> = ({
             </div>
           )}
           <div className='system-xs-medium capitalize text-text-secondary'>{method.type}</div>
-          {method.type === DeliveryMethodType.Email && method.config?.debug && <Badge size='s' className='!px-1 !py-0.5'>DEBUG</Badge>}
+          {method.type === DeliveryMethodType.Email && (method.config as EmailConfig)?.debug_mode && <Badge size='s' className='!px-1 !py-0.5'>DEBUG</Badge>}
         </div>
         <div className='flex items-center gap-1'>
           <div className='hidden items-end gap-1 group-hover:flex'>
@@ -122,7 +122,7 @@ const DeliveryMethodItem: React.FC<Props> = ({
       {showEmailModal && (
         <EmailConfigureModal
           isShow={showEmailModal}
-          config={method.config}
+          config={method.config as EmailConfig}
           nodesOutputVars={nodesOutputVars}
           availableNodes={availableNodes}
           onClose={() => setShowEmailModal(false)}
@@ -135,7 +135,7 @@ const DeliveryMethodItem: React.FC<Props> = ({
       {showTestEmailModal && (
         <TestEmailSender
           isShow={showTestEmailModal}
-          config={method.config}
+          config={method.config as EmailConfig}
           nodesOutputVars={nodesOutputVars}
           availableNodes={availableNodes}
           onClose={() => setShowTestEmailModal(false)}

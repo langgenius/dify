@@ -41,7 +41,7 @@ const EmailConfigureModal = ({
   const [recipients, setRecipients] = useState(config?.recipients || { whole_workspace: false, items: [] })
   const [subject, setSubject] = useState(config?.subject || '')
   const [body, setBody] = useState(config?.body || '')
-  const [debugMode, setDebugMode] = useState(config?.debug || false)
+  const [debugMode, setDebugMode] = useState(config?.debug_mode || false)
 
   const checkValidConfig = () => {
     if (!subject.trim()) {
@@ -81,7 +81,7 @@ const EmailConfigureModal = ({
       recipients,
       subject,
       body,
-      debug: debugMode,
+      debug_mode: debugMode,
     })
   }, [recipients, subject, body, debugMode, onConfirm])
 

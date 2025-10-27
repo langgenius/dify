@@ -20,6 +20,7 @@ import Badge from '@/app/components/base/badge'
 import type { DeliveryMethod } from '../../types'
 import { DeliveryMethodType } from '../../types'
 import { IS_CE_EDITION } from '@/config'
+import { v4 as uuid4 } from 'uuid'
 import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
@@ -71,8 +72,10 @@ const MethodSelector: FC<Props> = ({
                 if (data.some(method => method.type === DeliveryMethodType.WebApp))
                   return
                 onAdd({
+                  id: uuid4(),
                   type: DeliveryMethodType.WebApp,
                   enabled: true,
+                  config: {},
                 })
               }}
             >
@@ -93,6 +96,7 @@ const MethodSelector: FC<Props> = ({
                 if (data.some(method => method.type === DeliveryMethodType.Email))
                   return
                 onAdd({
+                  id: uuid4(),
                   type: DeliveryMethodType.Email,
                   enabled: false,
                 })
