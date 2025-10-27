@@ -45,6 +45,7 @@ const meta = {
     hideCloseBtn: false,
     onClose: () => console.log('close'),
     onConfirm: () => console.log('confirm'),
+    children: null,
   },
 } satisfies Meta<typeof ModalLikeWrap>
 
@@ -68,6 +69,9 @@ export const Default: Story = {
       <BaseContent />
     </ModalLikeWrap>
   ),
+  args: {
+    children: null,
+  },
 }
 
 export const WithBackLink: Story = {
@@ -90,6 +94,7 @@ export const WithBackLink: Story = {
   ),
   args: {
     title: 'Select metadata type',
+    children: null,
   },
   parameters: {
     docs: {
@@ -114,6 +119,7 @@ export const CustomWidth: Story = {
   ),
   args: {
     title: 'Advanced configuration',
+    children: null,
   },
   parameters: {
     docs: {
