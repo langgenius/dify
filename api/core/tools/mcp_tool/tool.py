@@ -3,6 +3,7 @@ import json
 from collections.abc import Generator
 from typing import Any
 
+from configs import dify_config
 from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.mcp_client import MCPClient
 from core.mcp.types import ImageContent, TextContent
@@ -23,6 +24,7 @@ class MCPTool(Tool):
         headers: dict[str, str] | None = None,
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
+        proxy: dict[str, str] | None = None,
     ):
         super().__init__(entity, runtime)
         self.tenant_id = tenant_id
@@ -32,6 +34,7 @@ class MCPTool(Tool):
         self.headers = headers or {}
         self.timeout = timeout
         self.sse_read_timeout = sse_read_timeout
+        self.proxy = proxy or {}
 
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.MCP
@@ -55,6 +58,7 @@ class MCPTool(Tool):
                 headers=self.headers,
                 timeout=self.timeout,
                 sse_read_timeout=self.sse_read_timeout,
+                proxy=(self.proxy if dify_config.MCP_PROVIDER_PROXY_ENABLED else {}),
             ) as mcp_client:
                 tool_parameters = self._handle_none_parameter(tool_parameters)
                 result = mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
@@ -115,6 +119,7 @@ class MCPTool(Tool):
             headers=self.headers,
             timeout=self.timeout,
             sse_read_timeout=self.sse_read_timeout,
+            proxy=self.proxy,
         )
 
     def _handle_none_parameter(self, parameter: dict[str, Any]) -> dict[str, Any]:

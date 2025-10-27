@@ -1,3 +1,4 @@
+import inspect
 import logging
 from collections.abc import Callable
 from contextlib import AbstractContextManager, ExitStack
@@ -26,6 +27,7 @@ class MCPClient:
         headers: dict[str, str] | None = None,
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
+        proxy: dict[str, str] | None = None,
     ):
         # Initialize info
         self.provider_id = provider_id
@@ -35,6 +37,7 @@ class MCPClient:
         self.headers = headers or {}
         self.timeout = timeout
         self.sse_read_timeout = sse_read_timeout
+        self.proxy = proxy or {}
 
         # Authentication info
         self.authed = authed
@@ -96,12 +99,23 @@ class MCPClient:
                 if self.authed and self.token
                 else self.headers
             )
-            self._streams_context = client_factory(
-                url=self.server_url,
-                headers=headers,
-                timeout=self.timeout,
-                sse_read_timeout=self.sse_read_timeout,
-            )
+
+            kwargs: dict[str, Any] = {
+                "url": self.server_url,
+                "headers": headers,
+                "timeout": self.timeout,
+                "sse_read_timeout": self.sse_read_timeout,
+            }
+
+            try:
+                signature = inspect.signature(client_factory)
+                if "proxy" in signature.parameters and self.proxy:
+                    kwargs["proxy"] = self.proxy
+            except Exception:
+                # If we can't introspect, err on the safe side and don't pass optional args
+                pass
+
+            self._streams_context = client_factory(**kwargs)
             if not self._streams_context:
                 raise MCPConnectionError("Failed to create connection context")
 

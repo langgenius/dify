@@ -890,6 +890,8 @@ class ToolProviderMCPApi(Resource):
             .add_argument("sse_read_timeout", type=float, required=False, nullable=False, location="json", default=300)
             .add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
         )
+        parser.add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
+        parser.add_argument("proxy", type=dict, required=False, nullable=True, location="json", default=None)
         args = parser.parse_args()
         user, tenant_id = current_account_with_tenant()
         if not is_valid_url(args["server_url"]):
@@ -907,6 +909,7 @@ class ToolProviderMCPApi(Resource):
                 timeout=args["timeout"],
                 sse_read_timeout=args["sse_read_timeout"],
                 headers=args["headers"],
+                proxy=args.get("proxy"),
             )
         )
 
@@ -914,19 +917,18 @@ class ToolProviderMCPApi(Resource):
     @login_required
     @account_initialization_required
     def put(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("server_url", type=str, required=True, nullable=False, location="json")
-            .add_argument("name", type=str, required=True, nullable=False, location="json")
-            .add_argument("icon", type=str, required=True, nullable=False, location="json")
-            .add_argument("icon_type", type=str, required=True, nullable=False, location="json")
-            .add_argument("icon_background", type=str, required=False, nullable=True, location="json")
-            .add_argument("provider_id", type=str, required=True, nullable=False, location="json")
-            .add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
-            .add_argument("timeout", type=float, required=False, nullable=True, location="json")
-            .add_argument("sse_read_timeout", type=float, required=False, nullable=True, location="json")
-            .add_argument("headers", type=dict, required=False, nullable=True, location="json")
-        )
+        parser = reqparse.RequestParser()
+        parser.add_argument("server_url", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("icon", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("icon_type", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("timeout", type=float, required=False, nullable=True, location="json")
+        parser.add_argument("sse_read_timeout", type=float, required=False, nullable=True, location="json")
+        parser.add_argument("headers", type=dict, required=False, nullable=True, location="json")
+        parser.add_argument("proxy", type=dict, required=False, nullable=True, location="json")
         args = parser.parse_args()
         if not is_valid_url(args["server_url"]):
             if "[__HIDDEN__]" in args["server_url"]:
@@ -946,6 +948,7 @@ class ToolProviderMCPApi(Resource):
             timeout=args.get("timeout"),
             sse_read_timeout=args.get("sse_read_timeout"),
             headers=args.get("headers"),
+            proxy=args.get("proxy"),
         )
         return {"result": "success"}
 
@@ -990,6 +993,7 @@ class ToolMCPAuthApi(Resource):
                 headers=provider.decrypted_headers,
                 timeout=provider.timeout,
                 sse_read_timeout=provider.sse_read_timeout,
+                proxy=(provider.decrypted_proxy if dify_config.MCP_PROVIDER_PROXY_ENABLED else {}),
             ):
                 MCPToolManageService.update_mcp_provider_credentials(
                     mcp_provider=provider,
