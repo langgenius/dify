@@ -726,9 +726,7 @@ class ToolManager:
             if "mcp" in filters:
                 with Session(db.engine) as session:
                     mcp_service = MCPToolManageService(session=session)
-                    mcp_providers = mcp_service.list_providers(
-                        tenant_id=tenant_id, for_list=True, include_sensitive=False
-                    )
+                    mcp_providers = mcp_service.list_providers(tenant_id=tenant_id, for_list=True)
                 for mcp_provider in mcp_providers:
                     result_providers[f"mcp_provider.{mcp_provider.name}"] = mcp_provider
 

@@ -3,6 +3,7 @@ import logging
 from collections.abc import Mapping
 from typing import Any, Union
 
+from pydantic import ValidationError
 from yarl import URL
 
 from configs import dify_config
@@ -248,12 +249,13 @@ class ToolTransformService:
         provider_entity = db_provider.to_entity()
 
         response = provider_entity.to_api_response(user_name=user_name, include_sensitive=include_sensitive)
-
+        try:
+            mcp_tools = [MCPTool(**tool) for tool in json.loads(db_provider.tools)]
+        except (ValidationError, json.JSONDecodeError):
+            mcp_tools = []
         # Add additional fields specific to the transform
         response["id"] = db_provider.server_identifier if not for_list else db_provider.id
-        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(
-            db_provider, [MCPTool(**tool) for tool in json.loads(db_provider.tools)], user_name=user_name
-        )
+        response["tools"] = ToolTransformService.mcp_tool_to_user_tool(db_provider, mcp_tools, user_name=user_name)
         response["server_identifier"] = db_provider.server_identifier
 
         # Convert configuration dict to MCPConfiguration object
