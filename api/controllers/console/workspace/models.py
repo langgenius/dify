@@ -37,7 +37,7 @@ class DefaultModelApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_get_default.parse_args()
+        args = parser_get_default.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         default_model_entity = model_provider_service.get_default_model_of_model_type(
@@ -54,7 +54,7 @@ class DefaultModelApi(Resource):
     def post(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_post_default.parse_args()
+        args = parser_post_default.parse_args(strict=True)
         model_provider_service = ModelProviderService()
         model_settings = args["model_settings"]
         for model_setting in model_settings:
@@ -540,7 +540,8 @@ class ModelProviderModelParameterRuleApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider: str):
-        args = parser_parameter.parse_args()
+        
+        args = parser_parameter.parse_args(strict=True)
         _, tenant_id = current_account_with_tenant()
 
         model_provider_service = ModelProviderService()

@@ -74,7 +74,7 @@ class ToolProviderListApi(Resource):
 
         user_id = user.id
 
-        args = parser_tool.parse_args()
+        args = parser_tool.parse_args(strict=True)
 
         return ToolCommonService.list_tool_providers(user_id, tenant_id, args.get("type", None))
 
@@ -121,7 +121,7 @@ class ToolBuiltinProviderDeleteApi(Resource):
     def post(self, provider):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_delete.parse_args()
+        args = parser_delete.parse_args(strict=True)
 
         return BuiltinToolManageService.delete_builtin_tool_provider(
             tenant_id,
@@ -276,7 +276,7 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
 
         user_id = user.id
 
-        args = parser_remote.parse_args()
+        args = parser_remote.parse_args(strict=True)
 
         return ApiToolManageService.get_api_tool_provider_remote_schema(
             user_id,
@@ -301,7 +301,7 @@ class ToolApiProviderListToolsApi(Resource):
 
         user_id = user.id
 
-        args = parser_tools.parse_args()
+        args = parser_tools.parse_args(strict=True)
 
         return jsonable_encoder(
             ApiToolManageService.list_api_tool_provider_tools(
@@ -372,7 +372,7 @@ class ToolApiProviderDeleteApi(Resource):
 
         user_id = user.id
 
-        args = parser_api_delete.parse_args()
+        args = parser_api_delete.parse_args(strict=True)
 
         return ApiToolManageService.delete_api_tool_provider(
             user_id,
@@ -395,7 +395,7 @@ class ToolApiProviderGetApi(Resource):
 
         user_id = user.id
 
-        args = parser_get.parse_args()
+        args = parser_get.parse_args(strict=True)
 
         return ApiToolManageService.get_api_tool_provider(
             user_id,
@@ -431,7 +431,9 @@ class ToolApiProviderSchemaApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        args = parser_schema.parse_args()
+        
+
+        args = parser_schema.parse_args(strict=True)
 
         return ApiToolManageService.parser_api_schema(
             schema=args["schema"],
@@ -570,7 +572,7 @@ class ToolWorkflowProviderDeleteApi(Resource):
 
         user_id = user.id
 
-        args = parser_workflow_delete.parse_args()
+        args = parser_workflow_delete.parse_args(strict=True)
 
         return WorkflowToolManageService.delete_workflow_tool(
             user_id,
@@ -597,7 +599,7 @@ class ToolWorkflowProviderGetApi(Resource):
 
         user_id = user.id
 
-        args = parser_wf_get.parse_args()
+        args = parser_wf_get.parse_args(strict=True)
 
         if args.get("workflow_tool_id"):
             tool = WorkflowToolManageService.get_workflow_tool_by_tool_id(
@@ -633,7 +635,7 @@ class ToolWorkflowProviderListToolApi(Resource):
 
         user_id = user.id
 
-        args = parser_wf_tools.parse_args()
+        args = parser_wf_tools.parse_args(strict=True)
 
         return jsonable_encoder(
             WorkflowToolManageService.list_single_workflow_tools(
@@ -819,7 +821,7 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @account_initialization_required
     def post(self, provider):
         current_user, current_tenant_id = current_account_with_tenant()
-        args = parser_default_cred.parse_args()
+        args = parser_default_cred.parse_args(strict=True)
         return BuiltinToolManageService.set_default_provider(
             tenant_id=current_tenant_id, user_id=current_user.id, provider=provider, id=args["id"]
         )
@@ -840,7 +842,8 @@ class ToolOAuthCustomClient(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider: str):
-        args = parser_custom.parse_args()
+        
+        args = parser_custom.parse_args(strict=True)
 
         _, tenant_id = current_account_with_tenant()
 
@@ -1006,7 +1009,8 @@ class ToolProviderMCPApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self):
-        args = parser_mcp_delete.parse_args()
+        
+        args = parser_mcp_delete.parse_args(strict=True)
         _, current_tenant_id = current_account_with_tenant()
 
         with Session(db.engine) as session, session.begin():
@@ -1029,7 +1033,8 @@ class ToolMCPAuthApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        args = parser_auth.parse_args()
+        
+        args = parser_auth.parse_args(strict=True)
         provider_id = args["provider_id"]
         _, tenant_id = current_account_with_tenant()
 
@@ -1144,7 +1149,8 @@ parser_cb = (
 class ToolMCPCallbackApi(Resource):
     @api.expect(parser_cb)
     def get(self):
-        args = parser_cb.parse_args()
+        
+        args = parser_cb.parse_args(strict=True)
         state_key = args["state"]
         authorization_code = args["code"]
 

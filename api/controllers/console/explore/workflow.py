@@ -51,7 +51,7 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
             .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
             .add_argument("files", type=list, required=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         try:
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True

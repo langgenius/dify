@@ -70,7 +70,7 @@ class DatasetDocumentSegmentListApi(Resource):
             .add_argument("page", type=int, default=1, location="args")
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         page = args["page"]
         limit = min(args["limit"], 100)
@@ -252,7 +252,7 @@ class DatasetDocumentSegmentAddApi(Resource):
             .add_argument("answer", type=str, required=False, nullable=True, location="json")
             .add_argument("keywords", type=list, required=False, nullable=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         SegmentService.segment_create_args_validate(args, document)
         segment = SegmentService.create_segment(args, document, dataset)
         return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
@@ -322,7 +322,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
                 "regenerate_child_chunks", type=bool, required=False, nullable=True, default=False, location="json"
             )
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         SegmentService.segment_create_args_validate(args, document)
         segment = SegmentService.update_segment(SegmentUpdateArgs.model_validate(args), segment, document, dataset)
         return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
@@ -394,7 +394,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "upload_file_id", type=str, required=True, nullable=False, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         upload_file_id = args["upload_file_id"]
 
         upload_file = db.session.query(UploadFile).where(UploadFile.id == upload_file_id).first()
@@ -494,7 +494,7 @@ class ChildChunkAddApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "content", type=str, required=True, nullable=False, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         try:
             content = args["content"]
             child_chunk = SegmentService.create_child_chunk(content, segment, document, dataset)
@@ -536,7 +536,7 @@ class ChildChunkAddApi(Resource):
             .add_argument("page", type=int, default=1, location="args")
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         page = args["page"]
         limit = min(args["limit"], 100)
@@ -591,7 +591,7 @@ class ChildChunkAddApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "chunks", type=list, required=True, nullable=False, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         try:
             chunks_data = args["chunks"]
             chunks = [ChildChunkUpdateArgs.model_validate(chunk) for chunk in chunks_data]
@@ -714,7 +714,7 @@ class ChildChunkUpdateApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "content", type=str, required=True, nullable=False, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         try:
             content = args["content"]
             child_chunk = SegmentService.update_child_chunk(content, child_chunk, segment, document, dataset)

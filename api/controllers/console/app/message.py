@@ -67,7 +67,7 @@ class ChatMessageListApi(Resource):
             .add_argument("first_id", type=uuid_value, location="args")
             .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         conversation = (
             db.session.query(Conversation)
@@ -159,7 +159,7 @@ class MessageFeedbackApi(Resource):
             .add_argument("message_id", required=True, type=uuid_value, location="json")
             .add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         message_id = str(args["message_id"])
 

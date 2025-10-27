@@ -60,7 +60,7 @@ class AppMCPServerController(Resource):
             .add_argument("description", type=str, required=False, location="json")
             .add_argument("parameters", type=dict, required=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         description = args.get("description")
         if not description:
@@ -110,7 +110,7 @@ class AppMCPServerController(Resource):
             .add_argument("parameters", type=dict, required=True, location="json")
             .add_argument("status", type=str, required=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         server = db.session.query(AppMCPServer).where(AppMCPServer.id == args["id"]).first()
         if not server:
             raise NotFound()

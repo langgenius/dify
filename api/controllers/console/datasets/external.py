@@ -75,7 +75,7 @@ class ExternalApiTemplateListApi(Resource):
                 required=True,
             )
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         ExternalDatasetService.validate_api_list(args["settings"])
 
@@ -135,7 +135,7 @@ class ExternalApiTemplateApi(Resource):
                 required=True,
             )
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         ExternalDatasetService.validate_api_list(args["settings"])
 
         external_knowledge_api = ExternalDatasetService.update_external_knowledge_api(
@@ -219,7 +219,7 @@ class ExternalDatasetCreateApi(Resource):
             .add_argument("external_retrieval_model", type=dict, required=False, location="json")
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
@@ -276,7 +276,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
             .add_argument("external_retrieval_model", type=dict, required=False, location="json")
             .add_argument("metadata_filtering_conditions", type=dict, required=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         HitTestingService.hit_testing_args_check(args)
 
@@ -322,7 +322,7 @@ class BedrockRetrievalApi(Resource):
             )
             .add_argument("knowledge_id", nullable=False, required=True, type=str)
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # Call the knowledge retrieval service
         result = ExternalDatasetTestService.knowledge_retrieval(

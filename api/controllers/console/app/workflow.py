@@ -145,7 +145,7 @@ class DraftWorkflowApi(Resource):
                 .add_argument("environment_variables", type=list, required=True, location="json")
                 .add_argument("conversation_variables", type=list, required=False, location="json")
             )
-            args = parser.parse_args()
+            args = parser.parse_args(strict=True)
         elif "text/plain" in content_type:
             try:
                 data = json.loads(request.data.decode("utf-8"))
@@ -235,7 +235,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
             .add_argument("parent_message_id", type=uuid_value, required=False, location="json")
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
@@ -288,7 +288,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             response = AppGenerateService.generate_single_iteration(
@@ -335,7 +335,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             response = AppGenerateService.generate_single_iteration(
@@ -382,7 +382,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             response = AppGenerateService.generate_single_loop(
@@ -429,7 +429,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             response = AppGenerateService.generate_single_loop(
@@ -479,7 +479,7 @@ class DraftWorkflowRunApi(Resource):
             .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
             .add_argument("files", type=list, required=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
@@ -559,7 +559,7 @@ class DraftWorkflowNodeRunApi(Resource):
             .add_argument("query", type=str, required=False, location="json", default="")
             .add_argument("files", type=list, location="json", default=[])
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         user_inputs = args.get("inputs")
         if user_inputs is None:
@@ -629,7 +629,7 @@ class PublishedWorkflowApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        args = parser_publish.parse_args()
+        args = parser_publish.parse_args(strict=True)
 
         # Validate name and comment length
         if args.marked_name and len(args.marked_name) > 20:
@@ -704,7 +704,7 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
-        args = parser_block.parse_args()
+        args = parser_block.parse_args(strict=True)
 
         q = args.get("q")
 
@@ -752,7 +752,14 @@ class ConvertToWorkflowApi(Resource):
         current_user, _ = current_account_with_tenant()
 
         if request.data:
-            args = parser_convert.parse_args()
+            parser = (
+                reqparse.RequestParser()
+                .add_argument("name", type=str, required=False, nullable=True, location="json")
+                .add_argument("icon_type", type=str, required=False, nullable=True, location="json")
+                .add_argument("icon", type=str, required=False, nullable=True, location="json")
+                .add_argument("icon_background", type=str, required=False, nullable=True, location="json")
+            )
+            args = parser.parse_args()
         else:
             args = {}
 
@@ -794,7 +801,7 @@ class PublishedAllWorkflowApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        args = parser_workflows.parse_args()
+        args = parser_workflows.parse_args(strict=True)
         page = args["page"]
         limit = args["limit"]
         user_id = args.get("user_id")
@@ -857,7 +864,7 @@ class WorkflowByIdApi(Resource):
             .add_argument("marked_name", type=str, required=False, location="json")
             .add_argument("marked_comment", type=str, required=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # Validate name and comment length
         if args.marked_name and len(args.marked_name) > 20:

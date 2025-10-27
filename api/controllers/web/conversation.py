@@ -74,7 +74,7 @@ class ConversationListApi(WebApiResource):
                 location="args",
             )
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         pinned = None
         if "pinned" in args and args["pinned"] is not None:
@@ -168,7 +168,7 @@ class ConversationRenameApi(WebApiResource):
             .add_argument("name", type=str, required=False, location="json")
             .add_argument("auto_generate", type=bool, required=False, default=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             return ConversationService.rename(app_model, conversation_id, end_user, args["name"], args["auto_generate"])

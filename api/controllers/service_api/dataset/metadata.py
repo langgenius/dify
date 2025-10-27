@@ -46,7 +46,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         """Create metadata for a dataset."""
-        args = metadata_create_parser.parse_args()
+        args = metadata_create_parser.parse_args(strict=True)
         metadata_args = MetadataArgs.model_validate(args)
 
         dataset_id_str = str(dataset_id)
@@ -93,7 +93,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def patch(self, tenant_id, dataset_id, metadata_id):
         """Update metadata name."""
-        args = metadata_update_parser.parse_args()
+        args = metadata_update_parser.parse_args(strict=True)
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
@@ -195,7 +195,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        args = document_metadata_parser.parse_args()
+        args = document_metadata_parser.parse_args(strict=True)
         metadata_args = MetadataOperationData.model_validate(args)
 
         MetadataService.update_documents_metadata(dataset, metadata_args)

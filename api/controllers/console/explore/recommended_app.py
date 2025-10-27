@@ -46,7 +46,8 @@ class RecommendedAppListApi(Resource):
     @marshal_with(recommended_app_list_fields)
     def get(self):
         # language args
-        args = parser_apps.parse_args()
+        
+        args = parser_apps.parse_args(strict=True)
 
         language = args.get("language")
         if language and language in languages:

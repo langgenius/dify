@@ -109,7 +109,7 @@ class TextApi(WebApiResource):
                 .add_argument("text", type=str, location="json")
                 .add_argument("streaming", type=bool, location="json")
             )
-            args = parser.parse_args()
+            args = parser.parse_args(strict=True)
 
             message_id = args.get("message_id", None)
             text = args.get("text", None)

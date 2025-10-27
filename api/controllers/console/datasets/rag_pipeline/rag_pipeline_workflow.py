@@ -96,7 +96,7 @@ class DraftRagPipelineApi(Resource):
                 .add_argument("conversation_variables", type=list, required=False, location="json")
                 .add_argument("rag_pipeline_variables", type=list, required=False, location="json")
             )
-            args = parser.parse_args()
+            args = parser.parse_args(strict=True)
         elif "text/plain" in content_type:
             try:
                 data = json.loads(request.data.decode("utf-8"))
@@ -166,7 +166,7 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
 
-        args = parser_run.parse_args()
+        args = parser_run.parse_args(strict=True)
 
         try:
             response = PipelineGenerateService.generate_single_iteration(
@@ -200,7 +200,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
 
-        args = parser_run.parse_args()
+        args = parser_run.parse_args(strict=True)
 
         try:
             response = PipelineGenerateService.generate_single_loop(
@@ -496,7 +496,7 @@ class RagPipelineDraftNodeRunApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
 
-        args = parser_run_api.parse_args()
+        args = parser_run_api.parse_args(strict=True)
 
         inputs = args.get("inputs")
         if inputs == None:
@@ -617,7 +617,7 @@ class DefaultRagPipelineBlockConfigApi(Resource):
         """
         Get default block config
         """
-        args = parser_default.parse_args()
+        args = parser_default.parse_args(strict=True)
 
         q = args.get("q")
 
@@ -717,6 +717,7 @@ class RagPipelineByIdApi(Resource):
             raise ValueError("Marked name cannot exceed 20 characters")
         if args.marked_comment and len(args.marked_comment) > 100:
             raise ValueError("Marked comment cannot exceed 100 characters")
+        args = parser.parse_args(strict=True)
 
         # Prepare update data
         update_data = {}
@@ -764,7 +765,7 @@ class PublishedRagPipelineSecondStepApi(Resource):
         """
         Get second step parameters of rag pipeline
         """
-        args = parser_parameters.parse_args()
+        args = parser_parameters.parse_args(strict=True)
         node_id = args.get("node_id")
         if not node_id:
             raise ValueError("Node ID is required")
@@ -787,7 +788,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
         """
         Get first step parameters of rag pipeline
         """
-        args = parser_parameters.parse_args()
+        args = parser_parameters.parse_args(strict=True)
         node_id = args.get("node_id")
         if not node_id:
             raise ValueError("Node ID is required")
@@ -810,7 +811,7 @@ class DraftRagPipelineFirstStepApi(Resource):
         """
         Get first step parameters of rag pipeline
         """
-        args = parser_parameters.parse_args()
+        args = parser_parameters.parse_args(strict=True)
         node_id = args.get("node_id")
         if not node_id:
             raise ValueError("Node ID is required")
@@ -833,7 +834,7 @@ class DraftRagPipelineSecondStepApi(Resource):
         """
         Get second step parameters of rag pipeline
         """
-        args = parser_parameters.parse_args()
+        args = parser_parameters.parse_args(strict=True)
         node_id = args.get("node_id")
         if not node_id:
             raise ValueError("Node ID is required")
@@ -864,7 +865,7 @@ class RagPipelineWorkflowRunListApi(Resource):
         """
         Get workflow run list
         """
-        args = parser_wf_run.parse_args()
+        args = parser_wf_run.parse_args(strict=True)
 
         rag_pipeline_service = RagPipelineService()
         result = rag_pipeline_service.get_rag_pipeline_paginate_workflow_runs(pipeline=pipeline, args=args)
