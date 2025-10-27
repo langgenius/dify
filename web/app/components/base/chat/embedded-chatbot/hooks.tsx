@@ -72,8 +72,12 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const isInstalledApp = false // just can be webapp and try app
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const isTryApp = appSourceType === AppSourceType.tryApp
-  const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR('appInfo', isTryApp ? () => fetchTryAppInfo(tryAppId) : fetchAppInfo)
-  const appId = useMemo(() => isTryApp ? tryAppId : appInfo?.app_id, [appInfo])
+  const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR('appInfo', () => {
+    return isTryApp ? () => fetchTryAppInfo(tryAppId!) : fetchAppInfo
+  })
+  const appId = useMemo(() => {
+    return isTryApp ? tryAppId : (appInfo as any)?.app_id
+  }, [appInfo])
 
   const [userId, setUserId] = useState<string>()
   const [conversationId, setConversationId] = useState<string>()
@@ -116,9 +120,16 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
     defaultValue: {},
   })
+  const removeConversationIdInfo = useCallback((appId: string) => {
+    setConversationIdInfo((prev) => {
+      const newInfo = { ...prev }
+      delete newInfo[appId]
+      return newInfo
+    })
+  }, [setConversationIdInfo])
   const allowResetChat = !conversationId
-  const currentConversationId = useMemo(() => isTryApp ? '' : conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || '',
-    [isTryApp, appId, conversationIdInfo, userId, conversationId])
+  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || '',
+    [appId, conversationIdInfo, userId, conversationId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
       let prevValue = conversationIdInfo?.[appId || '']
@@ -146,7 +157,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const { data: appMeta } = useSWR(isTryApp ? null : ['appMeta', appSourceType, appId], () => fetchAppMeta(appSourceType, appId))
   const { data: appPinnedConversationData } = useSWR(isTryApp ? null : ['appConversationData', appSourceType, appId, true], () => fetchConversations(appSourceType, appId, undefined, true, 100))
   const { data: appConversationData, isLoading: appConversationDataLoading, mutate: mutateAppConversationData } = useSWR(isTryApp ? null : ['appConversationData', appSourceType, appId, false], () => fetchConversations(appSourceType, appId, undefined, false, 100))
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, appSourceType, appId] : null, () => fetchChatList(chatShouldReloadKey, appSourceType, appId))
+  const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR((chatShouldReloadKey && !isTryApp) ? ['appChatList', chatShouldReloadKey, appSourceType, appId] : null, () => fetchChatList(chatShouldReloadKey, appSourceType, appId))
 
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
@@ -317,7 +328,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   }, [appChatListData, currentConversationId])
   const [currentConversationInputs, setCurrentConversationInputs] = useState<Record<string, any>>(currentConversationLatestInputs || {})
   useEffect(() => {
-    if (currentConversationItem)
+    if (currentConversationItem && !isTryApp)
       setCurrentConversationInputs(currentConversationLatestInputs || {})
   }, [currentConversationItem, currentConversationLatestInputs])
 
@@ -377,12 +388,17 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       setClearChatList(false)
   }, [handleConversationIdInfoChange, setClearChatList])
   const handleNewConversation = useCallback(async () => {
+    if (isTryApp) {
+      setClearChatList(true)
+      return
+    }
+
     currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
     handleChangeConversation('')
     handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
     setClearChatList(true)
-  }, [handleChangeConversation, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
+  }, [isTryApp, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList])
 
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)
@@ -406,6 +422,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     appId,
     currentConversationId,
     currentConversationItem,
+    removeConversationIdInfo,
     handleConversationIdInfoChange,
     appData: appInfo,
     appParams: appParams || {} as ChatConfig,

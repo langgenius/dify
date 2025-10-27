@@ -71,7 +71,7 @@ const AppCard = ({
       {isExplore && (canCreate || isTrialApp) && (
         <div className={cn(
           'absolute bottom-0 left-0 right-0 hidden  bg-gradient-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8',
-          (canCreate && isTrialApp) && 'grid-cols-2 gap-2 group-hover:grid ',
+          (canCreate && isTrialApp) && 'grid-cols-2 gap-2 group-hover:grid',
         )}>
           {canCreate && (
             <Button variant='primary' className='h-7' onClick={() => onCreate()}>

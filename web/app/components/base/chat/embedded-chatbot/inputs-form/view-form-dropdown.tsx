@@ -33,7 +33,7 @@ const ViewFormDropdown = ({ iconColor }: Props) => {
           <RiChatSettingsLine className={cn('h-[18px] w-[18px]', iconColor)} />
         </ActionButton>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-50">
+      <PortalToFollowElemContent className="z-[99]">
         <div className='w-[400px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-sm'>
           <div className='flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-6 py-4'>
             <Message3Fill className='h-6 w-6 shrink-0' />

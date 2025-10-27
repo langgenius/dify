@@ -193,6 +193,8 @@ const ChatWrapper = () => {
       return null
     if (!collapsed && inputsForms.length > 0 && !allInputsHidden)
       return null
+    if (!appData?.site)
+      return null
     if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
       return (
         <div className={cn('flex items-center justify-center px-4 py-12', isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]')}>
@@ -226,7 +228,7 @@ const ChatWrapper = () => {
         </div>
       </div>
     )
-  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length, respondingState, allInputsHidden])
+  }, [appData?.site, chatList, collapsed, currentConversationId, inputsForms.length, respondingState, allInputsHidden])
 
   const answerIcon = isDify()
     ? <LogoAvatar className='relative shrink-0' />

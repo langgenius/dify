@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
 import { useThemeContext } from '../../../base/chat/embedded-chatbot/theme/theme-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -17,6 +17,10 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import type { TryAppInfo } from '@/service/try-app'
 import AppIcon from '@/app/components/base/app-icon'
+import Tooltip from '@/app/components/base/tooltip'
+import ActionButton from '@/app/components/base/action-button'
+import { RiResetLeftLine } from '@remixicon/react'
+import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
 
 type Props = {
   appId: string
@@ -33,10 +37,21 @@ const TryApp: FC<Props> = ({
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const themeBuilder = useThemeContext()
-  const chatData = useEmbeddedChatbot(AppSourceType.tryApp, appId)
+  const { removeConversationIdInfo, ...chatData } = useEmbeddedChatbot(AppSourceType.tryApp, appId)
+  const currentConversationId = chatData.currentConversationId
+  const inputsForms = chatData.inputsForms
+  useEffect(() => {
+    if (appId)
+      removeConversationIdInfo(appId)
+  }, [appId])
   const [isHideTryNotice, {
     setTrue: hideTryNotice,
   }] = useBoolean(false)
+
+  const handleNewConversation = () => {
+    removeConversationIdInfo(appId)
+    chatData.handleNewConversation()
+  }
   return (
     <EmbeddedChatbotContext.Provider value={{
       ...chatData,
@@ -55,6 +70,20 @@ const TryApp: FC<Props> = ({
               imageUrl={appDetail.site.icon_url}
             />
             <div className='system-md-semibold grow truncate text-text-primary' title={appDetail.name}>{appDetail.name}</div>
+          </div>
+          <div className='flex items-center gap-1'>
+            {currentConversationId && (
+              <Tooltip
+                popupContent={t('share.chat.resetChat')}
+              >
+                <ActionButton size='l' onClick={handleNewConversation}>
+                  <RiResetLeftLine className='h-[18px] w-[18px]' />
+                </ActionButton>
+              </Tooltip>
+            )}
+            {currentConversationId && inputsForms.length > 0 && (
+              <ViewFormDropdown />
+            )}
           </div>
         </div>
         <div className='mx-auto mt-4 flex h-[0] w-[769px] grow flex-col'>

@@ -1,5 +1,6 @@
 'use client'
 
+import type { FC } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   useRouter,
@@ -67,7 +68,12 @@ const getKey = (
   return null
 }
 
-const List = () => {
+type Props = {
+  controlRefreshList: number
+}
+const List: FC<Props> = ({
+  controlRefreshList,
+}) => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
@@ -142,6 +148,10 @@ const List = () => {
 
     return () => window.clearInterval(timer)
   }, [workflowIds.join(','), mutate, refreshOnlineUsers])
+  useEffect(() => {
+    if (controlRefreshList > 0)
+      mutate()
+  }, [controlRefreshList])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
