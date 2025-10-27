@@ -96,26 +96,9 @@ const getTriggerIcon = (triggeredFrom: string, triggerInfo?: TriggerInfo) => {
 const pickLabel = (labelMap?: Record<string, string>, language?: string) => {
   if (!labelMap)
     return ''
-
-  const candidates: string[] = []
-  if (language) {
-    candidates.push(language)
-    const underscored = language.replace('-', '_')
-    candidates.push(underscored)
-    const parts = underscored.split('_')
-    if (parts.length > 1)
-      candidates.push(`${parts[0]}_${parts[1].toUpperCase()}`)
-    candidates.push(parts[0])
-  }
-  candidates.push('en_US', 'en-US', 'en')
-
-  for (const key of candidates) {
-    if (key && labelMap[key])
-      return labelMap[key]
-  }
-
-  const firstValue = Object.values(labelMap)[0]
-  return firstValue || ''
+  if (language && labelMap[language])
+    return labelMap[language]
+  return labelMap.en_US || labelMap['en-US'] || Object.values(labelMap)[0] || ''
 }
 
 const TriggerByDisplay: FC<TriggerByDisplayProps> = ({
