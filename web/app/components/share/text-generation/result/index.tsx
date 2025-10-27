@@ -151,7 +151,8 @@ const Result: FC<IResultProps> = ({
       abortControllerRef.current?.abort()
     }
     catch (error) {
-      notify({ type: 'error', message: `${error}` })
+      const message = error instanceof Error ? error.message : String(error)
+      notify({ type: 'error', message })
     }
     finally {
       setIsStopping(false)
@@ -398,15 +399,12 @@ const Result: FC<IResultProps> = ({
             const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
               if (!traces)
                 return
-              const markTrace = (trace: any) => {
-                if ([NodeRunningStatus.Running, NodeRunningStatus.Waiting].includes(trace.status))
+              const markTrace = (trace: WorkflowProcess['tracing'][number]) => {
+                if ([NodeRunningStatus.Running, NodeRunningStatus.Waiting].includes(trace.status as NodeRunningStatus))
                   trace.status = NodeRunningStatus.Stopped
-                if (trace.details)
-                  trace.details.forEach((detailGroup: any[]) => detailGroup.forEach(markTrace))
-                if (trace.retryDetail)
-                  trace.retryDetail.forEach(markTrace)
-                if (trace.parallelDetail?.children)
-                  trace.parallelDetail.children.forEach(markTrace)
+                trace.details?.forEach(detailGroup => detailGroup.forEach(markTrace))
+                trace.retryDetail?.forEach(markTrace)
+                trace.parallelDetail?.children?.forEach(markTrace)
               }
               traces.forEach(markTrace)
             }
@@ -473,7 +471,8 @@ const Result: FC<IResultProps> = ({
       ).catch((error) => {
         setRespondingFalse()
         resetRunState()
-        notify({ type: 'error', message: `${error}` })
+        const message = error instanceof Error ? error.message : String(error)
+        notify({ type: 'error', message })
       })
     }
     else {
@@ -535,7 +534,7 @@ const Result: FC<IResultProps> = ({
       {!hideInlineStopButton && isResponding && currentTaskId && (
         <div className={`mb-3 flex ${isPC ? 'justify-end' : 'justify-center'}`}>
           <Button
-            className='border-components-panel-border bg-components-panel-bg text-components-button-secondary-text'
+            variant='secondary'
             disabled={isStopping}
             onClick={handleStop}
           >
