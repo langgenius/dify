@@ -1019,8 +1019,8 @@ class RagPipelineService:
         last_id = args.get("last_id")
 
         triggered_from_values = [
-            WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN.value,
-            WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING.value,
+            WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
+            WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
         ]
 
         return self._workflow_run_repo.get_paginated_workflow_runs(
