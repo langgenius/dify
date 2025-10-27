@@ -66,16 +66,23 @@ export const useEmbeddedChatbot = () => {
   const appInfo = useWebAppStore(s => s.appInfo)
   const appMeta = useWebAppStore(s => s.appMeta)
   const appParams = useWebAppStore(s => s.appParams)
+  const embeddedConversationId = useWebAppStore(s => s.embeddedConversationId)
+  const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
   const appId = useMemo(() => appInfo?.app_id, [appInfo])
 
   const [userId, setUserId] = useState<string>()
   const [conversationId, setConversationId] = useState<string>()
+
   useEffect(() => {
-    getProcessedSystemVariablesFromUrlParams().then(({ user_id, conversation_id }) => {
-      setUserId(user_id)
-      setConversationId(conversation_id)
-    })
-  }, [])
+    setUserId(embeddedUserId || undefined)
+  }, [embeddedUserId])
+
+  useEffect(() => {
+    if (embeddedConversationId !== undefined && embeddedConversationId !== null)
+      setConversationId(embeddedConversationId)
+    else
+      setConversationId(undefined)
+  }, [embeddedConversationId])
 
   useEffect(() => {
     const setLanguageFromParams = async () => {

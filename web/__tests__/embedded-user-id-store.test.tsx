@@ -73,7 +73,13 @@ const mockGlobalStoreState = useGlobalPublicStoreMock.__mockState
 
 const TestConsumer = () => {
   const embeddedUserId = useWebAppStore(state => state.embeddedUserId)
-  return <div data-testid="embedded-user-id">{embeddedUserId ?? 'null'}</div>
+  const embeddedConversationId = useWebAppStore(state => state.embeddedConversationId)
+  return (
+    <>
+      <div data-testid="embedded-user-id">{embeddedUserId ?? 'null'}</div>
+      <div data-testid="embedded-conversation-id">{embeddedConversationId ?? 'null'}</div>
+    </>
+  )
 }
 
 const initialWebAppStore = (() => {
@@ -86,6 +92,7 @@ const initialWebAppStore = (() => {
     appMeta: null,
     userCanAccessApp: false,
     embeddedUserId: null,
+    embeddedConversationId: null,
     updateShareCode: snapshot.updateShareCode,
     updateAppInfo: snapshot.updateAppInfo,
     updateAppParams: snapshot.updateAppParams,
@@ -93,6 +100,7 @@ const initialWebAppStore = (() => {
     updateWebAppMeta: snapshot.updateWebAppMeta,
     updateUserCanAccessApp: snapshot.updateUserCanAccessApp,
     updateEmbeddedUserId: snapshot.updateEmbeddedUserId,
+    updateEmbeddedConversationId: snapshot.updateEmbeddedConversationId,
   }
 })()
 
@@ -103,8 +111,11 @@ beforeEach(() => {
 })
 
 describe('WebAppStoreProvider embedded user id handling', () => {
-  it('hydrates embedded user id from system variables', async () => {
-    mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({ user_id: 'iframe-user-123' })
+  it('hydrates embedded user and conversation ids from system variables', async () => {
+    mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({
+      user_id: 'iframe-user-123',
+      conversation_id: 'conversation-456',
+    })
 
     render(
       <WebAppStoreProvider>
@@ -114,12 +125,18 @@ describe('WebAppStoreProvider embedded user id handling', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('embedded-user-id')).toHaveTextContent('iframe-user-123')
+      expect(screen.getByTestId('embedded-conversation-id')).toHaveTextContent('conversation-456')
     })
     expect(useWebAppStore.getState().embeddedUserId).toBe('iframe-user-123')
+    expect(useWebAppStore.getState().embeddedConversationId).toBe('conversation-456')
   })
 
   it('clears embedded user id when system variable is absent', async () => {
-    useWebAppStore.setState(state => ({ ...state, embeddedUserId: 'previous-user' }))
+    useWebAppStore.setState(state => ({
+      ...state,
+      embeddedUserId: 'previous-user',
+      embeddedConversationId: 'existing-conversation',
+    }))
     mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
 
     render(
@@ -130,7 +147,9 @@ describe('WebAppStoreProvider embedded user id handling', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('embedded-user-id')).toHaveTextContent('null')
+      expect(screen.getByTestId('embedded-conversation-id')).toHaveTextContent('null')
     })
     expect(useWebAppStore.getState().embeddedUserId).toBeNull()
+    expect(useWebAppStore.getState().embeddedConversationId).toBeNull()
   })
 })
