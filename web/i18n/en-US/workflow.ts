@@ -1227,7 +1227,7 @@ const translation = {
       listening: {
         title: 'Listening for events from triggers...',
         tip: 'You can now simulate event triggers by sending test requests to HTTP {{nodeName}} endpoint or use it as a callback URL for live event debugging. All outputs can be viewed directly in the Variable Inspector.',
-        tipPlugin: 'Now you can create events in {{pluginName}}, and retrieve outputs from these events in the Variable Inspector.',
+        tipPlugin: 'Now you can create events in {{- pluginName}}, and retrieve outputs from these events in the Variable Inspector.',
         tipFallback: 'Await incoming trigger events. Outputs will appear here.',
         defaultNodeName: 'this trigger',
         defaultPluginName: 'this plugin trigger',
