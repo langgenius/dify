@@ -55,6 +55,7 @@ const translation = {
     errorTip: 'صادرات DSL خط لوله انجام نشد',
   },
   details: {
+    createdBy: 'توسط {{author}}',
     structure: 'ساختار',
     structureTooltip: 'ساختار Chunk نحوه تقسیم و نمایه سازی اسناد را تعیین می کند - حالت های عمومی، والد-فرزند و پرسش و پاسخ را ارائه می دهد - و برای هر پایگاه دانش منحصر به فرد است.',
   },
@@ -110,6 +111,8 @@ const translation = {
     stepThree: {
       learnMore: 'بیشتر بدانید',
     },
+    selectOnlineDocumentTip: 'حداکثر {{count}} صفحه را پردازش کنید',
+    selectOnlineDriveTip: 'حداکثر {{count}} فایل را پردازش کنید، حداکثر {{fileSize}} مگابایت برای هر کدام',
     backToDataSource: 'منبع داده',
     characters: 'کاراکتر',
     title: 'اسناد را اضافه کنید',
@@ -117,19 +120,26 @@ const translation = {
   documentSettings: {
     title: 'تنظیمات سند',
   },
-  onlineDocument: { },
+  onlineDocument: {
+    pageSelectorTitle: 'صفحات {{name}}',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'همه فایل ها',
       searchPlaceholder: 'فایل های جستجو...',
       allBuckets: 'همه سطل های ذخیره سازی ابری',
+      searchResult: '{{searchResultsLength}} مورد در پوشه «{{folderName}}» پیدا شد',
     },
+    notConnected: '{{name}} متصل نیست',
+    notConnectedTip: 'برای همگام سازی با {{name}}، ابتدا باید اتصال به {{name}} برقرار شود.',
     emptyFolder: 'این پوشه خالی است',
     resetKeywords: 'بازنشانی کلمات کلیدی',
     emptySearchResult: 'هیچ موردی یافت نشد',
     notSupportedFileType: 'این نوع فایل پشتیبانی نمی شود',
   },
-  credentialSelector: { },
+  credentialSelector: {
+    name: '{{pluginName}} {{credentialName}}',
+  },
   conversion: {
     confirm: {
       title: 'تایید',

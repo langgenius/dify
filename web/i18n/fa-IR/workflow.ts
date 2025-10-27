@@ -36,7 +36,9 @@ const translation = {
     searchVar: 'جستجوی متغیر',
     variableNamePlaceholder: 'نام متغیر',
     setVarValuePlaceholder: 'تنظیم متغیر',
-    needConnectTip: 'این مرحله به هیچ چیزی متصل نیست', maxTreeDepth: 'حداکثر عمق {{depth}} نود در هر شاخه',
+    needConnectTip: 'این مرحله به هیچ چیزی متصل نیست',
+    maxTreeDepth: 'حداکثر عمق {{depth}} نود در هر شاخه',
+    needAdd: 'باید نود {{node}} اضافه شود',
     workflowProcess: 'فرآیند جریان کار',
     notRunning: 'هنوز در حال اجرا نیست',
     previewPlaceholder: 'محتوا را در کادر زیر وارد کنید تا اشکال‌زدایی چت‌بات را شروع کنید',
@@ -1041,6 +1043,7 @@ const translation = {
     noLastRunFound: 'هیچ اجرای قبلی یافت نشد',
     noMatchingInputsFound: 'هیچ ورودی مطابقی از آخرین اجرا یافت نشد',
     copyLastRunError: 'نتوانستم ورودی‌های آخرین اجرای را کپی کنم',
+    lastRunInputsCopied: '{{count}} ورودی از آخرین اجرا کپی شد',
     lastOutput: 'آخرین خروجی',
   },
   sidebar: {
