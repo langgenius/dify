@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type {
   FormOption,
   ModelProvider,
@@ -487,6 +487,7 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[])
 
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 export const usePluginTaskList = (category?: PluginType) => {
+  const [initialized, setInitialized] = useState(false)
   const {
     canManagement,
   } = useReferenceSetting()
@@ -510,7 +511,8 @@ export const usePluginTaskList = (category?: PluginType) => {
 
   useEffect(() => {
     // After first fetch, refresh plugin list each time all tasks are done
-    if (!isRefetching) {
+    // Skip initialization period, cause the query cache is not updated yet
+    if (initialized && !isRefetching) {
       const lastData = cloneDeep(data)
       const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
       const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
@@ -520,6 +522,10 @@ export const usePluginTaskList = (category?: PluginType) => {
       }
     }
   }, [isRefetching])
+
+  useEffect(() => {
+    setInitialized(true)
+  }, [])
 
   const handleRefetch = useCallback(() => {
     refetch()
