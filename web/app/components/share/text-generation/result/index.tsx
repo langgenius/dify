@@ -109,12 +109,17 @@ const Result: FC<IResultProps> = ({
   }, [onRunControlChange])
 
   useEffect(() => {
-    if (!controlStopResponding)
-      return
+    const abortCurrentRequest = () => {
+      abortControllerRef.current?.abort()
+    }
 
-    abortControllerRef.current?.abort()
-    setRespondingFalse()
-    resetRunState()
+    if (controlStopResponding) {
+      abortCurrentRequest()
+      setRespondingFalse()
+      resetRunState()
+    }
+
+    return abortCurrentRequest
   }, [controlStopResponding, resetRunState, setRespondingFalse])
 
   const { notify } = Toast
@@ -146,8 +151,10 @@ const Result: FC<IResultProps> = ({
       abortControllerRef.current?.abort()
     }
     catch (error) {
-      setIsStopping(false)
       notify({ type: 'error', message: `${error}` })
+    }
+    finally {
+      setIsStopping(false)
     }
   }, [appId, currentTaskId, installedAppInfo?.id, isInstalledApp, isStopping, isWorkflow, notify])
 
@@ -473,7 +480,7 @@ const Result: FC<IResultProps> = ({
       sendCompletionMessage(data, {
         onData: (data: string, _isFirstMessage: boolean, { messageId, taskId }) => {
           tempMessageId = messageId
-          if (taskId)
+          if (taskId && typeof taskId === 'string' && taskId.trim() !== '')
             setCurrentTaskId(prev => prev ?? taskId)
           res.push(data)
           setCompletionRes(res.join(''))
