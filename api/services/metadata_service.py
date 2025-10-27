@@ -64,12 +64,12 @@ class MetadataService:
             raise ValueError("Metadata name already exists.")
         for field in BuiltInField:
             if field.value == name:
-                raise ValueError("Metadata name already exists in Built-in fields.")
+                raise ValueError("Metadata name already exists in Built -in fields.")
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
             metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
             if metadata is None:
-                raise ValueError("Metadata not found.")
+                return None
             old_name = metadata.name
             metadata.name = name
             metadata.updated_by = current_user.id
@@ -107,7 +107,7 @@ class MetadataService:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
             metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
             if metadata is None:
-                raise ValueError("Metadata not found.")
+                return None
             db.session.delete(metadata)
 
             # deal related documents
@@ -216,7 +216,8 @@ class MetadataService:
                 MetadataService.knowledge_base_metadata_lock_check(None, operation.document_id)
                 document = DocumentService.get_document(dataset.id, operation.document_id)
                 if document is None:
-                    raise ValueError("Document not found.")
+                    logger.warning("Document not found: %s", operation.document_id)
+                    continue
                 doc_metadata = {}
                 for metadata_value in operation.metadata_list:
                     doc_metadata[metadata_value.name] = metadata_value.value
