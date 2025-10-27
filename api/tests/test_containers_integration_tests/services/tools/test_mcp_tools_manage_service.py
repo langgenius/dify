@@ -1206,7 +1206,10 @@ class TestMCPToolManageService:
 
             service = MCPToolManageService(db.session())
             service.update_provider_credentials(
-                provider=mcp_provider, credentials={"new_key": "new_value"}, authed=True
+                provider_id=mcp_provider.id,
+                tenant_id=tenant.id,
+                credentials={"new_key": "new_value"},
+                authed=True,
             )
 
         # Assert: Verify the expected outcomes
@@ -1267,7 +1270,10 @@ class TestMCPToolManageService:
 
             service = MCPToolManageService(db.session())
             service.update_provider_credentials(
-                provider=mcp_provider, credentials={"new_key": "new_value"}, authed=False
+                provider_id=mcp_provider.id,
+                tenant_id=tenant.id,
+                credentials={"new_key": "new_value"},
+                authed=False,
             )
 
         # Assert: Verify the expected outcomes
