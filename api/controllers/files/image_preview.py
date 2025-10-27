@@ -14,10 +14,25 @@ from services.file_service import FileService
 
 @files_ns.route("/<uuid:file_id>/image-preview")
 class ImagePreviewApi(Resource):
-    """
-    Deprecated
-    """
+    """Deprecated endpoint for retrieving image previews."""
 
+    @files_ns.doc("get_image_preview")
+    @files_ns.doc(description="Retrieve a signed image preview for a file")
+    @files_ns.doc(
+        params={
+            "file_id": "ID of the file to preview",
+            "timestamp": "Unix timestamp used in the signature",
+            "nonce": "Random string used in the signature",
+            "sign": "HMAC signature verifying the request",
+        }
+    )
+    @files_ns.doc(
+        responses={
+            200: "Image preview returned successfully",
+            400: "Missing or invalid signature parameters",
+            415: "Unsupported file type",
+        }
+    )
     def get(self, file_id):
         file_id = str(file_id)
 
@@ -43,6 +58,25 @@ class ImagePreviewApi(Resource):
 
 @files_ns.route("/<uuid:file_id>/file-preview")
 class FilePreviewApi(Resource):
+    @files_ns.doc("get_file_preview")
+    @files_ns.doc(description="Download a file preview or attachment using signed parameters")
+    @files_ns.doc(
+        params={
+            "file_id": "ID of the file to preview",
+            "timestamp": "Unix timestamp used in the signature",
+            "nonce": "Random string used in the signature",
+            "sign": "HMAC signature verifying the request",
+            "as_attachment": "Whether to download the file as an attachment",
+        }
+    )
+    @files_ns.doc(
+        responses={
+            200: "File stream returned successfully",
+            400: "Missing or invalid signature parameters",
+            404: "File not found",
+            415: "Unsupported file type",
+        }
+    )
     def get(self, file_id):
         file_id = str(file_id)
 
@@ -101,6 +135,20 @@ class FilePreviewApi(Resource):
 
 @files_ns.route("/workspaces/<uuid:workspace_id>/webapp-logo")
 class WorkspaceWebappLogoApi(Resource):
+    @files_ns.doc("get_workspace_webapp_logo")
+    @files_ns.doc(description="Fetch the custom webapp logo for a workspace")
+    @files_ns.doc(
+        params={
+            "workspace_id": "Workspace identifier",
+        }
+    )
+    @files_ns.doc(
+        responses={
+            200: "Logo returned successfully",
+            404: "Webapp logo not configured",
+            415: "Unsupported file type",
+        }
+    )
     def get(self, workspace_id):
         workspace_id = str(workspace_id)
 
