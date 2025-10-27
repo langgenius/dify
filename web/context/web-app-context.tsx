@@ -9,6 +9,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import type { FC, PropsWithChildren } from 'react'
 import { useEffect } from 'react'
 import { create } from 'zustand'
+import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
 import { useGlobalPublicStore } from './global-public-context'
 
 type WebAppStore = {
@@ -24,6 +25,8 @@ type WebAppStore = {
   updateWebAppMeta: (appMeta: AppMeta | null) => void
   userCanAccessApp: boolean
   updateUserCanAccessApp: (canAccess: boolean) => void
+  embeddedUserId: string | null
+  updateEmbeddedUserId: (userId: string | null) => void
 }
 
 export const useWebAppStore = create<WebAppStore>(set => ({
@@ -39,6 +42,8 @@ export const useWebAppStore = create<WebAppStore>(set => ({
   updateWebAppMeta: (appMeta: AppMeta | null) => set(() => ({ appMeta })),
   userCanAccessApp: false,
   updateUserCanAccessApp: (canAccess: boolean) => set(() => ({ userCanAccessApp: canAccess })),
+  embeddedUserId: null,
+  updateEmbeddedUserId: (userId: string | null) => set(() => ({ embeddedUserId: userId })),
 }))
 
 const getShareCodeFromRedirectUrl = (redirectUrl: string | null): string | null => {
@@ -58,15 +63,36 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   const isGlobalPending = useGlobalPublicStore(s => s.isGlobalPending)
   const updateWebAppAccessMode = useWebAppStore(state => state.updateWebAppAccessMode)
   const updateShareCode = useWebAppStore(state => state.updateShareCode)
+  const updateEmbeddedUserId = useWebAppStore(state => state.updateEmbeddedUserId)
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const redirectUrlParam = searchParams.get('redirect_url')
+  const searchParamsString = searchParams.toString()
 
   // Compute shareCode directly
   const shareCode = getShareCodeFromRedirectUrl(redirectUrlParam) || getShareCodeFromPathname(pathname)
   useEffect(() => {
     updateShareCode(shareCode)
   }, [shareCode, updateShareCode])
+
+  useEffect(() => {
+    let cancelled = false
+    const syncEmbeddedUserId = async () => {
+      try {
+        const { user_id } = await getProcessedSystemVariablesFromUrlParams()
+        if (!cancelled)
+          updateEmbeddedUserId(user_id || null)
+      }
+      catch {
+        if (!cancelled)
+          updateEmbeddedUserId(null)
+      }
+    }
+    syncEmbeddedUserId()
+    return () => {
+      cancelled = true
+    }
+  }, [searchParamsString, updateEmbeddedUserId])
 
   const { isLoading, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
 
