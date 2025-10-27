@@ -157,6 +157,7 @@ const OAuthClientSettings = ({
         )
       }
       containerClassName='pt-0'
+      wrapperClassName='!z-[101]'
       clickOutsideNotClose={true}
     >
       <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />

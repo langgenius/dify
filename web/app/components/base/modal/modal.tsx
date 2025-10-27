@@ -1,13 +1,14 @@
-import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
+import type { ButtonProps } from '@/app/components/base/button'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-import type { ButtonProps } from '@/app/components/base/button'
 import cn from '@/utils/classnames'
+import { RiCloseLine } from '@remixicon/react'
+import { noop } from 'lodash-es'
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 type ModalProps = {
   onClose?: () => void
@@ -27,6 +28,7 @@ type ModalProps = {
   bottomSlot?: React.ReactNode
   disabled?: boolean
   containerClassName?: string
+  wrapperClassName?: string
   clickOutsideNotClose?: boolean
 }
 const Modal = ({
@@ -47,6 +49,7 @@ const Modal = ({
   bottomSlot,
   disabled,
   containerClassName,
+  wrapperClassName,
   clickOutsideNotClose = false,
 }: ModalProps) => {
   const { t } = useTranslation()
@@ -54,8 +57,8 @@ const Modal = ({
   return (
     <PortalToFollowElem open>
       <PortalToFollowElemContent
-        className='z-[9998] flex h-full w-full items-center justify-center bg-background-overlay'
-        onClick={clickOutsideNotClose ? undefined : onClose}
+        className={cn('z-[9998] flex h-full w-full items-center justify-center bg-background-overlay', wrapperClassName)}
+        onClick={clickOutsideNotClose ? noop : onClose}
       >
         <div
           className={cn(

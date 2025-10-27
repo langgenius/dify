@@ -1,9 +1,9 @@
 'use client'
 import ActionButton from '@/app/components/base/action-button'
-import Drawer from '@/app/components/base/drawer'
 import Loading from '@/app/components/base/loading'
 import { Markdown } from '@/app/components/base/markdown'
 import Modal from '@/app/components/base/modal'
+import Drawer from '@/app/components/base/drawer'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { usePluginReadme } from '@/service/use-plugins'
 import cn from '@/utils/classnames'
@@ -95,13 +95,13 @@ const ReadmePanel: FC = () => {
         positionCenter={false}
         showClose={false}
         panelClassName={cn(
-          'mb-2 ml-2 mt-16 !w-[600px] !max-w-[600px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl',
+          '!pointer-events-auto mb-2 ml-2 mt-16 !w-[600px] !max-w-[600px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl',
           '!z-[9999]',
         )}
-        dialogClassName={cn('!z-[9998]')}
+        dialogClassName={cn('!pointer-events-none')}
         containerClassName='!justify-start'
         noOverlay
-        clickOutsideNotOpen={false}
+        clickOutsideNotOpen={true}
       >
         {children}
       </Drawer>
@@ -111,7 +111,7 @@ const ReadmePanel: FC = () => {
         onClose={onClose}
         overlayOpacity={true}
         className='h-[calc(100vh-16px)] max-w-[800px] p-0'
-        wrapperClassName='!z-[10000]'
+        wrapperClassName='!z-[102]'
         containerClassName='p-2'
         clickOutsideNotClose={true}
       >

@@ -85,7 +85,8 @@ const DetailHeader = ({
     deprecated_reason,
     alternative_plugin_id,
   } = detail
-  const { author, category, name, label, description, icon, verified, tool } = detail.declaration
+
+  const { author, category, name, label, description, icon, verified, tool } = detail.declaration || detail
   const isTool = category === PluginCategoryEnum.tool
   const providerBriefInfo = tool?.identity
   const providerKey = `${plugin_id}/${providerBriefInfo?.name}`
@@ -213,13 +214,13 @@ const DetailHeader = ({
     <div className={cn('shrink-0 border-b border-divider-subtle bg-components-panel-bg p-4 pb-3', isReadmeView && 'border-b-0 bg-transparent p-0')}>
       <div className="flex">
         <div className={cn('overflow-hidden rounded-xl border border-components-panel-border-subtle', isReadmeView && 'bg-components-panel-bg')}>
-          <Icon src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${icon}`} />
+          <Icon src={icon.startsWith('http') ? icon : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${icon}`} />
         </div>
         <div className="ml-3 w-0 grow">
           <div className="flex h-5 items-center">
             <Title title={label[locale]} />
             {verified && !isReadmeView && <RiVerifiedBadgeLine className="ml-0.5 h-4 w-4 shrink-0 text-text-accent" />}
-            <PluginVersionPicker
+            {version && <PluginVersionPicker
               disabled={!isFromMarketplace || isReadmeView}
               isShow={isShow}
               onShowChange={setIsShow}
@@ -246,7 +247,7 @@ const DetailHeader = ({
                   hasRedCornerMark={hasNewVersion}
                 />
               }
-            />
+            />}
             {/* Auto update info */}
             {isAutoUpgradeEnabled && !isReadmeView && (
               <Tooltip popupContent={t('plugin.autoUpdate.nextUpdateTime', { time: timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(autoUpgradeInfo?.upgrade_time_of_day || 0, timezone!)).format('hh:mm A') })}>
@@ -276,36 +277,38 @@ const DetailHeader = ({
               <OrgInfo
                 packageNameClassName='w-auto'
                 orgName={author}
-                packageName={name}
+                packageName={name?.includes('/') ? (name.split('/').pop() || '') : name}
               />
-              <div className='system-xs-regular ml-1 mr-0.5 text-text-quaternary'>·</div>
-              {detail.source === PluginSource.marketplace && (
-                <Tooltip popupContent={t('plugin.detailPanel.categoryTip.marketplace')} >
-                  <div><BoxSparkleFill className='h-3.5 w-3.5 text-text-tertiary hover:text-text-accent' /></div>
-                </Tooltip>
-              )}
-              {detail.source === PluginSource.github && (
-                <Tooltip popupContent={t('plugin.detailPanel.categoryTip.github')} >
-                  <div><Github className='h-3.5 w-3.5 text-text-secondary hover:text-text-primary' /></div>
-                </Tooltip>
-              )}
-              {detail.source === PluginSource.local && (
-                <Tooltip popupContent={t('plugin.detailPanel.categoryTip.local')} >
-                  <div><RiHardDrive3Line className='h-3.5 w-3.5 text-text-tertiary' /></div>
-                </Tooltip>
-              )}
-              {detail.source === PluginSource.debugging && (
-                <Tooltip popupContent={t('plugin.detailPanel.categoryTip.debugging')} >
-                  <div><RiBugLine className='h-3.5 w-3.5 text-text-tertiary hover:text-text-warning' /></div>
-                </Tooltip>
-              )}
+              {source && <>
+                <div className='system-xs-regular ml-1 mr-0.5 text-text-quaternary'>·</div>
+                {source === PluginSource.marketplace && (
+                  <Tooltip popupContent={t('plugin.detailPanel.categoryTip.marketplace')} >
+                    <div><BoxSparkleFill className='h-3.5 w-3.5 text-text-tertiary hover:text-text-accent' /></div>
+                  </Tooltip>
+                )}
+                {source === PluginSource.github && (
+                  <Tooltip popupContent={t('plugin.detailPanel.categoryTip.github')} >
+                    <div><Github className='h-3.5 w-3.5 text-text-secondary hover:text-text-primary' /></div>
+                  </Tooltip>
+                )}
+                {source === PluginSource.local && (
+                  <Tooltip popupContent={t('plugin.detailPanel.categoryTip.local')} >
+                    <div><RiHardDrive3Line className='h-3.5 w-3.5 text-text-tertiary' /></div>
+                  </Tooltip>
+                )}
+                {source === PluginSource.debugging && (
+                  <Tooltip popupContent={t('plugin.detailPanel.categoryTip.debugging')} >
+                    <div><RiBugLine className='h-3.5 w-3.5 text-text-tertiary hover:text-text-warning' /></div>
+                  </Tooltip>
+                )}
+              </>}
             </div>
           </div>
         </div>
         {!isReadmeView && (
           <div className='flex gap-1'>
             <OperationDropdown
-              source={detail.source}
+              source={source}
               onInfo={showPluginInfo}
               onCheckVersion={handleUpdate}
               onRemove={showDeleteConfirm}
