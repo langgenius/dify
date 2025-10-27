@@ -26,3 +26,8 @@ class WeaviateConfig(BaseSettings):
         description="Number of objects to be processed in a single batch operation (default is 100)",
         default=100,
     )
+
+    WEAVIATE_GRPC_PORT: PositiveInt = Field(
+        description="Port of the Weaviate gRPC port (default is 50051)",
+        default=100,
+    )
