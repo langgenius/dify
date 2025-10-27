@@ -109,7 +109,7 @@ class PluginDeclaration(BaseModel):
     endpoint: EndpointProviderDeclaration | None = None
     agent_strategy: AgentStrategyProviderEntity | None = None
     datasource: DatasourceProviderEntity | None = None
-    trigger: Optional[TriggerProviderEntity] = None
+    trigger: TriggerProviderEntity | None = None
     meta: Meta
 
     @field_validator("version")

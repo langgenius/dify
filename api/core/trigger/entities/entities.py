@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.parameters import (
@@ -89,11 +89,18 @@ class EventEntity(BaseModel):
     """
 
     identity: EventIdentity = Field(..., description="The identity of the event")
-    parameters: list[EventParameter] = Field(default_factory=list, description="The parameters of the event")
+    parameters: list[EventParameter] = Field(
+        default_factory=list[EventParameter], description="The parameters of the event"
+    )
     description: I18nObject = Field(..., description="The description of the event")
     output_schema: Optional[Mapping[str, Any]] = Field(
         default=None, description="The output schema that this event produces"
     )
+
+    @field_validator("parameters", mode="before")
+    @classmethod
+    def set_parameters(cls, v, validation_info: ValidationInfo) -> list[EventParameter]:
+        return v or []
 
 
 class OAuthSchema(BaseModel):
