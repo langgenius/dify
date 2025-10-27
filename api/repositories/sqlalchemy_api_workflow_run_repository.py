@@ -34,6 +34,12 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.types import (
+    AverageInteractionStats,
+    DailyRunsStats,
+    DailyTerminalsStats,
+    DailyTokenCostStats,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -302,7 +308,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         timezone: str = "UTC",
-    ) -> list[dict]:
+    ) -> list[DailyRunsStats]:
         """
         Get daily runs statistics using raw SQL for optimal performance.
         """
@@ -349,7 +355,7 @@ WHERE
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         timezone: str = "UTC",
-    ) -> list[dict]:
+    ) -> list[DailyTerminalsStats]:
         """
         Get daily terminals statistics using raw SQL for optimal performance.
         """
@@ -396,7 +402,7 @@ WHERE
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         timezone: str = "UTC",
-    ) -> list[dict]:
+    ) -> list[DailyTokenCostStats]:
         """
         Get daily token cost statistics using raw SQL for optimal performance.
         """
@@ -448,7 +454,7 @@ WHERE
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         timezone: str = "UTC",
-    ) -> list[dict]:
+    ) -> list[AverageInteractionStats]:
         """
         Get average app interaction statistics using raw SQL for optimal performance.
         """

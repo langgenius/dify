@@ -41,6 +41,12 @@ from typing import Protocol
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.workflow import WorkflowRun
+from repositories.types import (
+    AverageInteractionStats,
+    DailyRunsStats,
+    DailyTerminalsStats,
+    DailyTokenCostStats,
+)
 
 
 class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
@@ -252,7 +258,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         timezone: str = "UTC",
-    ) -> list[dict]:
+    ) -> list[DailyRunsStats]:
         """
         Get daily runs statistics.
 
@@ -281,7 +287,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         timezone: str = "UTC",
-    ) -> list[dict]:
+    ) -> list[DailyTerminalsStats]:
         """
         Get daily terminals statistics.
 
@@ -310,7 +316,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         timezone: str = "UTC",
-    ) -> list[dict]:
+    ) -> list[DailyTokenCostStats]:
         """
         Get daily token cost statistics.
 
@@ -339,7 +345,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         timezone: str = "UTC",
-    ) -> list[dict]:
+    ) -> list[AverageInteractionStats]:
         """
         Get average app interaction statistics.
 
