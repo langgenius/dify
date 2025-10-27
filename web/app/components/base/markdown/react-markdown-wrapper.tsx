@@ -4,6 +4,7 @@ import RemarkBreaks from 'remark-breaks'
 import RehypeKatex from 'rehype-katex'
 import RemarkGfm from 'remark-gfm'
 import RehypeRaw from 'rehype-raw'
+import { ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
 import AudioBlock from '@/app/components/base/markdown-blocks/audio-block'
 import Img from '@/app/components/base/markdown-blocks/img'
 import Link from '@/app/components/base/markdown-blocks/link'
@@ -40,7 +41,7 @@ export const ReactMarkdownWrapper: FC<ReactMarkdownWrapperProps> = (props) => {
     <ReactMarkdown
       remarkPlugins={[
         RemarkGfm,
-        [RemarkMath, { singleDollarTextMath: false }],
+        [RemarkMath, { singleDollarTextMath: ENABLE_SINGLE_DOLLAR_LATEX }],
         RemarkBreaks,
       ]}
       rehypePlugins={[

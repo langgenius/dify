@@ -145,7 +145,7 @@
     "@babel/core": "^7.28.4",
     "@chromatic-com/storybook": "^4.1.1",
     "@eslint-react/eslint-plugin": "^1.53.1",
-    "@happy-dom/jest-environment": "^20.0.7",
+    "@happy-dom/jest-environment": "^20.0.8",
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
     "@next/bundle-analyzer": "15.5.4",
