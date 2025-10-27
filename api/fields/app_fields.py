@@ -160,6 +160,7 @@ site_fields = {
     "prompt_public": fields.Boolean,
     "app_base_url": fields.String,
     "show_workflow_steps": fields.Boolean,
+    "show_reasoning": fields.Boolean,
     "use_icon_as_answer_icon": fields.Boolean,
     "created_by": fields.String,
     "created_at": TimestampField,
@@ -216,6 +217,7 @@ app_site_fields = {
     "customize_token_strategy": fields.String,
     "prompt_public": fields.Boolean,
     "show_workflow_steps": fields.Boolean,
+    "show_reasoning": fields.Boolean,
     "use_icon_as_answer_icon": fields.Boolean,
 }
 

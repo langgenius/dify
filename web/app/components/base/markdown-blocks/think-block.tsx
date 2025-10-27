@@ -67,9 +67,13 @@ const ThinkBlock = ({ children, ...props }: React.ComponentProps<'details'>) => 
   const { elapsedTime, isComplete } = useThinkTimer(children)
   const displayContent = removeEndThink(children)
   const { t } = useTranslation()
+  const { showReasoning } = useChatContext()
 
   if (!(props['data-think'] ?? false))
     return (<details {...props}>{children}</details>)
+
+  if (showReasoning === false)
+    return null
 
   return (
     <details {...(!isComplete && { open: true })} className="group">
