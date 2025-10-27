@@ -105,6 +105,8 @@ const FileUploader = ({
     return isValidType && isValidSize
   }, [fileUploadConfig, notify, t, ACCEPTS])
 
+  type UploadResult = Awaited<ReturnType<typeof upload>>
+
   const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     const formData = new FormData()
     formData.append('file', fileItem.file)
@@ -180,7 +182,7 @@ const FileUploader = ({
     prepareFileList(newFiles)
     fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
-  }, [prepareFileList, uploadMultipleFiles, notify, t, fileList])
+  }, [prepareFileList, uploadMultipleFiles, notify, t, fileList, fileUploadConfig])
 
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
@@ -277,7 +279,7 @@ const FileUploader = ({
     let files = [...(e.target.files ?? [])] as File[]
     files = files.slice(0, fileUploadConfig.batch_count_limit)
     initialUpload(files.filter(isValid))
-  }, [isValid, initialUpload])
+  }, [isValid, initialUpload, fileUploadConfig])
 
   const { theme } = useTheme()
   const chartColor = useMemo(() => theme === Theme.dark ? '#5289ff' : '#296dff', [theme])
@@ -326,7 +328,7 @@ const FileUploader = ({
           <div>{t('datasetCreation.stepOne.uploader.tip', {
             size: fileUploadConfig.file_size_limit,
             supportTypes: supportTypesShowNames,
-            batchCount: fileUploadConfig.batch_count_limit,
+            batchCount: notSupportBatchUpload ? 1 : fileUploadConfig.batch_count_limit,
             totalCount: fileUploadConfig.file_upload_limit,
           })}</div>
           {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}

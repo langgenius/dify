@@ -716,7 +716,7 @@ class MCPToolManageService:
         }
         secret_fields = []
         if client_secret is not None:
-            credentials_data["encrypted_client_secret"] = encrypter.encrypt_token(tenant_id, client_secret)
+            credentials_data["encrypted_client_secret"] = client_secret
             secret_fields = ["encrypted_client_secret"]
         client_info = self._encrypt_dict_fields(credentials_data, secret_fields, tenant_id)
         return json.dumps({"client_information": client_info})

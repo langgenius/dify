@@ -189,7 +189,9 @@ class MCPProviderEntity(BaseModel):
             masked_creds = self.masked_credentials()
             if masked_creds:
                 response["authentication"] = masked_creds
-            response["is_dynamic_registration"] = self.credentials.get("is_dynamic_registration", True)
+            response["is_dynamic_registration"] = self.credentials.get("client_information", {}).get(
+                "is_dynamic_registration", True
+            )
 
         return response
 
