@@ -251,7 +251,7 @@ class DatasetListApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id):
         """Resource for creating datasets."""
-        args = dataset_create_parser.parse_args()
+        args = dataset_create_parser.parse_args(strict=True)
 
         embedding_model_provider = args.get("embedding_model_provider")
         embedding_model = args.get("embedding_model")
@@ -371,7 +371,7 @@ class DatasetApi(DatasetApiResource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        args = dataset_update_parser.parse_args()
+        args = dataset_update_parser.parse_args(strict=True)
         data = request.get_json()
 
         # check embedding model setting
@@ -573,7 +573,7 @@ class DatasetTagsApi(DatasetApiResource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        args = tag_create_parser.parse_args()
+        args = tag_create_parser.parse_args(strict=True)
         args["type"] = "knowledge"
         tag = TagService.save_tags(args)
 
@@ -597,7 +597,7 @@ class DatasetTagsApi(DatasetApiResource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        args = tag_update_parser.parse_args()
+        args = tag_update_parser.parse_args(strict=True)
         args["type"] = "knowledge"
         tag_id = args["tag_id"]
         tag = TagService.update_tags(args, tag_id)
@@ -624,7 +624,7 @@ class DatasetTagsApi(DatasetApiResource):
         assert isinstance(current_user, Account)
         if not current_user.has_edit_permission:
             raise Forbidden()
-        args = tag_delete_parser.parse_args()
+        args = tag_delete_parser.parse_args(strict=True)
         TagService.delete_tag(args["tag_id"])
 
         return 204
@@ -649,7 +649,7 @@ class DatasetTagBindingApi(DatasetApiResource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        args = tag_binding_parser.parse_args()
+        args = tag_binding_parser.parse_args(strict=True)
         args["type"] = "knowledge"
         TagService.save_tag_binding(args)
 
@@ -675,7 +675,7 @@ class DatasetTagUnbindingApi(DatasetApiResource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        args = tag_unbinding_parser.parse_args()
+        args = tag_unbinding_parser.parse_args(strict=True)
         args["type"] = "knowledge"
         TagService.delete_tag_binding(args)
 

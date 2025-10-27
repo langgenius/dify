@@ -34,7 +34,7 @@ class DataSourceContentPreviewApi(Resource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         inputs = args.get("inputs")
         if inputs is None:

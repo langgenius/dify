@@ -63,7 +63,7 @@ class PluginUploadFileApi(Resource):
             UnsupportedFileTypeError: File type not supported
         """
         # Parse and validate all arguments
-        args = upload_parser.parse_args()
+        args = upload_parser.parse_args(strict=True)
 
         file: FileStorage = args["file"]
         timestamp: str = args["timestamp"]

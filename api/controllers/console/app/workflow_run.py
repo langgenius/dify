@@ -48,7 +48,7 @@ def _parse_workflow_run_list_args():
         required=False,
         help="Filter by trigger source: debugging or app-run",
     )
-    return parser.parse_args()
+    return parser.parse_args(strict=True)
 
 
 def _parse_workflow_run_count_args():
@@ -81,7 +81,7 @@ def _parse_workflow_run_count_args():
         required=False,
         help="Filter by trigger source: debugging or app-run",
     )
-    return parser.parse_args()
+    return parser.parse_args(strict=True)
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs")

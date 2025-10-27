@@ -63,7 +63,7 @@ class MemberInviteEmailApi(Resource):
             .add_argument("role", type=str, required=True, default="admin", location="json")
             .add_argument("language", type=str, required=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         invitee_emails = args["emails"]
         invitee_role = args["role"]
@@ -152,7 +152,7 @@ class MemberUpdateRoleApi(Resource):
     @account_initialization_required
     def put(self, member_id):
         parser = reqparse.RequestParser().add_argument("role", type=str, required=True, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         new_role = args["role"]
 
         if not TenantAccountRole.is_valid_role(new_role):
@@ -201,7 +201,7 @@ class SendOwnerTransferEmailApi(Resource):
     @is_allow_transfer_owner
     def post(self):
         parser = reqparse.RequestParser().add_argument("language", type=str, required=False, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
@@ -241,7 +241,7 @@ class OwnerTransferCheckApi(Resource):
             .add_argument("code", type=str, required=True, location="json")
             .add_argument("token", type=str, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         # check if the current user is the owner of the workspace
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
@@ -286,7 +286,7 @@ class OwnerTransfer(Resource):
         parser = reqparse.RequestParser().add_argument(
             "token", type=str, required=True, nullable=False, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # check if the current user is the owner of the workspace
         current_user, _ = current_account_with_tenant()

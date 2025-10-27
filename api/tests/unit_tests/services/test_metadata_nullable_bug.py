@@ -63,7 +63,7 @@ class TestMetadataNullableBug:
         # Simulate request data with null values
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             # This should parse successfully due to nullable=True
-            args = parser.parse_args()
+            args = parser.parse_args(strict=True)
 
             # Verify that null values are accepted
             assert args["type"] is None
@@ -81,7 +81,7 @@ class TestMetadataNullableBug:
         )
 
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
-            args = parser.parse_args()
+            args = parser.parse_args(strict=True)
 
             # Step 2: Try to create MetadataArgs with None values
             # This should fail at Pydantic validation level
@@ -120,7 +120,7 @@ class TestMetadataNullableBug:
             from werkzeug.exceptions import BadRequest
 
             with pytest.raises(BadRequest):
-                parser.parse_args()
+                parser.parse_args(strict=True)
 
 
 if __name__ == "__main__":

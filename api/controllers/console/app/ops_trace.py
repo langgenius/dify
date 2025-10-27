@@ -31,7 +31,7 @@ class TraceAppConfigApi(Resource):
     @account_initialization_required
     def get(self, app_id):
         parser = reqparse.RequestParser().add_argument("tracing_provider", type=str, required=True, location="args")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             trace_config = OpsService.get_tracing_app_config(app_id=app_id, tracing_provider=args["tracing_provider"])
@@ -67,7 +67,7 @@ class TraceAppConfigApi(Resource):
             .add_argument("tracing_provider", type=str, required=True, location="json")
             .add_argument("tracing_config", type=dict, required=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             result = OpsService.create_tracing_app_config(
@@ -105,7 +105,7 @@ class TraceAppConfigApi(Resource):
             .add_argument("tracing_provider", type=str, required=True, location="json")
             .add_argument("tracing_config", type=dict, required=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             result = OpsService.update_tracing_app_config(
@@ -133,7 +133,7 @@ class TraceAppConfigApi(Resource):
     def delete(self, app_id):
         """Delete an existing trace app configuration"""
         parser = reqparse.RequestParser().add_argument("tracing_provider", type=str, required=True, location="args")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             result = OpsService.delete_tracing_app_config(app_id=app_id, tracing_provider=args["tracing_provider"])

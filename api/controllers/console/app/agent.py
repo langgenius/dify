@@ -33,6 +33,6 @@ class AgentLogApi(Resource):
             .add_argument("conversation_id", type=uuid_value, required=True, location="args")
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return AgentService.get_agent_logs(app_model, args["conversation_id"], args["message_id"])

@@ -88,7 +88,7 @@ class AppListApi(Resource):
             .add_argument("is_created_by_me", type=inputs.boolean, location="args", required=False)
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # get app list
         app_service = AppService()
@@ -144,7 +144,7 @@ class AppListApi(Resource):
             .add_argument("icon", type=str, location="json")
             .add_argument("icon_background", type=str, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         if "mode" not in args or args["mode"] is None:
             raise BadRequest("mode is required")
@@ -217,7 +217,7 @@ class AppApi(Resource):
             .add_argument("use_icon_as_answer_icon", type=bool, location="json")
             .add_argument("max_active_requests", type=int, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         app_service = AppService()
         # Construct ArgsDict from parsed arguments
@@ -292,7 +292,7 @@ class AppCopyApi(Resource):
             .add_argument("icon", type=str, location="json")
             .add_argument("icon_background", type=str, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         with Session(db.engine) as session:
             import_service = AppDslService(session)
@@ -344,7 +344,7 @@ class AppExportApi(Resource):
             .add_argument("include_secret", type=inputs.boolean, default=False, location="args")
             .add_argument("workflow_id", type=str, location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return {
             "data": AppDslService.export_dsl(
@@ -368,7 +368,7 @@ class AppNameApi(Resource):
     @edit_permission_required
     def post(self, app_model):
         parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         app_service = AppService()
         app_model = app_service.update_app_name(app_model, args["name"])
@@ -405,7 +405,7 @@ class AppIconApi(Resource):
             .add_argument("icon", type=str, location="json")
             .add_argument("icon_background", type=str, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         app_service = AppService()
         app_model = app_service.update_app_icon(app_model, args.get("icon") or "", args.get("icon_background") or "")
@@ -433,7 +433,7 @@ class AppSiteStatus(Resource):
     @edit_permission_required
     def post(self, app_model):
         parser = reqparse.RequestParser().add_argument("enable_site", type=bool, required=True, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         app_service = AppService()
         app_model = app_service.update_app_site_status(app_model, args["enable_site"])
@@ -465,7 +465,7 @@ class AppApiStatus(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser().add_argument("enable_api", type=bool, required=True, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         app_service = AppService()
         app_model = app_service.update_app_api_status(app_model, args["enable_api"])
@@ -513,7 +513,7 @@ class AppTraceApi(Resource):
             .add_argument("enabled", type=bool, required=True, location="json")
             .add_argument("tracing_provider", type=str, required=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         OpsTraceManager.update_app_tracing_config(
             app_id=app_id,

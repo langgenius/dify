@@ -88,7 +88,7 @@ class FilePreviewApi(Resource):
             .add_argument("as_attachment", type=bool, required=False, default=False, location="args")
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         if not args["timestamp"] or not args["nonce"] or not args["sign"]:
             return {"content": "Invalid request."}, 400

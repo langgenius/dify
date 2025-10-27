@@ -35,7 +35,7 @@ class WorkflowDailyRunsStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
@@ -105,7 +105,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
@@ -175,7 +175,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
@@ -250,7 +250,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         sql_query = """SELECT
     AVG(sub.interactions) AS interactions,

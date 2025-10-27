@@ -44,7 +44,7 @@ class ToolFileApi(Resource):
             .add_argument("as_attachment", type=bool, required=False, default=False, location="args")
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         if not verify_tool_file_signature(
             file_id=file_id, timestamp=args["timestamp"], nonce=args["nonce"], sign=args["sign"]
         ):

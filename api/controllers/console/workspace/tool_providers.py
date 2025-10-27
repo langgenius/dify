@@ -68,7 +68,7 @@ class ToolProviderListApi(Resource):
             nullable=True,
             location="args",
         )
-        args = req.parse_args()
+        args = req.parse_args(strict=True)
 
         return ToolCommonService.list_tool_providers(user_id, tenant_id, args.get("type", None))
 
@@ -113,7 +113,7 @@ class ToolBuiltinProviderDeleteApi(Resource):
         req = reqparse.RequestParser().add_argument(
             "credential_id", type=str, required=True, nullable=False, location="json"
         )
-        args = req.parse_args()
+        args = req.parse_args(strict=True)
 
         return BuiltinToolManageService.delete_builtin_tool_provider(
             tenant_id,
@@ -138,7 +138,7 @@ class ToolBuiltinProviderAddApi(Resource):
             .add_argument("name", type=StrLen(30), required=False, nullable=False, location="json")
             .add_argument("type", type=str, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         if args["type"] not in CredentialType.values():
             raise ValueError(f"Invalid credential type: {args['type']}")
@@ -173,7 +173,7 @@ class ToolBuiltinProviderUpdateApi(Resource):
             .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         result = BuiltinToolManageService.update_builtin_tool_provider(
             user_id=user_id,
@@ -236,7 +236,7 @@ class ToolApiProviderAddApi(Resource):
             .add_argument("custom_disclaimer", type=str, required=False, nullable=True, location="json")
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return ApiToolManageService.create_api_tool_provider(
             user_id,
@@ -264,7 +264,7 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
 
         parser = reqparse.RequestParser().add_argument("url", type=str, required=True, nullable=False, location="args")
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return ApiToolManageService.get_api_tool_provider_remote_schema(
             user_id,
@@ -287,7 +287,7 @@ class ToolApiProviderListToolsApi(Resource):
             "provider", type=str, required=True, nullable=False, location="args"
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return jsonable_encoder(
             ApiToolManageService.list_api_tool_provider_tools(
@@ -324,7 +324,7 @@ class ToolApiProviderUpdateApi(Resource):
             .add_argument("custom_disclaimer", type=str, required=True, nullable=True, location="json")
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return ApiToolManageService.update_api_tool_provider(
             user_id,
@@ -358,7 +358,7 @@ class ToolApiProviderDeleteApi(Resource):
             "provider", type=str, required=True, nullable=False, location="json"
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return ApiToolManageService.delete_api_tool_provider(
             user_id,
@@ -381,7 +381,7 @@ class ToolApiProviderGetApi(Resource):
             "provider", type=str, required=True, nullable=False, location="args"
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return ApiToolManageService.get_api_tool_provider(
             user_id,
@@ -415,7 +415,7 @@ class ToolApiProviderSchemaApi(Resource):
             "schema", type=str, required=True, nullable=False, location="json"
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return ApiToolManageService.parser_api_schema(
             schema=args["schema"],
@@ -438,7 +438,7 @@ class ToolApiProviderPreviousTestApi(Resource):
             .add_argument("schema", type=str, required=True, nullable=False, location="json")
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         _, current_tenant_id = current_account_with_tenant()
         return ApiToolManageService.test_api_tool_preview(
             current_tenant_id,
@@ -476,7 +476,7 @@ class ToolWorkflowProviderCreateApi(Resource):
             .add_argument("labels", type=list[str], required=False, nullable=True, location="json")
         )
 
-        args = reqparser.parse_args()
+        args = reqparser.parse_args(strict=True)
 
         return WorkflowToolManageService.create_workflow_tool(
             user_id=user_id,
@@ -517,7 +517,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
             .add_argument("labels", type=list[str], required=False, nullable=True, location="json")
         )
 
-        args = reqparser.parse_args()
+        args = reqparser.parse_args(strict=True)
 
         if not args["workflow_tool_id"]:
             raise ValueError("incorrect workflow_tool_id")
@@ -553,7 +553,7 @@ class ToolWorkflowProviderDeleteApi(Resource):
             "workflow_tool_id", type=uuid_value, required=True, nullable=False, location="json"
         )
 
-        args = reqparser.parse_args()
+        args = reqparser.parse_args(strict=True)
 
         return WorkflowToolManageService.delete_workflow_tool(
             user_id,
@@ -578,7 +578,7 @@ class ToolWorkflowProviderGetApi(Resource):
             .add_argument("workflow_app_id", type=uuid_value, required=False, nullable=True, location="args")
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         if args.get("workflow_tool_id"):
             tool = WorkflowToolManageService.get_workflow_tool_by_tool_id(
@@ -612,7 +612,7 @@ class ToolWorkflowProviderListToolApi(Resource):
             "workflow_tool_id", type=uuid_value, required=True, nullable=False, location="args"
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return jsonable_encoder(
             WorkflowToolManageService.list_single_workflow_tools(
@@ -796,7 +796,7 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     def post(self, provider):
         current_user, current_tenant_id = current_account_with_tenant()
         parser = reqparse.RequestParser().add_argument("id", type=str, required=True, nullable=False, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         return BuiltinToolManageService.set_default_provider(
             tenant_id=current_tenant_id, user_id=current_user.id, provider=provider, id=args["id"]
         )
@@ -813,7 +813,7 @@ class ToolOAuthCustomClient(Resource):
             .add_argument("client_params", type=dict, required=False, nullable=True, location="json")
             .add_argument("enable_oauth_custom_client", type=bool, required=False, nullable=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         user, tenant_id = current_account_with_tenant()
 
@@ -894,7 +894,7 @@ class ToolProviderMCPApi(Resource):
             .add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
             .add_argument("authentication", type=dict, required=False, nullable=True, location="json", default={})
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         user, tenant_id = current_account_with_tenant()
 
         # Parse and validate models
@@ -936,7 +936,7 @@ class ToolProviderMCPApi(Resource):
             .add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
             .add_argument("authentication", type=dict, required=False, nullable=True, location="json", default={})
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         configuration = MCPConfiguration.model_validate(args["configuration"])
         authentication = MCPAuthentication.model_validate(args["authentication"]) if args["authentication"] else None
         _, current_tenant_id = current_account_with_tenant()
@@ -977,7 +977,7 @@ class ToolProviderMCPApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "provider_id", type=str, required=True, nullable=False, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         _, current_tenant_id = current_account_with_tenant()
 
         with Session(db.engine) as session, session.begin():
@@ -997,7 +997,7 @@ class ToolMCPAuthApi(Resource):
             .add_argument("provider_id", type=str, required=True, nullable=False, location="json")
             .add_argument("authorization_code", type=str, required=False, nullable=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         provider_id = args["provider_id"]
         _, tenant_id = current_account_with_tenant()
 
@@ -1103,7 +1103,7 @@ class ToolMCPCallbackApi(Resource):
             .add_argument("code", type=str, required=True, nullable=False, location="args")
             .add_argument("state", type=str, required=True, nullable=False, location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         state_key = args["state"]
         authorization_code = args["code"]
 

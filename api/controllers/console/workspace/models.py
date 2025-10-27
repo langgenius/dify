@@ -32,7 +32,7 @@ class DefaultModelApi(Resource):
             choices=[mt.value for mt in ModelType],
             location="args",
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         default_model_entity = model_provider_service.get_default_model_of_model_type(
@@ -53,7 +53,7 @@ class DefaultModelApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "model_settings", type=list, required=True, nullable=False, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         model_provider_service = ModelProviderService()
         model_settings = args["model_settings"]
         for model_setting in model_settings:
@@ -122,7 +122,7 @@ class ModelProviderModelApi(Resource):
             .add_argument("config_from", type=str, required=False, nullable=True, location="json")
             .add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         if args.get("config_from", "") == "custom-model":
             if not args.get("credential_id"):
@@ -181,7 +181,7 @@ class ModelProviderModelApi(Resource):
                 location="json",
             )
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         model_provider_service.remove_model(
@@ -213,7 +213,7 @@ class ModelProviderModelCredentialApi(Resource):
             .add_argument("config_from", type=str, required=False, nullable=True, location="args")
             .add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         current_credential = model_provider_service.get_model_credential(
@@ -280,7 +280,7 @@ class ModelProviderModelCredentialApi(Resource):
             .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
             .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
 
@@ -328,7 +328,7 @@ class ModelProviderModelCredentialApi(Resource):
             .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
             .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
 
@@ -368,7 +368,7 @@ class ModelProviderModelCredentialApi(Resource):
             )
             .add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         model_provider_service.remove_model_credential(
@@ -405,7 +405,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
             )
             .add_argument("credential_id", type=str, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         service = ModelProviderService()
         service.add_model_credential_to_model_list(
@@ -440,7 +440,7 @@ class ModelProviderModelEnableApi(Resource):
                 location="json",
             )
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         model_provider_service.enable_model(
@@ -472,7 +472,7 @@ class ModelProviderModelDisableApi(Resource):
                 location="json",
             )
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         model_provider_service.disable_model(
@@ -503,7 +503,7 @@ class ModelProviderModelValidateApi(Resource):
             )
             .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
 
@@ -539,7 +539,7 @@ class ModelProviderModelParameterRuleApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "model", type=str, required=True, nullable=False, location="args"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         _, tenant_id = current_account_with_tenant()
 
         model_provider_service = ModelProviderService()

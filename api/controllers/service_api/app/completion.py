@@ -91,7 +91,7 @@ class CompletionApi(Resource):
         if app_model.mode != "completion":
             raise AppUnavailableError()
 
-        args = completion_parser.parse_args()
+        args = completion_parser.parse_args(strict=True)
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
@@ -181,7 +181,7 @@ class ChatApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        args = chat_parser.parse_args()
+        args = chat_parser.parse_args(strict=True)
 
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:

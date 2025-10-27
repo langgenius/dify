@@ -24,7 +24,7 @@ def oauth_server_client_id_required(view: Callable[Concatenate[T, OAuthProviderA
     @wraps(view)
     def decorated(self: T, *args: P.args, **kwargs: P.kwargs):
         parser = reqparse.RequestParser().add_argument("client_id", type=str, required=True, location="json")
-        parsed_args = parser.parse_args()
+        parsed_args = parser.parse_args(strict=True)
         client_id = parsed_args.get("client_id")
         if not client_id:
             raise BadRequest("client_id is required")
@@ -90,7 +90,7 @@ class OAuthServerAppApi(Resource):
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
         parser = reqparse.RequestParser().add_argument("redirect_uri", type=str, required=True, location="json")
-        parsed_args = parser.parse_args()
+        parsed_args = parser.parse_args(strict=True)
         redirect_uri = parsed_args.get("redirect_uri")
 
         # check if redirect_uri is valid
@@ -138,7 +138,7 @@ class OAuthServerUserTokenApi(Resource):
             .add_argument("redirect_uri", type=str, required=False, location="json")
             .add_argument("refresh_token", type=str, required=False, location="json")
         )
-        parsed_args = parser.parse_args()
+        parsed_args = parser.parse_args(strict=True)
 
         try:
             grant_type = OAuthGrantType(parsed_args["grant_type"])

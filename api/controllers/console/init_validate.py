@@ -58,7 +58,7 @@ class InitValidateAPI(Resource):
             raise AlreadySetupError()
 
         parser = reqparse.RequestParser().add_argument("password", type=StrLen(30), required=True, location="json")
-        input_password = parser.parse_args()["password"]
+        input_password = parser.parse_args(strict=True)["password"]
 
         if input_password != os.environ.get("INIT_PASSWORD"):
             session["is_init_validated"] = False

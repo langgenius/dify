@@ -98,7 +98,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
             .add_argument("credential_id", type=str, required=False, location="json")
             .add_argument("is_published", type=bool, required=True, location="json")
         )
-        args: ParseResult = parser.parse_args()
+        args: ParseResult = parser.parse_args(strict=True)
 
         datasource_node_run_api_entity = DatasourceNodeRunApiEntity.model_validate(args)
         assert isinstance(current_user, Account)
@@ -165,7 +165,7 @@ class PipelineRunApi(DatasetApiResource):
                 location="json",
             )
         )
-        args: ParseResult = parser.parse_args()
+        args: ParseResult = parser.parse_args(strict=True)
 
         if not isinstance(current_user, Account):
             raise Forbidden()
