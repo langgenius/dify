@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
 import { useThemeContext } from '../../../base/chat/embedded-chatbot/theme/theme-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -33,7 +33,12 @@ const TryApp: FC<Props> = ({
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const themeBuilder = useThemeContext()
-  const chatData = useEmbeddedChatbot(AppSourceType.tryApp, appId)
+  const { removeConversationIdInfo, ...chatData } = useEmbeddedChatbot(AppSourceType.tryApp, appId)
+
+  useEffect(() => {
+    if (appId)
+      removeConversationIdInfo(appId)
+  }, [appId])
   const [isHideTryNotice, {
     setTrue: hideTryNotice,
   }] = useBoolean(false)
