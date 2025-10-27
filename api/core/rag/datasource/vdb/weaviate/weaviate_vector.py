@@ -90,7 +90,7 @@ class WeaviateVector(BaseVector):
 
         grpc_host = host
         grpc_secure = http_secure
-        grpc_port = 443 if grpc_secure else (dify_config.WEAVIATE_GRPC_PORT or 50051)
+        grpc_port = 443 if grpc_secure else (dify_config.WEAVIATE_GRPC_PORT if dify_config.WEAVIATE_GRPC_PORT else 50051)
 
         client = weaviate.connect_to_custom(
             http_host=host,
