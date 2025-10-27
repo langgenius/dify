@@ -150,8 +150,13 @@ class MCPProviderEntity(BaseModel):
             # If not JSON, assume it's a file path
             return file_helpers.get_signed_file_url(self.icon)
 
-    def to_api_response(self, user_name: str | None = None) -> dict[str, Any]:
-        """Convert to API response format"""
+    def to_api_response(self, user_name: str | None = None, include_sensitive: bool = True) -> dict[str, Any]:
+        """Convert to API response format
+
+        Args:
+            user_name: User name to display
+            include_sensitive: If False, skip expensive decryption operations (for list view optimization)
+        """
         response = {
             "id": self.id,
             "author": user_name or "Anonymous",
@@ -172,14 +177,20 @@ class MCPProviderEntity(BaseModel):
             "sse_read_timeout": str(self.sse_read_timeout),
         }
 
-        # Add masked headers
-        response["masked_headers"] = self.masked_headers()
+        # Skip expensive operations when sensitive data is not needed (e.g., list view)
+        if not include_sensitive:
+            response["masked_headers"] = {}
+            response["is_dynamic_registration"] = True
+        else:
+            # Add masked headers
+            response["masked_headers"] = self.masked_headers()
 
-        # Add authentication info if available
-        masked_creds = self.masked_credentials()
-        if masked_creds:
-            response["authentication"] = masked_creds
-        response["is_dynamic_registration"] = self.credentials.get("is_dynamic_registration", True)
+            # Add authentication info if available
+            masked_creds = self.masked_credentials()
+            if masked_creds:
+                response["authentication"] = masked_creds
+            response["is_dynamic_registration"] = self.credentials.get("is_dynamic_registration", True)
+
         return response
 
     def retrieve_client_information(self) -> OAuthClientInformation | None:
