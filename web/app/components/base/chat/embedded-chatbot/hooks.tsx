@@ -78,10 +78,7 @@ export const useEmbeddedChatbot = () => {
   }, [embeddedUserId])
 
   useEffect(() => {
-    if (embeddedConversationId !== undefined && embeddedConversationId !== null)
-      setConversationId(embeddedConversationId)
-    else
-      setConversationId(undefined)
+    setConversationId(embeddedConversationId || undefined)
   }, [embeddedConversationId])
 
   useEffect(() => {
