@@ -318,7 +318,7 @@ const useLastRun = <T>({
     const { isValid } = checkValid()
     if (!isValid)
       return
-    if (blockType === BlockEnum.TriggerWebhook || blockType === BlockEnum.TriggerPlugin)
+    if (blockType === BlockEnum.TriggerWebhook || blockType === BlockEnum.TriggerPlugin || blockType === BlockEnum.TriggerSchedule)
       setShowVariableInspectPanel(true)
     if (isCustomRunNode) {
       showSingleRun()

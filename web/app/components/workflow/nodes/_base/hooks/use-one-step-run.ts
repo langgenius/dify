@@ -338,9 +338,10 @@ const useOneStepRun = <T>({
     }
   }, [])
 
+  const isScheduleTriggerNode = data.type === BlockEnum.TriggerSchedule
   const isWebhookTriggerNode = data.type === BlockEnum.TriggerWebhook
   const isPluginTriggerNode = data.type === BlockEnum.TriggerPlugin
-  const isTriggerNode = isWebhookTriggerNode || isPluginTriggerNode
+  const isTriggerNode = isWebhookTriggerNode || isPluginTriggerNode || isScheduleTriggerNode
 
   const startTriggerListening = useCallback(() => {
     if (!isTriggerNode)
@@ -381,6 +382,18 @@ const useOneStepRun = <T>({
     setListeningTriggerNodeIds,
     setListeningTriggerIsAll,
   ])
+
+  const runScheduleSingleRun = useCallback(async (): Promise<any | null> => {
+    handleNodeDataUpdate({
+      id,
+      data: {
+        ...data,
+        _isSingleRun: false,
+        _singleRunningStatus: NodeRunningStatus.Listening,
+      },
+    })
+    return {}
+  }, [handleNodeDataUpdate])
 
   const runWebhookSingleRun = useCallback(async (): Promise<any | null> => {
     const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
@@ -641,7 +654,10 @@ const useOneStepRun = <T>({
     let hasError = false
     try {
       if (!isIteration && !isLoop) {
-        if (isWebhookTriggerNode) {
+        if (isScheduleTriggerNode) {
+          await runScheduleSingleRun()
+        }
+        else if (isWebhookTriggerNode) {
           res = await runWebhookSingleRun()
           if (!res) {
             if (webhookSingleRunActiveRef.current) {
