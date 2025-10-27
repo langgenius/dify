@@ -1,5 +1,6 @@
 'use client'
 
+import type { FC } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   useRouter,
@@ -66,7 +67,12 @@ const getKey = (
   return null
 }
 
-const List = () => {
+type Props = {
+  controlRefreshList: number
+}
+const List: FC<Props> = ({
+  controlRefreshList,
+}) => {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
@@ -111,6 +117,11 @@ const List = () => {
       errorRetryCount: 3,
     },
   )
+
+  useEffect(() => {
+    if (controlRefreshList > 0)
+      mutate()
+  }, [controlRefreshList])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [

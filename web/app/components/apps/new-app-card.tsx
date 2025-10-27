@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   useRouter,
   useSearchParams,
@@ -11,6 +11,8 @@ import { useProviderContext } from '@/context/provider-context'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import cn from '@/utils/classnames'
 import dynamic from 'next/dynamic'
+import AppListContext from '@/context/app-list-context'
+import { useContextSelector } from 'use-context-selector'
 
 const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), {
   ssr: false,
@@ -51,6 +53,12 @@ const CreateAppCard = ({
 
     return undefined
   }, [dslUrl])
+
+  const controlHideCreateFromTemplatePanel = useContextSelector(AppListContext, ctx => ctx.controlHideCreateFromTemplatePanel)
+  useEffect(() => {
+    if (controlHideCreateFromTemplatePanel > 0)
+      setShowNewAppTemplateDialog(false)
+  }, [controlHideCreateFromTemplatePanel])
 
   return (
     <div
