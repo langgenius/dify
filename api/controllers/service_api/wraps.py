@@ -93,16 +93,16 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                 # For service API without end-user context, ensure an Account is logged in
                 # so services relying on current_account_with_tenant() work correctly.
                 tenant_account_join = (
-                    db.session.query(Tenant, TenantAccountJoin)
+                    db.session.query(Tenant, TenantAccountJoin, Account)
                     .where(Tenant.id == app_model.tenant_id)
                     .where(TenantAccountJoin.tenant_id == Tenant.id)
                     .where(TenantAccountJoin.role.in_(["owner"]))
                     .where(Tenant.status == TenantStatus.NORMAL)
+                    .where(TenantAccountJoin.account_id == Account.id)
                     .one_or_none()
                 )
                 if tenant_account_join:
-                    tenant_model, ta = tenant_account_join
-                    account = db.session.query(Account).where(Account.id == ta.account_id).first()
+                    tenant_model, ta, account = tenant_account_join
                     if account:
                         account.current_tenant = tenant_model
                         current_app.login_manager._update_request_context_with_user(account)  # type: ignore
