@@ -233,17 +233,23 @@ class ToolTransformService:
         )
 
     @staticmethod
-    def mcp_provider_to_user_provider(db_provider: MCPToolProvider, for_list: bool = False) -> ToolProviderApiEntity:
+    def mcp_provider_to_user_provider(
+        db_provider: MCPToolProvider, for_list: bool = False, user_name: str | None = None
+    ) -> ToolProviderApiEntity:
+        # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
+        if user_name is None:
+            user = db_provider.load_user()
+            user_name = user.name if user else None
+
         # Convert to entity and use its API response method
         provider_entity = db_provider.to_entity()
-        user = db_provider.load_user()
 
-        response = provider_entity.to_api_response(user_name=user.name if user else None)
+        response = provider_entity.to_api_response(user_name=user_name)
 
         # Add additional fields specific to the transform
         response["id"] = db_provider.server_identifier if not for_list else db_provider.id
         response["tools"] = ToolTransformService.mcp_tool_to_user_tool(
-            db_provider, [MCPTool(**tool) for tool in json.loads(db_provider.tools)]
+            db_provider, [MCPTool(**tool) for tool in json.loads(db_provider.tools)], user_name=user_name
         )
         response["server_identifier"] = db_provider.server_identifier
 
@@ -257,11 +263,17 @@ class ToolTransformService:
         return ToolProviderApiEntity(**response)
 
     @staticmethod
-    def mcp_tool_to_user_tool(mcp_provider: MCPToolProvider, tools: list[MCPTool]) -> list[ToolApiEntity]:
-        user = mcp_provider.load_user()
+    def mcp_tool_to_user_tool(
+        mcp_provider: MCPToolProvider, tools: list[MCPTool], user_name: str | None = None
+    ) -> list[ToolApiEntity]:
+        # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
+        if user_name is None:
+            user = mcp_provider.load_user()
+            user_name = user.name if user else "Anonymous"
+
         return [
             ToolApiEntity(
-                author=user.name if user else "Anonymous",
+                author=user_name or "Anonymous",
                 name=tool.name,
                 label=I18nObject(en_US=tool.name, zh_Hans=tool.name),
                 description=I18nObject(en_US=tool.description or "", zh_Hans=tool.description or ""),
