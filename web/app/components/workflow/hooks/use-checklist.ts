@@ -192,6 +192,8 @@ export const useChecklistBeforePublish = () => {
   const { getStartNodes } = useWorkflow()
   const workflowStore = useWorkflowStore()
   const { getNodesAvailableVarList } = useGetNodesAvailableVarList()
+  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
 
   const getCheckData = useCallback((data: CommonNodeType<{}>, datasets: DataSet[]) => {
     let checkData = data
@@ -210,6 +212,13 @@ export const useChecklistBeforePublish = () => {
         ...data,
         _datasets,
       } as CommonNodeType<KnowledgeRetrievalNodeType>
+    }
+    else if (data.type === BlockEnum.KnowledgeBase) {
+      checkData = {
+        ...data,
+        _embeddingModelList: embeddingModelList,
+        _rerankModelList: rerankModelList,
+      } as CommonNodeType<KnowledgeBaseNodeType>
     }
     return checkData
   }, [])
