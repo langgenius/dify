@@ -14,7 +14,7 @@ import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
-import { fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
+import { AppSourceType, fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
 import type { SiteInfo } from '@/models/share'
 import type {
   MoreLikeThisConfig,
@@ -41,24 +41,9 @@ import { AccessMode } from '@/models/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useWebAppStore } from '@/context/web-app-context'
-
+import type { Task } from './types'
+import { TaskStatus } from './types'
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
-enum TaskStatus {
-  pending = 'pending',
-  running = 'running',
-  completed = 'completed',
-  failed = 'failed',
-}
-
-type TaskParam = {
-  inputs: Record<string, any>
-}
-
-type Task = {
-  id: number
-  status: TaskStatus
-  params: TaskParam
-}
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -72,6 +57,7 @@ const TextGeneration: FC<IMainProps> = ({
   isWorkflow = false,
 }) => {
   const { notify } = Toast
+  const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
 
   const { t } = useTranslation()
   const media = useBreakpoints()
@@ -101,16 +87,16 @@ const TextGeneration: FC<IMainProps> = ({
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
   const fetchSavedMessage = useCallback(async () => {
-    const res: any = await doFetchSavedMessage(isInstalledApp, appId)
+    const res: any = await doFetchSavedMessage(appSourceType, appId)
     setSavedMessages(res.data)
-  }, [isInstalledApp, appId])
+  }, [appSourceType, appId])
   const handleSaveMessage = async (messageId: string) => {
-    await saveMessage(messageId, isInstalledApp, appId)
+    await saveMessage(messageId, appSourceType, appId)
     notify({ type: 'success', message: t('common.api.saved') })
     fetchSavedMessage()
   }
   const handleRemoveSavedMessage = async (messageId: string) => {
-    await removeMessage(messageId, isInstalledApp, appId)
+    await removeMessage(messageId, appSourceType, appId)
     notify({ type: 'success', message: t('common.api.remove') })
     fetchSavedMessage()
   }
@@ -416,8 +402,8 @@ const TextGeneration: FC<IMainProps> = ({
     isCallBatchAPI={isCallBatchAPI}
     isPC={isPC}
     isMobile={!isPC}
-    isInstalledApp={isInstalledApp}
-    installedAppInfo={installedAppInfo}
+    appSourceType={isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp}
+    appId={installedAppInfo?.id}
     isError={task?.status === TaskStatus.failed}
     promptConfig={promptConfig}
     moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}

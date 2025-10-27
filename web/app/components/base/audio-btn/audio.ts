@@ -1,5 +1,5 @@
 import Toast from '@/app/components/base/toast'
-import { textToAudioStream } from '@/service/share'
+import { AppSourceType, textToAudioStream } from '@/service/share'
 
 declare global {
   // eslint-disable-next-line ts/consistent-type-definitions
@@ -100,7 +100,7 @@ export default class AudioPlayer {
 
   private async loadAudio() {
     try {
-      const audioResponse: any = await textToAudioStream(this.url, this.isPublic, { content_type: 'audio/mpeg' }, {
+      const audioResponse: any = await textToAudioStream(this.url, this.isPublic ? AppSourceType.webApp : AppSourceType.installedApp, { content_type: 'audio/mpeg' }, {
         message_id: this.msgId,
         streaming: true,
         voice: this.voice,

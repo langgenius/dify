@@ -16,7 +16,7 @@ const ConfigAudio: FC = () => {
   const { t } = useTranslation()
   const file = useFeatures(s => s.features.file)
   const featuresStore = useFeaturesStore()
-  const { isShowAudioConfig } = useContext(ConfigContext)
+  const { isShowAudioConfig, readonly } = useContext(ConfigContext)
 
   const isAudioEnabled = file?.allowed_file_types?.includes(SupportUploadFileTypes.audio) ?? false
 
@@ -44,7 +44,7 @@ const ConfigAudio: FC = () => {
     setFeatures(newFeatures)
   }, [featuresStore])
 
-  if (!isShowAudioConfig)
+  if (!isShowAudioConfig || (readonly && !isAudioEnabled))
     return null
 
   return (
@@ -64,14 +64,16 @@ const ConfigAudio: FC = () => {
           }
         />
       </div>
-      <div className='flex shrink-0 items-center'>
-        <div className='ml-1 mr-3 h-3.5 w-[1px] bg-divider-subtle'></div>
-        <Switch
-          defaultValue={isAudioEnabled}
-          onChange={handleChange}
-          size='md'
-        />
-      </div>
+      {!readonly && (
+        <div className='flex shrink-0 items-center'>
+          <div className='ml-1 mr-3 h-3.5 w-[1px] bg-divider-subtle'></div>
+          <Switch
+            defaultValue={isAudioEnabled}
+            onChange={handleChange}
+            size='md'
+          />
+        </div>
+      )}
     </div>
   )
 }

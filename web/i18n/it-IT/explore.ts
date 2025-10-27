@@ -1,9 +1,7 @@
 const translation = {
   title: 'Esplora',
   sidebar: {
-    discovery: 'Scoperta',
     chat: 'Chat',
-    workspace: 'Workspace',
     action: {
       pin: 'Fissa',
       unpin: 'Sblocca',
@@ -16,13 +14,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'Esplora App di Dify',
-    description:
-      'Usa queste app modello istantaneamente o personalizza le tue app basate sui modelli.',
-    allCategories: 'Consigliato',
   },
   appCard: {
-    addToWorkspace: 'Aggiungi a Workspace',
     customize: 'Personalizza',
   },
   appCustomize: {

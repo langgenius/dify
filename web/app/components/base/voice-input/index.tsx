@@ -11,7 +11,7 @@ import { convertToMp3 } from './utils'
 import s from './index.module.css'
 import cn from '@/utils/classnames'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
-import { audioToText } from '@/service/share'
+import { AppSourceType, audioToText } from '@/service/share'
 
 type VoiceInputTypes = {
   onConverted: (text: string) => void
@@ -108,7 +108,7 @@ const VoiceInput = ({
     }
 
     try {
-      const audioResponse = await audioToText(url, isPublic, formData)
+      const audioResponse = await audioToText(url, isPublic ? AppSourceType.webApp : AppSourceType.installedApp, formData)
       onConverted(audioResponse.text)
       onCancel()
     }

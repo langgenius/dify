@@ -1,9 +1,7 @@
 const translation = {
   title: 'Обзор',
   sidebar: {
-    discovery: 'Открытия',
     chat: 'Чат',
-    workspace: 'Рабочее пространство',
     action: {
       pin: 'Закрепить',
       unpin: 'Открепить',
@@ -16,12 +14,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'Обзор приложений от Dify',
-    description: 'Используйте эти шаблонные приложения мгновенно или настройте свои собственные приложения на основе шаблонов.',
-    allCategories: 'Рекомендуемые',
   },
   appCard: {
-    addToWorkspace: 'Добавить в рабочее пространство',
     customize: 'Настроить',
   },
   appCustomize: {

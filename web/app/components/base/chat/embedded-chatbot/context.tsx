@@ -15,6 +15,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { noop } from 'lodash-es'
+import { AppSourceType } from '@/service/share'
 
 export type EmbeddedChatbotContextValue = {
   appMeta: AppMeta | null
@@ -37,8 +38,10 @@ export type EmbeddedChatbotContextValue = {
   chatShouldReloadKey: string
   isMobile: boolean
   isInstalledApp: boolean
+  appSourceType: AppSourceType
   allowResetChat: boolean
   appId?: string
+  disableFeedback?: boolean
   handleFeedback: (messageId: string, feedback: Feedback) => void
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
   themeBuilder?: ThemeBuilder
@@ -74,6 +77,7 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   handleNewConversationCompleted: noop,
   chatShouldReloadKey: '',
   isMobile: false,
+  appSourceType: AppSourceType.webApp,
   isInstalledApp: false,
   allowResetChat: true,
   handleFeedback: noop,

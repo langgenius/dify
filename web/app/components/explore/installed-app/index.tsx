@@ -12,6 +12,7 @@ import AppUnavailable from '../../base/app-unavailable'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams } from '@/service/use-explore'
 import type { AppData } from '@/models/share'
+import type { AccessMode } from '@/models/access-control'
 
 export type IInstalledAppProps = {
   id: string
@@ -61,8 +62,8 @@ const InstalledApp: FC<IInstalledAppProps> = ({
     if (appMeta)
       updateWebAppMeta(appMeta)
     if (webAppAccessMode)
-      updateWebAppAccessMode(webAppAccessMode.accessMode)
-    updateUserCanAccessApp(Boolean(userCanAccessApp && userCanAccessApp?.result))
+      updateWebAppAccessMode((webAppAccessMode as { accessMode: AccessMode }).accessMode)
+    updateUserCanAccessApp(Boolean(userCanAccessApp && (userCanAccessApp as { result: boolean })?.result))
   }, [installedApp, appMeta, appParams, updateAppInfo, updateAppParams, updateUserCanAccessApp, updateWebAppMeta, userCanAccessApp, webAppAccessMode, updateWebAppAccessMode])
 
   if (appParamsError) {

@@ -1,9 +1,7 @@
 const translation = {
   title: 'Odkryj',
   sidebar: {
-    discovery: 'Odkrywanie',
     chat: 'Czat',
-    workspace: 'Przestrzeń robocza',
     action: {
       pin: 'Przypnij',
       unpin: 'Odepnij',
@@ -16,13 +14,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'Odkrywaj aplikacje stworzone przez Dify',
-    description:
-      'Wykorzystaj te aplikacje szablonowe natychmiast lub dostosuj własne aplikacje na podstawie szablonów.',
-    allCategories: 'Polecane',
   },
   appCard: {
-    addToWorkspace: 'Dodaj do przestrzeni roboczej',
     customize: 'Dostosuj',
   },
   appCustomize: {

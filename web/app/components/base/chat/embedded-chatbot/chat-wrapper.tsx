@@ -14,6 +14,7 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
 import {
+  AppSourceType,
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
@@ -43,6 +44,7 @@ const ChatWrapper = () => {
     isInstalledApp,
     appId,
     appMeta,
+    disableFeedback,
     handleFeedback,
     currentChatInstanceRef,
     themeBuilder,
@@ -51,7 +53,9 @@ const ChatWrapper = () => {
     setIsResponding,
     allInputsHidden,
     initUserVariables,
+    appSourceType,
   } = useEmbeddedChatbotContext()
+
   const appConfig = useMemo(() => {
     const config = appParams || {}
 
@@ -79,7 +83,7 @@ const ChatWrapper = () => {
       inputsForm: inputsForms,
     },
     appPrevChatList,
-    taskId => stopChatMessageResponding('', taskId, isInstalledApp, appId),
+    taskId => stopChatMessageResponding('', taskId, appSourceType, appId),
     clearChatList,
     setClearChatList,
   )
@@ -135,14 +139,13 @@ const ChatWrapper = () => {
       conversation_id: currentConversationId,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
-
     handleSend(
-      getUrl('chat-messages', isInstalledApp, appId || ''),
+      getUrl('chat-messages', appSourceType, appId || ''),
       data,
       {
-        onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, isInstalledApp, appId),
+        onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
-        isPublicAPI: !isInstalledApp,
+        isPublicAPI: appSourceType === AppSourceType.webApp,
       },
     )
   }, [currentConversationId, currentConversationInputs, newConversationInputs, chatList, handleSend, isInstalledApp, appId, handleNewConversationCompleted])
@@ -164,7 +167,8 @@ const ChatWrapper = () => {
     return chatList.filter(item => !item.isOpeningStatement)
   }, [chatList, currentConversationId])
 
-  const [collapsed, setCollapsed] = useState(!!currentConversationId)
+  const isTryApp = appSourceType === AppSourceType.tryApp
+  const [collapsed, setCollapsed] = useState(!!currentConversationId && !isTryApp) // try app always use the new chat
 
   const chatNode = useMemo(() => {
     if (allInputsHidden || !inputsForms.length)
@@ -237,6 +241,7 @@ const ChatWrapper = () => {
 
   return (
     <Chat
+      isTryApp={isTryApp}
       appData={appData || undefined}
       config={appConfig}
       chatList={messageList}
@@ -256,6 +261,7 @@ const ChatWrapper = () => {
         </>
       }
       allToolIcons={appMeta?.tool_icons || {}}
+      disableFeedback={disableFeedback}
       onFeedback={handleFeedback}
       suggestedQuestions={suggestedQuestions}
       answerIcon={answerIcon}

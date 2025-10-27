@@ -15,7 +15,9 @@ import {
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
-import type { Node } from '@/app/components/workflow/types'
+import { BlockEnum, type Node } from '@/app/components/workflow/types'
+import PanelAddBlock from '@/app/components/workflow/nodes/iteration/panel-add-block'
+import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 
 type PanelOperatorPopupProps = {
   id: string
@@ -51,6 +53,9 @@ const PanelOperatorPopup = ({
         (showChangeBlock || canRunBySingle(data.type, isChildNode)) && (
           <>
             <div className='p-1'>
+              {data.type === BlockEnum.Iteration && (
+                <PanelAddBlock iterationNodeData={data as IterationNodeType} onClosePopup={onClosePopup}/>
+              )}
               {
                 canRunBySingle(data.type, isChildNode) && (
                   <div

@@ -243,6 +243,7 @@ export type ModelConfig = {
     image: VisionSettings
   } & UploadFileSetting
   files?: VisionFile[]
+  external_data_tools: any[]
   created_at?: number
   updated_at?: number
 }

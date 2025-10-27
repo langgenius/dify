@@ -13,10 +13,14 @@ import ConfigContext from '@/context/debug-configuration'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import Switch from '@/app/components/base/switch'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
+import { Resolution } from '@/types/app'
+import { noop } from 'lodash-es'
+import cn from '@/utils/classnames'
 
 const ConfigVision: FC = () => {
   const { t } = useTranslation()
-  const { isShowVisionConfig, isAllowVideoUpload } = useContext(ConfigContext)
+  const { isShowVisionConfig, isAllowVideoUpload, readonly } = useContext(ConfigContext)
   const file = useFeatures(s => s.features.file)
   const featuresStore = useFeaturesStore()
 
@@ -53,7 +57,7 @@ const ConfigVision: FC = () => {
     setFeatures(newFeatures)
   }, [featuresStore, isAllowVideoUpload])
 
-  if (!isShowVisionConfig)
+  if (!isShowVisionConfig || (readonly && !isImageEnabled))
     return null
 
   return (
@@ -74,37 +78,49 @@ const ConfigVision: FC = () => {
         />
       </div>
       <div className='flex shrink-0 items-center'>
-        {/* <div className='mr-2 flex items-center gap-0.5'>
-          <div className='text-text-tertiary system-xs-medium-uppercase'>{t('appDebug.vision.visionSettings.resolution')}</div>
-          <Tooltip
-            popupContent={
-              <div className='w-[180px]' >
-                {t('appDebug.vision.visionSettings.resolutionTooltip').split('\n').map(item => (
-                  <div key={item}>{item}</div>
-                ))}
-              </div>
-            }
+        {readonly ? (<>
+          <div className='mr-2 flex items-center gap-0.5'>
+            <div className='system-xs-medium-uppercase text-text-tertiary'>{t('appDebug.vision.visionSettings.resolution')}</div>
+            <Tooltip
+              popupContent={
+                <div className='w-[180px]' >
+                  {t('appDebug.vision.visionSettings.resolutionTooltip').split('\n').map(item => (
+                    <div key={item}>{item}</div>
+                  ))}
+                </div>
+              }
+            />
+          </div>
+          <div className='flex items-center gap-1'>
+            <OptionCard
+              title={t('appDebug.vision.visionSettings.high')}
+              selected={file?.image?.detail === Resolution.high}
+              onSelect={noop}
+              className={cn(
+                'cursor-not-allowed rounded-lg px-3  hover:shadow-none',
+                file?.image?.detail !== Resolution.high && 'hover:border-components-option-card-option-border',
+              )}
+            />
+            <OptionCard
+              title={t('appDebug.vision.visionSettings.low')}
+              selected={file?.image?.detail === Resolution.low}
+              onSelect={noop}
+              className={cn(
+                'cursor-not-allowed rounded-lg px-3  hover:shadow-none',
+                file?.image?.detail !== Resolution.low && 'hover:border-components-option-card-option-border',
+              )}
+            />
+          </div>
+        </>) : <>
+          <ParamConfig />
+          <div className='ml-1 mr-3 h-3.5 w-[1px] bg-divider-regular'></div>
+          <Switch
+            defaultValue={isImageEnabled}
+            onChange={handleChange}
+            size='md'
           />
-        </div> */}
-        {/* <div className='flex items-center gap-1'>
-          <OptionCard
-            title={t('appDebug.vision.visionSettings.high')}
-            selected={file?.image?.detail === Resolution.high}
-            onSelect={() => handleChange(Resolution.high)}
-          />
-          <OptionCard
-            title={t('appDebug.vision.visionSettings.low')}
-            selected={file?.image?.detail === Resolution.low}
-            onSelect={() => handleChange(Resolution.low)}
-          />
-        </div> */}
-        <ParamConfig />
-        <div className='ml-1 mr-3 h-3.5 w-[1px] bg-divider-regular'></div>
-        <Switch
-          defaultValue={isImageEnabled}
-          onChange={handleChange}
-          size='md'
-        />
+        </>}
+
       </div>
     </div>
   )

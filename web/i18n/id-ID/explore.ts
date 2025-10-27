@@ -10,18 +10,12 @@ const translation = {
       content: 'Apakah Anda yakin ingin menghapus aplikasi ini?',
       title: 'Hapus aplikasi',
     },
-    workspace: 'Workspace',
-    discovery: 'Penemuan',
     chat: 'Mengobrol',
   },
   apps: {
-    allCategories: 'Direkomendasikan',
-    description: 'Gunakan aplikasi templat ini secara instan atau sesuaikan aplikasi Anda sendiri berdasarkan templat.',
-    title: 'Jelajahi Aplikasi',
   },
   appCard: {
     customize: 'Menyesuaikan',
-    addToWorkspace: 'Tambahkan ke Ruang Kerja',
   },
   appCustomize: {
     subTitle: 'Ikon & nama aplikasi',

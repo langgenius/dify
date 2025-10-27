@@ -7,11 +7,11 @@ import { produce } from 'immer'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
 import NoData from '@/app/components/share/text-generation/no-data'
 import Toast from '@/app/components/base/toast'
+import type { AppSourceType } from '@/service/share'
 import { sendCompletionMessage, sendWorkflowMessage, updateFeedback } from '@/service/share'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import Loading from '@/app/components/base/loading'
 import type { PromptConfig } from '@/models/debug'
-import type { InstalledApp } from '@/models/explore'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
@@ -30,8 +30,8 @@ export type IResultProps = {
   isCallBatchAPI: boolean
   isPC: boolean
   isMobile: boolean
-  isInstalledApp: boolean
-  installedAppInfo?: InstalledApp
+  appSourceType: AppSourceType
+  appId?: string
   isError: boolean
   isShowTextToSpeech: boolean
   promptConfig: PromptConfig | null
@@ -55,8 +55,8 @@ const Result: FC<IResultProps> = ({
   isCallBatchAPI,
   isPC,
   isMobile,
-  isInstalledApp,
-  installedAppInfo,
+  appSourceType,
+  appId,
   isError,
   isShowTextToSpeech,
   promptConfig,
@@ -104,7 +104,7 @@ const Result: FC<IResultProps> = ({
   })
 
   const handleFeedback = async (feedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, installedAppInfo?.id)
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, appSourceType, appId)
     setFeedback(feedback)
   }
 
@@ -374,8 +374,8 @@ const Result: FC<IResultProps> = ({
             }))
           },
         },
-        isInstalledApp,
-        installedAppInfo?.id,
+        appSourceType,
+        appId,
       )
     }
     else {
@@ -408,7 +408,7 @@ const Result: FC<IResultProps> = ({
           onCompleted(getCompletionRes(), taskId, false)
           isEnd = true
         },
-      }, isInstalledApp, installedAppInfo?.id)
+      }, appSourceType, appId)
     }
   }
 
@@ -439,8 +439,8 @@ const Result: FC<IResultProps> = ({
       feedback={feedback}
       onSave={handleSaveMessage}
       isMobile={isMobile}
-      isInstalledApp={isInstalledApp}
-      installedAppId={installedAppInfo?.id}
+      appSourceType={appSourceType}
+      installedAppId={appId}
       isLoading={isCallBatchAPI ? (!completionRes && isResponding) : false}
       taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
       controlClearMoreLikeThis={controlClearMoreLikeThis}

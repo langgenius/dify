@@ -1,9 +1,9 @@
 const translation = {
   title: 'Explore',
   sidebar: {
-    discovery: 'Discovery',
+    title: 'App gallery',
     chat: 'Chat',
-    workspace: 'Workspace',
+    webApps: 'Web apps',
     action: {
       pin: 'Pin',
       unpin: 'Unpin',
@@ -14,15 +14,31 @@ const translation = {
       title: 'Delete app',
       content: 'Are you sure you want to delete this app?',
     },
+    noApps: {
+      title: 'No web apps',
+      description: 'Published web apps will appear here',
+      learnMore: 'Learn more',
+    },
   },
   apps: {
-    title: 'Explore Apps',
-    description: 'Use these template apps instantly or customize your own apps based on the templates.',
-    allCategories: 'Recommended',
+    title: 'Try Dify\'s curated apps to find AI solutions for your business',
+    allCategories: 'All',
+    resultNum: '{{num}} results',
+    resetFilter: 'Clear filter',
   },
   appCard: {
-    addToWorkspace: 'Add to Workspace',
-    customize: 'Customize',
+    addToWorkspace: 'Use template',
+    try: 'Details',
+  },
+  tryApp: {
+    tabHeader: {
+      try: 'Try it',
+      detail: 'Orchestration Details',
+    },
+    createFromSampleApp: 'Create from this sample app',
+    category: 'Category',
+    requirements: 'Requirements',
+    tryInfo: 'This is a sample app. You can try up to 5 messages. To keep using it, click "Create form this sample app" and set it up!',
   },
   appCustomize: {
     title: 'Create app from {{name}}',
@@ -38,6 +54,9 @@ const translation = {
     HR: 'HR',
     Workflow: 'Workflow',
     Entertainment: 'Entertainment',
+  },
+  banner: {
+    viewMore: 'VIEW MORE',
   },
 }
 

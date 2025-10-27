@@ -1,9 +1,7 @@
 const translation = {
   title: 'अन्वेषण करें',
   sidebar: {
-    discovery: 'खोज',
     chat: 'चैट',
-    workspace: 'कार्यक्षेत्र',
     action: {
       pin: 'पिन करें',
       unpin: 'पिन हटाएँ',
@@ -16,13 +14,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'डिफ़ी द्वारा ऐप्स का अन्वेषण करें',
-    description:
-      'इन टेम्प्लेट ऐप्स का तुरंत उपयोग करें या टेम्प्लेट्स के आधार पर अपने स्वयं के ऐप्स को कस्टमाइज़ करें।',
-    allCategories: 'अनुशंसित',
   },
   appCard: {
-    addToWorkspace: 'कार्यक्षेत्र में जोड़ें',
     customize: 'अनुकूलित करें',
   },
   appCustomize: {

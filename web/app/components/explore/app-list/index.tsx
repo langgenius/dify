@@ -22,6 +22,11 @@ import {
 } from '@/models/app'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
+import Banner from '@/app/components/explore/banner/banner'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import Button from '@/app/components/base/button'
+import { useContextSelector } from 'use-context-selector'
+import TryApp from '../try-app'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -36,11 +41,18 @@ const Apps = ({
   onSuccess,
 }: AppsProps) => {
   const { t } = useTranslation()
+  const { systemFeatures } = useGlobalPublicStore()
   const { hasEditPermission } = useContext(ExploreContext)
   const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
+
+  const hasFilterCondition = !!keywords
+  const handleResetFilter = useCallback(() => {
+    setKeywords('')
+    setSearchKeywords('')
+  }, [])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)
@@ -96,6 +108,18 @@ const Apps = ({
     isFetching,
   } = useImportDSL()
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
+
+  const isShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.isShowTryAppPanel)
+  const setShowTryAppPanel = useContextSelector(ExploreContext, ctx => ctx.setShowTryAppPanel)
+  const hideTryAppPanel = useCallback(() => {
+    setShowTryAppPanel(false)
+  }, [setShowTryAppPanel])
+  const appParams = useContextSelector(ExploreContext, ctx => ctx.currentApp)
+  const handleShowFromTryApp = useCallback(() => {
+    setCurrApp(appParams?.app || null)
+    setIsShowCreateModal(true)
+  }, [appParams?.app])
+
   const onCreate: CreateAppModalProps['onConfirm'] = async ({
     name,
     icon_type,
@@ -103,6 +127,8 @@ const Apps = ({
     icon_background,
     description,
   }) => {
+    hideTryAppPanel()
+
     const { export_data } = await fetchAppDetail(
       currApp?.app.id as string,
     )
@@ -141,23 +167,25 @@ const Apps = ({
 
   return (
     <div className={cn(
-      'flex h-full flex-col border-l-[0.5px] border-divider-regular',
+      'flex h-full flex-col',
     )}>
-
-      <div className='shrink-0 px-12 pt-6'>
-        <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
-        <div className='text-sm text-text-tertiary'>{t('explore.apps.description')}</div>
-      </div>
-
+      {systemFeatures.enable_explore_banner && (
+        <div className='mt-4 px-12'>
+          <Banner />
+        </div>
+      )}
       <div className={cn(
         'mt-6 flex items-center justify-between px-12',
       )}>
-        <Category
-          list={categories}
-          value={currCategory}
-          onChange={setCurrCategory}
-          allCategoriesEn={allCategoriesEn}
-        />
+        <div className='flex items-center'>
+          <div className={'system-xl-semibold grow truncate text-text-primary'}>{!hasFilterCondition ? t('explore.apps.title') : t('explore.apps.resultNum', { num: searchFilteredList.length })}</div>
+          {hasFilterCondition && (
+            <>
+              <div className='mx-3 h-4 w-px bg-divider-regular'></div>
+              <Button size='medium' onClick={handleResetFilter}>{t('explore.apps.resetFilter')}</Button>
+            </>
+          )}
+        </div>
         <Input
           showLeftIcon
           showClearIcon
@@ -165,6 +193,15 @@ const Apps = ({
           value={keywords}
           onChange={e => handleKeywordsChange(e.target.value)}
           onClear={() => handleKeywordsChange('')}
+        />
+      </div>
+
+      <div className='mt-2 px-12'>
+        <Category
+          list={categories}
+          value={currCategory}
+          onChange={setCurrCategory}
+          allCategoriesEn={allCategoriesEn}
         />
       </div>
 
@@ -214,6 +251,14 @@ const Apps = ({
           />
         )
       }
+
+      {isShowTryAppPanel && (
+        <TryApp appId={appParams?.appId || ''}
+          category={appParams?.app?.category}
+          onClose={hideTryAppPanel}
+          onCreate={handleShowFromTryApp}
+        />
+      )}
     </div>
   )
 }
