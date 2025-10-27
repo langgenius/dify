@@ -18,6 +18,8 @@ parser = (
     .add_argument("datasource_type", type=str, required=True, location="json")
     .add_argument("credential_id", type=str, required=False, location="json")
 )
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview")
 class DataSourceContentPreviewApi(Resource):
     @api.expect(parser)
