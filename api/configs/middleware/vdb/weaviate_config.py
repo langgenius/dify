@@ -29,5 +29,5 @@ class WeaviateConfig(BaseSettings):
 
     WEAVIATE_GRPC_PORT: PositiveInt = Field(
         description="Port of the Weaviate gRPC port (default is 50051)",
-        default=10051,
+        default=50051,
     )
