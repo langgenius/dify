@@ -472,7 +472,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
 
         # Verify truncation behavior matches expectations
         if test_case.expected_truncation_enabled:
-            # SERVICE_API should not truncate
+            # Truncation should be enabled for non-service-api calls
             assert response.data.inputs_truncated
             assert response.data.process_data_truncated
             assert response.data.outputs_truncated
