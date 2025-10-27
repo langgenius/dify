@@ -2,7 +2,7 @@
   "name": "dify-web",
   "version": "1.9.2",
   "private": true,
-  "packageManager": "pnpm@10.18.3+sha512.bbd16e6d7286fd7e01f6b3c0b3c932cda2965c06a908328f74663f10a9aea51f1129eea615134bf992831b009eabe167ecb7008b597f40ff9bc75946aadfb08d",
+  "packageManager": "pnpm@10.19.0+sha512.c9fc7236e92adf5c8af42fd5bf1612df99c2ceb62f27047032f4720b33f8eacdde311865e91c411f2774f618d82f320808ecb51718bfa82c060c4ba7c76a32b8",
   "engines": {
     "node": ">=v22.11.0"
   },
@@ -22,7 +22,7 @@
     "dev": "cross-env NODE_OPTIONS='--inspect' next dev --turbopack",
     "build": "next build",
     "build:docker": "next build && node scripts/optimize-standalone.js",
-    "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
+    "start": "node ./scripts/copy-and-start.mjs",
     "lint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
     "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
     "lint:quiet": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
@@ -222,6 +222,9 @@
   },
   "pnpm": {
     "overrides": {
+      "lexical": "0.37.0",
+      "@lexical/*": "0.37.0",
+      "@monaco-editor/loader": "1.5.0",
       "@eslint/plugin-kit@<0.3.4": "0.3.4",
       "brace-expansion@<2.0.2": "2.0.2",
       "devalue@<5.3.2": "5.3.2",

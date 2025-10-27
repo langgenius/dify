@@ -81,7 +81,7 @@ const VoiceInputMock = ({ onConverted, onCancel }: any) => {
 }
 
 const meta = {
-  title: 'Base/VoiceInput',
+  title: 'Base/Input/VoiceInput',
   component: VoiceInputMock,
   parameters: {
     layout: 'centered',

@@ -15,6 +15,9 @@ overrides:
   vite: ~6.2
   prismjs: ~1.30
   brace-expansion: ~2.0
+  lexical: 0.37.0
+  '@lexical/*': 0.37.0
+  '@monaco-editor/loader': 1.5.0
   '@eslint/plugin-kit@<0.3.4': 0.3.4
   brace-expansion@<2.0.2: 2.0.2
   devalue@<5.3.2: 5.3.2
@@ -199,8 +202,8 @@ importers:
         specifier: ^1.2.1
         version: 1.2.1
       lexical:
-        specifier: ^0.36.2
-        version: 0.36.2
+        specifier: 0.37.0
+        version: 0.37.0
       line-clamp:
         specifier: ^1.0.0
         version: 1.0.0
@@ -2247,8 +2250,8 @@ packages:
   '@mermaid-js/parser@0.6.3':
     resolution: {integrity: sha512-lnjOhe7zyHjc+If7yT4zoedx2vo4sHaTmtkl1+or8BRTnCtDmcTpAjpzDSfCZrshM5bCoz0GyidzadJAH1xobA==}
 
-  '@monaco-editor/loader@1.6.1':
-    resolution: {integrity: sha512-w3tEnj9HYEC73wtjdpR089AqkUPskFRcdkxsiSFt3SoUc3OHpmu+leP94CXBm4mHfefmhsdfI0ZQu6qJ0wgtPg==}
+  '@monaco-editor/loader@1.5.0':
+    resolution: {integrity: sha512-hKoGSM+7aAc7eRTRjpqAZucPmoNOC4UUbknb/VNoTkEIkCPhqV8LfbsgM1webRM7S/z21eHEx9Fkwx8Z/C/+Xw==}
 
   '@monaco-editor/react@4.7.0':
     resolution: {integrity: sha512-cyzXQCtO47ydzxpQtCGSQGOC8Gk3ZUeBXFAxD+CWXYFo5OqZyZUonFl0DwUlTyAfRHntBfw2p3w4s9R6oe1eCA==}
@@ -6240,9 +6243,6 @@ packages:
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
-
-  lexical@0.36.2:
-    resolution: {integrity: sha512-gIDJCmSAhtxD7h95WK17Nz19wCZu92Zn0p1/R45X01S/KAsLCwEtVJ2fTvIJNFTyx3QNJTuGcm5mYgRMUwq8rg==}
 
   lexical@0.37.0:
     resolution: {integrity: sha512-r5VJR2TioQPAsZATfktnJFrGIiy6gjQN8b/+0a2u1d7/QTH7lhbB7byhGSvcq1iaa1TV/xcf/pFV55a5V5hTDQ==}
@@ -10538,7 +10538,7 @@ snapshots:
       '@lexical/list': 0.36.2
       '@lexical/selection': 0.36.2
       '@lexical/utils': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/clipboard@0.37.0':
     dependencies:
@@ -10551,7 +10551,7 @@ snapshots:
   '@lexical/code@0.36.2':
     dependencies:
       '@lexical/utils': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
       prismjs: 1.30.0
 
   '@lexical/devtools-core@0.36.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
@@ -10561,20 +10561,20 @@ snapshots:
       '@lexical/mark': 0.36.2
       '@lexical/table': 0.36.2
       '@lexical/utils': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
 
   '@lexical/dragon@0.36.2':
     dependencies:
       '@lexical/extension': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/extension@0.36.2':
     dependencies:
       '@lexical/utils': 0.36.2
       '@preact/signals-core': 1.12.1
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/extension@0.37.0':
     dependencies:
@@ -10586,19 +10586,19 @@ snapshots:
     dependencies:
       '@lexical/text': 0.36.2
       '@lexical/utils': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/history@0.36.2':
     dependencies:
       '@lexical/extension': 0.36.2
       '@lexical/utils': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/html@0.36.2':
     dependencies:
       '@lexical/selection': 0.36.2
       '@lexical/utils': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/html@0.37.0':
     dependencies:
@@ -10610,14 +10610,14 @@ snapshots:
     dependencies:
       '@lexical/extension': 0.36.2
       '@lexical/utils': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/list@0.36.2':
     dependencies:
       '@lexical/extension': 0.36.2
       '@lexical/selection': 0.36.2
       '@lexical/utils': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/list@0.37.0':
     dependencies:
@@ -10629,7 +10629,7 @@ snapshots:
   '@lexical/mark@0.36.2':
     dependencies:
       '@lexical/utils': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/markdown@0.36.2':
     dependencies:
@@ -10639,15 +10639,15 @@ snapshots:
       '@lexical/rich-text': 0.36.2
       '@lexical/text': 0.36.2
       '@lexical/utils': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/offset@0.36.2':
     dependencies:
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/overflow@0.36.2':
     dependencies:
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/plain-text@0.36.2':
     dependencies:
@@ -10655,7 +10655,7 @@ snapshots:
       '@lexical/dragon': 0.36.2
       '@lexical/selection': 0.36.2
       '@lexical/utils': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/react@0.36.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(yjs@13.6.27)':
     dependencies:
@@ -10676,7 +10676,7 @@ snapshots:
       '@lexical/text': 0.36.2
       '@lexical/utils': 0.36.2
       '@lexical/yjs': 0.36.2(yjs@13.6.27)
-      lexical: 0.36.2
+      lexical: 0.37.0
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
       react-error-boundary: 6.0.0(react@19.1.1)
@@ -10689,11 +10689,11 @@ snapshots:
       '@lexical/dragon': 0.36.2
       '@lexical/selection': 0.36.2
       '@lexical/utils': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/selection@0.36.2':
     dependencies:
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/selection@0.37.0':
     dependencies:
@@ -10704,7 +10704,7 @@ snapshots:
       '@lexical/clipboard': 0.36.2
       '@lexical/extension': 0.36.2
       '@lexical/utils': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/table@0.37.0':
     dependencies:
@@ -10715,14 +10715,14 @@ snapshots:
 
   '@lexical/text@0.36.2':
     dependencies:
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/utils@0.36.2':
     dependencies:
       '@lexical/list': 0.36.2
       '@lexical/selection': 0.36.2
       '@lexical/table': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
 
   '@lexical/utils@0.37.0':
     dependencies:
@@ -10735,7 +10735,7 @@ snapshots:
     dependencies:
       '@lexical/offset': 0.36.2
       '@lexical/selection': 0.36.2
-      lexical: 0.36.2
+      lexical: 0.37.0
       yjs: 13.6.27
 
   '@mdx-js/loader@3.1.1(webpack@5.102.1(esbuild@0.25.0)(uglify-js@3.19.3))':
@@ -10787,13 +10787,13 @@ snapshots:
     dependencies:
       langium: 3.3.1
 
-  '@monaco-editor/loader@1.6.1':
+  '@monaco-editor/loader@1.5.0':
     dependencies:
       state-local: 1.0.7
 
   '@monaco-editor/react@4.7.0(monaco-editor@0.52.2)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)':
     dependencies:
-      '@monaco-editor/loader': 1.6.1
+      '@monaco-editor/loader': 1.5.0
       monaco-editor: 0.52.2
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
@@ -15400,8 +15400,6 @@ snapshots:
     dependencies:
       prelude-ls: 1.2.1
       type-check: 0.4.0
-
-  lexical@0.36.2: {}
 
   lexical@0.37.0: {}
 
