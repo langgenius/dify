@@ -117,7 +117,7 @@ class AppTriggersApi(Resource):
                     "plugin_unique_identifier": controller.plugin_unique_identifier,
                     "icon": api_entity.icon or "",
                     "provider_name": api_entity.name,
-                    "provider_label": api_entity.label.to_dict(),
+                    "provider_label": api_entity.label,
                 }
             except Exception:
                 metadata = {}
@@ -204,9 +204,8 @@ class AppTriggerEnableApi(Resource):
                     trigger.event_name = plugin_trigger.event_name  # type: ignore[attr-defined]
                     trigger.plugin_id = controller.plugin_id  # type: ignore[attr-defined]
                     trigger.plugin_unique_identifier = controller.plugin_unique_identifier  # type: ignore[attr-defined]
-                    api_entity = controller.to_api_entity()
-                    trigger.provider_label = api_entity.label.to_dict()  # type: ignore[attr-defined]
-                    plugin_icon = api_entity.icon or ""
+                    trigger.provider_label = controller.to_api_entity().label  # type: ignore[attr-defined]
+                    plugin_icon = controller.to_api_entity().icon or ""
                 except Exception:
                     plugin_icon = ""
             trigger.icon = plugin_icon  # type: ignore[attr-defined]

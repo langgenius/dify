@@ -194,7 +194,7 @@ class WorkflowAppService:
                 api_entity = controller.to_api_entity()
                 metadata = {
                     "provider_name": api_entity.name,
-                    "provider_label": api_entity.label.to_dict(),
+                    "provider_label": api_entity.label,
                     "icon": api_entity.icon or "",
                     "plugin_id": controller.plugin_id,
                     "plugin_unique_identifier": controller.plugin_unique_identifier,
