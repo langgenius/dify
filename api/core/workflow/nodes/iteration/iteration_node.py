@@ -98,6 +98,7 @@ class IterationNode(LLMUsageTrackingMixin, Node):
                 "is_parallel": False,
                 "parallel_nums": 10,
                 "error_handle_mode": ErrorHandleMode.TERMINATED,
+                "flatten_output": True,
             },
         }
 
@@ -411,7 +412,14 @@ class IterationNode(LLMUsageTrackingMixin, Node):
         """
         Flatten the outputs list if all elements are lists.
         This maintains backward compatibility with version 1.8.1 behavior.
+
+        If flatten_output is False, returns outputs as-is (nested structure).
+        If flatten_output is True (default), flattens the list if all elements are lists.
         """
+        # If flatten_output is disabled, return outputs as-is
+        if not self._node_data.flatten_output:
+            return outputs
+
         if not outputs:
             return outputs
 
