@@ -13,7 +13,7 @@ const SECONDARY_ITEMS: Item[] = [
 ]
 
 const meta = {
-  title: 'Base/Menu/Dropdown',
+  title: 'Base/Navigation/Dropdown',
   component: Dropdown,
   parameters: {
     docs: {

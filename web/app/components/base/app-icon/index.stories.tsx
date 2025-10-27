@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react'
 import AppIcon from '.'
 
 const meta = {
-  title: 'Base/Icon/AppIcon',
+  title: 'Base/General/AppIcon',
   component: AppIcon,
   parameters: {
     docs: {

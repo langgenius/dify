@@ -24,7 +24,7 @@ const TabSliderNewDemo = ({
 }
 
 const meta = {
-  title: 'Base/Tabs/TabSliderNew',
+  title: 'Base/Navigation/TabSliderNew',
   component: TabSliderNewDemo,
   parameters: {
     layout: 'centered',

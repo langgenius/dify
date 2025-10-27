@@ -36,7 +36,7 @@ const TabHeaderDemo = ({
 }
 
 const meta = {
-  title: 'Base/Tabs/TabHeader',
+  title: 'Base/Navigation/TabHeader',
   component: TabHeaderDemo,
   parameters: {
     layout: 'centered',

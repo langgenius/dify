@@ -47,7 +47,7 @@ const initialImages: ImageFile[] = [
 ]
 
 const meta = {
-  title: 'Base/ImageUploader/ImageList',
+  title: 'Base/Data Entry/ImageList',
   component: ImageList,
   parameters: {
     layout: 'centered',

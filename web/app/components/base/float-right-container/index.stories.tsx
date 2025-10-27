@@ -3,7 +3,7 @@ import { useState } from 'react'
 import FloatRightContainer from '.'
 
 const meta = {
-  title: 'Base/Layout/FloatRightContainer',
+  title: 'Base/Feedback/FloatRightContainer',
   component: FloatRightContainer,
   parameters: {
     layout: 'fullscreen',

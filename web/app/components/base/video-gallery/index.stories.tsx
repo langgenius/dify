@@ -7,7 +7,7 @@ const VIDEO_SOURCES = [
 ]
 
 const meta = {
-  title: 'Base/Gallery/VideoGallery',
+  title: 'Base/Data Display/VideoGallery',
   component: VideoGallery,
   parameters: {
     layout: 'fullscreen',

@@ -41,7 +41,7 @@ const filesSample: FileEntity[] = [
 ]
 
 const meta = {
-  title: 'Base/File/FileList',
+  title: 'Base/Data Display/FileList',
   component: FileList,
   parameters: {
     docs: {

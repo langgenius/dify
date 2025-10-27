@@ -17,7 +17,7 @@ const SvgToggleDemo = () => {
 }
 
 const meta = {
-  title: 'Base/Inputs/SVGBtn',
+  title: 'Base/General/SVGBtn',
   component: SvgToggleDemo,
   parameters: {
     layout: 'centered',

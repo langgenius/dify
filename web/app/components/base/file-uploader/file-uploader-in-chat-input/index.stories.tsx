@@ -54,7 +54,7 @@ const ChatInputDemo = ({ initialFiles = mockFiles, ...props }: ChatInputDemoProp
 }
 
 const meta = {
-  title: 'Base/File/FileUploaderInChatInput',
+  title: 'Base/Data Entry/FileUploaderInChatInput',
   component: ChatInputDemo,
   parameters: {
     docs: {

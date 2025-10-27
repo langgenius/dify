@@ -3,7 +3,7 @@ import { useState } from 'react'
 import AppIconPicker, { type AppIconSelection } from '.'
 
 const meta = {
-  title: 'Base/Icon/AppIconPicker',
+  title: 'Base/Data Entry/AppIconPicker',
   component: AppIconPicker,
   parameters: {
     layout: 'fullscreen',

@@ -3,7 +3,7 @@ import FileTypeIcon from './file-type-icon'
 import { FileAppearanceTypeEnum } from './types'
 
 const meta = {
-  title: 'Base/File/FileTypeIcon',
+  title: 'Base/General/FileTypeIcon',
   component: FileTypeIcon,
   parameters: {
     docs: {

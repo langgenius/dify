@@ -3,7 +3,7 @@ import { useState } from 'react'
 import CopyFeedback, { CopyFeedbackNew } from '.'
 
 const meta = {
-  title: 'Base/Icon/CopyFeedback',
+  title: 'Base/Feedback/CopyFeedback',
   component: CopyFeedback,
   parameters: {
     docs: {

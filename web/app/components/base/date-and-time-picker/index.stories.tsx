@@ -6,7 +6,7 @@ import { getDateWithTimezone } from './utils/dayjs'
 import type { DatePickerProps } from './types'
 
 const meta = {
-  title: 'Base/Input/DateAndTimePicker',
+  title: 'Base/Data Entry/DateAndTimePicker',
   component: DatePicker,
   parameters: {
     docs: {

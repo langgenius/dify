@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs'
 import NotionConnector from '.'
 
 const meta = {
-  title: 'Base/Notion/NotionConnector',
+  title: 'Base/Other/NotionConnector',
   component: NotionConnector,
   parameters: {
     layout: 'centered',

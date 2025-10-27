@@ -10,7 +10,7 @@ const ITEMS: Item[] = [
 ]
 
 const meta = {
-  title: 'Base/Input/Chip',
+  title: 'Base/Data Entry/Chip',
   component: Chip,
   parameters: {
     docs: {

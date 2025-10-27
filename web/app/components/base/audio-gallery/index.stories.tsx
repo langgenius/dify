@@ -6,7 +6,7 @@ const AUDIO_SOURCES = [
 ]
 
 const meta = {
-  title: 'Base/Gallery/AudioGallery',
+  title: 'Base/Data Display/AudioGallery',
   component: AudioGallery,
   parameters: {
     docs: {

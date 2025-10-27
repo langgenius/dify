@@ -3,7 +3,7 @@ import { useState } from 'react'
 import FullScreenModal from '.'
 
 const meta = {
-  title: 'Base/Overlay/FullScreenModal',
+  title: 'Base/Feedback/FullScreenModal',
   component: FullScreenModal,
   parameters: {
     layout: 'fullscreen',

@@ -102,7 +102,7 @@ const ParamItemPlayground = () => {
 }
 
 const meta = {
-  title: 'Base/Controls/ParamItem',
+  title: 'Base/Data Entry/ParamItem',
   component: ParamItemPlayground,
   parameters: {
     layout: 'centered',

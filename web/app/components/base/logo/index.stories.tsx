@@ -13,7 +13,7 @@ type LogoStoryArgs = {
 }
 
 const meta = {
-  title: 'Base/Branding/Logo',
+  title: 'Base/General/Logo',
   component: DifyLogo,
   parameters: {
     layout: 'centered',

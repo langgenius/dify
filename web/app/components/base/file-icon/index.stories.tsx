@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs'
 import FileIcon from '.'
 
 const meta = {
-  title: 'Base/Icon/FileIcon',
+  title: 'Base/General/FileIcon',
   component: FileIcon,
   parameters: {
     docs: {

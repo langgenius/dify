@@ -5,7 +5,7 @@ import AnswerIcon from '.'
 const SAMPLE_IMAGE = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="40" ry="40" fill="%23EEF2FF"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="34" font-family="Arial" fill="%233256D4">AI</text></svg>'
 
 const meta = {
-  title: 'Base/Icon/AnswerIcon',
+  title: 'Base/General/AnswerIcon',
   component: AnswerIcon,
   parameters: {
     docs: {

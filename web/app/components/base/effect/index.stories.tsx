@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs'
 import Effect from '.'
 
 const meta = {
-  title: 'Base/Visual/Effect',
+  title: 'Base/Other/Effect',
   component: Effect,
   parameters: {
     docs: {

@@ -20,7 +20,7 @@ const DEFAULT_FEATURES: Features = {
 }
 
 const meta = {
-  title: 'Base/Context/FeaturesProvider',
+  title: 'Base/Other/FeaturesProvider',
   component: FeaturesProvider,
   parameters: {
     layout: 'fullscreen',

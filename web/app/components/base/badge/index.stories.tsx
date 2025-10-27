@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs'
 import Badge from '../badge'
 
 const meta = {
-  title: 'Base/Indicator/Badge',
+  title: 'Base/Data Display/Badge',
   component: Badge,
   parameters: {
     docs: {

@@ -28,7 +28,7 @@ const TabSliderPlainDemo = ({
 }
 
 const meta = {
-  title: 'Base/Tabs/TabSliderPlain',
+  title: 'Base/Navigation/TabSliderPlain',
   component: TabSliderPlainDemo,
   parameters: {
     layout: 'centered',

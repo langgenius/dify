@@ -152,7 +152,7 @@ const MessageLogPreview = (props: MessageLogModalProps) => {
 }
 
 const meta = {
-  title: 'Base/Logs/MessageLogModal',
+  title: 'Base/Feedback/MessageLogModal',
   component: MessageLogPreview,
   parameters: {
     layout: 'fullscreen',

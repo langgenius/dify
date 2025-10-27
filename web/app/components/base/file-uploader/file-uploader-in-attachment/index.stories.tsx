@@ -52,7 +52,7 @@ const fileConfig: FileUpload = {
 }
 
 const meta = {
-  title: 'Base/File/FileUploaderInAttachment',
+  title: 'Base/Data Entry/FileUploaderInAttachment',
   component: FileUploaderInAttachmentWrapper,
   parameters: {
     layout: 'centered',

@@ -67,7 +67,7 @@ const PortalDemo = ({
 }
 
 const meta = {
-  title: 'Base/Overlay/PortalToFollowElem',
+  title: 'Base/Feedback/PortalToFollowElem',
   component: PortalDemo,
   parameters: {
     layout: 'centered',

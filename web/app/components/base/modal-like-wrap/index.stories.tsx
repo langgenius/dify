@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs'
 import ModalLikeWrap from '.'
 
 const meta = {
-  title: 'Base/Dialog/ModalLikeWrap',
+  title: 'Base/Feedback/ModalLikeWrap',
   component: ModalLikeWrap,
   parameters: {
     layout: 'centered',

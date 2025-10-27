@@ -28,7 +28,7 @@ const PremiumBadgeGallery = ({
 }
 
 const meta = {
-  title: 'Base/Indicators/PremiumBadge',
+  title: 'Base/General/PremiumBadge',
   component: PremiumBadgeGallery,
   parameters: {
     layout: 'centered',

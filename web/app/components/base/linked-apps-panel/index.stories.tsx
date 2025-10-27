@@ -33,7 +33,7 @@ const mockRelatedApps: RelatedApp[] = [
 ]
 
 const meta = {
-  title: 'Base/Panels/LinkedAppsPanel',
+  title: 'Base/Feedback/LinkedAppsPanel',
   component: LinkedAppsPanel,
   parameters: {
     layout: 'centered',

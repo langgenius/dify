@@ -171,7 +171,7 @@ const NotionSelectorPreview = () => {
 }
 
 const meta = {
-  title: 'Base/Notion/NotionPageSelector',
+  title: 'Base/Other/NotionPageSelector',
   component: NotionSelectorPreview,
   parameters: {
     layout: 'centered',

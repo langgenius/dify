@@ -15,7 +15,7 @@ import { PreviewMode } from '@/app/components/base/features/types'
 const FormStoryHost = () => null
 
 const meta = {
-  title: 'Base/Form/AppForm',
+  title: 'Base/Data Entry/AppForm',
   component: FormStoryHost,
   parameters: {
     layout: 'fullscreen',

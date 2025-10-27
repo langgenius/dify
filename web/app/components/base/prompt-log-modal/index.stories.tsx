@@ -49,7 +49,7 @@ const PromptLogPreview = (props: PromptLogModalProps) => {
 }
 
 const meta = {
-  title: 'Base/Logs/PromptLogModal',
+  title: 'Base/Feedback/PromptLogModal',
   component: PromptLogPreview,
   parameters: {
     layout: 'fullscreen',

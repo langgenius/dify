@@ -5,7 +5,7 @@ import ContentDialog from '.'
 type Props = React.ComponentProps<typeof ContentDialog>
 
 const meta = {
-  title: 'Base/Dialog/ContentDialog',
+  title: 'Base/Feedback/ContentDialog',
   component: ContentDialog,
   parameters: {
     layout: 'fullscreen',

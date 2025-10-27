@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs'
 import NotionIcon from '.'
 
 const meta = {
-  title: 'Base/Icon/NotionIcon',
+  title: 'Base/General/NotionIcon',
   component: NotionIcon,
   parameters: {
     docs: {

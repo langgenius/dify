@@ -3,7 +3,7 @@ import { useState } from 'react'
 import EmojiPickerInner from './Inner'
 
 const meta = {
-  title: 'Base/Icon/EmojiPickerInner',
+  title: 'Base/Data Entry/EmojiPickerInner',
   component: EmojiPickerInner,
   parameters: {
     layout: 'fullscreen',

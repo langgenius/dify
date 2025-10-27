@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs'
 import CopyIcon from '.'
 
 const meta = {
-  title: 'Base/Icon/CopyIcon',
+  title: 'Base/General/CopyIcon',
   component: CopyIcon,
   parameters: {
     docs: {

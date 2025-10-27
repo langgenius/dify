@@ -3,7 +3,7 @@ import { useState } from 'react'
 import DrawerPlus from '.'
 
 const meta = {
-  title: 'Base/Overlay/DrawerPlus',
+  title: 'Base/Feedback/DrawerPlus',
   component: DrawerPlus,
   parameters: {
     layout: 'fullscreen',

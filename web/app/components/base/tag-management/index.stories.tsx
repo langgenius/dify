@@ -103,7 +103,7 @@ const TagManagementPlayground = ({
 }
 
 const meta = {
-  title: 'Base/Tags/TagManagementModal',
+  title: 'Base/Data Display/TagManagementModal',
   component: TagManagementPlayground,
   parameters: {
     layout: 'centered',

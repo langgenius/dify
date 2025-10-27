@@ -70,7 +70,7 @@ const Template = ({
 }
 
 const meta = {
-  title: 'Base/Overlay/Popover',
+  title: 'Base/Feedback/Popover',
   component: Template,
   parameters: {
     layout: 'centered',

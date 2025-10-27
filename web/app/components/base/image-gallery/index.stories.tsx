@@ -9,7 +9,7 @@ const IMAGE_SOURCES = [
 ]
 
 const meta = {
-  title: 'Base/Gallery/ImageGallery',
+  title: 'Base/Data Display/ImageGallery',
   component: ImageGallery,
   parameters: {
     docs: {

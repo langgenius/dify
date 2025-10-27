@@ -28,7 +28,7 @@ const TagGallery = ({
 }
 
 const meta = {
-  title: 'Base/Indicators/Tag',
+  title: 'Base/Data Display/Tag',
   component: TagGallery,
   parameters: {
     layout: 'centered',

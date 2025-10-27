@@ -50,7 +50,7 @@ const PieChartPlayground = ({
 }
 
 const meta = {
-  title: 'Base/DataViz/SimplePieChart',
+  title: 'Base/Data Display/SimplePieChart',
   component: PieChartPlayground,
   parameters: {
     layout: 'centered',

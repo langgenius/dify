@@ -40,7 +40,7 @@ const SortPlayground = () => {
 }
 
 const meta = {
-  title: 'Base/Inputs/Sort',
+  title: 'Base/Data Display/Sort',
   component: SortPlayground,
   parameters: {
     layout: 'centered',

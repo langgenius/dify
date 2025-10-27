@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs'
 import ListEmpty from '.'
 
 const meta = {
-  title: 'Base/EmptyStates/ListEmpty',
+  title: 'Base/Data Display/ListEmpty',
   component: ListEmpty,
   parameters: {
     layout: 'centered',

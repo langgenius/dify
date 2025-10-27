@@ -22,7 +22,7 @@ const SAMPLE_SVG = `
 `.trim()
 
 const meta = {
-  title: 'Base/Gallery/SVGRenderer',
+  title: 'Base/Data Display/SVGRenderer',
   component: SVGRenderer,
   parameters: {
     docs: {

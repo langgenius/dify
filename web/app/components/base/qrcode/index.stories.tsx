@@ -19,7 +19,7 @@ const QRDemo = ({
 }
 
 const meta = {
-  title: 'Base/Share/QRCode',
+  title: 'Base/Data Display/QRCode',
   component: QRDemo,
   parameters: {
     layout: 'centered',

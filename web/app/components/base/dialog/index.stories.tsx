@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import Dialog from '.'
 
 const meta = {
-  title: 'Base/Dialog/Dialog',
+  title: 'Base/Feedback/Dialog',
   component: Dialog,
   parameters: {
     layout: 'fullscreen',
