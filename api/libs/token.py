@@ -38,9 +38,6 @@ def _real_cookie_name(cookie_name: str) -> str:
 
 
 def _try_extract_from_header(request: Request) -> str | None:
-    """
-    Try to extract access token from header
-    """
     auth_header = request.headers.get("Authorization")
     if auth_header:
         if " " not in auth_header:
@@ -55,27 +52,19 @@ def _try_extract_from_header(request: Request) -> str | None:
     return None
 
 
+def extract_refresh_token(request: Request) -> str | None:
+    return request.cookies.get(_real_cookie_name(COOKIE_NAME_REFRESH_TOKEN))
+
+
 def extract_csrf_token(request: Request) -> str | None:
-    """
-    Try to extract CSRF token from header or cookie.
-    """
     return request.headers.get(HEADER_NAME_CSRF_TOKEN)
 
 
 def extract_csrf_token_from_cookie(request: Request) -> str | None:
-    """
-    Try to extract CSRF token from cookie.
-    """
     return request.cookies.get(_real_cookie_name(COOKIE_NAME_CSRF_TOKEN))
 
 
 def extract_access_token(request: Request) -> str | None:
-    """
-    Try to extract access token from cookie, header or params.
-
-    Access token is either for console session or webapp passport exchange.
-    """
-
     def _try_extract_from_cookie(request: Request) -> str | None:
         return request.cookies.get(_real_cookie_name(COOKIE_NAME_ACCESS_TOKEN))
 
@@ -83,20 +72,10 @@ def extract_access_token(request: Request) -> str | None:
 
 
 def extract_webapp_access_token(request: Request) -> str | None:
-    """
-    Try to extract webapp access token from cookie, then header.
-    """
-
     return request.cookies.get(_real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN)) or _try_extract_from_header(request)
 
 
 def extract_webapp_passport(app_code: str, request: Request) -> str | None:
-    """
-    Try to extract app token from header or params.
-
-    Webapp access token (part of passport) is only used for webapp session.
-    """
-
     def _try_extract_passport_token_from_cookie(request: Request) -> str | None:
         return request.cookies.get(_real_cookie_name(COOKIE_NAME_PASSPORT + "-" + app_code))
 
