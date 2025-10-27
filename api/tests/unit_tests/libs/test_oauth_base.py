@@ -16,4 +16,4 @@ def test_oauth_base_methods_raise_not_implemented():
         oauth.get_raw_user_info("token")
 
     with pytest.raises(NotImplementedError):
-        oauth._transform_user_info({})  # type: ignore[name-defined]
+        oauth._transform_user_info({})

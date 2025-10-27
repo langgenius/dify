@@ -243,6 +243,10 @@ const translation = {
       },
       publishTip: 'Uygulama yayınlanmadı. Lütfen önce uygulamayı yayınlayın.',
     },
+    toolItem: {
+      parameters: 'Parametreler',
+      noDescription: 'Açıklama yok',
+    },
   },
   allTools: 'Tüm araçlar',
 }

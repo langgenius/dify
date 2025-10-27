@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
@@ -118,8 +118,20 @@ const FormItem: FC<Props> = ({
     <div className={cn(className)}>
       {!isArrayLikeType && !isBooleanType && (
         <div className='system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary'>
-          <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
-          {!payload.required && <span className='system-xs-regular text-text-tertiary'>{t('workflow.panel.optional')}</span>}
+          <div className='truncate'>
+            {typeof payload.label === 'object' ? nodeKey : payload.label}
+          </div>
+          {payload.hide === true ? (
+            <span className='system-xs-regular text-text-tertiary'>
+              {t('workflow.panel.optional_and_hidden')}
+            </span>
+          ) : (
+            !payload.required && (
+              <span className='system-xs-regular text-text-tertiary'>
+                {t('workflow.panel.optional')}
+              </span>
+            )
+          )}
         </div>
       )}
       <div className='grow'>

@@ -3,7 +3,6 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from flask_login import current_user
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -23,6 +22,16 @@ from models.provider_ids import DatasourceProviderID
 from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
+
+
+def get_current_user():
+    from libs.login import current_user
+    from models.account import Account
+    from models.model import EndUser
+
+    if not isinstance(current_user._get_current_object(), (Account, EndUser)):  # type: ignore
+        raise TypeError(f"current_user must be Account or EndUser, got {type(current_user).__name__}")
+    return current_user
 
 
 class DatasourceProviderService:
@@ -109,6 +118,7 @@ class DatasourceProviderService:
                 return {}
             # refresh the credentials
             if datasource_provider.expires_at != -1 and (datasource_provider.expires_at - 60) < int(time.time()):
+                current_user = get_current_user()
                 decrypted_credentials = self.decrypt_datasource_provider_credentials(
                     tenant_id=tenant_id,
                     datasource_provider=datasource_provider,
@@ -166,6 +176,7 @@ class DatasourceProviderService:
             )
             if not datasource_providers:
                 return []
+            current_user = get_current_user()
             # refresh the credentials
             real_credentials_list = []
             for datasource_provider in datasource_providers:
@@ -604,6 +615,7 @@ class DatasourceProviderService:
         """
         provider_name = provider_id.provider_name
         plugin_id = provider_id.plugin_id
+
         with Session(db.engine) as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{CredentialType.API_KEY}"
             with redis_client.lock(lock, timeout=20):
@@ -624,6 +636,7 @@ class DatasourceProviderService:
                     raise ValueError("Authorization name is already exists")
 
                 try:
+                    current_user = get_current_user()
                     self.provider_manager.validate_provider_credentials(
                         tenant_id=tenant_id,
                         user_id=current_user.id,
@@ -901,6 +914,7 @@ class DatasourceProviderService:
         """
         update datasource credentials.
         """
+
         with Session(db.engine) as session:
             datasource_provider = (
                 session.query(DatasourceProvider)
@@ -936,6 +950,7 @@ class DatasourceProviderService:
                     for key, value in credentials.items()
                 }
                 try:
+                    current_user = get_current_user()
                     self.provider_manager.validate_provider_credentials(
                         tenant_id=tenant_id,
                         user_id=current_user.id,

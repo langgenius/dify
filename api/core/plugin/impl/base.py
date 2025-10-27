@@ -2,7 +2,7 @@ import inspect
 import json
 import logging
 from collections.abc import Callable, Generator
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 import httpx
 from pydantic import BaseModel
@@ -31,6 +31,17 @@ from core.plugin.impl.exc import (
 )
 
 plugin_daemon_inner_api_baseurl = URL(str(dify_config.PLUGIN_DAEMON_URL))
+_plugin_daemon_timeout_config = cast(
+    float | httpx.Timeout | None,
+    getattr(dify_config, "PLUGIN_DAEMON_TIMEOUT", 300.0),
+)
+plugin_daemon_request_timeout: httpx.Timeout | None
+if _plugin_daemon_timeout_config is None:
+    plugin_daemon_request_timeout = None
+elif isinstance(_plugin_daemon_timeout_config, httpx.Timeout):
+    plugin_daemon_request_timeout = _plugin_daemon_timeout_config
+else:
+    plugin_daemon_request_timeout = httpx.Timeout(_plugin_daemon_timeout_config)
 
 T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
 
@@ -58,6 +69,7 @@ class BasePluginClient:
             "headers": headers,
             "params": params,
             "files": files,
+            "timeout": plugin_daemon_request_timeout,
         }
         if isinstance(prepared_data, dict):
             request_kwargs["data"] = prepared_data
@@ -116,6 +128,7 @@ class BasePluginClient:
             "headers": headers,
             "params": params,
             "files": files,
+            "timeout": plugin_daemon_request_timeout,
         }
         if isinstance(prepared_data, dict):
             stream_kwargs["data"] = prepared_data
@@ -167,7 +180,7 @@ class BasePluginClient:
         Make a request to the plugin daemon inner API and return the response as a model.
         """
         response = self._request(method, path, headers, data, params, files)
-        return type_(**response.json())  # type: ignore
+        return type_(**response.json())  # type: ignore[return-value]
 
     def _request_with_plugin_daemon_response(
         self,

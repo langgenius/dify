@@ -35,10 +35,14 @@ class TestRedisChannel:
         """Test sending a command to Redis."""
         mock_redis = MagicMock()
         mock_pipe = MagicMock()
-        mock_redis.pipeline.return_value.__enter__ = MagicMock(return_value=mock_pipe)
-        mock_redis.pipeline.return_value.__exit__ = MagicMock(return_value=None)
+        context = MagicMock()
+        context.__enter__.return_value = mock_pipe
+        context.__exit__.return_value = None
+        mock_redis.pipeline.return_value = context
 
         channel = RedisChannel(mock_redis, "test:key", 3600)
+
+        pending_key = "test:key:pending"
 
         # Create a test command
         command = GraphEngineCommand(command_type=CommandType.ABORT)
@@ -55,6 +59,7 @@ class TestRedisChannel:
 
         # Verify expire was set
         mock_pipe.expire.assert_called_once_with("test:key", 3600)
+        mock_pipe.set.assert_called_once_with(pending_key, "1", ex=3600)
 
         # Verify execute was called
         mock_pipe.execute.assert_called_once()
@@ -62,33 +67,48 @@ class TestRedisChannel:
     def test_fetch_commands_empty(self):
         """Test fetching commands when Redis list is empty."""
         mock_redis = MagicMock()
-        mock_pipe = MagicMock()
-        mock_redis.pipeline.return_value.__enter__ = MagicMock(return_value=mock_pipe)
-        mock_redis.pipeline.return_value.__exit__ = MagicMock(return_value=None)
+        pending_pipe = MagicMock()
+        fetch_pipe = MagicMock()
+        pending_context = MagicMock()
+        fetch_context = MagicMock()
+        pending_context.__enter__.return_value = pending_pipe
+        pending_context.__exit__.return_value = None
+        fetch_context.__enter__.return_value = fetch_pipe
+        fetch_context.__exit__.return_value = None
+        mock_redis.pipeline.side_effect = [pending_context]
 
-        # Simulate empty list
-        mock_pipe.execute.return_value = [[], 1]  # Empty list, delete successful
+        # No pending marker
+        pending_pipe.execute.return_value = [None, 0]
+        mock_redis.llen.return_value = 0
 
         channel = RedisChannel(mock_redis, "test:key")
         commands = channel.fetch_commands()
 
         assert commands == []
-        mock_pipe.lrange.assert_called_once_with("test:key", 0, -1)
-        mock_pipe.delete.assert_called_once_with("test:key")
+        mock_redis.pipeline.assert_called_once()
+        fetch_pipe.lrange.assert_not_called()
+        fetch_pipe.delete.assert_not_called()
 
     def test_fetch_commands_with_abort_command(self):
         """Test fetching abort commands from Redis."""
         mock_redis = MagicMock()
-        mock_pipe = MagicMock()
-        mock_redis.pipeline.return_value.__enter__ = MagicMock(return_value=mock_pipe)
-        mock_redis.pipeline.return_value.__exit__ = MagicMock(return_value=None)
+        pending_pipe = MagicMock()
+        fetch_pipe = MagicMock()
+        pending_context = MagicMock()
+        fetch_context = MagicMock()
+        pending_context.__enter__.return_value = pending_pipe
+        pending_context.__exit__.return_value = None
+        fetch_context.__enter__.return_value = fetch_pipe
+        fetch_context.__exit__.return_value = None
+        mock_redis.pipeline.side_effect = [pending_context, fetch_context]
 
         # Create abort command data
         abort_command = AbortCommand()
         command_json = json.dumps(abort_command.model_dump())
 
         # Simulate Redis returning one command
-        mock_pipe.execute.return_value = [[command_json.encode()], 1]
+        pending_pipe.execute.return_value = [b"1", 1]
+        fetch_pipe.execute.return_value = [[command_json.encode()], 1]
 
         channel = RedisChannel(mock_redis, "test:key")
         commands = channel.fetch_commands()
@@ -100,9 +120,15 @@ class TestRedisChannel:
     def test_fetch_commands_multiple(self):
         """Test fetching multiple commands from Redis."""
         mock_redis = MagicMock()
-        mock_pipe = MagicMock()
-        mock_redis.pipeline.return_value.__enter__ = MagicMock(return_value=mock_pipe)
-        mock_redis.pipeline.return_value.__exit__ = MagicMock(return_value=None)
+        pending_pipe = MagicMock()
+        fetch_pipe = MagicMock()
+        pending_context = MagicMock()
+        fetch_context = MagicMock()
+        pending_context.__enter__.return_value = pending_pipe
+        pending_context.__exit__.return_value = None
+        fetch_context.__enter__.return_value = fetch_pipe
+        fetch_context.__exit__.return_value = None
+        mock_redis.pipeline.side_effect = [pending_context, fetch_context]
 
         # Create multiple commands
         command1 = GraphEngineCommand(command_type=CommandType.ABORT)
@@ -112,7 +138,8 @@ class TestRedisChannel:
         command2_json = json.dumps(command2.model_dump())
 
         # Simulate Redis returning multiple commands
-        mock_pipe.execute.return_value = [[command1_json.encode(), command2_json.encode()], 1]
+        pending_pipe.execute.return_value = [b"1", 1]
+        fetch_pipe.execute.return_value = [[command1_json.encode(), command2_json.encode()], 1]
 
         channel = RedisChannel(mock_redis, "test:key")
         commands = channel.fetch_commands()
@@ -124,9 +151,15 @@ class TestRedisChannel:
     def test_fetch_commands_skips_invalid_json(self):
         """Test that invalid JSON commands are skipped."""
         mock_redis = MagicMock()
-        mock_pipe = MagicMock()
-        mock_redis.pipeline.return_value.__enter__ = MagicMock(return_value=mock_pipe)
-        mock_redis.pipeline.return_value.__exit__ = MagicMock(return_value=None)
+        pending_pipe = MagicMock()
+        fetch_pipe = MagicMock()
+        pending_context = MagicMock()
+        fetch_context = MagicMock()
+        pending_context.__enter__.return_value = pending_pipe
+        pending_context.__exit__.return_value = None
+        fetch_context.__enter__.return_value = fetch_pipe
+        fetch_context.__exit__.return_value = None
+        mock_redis.pipeline.side_effect = [pending_context, fetch_context]
 
         # Mix valid and invalid JSON
         valid_command = AbortCommand()
@@ -134,7 +167,8 @@ class TestRedisChannel:
         invalid_json = b"invalid json {"
 
         # Simulate Redis returning mixed valid/invalid commands
-        mock_pipe.execute.return_value = [[invalid_json, valid_json.encode()], 1]
+        pending_pipe.execute.return_value = [b"1", 1]
+        fetch_pipe.execute.return_value = [[invalid_json, valid_json.encode()], 1]
 
         channel = RedisChannel(mock_redis, "test:key")
         commands = channel.fetch_commands()
@@ -187,13 +221,20 @@ class TestRedisChannel:
     def test_atomic_fetch_and_clear(self):
         """Test that fetch_commands atomically fetches and clears the list."""
         mock_redis = MagicMock()
-        mock_pipe = MagicMock()
-        mock_redis.pipeline.return_value.__enter__ = MagicMock(return_value=mock_pipe)
-        mock_redis.pipeline.return_value.__exit__ = MagicMock(return_value=None)
+        pending_pipe = MagicMock()
+        fetch_pipe = MagicMock()
+        pending_context = MagicMock()
+        fetch_context = MagicMock()
+        pending_context.__enter__.return_value = pending_pipe
+        pending_context.__exit__.return_value = None
+        fetch_context.__enter__.return_value = fetch_pipe
+        fetch_context.__exit__.return_value = None
+        mock_redis.pipeline.side_effect = [pending_context, fetch_context]
 
         command = AbortCommand()
         command_json = json.dumps(command.model_dump())
-        mock_pipe.execute.return_value = [[command_json.encode()], 1]
+        pending_pipe.execute.return_value = [b"1", 1]
+        fetch_pipe.execute.return_value = [[command_json.encode()], 1]
 
         channel = RedisChannel(mock_redis, "test:key")
 
@@ -202,7 +243,29 @@ class TestRedisChannel:
         assert len(commands) == 1
 
         # Verify both lrange and delete were called in the pipeline
-        assert mock_pipe.lrange.call_count == 1
-        assert mock_pipe.delete.call_count == 1
-        mock_pipe.lrange.assert_called_with("test:key", 0, -1)
-        mock_pipe.delete.assert_called_with("test:key")
+        assert fetch_pipe.lrange.call_count == 1
+        assert fetch_pipe.delete.call_count == 1
+        fetch_pipe.lrange.assert_called_with("test:key", 0, -1)
+        fetch_pipe.delete.assert_called_with("test:key")
+
+    def test_fetch_commands_without_pending_marker_returns_empty(self):
+        """Ensure we avoid unnecessary list reads when pending flag is missing."""
+        mock_redis = MagicMock()
+        pending_pipe = MagicMock()
+        fetch_pipe = MagicMock()
+        pending_context = MagicMock()
+        fetch_context = MagicMock()
+        pending_context.__enter__.return_value = pending_pipe
+        pending_context.__exit__.return_value = None
+        fetch_context.__enter__.return_value = fetch_pipe
+        fetch_context.__exit__.return_value = None
+        mock_redis.pipeline.side_effect = [pending_context, fetch_context]
+
+        # Pending flag absent
+        pending_pipe.execute.return_value = [None, 0]
+        channel = RedisChannel(mock_redis, "test:key")
+        commands = channel.fetch_commands()
+
+        assert commands == []
+        mock_redis.llen.assert_not_called()
+        assert mock_redis.pipeline.call_count == 1

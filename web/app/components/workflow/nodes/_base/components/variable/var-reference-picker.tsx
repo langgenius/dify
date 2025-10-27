@@ -9,7 +9,7 @@ import {
   RiLoader4Line,
   RiMoreLine,
 } from '@remixicon/react'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   useNodes,
   useReactFlow,

@@ -42,8 +42,7 @@ class RecommendedAppListApi(Resource):
     @marshal_with(recommended_app_list_fields)
     def get(self):
         # language args
-        parser = reqparse.RequestParser()
-        parser.add_argument("language", type=str, location="args")
+        parser = reqparse.RequestParser().add_argument("language", type=str, location="args")
         args = parser.parse_args()
 
         language = args.get("language")

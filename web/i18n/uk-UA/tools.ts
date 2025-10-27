@@ -243,6 +243,10 @@ const translation = {
       },
       publishTip: 'Додаток не опубліковано. Спочатку опублікуйте додаток.',
     },
+    toolItem: {
+      parameters: 'Параметри',
+      noDescription: 'Немає опису',
+    },
   },
   allTools: 'Всі інструменти',
 }

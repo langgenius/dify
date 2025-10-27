@@ -24,7 +24,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_redis import redis_client
 
 if TYPE_CHECKING:
-    from models.account import Account
+    from models import Account
     from models.model import EndUser
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ def extract_tenant_id(user: Union["Account", "EndUser"]) -> str | None:
     Raises:
         ValueError: If user is neither Account nor EndUser
     """
-    from models.account import Account
+    from models import Account
     from models.model import EndUser
 
     if isinstance(user, Account):
@@ -78,9 +78,11 @@ class AvatarUrlField(fields.Raw):
         if obj is None:
             return None
 
-        from models.account import Account
+        from models import Account
 
         if isinstance(obj, Account) and obj.avatar is not None:
+            if obj.avatar.startswith(("http://", "https://")):
+                return obj.avatar
             return file_helpers.get_signed_file_url(obj.avatar)
         return None
 

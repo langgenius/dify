@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   useIsChatMode,
   useNodesReadOnly,
@@ -98,6 +98,14 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
+
+  const changeFlattenOutput = useCallback((value: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.flatten_output = value
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     readOnly,
     inputs,
@@ -109,6 +117,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     changeParallel,
     changeErrorResponseMode,
     changeParallelNums,
+    changeFlattenOutput,
   }
 }
 
