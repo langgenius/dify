@@ -69,22 +69,21 @@ export const useCheckInstalled = ({
 
 const useRecommendedMarketplacePluginsKey = [NAME_SPACE, 'recommendedMarketplacePlugins']
 export const useRecommendedMarketplacePlugins = ({
-  category = PluginCategoryEnum.tool,
+  collection = '__recommended-plugins-tools',
   enabled = true,
   limit = 15,
 }: {
-  category?: string
+  collection?: string
   enabled?: boolean
   limit?: number
 } = {}) => {
   return useQuery<Plugin[]>({
-    queryKey: [...useRecommendedMarketplacePluginsKey, category, limit],
+    queryKey: [...useRecommendedMarketplacePluginsKey, collection, limit],
     queryFn: async () => {
       const response = await postMarketplace<{ data: { plugins: Plugin[] } }>(
-        '/collections/__recommended-plugins-overall/plugins',
+        `/collections/${collection}/plugins`,
         {
           body: {
-            category,
             limit,
           },
         },
@@ -101,6 +100,23 @@ export const useFeaturedToolsRecommendations = (enabled: boolean, limit = 15) =>
     data: plugins = [],
     isLoading,
   } = useRecommendedMarketplacePlugins({
+    collection: '__recommended-plugins-tools',
+    enabled,
+    limit,
+  })
+
+  return {
+    plugins,
+    isLoading,
+  }
+}
+
+export const useFeaturedTriggersRecommendations = (enabled: boolean, limit = 15) => {
+  const {
+    data: plugins = [],
+    isLoading,
+  } = useRecommendedMarketplacePlugins({
+    collection: '__recommended-plugins-triggers',
     enabled,
     limit,
   })

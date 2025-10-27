@@ -260,6 +260,7 @@ const translation = {
     'blocks': 'Nodes',
     'searchTool': 'Search tool',
     'searchTrigger': 'Search triggers...',
+    'allTriggers': 'All triggers',
     'tools': 'Tools',
     'allTool': 'All',
     'plugin': 'Plugin',
@@ -285,6 +286,7 @@ const translation = {
     'usePlugin': 'Select tool',
     'hideActions': 'Hide tools',
     'noFeaturedPlugins': 'Discover more tools in Marketplace',
+    'noFeaturedTriggers': 'Discover more triggers in Marketplace',
   },
   blocks: {
     'start': 'User Input',
