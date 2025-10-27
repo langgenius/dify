@@ -26,13 +26,7 @@ export type ITriggerCardProps = {
 }
 
 const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
-  const {
-    trigger_type,
-    status,
-    provider_name,
-    provider_id,
-    icon: triggerIconFromApi,
-  } = trigger
+  const { trigger_type, status, provider_name } = trigger
 
   // Status dot styling based on trigger status
   const getStatusDot = () => {
@@ -64,18 +58,16 @@ const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
       blockType = BlockEnum.TriggerWebhook
   }
 
-  let triggerIcon: string | undefined = triggerIconFromApi
-  if (!triggerIcon && trigger_type === 'trigger-plugin') {
+  let triggerIcon: string | undefined
+  if (trigger_type === 'trigger-plugin' && provider_name) {
     const targetTriggers = triggerPlugins || []
-    const identifiers = [provider_id, provider_name].filter(Boolean) as string[]
-    const foundTrigger = targetTriggers.find((triggerWithProvider) => {
-      return identifiers.some(identifier =>
-        canFindTool(triggerWithProvider.id, identifier)
-        || triggerWithProvider.id.includes(identifier)
-        || triggerWithProvider.name === identifier,
-      )
-    })
+    const foundTrigger = targetTriggers.find(triggerWithProvider =>
+      canFindTool(triggerWithProvider.id, provider_name)
+      || triggerWithProvider.id.includes(provider_name)
+      || triggerWithProvider.name === provider_name,
+    )
     triggerIcon = foundTrigger?.icon
+    console.log('triggerIcon', triggerIcon)
   }
 
   return (

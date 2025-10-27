@@ -162,10 +162,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
               </td>
               {isWorkflow && (
                 <td className='p-3 pr-2'>
-                  <TriggerByDisplay
-                    triggeredFrom={log.workflow_run.triggered_from || 'app-run'}
-                    triggerInfo={log.trigger_info}
-                  />
+                  <TriggerByDisplay triggeredFrom={log.workflow_run.triggered_from || 'app-run'} />
                 </td>
               )}
             </tr>

@@ -11,26 +11,11 @@ import {
 } from '@/app/components/base/icons/src/vender/workflow'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
-import type { TriggerInfo } from '@/models/log'
 
 type TriggerByDisplayProps = {
   triggeredFrom: string
   className?: string
   showText?: boolean
-  triggerInfo?: TriggerInfo
-}
-
-const resolveTriggerType = (value: string) => {
-  switch (value) {
-    case 'trigger-plugin':
-      return 'plugin'
-    case 'trigger-webhook':
-      return 'webhook'
-    case 'trigger-schedule':
-      return 'schedule'
-    default:
-      return value
-  }
 }
 
 const getTriggerDisplayName = (triggeredFrom: string, t: any) => {
@@ -47,7 +32,7 @@ const getTriggerDisplayName = (triggeredFrom: string, t: any) => {
   return nameMap[triggeredFrom] || triggeredFrom
 }
 
-const getTriggerIcon = (triggeredFrom: string, triggerInfo?: TriggerInfo) => {
+const getTriggerIcon = (triggeredFrom: string) => {
   switch (triggeredFrom) {
     case 'webhook':
       return (
@@ -62,11 +47,12 @@ const getTriggerIcon = (triggeredFrom: string, triggerInfo?: TriggerInfo) => {
         </div>
       )
     case 'plugin':
+      // For plugin triggers in logs, use a generic plugin icon since we don't have specific plugin info
+      // This matches the standard BlockIcon styling for TriggerPlugin
       return (
         <BlockIcon
           type={BlockEnum.TriggerPlugin}
           size="md"
-          toolIcon={triggerInfo?.icon}
         />
       )
     case 'debugging':
@@ -97,13 +83,11 @@ const TriggerByDisplay: FC<TriggerByDisplayProps> = ({
   triggeredFrom,
   className = '',
   showText = true,
-  triggerInfo,
 }) => {
   const { t } = useTranslation()
 
-  const resolvedType = resolveTriggerType(triggerInfo?.type || triggeredFrom)
-  const displayName = triggerInfo?.provider_name || getTriggerDisplayName(resolvedType, t)
-  const icon = getTriggerIcon(resolvedType, triggerInfo)
+  const displayName = getTriggerDisplayName(triggeredFrom, t)
+  const icon = getTriggerIcon(triggeredFrom)
 
   return (
     <div className={`flex items-center gap-1.5 ${className}`}>
