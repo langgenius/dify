@@ -47,6 +47,7 @@ const meta = {
   args: {
     title: 'Manage API Keys',
     show: false,
+    children: null,
   },
 } satisfies Meta<typeof Dialog>
 
@@ -102,6 +103,7 @@ export const Default: Story = {
         </button>
       </>
     ),
+    children: null,
   },
 }
 
@@ -110,6 +112,7 @@ export const WithoutFooter: Story = {
   args: {
     footer: undefined,
     title: 'Read-only summary',
+    children: null,
   },
   parameters: {
     docs: {
@@ -140,6 +143,7 @@ export const CustomStyling: Story = {
         </div>
       </>
     ),
+    children: null,
   },
   parameters: {
     docs: {
