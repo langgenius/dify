@@ -9,6 +9,8 @@ import {
   RiColorFilterLine,
   RiDatabase2Fill,
   RiDatabase2Line,
+  RiFilter2Fill,
+  RiFilter2Line,
   RiGroup2Fill,
   RiGroup2Line,
   RiMoneyDollarCircleFill,
@@ -23,6 +25,7 @@ import LanguagePage from './language-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
 import ModelProviderPage from './model-provider-page'
+import FilterRulesPage from './filter-rules-page'
 import cn from '@/utils/classnames'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
@@ -93,6 +96,12 @@ export default function AccountSetting({
         name: t('common.settings.apiBasedExtension'),
         icon: <RiPuzzle2Line className={iconClassName} />,
         activeIcon: <RiPuzzle2Fill className={iconClassName} />,
+      },
+      {
+        key: 'filter-rules',
+        name: t('common.settings.filterRules'),
+        icon: <RiFilter2Line className={iconClassName} />,
+        activeIcon: <RiFilter2Fill className={iconClassName} />,
       },
       {
         key: (enableReplaceWebAppLogo || enableBilling) ? 'custom' : false,
@@ -218,6 +227,7 @@ export default function AccountSetting({
               {activeMenu === 'billing' && <BillingPage />}
               {activeMenu === 'data-source' && <DataSourcePage />}
               {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
+              {activeMenu === 'filter-rules' && <FilterRulesPage />}
               {activeMenu === 'custom' && <CustomPage />}
               {activeMenu === 'language' && <LanguagePage />}
             </div>

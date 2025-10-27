@@ -200,6 +200,7 @@ const translation = {
     dataSource: 'Data Source',
     plugin: 'Plugins',
     apiBasedExtension: 'API Extension',
+    filterRules: 'Filter Rules',
   },
   account: {
     account: 'Account',

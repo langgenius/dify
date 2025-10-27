@@ -33,6 +33,7 @@ const NAMESPACES = [
   'dataset',
   'education',
   'explore',
+  'filter-rules',
   'layout',
   'login',
   'oauth',

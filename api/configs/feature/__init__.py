@@ -865,6 +865,48 @@ class RagEtlConfig(BaseSettings):
     )
 
 
+class RagConfig(BaseSettings):
+    """
+    Configuration for RAG retrieval and filtering
+    """
+
+    RAG_DOCUMENT_PRIORITY_ENABLED: bool = Field(
+        description="Enable document priority boosting based on document names during retrieval",
+        default=False,
+    )
+
+    RAG_RETRIEVAL_TOP_K_MULTIPLIER: float = Field(
+        description=(
+            "Multiplier for top_k during retrieval phase (e.g., 3.0 means retrieve 3x documents before filtering)"
+        ),
+        default=3.0,
+        ge=1.0,
+        le=10.0,
+    )
+
+    RAG_FILTER_ENABLED: bool = Field(
+        description="Enable post-retrieval filtering based on rules",
+        default=False,
+    )
+
+    RAG_FILTER_MODEL_ENABLED: bool = Field(
+        description="Enable model-based filtering in RAG",
+        default=False,
+    )
+
+    RAG_FILTER_MODEL_SIMILARITY_THRESHOLD: float = Field(
+        description="Similarity threshold for model-based filtering",
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+    )
+
+    RAG_FILTER_BODY_PART_ENABLED: bool = Field(
+        description="Enable body part filtering in RAG",
+        default=False,
+    )
+
+
 class DataSetConfig(BaseSettings):
     """
     Configuration for dataset management
