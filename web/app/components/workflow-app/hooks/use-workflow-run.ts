@@ -37,6 +37,22 @@ type HandleRunOptions = {
   allNodeIds?: string[]
 }
 
+type DebuggableTriggerType = Exclude<TriggerType, TriggerType.UserInput>
+
+const controllerKeyMap: Record<DebuggableTriggerType, string> = {
+  [TriggerType.Webhook]: '__webhookDebugAbortController',
+  [TriggerType.Plugin]: '__pluginDebugAbortController',
+  [TriggerType.All]: '__allTriggersDebugAbortController',
+  [TriggerType.Schedule]: '__scheduleDebugAbortController',
+}
+
+const debugLabelMap: Record<DebuggableTriggerType, string> = {
+  [TriggerType.Webhook]: 'Webhook',
+  [TriggerType.Plugin]: 'Plugin',
+  [TriggerType.All]: 'All',
+  [TriggerType.Schedule]: 'Schedule',
+}
+
 export const useWorkflowRun = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
@@ -247,7 +263,12 @@ export const useWorkflowRun = () => {
       setListeningTriggerNodeId,
     } = workflowStore.getState()
 
-    if (runMode === TriggerType.Webhook || runMode === TriggerType.Plugin || runMode === TriggerType.All) {
+    if (
+      runMode === TriggerType.Webhook
+      || runMode === TriggerType.Plugin
+      || runMode === TriggerType.All
+      || runMode === TriggerType.Schedule
+    ) {
       setIsListening(true)
       setShowVariableInspectPanel(true)
       setListeningTriggerIsAll(runMode === TriggerType.All)
@@ -255,6 +276,8 @@ export const useWorkflowRun = () => {
         setListeningTriggerNodeIds(options?.allNodeIds ?? [])
       else if (runMode === TriggerType.Webhook && options?.webhookNodeId)
         setListeningTriggerNodeIds([options.webhookNodeId])
+      else if (runMode === TriggerType.Schedule && options?.scheduleNodeId)
+        setListeningTriggerNodeIds([options.scheduleNodeId])
       else if (runMode === TriggerType.Plugin && options?.pluginNodeId)
         setListeningTriggerNodeIds([options.pluginNodeId])
       else
@@ -306,6 +329,8 @@ export const useWorkflowRun = () => {
       abortControllerRef.current = null
       delete (window as any).__webhookDebugAbortController
       delete (window as any).__pluginDebugAbortController
+      delete (window as any).__scheduleDebugAbortController
+      delete (window as any).__allTriggersDebugAbortController
     }
 
     const clearListeningState = () => {
@@ -463,17 +488,15 @@ export const useWorkflowRun = () => {
       }, { once: true })
     })
 
-    const runTriggerDebug = async (debugType: TriggerType.Webhook | TriggerType.Plugin | TriggerType.All) => {
+    const runTriggerDebug = async (debugType: DebuggableTriggerType) => {
       const controller = new AbortController()
       abortControllerRef.current = controller
 
-      const controllerKey = debugType === TriggerType.Webhook
-        ? '__webhookDebugAbortController'
-        : '__pluginDebugAbortController'
+      const controllerKey = controllerKeyMap[debugType]
 
         ; (window as any)[controllerKey] = controller
 
-      const debugLabel = debugType === TriggerType.Webhook ? 'Webhook' : debugType === TriggerType.Plugin ? 'Plugin' : 'All'
+      const debugLabel = debugLabelMap[debugType]
 
       const poll = async (): Promise<void> => {
         try {
@@ -593,6 +616,11 @@ export const useWorkflowRun = () => {
       await poll()
     }
 
+    if (runMode === TriggerType.Schedule) {
+      await runTriggerDebug(TriggerType.Schedule)
+      return
+    }
+
     if (runMode === TriggerType.Webhook) {
       await runTriggerDebug(TriggerType.Webhook)
       return
@@ -664,6 +692,14 @@ export const useWorkflowRun = () => {
     const pluginController = (window as any).__pluginDebugAbortController
     if (pluginController)
       pluginController.abort()
+
+    const scheduleController = (window as any).__scheduleDebugAbortController
+    if (scheduleController)
+      scheduleController.abort()
+
+    const allTriggerController = (window as any).__allTriggersDebugAbortController
+    if (allTriggerController)
+      allTriggerController.abort()
 
     // Also try the ref
     if (abortControllerRef.current)
