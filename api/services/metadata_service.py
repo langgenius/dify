@@ -48,7 +48,7 @@ class MetadataService:
         return metadata
 
     @staticmethod
-    def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:  # type: ignore
+    def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata | None:
         # check if metadata name is too long
         if len(name) > 255:
             raise ValueError("Metadata name cannot exceed 255 characters.")
@@ -101,7 +101,7 @@ class MetadataService:
             redis_client.delete(lock_key)
 
     @staticmethod
-    def delete_metadata(dataset_id: str, metadata_id: str):
+    def delete_metadata(dataset_id: str, metadata_id: str) -> DatasetMetadata | None:
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
