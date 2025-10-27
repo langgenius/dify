@@ -32,6 +32,7 @@ VARIABLE_TO_PARAMETER_TYPE_MAPPING = {
     VariableEntityType.PARAGRAPH: ToolParameter.ToolParameterType.STRING,
     VariableEntityType.SELECT: ToolParameter.ToolParameterType.SELECT,
     VariableEntityType.NUMBER: ToolParameter.ToolParameterType.NUMBER,
+    VariableEntityType.CHECKBOX: ToolParameter.ToolParameterType.BOOLEAN,
     VariableEntityType.FILE: ToolParameter.ToolParameterType.FILE,
     VariableEntityType.FILE_LIST: ToolParameter.ToolParameterType.FILES,
 }

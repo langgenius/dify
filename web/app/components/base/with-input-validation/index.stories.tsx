@@ -63,7 +63,7 @@ const ValidatedUserCard = withValidation(UserCard, userSchema)
 const ValidatedProductCard = withValidation(ProductCard, productSchema)
 
 const meta = {
-  title: 'Base/WithInputValidation',
+  title: 'Base/Input/WithInputValidation',
   parameters: {
     layout: 'centered',
     docs: {

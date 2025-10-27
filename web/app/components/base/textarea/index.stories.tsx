@@ -3,7 +3,7 @@ import { useState } from 'react'
 import Textarea from '.'
 
 const meta = {
-  title: 'Base/Textarea',
+  title: 'Base/Input/Textarea',
   component: Textarea,
   parameters: {
     layout: 'centered',

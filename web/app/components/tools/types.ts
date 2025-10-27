@@ -8,6 +8,7 @@ export enum LOC {
 
 export enum AuthType {
   none = 'none',
+  apiKey = 'api_key', // backward compatibility
   apiKeyHeader = 'api_key_header',
   apiKeyQuery = 'api_key_query',
 }

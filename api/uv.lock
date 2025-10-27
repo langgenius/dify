@@ -1292,7 +1292,7 @@ wheels = [
 
 [[package]]
 name = "dify-api"
-version = "1.9.1"
+version = "1.9.2"
 source = { virtual = "." }
 dependencies = [
     { name = "arize-phoenix-otel" },
