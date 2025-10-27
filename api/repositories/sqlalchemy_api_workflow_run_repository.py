@@ -346,7 +346,7 @@ WHERE
             for row in rs:
                 response_data.append({"date": str(row.date), "runs": row.runs})
 
-        return response_data
+        return cast(list[DailyRunsStats], response_data)
 
     def get_daily_terminals_statistics(
         self,
@@ -393,7 +393,7 @@ WHERE
             for row in rs:
                 response_data.append({"date": str(row.date), "terminal_count": row.terminal_count})
 
-        return response_data
+        return cast(list[DailyTerminalsStats], response_data)
 
     def get_daily_token_cost_statistics(
         self,
@@ -445,7 +445,7 @@ WHERE
                     }
                 )
 
-        return response_data
+        return cast(list[DailyTokenCostStats], response_data)
 
     def get_average_app_interaction_statistics(
         self,
@@ -509,4 +509,4 @@ GROUP BY
                     {"date": str(row.date), "interactions": float(row.interactions.quantize(Decimal("0.01")))}
                 )
 
-        return response_data
+        return cast(list[AverageInteractionStats], response_data)
