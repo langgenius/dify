@@ -1,4 +1,7 @@
-import { useCallback } from 'react'
+import {
+  useCallback,
+  useRef,
+} from 'react'
 import { produce } from 'immer'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -14,6 +17,7 @@ export const useNodesSyncDraft = () => {
   const featuresStore = useFeaturesStore()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const syncQueueRef = useRef<Promise<void>>(Promise.resolve())
 
   const getPostParams = useCallback(() => {
     const {
@@ -87,7 +91,7 @@ export const useNodesSyncDraft = () => {
       navigator.sendBeacon(`${API_PREFIX}${postParams.url}`, JSON.stringify(postParams.params))
   }, [getPostParams, getNodesReadOnly])
 
-  const doSyncWorkflowDraft = useCallback(async (
+  const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,
     callback?: {
       onSuccess?: () => void
@@ -124,6 +128,21 @@ export const useNodesSyncDraft = () => {
       }
     }
   }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft])
+
+  const doSyncWorkflowDraft = useCallback((notRefreshWhenSyncError?: boolean, callback?: {
+    onSuccess?: () => void
+    onError?: () => void
+    onSettled?: () => void
+  }) => {
+    if (getNodesReadOnly())
+      return Promise.resolve()
+
+    const lastPromise = syncQueueRef.current.catch(() => undefined)
+    const nextPromise = lastPromise.then(() => performSync(notRefreshWhenSyncError, callback))
+    syncQueueRef.current = nextPromise
+
+    return nextPromise
+  }, [getNodesReadOnly, performSync])
 
   return {
     doSyncWorkflowDraft,
