@@ -254,11 +254,23 @@ class MCPToolManageService:
 
     def list_providers(self, *, tenant_id: str, for_list: bool = False) -> list[ToolProviderApiEntity]:
         """List all MCP providers for a tenant."""
+        from models.account import Account
+
         stmt = select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id).order_by(MCPToolProvider.name)
         mcp_providers = self._session.scalars(stmt).all()
 
+        if not mcp_providers:
+            return []
+
+        # Batch query all users to avoid N+1 problem
+        user_ids = {provider.user_id for provider in mcp_providers}
+        users = self._session.query(Account).where(Account.id.in_(user_ids)).all()
+        user_name_map = {user.id: user.name for user in users}
+
         return [
-            ToolTransformService.mcp_provider_to_user_provider(provider, for_list=for_list)
+            ToolTransformService.mcp_provider_to_user_provider(
+                provider, for_list=for_list, user_name=user_name_map.get(provider.user_id)
+            )
             for provider in mcp_providers
         ]
 
