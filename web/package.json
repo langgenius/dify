@@ -134,7 +134,7 @@
     "tailwind-merge": "^2.6.0",
     "tldts": "^7.0.17",
     "use-context-selector": "^2.0.0",
-    "uuid": "^10.0.0",
+    "uuid": "^13.0.0",
     "zod": "^3.25.76",
     "zundo": "^2.3.0",
     "zustand": "^4.5.7"
