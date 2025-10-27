@@ -296,17 +296,21 @@ class MCPToolManageService:
     # ========== OAuth and Credentials Operations ==========
 
     def update_provider_credentials(
-        self, *, provider: MCPToolProvider, credentials: dict[str, Any], authed: bool | None = None
+        self, *, provider_id: str, tenant_id: str, credentials: dict[str, Any], authed: bool | None = None
     ) -> None:
         """
         Update provider credentials with encryption.
 
         Args:
-            provider: Provider instance
+            provider_id: Provider ID
+            tenant_id: Tenant ID
             credentials: Credentials to save
             authed: Whether provider is authenticated (None means keep current state)
         """
         from core.tools.mcp_tool.provider import MCPToolProviderController
+
+        # Get provider from current session
+        provider = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
 
         # Encrypt new credentials
         provider_controller = MCPToolProviderController.from_db(provider)
@@ -341,17 +345,25 @@ class MCPToolManageService:
             data: Data to save (tokens, client info, or code verifier)
             data_type: Type of OAuth data to save
         """
-        db_provider = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
-
         # Determine if this makes the provider authenticated
         authed = (
             data_type == OAuthDataType.TOKENS or (data_type == OAuthDataType.MIXED and "access_token" in data) or None
         )
 
-        self.update_provider_credentials(provider=db_provider, credentials=data, authed=authed)
+        # update_provider_credentials will validate provider existence
+        self.update_provider_credentials(provider_id=provider_id, tenant_id=tenant_id, credentials=data, authed=authed)
 
-    def clear_provider_credentials(self, *, provider: MCPToolProvider) -> None:
-        """Clear all credentials for a provider."""
+    def clear_provider_credentials(self, *, provider_id: str, tenant_id: str) -> None:
+        """
+        Clear all credentials for a provider.
+
+        Args:
+            provider_id: Provider ID
+            tenant_id: Tenant ID
+        """
+        # Get provider from current session
+        provider = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
+
         provider.tools = EMPTY_TOOLS_JSON
         provider.encrypted_credentials = EMPTY_CREDENTIALS_JSON
         provider.updated_at = datetime.now()

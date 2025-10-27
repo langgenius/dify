@@ -1021,28 +1021,32 @@ class ToolMCPAuthApi(Resource):
                 timeout=provider_entity.timeout,
                 sse_read_timeout=provider_entity.sse_read_timeout,
             ):
-                # Create new transaction for update
-                with session.begin():
+                # Update credentials in new transaction
+                with Session(db.engine) as session, session.begin():
+                    service = MCPToolManageService(session=session)
                     service.update_provider_credentials(
-                        provider=db_provider,
+                        provider_id=provider_id,
+                        tenant_id=tenant_id,
                         credentials=provider_entity.credentials,
                         authed=True,
                     )
                 return {"result": "success"}
         except MCPAuthError as e:
-            service = MCPToolManageService(session=session)
             try:
                 auth_result = auth(provider_entity, args.get("authorization_code"))
-                with session.begin():
+                with Session(db.engine) as session, session.begin():
+                    service = MCPToolManageService(session=session)
                     response = service.execute_auth_actions(auth_result)
-                return response
+                    return response
             except MCPRefreshTokenError as e:
-                with session.begin():
-                    service.clear_provider_credentials(provider=db_provider)
+                with Session(db.engine) as session, session.begin():
+                    service = MCPToolManageService(session=session)
+                    service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
                 raise ValueError(f"Failed to refresh token, please try to authorize again: {e}") from e
         except MCPError as e:
-            with session.begin():
-                service.clear_provider_credentials(provider=db_provider)
+            with Session(db.engine) as session, session.begin():
+                service = MCPToolManageService(session=session)
+                service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
             raise ValueError(f"Failed to connect to MCP server: {e}") from e
 
 
