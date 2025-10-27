@@ -6,6 +6,7 @@ from flask_restx import (
     Resource,
     reqparse,
 )
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -15,20 +16,21 @@ from controllers.console.wraps import (
     enterprise_license_required,
     setup_required,
 )
+from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
 from core.mcp.auth.auth_flow import auth, handle_callback
-from core.mcp.auth.auth_provider import OAuthClientProvider
-from core.mcp.error import MCPAuthError, MCPError
+from core.mcp.error import MCPAuthError, MCPError, MCPRefreshTokenError
 from core.mcp.mcp_client import MCPClient
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.tool_entities import CredentialType
+from extensions.ext_database import db
 from libs.helper import StrLen, alphanumeric, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import ToolProviderID
 from services.plugin.oauth_service import OAuthProxyService
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-from services.tools.mcp_tools_manage_service import MCPToolManageService
+from services.tools.mcp_tools_manage_service import MCPToolManageService, OAuthDataType
 from services.tools.tool_labels_service import ToolLabelsService
 from services.tools.tools_manage_service import ToolCommonService
 from services.tools.tools_transform_service import ToolTransformService
@@ -42,7 +44,9 @@ def is_valid_url(url: str) -> bool:
     try:
         parsed = urlparse(url)
         return all([parsed.scheme, parsed.netloc]) and parsed.scheme in ["http", "https"]
-    except Exception:
+    except (ValueError, TypeError):
+        # ValueError: Invalid URL format
+        # TypeError: url is not a string
         return False
 
 
@@ -886,29 +890,34 @@ class ToolProviderMCPApi(Resource):
             .add_argument("icon_type", type=str, required=True, nullable=False, location="json")
             .add_argument("icon_background", type=str, required=False, nullable=True, location="json", default="")
             .add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
-            .add_argument("timeout", type=float, required=False, nullable=False, location="json", default=30)
-            .add_argument("sse_read_timeout", type=float, required=False, nullable=False, location="json", default=300)
+            .add_argument("configuration", type=dict, required=False, nullable=True, location="json", default={})
             .add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
+            .add_argument("authentication", type=dict, required=False, nullable=True, location="json", default={})
         )
         args = parser.parse_args()
         user, tenant_id = current_account_with_tenant()
-        if not is_valid_url(args["server_url"]):
-            raise ValueError("Server URL is not valid.")
-        return jsonable_encoder(
-            MCPToolManageService.create_mcp_provider(
+
+        # Parse and validate models
+        configuration = MCPConfiguration.model_validate(args["configuration"])
+        authentication = MCPAuthentication.model_validate(args["authentication"]) if args["authentication"] else None
+
+        # Create provider
+        with Session(db.engine) as session, session.begin():
+            service = MCPToolManageService(session=session)
+            result = service.create_provider(
                 tenant_id=tenant_id,
+                user_id=user.id,
                 server_url=args["server_url"],
                 name=args["name"],
                 icon=args["icon"],
                 icon_type=args["icon_type"],
                 icon_background=args["icon_background"],
-                user_id=user.id,
                 server_identifier=args["server_identifier"],
-                timeout=args["timeout"],
-                sse_read_timeout=args["sse_read_timeout"],
                 headers=args["headers"],
+                configuration=configuration,
+                authentication=authentication,
             )
-        )
+            return jsonable_encoder(result)
 
     @setup_required
     @login_required
@@ -923,31 +932,43 @@ class ToolProviderMCPApi(Resource):
             .add_argument("icon_background", type=str, required=False, nullable=True, location="json")
             .add_argument("provider_id", type=str, required=True, nullable=False, location="json")
             .add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
-            .add_argument("timeout", type=float, required=False, nullable=True, location="json")
-            .add_argument("sse_read_timeout", type=float, required=False, nullable=True, location="json")
-            .add_argument("headers", type=dict, required=False, nullable=True, location="json")
+            .add_argument("configuration", type=dict, required=False, nullable=True, location="json", default={})
+            .add_argument("headers", type=dict, required=False, nullable=True, location="json", default={})
+            .add_argument("authentication", type=dict, required=False, nullable=True, location="json", default={})
         )
         args = parser.parse_args()
-        if not is_valid_url(args["server_url"]):
-            if "[__HIDDEN__]" in args["server_url"]:
-                pass
-            else:
-                raise ValueError("Server URL is not valid.")
+        configuration = MCPConfiguration.model_validate(args["configuration"])
+        authentication = MCPAuthentication.model_validate(args["authentication"]) if args["authentication"] else None
         _, current_tenant_id = current_account_with_tenant()
-        MCPToolManageService.update_mcp_provider(
-            tenant_id=current_tenant_id,
-            provider_id=args["provider_id"],
-            server_url=args["server_url"],
-            name=args["name"],
-            icon=args["icon"],
-            icon_type=args["icon_type"],
-            icon_background=args["icon_background"],
-            server_identifier=args["server_identifier"],
-            timeout=args.get("timeout"),
-            sse_read_timeout=args.get("sse_read_timeout"),
-            headers=args.get("headers"),
-        )
-        return {"result": "success"}
+
+        # Step 1: Validate server URL change if needed (includes URL format validation and network operation)
+        validation_result = None
+        with Session(db.engine) as session:
+            service = MCPToolManageService(session=session)
+            validation_result = service.validate_server_url_change(
+                tenant_id=current_tenant_id, provider_id=args["provider_id"], new_server_url=args["server_url"]
+            )
+
+            # No need to check for errors here, exceptions will be raised directly
+
+        # Step 2: Perform database update in a transaction
+        with Session(db.engine) as session, session.begin():
+            service = MCPToolManageService(session=session)
+            service.update_provider(
+                tenant_id=current_tenant_id,
+                provider_id=args["provider_id"],
+                server_url=args["server_url"],
+                name=args["name"],
+                icon=args["icon"],
+                icon_type=args["icon_type"],
+                icon_background=args["icon_background"],
+                server_identifier=args["server_identifier"],
+                headers=args["headers"],
+                configuration=configuration,
+                authentication=authentication,
+                validation_result=validation_result,
+            )
+            return {"result": "success"}
 
     @setup_required
     @login_required
@@ -958,8 +979,11 @@ class ToolProviderMCPApi(Resource):
         )
         args = parser.parse_args()
         _, current_tenant_id = current_account_with_tenant()
-        MCPToolManageService.delete_mcp_tool(tenant_id=current_tenant_id, provider_id=args["provider_id"])
-        return {"result": "success"}
+
+        with Session(db.engine) as session, session.begin():
+            service = MCPToolManageService(session=session)
+            service.delete_provider(tenant_id=current_tenant_id, provider_id=args["provider_id"])
+            return {"result": "success"}
 
 
 @console_ns.route("/workspaces/current/tool-provider/mcp/auth")
@@ -976,37 +1000,53 @@ class ToolMCPAuthApi(Resource):
         args = parser.parse_args()
         provider_id = args["provider_id"]
         _, tenant_id = current_account_with_tenant()
-        provider = MCPToolManageService.get_mcp_provider_by_provider_id(provider_id, tenant_id)
-        if not provider:
-            raise ValueError("provider not found")
-        try:
-            with MCPClient(
-                provider.decrypted_server_url,
-                provider_id,
-                tenant_id,
-                authed=False,
-                authorization_code=args["authorization_code"],
-                for_list=True,
-                headers=provider.decrypted_headers,
-                timeout=provider.timeout,
-                sse_read_timeout=provider.sse_read_timeout,
-            ):
-                MCPToolManageService.update_mcp_provider_credentials(
-                    mcp_provider=provider,
-                    credentials=provider.decrypted_credentials,
-                    authed=True,
-                )
-                return {"result": "success"}
 
-        except MCPAuthError:
-            auth_provider = OAuthClientProvider(provider_id, tenant_id, for_list=True)
-            return auth(auth_provider, provider.decrypted_server_url, args["authorization_code"])
+        with Session(db.engine) as session, session.begin():
+            service = MCPToolManageService(session=session)
+            db_provider = service.get_provider(provider_id=provider_id, tenant_id=tenant_id)
+            if not db_provider:
+                raise ValueError("provider not found")
+
+            # Convert to entity
+            provider_entity = db_provider.to_entity()
+            server_url = provider_entity.decrypt_server_url()
+            headers = provider_entity.decrypt_authentication()
+
+        # Try to connect without active transaction
+        try:
+            # Use MCPClientWithAuthRetry to handle authentication automatically
+            with MCPClient(
+                server_url=server_url,
+                headers=headers,
+                timeout=provider_entity.timeout,
+                sse_read_timeout=provider_entity.sse_read_timeout,
+            ):
+                # Update credentials in new transaction
+                with Session(db.engine) as session, session.begin():
+                    service = MCPToolManageService(session=session)
+                    service.update_provider_credentials(
+                        provider_id=provider_id,
+                        tenant_id=tenant_id,
+                        credentials=provider_entity.credentials,
+                        authed=True,
+                    )
+                return {"result": "success"}
+        except MCPAuthError as e:
+            try:
+                auth_result = auth(provider_entity, args.get("authorization_code"))
+                with Session(db.engine) as session, session.begin():
+                    service = MCPToolManageService(session=session)
+                    response = service.execute_auth_actions(auth_result)
+                    return response
+            except MCPRefreshTokenError as e:
+                with Session(db.engine) as session, session.begin():
+                    service = MCPToolManageService(session=session)
+                    service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
+                raise ValueError(f"Failed to refresh token, please try to authorize again: {e}") from e
         except MCPError as e:
-            MCPToolManageService.update_mcp_provider_credentials(
-                mcp_provider=provider,
-                credentials={},
-                authed=False,
-            )
+            with Session(db.engine) as session, session.begin():
+                service = MCPToolManageService(session=session)
+                service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
             raise ValueError(f"Failed to connect to MCP server: {e}") from e
 
 
@@ -1017,8 +1057,10 @@ class ToolMCPDetailApi(Resource):
     @account_initialization_required
     def get(self, provider_id):
         _, tenant_id = current_account_with_tenant()
-        provider = MCPToolManageService.get_mcp_provider_by_provider_id(provider_id, tenant_id)
-        return jsonable_encoder(ToolTransformService.mcp_provider_to_user_provider(provider, for_list=True))
+        with Session(db.engine) as session, session.begin():
+            service = MCPToolManageService(session=session)
+            provider = service.get_provider(provider_id=provider_id, tenant_id=tenant_id)
+            return jsonable_encoder(ToolTransformService.mcp_provider_to_user_provider(provider, for_list=True))
 
 
 @console_ns.route("/workspaces/current/tools/mcp")
@@ -1029,9 +1071,12 @@ class ToolMCPListAllApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        tools = MCPToolManageService.retrieve_mcp_tools(tenant_id=tenant_id)
+        with Session(db.engine) as session, session.begin():
+            service = MCPToolManageService(session=session)
+            # Skip sensitive data decryption for list view to improve performance
+            tools = service.list_providers(tenant_id=tenant_id, include_sensitive=False)
 
-        return [tool.to_dict() for tool in tools]
+            return [tool.to_dict() for tool in tools]
 
 
 @console_ns.route("/workspaces/current/tool-provider/mcp/update/<path:provider_id>")
@@ -1041,11 +1086,13 @@ class ToolMCPUpdateApi(Resource):
     @account_initialization_required
     def get(self, provider_id):
         _, tenant_id = current_account_with_tenant()
-        tools = MCPToolManageService.list_mcp_tool_from_remote_server(
-            tenant_id=tenant_id,
-            provider_id=provider_id,
-        )
-        return jsonable_encoder(tools)
+        with Session(db.engine) as session, session.begin():
+            service = MCPToolManageService(session=session)
+            tools = service.list_provider_tools(
+                tenant_id=tenant_id,
+                provider_id=provider_id,
+            )
+            return jsonable_encoder(tools)
 
 
 @console_ns.route("/mcp/oauth/callback")
@@ -1059,5 +1106,15 @@ class ToolMCPCallbackApi(Resource):
         args = parser.parse_args()
         state_key = args["state"]
         authorization_code = args["code"]
-        handle_callback(state_key, authorization_code)
+
+        # Create service instance for handle_callback
+        with Session(db.engine) as session, session.begin():
+            mcp_service = MCPToolManageService(session=session)
+            # handle_callback now returns state data and tokens
+            state_data, tokens = handle_callback(state_key, authorization_code)
+            # Save tokens using the service layer
+            mcp_service.save_oauth_data(
+                state_data.provider_id, state_data.tenant_id, tokens.model_dump(), OAuthDataType.TOKENS
+            )
+
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
