@@ -40,31 +40,36 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
       </div>}
       <div className='max-h-[320px] overflow-y-auto'>
         {subscriptions?.map(subscription => (
-          <button
+          <div
             key={subscription.id}
             className={cn(
               'group flex w-full items-center justify-between rounded-lg p-1 text-left transition-colors',
               'hover:bg-state-base-hover has-[.subscription-delete-btn:hover]:!bg-state-destructive-hover',
               selectedId === subscription.id && 'bg-state-base-hover',
             )}
-            onClick={() => onSelect?.(subscription)}
           >
-            <div className='flex items-center'>
-              {selectedId === subscription.id && (
-                <RiCheckLine className='mr-2 h-4 w-4 shrink-0 text-text-accent' />
-              )}
-              <RiWebhookLine className={cn('mr-1.5 h-3.5 w-3.5 text-text-secondary', selectedId !== subscription.id && 'ml-6')} />
-              <span className='system-md-regular leading-6 text-text-secondary'>
-                {subscription.name}
-              </span>
-            </div>
+            <button
+              type='button'
+              className='flex flex-1 items-center text-left'
+              onClick={() => onSelect?.(subscription)}
+            >
+              <div className='flex items-center'>
+                {selectedId === subscription.id && (
+                  <RiCheckLine className='mr-2 h-4 w-4 shrink-0 text-text-accent' />
+                )}
+                <RiWebhookLine className={cn('mr-1.5 h-3.5 w-3.5 text-text-secondary', selectedId !== subscription.id && 'ml-6')} />
+                <span className='system-md-regular leading-6 text-text-secondary'>
+                  {subscription.name}
+                </span>
+              </div>
+            </button>
             <ActionButton onClick={(e) => {
               e.stopPropagation()
               setDeletedSubscription(subscription)
             }} className='subscription-delete-btn hidden shrink-0 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive group-hover:flex'>
               <RiDeleteBinLine className='size-4' />
             </ActionButton>
-          </button>
+          </div>
         ))}
       </div>
       {deletedSubscription && (
