@@ -180,7 +180,7 @@ const FileUploader = ({
     prepareFileList(newFiles)
     fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
-  }, [prepareFileList, uploadMultipleFiles, notify, t, fileList])
+  }, [prepareFileList, uploadMultipleFiles, notify, t, fileList, fileUploadConfig])
 
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
@@ -277,7 +277,7 @@ const FileUploader = ({
     let files = [...(e.target.files ?? [])] as File[]
     files = files.slice(0, fileUploadConfig.batch_count_limit)
     initialUpload(files.filter(isValid))
-  }, [isValid, initialUpload])
+  }, [isValid, initialUpload, fileUploadConfig])
 
   const { theme } = useTheme()
   const chartColor = useMemo(() => theme === Theme.dark ? '#5289ff' : '#296dff', [theme])
