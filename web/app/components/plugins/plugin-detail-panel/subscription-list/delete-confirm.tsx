@@ -67,6 +67,7 @@ export const DeleteConfirm = (props: Props) => {
       : t(`${tPrefix}.content`)}
     isShow={isShow}
     isLoading={isDeleting}
+    isDisabled={isDeleting}
     onConfirm={onConfirm}
     onCancel={() => onClose(false)}
     maskClosable={false}

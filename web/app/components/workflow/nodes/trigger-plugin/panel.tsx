@@ -21,7 +21,6 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
     setTriggerParameterValue,
     outputSchema,
     hasObjectOutput,
-    isAuthenticated,
     currentProvider,
     currentTrigger,
   } = useConfig(id, data)
@@ -37,7 +36,7 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
   return (
     <div className='mt-2'>
       {/* Dynamic Parameters Form - Only show when authenticated */}
-      {isAuthenticated && triggerParameterSchema.length > 0 && (
+      {triggerParameterSchema.length > 0 && (
         <>
           <div className='px-4 pb-4'>
             <TriggerForm

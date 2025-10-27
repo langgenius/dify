@@ -20,8 +20,6 @@ type SubscriptionTriggerButtonProps = {
   onSelect: (v: SimpleSubscription, callback?: () => void) => void
 }
 
-export const INVALID_SUBSCRIPTION_ID = 'INVALID_SUBSCRIPTION_ID'
-
 const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
   selectedId,
   onClick,
@@ -46,19 +44,25 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
       }
     }
 
-    const selectedSubscription = subscriptions?.find(sub => sub.id === selectedId)
+    if (subscriptions && subscriptions.length > 0) {
+      const selectedSubscription = subscriptions?.find(sub => sub.id === selectedId)
 
-    if (!selectedSubscription) {
-      onSelect({ id: INVALID_SUBSCRIPTION_ID, name: '' } as SimpleSubscription)
+      if (!selectedSubscription) {
+        return {
+          label: t('pluginTrigger.subscription.subscriptionRemoved'),
+          color: 'red' as const,
+        }
+      }
+
       return {
-        label: t('pluginTrigger.subscription.subscriptionRemoved'),
-        color: 'red' as const,
+        label: selectedSubscription.name,
+        color: 'green' as const,
       }
     }
 
     return {
-      label: selectedSubscription.name,
-      color: 'green' as const,
+      label: t('pluginTrigger.subscription.noSubscriptionSelected'),
+      color: 'red' as const,
     }
   }, [selectedId, subscriptions, t, isOpen])
 

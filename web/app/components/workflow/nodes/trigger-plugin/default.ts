@@ -1,4 +1,3 @@
-import { INVALID_SUBSCRIPTION_ID } from '@/app/components/plugins/plugin-detail-panel/subscription-list/selector-entry'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { NodeDefault, Var } from '../../types'
 import { BlockEnum, VarType } from '../../types'
@@ -242,7 +241,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
   } = {}) {
     let errorMessage = ''
 
-    if (!payload.subscription_id || payload.subscription_id === INVALID_SUBSCRIPTION_ID)
+    if (!payload.subscription_id)
       errorMessage = t('workflow.nodes.triggerPlugin.subscriptionRequired')
 
     const {

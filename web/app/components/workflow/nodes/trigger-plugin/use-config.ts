@@ -217,13 +217,6 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     )
   }, [outputSchema])
 
-  // Authentication status check
-  const isAuthenticated = useMemo(() => {
-    return subscriptions.length > 0
-  }, [subscriptions])
-
-  const showAuthRequired = !isAuthenticated && !!currentProvider
-
   return {
     readOnly,
     inputs,
@@ -235,8 +228,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     setInputVar,
     outputSchema,
     hasObjectOutput,
-    isAuthenticated,
-    showAuthRequired,
+    subscriptions,
   }
 }
 

@@ -1,8 +1,7 @@
 import NodeStatus, { NodeStatusEnum } from '@/app/components/base/node-status'
-import { INVALID_SUBSCRIPTION_ID } from '@/app/components/plugins/plugin-detail-panel/subscription-list/selector-entry'
 import type { NodeProps } from '@/app/components/workflow/types'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { PluginTriggerNodeType } from './types'
 import useConfig from './use-config'
@@ -40,20 +39,21 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
   id,
   data,
 }) => {
-  const { isAuthenticated } = useConfig(id, data)
+  const { subscriptions } = useConfig(id, data)
   const { config = {}, subscription_id } = data
   const configKeys = Object.keys(config)
 
   const { t } = useTranslation()
-  // Only show config when authenticated and has config values
-  if (!isAuthenticated || configKeys.length === 0)
-    return null
+
+  const isValidSubscription = useMemo(() => {
+    return subscription_id && subscriptions?.some(sub => sub.id === subscription_id)
+  }, [subscription_id, subscriptions])
 
   return (
     <div className="mb-1 px-3 py-1">
       <div className="space-y-0.5">
-        {(!subscription_id || subscription_id === INVALID_SUBSCRIPTION_ID) && <NodeStatus status={NodeStatusEnum.warning} message={t('pluginTrigger.node.status.warning')} />}
-        {subscription_id && subscription_id !== INVALID_SUBSCRIPTION_ID && configKeys.map((key, index) => (
+        {!isValidSubscription && <NodeStatus status={NodeStatusEnum.warning} message={t('pluginTrigger.node.status.warning')} />}
+        {isValidSubscription && configKeys.map((key, index) => (
           <div
             key={index}
             className="flex h-6 items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary"
