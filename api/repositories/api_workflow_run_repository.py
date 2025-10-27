@@ -28,7 +28,7 @@ Example:
     runs = repo.get_paginated_workflow_runs(
         tenant_id="tenant-123",
         app_id="app-456",
-        triggered_from="debugging",
+        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         limit=20
     )
     ```
@@ -40,6 +40,7 @@ from typing import Protocol
 
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
 from repositories.types import (
     AverageInteractionStats,
@@ -62,7 +63,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         self,
         tenant_id: str,
         app_id: str,
-        triggered_from: str | list[str],
+        triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom],
         limit: int = 20,
         last_id: str | None = None,
         status: str | None = None,

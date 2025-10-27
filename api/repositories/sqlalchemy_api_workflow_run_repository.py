@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
+from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.types import (
@@ -69,7 +70,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         self,
         tenant_id: str,
         app_id: str,
-        triggered_from: str | list[str],
+        triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom],
         limit: int = 20,
         last_id: str | None = None,
         status: str | None = None,
@@ -89,7 +90,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             )
 
             # Handle triggered_from values
-            if not isinstance(triggered_from, list):
+            if isinstance(triggered_from, WorkflowRunTriggeredFrom):
                 triggered_from = [triggered_from]
             if triggered_from:
                 base_stmt = base_stmt.where(WorkflowRun.triggered_from.in_(triggered_from))
