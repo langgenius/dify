@@ -4,7 +4,7 @@ from flask_restx import Resource, reqparse
 
 import services
 from configs import dify_config
-from constants.languages import languages
+from constants.languages import get_valid_language
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -29,8 +29,7 @@ from libs.token import (
     clear_access_token_from_cookie,
     clear_csrf_token_from_cookie,
     clear_refresh_token_from_cookie,
-    extract_access_token,
-    extract_csrf_token,
+    extract_refresh_token,
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
@@ -206,10 +205,12 @@ class EmailCodeLoginApi(Resource):
             .add_argument("email", type=str, required=True, location="json")
             .add_argument("code", type=str, required=True, location="json")
             .add_argument("token", type=str, required=True, location="json")
+            .add_argument("language", type=str, required=False, location="json")
         )
         args = parser.parse_args()
 
         user_email = args["email"]
+        language = args["language"]
 
         token_data = AccountService.get_email_code_login_data(args["token"])
         if token_data is None:
@@ -243,7 +244,9 @@ class EmailCodeLoginApi(Resource):
         if account is None:
             try:
                 account = AccountService.create_account_and_tenant(
-                    email=user_email, name=user_email, interface_language=languages[0]
+                    email=user_email,
+                    name=user_email,
+                    interface_language=get_valid_language(language),
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()
@@ -268,7 +271,7 @@ class EmailCodeLoginApi(Resource):
 class RefreshTokenApi(Resource):
     def post(self):
         # Get refresh token from cookie instead of request body
-        refresh_token = request.cookies.get("refresh_token")
+        refresh_token = extract_refresh_token(request)
 
         if not refresh_token:
             return {"result": "fail", "message": "No refresh token provided"}, 401
@@ -286,13 +289,3 @@ class RefreshTokenApi(Resource):
             return response
         except Exception as e:
             return {"result": "fail", "message": str(e)}, 401
-
-
-# this api helps frontend to check whether user is authenticated
-# TODO: remove in the future. frontend should redirect to login page by catching 401 status
-@console_ns.route("/login/status")
-class LoginStatus(Resource):
-    def get(self):
-        token = extract_access_token(request)
-        csrf_token = extract_csrf_token(request)
-        return {"logged_in": bool(token) and bool(csrf_token)}
