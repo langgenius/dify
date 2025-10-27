@@ -504,6 +504,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 className='px-4 pb-2'
                 pluginPayload={{
                   provider: currCollection?.name || '',
+                  providerType: currCollection?.type || '',
                   category: AuthCategory.tool,
                 }}
               >
@@ -515,6 +516,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   <AuthorizedInNode
                     pluginPayload={{
                       provider: currCollection?.name || '',
+                      providerType: currCollection?.type || '',
                       category: AuthCategory.tool,
                     }}
                     onAuthorizationItemClick={handleAuthorizationItemClick}

@@ -84,7 +84,7 @@ const useInvalidToolsKeyMap: Record<string, QueryKey> = {
   [CollectionType.workflow]: useAllWorkflowToolsKey,
   [CollectionType.mcp]: useAllMCPToolsKey,
 }
-export const useInvalidToolsByType = (type: CollectionType) => {
+export const useInvalidToolsByType = (type: CollectionType | string) => {
   return useInvalid(useInvalidToolsKeyMap[type])
 }
 
