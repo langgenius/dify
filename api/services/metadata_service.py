@@ -64,7 +64,7 @@ class MetadataService:
             raise ValueError("Metadata name already exists.")
         for field in BuiltInField:
             if field.value == name:
-                raise ValueError("Metadata name already exists in Built -in fields.")
+                raise ValueError("Metadata name already exists in Built-in fields.")
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
             metadata = db.session.query(DatasetMetadata).filter_by(id=metadata_id).first()
@@ -214,7 +214,11 @@ class MetadataService:
             lock_key = f"document_metadata_lock_{operation.document_id}"
             try:
                 MetadataService.knowledge_base_metadata_lock_check(None, operation.document_id)
-                document = DocumentService.get_document(dataset.id, operation.document_id)
+                try:
+                    document = DocumentService.get_document(dataset.id, operation.document_id)
+                except Exception as e:
+                    logger.warning("Failed to get document %s: %s", operation.document_id, str(e))
+                    continue
                 if document is None:
                     logger.warning("Document not found: %s", operation.document_id)
                     continue
@@ -229,7 +233,6 @@ class MetadataService:
                     doc_metadata[BuiltInField.source] = get_safe_data_source_value(document.data_source_type)
                 document.doc_metadata = doc_metadata
                 db.session.add(document)
-                db.session.commit()
                 # deal metadata binding
                 db.session.query(DatasetMetadataBinding).filter_by(document_id=operation.document_id).delete()
                 current_user, current_tenant_id = current_account_with_tenant()
