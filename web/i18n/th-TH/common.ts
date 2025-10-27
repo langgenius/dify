@@ -168,6 +168,7 @@ const translation = {
     github: 'GitHub',
     compliance: 'การปฏิบัติตามข้อกำหนด',
     support: 'การสนับสนุน',
+    contactUs: 'ติดต่อเรา',
   },
   settings: {
     accountGroup: 'ทั่วไป',
