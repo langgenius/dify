@@ -1,18 +1,17 @@
 'use client'
-import React from 'react'
-import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiBookReadLine, RiCloseLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
-import Drawer from '@/app/components/base/drawer'
-import { Markdown } from '@/app/components/base/markdown'
-import { usePluginReadme } from '@/service/use-plugins'
-// import type { PluginDetail } from '@/app/components/plugins/types'
-import Loading from '@/app/components/base/loading'
-import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import PluginTitleInfo from '@/app/components/plugins/plugin-title-info'
-import Modal from '@/app/components/base/modal'
 import ActionButton from '@/app/components/base/action-button'
+import Drawer from '@/app/components/base/drawer'
+import Loading from '@/app/components/base/loading'
+import { Markdown } from '@/app/components/base/markdown'
+import Modal from '@/app/components/base/modal'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { usePluginReadme } from '@/service/use-plugins'
+import cn from '@/utils/classnames'
+import { RiBookReadLine, RiCloseLine } from '@remixicon/react'
+import type { FC } from 'react'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import DetailHeader from '../plugin-detail-panel/detail-header'
 import { ReadmeShowType, useReadmePanelStore } from './store'
 
 const ReadmePanel: FC = () => {
@@ -47,8 +46,7 @@ const ReadmePanel: FC = () => {
             <RiCloseLine className='h-4 w-4' />
           </ActionButton>
         </div>
-
-        <PluginTitleInfo detail={detail} size="large" />
+        <DetailHeader detail={detail} isReadmeView={true} />
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3">
@@ -64,7 +62,7 @@ const ReadmePanel: FC = () => {
           if (error) {
             return (
               <div className="py-8 text-center text-text-tertiary">
-                <p>{t('plugin.readmeInfo.noReadmeAvailable')}</p>
+                <p>{t('plugin.readmeInfo.failedToFetch')}</p>
               </div>
             )
           }
@@ -73,7 +71,6 @@ const ReadmePanel: FC = () => {
             return (
               <Markdown
                 content={readmeData.readme}
-                className="prose-sm prose max-w-none"
                 pluginInfo={{ plugin_unique_identifier: pluginUniqueIdentifier, plugin_id: detail.plugin_id }}
               />
             )

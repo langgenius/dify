@@ -313,6 +313,7 @@ const translation = {
     title: 'README',
     needHelpCheckReadme: '需要帮助？查看 README。',
     noReadmeAvailable: 'README 文档不可用',
+    failedToFetch: '获取 README 文档失败',
   },
 }
 

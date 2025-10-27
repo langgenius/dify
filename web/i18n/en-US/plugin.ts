@@ -313,6 +313,7 @@ const translation = {
     title: 'README',
     needHelpCheckReadme: 'Need help? Check the README.',
     noReadmeAvailable: 'No README available',
+    failedToFetch: 'Failed to fetch README',
   },
 }
 
