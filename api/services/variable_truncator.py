@@ -413,3 +413,38 @@ class VariableTruncator:
             return _PartResult(val, self.calculate_json_size(val), False)
         else:
             raise AssertionError("this statement should be unreachable.")
+
+
+class DummyVariableTruncator:
+    """
+    A no-op variable truncator that doesn't truncate any data.
+
+    This is used for Service API calls where truncation should be disabled
+    to maintain backward compatibility and provide complete data.
+    """
+
+    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
+        """
+        Return original mapping without truncation.
+
+        Args:
+            v: The variable mapping to process
+
+        Returns:
+            Tuple of (original_mapping, False) where False indicates no truncation occurred
+        """
+        return v, False
+
+    def truncate(self, segment: Segment) -> TruncationResult:
+        """
+        Return original segment without truncation.
+
+        Args:
+            segment: The segment to process
+
+        Returns:
+            The original segment unchanged
+        """
+        # For Service API, we want to preserve the original segment
+        # without any truncation, so just return it as-is
+        return TruncationResult(result=segment, truncated=False)
