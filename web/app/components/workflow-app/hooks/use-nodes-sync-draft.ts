@@ -3,6 +3,7 @@ import { produce } from 'immer'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { API_PREFIX } from '@/config'
@@ -87,7 +88,7 @@ export const useNodesSyncDraft = () => {
       navigator.sendBeacon(`${API_PREFIX}${postParams.url}`, JSON.stringify(postParams.params))
   }, [getPostParams, getNodesReadOnly])
 
-  const doSyncWorkflowDraft = useCallback(async (
+  const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,
     callback?: {
       onSuccess?: () => void
@@ -124,6 +125,8 @@ export const useNodesSyncDraft = () => {
       }
     }
   }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft])
+
+  const doSyncWorkflowDraft = useSerialAsyncCallback(performSync, getNodesReadOnly)
 
   return {
     doSyncWorkflowDraft,
