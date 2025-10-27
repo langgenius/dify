@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'Cài đặt tài liệu',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Tất cả các tập tin',
@@ -128,7 +128,7 @@ const translation = {
     emptyFolder: 'Thư mục này trống',
     resetKeywords: 'Đặt lại từ khóa',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'Sự xác nhận',
@@ -149,6 +149,7 @@ const translation = {
   editPipelineInfo: 'Chỉnh sửa thông tin quy trình',
   knowledgeNameAndIconPlaceholder: 'Vui lòng nhập tên của Cơ sở kiến thức',
   knowledgeDescriptionPlaceholder: 'Mô tả những gì có trong Cơ sở kiến thức này. Mô tả chi tiết cho phép AI truy cập nội dung của tập dữ liệu chính xác hơn. Nếu trống, Dify sẽ sử dụng chiến lược hit mặc định. (Tùy chọn)',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

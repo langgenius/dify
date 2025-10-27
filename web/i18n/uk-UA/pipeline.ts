@@ -28,10 +28,12 @@ const translation = {
       loading: 'Обробки... Будь ласка, зачекай',
       viewDetails: 'Перегляд докладних відомостей',
       error: 'Під час виконання сталася помилка',
+      footerTip: 'The preview is the result of the last run',
     },
   },
   ragToolSuggestions: {
     title: 'Пропозиції щодо RAG',
+    noRecommendationPluginsInstalled: 'No recommendation plugins installed',
   },
 }
 

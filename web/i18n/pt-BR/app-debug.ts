@@ -333,6 +333,7 @@ const translation = {
     'multi-files': 'Lista de arquivos',
     'single-file': 'Fila indiana',
     'maxNumberOfUploads': 'Número máximo de uploads',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'uploadFileTypes': 'Carregar tipos de arquivo',
     'both': 'Ambos',
     'localUpload': 'Local Upload',

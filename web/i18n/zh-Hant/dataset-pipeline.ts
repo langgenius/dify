@@ -32,9 +32,7 @@ const translation = {
     content: '刪除管線範本是不可逆的。',
   },
   publishPipeline: {
-    success: {
-      message: '知識流水線已發布',
-    },
+    success: { message: '知識流水線已發布' },
     error: {
       message: '無法發佈知識流水線',
     },
@@ -116,7 +114,7 @@ const translation = {
   documentSettings: {
     title: '文件設定',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       allBuckets: '所有雲端儲存貯體',
@@ -128,7 +126,7 @@ const translation = {
     emptySearchResult: '沒有找到任何物品',
     emptyFolder: '此資料夾是空的',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: '證實',
@@ -149,6 +147,7 @@ const translation = {
   inputField: '輸入欄位',
   knowledgePermissions: '權限',
   editPipelineInfo: '編輯管線資訊',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

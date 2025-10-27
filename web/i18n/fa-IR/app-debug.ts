@@ -635,6 +635,7 @@ const translation = {
     'maxLength': 'حداکثر طول',
     'varName': 'نام متغیر',
     'maxNumberOfUploads': 'حداکثر تعداد آپلود',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'noDefaultValue': 'بدون مقدار پیش فرض',
     'addOption': 'افزودن گزینه',
     'stringTitle': 'گزینه های جعبه متن فرم',

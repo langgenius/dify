@@ -28,10 +28,12 @@ const translation = {
       loading: 'Pengolahan... Harap tunggu',
       viewDetails: 'Lihat detail',
       error: 'Terjadi kesalahan selama eksekusi',
+      footerTip: 'The preview is the result of the last run',
     },
   },
   ragToolSuggestions: {
     title: 'Saran untuk RAG',
+    noRecommendationPluginsInstalled: 'No recommendation plugins installed',
   },
 }
 

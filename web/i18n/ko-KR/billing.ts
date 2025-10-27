@@ -8,7 +8,10 @@ const translation = {
   viewBilling: '청구 및 구독 관리',
   buyPermissionDeniedTip: '구독하려면 엔터프라이즈 관리자에게 문의하세요',
   plansCommon: {
-    title: '당신에게 맞는 요금제를 선택하세요',
+    title: {
+      plans: 'plans',
+      description: 'Select the plan that best fits your team\'s needs.',
+    },
     yearlyTip: '연간 구독 시 2개월 무료!',
     mostPopular: '가장 인기 있는',
     planRange: {

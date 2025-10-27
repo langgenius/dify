@@ -36,8 +36,7 @@ const translation = {
     variableNamePlaceholder: '變量名',
     searchVar: '搜索變量',
     setVarValuePlaceholder: '設置變量值',
-    needConnectTip: '此節點尚未連接到其他節點',
-    maxTreeDepth: '每個分支最大限制 {{depth}} 個節點',
+    needConnectTip: '此節點尚未連接到其他節點', maxTreeDepth: '每個分支最大限制 {{depth}} 個節點',
     needEndNode: '必須添加結束節點',
     needAnswerNode: '必須添加直接回覆節點',
     workflowProcess: '工作流',
@@ -1001,9 +1000,14 @@ const translation = {
     settingsTab: '設定',
     lastRunTab: '最後一次運行',
     relationsTab: '關係',
+    copyLastRun: '複製上次運行',
+    noLastRunFound: '未找到先前的運行',
+    noMatchingInputsFound: '未從上次運行中找到匹配的輸入',
+    lastRunInputsCopied: '已從上次運行複製 {{count}} 個輸入',
+    copyLastRunError: '複製上次運行輸入失敗',
     noData: {
-      runThisNode: '運行此節點',
       description: '上次運行的結果將顯示在這裡',
+      runThisNode: '運行此節點',
     },
     variableInspect: {
       trigger: {
@@ -1030,6 +1034,7 @@ const translation = {
       exportToolTip: '將變數匯出為檔案',
       largeDataNoExport: '大型資料 - 僅部分預覽',
     },
+    lastOutput: '最後的輸出',
     relations: {
       dependencies: '依賴',
       dependents: '被依賴',
@@ -1038,11 +1043,6 @@ const translation = {
       noDependencies: '無依賴',
       noDependents: '無被依賴',
     },
-    copyLastRun: '複製上一次運行',
-    copyLastRunError: '未能複製上一次運行的輸入',
-    noMatchingInputsFound: '在上次運行中未找到匹配的輸入',
-    noLastRunFound: '沒有找到之前的運行',
-    lastOutput: '最後的輸出',
   },
   sidebar: {
     exportWarning: '導出當前保存的版本',

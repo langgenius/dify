@@ -330,6 +330,7 @@ const translation = {
     'content': 'Nội dung',
     'multi-files': 'Danh sách tập tin',
     'maxNumberOfUploads': 'Số lượt tải lên tối đa',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'json': 'Mã JSON',
     'checkbox': 'Hộp kiểm',
     'optional': 'tùy chọn',

@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'Setări document',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Toate fișierele',
@@ -128,7 +128,7 @@ const translation = {
     notSupportedFileType: 'Acest tip de fișier nu este acceptat',
     emptySearchResult: 'Nu au fost găsite obiecte',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'Confirmare',
@@ -149,6 +149,7 @@ const translation = {
   knowledgeNameAndIconPlaceholder: 'Vă rugăm să introduceți numele bazei de cunoștințe',
   knowledgeDescriptionPlaceholder: 'Descrieți ce este în această bază de cunoștințe. O descriere detaliată permite AI să acceseze mai precis conținutul setului de date. Dacă este gol, Dify va folosi strategia implicită de accesare. (Opțional)',
   inputField: 'Câmp de intrare',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

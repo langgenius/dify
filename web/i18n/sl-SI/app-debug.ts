@@ -394,6 +394,7 @@ const translation = {
     'number': 'Številka',
     'selectDefaultValue': 'Izbira privzete vrednosti',
     'maxNumberOfUploads': 'Največje število nalaganj',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'localUpload': 'Lokalno nalaganje',
     'string': 'Kratko besedilo',
     'paragraph': 'Odstavek',

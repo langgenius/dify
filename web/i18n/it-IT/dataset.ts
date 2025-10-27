@@ -42,11 +42,6 @@ const translation = {
         'Esegui contemporaneamente la ricerca full-text e la ricerca vettoriale, riordina per selezionare la migliore corrispondenza per la query dell\'utente. È necessaria la configurazione delle API del modello Rerank.',
       recommend: 'Consigliato',
     },
-    invertedIndex: {
-      title: 'Indice Invertito',
-      description:
-        'L\'Indice Invertito è una struttura utilizzata per il recupero efficiente. Organizzato per termini, ogni termine punta ai documenti o alle pagine web che lo contengono.',
-    },
     change: 'Cambia',
     changeRetrievalMethod: 'Cambia metodo di recupero',
     keyword_search: {
@@ -244,6 +239,10 @@ const translation = {
     title: 'API di servizio',
     enabled: 'In servizio',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

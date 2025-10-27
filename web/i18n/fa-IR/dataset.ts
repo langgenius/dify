@@ -36,10 +36,6 @@ const translation = {
       description: 'جستجوی متن کامل و برداری را همزمان اجرا می‌کند، دوباره رتبه‌بندی می‌کند تا بهترین تطابق برای درخواست کاربر انتخاب شود. کاربران می‌توانند وزن‌ها را تنظیم کنند یا به یک مدل دوباره رتبه‌بندی تنظیم کنند.',
       recommend: 'توصیه',
     },
-    invertedIndex: {
-      title: 'فهرست معکوس',
-      description: 'فهرست معکوس یک ساختار برای بازیابی کارآمد است. توسط اصطلاحات سازماندهی شده، هر اصطلاح به اسناد یا صفحات وب حاوی آن اشاره می‌کند.',
-    },
     change: 'تغییر',
     changeRetrievalMethod: 'تغییر روش بازیابی',
     keyword_search: {
@@ -237,6 +233,10 @@ const translation = {
     enabled: 'در حال خدمت',
     title: 'رابط برنامه‌نویسی سرویس',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

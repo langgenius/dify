@@ -335,6 +335,7 @@ const translation = {
     'uploadFileTypes': 'Încărcați tipuri de fișiere',
     'localUpload': 'Încărcare locală',
     'maxNumberOfUploads': 'Numărul maxim de încărcări',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'both': 'Ambii',
     'optional': 'opțional',
     'jsonSchema': 'Schema JSON',

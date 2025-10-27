@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'تنظیمات سند',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'همه فایل ها',
@@ -128,7 +128,7 @@ const translation = {
     emptySearchResult: 'هیچ موردی یافت نشد',
     notSupportedFileType: 'این نوع فایل پشتیبانی نمی شود',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'تایید',
@@ -149,6 +149,7 @@ const translation = {
   editPipelineInfo: 'ویرایش اطلاعات خط لوله',
   knowledgeNameAndIconPlaceholder: 'لطفا نام پایگاه دانش را وارد کنید',
   knowledgeDescriptionPlaceholder: 'آنچه در این پایگاه دانش وجود دارد را شرح دهید. توضیحات دقیق به هوش مصنوعی اجازه می دهد تا با دقت بیشتری به محتوای مجموعه داده دسترسی داشته باشد. اگر خالی باشد، Dify از استراتژی ضربه پیش فرض استفاده می کند. (اختیاری)',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

@@ -36,10 +36,6 @@ const translation = {
       description: 'Executați căutări full-text și căutări vectoriale în același timp, reclasificați pentru a selecta cea mai bună potrivire pentru interogarea utilizatorului. Configurarea API-ului modelului Rerank este necesară.',
       recommend: 'Recomandat',
     },
-    invertedIndex: {
-      title: 'Index Inversat',
-      description: 'Indexul inversat este o structură utilizată pentru recuperare eficientă. Organizat după termeni, fiecare termen indică documentele sau paginile web care îl conțin.',
-    },
     change: 'Schimbă',
     changeRetrievalMethod: 'Schimbă metoda de recuperare',
     keyword_search: {
@@ -237,6 +233,10 @@ const translation = {
     enabled: 'În serviciu',
     title: 'API de servicii',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

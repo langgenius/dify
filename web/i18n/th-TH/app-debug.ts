@@ -388,6 +388,7 @@ const translation = {
     'single-file': 'ไฟล์เดียว',
     'select': 'เลือก',
     'maxNumberOfUploads': 'จํานวนการอัปโหลดสูงสุด',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'editModalTitle': 'แก้ไขฟิลด์อินพุต',
     'apiBasedVar': 'ตัวแปรที่ใช้ API',
     'paragraph': 'วรรค',

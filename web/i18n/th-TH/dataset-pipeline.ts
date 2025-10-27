@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'การตั้งค่าเอกสาร',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       searchPlaceholder: 'ค้นหาไฟล์...',
@@ -128,7 +128,7 @@ const translation = {
     notSupportedFileType: 'ไม่รองรับชนิดแฟ้มนี้',
     emptyFolder: 'โฟลเดอร์นี้ว่างเปล่า',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'การยืนยัน',
@@ -149,6 +149,7 @@ const translation = {
   editPipelineInfo: 'แก้ไขข้อมูลไปป์ไลน์',
   pipelineNameAndIcon: 'ชื่อและไอคอนไปป์ไลน์',
   knowledgeDescriptionPlaceholder: 'อธิบายสิ่งที่อยู่ในฐานความรู้นี้ คําอธิบายโดยละเอียดช่วยให้ AI สามารถเข้าถึงเนื้อหาของชุดข้อมูลได้แม่นยํายิ่งขึ้น หากว่างเปล่า Dify จะใช้กลยุทธ์การโจมตีเริ่มต้น (ไม่บังคับ)',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

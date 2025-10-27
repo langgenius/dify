@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'Настройки документа',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Все файлы',
@@ -128,7 +128,7 @@ const translation = {
     emptySearchResult: 'Предметы не найдены',
     notSupportedFileType: 'Этот тип файлов не поддерживается',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'Подтверждение',
@@ -149,6 +149,7 @@ const translation = {
   knowledgeNameAndIconPlaceholder: 'Пожалуйста, введите название базы знаний',
   editPipelineInfo: 'Редактирование сведений о воронке продаж',
   knowledgeDescriptionPlaceholder: 'Опишите, что входит в эту базу знаний. Подробное описание позволяет ИИ более точно получать доступ к содержимому набора данных. Если значение пусто, Dify будет использовать стратегию попадания по умолчанию. (Дополнительный)',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

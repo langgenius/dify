@@ -8,7 +8,10 @@ const translation = {
   viewBilling: 'Administrar facturación y suscripciones',
   buyPermissionDeniedTip: 'Por favor, contacta al administrador de tu empresa para suscribirte',
   plansCommon: {
-    title: 'Elige un plan que sea adecuado para ti',
+    title: {
+      plans: 'plans',
+      description: 'Select the plan that best fits your team\'s needs.',
+    },
     yearlyTip: '¡Obtén 2 meses gratis al suscribirte anualmente!',
     mostPopular: 'Más Popular',
     planRange: {

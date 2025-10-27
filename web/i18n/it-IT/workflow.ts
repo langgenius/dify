@@ -36,8 +36,7 @@ const translation = {
     searchVar: 'Cerca variabile',
     variableNamePlaceholder: 'Nome variabile',
     setVarValuePlaceholder: 'Imposta variabile',
-    needConnectTip: 'Questo passaggio non è collegato a nulla',
-    maxTreeDepth: 'Limite massimo di {{depth}} nodi per ramo',
+    needConnectTip: 'Questo passaggio non è collegato a nulla', maxTreeDepth: 'Limite massimo di {{depth}} nodi per ramo',
     workflowProcess: 'Processo di flusso di lavoro',
     notRunning: 'Non ancora in esecuzione',
     previewPlaceholder:

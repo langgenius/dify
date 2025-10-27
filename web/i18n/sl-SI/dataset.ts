@@ -108,10 +108,6 @@ const translation = {
       description: 'Istočasno izvede iskanje celotnega besedila in vektorsko iskanje ter ponovno razvrsti zadetke, da izbere najboljše ujemanje za uporabnikovo poizvedbo. Uporabniki lahko določijo uteži ali konfigurirajo model za ponovno razvrščanje.',
       recommend: 'Priporočamo',
     },
-    invertedIndex: {
-      title: 'Inverzni indeks',
-      description: 'Inverzni indeks je struktura, ki se uporablja za učinkovito pridobivanje. Organizirano po izrazih, vsak izraz kaže na dokumente ali spletne strani, ki ga vsebujejo.',
-    },
     change: 'Spremeni',
     changeRetrievalMethod: 'Spremeni metodo pridobivanja',
     keyword_search: {
@@ -237,6 +233,10 @@ const translation = {
     disabled: 'Onemogočeno',
     enabled: 'V storitvi',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation
