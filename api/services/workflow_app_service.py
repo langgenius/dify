@@ -1,7 +1,6 @@
 import json
 import uuid
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
@@ -183,18 +182,17 @@ class WorkflowAppService:
             )
             plugin_trigger_map = {plugin.node_id: plugin for plugin in plugin_triggers}
 
-        provider_cache: dict[str, dict[str, Any]] = {}
+        provider_cache: dict[str, dict[str, str]] = {}
 
-        def resolve_provider(provider_id: str) -> dict[str, Any]:
+        def resolve_provider(provider_id: str) -> dict[str, str]:
             if provider_id in provider_cache:
                 return provider_cache[provider_id]
-            metadata: dict[str, Any] = {}
+            metadata: dict[str, str] = {}
             try:
                 controller = TriggerManager.get_trigger_provider(app_model.tenant_id, TriggerProviderID(provider_id))
                 api_entity = controller.to_api_entity()
                 metadata = {
                     "provider_name": api_entity.name,
-                    "provider_label": api_entity.label,
                     "icon": api_entity.icon or "",
                     "plugin_id": controller.plugin_id,
                     "plugin_unique_identifier": controller.plugin_unique_identifier,

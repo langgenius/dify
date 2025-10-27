@@ -6,7 +6,6 @@ trigger_fields = {
     "title": fields.String,
     "node_id": fields.String,
     "provider_name": fields.String,
-    "provider_label": fields.Raw,
     "provider_id": fields.String,
     "subscription_id": fields.String,
     "event_name": fields.String,

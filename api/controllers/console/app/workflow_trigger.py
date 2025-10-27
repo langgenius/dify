@@ -1,5 +1,4 @@
 import logging
-from typing import Any
 
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy import select
@@ -100,12 +99,12 @@ class AppTriggersApi(Resource):
                 plugin_trigger_map = {plugin_trigger.node_id: plugin_trigger for plugin_trigger in plugin_triggers}
 
         tenant_id = current_user.current_tenant_id if isinstance(current_user, Account) else None
-        provider_cache: dict[str, dict[str, Any]] = {}
+        provider_cache: dict[str, dict[str, str]] = {}
 
-        def resolve_provider_metadata(provider_id: str) -> dict[str, Any]:
+        def resolve_provider_metadata(provider_id: str) -> dict[str, str]:
             if provider_id in provider_cache:
                 return provider_cache[provider_id]
-            metadata: dict[str, Any] = {}
+            metadata: dict[str, str] = {}
             if not tenant_id:
                 provider_cache[provider_id] = metadata
                 return metadata
@@ -117,7 +116,6 @@ class AppTriggersApi(Resource):
                     "plugin_unique_identifier": controller.plugin_unique_identifier,
                     "icon": api_entity.icon or "",
                     "provider_name": api_entity.name,
-                    "provider_label": api_entity.label,
                 }
             except Exception:
                 metadata = {}
@@ -139,7 +137,6 @@ class AppTriggersApi(Resource):
                 trigger.icon = metadata.get("icon", "")  # type: ignore[attr-defined]
                 if not trigger.provider_name:
                     trigger.provider_name = metadata.get("provider_name", "")
-                trigger.provider_label = metadata.get("provider_label")  # type: ignore[attr-defined]
             else:
                 trigger.icon = ""  # type: ignore[attr-defined]
 
@@ -204,7 +201,6 @@ class AppTriggerEnableApi(Resource):
                     trigger.event_name = plugin_trigger.event_name  # type: ignore[attr-defined]
                     trigger.plugin_id = controller.plugin_id  # type: ignore[attr-defined]
                     trigger.plugin_unique_identifier = controller.plugin_unique_identifier  # type: ignore[attr-defined]
-                    trigger.provider_label = controller.to_api_entity().label  # type: ignore[attr-defined]
                     plugin_icon = controller.to_api_entity().icon or ""
                 except Exception:
                     plugin_icon = ""
