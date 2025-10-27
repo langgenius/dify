@@ -5,6 +5,7 @@ This module tests that Service API calls bypass variable truncation to maintain
 backward compatibility and provide complete data.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -14,19 +15,20 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
+    QueueEvent,
     QueueIterationStartEvent,
     QueueLoopStartEvent,
+    QueueNodeExceptionEvent,
+    QueueNodeFailedEvent,
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
 )
-from core.variables.segments import StringSegment
 from core.workflow.enums import NodeType
 from core.workflow.system_variable import SystemVariable
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.model import AppMode
-from services.variable_truncator import DummyVariableTruncator, TruncationResult, VariableTruncator
 
 
 @dataclass
@@ -34,7 +36,7 @@ class TestCase:
     """Test case data for table-driven tests."""
 
     name: str
-    invoke_from: str
+    invoke_from: InvokeFrom
     expected_truncation_enabled: bool
     description: str
 
@@ -81,7 +83,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         """Create test system variables."""
         return SystemVariable()
 
-    def create_test_converter(self, invoke_from: InvokeFrom) -> Any:
+    def create_test_converter(self, invoke_from: InvokeFrom) -> WorkflowResponseConverter:
         """Create WorkflowResponseConverter with specified invoke_from."""
         entity = self.create_test_app_generate_entity(invoke_from)
         user = self.create_test_user()
@@ -140,64 +142,19 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         """Test that the correct truncator is selected based on invoke_from."""
         converter = self.create_test_converter(test_case.invoke_from)
 
-        # Check that the correct truncator type is used
-        if test_case.expected_truncation_enabled:
-            assert isinstance(converter._truncator, VariableTruncator)
-        else:
-            assert isinstance(converter._truncator, DummyVariableTruncator)
+        # Test truncation behavior instead of checking private attribute
 
-    def test_service_api_truncator_no_op_mapping(self):
-        """Test that Service API truncator doesn't truncate variable mappings."""
-        converter = self.create_test_converter(InvokeFrom.SERVICE_API)
-
-        # Create large test data that would normally be truncated
-        large_data = {
-            "large_string": "x" * 10000,  # Large string
-            "large_list": list(range(1000)),  # Large array
-            "nested_data": {"deep_nested": {"very_deep": {"value": "x" * 5000}}},
-        }
-
-        truncated_data, is_truncated = converter._truncator.truncate_variable_mapping(large_data)
-
-        # Service API should not truncate
-        assert not is_truncated
-        assert truncated_data == large_data
-
-    def test_web_app_truncator_works_normally(self):
-        """Test that web app truncator still works normally."""
-        converter = self.create_test_converter(InvokeFrom.WEB_APP)
-
-        # Create large test data that would normally be truncated
-        large_data = {
-            "large_string": "x" * 10000,  # Large string
-            "large_list": list(range(2000)),  # Large array
-        }
-
-        truncated_data, is_truncated = converter._truncator.truncate_variable_mapping(large_data)
-
-        # Web app should truncate
-        assert is_truncated
-        # The exact truncated format depends on VariableTruncator implementation
-        # Just verify it's different from original and smaller
-        assert truncated_data != large_data
-
-    def test_service_api_node_finish_event_no_truncation(self):
-        """Test that Service API doesn't truncate node finish events."""
-        converter = self.create_test_converter(InvokeFrom.SERVICE_API)
-
-        # Create test event with large data
-        large_inputs = {"input1": "x" * 5000, "input2": list(range(100))}
-        large_process_data = {"process1": "y" * 5000, "process2": {"nested": "z" * 1000}}
-        large_outputs = {"output1": "result" * 1000, "output2": list(range(50))}
+        # Create a test event with large data
+        large_value = {"key": ["x"] * 2000}  # Large data that would be truncated
 
         event = QueueNodeSucceededEvent(
             node_execution_id="test_node_exec_id",
             node_id="test_node",
             node_type=NodeType.LLM,
             start_at=naive_utc_now(),
-            inputs=large_inputs,
-            process_data=large_process_data,
-            outputs=large_outputs,
+            inputs=large_value,
+            process_data=large_value,
+            outputs=large_value,
             error=None,
             execution_metadata=None,
             in_iteration_id=None,
@@ -209,8 +166,182 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             task_id="test_task",
         )
 
-        # Verify response contains full data (not truncated)
+        # Verify response is not None
         assert response is not None
+
+        # Verify truncation behavior matches expectations
+        if test_case.expected_truncation_enabled:
+            # SERVICE_API should not truncate
+            assert response.data.inputs_truncated
+            assert response.data.process_data_truncated
+            assert response.data.outputs_truncated
+        else:
+            # SERVICE_API should not truncate
+            assert not response.data.inputs_truncated
+            assert not response.data.process_data_truncated
+            assert not response.data.outputs_truncated
+
+    def test_service_api_truncator_no_op_mapping(self):
+        """Test that Service API truncator doesn't truncate variable mappings."""
+        converter = self.create_test_converter(InvokeFrom.SERVICE_API)
+
+        # Create a test event with large data
+        large_value: dict[str, Any] = {
+            "large_string": "x" * 10000,  # Large string
+            "large_list": list(range(2000)),  # Large array
+            "nested_data": {"deep_nested": {"very_deep": {"value": "x" * 5000}}},
+        }
+
+        event = QueueNodeSucceededEvent(
+            node_execution_id="test_node_exec_id",
+            node_id="test_node",
+            node_type=NodeType.LLM,
+            start_at=naive_utc_now(),
+            inputs=large_value,
+            process_data=large_value,
+            outputs=large_value,
+            error=None,
+            execution_metadata=None,
+            in_iteration_id=None,
+            in_loop_id=None,
+        )
+
+        response = converter.workflow_node_finish_to_stream_response(
+            event=event,
+            task_id="test_task",
+        )
+
+        # Verify response is not None
+        data = response.data
+        assert data.inputs == large_value
+        assert data.process_data == large_value
+        assert data.outputs == large_value
+        # Service API should not truncate
+        assert data.inputs_truncated is False
+        assert data.process_data_truncated is False
+        assert data.outputs_truncated is False
+
+    def test_web_app_truncator_works_normally(self):
+        """Test that web app truncator still works normally."""
+        converter = self.create_test_converter(InvokeFrom.WEB_APP)
+
+        # Create a test event with large data
+        large_value = {
+            "large_string": "x" * 10000,  # Large string
+            "large_list": list(range(2000)),  # Large array
+        }
+
+        event = QueueNodeSucceededEvent(
+            node_execution_id="test_node_exec_id",
+            node_id="test_node",
+            node_type=NodeType.LLM,
+            start_at=naive_utc_now(),
+            inputs=large_value,
+            process_data=large_value,
+            outputs=large_value,
+            error=None,
+            execution_metadata=None,
+            in_iteration_id=None,
+            in_loop_id=None,
+        )
+
+        response = converter.workflow_node_finish_to_stream_response(
+            event=event,
+            task_id="test_task",
+        )
+
+        # Verify response is not None
+        assert response is not None
+
+        # Web app should truncate
+        data = response.data
+        assert data.inputs != large_value
+        assert data.process_data != large_value
+        assert data.outputs != large_value
+        # The exact behavior depends on VariableTruncator implementation
+        # Just verify that truncation flags are present
+        assert data.inputs_truncated is True
+        assert data.process_data_truncated is True
+        assert data.outputs_truncated is True
+
+    @staticmethod
+    def _create_event_by_type(
+        type_: QueueEvent, inputs: Mapping[str, Any], process_data: Mapping[str, Any], outputs: Mapping[str, Any]
+    ) -> QueueNodeSucceededEvent | QueueNodeFailedEvent | QueueNodeExceptionEvent:
+        if type_ == QueueEvent.NODE_SUCCEEDED:
+            return QueueNodeSucceededEvent(
+                node_execution_id="test_node_exec_id",
+                node_id="test_node",
+                node_type=NodeType.LLM,
+                start_at=naive_utc_now(),
+                inputs=inputs,
+                process_data=process_data,
+                outputs=outputs,
+                error=None,
+                execution_metadata=None,
+                in_iteration_id=None,
+                in_loop_id=None,
+            )
+        elif type_ == QueueEvent.NODE_FAILED:
+            return QueueNodeFailedEvent(
+                node_execution_id="test_node_exec_id",
+                node_id="test_node",
+                node_type=NodeType.LLM,
+                start_at=naive_utc_now(),
+                inputs=inputs,
+                process_data=process_data,
+                outputs=outputs,
+                error="oops",
+                execution_metadata=None,
+                in_iteration_id=None,
+                in_loop_id=None,
+            )
+        elif type_ == QueueEvent.NODE_EXCEPTION:
+            return QueueNodeExceptionEvent(
+                node_execution_id="test_node_exec_id",
+                node_id="test_node",
+                node_type=NodeType.LLM,
+                start_at=naive_utc_now(),
+                inputs=inputs,
+                process_data=process_data,
+                outputs=outputs,
+                error="oops",
+                execution_metadata=None,
+                in_iteration_id=None,
+                in_loop_id=None,
+            )
+        else:
+            raise Exception("unknown type.")
+
+    @pytest.mark.parametrize(
+        "event_type",
+        [
+            QueueEvent.NODE_SUCCEEDED,
+            QueueEvent.NODE_FAILED,
+            QueueEvent.NODE_EXCEPTION,
+        ],
+    )
+    def test_service_api_node_finish_event_no_truncation(self, event_type: QueueEvent):
+        """Test that Service API doesn't truncate node finish events."""
+        converter = self.create_test_converter(InvokeFrom.SERVICE_API)
+        # Create test event with large data
+        large_inputs = {"input1": "x" * 5000, "input2": list(range(2000))}
+        large_process_data = {"process1": "y" * 5000, "process2": {"nested": ["z"] * 2000}}
+        large_outputs = {"output1": "result" * 1000, "output2": list(range(2000))}
+
+        event = TestWorkflowResponseConverterServiceApiTruncation._create_event_by_type(
+            event_type, large_inputs, large_process_data, large_outputs
+        )
+
+        response = converter.workflow_node_finish_to_stream_response(
+            event=event,
+            task_id="test_task",
+        )
+
+        # Verify response is not None
+        assert response is not None
+
+        # Verify response contains full data (not truncated)
         assert response.data.inputs == large_inputs
         assert response.data.process_data == large_process_data
         assert response.data.outputs == large_outputs
@@ -268,8 +399,10 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             task_id="test_task",
         )
 
-        # Verify response contains full data (not truncated)
+        # Verify response is not None
         assert response is not None
+
+        # Verify response contains full data (not truncated)
         assert response.data.inputs == large_inputs
         assert response.data.process_data == large_process_data
         assert response.data.outputs == large_outputs
@@ -282,7 +415,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         converter = self.create_test_converter(InvokeFrom.SERVICE_API)
 
         # Test iteration start event
-        large_inputs = {"iteration_input": "x" * 5000}
+        large_value = {"iteration_input": ["x"] * 2000}
 
         start_event = QueueIterationStartEvent(
             node_execution_id="test_iter_exec_id",
@@ -291,7 +424,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             node_title="Test Iteration",
             node_run_index=0,
             start_at=naive_utc_now(),
-            inputs=large_inputs,
+            inputs=large_value,
             metadata={},
         )
 
@@ -302,7 +435,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         )
 
         assert response is not None
-        assert response.data.inputs == large_inputs
+        assert response.data.inputs == large_value
         assert not response.data.inputs_truncated
 
     def test_service_api_loop_events_no_truncation(self):
@@ -310,7 +443,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         converter = self.create_test_converter(InvokeFrom.SERVICE_API)
 
         # Test loop start event
-        large_inputs = {"loop_input": "x" * 5000}
+        large_inputs = {"loop_input": ["x"] * 2000}
 
         start_event = QueueLoopStartEvent(
             node_execution_id="test_loop_exec_id",
@@ -338,9 +471,9 @@ class TestWorkflowResponseConverterServiceApiTruncation:
         converter = self.create_test_converter(InvokeFrom.WEB_APP)
 
         # Create test event with large data that should be truncated
-        large_inputs = {"input1": "x" * 10000}
-        large_process_data = {"process1": "y" * 10000}
-        large_outputs = {"output1": "z" * 10000}
+        large_inputs = {"input1": ["x"] * 2000}
+        large_process_data = {"process1": ["y"] * 2000}
+        large_outputs = {"output1": ["z"] * 2000}
 
         event = QueueNodeSucceededEvent(
             node_execution_id="test_node_exec_id",
@@ -361,29 +494,16 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             task_id="test_task",
         )
 
-        # Verify response contains truncated data
+        # Verify response is not None
         assert response is not None
+
+        # Verify response contains truncated data
         # The exact behavior depends on VariableTruncator implementation
         # Just verify truncation flags are set correctly (may or may not be truncated depending on size)
         # At minimum, the truncation mechanism should work
         assert isinstance(response.data.inputs, dict)
+        assert response.data.inputs_truncated
         assert isinstance(response.data.process_data, dict)
+        assert response.data.process_data_truncated
         assert isinstance(response.data.outputs, dict)
-
-    def test_dummy_variable_truncator_methods(self):
-        """Test DummyVariableTruncator methods work correctly."""
-        truncator = DummyVariableTruncator()
-
-        # Test truncate_variable_mapping
-        test_data = {"key1": "value1", "key2": ["item1", "item2"]}
-        result, is_truncated = truncator.truncate_variable_mapping(test_data)
-
-        assert result == test_data
-        assert not is_truncated
-
-        # Test truncate method
-        segment = StringSegment(value="test string")
-        result = truncator.truncate(segment)
-        assert isinstance(result, TruncationResult)
-        assert result.result == segment
-        assert result.truncated is False
+        assert response.data.outputs_truncated

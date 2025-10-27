@@ -51,7 +51,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
-from services.variable_truncator import DummyVariableTruncator, VariableTruncator
+from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 
 NodeExecutionId = NewType("NodeExecutionId", str)
 
@@ -70,6 +70,8 @@ class _NodeSnapshot:
 
 
 class WorkflowResponseConverter:
+    _truncator: BaseTruncator
+
     def __init__(
         self,
         *,
@@ -82,7 +84,7 @@ class WorkflowResponseConverter:
         self._system_variables = system_variables
         self._workflow_inputs = self._prepare_workflow_inputs()
 
-        # Disable truncation for SERVICE_API calls
+        # Disable truncation for SERVICE_API calls to keep backward compatibility.
         if application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
             self._truncator = DummyVariableTruncator()
         else:

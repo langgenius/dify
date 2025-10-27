@@ -1,4 +1,5 @@
 import dataclasses
+from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any, Generic, TypeAlias, TypeVar, overload
 
@@ -66,7 +67,17 @@ class TruncationResult:
     truncated: bool
 
 
-class VariableTruncator:
+class BaseTruncator(ABC):
+    @abstractmethod
+    def truncate(self, segment: Segment) -> TruncationResult:
+        pass
+
+    @abstractmethod
+    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
+        pass
+
+
+class VariableTruncator(BaseTruncator):
     """
     Handles variable truncation with structure-preserving strategies.
 
@@ -415,7 +426,7 @@ class VariableTruncator:
             raise AssertionError("this statement should be unreachable.")
 
 
-class DummyVariableTruncator:
+class DummyVariableTruncator(BaseTruncator):
     """
     A no-op variable truncator that doesn't truncate any data.
 
