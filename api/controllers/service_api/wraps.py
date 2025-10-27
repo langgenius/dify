@@ -92,25 +92,25 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
             else:
                 # For service API without end-user context, ensure an Account is logged in
                 # so services relying on current_account_with_tenant() work correctly.
-                tenant_account_join = (
-                    db.session.query(Tenant, TenantAccountJoin, Account)
-                    .where(Tenant.id == app_model.tenant_id)
-                    .where(TenantAccountJoin.tenant_id == Tenant.id)
-                    .where(TenantAccountJoin.role.in_(["owner"]))
-                    .where(Tenant.status == TenantStatus.NORMAL)
-                    .where(TenantAccountJoin.account_id == Account.id)
-                    .one_or_none()
+                tenant_owner_info = (
+                    db.session.query(Tenant, Account)
+                    .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
+                    .join(Account, TenantAccountJoin.account_id == Account.id)
+                    .filter(
+                        Tenant.id == app_model.tenant_id,
+                        TenantAccountJoin.role.in_(["owner"]),
+                        Tenant.status == TenantStatus.NORMAL,
+                    )
+                    .first()
                 )
-                if tenant_account_join:
-                    tenant_model, ta, account = tenant_account_join
-                    if account:
-                        account.current_tenant = tenant_model
-                        current_app.login_manager._update_request_context_with_user(account)  # type: ignore
-                        user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
-                    else:
-                        raise Unauthorized("Tenant owner account does not exist.")
+
+                if tenant_owner_info:
+                    tenant_model, account = tenant_owner_info
+                    account.current_tenant = tenant_model
+                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
                 else:
-                    raise Unauthorized("Tenant does not exist.")
+                    raise Unauthorized("Tenant owner account not found or tenant is not active.")
 
             return view_func(*args, **kwargs)
 
