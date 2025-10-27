@@ -73,6 +73,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
     <div className='py-2'>
       {/* delivery methods */}
       <DeliveryMethod
+        nodeId={id}
         value={inputs.delivery_methods || []}
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}

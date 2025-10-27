@@ -217,3 +217,10 @@ export const useEditInspectorVar = (flowType: FlowType, flowId: string) => {
     },
   })
 }
+
+export const useTestEmailSender = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'test email sender'],
+    mutationFn: async (data: { appID: string, nodeID: string, deliveryID: string }) => post<CommonResponse>(`apps/${data.appID}/human-input/test-delivery/${data.nodeID}/${data.deliveryID}`),
+  })
+}

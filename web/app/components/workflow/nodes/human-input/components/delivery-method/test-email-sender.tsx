@@ -21,7 +21,9 @@ import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { fetchMembers } from '@/service/common'
+import { useTestEmailSender } from '@/service/use-workflow'
 import { noop, unionBy } from 'lodash-es'
 import { isOutput } from '../../utils'
 import cn from '@/utils/classnames'
@@ -29,6 +31,8 @@ import cn from '@/utils/classnames'
 const i18nPrefix = 'workflow.nodes.humanInput'
 
 type EmailConfigureModalProps = {
+  nodeId: string
+  deliveryId: string
   isShow: boolean
   onClose: () => void
   onConfirm: (data: any) => void
@@ -60,6 +64,8 @@ const getOriginVar = (valueSelector: string[], list: NodeOutPutVar[]) => {
 }
 
 const EmailSenderModal = ({
+  nodeId,
+  deliveryId,
   isShow,
   onClose,
   onConfirm,
@@ -69,6 +75,8 @@ const EmailSenderModal = ({
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation()
   const { userProfile, currentWorkspace } = useAppContext()
+  const appDetail = useAppStore(state => state.appDetail)
+  const { mutateAsync: testEmailSender } = useTestEmailSender()
 
   const debugEnabled = !!config?.debug_mode
   const onlyWholeTeam = config?.recipients?.whole_workspace && (!config?.recipients?.items || config?.recipients?.items.length === 0)
@@ -123,6 +131,7 @@ const EmailSenderModal = ({
 
   const [inputs, setInputs] = useState<Record<string, any>>({})
   const [collapsed, setCollapsed] = useState(true)
+  const [sendingEmail, setSendingEmail] = useState(false)
   const [done, setDone] = useState(false)
 
   const handleValueChange = (variable: string, v: string) => {
@@ -132,10 +141,20 @@ const EmailSenderModal = ({
     })
   }
 
-  const handleConfirm = useCallback(() => {
-    // TODO send api
-    setDone(true)
-  }, [onConfirm])
+  const handleConfirm = useCallback(async () => {
+    setSendingEmail(true)
+    try {
+      await testEmailSender({
+        appID: appDetail?.id || '',
+        nodeID: nodeId,
+        deliveryID: deliveryId,
+      })
+      setDone(true)
+    }
+    finally {
+      setSendingEmail(false)
+    }
+  }, [appDetail, onConfirm, nodeId, deliveryId, testEmailSender])
 
   if (done) {
     return (
@@ -302,6 +321,8 @@ const EmailSenderModal = ({
       </>
       <div className='flex flex-row-reverse gap-2 p-6 pt-5'>
         <Button
+          disabled={sendingEmail}
+          loading={sendingEmail}
           variant='primary'
           onClick={handleConfirm}
         >

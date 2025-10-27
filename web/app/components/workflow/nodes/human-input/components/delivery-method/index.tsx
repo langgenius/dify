@@ -13,6 +13,7 @@ import type {
 const i18nPrefix = 'workflow.nodes.humanInput'
 
 type Props = {
+  nodeId: string
   value: DeliveryMethod[]
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
@@ -20,6 +21,7 @@ type Props = {
 }
 
 const DeliveryMethodForm: React.FC<Props> = ({
+  nodeId,
   value,
   nodesOutputVars,
   availableNodes,
@@ -69,6 +71,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
         <div className='space-y-1'>
           {value.map((method, index) => (
             <MethodItem
+              nodeId={nodeId}
               method={method}
               key={index}
               onChange={handleMethodChange}

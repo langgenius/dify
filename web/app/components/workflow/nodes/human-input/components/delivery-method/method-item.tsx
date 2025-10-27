@@ -25,6 +25,7 @@ import TestEmailSender from './test-email-sender'
 const i18nPrefix = 'workflow.nodes.humanInput'
 
 type Props = {
+  nodeId: string
   method: DeliveryMethod
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
@@ -33,6 +34,7 @@ type Props = {
 }
 
 const DeliveryMethodItem: React.FC<Props> = ({
+  nodeId,
   method,
   nodesOutputVars,
   availableNodes,
@@ -134,6 +136,8 @@ const DeliveryMethodItem: React.FC<Props> = ({
       )}
       {showTestEmailModal && (
         <TestEmailSender
+          nodeId={nodeId}
+          deliveryId={method.id}
           isShow={showTestEmailModal}
           config={method.config as EmailConfig}
           nodesOutputVars={nodesOutputVars}
