@@ -1,0 +1,193 @@
+# Cursor Rules for Dify Project - Test Generation
+
+## When Generating Tests
+
+Follow these rules when asked to generate tests for React components:
+
+### Tech Stack
+- Next.js 15 + React 19 + TypeScript
+- Jest 29.7 + React Testing Library 16.0
+- Test environment: @happy-dom/jest-environment
+- File naming: `ComponentName.spec.tsx` (same directory)
+
+### Component Complexity Guidelines
+
+#### 🔴 Very Complex Components (Complexity > 50)
+- **Split before testing**: Break component into smaller pieces
+- **Integration tests**: Test complex workflows end-to-end
+- **Data-driven tests**: Use `test.each()` for multiple scenarios
+- **Performance benchmarks**: Add performance tests for critical paths
+
+#### ⚠️ Complex Components (Complexity 30-50)
+- **Multiple describe blocks**: Group related test cases
+- **Integration scenarios**: Test feature combinations
+- **Organized structure**: Keep tests maintainable
+
+#### 📏 Large Components (500+ lines)
+- **Consider refactoring**: Split into smaller components if possible
+- **Section testing**: Test major sections separately
+- **Helper functions**: Reduce test complexity with utilities
+
+### Test Scenarios
+
+Apply based on component features:
+
+#### 1. Rendering Tests (REQUIRED for all)
+```typescript
+describe('Rendering', () => {
+  it('should render without crashing', () => {
+    render(<Component />)
+    expect(screen.getByRole('...')).toBeInTheDocument()
+  })
+})
+```
+
+#### 2. Props Testing (REQUIRED for all)
+- Test each prop variation
+- Test required vs optional props
+- Test default values
+- Test prop type validation
+
+#### 3. State Management
+
+**State Only (useState):**
+- Test initial state values
+- Test all state transitions
+- Test state reset/cleanup scenarios
+
+**Effects Only (useEffect):**
+- Test effect execution conditions
+- Verify dependencies array correctness
+- Test cleanup on unmount
+
+**State + Effects Combined:**
+- Test state initialization and updates
+- Test useEffect dependencies array
+- Test cleanup functions (return from useEffect)
+- Use `waitFor()` for async state changes
+
+#### 4. Performance Optimization
+
+**useCallback:**
+- Verify callbacks maintain referential equality
+- Test callback dependencies
+- Ensure re-renders don't recreate functions unnecessarily
+
+**useMemo:**
+- Test memoization dependencies
+- Ensure expensive computations are cached
+- Verify memo recomputation conditions
+
+#### 5. Event Handlers
+- Test all onClick, onChange, onSubmit handlers
+- Test keyboard events (Enter, Escape, Tab, etc.)
+- Verify event.preventDefault() calls if needed
+- Test event bubbling/propagation
+- Use `fireEvent` (not userEvent)
+
+#### 6. API Calls & Async Operations
+- Mock all API calls using `jest.mock`
+- Test retry logic if applicable
+- Verify error handling and user feedback
+- Use `waitFor()` for async operations
+
+#### 7. Next.js Routing
+- Mock useRouter, usePathname, useSearchParams
+- Test navigation behavior and parameters
+- Test query string handling
+- Verify route guards/redirects if any
+- Test URL parameter updates
+
+#### 8. Edge Cases (REQUIRED for all)
+- Test null/undefined/empty values
+- Test boundary conditions
+- Test error states
+- Test loading states
+- Test unexpected inputs
+
+#### 9. Accessibility (Optional)
+- Test keyboard navigation
+- Verify ARIA attributes
+- Test focus management
+- Ensure screen reader compatibility
+
+#### 10. Snapshots (use sparingly)
+- Only for stable UI (icons, badges, static layouts)
+- Snapshot small sections only
+- Prefer explicit assertions over snapshots
+- Update snapshots intentionally, not automatically
+
+**Note**: Dify is a desktop app. NO responsive/mobile testing.
+
+### Code Style
+
+- Use `fireEvent` not `userEvent`
+- AAA pattern: Arrange → Act → Assert
+- Descriptive test names: "should [behavior] when [condition]"
+- TypeScript: No `any` types
+- Cleanup: `afterEach(() => jest.clearAllMocks())`
+
+### Dify-Specific Components
+
+#### General
+1. **i18n**: Always return key: `t: (key) => key`
+2. **Toast**: Mock `@/app/components/base/toast`
+3. **Forms**: Test validation thoroughly
+
+#### Workflow Components (`workflow/`)
+- **Node configuration**: Test all node configuration options
+- **Data validation**: Verify input/output validation rules
+- **Variable passing**: Test data flow between nodes
+- **Edge connections**: Test graph structure and connections
+- **Error handling**: Verify handling of invalid configurations
+- **Integration**: Test complete workflow execution paths
+
+#### Dataset Components (`dataset/`)
+- **File upload**: Test file upload and validation
+- **File types**: Verify supported format handling
+- **Pagination**: Test data loading and pagination
+- **Search & filtering**: Test query functionality
+- **Data format handling**: Test various data formats
+- **Error states**: Test upload failures and invalid data
+
+#### Configuration Components (`app/configuration`, `config/`)
+- **Form validation**: Test all validation rules thoroughly
+- **Save/reset functionality**: Test data persistence
+- **Required vs optional fields**: Verify field validation
+- **Configuration persistence**: Test state preservation
+- **Error feedback**: Verify user error messages
+- **Default values**: Test initial configuration state
+
+### Test Strategy Quick Reference
+
+**Always Test:**
+- ✅ Rendering without crashing
+- ✅ Props (required, optional, defaults)
+- ✅ Edge cases (null, undefined, empty)
+
+**Test When Present:**
+- 🔄 **useState** → State initialization, transitions, cleanup
+- ⚡ **useEffect** → Execution, dependencies, cleanup
+- 🎯 **Event handlers** → All onClick, onChange, onSubmit, keyboard events
+- 🌐 **API calls** → Loading, success, error states
+- 🔀 **Routing** → Navigation, params, query strings
+- 🚀 **useCallback/useMemo** → Referential equality, dependencies
+- ⚙️ **Workflow** → Node config, data flow, validation
+- 📚 **Dataset** → Upload, pagination, search
+- 🎛️ **Configuration** → Form validation, persistence
+
+**Complex Components (30+):**
+- Group tests in multiple `describe` blocks
+- Test integration scenarios
+- Consider splitting component before testing
+
+### Coverage Target
+
+Aim for 100% coverage:
+- Line: >95%
+- Branch: >95%
+- Function: 100%
+- Statement: 100%
+
+Generate comprehensive tests covering ALL code paths and scenarios.
+
