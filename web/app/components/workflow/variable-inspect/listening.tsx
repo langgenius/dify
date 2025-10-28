@@ -10,6 +10,7 @@ import { useGetToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
 import type { TFunction } from 'i18next'
 import { getNextExecutionTime } from '@/app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator'
 import type { ScheduleTriggerNodeType } from '@/app/components/workflow/nodes/trigger-schedule/types'
+import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
 
 const resolveListeningDescription = (
   message: string | undefined,
@@ -92,6 +93,9 @@ const Listening: FC<ListeningProps> = ({
     : undefined
   const inferredTriggerType = (triggerNode?.data as { type?: BlockEnum })?.type
   const triggerType = listeningTriggerType || inferredTriggerType || BlockEnum.TriggerWebhook
+  const webhookDebugUrl = triggerType === BlockEnum.TriggerWebhook
+    ? (triggerNode?.data as WebhookTriggerNodeType | undefined)?.webhook_debug_url
+    : undefined
 
   let displayNodes: Node[] = []
 
@@ -151,6 +155,16 @@ const Listening: FC<ListeningProps> = ({
         <div className='system-sm-semibold text-text-secondary'>{t('workflow.debug.variableInspect.listening.title')}</div>
         <div className='system-xs-regular whitespace-pre-line text-text-tertiary'>{description}</div>
       </div>
+      {webhookDebugUrl && (
+        <div className='flex items-center gap-1 rounded-lg transition-colors'>
+          <div className='system-xs-regular whitespace-pre-line text-text-tertiary'>
+            {t('workflow.nodes.triggerWebhook.debugUrlTitle')}
+          </div>
+          <div className='truncate text-xs leading-4 text-text-primary'>
+            {webhookDebugUrl}
+          </div>
+        </div>
+      )}
       <div>
         <Button
           size='medium'
