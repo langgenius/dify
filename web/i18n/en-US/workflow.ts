@@ -792,6 +792,8 @@ const translation = {
         removeAbnormalOutput: 'Remove Abnormal Output',
       },
       answerNodeWarningDesc: 'Parallel mode warning: Answer nodes, conversation variable assignments, and persistent read/write operations within iterations may cause exceptions.',
+      flattenOutput: 'Flatten Output',
+      flattenOutputDesc: 'When enabled, if all iteration outputs are arrays, they will be flattened into a single array. When disabled, outputs will maintain a nested array structure.',
     },
     loop: {
       deleteTitle: 'Delete Loop Node?',

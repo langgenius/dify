@@ -12,7 +12,7 @@ import ConversationVariableModal from './conversation-variable-modal'
 import { useChat } from './hooks'
 import type { ChatWrapperRefType } from './index'
 import Chat from '@/app/components/base/chat/chat'
-import type { ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
+import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import {
   fetchSuggestedQuestions,
@@ -119,7 +119,7 @@ const ChatWrapper = (
     )
   }, [handleSend, workflowStore, conversationId, chatList, appDetail])
 
-  const doRegenerate = useCallback((chatItem: ChatItemInTree, editedQuestion?: { message: string, files?: FileEntity[] }) => {
+  const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
     doSend(editedQuestion ? editedQuestion.message : question.content,

@@ -14,13 +14,19 @@ export const convertToMp3 = (recorder: any) => {
   const { channels, sampleRate } = wav
   const mp3enc = new lamejs.Mp3Encoder(channels, sampleRate, 128)
   const result = recorder.getChannelData()
-  const buffer = []
+  const buffer: BlobPart[] = []
 
   const leftData = result.left && new Int16Array(result.left.buffer, 0, result.left.byteLength / 2)
   const rightData = result.right && new Int16Array(result.right.buffer, 0, result.right.byteLength / 2)
   const remaining = leftData.length + (rightData ? rightData.length : 0)
 
   const maxSamples = 1152
+  const toArrayBuffer = (bytes: Int8Array) => {
+    const arrayBuffer = new ArrayBuffer(bytes.length)
+    new Uint8Array(arrayBuffer).set(bytes)
+    return arrayBuffer
+  }
+
   for (let i = 0; i < remaining; i += maxSamples) {
     const left = leftData.subarray(i, i + maxSamples)
     let right = null
@@ -35,13 +41,13 @@ export const convertToMp3 = (recorder: any) => {
     }
 
     if (mp3buf.length > 0)
-      buffer.push(mp3buf)
+      buffer.push(toArrayBuffer(mp3buf))
   }
 
   const enc = mp3enc.flush()
 
   if (enc.length > 0)
-    buffer.push(enc)
+    buffer.push(toArrayBuffer(enc))
 
   return new Blob(buffer, { type: 'audio/mp3' })
 }

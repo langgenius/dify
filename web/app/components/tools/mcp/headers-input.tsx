@@ -1,6 +1,7 @@
 'use client'
-import React, { useCallback } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid } from 'uuid'
 import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
@@ -8,57 +9,46 @@ import ActionButton from '@/app/components/base/action-button'
 import cn from '@/utils/classnames'
 
 export type HeaderItem = {
+  id: string
   key: string
   value: string
 }
 
 type Props = {
-  headers: Record<string, string>
-  onChange: (headers: Record<string, string>) => void
+  headersItems: HeaderItem[]
+  onChange: (headerItems: HeaderItem[]) => void
   readonly?: boolean
   isMasked?: boolean
 }
 
 const HeadersInput = ({
-  headers,
+  headersItems,
   onChange,
   readonly = false,
   isMasked = false,
 }: Props) => {
   const { t } = useTranslation()
 
-  const headerItems = Object.entries(headers).map(([key, value]) => ({ key, value }))
-
-  const handleItemChange = useCallback((index: number, field: 'key' | 'value', value: string) => {
-    const newItems = [...headerItems]
+  const handleItemChange = (index: number, field: 'key' | 'value', value: string) => {
+    const newItems = [...headersItems]
     newItems[index] = { ...newItems[index], [field]: value }
 
-    const newHeaders = newItems.reduce((acc, item) => {
-      if (item.key.trim())
-        acc[item.key.trim()] = item.value
-      return acc
-    }, {} as Record<string, string>)
+    onChange(newItems)
+  }
 
-    onChange(newHeaders)
-  }, [headerItems, onChange])
+  const handleRemoveItem = (index: number) => {
+    const newItems = headersItems.filter((_, i) => i !== index)
 
-  const handleRemoveItem = useCallback((index: number) => {
-    const newItems = headerItems.filter((_, i) => i !== index)
-    const newHeaders = newItems.reduce((acc, item) => {
-      if (item.key.trim())
-        acc[item.key.trim()] = item.value
+    onChange(newItems)
+  }
 
-      return acc
-    }, {} as Record<string, string>)
-    onChange(newHeaders)
-  }, [headerItems, onChange])
+  const handleAddItem = () => {
+    const newItems = [...headersItems, { id: uuid(), key: '', value: '' }]
 
-  const handleAddItem = useCallback(() => {
-    const newHeaders = { ...headers, '': '' }
-    onChange(newHeaders)
-  }, [headers, onChange])
+    onChange(newItems)
+  }
 
-  if (headerItems.length === 0) {
+  if (headersItems.length === 0) {
     return (
       <div className='space-y-2'>
         <div className='body-xs-regular text-text-tertiary'>
@@ -91,10 +81,10 @@ const HeadersInput = ({
           <div className='h-full w-1/2 border-r border-divider-regular pl-3'>{t('tools.mcp.modal.headerKey')}</div>
           <div className='h-full w-1/2 pl-3 pr-1'>{t('tools.mcp.modal.headerValue')}</div>
         </div>
-        {headerItems.map((item, index) => (
-          <div key={index} className={cn(
+        {headersItems.map((item, index) => (
+          <div key={item.id} className={cn(
             'flex items-center border-divider-regular',
-            index < headerItems.length - 1 && 'border-b',
+            index < headersItems.length - 1 && 'border-b',
           )}>
             <div className='w-1/2 border-r border-divider-regular'>
               <Input
@@ -113,7 +103,7 @@ const HeadersInput = ({
                 className='flex-1 rounded-none border-0'
                 readOnly={readonly}
               />
-              {!readonly && headerItems.length > 1 && (
+              {!readonly && !!headersItems.length && (
                 <ActionButton
                   onClick={() => handleRemoveItem(index)}
                   className='mr-2'
