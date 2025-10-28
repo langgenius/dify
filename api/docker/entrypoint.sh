@@ -35,23 +35,6 @@ if [[ "${MODE}" == "worker" ]]; then
     -Q ${CELERY_QUEUES:-dataset,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation} \
     --prefetch-multiplier=1
 
-elif [[ "${MODE}" == "priority_worker" ]]; then
-  # Get the number of available CPU cores
-  if [ "${CELERY_AUTO_SCALE,,}" = "true" ]; then
-    # Set MAX_WORKERS to the number of available cores if not specified
-    AVAILABLE_CORES=$(nproc)
-    MAX_WORKERS=${CELERY_MAX_WORKERS:-$AVAILABLE_CORES}
-    MIN_WORKERS=${CELERY_MIN_WORKERS:-1}
-    CONCURRENCY_OPTION="--autoscale=${MAX_WORKERS},${MIN_WORKERS}"
-  else
-    CONCURRENCY_OPTION="-c ${CELERY_WORKER_AMOUNT:-1}"
-  fi
-
-  exec celery -A celery_entrypoint.celery worker -P ${CELERY_WORKER_CLASS:-gevent} $CONCURRENCY_OPTION \
-    --max-tasks-per-child ${MAX_TASKS_PER_CHILD:-50} --loglevel ${LOG_LEVEL:-INFO} \
-    -Q ${CELERY_QUEUES:-priority_dataset,priority_pipeline} \
-    --prefetch-multiplier=1
-
 elif [[ "${MODE}" == "beat" ]]; then
   exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO}
 else

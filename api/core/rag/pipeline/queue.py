@@ -1,11 +1,8 @@
 import json
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from extensions.ext_redis import redis_client
-
-T = TypeVar('T')
-
 
 TASK_WRAPPER_PREFIX = "__WRAPPER__:"
 
@@ -23,7 +20,7 @@ class TaskWrapper:
         return cls(data)
 
 
-class TenantSelfTaskQueue(Generic[T]):
+class TenantSelfTaskQueue:
     """
     Simple queue for tenant self tasks, used for tenant self task isolation.
     It uses Redis list to store tasks, and Redis key to store task waiting flag.
@@ -47,7 +44,7 @@ class TenantSelfTaskQueue(Generic[T]):
     def delete_task_key(self):
         redis_client.delete(self.task_key)
 
-    def push_tasks(self, tasks: list[T]):
+    def push_tasks(self, tasks: list):
         serialized_tasks = []
         for task in tasks:
             # Store str list directly, maintaining full compatibility for pipeline scenarios
@@ -61,7 +58,7 @@ class TenantSelfTaskQueue(Generic[T]):
         
         redis_client.lpush(self.queue, *serialized_tasks)
     
-    def pull_tasks(self, count: int = 1) -> list[T]:
+    def pull_tasks(self, count: int = 1) -> list:
         if count <= 0:
             return []
         
@@ -87,6 +84,6 @@ class TenantSelfTaskQueue(Generic[T]):
         
         return tasks
 
-    def get_next_task(self) -> T | None:
+    def get_next_task(self):
         tasks = self.pull_tasks(1)
         return tasks[0] if tasks else None
