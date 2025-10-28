@@ -58,7 +58,7 @@ class TestDocumentIndexingTaskProxy:
 
         # Assert
         assert proxy.tenant_id == tenant_id
-        assert proxy.dateset_id == dataset_id  # Note: typo in original code
+        assert proxy.dataset_id == dataset_id
         assert proxy.document_ids == document_ids
         assert isinstance(proxy.tenant_self_task_queue, TenantSelfTaskQueue)
         assert proxy.tenant_self_task_queue.tenant_id == tenant_id
@@ -313,7 +313,7 @@ class TestDocumentIndexingTaskProxy:
 
         # Assert
         assert proxy.tenant_id == tenant_id
-        assert proxy.dateset_id == dataset_id
+        assert proxy.dataset_id == dataset_id
         assert proxy.document_ids == document_ids
 
     def test_initialization_with_single_document_id(self):
@@ -328,5 +328,5 @@ class TestDocumentIndexingTaskProxy:
 
         # Assert
         assert proxy.tenant_id == tenant_id
-        assert proxy.dateset_id == dataset_id
+        assert proxy.dataset_id == dataset_id
         assert proxy.document_ids == document_ids
