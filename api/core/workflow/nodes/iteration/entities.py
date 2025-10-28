@@ -23,6 +23,7 @@ class IterationNodeData(BaseIterationNodeData):
     is_parallel: bool = False  # open the parallel mode or not
     parallel_nums: int = 10  # the numbers of parallel
     error_handle_mode: ErrorHandleMode = ErrorHandleMode.TERMINATED  # how to handle the error
+    flatten_output: bool = True  # whether to flatten the output array if all elements are lists
 
 
 class IterationStartNodeData(BaseNodeData):

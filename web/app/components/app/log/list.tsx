@@ -983,7 +983,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     if (!showDrawer)
       setShowDrawer(true)
 
-    if (!currentConversation || currentConversation.id !== conversationIdInUrl || (matchedConversation && currentConversation !== matchedConversation))
+    if (!currentConversation || currentConversation.id !== conversationIdInUrl || (!('created_at' in currentConversation) && matchedConversation))
       setCurrentConversation(nextConversation)
 
     if (pendingConversationCacheRef.current?.id === conversationIdInUrl || matchedConversation)

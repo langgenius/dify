@@ -52,7 +52,7 @@ export type FormOption = {
   icon?: string
 }
 
-export type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any>
+export type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any, any, any>
 
 export type FormSchema = {
   type: FormTypeEnum | ((form: AnyFormApi) => FormTypeEnum)
