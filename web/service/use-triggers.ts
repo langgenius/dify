@@ -299,8 +299,10 @@ export const useTriggerPluginDynamicOptions = (payload: {
           provider_type: 'trigger', // Add required provider_type parameter
         },
       },
+      { silent: true },
     ),
     enabled: enabled && !!payload.plugin_id && !!payload.provider && !!payload.action && !!payload.parameter && !!payload.credential_id,
+    retry: 0,
   })
 }
 

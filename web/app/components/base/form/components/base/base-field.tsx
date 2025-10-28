@@ -4,7 +4,6 @@ import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/
 import Input from '@/app/components/base/input'
 import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
-import { PortalSelect } from '@/app/components/base/select'
 import PureSelect from '@/app/components/base/select/pure'
 import Tooltip from '@/app/components/base/tooltip'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
@@ -161,7 +160,7 @@ const BaseField = ({
 
   const value = useStore(field.form.store, s => s.values[field.name])
 
-  const { data: dynamicOptionsData, isLoading: isDynamicOptionsLoading } = useTriggerPluginDynamicOptions(
+  const { data: dynamicOptionsData, isLoading: isDynamicOptionsLoading, error: dynamicOptionsError } = useTriggerPluginDynamicOptions(
     dynamicSelectParams || {
       plugin_id: '',
       provider: '',
@@ -176,7 +175,7 @@ const BaseField = ({
     if (!dynamicOptionsData?.options)
       return []
     return dynamicOptionsData.options.map(option => ({
-      name: getTranslatedContent({ content: option.label, render: renderI18nObject }),
+      label: getTranslatedContent({ content: option.label, render: renderI18nObject }),
       value: option.value,
     }))
   }, [dynamicOptionsData, renderI18nObject])
@@ -250,17 +249,20 @@ const BaseField = ({
           }
           {
             formItemType === FormTypeEnum.dynamicSelect && (
-              <PortalSelect
+              <PureSelect
+                options={dynamicOptions}
                 value={value}
-                onSelect={(item: any) => field.handleChange(item.value)}
-                readonly={disabled || isDynamicOptionsLoading}
+                onChange={field.handleChange}
+                disabled={disabled || isDynamicOptionsLoading}
                 placeholder={
                   isDynamicOptionsLoading
-                    ? 'Loading options...'
-                    : translatedPlaceholder || 'Select an option'
+                    ? t('common.dynamicSelect.loading')
+                    : translatedPlaceholder
                 }
-                items={dynamicOptions}
-                popupClassName="z-[9999]"
+                {...(dynamicOptionsError ? { popupProps: { title: t('common.dynamicSelect.error'), titleClassName: 'text-text-destructive-secondary' } }
+                  : (!dynamicOptions.length ? { popupProps: { title: t('common.dynamicSelect.noData') } } : {}))}
+                triggerPopupSameWidth
+                multiple={multiple}
               />
             )
           }

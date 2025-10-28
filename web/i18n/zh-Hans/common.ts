@@ -776,6 +776,12 @@ const translation = {
     title: '提供反馈',
     placeholder: '请描述发生了什么问题或我们可以如何改进...',
   },
+  dynamicSelect: {
+    error: '加载选项失败',
+    noData: '没有可用的选项',
+    loading: '加载选项...',
+    selected: '已选择 {{count}} 项',
+  },
 }
 
 export default translation
