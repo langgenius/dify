@@ -409,5 +409,6 @@ export const useWorkflowRunValidation = () => {
   return {
     validateBeforeRun,
     hasValidationErrors: needWarningNodes.length > 0,
+    warningNodes: needWarningNodes,
   }
 }
