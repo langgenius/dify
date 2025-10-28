@@ -412,12 +412,14 @@ class Executor:
                 body_string += f"--{boundary}\r\n"
                 body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
                 # decode content safely
-                # 🔴 修改：不直接解码 content，而是显示占位符
-                body_string += f"<file_content_binary, size={len(content)} bytes>\r\n"
+                # RED: Modification - Do not directly decode content, show a placeholder with file metadata instead
+                # Includes filename, size, and MIME type for better logging context without exposing raw content
+                body_string += f"<file_content_binary: '{file_entry[1][0] or "unknown"}', size={len(content)} bytes, type='{file_entry[1][2] or "application/octet-stream"}'>\r\n"
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:
-                # 🔴 修改：如果 content 是 bytes，不直接解码
+                # RED: Modification - If content is bytes, do not directly decode it, show a placeholder with size
+                # Provides content size information for binary data without exposing the raw bytes
                 if isinstance(self.content, bytes):
                     body_string = f"<binary_content, size={len(self.content)} bytes>"
                 else:
