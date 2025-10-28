@@ -30,6 +30,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
+import { useWorkflowRunValidation } from '@/app/components/workflow/hooks/use-checklist'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { useInvalidLastRun } from '@/service/use-workflow'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
@@ -145,6 +146,8 @@ const useLastRun = <T>({
     isRunAfterSingleRun,
   })
 
+  const { validateBeforeRun } = useWorkflowRunValidation()
+
   const {
     hideSingleRun,
     handleRun: doCallRunApi,
@@ -217,6 +220,8 @@ const useLastRun = <T>({
   const invalidLastRun = useInvalidLastRun(flowType, flowId, id)
 
   const handleRunWithParams = async (data: Record<string, any>) => {
+    if (!validateBeforeRun())
+      return
     const { isValid } = checkValid()
     if (!isValid)
       return
@@ -315,6 +320,8 @@ const useLastRun = <T>({
   }
 
   const handleSingleRun = () => {
+    if (!validateBeforeRun())
+      return
     const { isValid } = checkValid()
     if (!isValid)
       return
