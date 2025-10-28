@@ -210,7 +210,6 @@ class EventHandler:
     def _(self, event: NodeRunPauseRequestedEvent) -> None:
         """Handle pause requests emitted by nodes."""
 
-        # Convert string reason to PauseReason if needed
         pause_reason = event.reason
         self._graph_execution.pause(pause_reason)
         self._state_manager.finish_execution(event.node_id)

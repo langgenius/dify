@@ -157,6 +157,8 @@ class WorkflowExecutionStatus(StrEnum):
 
     # `SCHEDULED` means that the workflow is scheduled to run, but has not
     # started running yet. (maybe due to possible worker saturation.)
+    #
+    # This enum value is currently unused.
     SCHEDULED = "scheduled"
 
     # `RUNNING` means the workflow is exeuting.

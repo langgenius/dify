@@ -552,7 +552,7 @@ class WorkflowRun(Base):
     status: Mapped[str] = mapped_column(
         EnumText(WorkflowExecutionStatus, length=255),
         nullable=False,
-    )  # running, succeeded, failed, stopped, partial-succeeded
+    )
     outputs: Mapped[str | None] = mapped_column(sa.Text, default="{}")
     error: Mapped[str | None] = mapped_column(sa.Text)
     elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))

@@ -47,3 +47,6 @@ class ModelMixin:
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
     )
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(id={self.id})>"

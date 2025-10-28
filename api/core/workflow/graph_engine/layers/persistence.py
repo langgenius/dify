@@ -216,7 +216,6 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def _handle_graph_run_paused(self, event: GraphRunPausedEvent) -> None:
         execution = self._get_workflow_execution()
         execution.status = WorkflowExecutionStatus.PAUSED
-        execution.error_message = event.reason or "Workflow execution paused"
         execution.outputs = event.outputs
         self._populate_completion_statistics(execution, update_finished=False)
 
