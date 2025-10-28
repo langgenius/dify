@@ -854,7 +854,7 @@ class TraceTask:
             usage = metadata.get("usage", {})
             time_to_first_token = usage.get("time_to_first_token")
             time_to_generate = usage.get("time_to_generate")
-            
+
             return {
                 "gen_ai_server_time_to_first_token": time_to_first_token,
                 "llm_streaming_time_to_generate": time_to_generate,

@@ -313,7 +313,7 @@ class TencentDataTrace(BaseTraceInstance):
                 if latency_s > 0:
                     # Determine if streaming from usage metrics
                     is_streaming = usage.get("time_to_first_token") is not None
-                    
+
                     attributes = {
                         "gen_ai.system": model_provider,
                         "gen_ai.response.model": model_name,
@@ -341,7 +341,6 @@ class TencentDataTrace(BaseTraceInstance):
 
             # Record token usage
             if hasattr(self.trace_client, "record_token_usage"):
-
                 # Extract token counts
                 input_tokens = int(usage.get("prompt_tokens", 0))
                 output_tokens = int(usage.get("completion_tokens", 0))
@@ -397,7 +396,7 @@ class TencentDataTrace(BaseTraceInstance):
             # Record LLM duration
             if provider_latency > 0 and hasattr(self.trace_client, "record_llm_duration"):
                 is_streaming = trace_info.is_streaming_request
-                
+
                 duration_attributes = {
                     "gen_ai.system": model_provider,
                     "gen_ai.response.model": model_name,
