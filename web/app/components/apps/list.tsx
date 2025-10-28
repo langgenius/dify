@@ -144,15 +144,26 @@ const List = () => {
       return
     }
 
-    if (anchorRef.current) {
+    if (anchorRef.current && containerRef.current) {
+      // Disconnect any existing observer before creating a new one
+      observer?.disconnect()
+
+      // Calculate dynamic rootMargin based on container height for better responsiveness
+      const containerHeight = containerRef.current.clientHeight
+      const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200)) // Between 100px and 200px, or 20% of container height
+
       observer = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && !isLoading && !error && hasMore)
           setSize((size: number) => size + 1)
-      }, { rootMargin: '100px' })
+      }, {
+        root: containerRef.current || null,
+        rootMargin: `${dynamicMargin}px`,
+        threshold: 0.1, // Trigger when 10% of the anchor element is visible
+      })
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, setSize, anchorRef, mutate, data, error])
+  }, [isLoading, setSize, anchorRef, mutate, data, error, containerRef])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)
