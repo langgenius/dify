@@ -113,20 +113,11 @@ export const getMarketplaceCollectionsAndPlugins = async (query?: CollectionsAnd
 }
 
 export const getMarketplaceListCondition = (pluginType: string) => {
-  if (pluginType === PluginCategoryEnum.tool)
-    return 'category=tool'
-
-  if (pluginType === PluginCategoryEnum.agent)
-    return 'category=agent-strategy'
-
-  if (pluginType === PluginCategoryEnum.model)
-    return 'category=model'
+  if ([PluginCategoryEnum.tool, PluginCategoryEnum.agent, PluginCategoryEnum.model, PluginCategoryEnum.datasource, PluginCategoryEnum.trigger].includes(pluginType as PluginCategoryEnum))
+    return `category=${pluginType}`
 
   if (pluginType === PluginCategoryEnum.extension)
     return 'category=endpoint'
-
-  if (pluginType === PluginCategoryEnum.datasource)
-    return 'category=datasource'
 
   if (pluginType === 'bundle')
     return 'type=bundle'
