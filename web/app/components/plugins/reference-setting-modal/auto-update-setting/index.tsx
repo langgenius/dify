@@ -143,6 +143,7 @@ const AutoUpdateSetting: FC<Props> = ({
                   title={t(`${i18nPrefix}.updateTime`)}
                   minuteFilter={minuteFilter}
                   renderTrigger={renderTimePickerTrigger}
+                  placement='bottom-end'
                 />
                 <div className='body-xs-regular mt-1 text-right text-text-tertiary'>
                   <Trans

@@ -68,6 +68,8 @@ export type TimePickerProps = {
   triggerFullWidth?: boolean
   /** Show timezone label inline with the time picker */
   showTimezone?: boolean
+  /** Placement of the popup relative to the trigger */
+  placement?: 'bottom-start' | 'bottom-end' | 'bottom'
 }
 
 export type TimePickerFooterProps = {
