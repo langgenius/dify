@@ -1417,7 +1417,7 @@ class DocumentService:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         assert knowledge_config.data_source
-        assert knowledge_config.data_source.info_list.file_info_list
+        assert knowledge_config.data_source.info_list
 
         features = FeatureService.get_features(current_user.current_tenant_id)
 
