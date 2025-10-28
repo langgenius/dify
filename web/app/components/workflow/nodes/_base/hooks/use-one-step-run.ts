@@ -392,17 +392,51 @@ const useOneStepRun = <T>({
     setListeningTriggerIsAll,
   ])
 
-  const runScheduleSingleRun = useCallback(async (): Promise<any | null> => {
-    handleNodeDataUpdate({
-      id,
-      data: {
-        ...data,
-        _isSingleRun: false,
-        _singleRunningStatus: NodeRunningStatus.Listening,
-      },
-    })
-    return {}
-  }, [handleNodeDataUpdate])
+  const runScheduleSingleRun = useCallback(async (): Promise<NodeRunResult | null> => {
+    const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
+
+    try {
+      const response: any = await post(urlPath, {
+        body: JSON.stringify({}),
+      })
+
+      if (!response) {
+        const message = 'Schedule trigger run failed'
+        Toast.notify({ type: 'error', message })
+        throw new Error(message)
+      }
+
+      if (response?.status === 'error') {
+        const message = response?.message || 'Schedule trigger run failed'
+        Toast.notify({ type: 'error', message })
+        throw new Error(message)
+      }
+
+      handleNodeDataUpdate({
+        id,
+        data: {
+          ...data,
+          _isSingleRun: false,
+          _singleRunningStatus: NodeRunningStatus.Succeeded,
+        },
+      })
+
+      return response as NodeRunResult
+    }
+    catch (error) {
+      console.error('handleRun: schedule trigger single run error', error)
+      handleNodeDataUpdate({
+        id,
+        data: {
+          ...data,
+          _isSingleRun: false,
+          _singleRunningStatus: NodeRunningStatus.Failed,
+        },
+      })
+      Toast.notify({ type: 'error', message: 'Schedule trigger run failed' })
+      throw error
+    }
+  }, [flowId, id, handleNodeDataUpdate, data])
 
   const runWebhookSingleRun = useCallback(async (): Promise<any | null> => {
     const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
@@ -656,7 +690,9 @@ const useOneStepRun = <T>({
       data: {
         ...data,
         _isSingleRun: false,
-        _singleRunningStatus: isTriggerNode ? NodeRunningStatus.Listening : NodeRunningStatus.Running,
+        _singleRunningStatus: isTriggerNode
+          ? NodeRunningStatus.Listening
+          : NodeRunningStatus.Running,
       },
     })
     let res: any
@@ -664,7 +700,7 @@ const useOneStepRun = <T>({
     try {
       if (!isIteration && !isLoop) {
         if (isScheduleTriggerNode) {
-          await runScheduleSingleRun()
+          res = await runScheduleSingleRun()
         }
         else if (isWebhookTriggerNode) {
           res = await runWebhookSingleRun()
