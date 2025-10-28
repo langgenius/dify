@@ -606,7 +606,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     logger.info(
                         "Deleted state file for pause, state_file_id=%s, pause_id=%s", pause.state_file_id, pause.id
                     )
-                except Exception as e:
+                except Exception:
                     logger.exception(
                         "Failed to delete state file for pause, state_file_id=%s, pause_id=%s",
                         pause.state_file_id,

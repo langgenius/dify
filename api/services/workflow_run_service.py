@@ -19,26 +19,6 @@ from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
 
 
-class _WorkflowRunError(Exception):
-    pass
-
-
-class _PauseStateError(_WorkflowRunError):
-    pass
-
-
-class _WorkflowRunNotFoundError(_PauseStateError):
-    pass
-
-
-class _StateFileNotExistError(_PauseStateError):
-    pass
-
-
-class _InvalidStateTransitionError(_WorkflowRunError):
-    pass
-
-
 class WorkflowRunService:
     _session_factory: sessionmaker
     _workflow_run_repo: APIWorkflowRunRepository

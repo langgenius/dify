@@ -296,7 +296,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             domain_execution,
             event.node_run_result,
             WorkflowNodeExecutionStatus.PAUSED,
-            error=event.reason,
+            error="",
             update_outputs=False,
         )
 
