@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from copy import deepcopy
 from typing import Any, Optional
 
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -65,7 +66,7 @@ class TriggerEventNode(Node):
         """
 
         # Get trigger data passed when workflow was triggered
-        inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
+        inputs = deepcopy(self.graph_runtime_state.variable_pool.user_inputs)
         metadata = {
             WorkflowNodeExecutionMetadataKey.TRIGGER_INFO: {
                 "provider_id": self._node_data.provider_id,

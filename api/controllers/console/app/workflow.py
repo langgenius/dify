@@ -1057,19 +1057,14 @@ class DraftWorkflowTriggerNodeApi(Resource):
         if not event:
             return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
 
-        workflow_args = dict(event.workflow_args or {})
-        raw_files = workflow_args.get("files")
+        raw_files = event.workflow_args.get("files")
         files = _parse_file(draft_workflow, raw_files if isinstance(raw_files, list) else None)
-        if node_type == NodeType.TRIGGER_WEBHOOK:
-            user_inputs = workflow_args.get("inputs") or {}
-        else:
-            user_inputs = workflow_args
         try:
             node_execution = workflow_service.run_draft_workflow_node(
                 app_model=app_model,
                 draft_workflow=draft_workflow,
                 node_id=node_id,
-                user_inputs=user_inputs,
+                user_inputs=event.workflow_args.get("inputs") or {},
                 account=current_user,
                 query="",
                 files=files,

@@ -118,7 +118,6 @@ class TriggerDebugEventBus:
                 pool_key,
                 address_id,
             )
-            logger.info("event_data: %s", event_data)
             return event_type.model_validate_json(json_data=event_data) if event_data else None
         except RedisError:
             logger.exception("Failed to poll event from pool: %s", pool_key)
