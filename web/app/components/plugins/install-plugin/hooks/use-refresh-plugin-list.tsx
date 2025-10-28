@@ -8,6 +8,7 @@ import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../ty
 import { PluginCategoryEnum } from '../../types'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
+import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
@@ -24,6 +25,8 @@ const useRefreshPluginList = () => {
 
   const invalidateStrategyProviders = useInvalidateStrategyProviders()
 
+  const invalidateAllTriggerPlugins = useInvalidateAllTriggerPlugins()
+
   const invalidateRAGRecommendedPlugins = useInvalidateRAGRecommendedPlugins()
   return {
     refreshPluginList: (manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | null, refreshAllType?: boolean) => {
@@ -37,6 +40,9 @@ const useRefreshPluginList = () => {
         invalidateRAGRecommendedPlugins()
         // TODO: update suggested tools. It's a function in hook useMarketplacePlugins,handleUpdatePlugins
       }
+
+      if ((manifest && PluginCategoryEnum.trigger.includes(manifest.category)) || refreshAllType)
+        invalidateAllTriggerPlugins()
 
       if ((manifest && PluginCategoryEnum.datasource.includes(manifest.category)) || refreshAllType) {
         invalidateAllDataSources()
