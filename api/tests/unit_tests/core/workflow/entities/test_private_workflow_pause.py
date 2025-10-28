@@ -19,18 +19,13 @@ class TestPrivateWorkflowPauseEntity:
         mock_pause_model.workflow_run_id = "execution-456"
         mock_pause_model.resumed_at = None
 
-        mock_state_file = MagicMock(spec=UploadFile)
-        mock_state_file.key = "test-state-key"
-
         # Create entity
         entity = _PrivateWorkflowPauseEntity(
             pause_model=mock_pause_model,
-            state_file=mock_state_file,
         )
 
         # Verify initialization
         assert entity._pause_model is mock_pause_model
-        assert entity._state_file is mock_state_file
         assert entity._cached_state is None
 
     def test_from_models_classmethod(self):
@@ -40,30 +35,22 @@ class TestPrivateWorkflowPauseEntity:
         mock_pause_model.id = "pause-123"
         mock_pause_model.workflow_run_id = "execution-456"
 
-        mock_state_file = MagicMock(spec=UploadFile)
-        mock_pause_model.state_file = mock_state_file
-
         # Create entity using from_models
         entity = _PrivateWorkflowPauseEntity.from_models(
             workflow_pause_model=mock_pause_model,
-            upload_file_model=mock_state_file,
         )
 
         # Verify entity creation
         assert isinstance(entity, _PrivateWorkflowPauseEntity)
         assert entity._pause_model is mock_pause_model
-        assert entity._state_file is mock_state_file
 
     def test_id_property(self):
         """Test id property returns pause model ID."""
         mock_pause_model = MagicMock(spec=WorkflowPauseModel)
         mock_pause_model.id = "pause-123"
 
-        mock_state_file = MagicMock(spec=UploadFile)
-
         entity = _PrivateWorkflowPauseEntity(
             pause_model=mock_pause_model,
-            state_file=mock_state_file,
         )
 
         assert entity.id == "pause-123"
@@ -73,11 +60,8 @@ class TestPrivateWorkflowPauseEntity:
         mock_pause_model = MagicMock(spec=WorkflowPauseModel)
         mock_pause_model.workflow_run_id = "execution-456"
 
-        mock_state_file = MagicMock(spec=UploadFile)
-
         entity = _PrivateWorkflowPauseEntity(
             pause_model=mock_pause_model,
-            state_file=mock_state_file,
         )
 
         assert entity.workflow_execution_id == "execution-456"
@@ -89,11 +73,8 @@ class TestPrivateWorkflowPauseEntity:
         mock_pause_model = MagicMock(spec=WorkflowPauseModel)
         mock_pause_model.resumed_at = resumed_at
 
-        mock_state_file = MagicMock(spec=UploadFile)
-
         entity = _PrivateWorkflowPauseEntity(
             pause_model=mock_pause_model,
-            state_file=mock_state_file,
         )
 
         assert entity.resumed_at == resumed_at
@@ -103,11 +84,8 @@ class TestPrivateWorkflowPauseEntity:
         mock_pause_model = MagicMock(spec=WorkflowPauseModel)
         mock_pause_model.resumed_at = None
 
-        mock_state_file = MagicMock(spec=UploadFile)
-
         entity = _PrivateWorkflowPauseEntity(
             pause_model=mock_pause_model,
-            state_file=mock_state_file,
         )
 
         assert entity.resumed_at is None
@@ -119,12 +97,10 @@ class TestPrivateWorkflowPauseEntity:
         mock_storage.load.return_value = state_data
 
         mock_pause_model = MagicMock(spec=WorkflowPauseModel)
-        mock_state_file = MagicMock(spec=UploadFile)
-        mock_state_file.key = "test-state-key"
+        mock_pause_model.state_object_key = "test-state-key"
 
         entity = _PrivateWorkflowPauseEntity(
             pause_model=mock_pause_model,
-            state_file=mock_state_file,
         )
 
         # First call should load from storage
@@ -141,12 +117,10 @@ class TestPrivateWorkflowPauseEntity:
         mock_storage.load.return_value = state_data
 
         mock_pause_model = MagicMock(spec=WorkflowPauseModel)
-        mock_state_file = MagicMock(spec=UploadFile)
-        mock_state_file.key = "test-state-key"
+        mock_pause_model.state_object_key = "test-state-key"
 
         entity = _PrivateWorkflowPauseEntity(
             pause_model=mock_pause_model,
-            state_file=mock_state_file,
         )
 
         # First call
@@ -165,11 +139,9 @@ class TestPrivateWorkflowPauseEntity:
         state_data = b'{"test": "data", "step": 5}'
 
         mock_pause_model = MagicMock(spec=WorkflowPauseModel)
-        mock_state_file = MagicMock(spec=UploadFile)
 
         entity = _PrivateWorkflowPauseEntity(
             pause_model=mock_pause_model,
-            state_file=mock_state_file,
         )
 
         # Pre-cache data
@@ -190,12 +162,9 @@ class TestPrivateWorkflowPauseEntity:
             mock_storage.load.return_value = binary_data
 
             mock_pause_model = MagicMock(spec=WorkflowPauseModel)
-            mock_state_file = MagicMock(spec=UploadFile)
-            mock_state_file.key = "binary-state-key"
 
             entity = _PrivateWorkflowPauseEntity(
                 pause_model=mock_pause_model,
-                state_file=mock_state_file,
             )
 
             result = entity.get_state()
