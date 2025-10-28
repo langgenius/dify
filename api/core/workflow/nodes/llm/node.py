@@ -172,7 +172,6 @@ class LLMNode(Node):
         usage = LLMUsage.empty_usage()
         finish_reason = None
         reasoning_content = None
-        streaming_metrics = {}
         variable_pool = self.graph_runtime_state.variable_pool
 
         try:
@@ -274,7 +273,6 @@ class LLMNode(Node):
                     usage = event.usage
                     finish_reason = event.finish_reason
                     reasoning_content = event.reasoning_content or ""
-                    streaming_metrics = event.streaming_metrics or {}
 
                     # For downstream nodes, determine clean text based on reasoning_format
                     if self._node_data.reasoning_format == "tagged":
@@ -306,7 +304,6 @@ class LLMNode(Node):
                 "finish_reason": finish_reason,
                 "model_provider": model_config.provider,
                 "model_name": model_config.model,
-                "streaming_metrics": streaming_metrics,
             }
 
             outputs = {
@@ -519,15 +516,11 @@ class LLMNode(Node):
         end_time = time.perf_counter()
         total_duration = end_time - start_time
         usage.latency = round(total_duration, 3)
-        streaming_metrics = {}
         if has_content and first_token_time:
             gen_ai_server_time_to_first_token = first_token_time - start_time
             llm_streaming_time_to_generate = end_time - first_token_time
-            streaming_metrics = {
-                "is_streaming_request": True,
-                "gen_ai_server_time_to_first_token": round(gen_ai_server_time_to_first_token, 3),
-                "llm_streaming_time_to_generate": round(llm_streaming_time_to_generate, 3),
-            }
+            usage.time_to_first_token = round(gen_ai_server_time_to_first_token, 3)
+            usage.time_to_generate = round(llm_streaming_time_to_generate, 3)
 
         yield ModelInvokeCompletedEvent(
             # Use clean_text for separated mode, full_text for tagged mode
@@ -538,7 +531,6 @@ class LLMNode(Node):
             reasoning_content=reasoning_content,
             # Pass structured output if collected from streaming chunks
             structured_output=collected_structured_output,
-            streaming_metrics=streaming_metrics,
         )
 
     @staticmethod

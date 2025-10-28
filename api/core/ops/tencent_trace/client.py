@@ -36,6 +36,7 @@ from .entities.semconv import (
     GEN_AI_SERVER_TIME_TO_FIRST_TOKEN,
     GEN_AI_STREAMING_TIME_TO_GENERATE,
     GEN_AI_TOKEN_USAGE,
+    GEN_AI_TRACE_DURATION,
     LLM_OPERATION_DURATION,
 )
 from .entities.tencent_trace_entity import SpanData
@@ -113,6 +114,7 @@ class TencentTraceClient:
         self.hist_token_usage: Histogram | None = None
         self.hist_time_to_first_token: Histogram | None = None
         self.hist_time_to_generate: Histogram | None = None
+        self.hist_trace_duration: Histogram | None = None
         self.metric_reader: MetricReader | None = None
 
         # Metrics exporter and instruments
@@ -232,6 +234,13 @@ class TencentTraceClient:
                     description="Total time to generate streaming LLM responses (seconds)",
                 )
 
+                # Trace duration histogram
+                self.hist_trace_duration = self.meter.create_histogram(
+                    name=GEN_AI_TRACE_DURATION,
+                    unit="s",
+                    description="End-to-end GenAI trace duration (seconds)",
+                )
+
                 self.metric_reader = metric_reader
             else:
                 self.meter = None
@@ -239,6 +248,7 @@ class TencentTraceClient:
                 self.hist_token_usage = None
                 self.hist_time_to_first_token = None
                 self.hist_time_to_generate = None
+                self.hist_trace_duration = None
                 self.metric_reader = None
         except Exception:
             logger.exception("[Tencent APM] Metrics initialization failed; metrics disabled")
@@ -247,6 +257,7 @@ class TencentTraceClient:
             self.hist_token_usage = None
             self.hist_time_to_first_token = None
             self.hist_time_to_generate = None
+            self.hist_trace_duration = None
             self.metric_reader = None
 
     def add_span(self, span_data: SpanData) -> None:
@@ -280,6 +291,7 @@ class TencentTraceClient:
         request_model: str,
         response_model: str,
         server_address: str,
+        provider: str,
     ) -> None:
         """Record token usage histogram.
 
@@ -290,6 +302,7 @@ class TencentTraceClient:
             request_model: Model used in request
             response_model: Model used in response
             server_address: Server address
+            provider: Model provider name
         """
         try:
             if not hasattr(self, "hist_token_usage") or self.hist_token_usage is None:
@@ -299,7 +312,7 @@ class TencentTraceClient:
                 "gen_ai.operation.name": operation_name,
                 "gen_ai.request.model": request_model,
                 "gen_ai.response.model": response_model,
-                "gen_ai.system": "dify",
+                "gen_ai.system": provider,
                 "gen_ai.token.type": token_type,
                 "server.address": server_address,
             }
@@ -328,6 +341,7 @@ class TencentTraceClient:
                 "gen_ai.system": provider,
                 "gen_ai.request.model": model,
                 "gen_ai.response.model": model,
+                "stream": "true",
             }
 
             self.hist_time_to_first_token.record(ttft_seconds, attributes)  # type: ignore[attr-defined]
@@ -354,11 +368,31 @@ class TencentTraceClient:
                 "gen_ai.system": provider,
                 "gen_ai.request.model": model,
                 "gen_ai.response.model": model,
+                "stream": "true",
             }
 
             self.hist_time_to_generate.record(ttg_seconds, attributes)  # type: ignore[attr-defined]
         except Exception:
             logger.debug("[Tencent APM] Failed to record time to generate", exc_info=True)
+
+    def record_trace_duration(self, duration_seconds: float, attributes: dict[str, str] | None = None) -> None:
+        """Record end-to-end trace duration histogram in seconds.
+
+        Args:
+            duration_seconds: Trace duration in seconds
+            attributes: Optional attributes (e.g., conversation_mode, app_id)
+        """
+        try:
+            if not hasattr(self, "hist_trace_duration") or self.hist_trace_duration is None:
+                return
+
+            attrs: dict[str, str] = {}
+            if attributes:
+                for k, v in attributes.items():
+                    attrs[k] = str(v) if not isinstance(v, (str, int, float, bool)) else v  # type: ignore[assignment]
+            self.hist_trace_duration.record(duration_seconds, attrs)  # type: ignore[attr-defined]
+        except Exception:
+            logger.debug("[Tencent APM] Failed to record trace duration", exc_info=True)
 
     def _create_and_export_span(self, span_data: SpanData) -> None:
         """Create span using OpenTelemetry Tracer API"""

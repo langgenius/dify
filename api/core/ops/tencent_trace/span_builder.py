@@ -156,7 +156,6 @@ class TencentSpanBuilder:
         process_data = node_execution.process_data or {}
         outputs = node_execution.outputs or {}
         usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
-        streaming_metrics = process_data.get("streaming_metrics", {})
 
         attributes = {
             GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
@@ -174,7 +173,7 @@ class TencentSpanBuilder:
             OUTPUT_VALUE: str(outputs.get("text", "")),
         }
 
-        if streaming_metrics.get("is_streaming_request"):
+        if usage_data.get("time_to_first_token") is not None:
             attributes[GEN_AI_IS_STREAMING_REQUEST] = "true"
 
         return SpanData(

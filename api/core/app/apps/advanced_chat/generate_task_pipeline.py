@@ -10,6 +10,8 @@ from typing import Any, Union
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.model_runtime.utils.encoders import jsonable_encoder
+
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
@@ -782,9 +784,32 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         message.updated_at = naive_utc_now()
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline.start_at
 
+        # Set usage first before dumping metadata
+        if graph_runtime_state and graph_runtime_state.llm_usage:
+            usage = graph_runtime_state.llm_usage
+            message.message_tokens = usage.prompt_tokens
+            message.message_unit_price = usage.prompt_unit_price
+            message.message_price_unit = usage.prompt_price_unit
+            message.answer_tokens = usage.completion_tokens
+            message.answer_unit_price = usage.completion_unit_price
+            message.answer_price_unit = usage.completion_price_unit
+            message.total_price = usage.total_price
+            message.currency = usage.currency
+            self._task_state.metadata.usage = usage
+        else:
+            usage = LLMUsage.empty_usage()
+            self._task_state.metadata.usage = usage
+
+        # Add streaming metrics to usage if available
+        if self._task_state.is_streaming_response and self._task_state.first_token_time:
+            start_time = self._base_task_pipeline.start_at
+            first_token_time = self._task_state.first_token_time
+            last_token_time = self._task_state.last_token_time or first_token_time
+            usage.time_to_first_token = round(first_token_time - start_time, 3)
+            usage.time_to_generate = round(last_token_time - first_token_time, 3)
+
         metadata = self._task_state.metadata.model_dump()
-        metadata.update(self._calculate_streaming_metrics())
-        message.message_metadata = json.dumps(metadata)
+        message.message_metadata = json.dumps(jsonable_encoder(metadata))
         message_files = [
             MessageFile(
                 message_id=message.id,
@@ -801,20 +826,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             for file in self._recorded_files
         ]
         session.add_all(message_files)
-
-        if graph_runtime_state and graph_runtime_state.llm_usage:
-            usage = graph_runtime_state.llm_usage
-            message.message_tokens = usage.prompt_tokens
-            message.message_unit_price = usage.prompt_unit_price
-            message.message_price_unit = usage.prompt_price_unit
-            message.answer_tokens = usage.completion_tokens
-            message.answer_unit_price = usage.completion_unit_price
-            message.answer_price_unit = usage.completion_price_unit
-            message.total_price = usage.total_price
-            message.currency = usage.currency
-            self._task_state.metadata.usage = usage
-        else:
-            self._task_state.metadata.usage = LLMUsage.empty_usage()
 
     def _seed_graph_runtime_state_from_queue_manager(self) -> None:
         """Bootstrap the cached runtime state from the queue manager when present."""
@@ -860,23 +871,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 self._base_task_pipeline.output_moderation_handler.append_new_token(text)
 
         return False
-
-    def _calculate_streaming_metrics(self) -> dict:
-        if not self._task_state.is_streaming_response or not self._task_state.first_token_time:
-            return {"gen_ai_server_time_to_first_token": None, "llm_streaming_time_to_generate": None}
-
-        start_time = self._base_task_pipeline.start_at
-        first_token_time = self._task_state.first_token_time
-        last_token_time = self._task_state.last_token_time or first_token_time
-
-        gen_ai_server_time_to_first_token = first_token_time - start_time
-        llm_streaming_time_to_generate = last_token_time - first_token_time
-
-        return {
-            "gen_ai_server_time_to_first_token": round(gen_ai_server_time_to_first_token, 3),
-            "llm_streaming_time_to_generate": round(llm_streaming_time_to_generate, 3),
-            "is_streaming_request": True,
-        }
 
     def _get_message(self, *, session: Session):
         stmt = select(Message).where(Message.id == self._message_id)

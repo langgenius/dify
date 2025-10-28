@@ -851,10 +851,14 @@ class TraceTask:
 
         try:
             metadata = json.loads(message_data.message_metadata)
+            usage = metadata.get("usage", {})
+            time_to_first_token = usage.get("time_to_first_token")
+            time_to_generate = usage.get("time_to_generate")
+            
             return {
-                "gen_ai_server_time_to_first_token": metadata.get("gen_ai_server_time_to_first_token"),
-                "llm_streaming_time_to_generate": metadata.get("llm_streaming_time_to_generate"),
-                "is_streaming_request": metadata.get("is_streaming_request", False),
+                "gen_ai_server_time_to_first_token": time_to_first_token,
+                "llm_streaming_time_to_generate": time_to_generate,
+                "is_streaming_request": time_to_first_token is not None,
             }
         except (json.JSONDecodeError, AttributeError):
             return {}
