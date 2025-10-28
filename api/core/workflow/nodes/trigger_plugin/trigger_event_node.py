@@ -68,7 +68,6 @@ class TriggerEventNode(Node):
         inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
         metadata = {
             WorkflowNodeExecutionMetadataKey.TRIGGER_INFO: {
-                **inputs,
                 "provider_id": self._node_data.provider_id,
                 "event_name": self._node_data.event_name,
                 "plugin_unique_identifier": self._node_data.plugin_unique_identifier,

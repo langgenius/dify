@@ -19,6 +19,12 @@ class AsyncTriggerStatus(StrEnum):
     TIMEOUT = "timeout"
 
 
+class TriggerMetadata(BaseModel):
+    """Trigger metadata"""
+
+    pass
+
+
 class TriggerData(BaseModel):
     """Base trigger data model for async workflow execution"""
 
@@ -30,6 +36,7 @@ class TriggerData(BaseModel):
     files: Sequence[Mapping[str, Any]] = Field(default_factory=list)
     trigger_type: AppTriggerType
     trigger_from: WorkflowRunTriggeredFrom
+    trigger_metadata: TriggerMetadata = Field(default_factory=TriggerMetadata)
 
     model_config = ConfigDict(use_enum_values=True)
 
@@ -46,6 +53,17 @@ class ScheduleTriggerData(TriggerData):
 
     trigger_type: AppTriggerType = AppTriggerType.TRIGGER_SCHEDULE
     trigger_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.SCHEDULE
+
+
+class PluginTriggerMetadata(TriggerMetadata):
+    """Plugin trigger metadata"""
+
+    plugin_id: str
+    endpoint_id: str
+    plugin_unique_identifier: str
+    provider_id: str
+    icon_url: str
+    icon_dark_url: str
 
 
 class PluginTriggerData(TriggerData):

@@ -111,6 +111,7 @@ class AsyncWorkflowService:
             app_id=trigger_data.app_id,
             workflow_id=workflow.id,
             root_node_id=trigger_data.root_node_id,
+            trigger_metadata=trigger_data.trigger_metadata.model_dump_json(),
             trigger_type=trigger_data.trigger_type,
             trigger_data=trigger_data.model_dump_json(),
             inputs=json.dumps(dict(trigger_data.inputs)),

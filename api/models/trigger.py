@@ -161,6 +161,7 @@ class WorkflowTriggerLog(Base):
     - workflow_id (uuid) Workflow ID
     - workflow_run_id (uuid) Optional - Associated workflow run ID when execution starts
     - root_node_id (string) Optional - Custom starting node ID for workflow execution
+    - trigger_metadata (text) Optional - Trigger metadata (JSON)
     - trigger_type (string) Type of trigger: webhook, schedule, plugin
     - trigger_data (text) Full trigger data including inputs (JSON)
     - inputs (text) Input parameters (JSON)
@@ -195,7 +196,7 @@ class WorkflowTriggerLog(Base):
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     root_node_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-
+    trigger_metadata: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     trigger_type: Mapped[str] = mapped_column(EnumText(AppTriggerType, length=50), nullable=False)
     trigger_data: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Full TriggerData as JSON
     inputs: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Just inputs for easy viewing
@@ -240,6 +241,8 @@ class WorkflowTriggerLog(Base):
             "app_id": self.app_id,
             "workflow_id": self.workflow_id,
             "workflow_run_id": self.workflow_run_id,
+            "root_node_id": self.root_node_id,
+            "trigger_metadata": json.loads(self.trigger_metadata) if self.trigger_metadata else None,
             "trigger_type": self.trigger_type,
             "trigger_data": json.loads(self.trigger_data),
             "inputs": json.loads(self.inputs),
