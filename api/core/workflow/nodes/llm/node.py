@@ -1234,13 +1234,6 @@ class LLMNode(Node):
             tenant_id=self.tenant_id
         )
 
-        memory_config = self._node_data.memory
-        if not memory_config:
-            return
-        block_ids = memory_config.block_id
-        if not block_ids:
-            return
-
         # FIXME: This is dirty workaround and may cause incorrect resolution for workflow version
         with Session(db.engine) as session:
             stmt = select(Workflow).where(
@@ -1250,24 +1243,31 @@ class LLMNode(Node):
             workflow = session.scalars(stmt).first()
             if not workflow:
                 raise ValueError("Workflow not found.")
-        memory_blocks = workflow.memory_blocks
 
-        for block_id in block_ids:
-            memory_block_spec = next((block for block in memory_blocks if block.id == block_id), None)
+        # Filter memory blocks that belong to this node
+        node_memory_blocks = [
+            block for block in workflow.memory_blocks
+            if block.scope == MemoryScope.NODE and block.node_id == self.id
+        ]
 
-            if memory_block_spec and memory_block_spec.scope == MemoryScope.NODE:
-                is_draft = (self.invoke_from == InvokeFrom.DEBUGGER)
-                from services.chatflow_memory_service import ChatflowMemoryService
-                ChatflowMemoryService.update_node_memory_if_needed(
-                    tenant_id=self.tenant_id,
-                    app_id=self.app_id,
-                    node_id=self.id,
-                    conversation_id=conversation_id,
-                    memory_block_spec=memory_block_spec,
-                    variable_pool=variable_pool,
-                    is_draft=is_draft,
-                    created_by=self._get_user_from_context()
-                )
+        if not node_memory_blocks:
+            return
+
+        # Update each memory block that belongs to this node
+        is_draft = (self.invoke_from == InvokeFrom.DEBUGGER)
+        from services.chatflow_memory_service import ChatflowMemoryService
+
+        for memory_block_spec in node_memory_blocks:
+            ChatflowMemoryService.update_node_memory_if_needed(
+                tenant_id=self.tenant_id,
+                app_id=self.app_id,
+                node_id=self.id,
+                conversation_id=conversation_id,
+                memory_block_spec=memory_block_spec,
+                variable_pool=variable_pool,
+                is_draft=is_draft,
+                created_by=self._get_user_from_context()
+            )
 
     def _get_user_from_context(self) -> MemoryCreatedBy:
         if self.user_from == UserFrom.ACCOUNT:

@@ -4,7 +4,7 @@ from enum import StrEnum
 from typing import Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from core.app.app_config.entities import ModelConfig
 
@@ -49,6 +49,21 @@ class MemoryBlockSpec(BaseModel):
     model: ModelConfig = Field(description="Model configuration for memory updates")
     end_user_visible: bool = Field(default=False, description="Whether memory is visible to end users")
     end_user_editable: bool = Field(default=False, description="Whether memory is editable by end users")
+    node_id: str | None = Field(
+        default=None,
+        description="Node ID when scope is NODE. Must be None when scope is APP."
+    )
+
+    @field_validator('node_id')
+    @classmethod
+    def validate_node_id_with_scope(cls, v: str | None, info) -> str | None:
+        """Validate node_id consistency with scope"""
+        scope = info.data.get('scope')
+        if scope == MemoryScope.NODE and v is None:
+            raise ValueError("node_id is required when scope is NODE")
+        if scope == MemoryScope.APP and v is not None:
+            raise ValueError("node_id must be None when scope is APP")
+        return v
 
 
 class MemoryCreatedBy(BaseModel):

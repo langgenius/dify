@@ -44,13 +44,7 @@ class MemoryConfig(BaseModel):
 
         enabled: bool
         size: int | None = None
-
     mode: Literal["linear", "block"] | None = "linear"
-    block_id: list[str] | None = None
     role_prefix: RolePrefix | None = None
     window: WindowConfig
     query_prompt_template: str | None = None
-
-    @property
-    def is_block_mode(self) -> bool:
-        return self.mode == "block" and bool(self.block_id)

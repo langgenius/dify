@@ -71,6 +71,7 @@ memory_block_fields = {
     "model": fields.Nested(model_config_fields),
     "end_user_visible": fields.Boolean,
     "end_user_editable": fields.Boolean,
+    "node_id": fields.String,
 }
 
 pipeline_variable_fields = {
