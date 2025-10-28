@@ -59,6 +59,12 @@ class FileService:
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
 
+        # check if extension is in blacklist
+        if extension and extension in dify_config.UPLOAD_FILE_EXTENSION_BLACKLIST:
+            from .errors.file import BlockedFileExtensionError
+
+            raise BlockedFileExtensionError(f"File extension '.{extension}' is not allowed for security reasons")
+
         if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
