@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { clone } from 'lodash-es'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { ChatPromptConfig, CompletionPromptConfig, ConversationHistoriesRole, PromptItem } from '@/models/debug'
 import { PromptMode } from '@/models/debug'
 import { ModelModeType } from '@/types/app'

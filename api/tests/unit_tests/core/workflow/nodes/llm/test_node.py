@@ -20,8 +20,7 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.variables import ArrayAnySegment, ArrayFileSegment, NoneSegment
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
-from core.workflow.graph import Graph
+from core.workflow.entities import GraphInitParams
 from core.workflow.nodes.llm import llm_utils
 from core.workflow.nodes.llm.entities import (
     ContextConfig,
@@ -33,6 +32,7 @@ from core.workflow.nodes.llm.entities import (
 )
 from core.workflow.nodes.llm.file_saver import LLMFileSaver
 from core.workflow.nodes.llm.node import LLMNode
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from models.provider import ProviderType
@@ -84,14 +84,6 @@ def graph_init_params() -> GraphInitParams:
 
 
 @pytest.fixture
-def graph() -> Graph:
-    # TODO: This fixture uses old Graph constructor parameters that are incompatible
-    # with the new queue-based engine. Need to rewrite for new engine architecture.
-    pytest.skip("Graph fixture incompatible with new queue-based engine - needs rewrite for ResponseStreamCoordinator")
-    return Graph()
-
-
-@pytest.fixture
 def graph_runtime_state() -> GraphRuntimeState:
     variable_pool = VariablePool(
         system_variables=SystemVariable.empty(),
@@ -105,7 +97,7 @@ def graph_runtime_state() -> GraphRuntimeState:
 
 @pytest.fixture
 def llm_node(
-    llm_node_data: LLMNodeData, graph_init_params: GraphInitParams, graph: Graph, graph_runtime_state: GraphRuntimeState
+    llm_node_data: LLMNodeData, graph_init_params: GraphInitParams, graph_runtime_state: GraphRuntimeState
 ) -> LLMNode:
     mock_file_saver = mock.MagicMock(spec=LLMFileSaver)
     node_config = {
@@ -493,9 +485,7 @@ def test_handle_list_messages_basic(llm_node):
 
 
 @pytest.fixture
-def llm_node_for_multimodal(
-    llm_node_data, graph_init_params, graph, graph_runtime_state
-) -> tuple[LLMNode, LLMFileSaver]:
+def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_state) -> tuple[LLMNode, LLMFileSaver]:
     mock_file_saver: LLMFileSaver = mock.MagicMock(spec=LLMFileSaver)
     node_config = {
         "id": "1",
@@ -655,7 +645,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
             contents=frozenset(["hello world"]), file_saver=mock_file_saver, file_outputs=[]
         )
-        assert list(gen) == ["frozenset({'hello world'})"]
+        assert list(gen) == ["hello world"]
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 

@@ -7,7 +7,7 @@ from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fix
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
-from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models import Account, TenantAccountJoin, TenantAccountRole
 
 
 class BillingService:

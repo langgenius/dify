@@ -144,7 +144,7 @@ export function SubProperty({ name, type, children }: ISubProperty) {
   )
 }
 
-export function PropertyInstruction({ children }: PropsWithChildren<{}>) {
+export function PropertyInstruction({ children }: PropsWithChildren<{ }>) {
   return (
     <li className="m-0 px-0 py-4 italic first:pt-0">{children}</li>
   )

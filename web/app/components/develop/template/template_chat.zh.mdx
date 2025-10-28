@@ -1188,7 +1188,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 --header 'Content-Type: application/json' \\
 --data-raw '{
     "value": "Updated Value",
-  "user": "abc-123"
+    "user": "abc-123"
 }'`}
     />
 
@@ -1579,8 +1579,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   <Col>
     <CodeGroup
       title="Request"
-      tag="POST"
-      label="/meta"
+      tag="GET"
+      label="/site"
       targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\
 -H 'Authorization: Bearer {api_key}'`}
     />

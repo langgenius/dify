@@ -33,130 +33,118 @@ def _validate_name(name):
 
 
 # Define parsers for dataset operations
-dataset_create_parser = reqparse.RequestParser()
-dataset_create_parser.add_argument(
-    "name",
-    nullable=False,
-    required=True,
-    help="type is required. Name must be between 1 to 40 characters.",
-    type=_validate_name,
-)
-dataset_create_parser.add_argument(
-    "description",
-    type=validate_description_length,
-    nullable=True,
-    required=False,
-    default="",
-)
-dataset_create_parser.add_argument(
-    "indexing_technique",
-    type=str,
-    location="json",
-    choices=Dataset.INDEXING_TECHNIQUE_LIST,
-    help="Invalid indexing technique.",
-)
-dataset_create_parser.add_argument(
-    "permission",
-    type=str,
-    location="json",
-    choices=(DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM),
-    help="Invalid permission.",
-    required=False,
-    nullable=False,
-)
-dataset_create_parser.add_argument(
-    "external_knowledge_api_id",
-    type=str,
-    nullable=True,
-    required=False,
-    default="_validate_name",
-)
-dataset_create_parser.add_argument(
-    "provider",
-    type=str,
-    nullable=True,
-    required=False,
-    default="vendor",
-)
-dataset_create_parser.add_argument(
-    "external_knowledge_id",
-    type=str,
-    nullable=True,
-    required=False,
-)
-dataset_create_parser.add_argument("retrieval_model", type=dict, required=False, nullable=True, location="json")
-dataset_create_parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
-dataset_create_parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
-
-dataset_update_parser = reqparse.RequestParser()
-dataset_update_parser.add_argument(
-    "name",
-    nullable=False,
-    help="type is required. Name must be between 1 to 40 characters.",
-    type=_validate_name,
-)
-dataset_update_parser.add_argument(
-    "description", location="json", store_missing=False, type=validate_description_length
-)
-dataset_update_parser.add_argument(
-    "indexing_technique",
-    type=str,
-    location="json",
-    choices=Dataset.INDEXING_TECHNIQUE_LIST,
-    nullable=True,
-    help="Invalid indexing technique.",
-)
-dataset_update_parser.add_argument(
-    "permission",
-    type=str,
-    location="json",
-    choices=(DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM),
-    help="Invalid permission.",
-)
-dataset_update_parser.add_argument("embedding_model", type=str, location="json", help="Invalid embedding model.")
-dataset_update_parser.add_argument(
-    "embedding_model_provider", type=str, location="json", help="Invalid embedding model provider."
-)
-dataset_update_parser.add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model.")
-dataset_update_parser.add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list.")
-dataset_update_parser.add_argument(
-    "external_retrieval_model",
-    type=dict,
-    required=False,
-    nullable=True,
-    location="json",
-    help="Invalid external retrieval model.",
-)
-dataset_update_parser.add_argument(
-    "external_knowledge_id",
-    type=str,
-    required=False,
-    nullable=True,
-    location="json",
-    help="Invalid external knowledge id.",
-)
-dataset_update_parser.add_argument(
-    "external_knowledge_api_id",
-    type=str,
-    required=False,
-    nullable=True,
-    location="json",
-    help="Invalid external knowledge api id.",
+dataset_create_parser = (
+    reqparse.RequestParser()
+    .add_argument(
+        "name",
+        nullable=False,
+        required=True,
+        help="type is required. Name must be between 1 to 40 characters.",
+        type=_validate_name,
+    )
+    .add_argument(
+        "description",
+        type=validate_description_length,
+        nullable=True,
+        required=False,
+        default="",
+    )
+    .add_argument(
+        "indexing_technique",
+        type=str,
+        location="json",
+        choices=Dataset.INDEXING_TECHNIQUE_LIST,
+        help="Invalid indexing technique.",
+    )
+    .add_argument(
+        "permission",
+        type=str,
+        location="json",
+        choices=(DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM),
+        help="Invalid permission.",
+        required=False,
+        nullable=False,
+    )
+    .add_argument(
+        "external_knowledge_api_id",
+        type=str,
+        nullable=True,
+        required=False,
+        default="_validate_name",
+    )
+    .add_argument(
+        "provider",
+        type=str,
+        nullable=True,
+        required=False,
+        default="vendor",
+    )
+    .add_argument(
+        "external_knowledge_id",
+        type=str,
+        nullable=True,
+        required=False,
+    )
+    .add_argument("retrieval_model", type=dict, required=False, nullable=True, location="json")
+    .add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
+    .add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
 )
 
-tag_create_parser = reqparse.RequestParser()
-tag_create_parser.add_argument(
-    "name",
-    nullable=False,
-    required=True,
-    help="Name must be between 1 to 50 characters.",
-    type=lambda x: x
-    if x and 1 <= len(x) <= 50
-    else (_ for _ in ()).throw(ValueError("Name must be between 1 to 50 characters.")),
+dataset_update_parser = (
+    reqparse.RequestParser()
+    .add_argument(
+        "name",
+        nullable=False,
+        help="type is required. Name must be between 1 to 40 characters.",
+        type=_validate_name,
+    )
+    .add_argument("description", location="json", store_missing=False, type=validate_description_length)
+    .add_argument(
+        "indexing_technique",
+        type=str,
+        location="json",
+        choices=Dataset.INDEXING_TECHNIQUE_LIST,
+        nullable=True,
+        help="Invalid indexing technique.",
+    )
+    .add_argument(
+        "permission",
+        type=str,
+        location="json",
+        choices=(DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM),
+        help="Invalid permission.",
+    )
+    .add_argument("embedding_model", type=str, location="json", help="Invalid embedding model.")
+    .add_argument("embedding_model_provider", type=str, location="json", help="Invalid embedding model provider.")
+    .add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model.")
+    .add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list.")
+    .add_argument(
+        "external_retrieval_model",
+        type=dict,
+        required=False,
+        nullable=True,
+        location="json",
+        help="Invalid external retrieval model.",
+    )
+    .add_argument(
+        "external_knowledge_id",
+        type=str,
+        required=False,
+        nullable=True,
+        location="json",
+        help="Invalid external knowledge id.",
+    )
+    .add_argument(
+        "external_knowledge_api_id",
+        type=str,
+        required=False,
+        nullable=True,
+        location="json",
+        help="Invalid external knowledge api id.",
+    )
 )
 
-tag_update_parser = reqparse.RequestParser()
-tag_update_parser.add_argument(
+tag_create_parser = reqparse.RequestParser().add_argument(
     "name",
     nullable=False,
     required=True,
@@ -165,22 +153,38 @@ tag_update_parser.add_argument(
     if x and 1 <= len(x) <= 50
     else (_ for _ in ()).throw(ValueError("Name must be between 1 to 50 characters.")),
 )
-tag_update_parser.add_argument("tag_id", nullable=False, required=True, help="Id of a tag.", type=str)
 
-tag_delete_parser = reqparse.RequestParser()
-tag_delete_parser.add_argument("tag_id", nullable=False, required=True, help="Id of a tag.", type=str)
-
-tag_binding_parser = reqparse.RequestParser()
-tag_binding_parser.add_argument(
-    "tag_ids", type=list, nullable=False, required=True, location="json", help="Tag IDs is required."
+tag_update_parser = (
+    reqparse.RequestParser()
+    .add_argument(
+        "name",
+        nullable=False,
+        required=True,
+        help="Name must be between 1 to 50 characters.",
+        type=lambda x: x
+        if x and 1 <= len(x) <= 50
+        else (_ for _ in ()).throw(ValueError("Name must be between 1 to 50 characters.")),
+    )
+    .add_argument("tag_id", nullable=False, required=True, help="Id of a tag.", type=str)
 )
-tag_binding_parser.add_argument(
-    "target_id", type=str, nullable=False, required=True, location="json", help="Target Dataset ID is required."
+
+tag_delete_parser = reqparse.RequestParser().add_argument(
+    "tag_id", nullable=False, required=True, help="Id of a tag.", type=str
 )
 
-tag_unbinding_parser = reqparse.RequestParser()
-tag_unbinding_parser.add_argument("tag_id", type=str, nullable=False, required=True, help="Tag ID is required.")
-tag_unbinding_parser.add_argument("target_id", type=str, nullable=False, required=True, help="Target ID is required.")
+tag_binding_parser = (
+    reqparse.RequestParser()
+    .add_argument("tag_ids", type=list, nullable=False, required=True, location="json", help="Tag IDs is required.")
+    .add_argument(
+        "target_id", type=str, nullable=False, required=True, location="json", help="Target Dataset ID is required."
+    )
+)
+
+tag_unbinding_parser = (
+    reqparse.RequestParser()
+    .add_argument("tag_id", type=str, nullable=False, required=True, help="Tag ID is required.")
+    .add_argument("target_id", type=str, nullable=False, required=True, help="Target ID is required.")
+)
 
 
 @service_api_ns.route("/datasets")

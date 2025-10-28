@@ -4,7 +4,7 @@ import {
   useStoreApi,
 } from 'reactflow'
 import { uniqBy } from 'lodash-es'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   useIsChatMode,
   useNodeDataUpdate,

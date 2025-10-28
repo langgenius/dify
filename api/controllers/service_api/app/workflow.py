@@ -42,32 +42,36 @@ from services.workflow_app_service import WorkflowAppService
 logger = logging.getLogger(__name__)
 
 # Define parsers for workflow APIs
-workflow_run_parser = reqparse.RequestParser()
-workflow_run_parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-workflow_run_parser.add_argument("files", type=list, required=False, location="json")
-workflow_run_parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+workflow_run_parser = (
+    reqparse.RequestParser()
+    .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+    .add_argument("files", type=list, required=False, location="json")
+    .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+)
 
-workflow_log_parser = reqparse.RequestParser()
-workflow_log_parser.add_argument("keyword", type=str, location="args")
-workflow_log_parser.add_argument("status", type=str, choices=["succeeded", "failed", "stopped"], location="args")
-workflow_log_parser.add_argument("created_at__before", type=str, location="args")
-workflow_log_parser.add_argument("created_at__after", type=str, location="args")
-workflow_log_parser.add_argument(
-    "created_by_end_user_session_id",
-    type=str,
-    location="args",
-    required=False,
-    default=None,
+workflow_log_parser = (
+    reqparse.RequestParser()
+    .add_argument("keyword", type=str, location="args")
+    .add_argument("status", type=str, choices=["succeeded", "failed", "stopped"], location="args")
+    .add_argument("created_at__before", type=str, location="args")
+    .add_argument("created_at__after", type=str, location="args")
+    .add_argument(
+        "created_by_end_user_session_id",
+        type=str,
+        location="args",
+        required=False,
+        default=None,
+    )
+    .add_argument(
+        "created_by_account",
+        type=str,
+        location="args",
+        required=False,
+        default=None,
+    )
+    .add_argument("page", type=int_range(1, 99999), default=1, location="args")
+    .add_argument("limit", type=int_range(1, 100), default=20, location="args")
 )
-workflow_log_parser.add_argument(
-    "created_by_account",
-    type=str,
-    location="args",
-    required=False,
-    default=None,
-)
-workflow_log_parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
-workflow_log_parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
 
 workflow_run_fields = {
     "id": fields.String,

@@ -4,7 +4,7 @@ from core.variables.segments import (
     NoneSegment,
     StringSegment,
 )
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.runtime import VariablePool
 
 
 class TestVariablePoolGetAndNestedAttribute:

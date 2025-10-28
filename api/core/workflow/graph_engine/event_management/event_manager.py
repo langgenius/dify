@@ -97,6 +97,10 @@ class EventManager:
         """
         self._layers = layers
 
+    def notify_layers(self, event: GraphEngineEvent) -> None:
+        """Notify registered layers about an event without buffering it."""
+        self._notify_layers(event)
+
     def collect(self, event: GraphEngineEvent) -> None:
         """
         Thread-safe method to collect an event.

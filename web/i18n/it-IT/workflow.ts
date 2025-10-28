@@ -343,6 +343,7 @@ const translation = {
     addNextStep: 'Aggiungi il prossimo passo in questo flusso di lavoro',
     minimize: 'Esci dalla modalità schermo intero',
     maximize: 'Massimizza Canvas',
+    optional_and_hidden: '(opzionale e nascosto)',
   },
   nodes: {
     common: {
@@ -974,6 +975,8 @@ const translation = {
       chunksVariableIsRequired: 'La variabile Chunks è richiesta',
       rerankingModelIsRequired: 'È richiesto un modello di riordinamento',
       embeddingModelIsRequired: 'È necessario un modello di embedding',
+      embeddingModelIsInvalid: 'Il modello di embedding non è valido',
+      rerankingModelIsInvalid: 'Il modello di riorganizzazione è non valido',
     },
   },
   tracing: {

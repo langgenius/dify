@@ -10,7 +10,7 @@ from configs import dify_config
 from extensions.ext_database import db
 from extensions.ext_mail import mail
 from libs.email_i18n import EmailType, get_email_i18n_service
-from models.account import Account, Tenant, TenantAccountJoin
+from models import Account, Tenant, TenantAccountJoin
 from models.dataset import Dataset, DatasetAutoDisableLog
 from services.feature_service import FeatureService
 

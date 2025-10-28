@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useMemo } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { uniqueId } from 'lodash-es'
 import type { Body, BodyPayload, KeyValue as KeyValueType } from '../../types'
 import { BodyPayloadValueType, BodyType } from '../../types'

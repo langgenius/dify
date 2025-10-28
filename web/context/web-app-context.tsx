@@ -2,15 +2,14 @@
 
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import Loading from '@/app/components/base/loading'
-import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import { AccessMode } from '@/models/access-control'
 import type { AppData, AppMeta } from '@/models/share'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
 import { usePathname, useSearchParams } from 'next/navigation'
 import type { FC, PropsWithChildren } from 'react'
 import { useEffect } from 'react'
-import { useState } from 'react'
 import { create } from 'zustand'
+import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
 import { useGlobalPublicStore } from './global-public-context'
 
 type WebAppStore = {
@@ -26,6 +25,10 @@ type WebAppStore = {
   updateWebAppMeta: (appMeta: AppMeta | null) => void
   userCanAccessApp: boolean
   updateUserCanAccessApp: (canAccess: boolean) => void
+  embeddedUserId: string | null
+  updateEmbeddedUserId: (userId: string | null) => void
+  embeddedConversationId: string | null
+  updateEmbeddedConversationId: (conversationId: string | null) => void
 }
 
 export const useWebAppStore = create<WebAppStore>(set => ({
@@ -41,6 +44,11 @@ export const useWebAppStore = create<WebAppStore>(set => ({
   updateWebAppMeta: (appMeta: AppMeta | null) => set(() => ({ appMeta })),
   userCanAccessApp: false,
   updateUserCanAccessApp: (canAccess: boolean) => set(() => ({ userCanAccessApp: canAccess })),
+  embeddedUserId: null,
+  updateEmbeddedUserId: (userId: string | null) => set(() => ({ embeddedUserId: userId })),
+  embeddedConversationId: null,
+  updateEmbeddedConversationId: (conversationId: string | null) =>
+    set(() => ({ embeddedConversationId: conversationId })),
 }))
 
 const getShareCodeFromRedirectUrl = (redirectUrl: string | null): string | null => {
@@ -60,9 +68,12 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   const isGlobalPending = useGlobalPublicStore(s => s.isGlobalPending)
   const updateWebAppAccessMode = useWebAppStore(state => state.updateWebAppAccessMode)
   const updateShareCode = useWebAppStore(state => state.updateShareCode)
+  const updateEmbeddedUserId = useWebAppStore(state => state.updateEmbeddedUserId)
+  const updateEmbeddedConversationId = useWebAppStore(state => state.updateEmbeddedConversationId)
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const redirectUrlParam = searchParams.get('redirect_url')
+  const searchParamsString = searchParams.toString()
 
   // Compute shareCode directly
   const shareCode = getShareCodeFromRedirectUrl(redirectUrlParam) || getShareCodeFromPathname(pathname)
@@ -70,25 +81,37 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
     updateShareCode(shareCode)
   }, [shareCode, updateShareCode])
 
-  const { isFetching, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
-  const [isFetchingAccessToken, setIsFetchingAccessToken] = useState(true)
-
   useEffect(() => {
-    if (accessModeResult?.accessMode) {
-      updateWebAppAccessMode(accessModeResult.accessMode)
-      if (accessModeResult.accessMode === AccessMode.PUBLIC) {
-        setIsFetchingAccessToken(true)
-        checkOrSetAccessToken(shareCode).finally(() => {
-          setIsFetchingAccessToken(false)
-        })
+    let cancelled = false
+    const syncEmbeddedUserId = async () => {
+      try {
+        const { user_id, conversation_id } = await getProcessedSystemVariablesFromUrlParams()
+        if (!cancelled) {
+          updateEmbeddedUserId(user_id || null)
+          updateEmbeddedConversationId(conversation_id || null)
+        }
       }
-      else {
-        setIsFetchingAccessToken(false)
+      catch {
+        if (!cancelled) {
+          updateEmbeddedUserId(null)
+          updateEmbeddedConversationId(null)
+        }
       }
     }
+    syncEmbeddedUserId()
+    return () => {
+      cancelled = true
+    }
+  }, [searchParamsString, updateEmbeddedUserId, updateEmbeddedConversationId])
+
+  const { isLoading, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
+
+  useEffect(() => {
+    if (accessModeResult?.accessMode)
+      updateWebAppAccessMode(accessModeResult.accessMode)
   }, [accessModeResult, updateWebAppAccessMode, shareCode])
 
-  if (isGlobalPending || isFetching || isFetchingAccessToken) {
+  if (isGlobalPending || isLoading) {
     return <div className='flex h-full w-full items-center justify-center'>
       <Loading />
     </div>

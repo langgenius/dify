@@ -83,6 +83,7 @@ const translation = {
     workflowTitle: '로그 세부 정보',
     fileListDetail: '세부',
     fileListLabel: '파일 세부 정보',
+    testWithParams: '매개변수로 테스트',
   },
   promptLog: '프롬프트 로그',
   agentLog: '에이전트 로그',

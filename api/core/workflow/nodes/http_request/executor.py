@@ -15,7 +15,7 @@ from core.file import file_manager
 from core.file.enums import FileTransferMethod
 from core.helper import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
-from core.workflow.entities import VariablePool
+from core.workflow.runtime import VariablePool
 
 from .entities import (
     HttpRequestNodeAuthorization,

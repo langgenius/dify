@@ -130,6 +130,14 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 
 如果您需要自定義配置，請參考我們的 [.env.example](../../docker/.env.example) 文件中的註釋，並在您的 `.env` 文件中更新相應的值。此外，根據您特定的部署環境和需求，您可能需要調整 `docker-compose.yaml` 文件本身，例如更改映像版本、端口映射或卷掛載。進行任何更改後，請重新運行 `docker-compose up -d`。您可以在[這裡](https://docs.dify.ai/getting-started/install-self-hosted/environments)找到可用環境變數的完整列表。
 
+### 使用 Grafana 進行指標監控
+
+將儀表板匯入 Grafana，使用 Dify 的 PostgreSQL 資料庫作為資料來源，以監控應用程式、租戶、訊息等顆粒度的指標。
+
+- [由 @bowenliang123 提供的 Grafana 儀表板](https://github.com/bowenliang123/dify-grafana-dashboard)
+
+### 使用 Kubernetes 部署
+
 如果您想配置高可用性設置，社區貢獻的 [Helm Charts](https://helm.sh/) 和 Kubernetes 資源清單（YAML）允許在 Kubernetes 上部署 Dify。
 
 - [由 @LeoQuote 提供的 Helm Chart](https://github.com/douban/charts/tree/master/charts/dify)

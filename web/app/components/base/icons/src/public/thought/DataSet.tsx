@@ -18,3 +18,4 @@ const Icon = (
 Icon.displayName = 'DataSet'
 
 export default Icon
+

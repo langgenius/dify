@@ -24,26 +24,34 @@ from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDelete
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
 
 # Define parsers for segment operations
-segment_create_parser = reqparse.RequestParser()
-segment_create_parser.add_argument("segments", type=list, required=False, nullable=True, location="json")
+segment_create_parser = reqparse.RequestParser().add_argument(
+    "segments", type=list, required=False, nullable=True, location="json"
+)
 
-segment_list_parser = reqparse.RequestParser()
-segment_list_parser.add_argument("status", type=str, action="append", default=[], location="args")
-segment_list_parser.add_argument("keyword", type=str, default=None, location="args")
+segment_list_parser = (
+    reqparse.RequestParser()
+    .add_argument("status", type=str, action="append", default=[], location="args")
+    .add_argument("keyword", type=str, default=None, location="args")
+)
 
-segment_update_parser = reqparse.RequestParser()
-segment_update_parser.add_argument("segment", type=dict, required=False, nullable=True, location="json")
+segment_update_parser = reqparse.RequestParser().add_argument(
+    "segment", type=dict, required=False, nullable=True, location="json"
+)
 
-child_chunk_create_parser = reqparse.RequestParser()
-child_chunk_create_parser.add_argument("content", type=str, required=True, nullable=False, location="json")
+child_chunk_create_parser = reqparse.RequestParser().add_argument(
+    "content", type=str, required=True, nullable=False, location="json"
+)
 
-child_chunk_list_parser = reqparse.RequestParser()
-child_chunk_list_parser.add_argument("limit", type=int, default=20, location="args")
-child_chunk_list_parser.add_argument("keyword", type=str, default=None, location="args")
-child_chunk_list_parser.add_argument("page", type=int, default=1, location="args")
+child_chunk_list_parser = (
+    reqparse.RequestParser()
+    .add_argument("limit", type=int, default=20, location="args")
+    .add_argument("keyword", type=str, default=None, location="args")
+    .add_argument("page", type=int, default=1, location="args")
+)
 
-child_chunk_update_parser = reqparse.RequestParser()
-child_chunk_update_parser.add_argument("content", type=str, required=True, nullable=False, location="json")
+child_chunk_update_parser = reqparse.RequestParser().add_argument(
+    "content", type=str, required=True, nullable=False, location="json"
+)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")

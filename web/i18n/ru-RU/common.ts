@@ -173,6 +173,7 @@ const translation = {
     github: 'ГитХаб',
     compliance: 'Соблюдение',
     support: 'Поддержка',
+    contactUs: 'Свяжитесь с нами',
   },
   settings: {
     accountGroup: 'АККАУНТ',

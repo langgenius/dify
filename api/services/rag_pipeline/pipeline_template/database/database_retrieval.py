@@ -74,5 +74,4 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
             "chunk_structure": pipeline_template.chunk_structure,
             "export_data": pipeline_template.yaml_content,
             "graph": graph_data,
-            "created_by": pipeline_template.created_user_name,
         }

@@ -226,6 +226,17 @@ const translation = {
   updated: 'Atualizado',
   externalKnowledgeBase: 'Base de conhecimento externa',
   createFromPipeline: 'Criar a partir do pipeline de conhecimento',
+  serviceApi: {
+    card: {
+      apiKey: 'Chave de API',
+      apiReference: 'Referência da API',
+      title: 'API de serviço de backend',
+      endpoint: 'Endpoint da API de Serviço',
+    },
+    enabled: 'Em serviço',
+    title: 'API de Serviço',
+    disabled: 'Desativado',
+  },
 }
 
 export default translation

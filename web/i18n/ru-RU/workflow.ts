@@ -328,6 +328,7 @@ const translation = {
     changeBlock: 'Изменить узел',
     minimize: 'Выйти из полноэкранного режима',
     maximize: 'Максимизировать холст',
+    optional_and_hidden: '(необязательно и скрыто)',
   },
   nodes: {
     common: {
@@ -948,6 +949,8 @@ const translation = {
       chunksVariableIsRequired: 'Переменная chunks обязательна',
       embeddingModelIsRequired: 'Требуется модель встраивания',
       rerankingModelIsRequired: 'Требуется модель перераспределения рангов',
+      rerankingModelIsInvalid: 'Модель повторной ранжировки недействительна',
+      embeddingModelIsInvalid: 'Модель встраивания недействительна',
     },
   },
   tracing: {

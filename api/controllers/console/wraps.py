@@ -30,10 +30,7 @@ def account_initialization_required(view: Callable[P, R]):
     def decorated(*args: P.args, **kwargs: P.kwargs):
         # check account initialization
         current_user, _ = current_account_with_tenant()
-
-        account = current_user
-
-        if account.status == AccountStatus.UNINITIALIZED:
+        if current_user.status == AccountStatus.UNINITIALIZED:
             raise AccountNotInitializedError()
 
         return view(*args, **kwargs)
@@ -249,9 +246,9 @@ def email_password_login_enabled(view: Callable[P, R]):
     return decorated
 
 
-def email_register_enabled(view):
+def email_register_enabled(view: Callable[P, R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()
         if features.is_allow_register:
             return view(*args, **kwargs)
@@ -299,3 +296,21 @@ def knowledge_pipeline_publish_enabled(view: Callable[P, R]):
         abort(403)
 
     return decorated
+
+
+def edit_permission_required(f: Callable[P, R]):
+    @wraps(f)
+    def decorated_function(*args: P.args, **kwargs: P.kwargs):
+        from werkzeug.exceptions import Forbidden
+
+        from libs.login import current_user
+        from models import Account
+
+        user = current_user._get_current_object()  # type: ignore
+        if not isinstance(user, Account):
+            raise Forbidden()
+        if not current_user.has_edit_permission:
+            raise Forbidden()
+        return f(*args, **kwargs)
+
+    return decorated_function

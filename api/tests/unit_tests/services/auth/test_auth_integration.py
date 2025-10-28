@@ -181,14 +181,11 @@ class TestAuthIntegration:
     )
     def test_all_providers_factory_creation(self, provider, credentials):
         """Test factory creation for all supported providers"""
-        try:
-            auth_class = ApiKeyAuthFactory.get_apikey_auth_factory(provider)
-            assert auth_class is not None
+        auth_class = ApiKeyAuthFactory.get_apikey_auth_factory(provider)
+        assert auth_class is not None
 
-            factory = ApiKeyAuthFactory(provider, credentials)
-            assert factory.auth is not None
-        except ImportError:
-            pytest.skip(f"Provider {provider} not implemented yet")
+        factory = ApiKeyAuthFactory(provider, credentials)
+        assert factory.auth is not None
 
     def _create_success_response(self, status_code=200):
         """Create successful HTTP response mock"""

@@ -110,19 +110,6 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         assert mock_cursor.execute.call_count >= 3  # CREATE TABLE + 2 indexes
         mock_redis.set.assert_called_once()
 
-    def test_config_validation(self):
-        """Test configuration validation."""
-        # Test missing required fields
-        with pytest.raises(ValueError):
-            AlibabaCloudMySQLVectorConfig(
-                host="",  # Empty host should raise error
-                port=3306,
-                user="test",
-                password="test",
-                database="test",
-                max_connection=5,
-            )
-
     @patch(
         "core.rag.datasource.vdb.alibabacloud_mysql.alibabacloud_mysql_vector.mysql.connector.pooling.MySQLConnectionPool"
     )
@@ -716,6 +703,30 @@ class TestAlibabaCloudMySQLVector(unittest.TestCase):
         mock_pool.get_connection.return_value = mock_conn
         mock_conn.cursor.return_value = mock_cursor
         mock_cursor.fetchone.side_effect = [{"VERSION()": "8.0.36"}, {"vector_support": True}]
+
+
+@pytest.mark.parametrize(
+    "invalid_config_override",
+    [
+        {"host": ""},  # Test empty host
+        {"port": 0},  # Test invalid port
+        {"max_connection": 0},  # Test invalid max_connection
+    ],
+)
+def test_config_validation_parametrized(invalid_config_override):
+    """Test configuration validation for various invalid inputs using parametrize."""
+    config = {
+        "host": "localhost",
+        "port": 3306,
+        "user": "test",
+        "password": "test",
+        "database": "test",
+        "max_connection": 5,
+    }
+    config.update(invalid_config_override)
+
+    with pytest.raises(ValueError):
+        AlibabaCloudMySQLVectorConfig(**config)
 
 
 if __name__ == "__main__":

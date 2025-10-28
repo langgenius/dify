@@ -207,6 +207,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             from_source=from_source,
             from_end_user_id=end_user_id,
             from_account_id=account_id,
+            app_mode=app_config.app_mode,
         )
 
         db.session.add(message)

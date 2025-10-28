@@ -3,7 +3,6 @@ import Chat from '../chat'
 import type {
   ChatConfig,
   ChatItem,
-  ChatItemInTree,
   OnSend,
 } from '../types'
 import { useChat } from '../chat/hooks'
@@ -149,7 +148,7 @@ const ChatWrapper = () => {
     )
   }, [chatList, handleNewConversationCompleted, handleSend, currentConversationId, currentConversationInputs, newConversationInputs, isInstalledApp, appId])
 
-  const doRegenerate = useCallback((chatItem: ChatItemInTree, editedQuestion?: { message: string, files?: FileEntity[] }) => {
+  const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
     doSend(editedQuestion ? editedQuestion.message : question.content,

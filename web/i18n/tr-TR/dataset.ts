@@ -226,6 +226,17 @@ const translation = {
   updated: 'Güncel -leştirilmiş',
   createFromPipeline: 'Bilgi İşlem Hattından Oluşturun',
   externalKnowledgeBase: 'Harici Bilgi Bankası',
+  serviceApi: {
+    card: {
+      apiReference: 'API Referansı',
+      title: 'Backend servis api',
+      apiKey: 'API Anahtarı',
+      endpoint: 'Hizmet API Uç Noktası',
+    },
+    disabled: 'Engelli',
+    enabled: 'Hizmette',
+    title: 'Servis API\'si',
+  },
 }
 
 export default translation

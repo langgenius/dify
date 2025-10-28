@@ -55,3 +55,16 @@ else:
         "properties",
     }
 DOCUMENT_EXTENSIONS: set[str] = convert_to_lower_and_upper_set(_doc_extensions)
+
+# console
+COOKIE_NAME_ACCESS_TOKEN = "access_token"
+COOKIE_NAME_REFRESH_TOKEN = "refresh_token"
+COOKIE_NAME_CSRF_TOKEN = "csrf_token"
+
+# webapp
+COOKIE_NAME_WEBAPP_ACCESS_TOKEN = "webapp_access_token"
+COOKIE_NAME_PASSPORT = "passport"
+
+HEADER_NAME_CSRF_TOKEN = "X-CSRF-Token"
+HEADER_NAME_APP_CODE = "X-App-Code"
+HEADER_NAME_PASSPORT = "X-App-Passport"

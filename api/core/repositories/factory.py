@@ -60,7 +60,7 @@ class DifyCoreRepositoryFactory:
 
         try:
             repository_class = import_string(class_path)
-            return repository_class(  # type: ignore[no-any-return]
+            return repository_class(
                 session_factory=session_factory,
                 user=user,
                 app_id=app_id,
@@ -96,7 +96,7 @@ class DifyCoreRepositoryFactory:
 
         try:
             repository_class = import_string(class_path)
-            return repository_class(  # type: ignore[no-any-return]
+            return repository_class(
                 session_factory=session_factory,
                 user=user,
                 app_id=app_id,

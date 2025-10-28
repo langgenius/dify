@@ -169,6 +169,7 @@ const translation = {
     compliance: 'Відповідність',
     support: 'Підтримка',
     github: 'Гітхаб',
+    contactUs: 'Зв’яжіться з нами',
   },
   settings: {
     accountGroup: 'ОБЛІКОВИЙ ЗАПИС',

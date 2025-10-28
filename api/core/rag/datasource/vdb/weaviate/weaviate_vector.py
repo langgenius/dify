@@ -250,7 +250,6 @@ class WeaviateVector(BaseVector):
                 )
             )
 
-        batch_size = max(1, int(dify_config.WEAVIATE_BATCH_SIZE or 100))
         with col.batch.dynamic() as batch:
             for obj in objs:
                 batch.add_object(properties=obj.properties, uuid=obj.uuid, vector=obj.vector)
@@ -348,7 +347,10 @@ class WeaviateVector(BaseVector):
         for obj in res.objects:
             properties = dict(obj.properties or {})
             text = properties.pop(Field.TEXT_KEY.value, "")
-            distance = (obj.metadata.distance if obj.metadata else None) or 1.0
+            if obj.metadata and obj.metadata.distance is not None:
+                distance = obj.metadata.distance
+            else:
+                distance = 1.0
             score = 1.0 - distance
 
             if score > score_threshold:

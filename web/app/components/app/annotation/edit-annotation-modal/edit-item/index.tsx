@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
@@ -16,7 +16,7 @@ type Props = {
   type: EditItemType
   content: string
   readonly?: boolean
-  onSave: (content: string) => void
+  onSave: (content: string) => Promise<void>
 }
 
 export const EditTitle: FC<{ className?: string; title: string }> = ({ className, title }) => (
@@ -46,8 +46,13 @@ const EditItem: FC<Props> = ({
   const placeholder = type === EditItemType.Query ? t('appAnnotation.editModal.queryPlaceholder') : t('appAnnotation.editModal.answerPlaceholder')
   const [isEdit, setIsEdit] = useState(false)
 
-  const handleSave = () => {
-    onSave(newContent)
+  // Reset newContent when content prop changes
+  useEffect(() => {
+    setNewContent('')
+  }, [content])
+
+  const handleSave = async () => {
+    await onSave(newContent)
     setIsEdit(false)
   }
 

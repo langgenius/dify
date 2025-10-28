@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'

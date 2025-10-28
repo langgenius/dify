@@ -86,6 +86,7 @@ const translation = {
     workflowTitle: 'Szczegół dziennika',
     fileListDetail: 'Detal',
     fileListLabel: 'Szczegóły pliku',
+    testWithParams: 'Test z parametrami',
   },
   promptLog: 'Dziennik monitów',
   agentLog: 'Dziennik agenta',

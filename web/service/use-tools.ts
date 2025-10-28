@@ -4,9 +4,11 @@ import type {
   MCPServerDetail,
   Tool,
 } from '@/app/components/tools/types'
+import { CollectionType } from '@/app/components/tools/types'
 import type { RAGRecommendedPlugins, ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { useInvalid } from './use-base'
+import type { QueryKey } from '@tanstack/react-query'
 import {
   useMutation,
   useQuery,
@@ -74,6 +76,16 @@ export const useAllMCPTools = () => {
 
 export const useInvalidateAllMCPTools = () => {
   return useInvalid(useAllMCPToolsKey)
+}
+
+const useInvalidToolsKeyMap: Record<string, QueryKey> = {
+  [CollectionType.builtIn]: useAllBuiltInToolsKey,
+  [CollectionType.custom]: useAllCustomToolsKey,
+  [CollectionType.workflow]: useAllWorkflowToolsKey,
+  [CollectionType.mcp]: useAllMCPToolsKey,
+}
+export const useInvalidToolsByType = (type: CollectionType | string) => {
+  return useInvalid(useInvalidToolsKeyMap[type])
 }
 
 export const useCreateMCP = () => {
@@ -274,6 +286,7 @@ export const useInvalidateBuiltinProviderInfo = () => {
 
 export const useBuiltinTools = (providerName: string) => {
   return useQuery({
+    enabled: !!providerName,
     queryKey: [NAME_SPACE, 'builtin-provider-tools', providerName],
     queryFn: () => get<Tool[]>(`/workspaces/current/tool-provider/builtin/${providerName}/tools`),
   })

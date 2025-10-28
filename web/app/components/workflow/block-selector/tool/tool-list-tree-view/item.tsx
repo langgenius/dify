@@ -39,7 +39,6 @@ const Item: FC<Props> = ({
             key={tool.id}
             payload={tool}
             viewType={ViewType.tree}
-            isShowLetterIndex={false}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
             canNotSelectMultiple={canNotSelectMultiple}

@@ -82,6 +82,7 @@ const translation = {
     workflowTitle: 'جزئیات لاگ',
     fileListLabel: 'جزئیات فایل',
     fileListDetail: 'جزئیات',
+    testWithParams: 'تست با پارامترها',
   },
   promptLog: 'لاگ درخواست',
   agentLog: 'لاگ عامل',

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import Confirm from '@/app/components/base/confirm'
 import AppPublisher from '@/app/components/app/app-publisher'

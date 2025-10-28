@@ -82,6 +82,7 @@ const translation = {
     workflowTitle: 'Chi tiết nhật ký',
     fileListDetail: 'Chi tiết',
     fileListLabel: 'Chi tiết tệp',
+    testWithParams: 'Kiểm tra với các tham số',
   },
   promptLog: 'Nhật ký lời nhắc',
   viewLog: 'Xem nhật ký',

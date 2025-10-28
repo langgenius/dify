@@ -32,7 +32,6 @@ const Pricing: FC<PricingProps> = ({
   const [planRange, setPlanRange] = React.useState<PlanRange>(PlanRange.monthly)
   const [currentCategory, setCurrentCategory] = useState<Category>(CategoryEnum.CLOUD)
   const canPay = isCurrentWorkspaceManager
-
   useKeyPress(['esc'], onCancel)
 
   const pricingPageLanguage = useGetPricingPageLanguage()

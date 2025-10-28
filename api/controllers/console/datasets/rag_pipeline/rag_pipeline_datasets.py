@@ -26,9 +26,7 @@ class CreateRagPipelineDatasetApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self):
-        parser = reqparse.RequestParser()
-
-        parser.add_argument(
+        parser = reqparse.RequestParser().add_argument(
             "yaml_content",
             type=str,
             nullable=False,

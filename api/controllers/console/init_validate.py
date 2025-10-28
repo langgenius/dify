@@ -57,8 +57,7 @@ class InitValidateAPI(Resource):
         if tenant_count > 0:
             raise AlreadySetupError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("password", type=StrLen(30), required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("password", type=StrLen(30), required=True, location="json")
         input_password = parser.parse_args()["password"]
 
         if input_password != os.environ.get("INIT_PASSWORD"):

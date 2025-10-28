@@ -233,6 +233,17 @@ const translation = {
   updated: 'अपडेट किया गया',
   externalKnowledgeBase: 'बाहरी ज्ञान आधार',
   createFromPipeline: 'ज्ञान पाइपलाइन से बनाएं',
+  serviceApi: {
+    card: {
+      apiReference: 'एपीआई संदर्भ',
+      apiKey: 'एपीआई कुंजी',
+      title: 'बैकएंड सेवा एपीआई',
+      endpoint: 'सेवा एपीआई एंडपॉइंट',
+    },
+    enabled: 'सेवा में',
+    disabled: 'अक्षम',
+    title: 'सेवा एपीआई',
+  },
 }
 
 export default translation

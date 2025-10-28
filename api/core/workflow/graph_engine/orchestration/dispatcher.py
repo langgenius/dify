@@ -8,7 +8,12 @@ import threading
 import time
 from typing import TYPE_CHECKING, final
 
-from core.workflow.graph_events.base import GraphNodeEventBase
+from core.workflow.graph_events import (
+    GraphNodeEventBase,
+    NodeRunExceptionEvent,
+    NodeRunFailedEvent,
+    NodeRunSucceededEvent,
+)
 
 from ..event_management import EventManager
 from .execution_coordinator import ExecutionCoordinator
@@ -27,6 +32,12 @@ class Dispatcher:
     This runs in a separate thread and coordinates event processing
     with timeout and completion detection.
     """
+
+    _COMMAND_TRIGGER_EVENTS = (
+        NodeRunSucceededEvent,
+        NodeRunFailedEvent,
+        NodeRunExceptionEvent,
+    )
 
     def __init__(
         self,
@@ -76,22 +87,37 @@ class Dispatcher:
         """Main dispatcher loop."""
         try:
             while not self._stop_event.is_set():
-                # Check for commands
-                self._execution_coordinator.check_commands()
+                commands_checked = False
+                should_check_commands = False
+                should_break = False
 
-                # Check for scaling
-                self._execution_coordinator.check_scaling()
+                if self._execution_coordinator.is_execution_complete():
+                    should_check_commands = True
+                    should_break = True
+                else:
+                    # Check for scaling
+                    self._execution_coordinator.check_scaling()
 
-                # Process events
-                try:
-                    event = self._event_queue.get(timeout=0.1)
-                    # Route to the event handler
-                    self._event_handler.dispatch(event)
-                    self._event_queue.task_done()
-                except queue.Empty:
-                    # Check if execution is complete
-                    if self._execution_coordinator.is_execution_complete():
-                        break
+                    # Process events
+                    try:
+                        event = self._event_queue.get(timeout=0.1)
+                        # Route to the event handler
+                        self._event_handler.dispatch(event)
+                        should_check_commands = self._should_check_commands(event)
+                        self._event_queue.task_done()
+                    except queue.Empty:
+                        # Process commands even when no new events arrive so abort requests are not missed
+                        should_check_commands = True
+                        time.sleep(0.1)
+
+                if should_check_commands and not commands_checked:
+                    self._execution_coordinator.check_commands()
+                    commands_checked = True
+
+                if should_break:
+                    if not commands_checked:
+                        self._execution_coordinator.check_commands()
+                    break
 
         except Exception as e:
             logger.exception("Dispatcher error")
@@ -102,3 +128,7 @@ class Dispatcher:
             # Signal the event emitter that execution is complete
             if self._event_emitter:
                 self._event_emitter.mark_complete()
+
+    def _should_check_commands(self, event: GraphNodeEventBase) -> bool:
+        """Return True if the event represents a node completion."""
+        return isinstance(event, self._COMMAND_TRIGGER_EVENTS)

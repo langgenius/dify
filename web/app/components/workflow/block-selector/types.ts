@@ -37,6 +37,7 @@ export type ToolDefaultValue = {
   paramSchemas: Record<string, any>[]
   credential_id?: string
   meta?: PluginMeta
+  output_schema?: Record<string, any>
 }
 
 export type DataSourceDefaultValue = {

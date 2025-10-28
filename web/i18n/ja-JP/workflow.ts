@@ -340,6 +340,7 @@ const translation = {
     moveToThisNode: 'このノードに移動する',
     maximize: 'キャンバスを最大化する',
     minimize: '全画面を終了する',
+    optional_and_hidden: '（オプションおよび非表示）',
   },
   nodes: {
     common: {
@@ -960,6 +961,8 @@ const translation = {
       chunksVariableIsRequired: 'Chunks変数は必須です',
       embeddingModelIsRequired: '埋め込みモデルが必要です',
       rerankingModelIsRequired: '再ランキングモデルが必要です',
+      embeddingModelIsInvalid: '埋め込みモデルが無効です',
+      rerankingModelIsInvalid: 'リランキングモデルは無効です',
     },
   },
   tracing: {

@@ -328,6 +328,7 @@ const translation = {
     changeBlock: 'Knoten ändern',
     maximize: 'Maximiere die Leinwand',
     minimize: 'Vollbildmodus beenden',
+    optional_and_hidden: '(optional & hidden)',
   },
   nodes: {
     common: {
@@ -948,6 +949,8 @@ const translation = {
       embeddingModelIsRequired: 'Ein Einbettungsmodell ist erforderlich',
       chunksVariableIsRequired: 'Die Variable \'Chunks\' ist erforderlich',
       rerankingModelIsRequired: 'Ein Reranking-Modell ist erforderlich',
+      embeddingModelIsInvalid: 'Einbettungsmodell ist ungültig',
+      rerankingModelIsInvalid: 'Das Reranking-Modell ist ungültig',
     },
   },
   tracing: {

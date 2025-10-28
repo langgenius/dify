@@ -23,7 +23,7 @@ from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
-from models.account import Account
+from models import Account
 from models.dataset import Pipeline
 from models.workflow import WorkflowDraftVariable
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -33,16 +33,18 @@ logger = logging.getLogger(__name__)
 
 
 def _create_pagination_parser():
-    parser = reqparse.RequestParser()
-    parser.add_argument(
-        "page",
-        type=inputs.int_range(1, 100_000),
-        required=False,
-        default=1,
-        location="args",
-        help="the page of data requested",
+    parser = (
+        reqparse.RequestParser()
+        .add_argument(
+            "page",
+            type=inputs.int_range(1, 100_000),
+            required=False,
+            default=1,
+            location="args",
+            help="the page of data requested",
+        )
+        .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
     )
-    parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
     return parser
 
 
@@ -206,10 +208,11 @@ class RagPipelineVariableApi(Resource):
         #         "upload_file_id": "1602650a-4fe4-423c-85a2-af76c083e3c4"
         #     }
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(self._PATCH_NAME_FIELD, type=str, required=False, nullable=True, location="json")
-        # Parse 'value' field as-is to maintain its original data structure
-        parser.add_argument(self._PATCH_VALUE_FIELD, type=lambda x: x, required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(self._PATCH_NAME_FIELD, type=str, required=False, nullable=True, location="json")
+            .add_argument(self._PATCH_VALUE_FIELD, type=lambda x: x, required=False, nullable=True, location="json")
+        )
 
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),

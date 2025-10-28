@@ -328,6 +328,7 @@ const translation = {
     changeBlock: 'Changer de nœud',
     maximize: 'Maximiser le Canvas',
     minimize: 'Sortir du mode plein écran',
+    optional_and_hidden: '(optionnel et caché)',
   },
   nodes: {
     common: {
@@ -948,6 +949,8 @@ const translation = {
       rerankingModelIsRequired: 'Un modèle de rerankage est requis',
       embeddingModelIsRequired: 'Un modèle d\'intégration est requis',
       chunksVariableIsRequired: 'La variable Chunks est requise',
+      rerankingModelIsInvalid: 'Le modèle de rerank est invalide',
+      embeddingModelIsInvalid: 'Le modèle d\'intégration est invalide',
     },
   },
   tracing: {

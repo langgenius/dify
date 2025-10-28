@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import TimePicker from './index'
 import dayjs from '../utils/dayjs'
 import { isDayjsObject } from '../utils/dayjs'
+import type { TimePickerProps } from '../types'
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -30,9 +31,10 @@ jest.mock('./options', () => () => <div data-testid="time-options" />)
 jest.mock('./header', () => () => <div data-testid="time-header" />)
 
 describe('TimePicker', () => {
-  const baseProps = {
+  const baseProps: Pick<TimePickerProps, 'onChange' | 'onClear' | 'value'> = {
     onChange: jest.fn(),
     onClear: jest.fn(),
+    value: undefined,
   }
 
   beforeEach(() => {

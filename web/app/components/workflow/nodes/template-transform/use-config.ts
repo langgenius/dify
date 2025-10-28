@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
 import type { Var, Variable } from '../../types'
 import { VarType } from '../../types'
@@ -13,7 +13,7 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 
 const useConfig = (id: string, payload: TemplateTransformNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
 
   const { inputs, setInputs: doSetInputs } = useNodeCrud<TemplateTransformNodeType>(id, payload)
   const inputsRef = useRef(inputs)

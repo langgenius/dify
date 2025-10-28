@@ -127,6 +127,12 @@ docker compose up -d
 
 如果您需要自定义配置，请参考 [.env.example](../../docker/.env.example) 文件中的注释，并更新 `.env` 文件中对应的值。此外，您可能需要根据您的具体部署环境和需求对 `docker-compose.yaml` 文件本身进行调整，例如更改镜像版本、端口映射或卷挂载。完成任何更改后，请重新运行 `docker-compose up -d`。您可以在[此处](https://docs.dify.ai/getting-started/install-self-hosted/environments)找到可用环境变量的完整列表。
 
+### 使用 Grafana 进行指标监控
+
+将仪表板导入 Grafana，使用 Dify 的 PostgreSQL 数据库作为数据源，以监控应用、租户、消息等粒度的指标。
+
+- [由 @bowenliang123 提供的 Grafana 仪表板](https://github.com/bowenliang123/dify-grafana-dashboard)
+
 #### 使用 Helm Chart 或 Kubernetes 资源清单（YAML）部署
 
 使用 [Helm Chart](https://helm.sh/) 版本或者 Kubernetes 资源清单（YAML），可以在 Kubernetes 上部署 Dify。

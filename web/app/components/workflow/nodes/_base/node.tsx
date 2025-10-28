@@ -48,8 +48,13 @@ import Tooltip from '@/app/components/base/tooltip'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { ToolTypeEnum } from '../../block-selector/types'
 
+type NodeChildProps = {
+  id: string
+  data: NodeProps['data']
+}
+
 type BaseNodeProps = {
-  children: ReactElement
+  children: ReactElement<Partial<NodeChildProps>>
   id: NodeProps['id']
   data: NodeProps['data']
 }

@@ -150,6 +150,42 @@ def test_build_from_remote_url(mock_http_head):
     assert file.size == 2048
 
 
+@pytest.mark.parametrize(
+    ("file_type", "should_pass", "expected_error"),
+    [
+        ("image", True, None),
+        ("document", False, "Detected file type does not match the specified type"),
+        ("video", False, "Detected file type does not match the specified type"),
+    ],
+)
+def test_build_from_remote_url_strict_validation(mock_http_head, file_type, should_pass, expected_error):
+    """Test strict type validation for remote_url."""
+    mapping = {
+        "transfer_method": "remote_url",
+        "url": TEST_REMOTE_URL,
+        "type": file_type,
+    }
+    if should_pass:
+        file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, strict_type_validation=True)
+        assert file.type == FileType(file_type)
+    else:
+        with pytest.raises(ValueError, match=expected_error):
+            build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, strict_type_validation=True)
+
+
+def test_build_from_remote_url_without_strict_validation(mock_http_head):
+    """Test that remote_url allows type mismatch when strict_type_validation is False."""
+    mapping = {
+        "transfer_method": "remote_url",
+        "url": TEST_REMOTE_URL,
+        "type": "document",
+    }
+    file = build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, strict_type_validation=False)
+    assert file.transfer_method == FileTransferMethod.REMOTE_URL
+    assert file.type == FileType.DOCUMENT
+    assert file.filename == "remote_test.jpg"
+
+
 def test_tool_file_not_found():
     """Test ToolFile not found in database."""
     with patch("factories.file_factory.db.session.scalar", return_value=None):

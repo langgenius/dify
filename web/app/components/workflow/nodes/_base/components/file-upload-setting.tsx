@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import useSWR from 'swr'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useTranslation } from 'react-i18next'
 import type { UploadFileSetting } from '../../../types'
 import { SupportUploadFileTypes } from '../../../types'

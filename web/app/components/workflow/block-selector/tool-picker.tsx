@@ -178,6 +178,7 @@ const ToolPicker: FC<Props> = ({
             mcpTools={mcpTools || []}
             selectedTools={selectedTools}
             canChooseMCPTool={canChooseMCPTool}
+            onTagsChange={setTags}
           />
         </div>
       </PortalToFollowElemContent>

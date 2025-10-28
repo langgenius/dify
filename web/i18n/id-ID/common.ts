@@ -172,6 +172,7 @@ const translation = {
     about: 'Tentang',
     workspace: 'Workspace',
     createWorkspace: 'Membuat Ruang Kerja',
+    contactUs: 'Hubungi Kami',
   },
   compliance: {
     soc2Type2: 'Laporan SOC 2 Tipe II',

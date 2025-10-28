@@ -12,7 +12,7 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.account import Account
+from models import Account
 from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService
 from services.errors.message import (
@@ -288,9 +288,10 @@ class MessageService:
         )
 
         with measure_time() as timer:
-            questions: list[str] = LLMGenerator.generate_suggested_questions_after_answer(
+            questions_sequence = LLMGenerator.generate_suggested_questions_after_answer(
                 tenant_id=app_model.tenant_id, histories=histories
             )
+            questions: list[str] = list(questions_sequence)
 
         # get tracing instance
         trace_manager = TraceQueueManager(app_id=app_model.id)

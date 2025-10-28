@@ -82,6 +82,7 @@ const translation = {
     workflowTitle: 'รายละเอียดบันทึก',
     fileListDetail: 'รายละเอียด',
     fileListLabel: 'รายละเอียดไฟล์',
+    testWithParams: 'ทดสอบด้วยพารามิเตอร์',
   },
   promptLog: 'บันทึกพร้อมท์',
   agentLog: 'บันทึกตัวแทน',

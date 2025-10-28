@@ -1,0 +1,258 @@
+app:
+  description: 'This workflow tests the iteration node with flatten_output=False.
+
+
+    It processes [1, 2, 3], outputs [item, item*2] for each iteration.
+
+
+    With flatten_output=False, it should output nested arrays:
+
+
+    ```
+
+    {"output": [[1, 2], [2, 4], [3, 6]]}
+
+    ```'
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: test_iteration_flatten_disabled
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.3.1
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: start-source-code-target
+      source: start_node
+      sourceHandle: source
+      target: code_node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: iteration
+      id: code-source-iteration-target
+      source: code_node
+      sourceHandle: source
+      target: iteration_node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: iteration_node
+        sourceType: iteration-start
+        targetType: code
+      id: iteration-start-source-code-inner-target
+      source: iteration_nodestart
+      sourceHandle: source
+      target: code_inner_node
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: iteration
+        targetType: end
+      id: iteration-source-end-target
+      source: iteration_node
+      sourceHandle: source
+      target: end_node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables: []
+      height: 54
+      id: start_node
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "\ndef main() -> dict:\n    return {\n        \"result\": [1, 2, 3],\n\
+          \    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: array[number]
+        selected: false
+        title: Generate Array
+        type: code
+        variables: []
+      height: 54
+      id: code_node
+      position:
+        x: 384
+        y: 282
+      positionAbsolute:
+        x: 384
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        error_handle_mode: terminated
+        flatten_output: false
+        height: 178
+        is_parallel: false
+        iterator_input_type: array[number]
+        iterator_selector:
+        - code_node
+        - result
+        output_selector:
+        - code_inner_node
+        - result
+        output_type: array[array[number]]
+        parallel_nums: 10
+        selected: false
+        start_node_id: iteration_nodestart
+        title: Iteration with Flatten Disabled
+        type: iteration
+        width: 388
+      height: 178
+      id: iteration_node
+      position:
+        x: 684
+        y: 282
+      positionAbsolute:
+        x: 684
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 388
+      zIndex: 1
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: iteration_nodestart
+      parentId: iteration_node
+      position:
+        x: 24
+        y: 68
+      positionAbsolute:
+        x: 708
+        y: 350
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+      zIndex: 1002
+    - data:
+        code: "\ndef main(arg1: int) -> dict:\n    return {\n        \"result\": [arg1,\
+          \ arg1 * 2],\n    }\n"
+        code_language: python3
+        desc: ''
+        isInIteration: true
+        isInLoop: false
+        iteration_id: iteration_node
+        outputs:
+          result:
+            children: null
+            type: array[number]
+        selected: false
+        title: Generate Pair
+        type: code
+        variables:
+        - value_selector:
+          - iteration_node
+          - item
+          value_type: number
+          variable: arg1
+      height: 54
+      id: code_inner_node
+      parentId: iteration_node
+      position:
+        x: 128
+        y: 68
+      positionAbsolute:
+        x: 812
+        y: 350
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+      zIndex: 1002
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - iteration_node
+          - output
+          value_type: array[array[number]]
+          variable: output
+        selected: false
+        title: End
+        type: end
+      height: 90
+      id: end_node
+      position:
+        x: 1132
+        y: 282
+      positionAbsolute:
+        x: 1132
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: -476
+      y: 3
+      zoom: 1
+

@@ -3,8 +3,7 @@ from functools import wraps
 
 from controllers.console.datasets.error import PipelineNotFoundError
 from extensions.ext_database import db
-from libs.login import current_user
-from models.account import Account
+from libs.login import current_account_with_tenant
 from models.dataset import Pipeline
 
 
@@ -17,8 +16,7 @@ def get_rag_pipeline(
             if not kwargs.get("pipeline_id"):
                 raise ValueError("missing pipeline_id in path parameters")
 
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user is not an account")
+            _, current_tenant_id = current_account_with_tenant()
 
             pipeline_id = kwargs.get("pipeline_id")
             pipeline_id = str(pipeline_id)
@@ -27,7 +25,7 @@ def get_rag_pipeline(
 
             pipeline = (
                 db.session.query(Pipeline)
-                .where(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_user.current_tenant_id)
+                .where(Pipeline.id == pipeline_id, Pipeline.tenant_id == current_tenant_id)
                 .first()
             )
 

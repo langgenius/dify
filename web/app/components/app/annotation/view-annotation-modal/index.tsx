@@ -21,7 +21,7 @@ type Props = {
   isShow: boolean
   onHide: () => void
   item: AnnotationItem
-  onSave: (editedQuery: string, editedAnswer: string) => void
+  onSave: (editedQuery: string, editedAnswer: string) => Promise<void>
   onRemove: () => void
 }
 
@@ -46,6 +46,16 @@ const ViewAnnotationModal: FC<Props> = ({
   const [currPage, setCurrPage] = React.useState<number>(0)
   const [total, setTotal] = useState(0)
   const [hitHistoryList, setHitHistoryList] = useState<HitHistoryItem[]>([])
+
+  // Update local state when item prop changes (e.g., when modal is reopened with updated data)
+  useEffect(() => {
+    setNewQuery(question)
+    setNewAnswer(answer)
+    setCurrPage(0)
+    setTotal(0)
+    setHitHistoryList([])
+  }, [question, answer, id])
+
   const fetchHitHistory = async (page = 1) => {
     try {
       const { data, total }: any = await fetchHitHistoryList(appId, id, {
@@ -62,6 +72,12 @@ const ViewAnnotationModal: FC<Props> = ({
   useEffect(() => {
     fetchHitHistory(currPage + 1)
   }, [currPage])
+
+  // Fetch hit history when item changes
+  useEffect(() => {
+    if (isShow && id)
+      fetchHitHistory(1)
+  }, [id, isShow])
 
   const tabs = [
     { value: TabType.annotation, text: t('appAnnotation.viewModal.annotatedResponse') },
@@ -82,14 +98,20 @@ const ViewAnnotationModal: FC<Props> = ({
     },
   ]
   const [activeTab, setActiveTab] = useState(TabType.annotation)
-  const handleSave = (type: EditItemType, editedContent: string) => {
-    if (type === EditItemType.Query) {
-      setNewQuery(editedContent)
-      onSave(editedContent, newAnswer)
+  const handleSave = async (type: EditItemType, editedContent: string) => {
+    try {
+      if (type === EditItemType.Query) {
+        await onSave(editedContent, newAnswer)
+        setNewQuery(editedContent)
+      }
+      else {
+        await onSave(newQuestion, editedContent)
+        setNewAnswer(editedContent)
+      }
     }
-    else {
-      setNewAnswer(editedContent)
-      onSave(newQuestion, editedContent)
+    catch (error) {
+      // If save fails, don't update local state
+      console.error('Failed to save annotation:', error)
     }
   }
   const [showModal, setShowModal] = useState(false)

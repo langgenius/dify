@@ -1,5 +1,4 @@
 import flask_restx
-from flask import Response
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
 from sqlalchemy import select
@@ -13,7 +12,7 @@ from models.dataset import Dataset
 from models.model import ApiToken, App
 
 from . import api, console_ns
-from .wraps import account_initialization_required, setup_required
+from .wraps import account_initialization_required, edit_permission_required, setup_required
 
 api_key_fields = {
     "id": fields.String,
@@ -68,14 +67,12 @@ class BaseApiKeyListResource(Resource):
         return {"items": keys}
 
     @marshal_with(api_key_fields)
+    @edit_permission_required
     def post(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         current_key_count = (
             db.session.query(ApiToken)
             .where(ApiToken.type == self.resource_type, getattr(ApiToken, self.resource_id_field) == resource_id)
@@ -156,11 +153,6 @@ class AppApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for an app"""
         return super().post(resource_id)
 
-    def after_request(self, resp: Response):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
-
     resource_type = "app"
     resource_model = App
     resource_id_field = "app_id"
@@ -176,11 +168,6 @@ class AppApiKeyResource(BaseApiKeyResource):
     def delete(self, resource_id, api_key_id):
         """Delete an API key for an app"""
         return super().delete(resource_id, api_key_id)
-
-    def after_request(self, resp):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
 
     resource_type = "app"
     resource_model = App
@@ -206,11 +193,6 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
         """Create a new API key for a dataset"""
         return super().post(resource_id)
 
-    def after_request(self, resp: Response):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
-
     resource_type = "dataset"
     resource_model = Dataset
     resource_id_field = "dataset_id"
@@ -226,11 +208,6 @@ class DatasetApiKeyResource(BaseApiKeyResource):
     def delete(self, resource_id, api_key_id):
         """Delete an API key for a dataset"""
         return super().delete(resource_id, api_key_id)
-
-    def after_request(self, resp: Response):
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Credentials"] = "true"
-        return resp
 
     resource_type = "dataset"
     resource_model = Dataset

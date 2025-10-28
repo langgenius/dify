@@ -82,6 +82,7 @@ const translation = {
     workflowTitle: 'Подробная информация о журнале',
     fileListLabel: 'Сведения о файле',
     fileListDetail: 'Подробность',
+    testWithParams: 'Тест с параметрами',
   },
   promptLog: 'Журнал подсказок',
   agentLog: 'Журнал агента',

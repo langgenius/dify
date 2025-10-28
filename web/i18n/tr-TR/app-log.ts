@@ -82,6 +82,7 @@ const translation = {
     workflowTitle: 'Günlük Detayı',
     fileListDetail: 'Ayrıntı',
     fileListLabel: 'Dosya Detayları',
+    testWithParams: 'Parametrelerle Test',
   },
   promptLog: 'Prompt Günlüğü',
   agentLog: 'Agent Günlüğü',

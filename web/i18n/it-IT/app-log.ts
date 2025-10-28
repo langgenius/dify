@@ -86,6 +86,7 @@ const translation = {
     workflowTitle: 'Dettagli Registro',
     fileListDetail: 'Dettaglio',
     fileListLabel: 'Dettagli del file',
+    testWithParams: 'Test con parametri',
   },
   promptLog: 'Registro Prompt',
   agentLog: 'Registro Agente',

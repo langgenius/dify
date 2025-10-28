@@ -328,6 +328,7 @@ const translation = {
     organizeBlocks: 'Organizuj węzły',
     minimize: 'Wyjdź z trybu pełnoekranowego',
     maximize: 'Maksymalizuj płótno',
+    optional_and_hidden: '(opcjonalne i ukryte)',
   },
   nodes: {
     common: {
@@ -948,6 +949,8 @@ const translation = {
       embeddingModelIsRequired: 'Wymagany jest model osadzania',
       chunksVariableIsRequired: 'Wymagana jest zmienna Chunks',
       rerankingModelIsRequired: 'Wymagany jest model ponownego rankingu',
+      embeddingModelIsInvalid: 'Model osadzania jest nieprawidłowy',
+      rerankingModelIsInvalid: 'Model ponownego rankingowania jest nieprawidłowy',
     },
   },
   tracing: {

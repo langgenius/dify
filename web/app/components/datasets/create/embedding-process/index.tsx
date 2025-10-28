@@ -18,7 +18,13 @@ import DocumentFileIcon from '../../common/document-file-icon'
 import cn from '@/utils/classnames'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
 import Button from '@/app/components/base/button'
-import type { FullDocumentDetail, IndexingStatusResponse, ProcessRuleResponse } from '@/models/datasets'
+import type {
+  DataSourceInfo,
+  FullDocumentDetail,
+  IndexingStatusResponse,
+  LegacyDataSourceInfo,
+  ProcessRuleResponse,
+} from '@/models/datasets'
 import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchProcessRule } from '@/service/datasets'
 import { DataSourceType, ProcessMode } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
@@ -241,10 +247,16 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     return doc?.data_source_type as DataSourceType
   }
 
+  const isLegacyDataSourceInfo = (info: DataSourceInfo): info is LegacyDataSourceInfo => {
+    return info != null && typeof (info as LegacyDataSourceInfo).upload_file === 'object'
+  }
+
   const getIcon = (id: string) => {
     const doc = documents.find(document => document.id === id)
-
-    return doc?.data_source_info.notion_page_icon
+    const info = doc?.data_source_info
+    if (info && isLegacyDataSourceInfo(info))
+      return info.notion_page_icon
+    return undefined
   }
   const isSourceEmbedding = (detail: IndexingStatusResponse) =>
     ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'].includes(detail.indexing_status || '')

@@ -178,6 +178,7 @@ const translation = {
     support: 'Supporto',
     compliance: 'Conformità',
     github: 'GitHub',
+    contactUs: 'Contattaci',
   },
   settings: {
     accountGroup: 'ACCOUNT',

@@ -3,7 +3,7 @@ import type { ChangeEvent, FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import produce from 'immer'
+import { produce } from 'immer'
 import ModalFoot from '../modal-foot'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
@@ -320,7 +320,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
           {type === InputVarType.paragraph && (
             <Field title={t('appDebug.variableConfig.defaultValue')}>
               <Textarea
-                value={tempPayload.default || ''}
+                value={String(tempPayload.default ?? '')}
                 onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
                 placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               />
