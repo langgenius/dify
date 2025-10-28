@@ -61,6 +61,7 @@ class PluginTriggerMetadata(TriggerMetadata):
     endpoint_id: str
     plugin_unique_identifier: str
     provider_id: str
+    event_name: str
     icon_filename: str
     icon_dark_filename: str
 

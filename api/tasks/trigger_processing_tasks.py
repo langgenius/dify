@@ -207,6 +207,7 @@ def dispatch_triggered_workflow(
                     plugin_unique_identifier=provider_controller.plugin_unique_identifier or "",
                     endpoint_id=subscription.endpoint_id,
                     provider_id=subscription.provider_id,
+                    event_name=event_name,
                     icon_filename=trigger_entity.identity.icon or "",
                     icon_dark_filename=trigger_entity.identity.icon_dark or "",
                 ),
