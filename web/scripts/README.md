@@ -1,38 +1,89 @@
-# Production Build Optimization Scripts
+# Web Scripts
 
-## optimize-standalone.js
+Frontend development utility scripts.
 
-This script removes unnecessary development dependencies from the Next.js standalone build output to reduce the production Docker image size.
+## 📋 Scripts
 
-### What it does
+- `generate-icons.js` - Generate PWA icons
+- `optimize-standalone.js` - Optimize build output  
+- `analyze-component.js` - **Test generation helper** ⭐
 
-The script specifically targets and removes `jest-worker` packages that are bundled with Next.js but not needed in production. These packages are included because:
+---
 
-1. Next.js includes jest-worker in its compiled dependencies
-1. terser-webpack-plugin (used by Next.js for minification) depends on jest-worker
-1. pnpm's dependency resolution creates symlinks to jest-worker in various locations
+## 🚀 Generate Tests (Using Cursor AI)
 
-### Usage
-
-The script is automatically run during Docker builds via the `build:docker` npm script:
+### Quick Start
 
 ```bash
-# Docker build (removes jest-worker after build)
-pnpm build:docker
+# 1. Analyze component
+pnpm test:gen app/components/base/button/index.tsx
+
+# Output: Component analysis + Cursor prompt (auto-copied)
+
+# 2. In Cursor: Cmd+L → Cmd+V → Enter → Apply
+
+# 3. Verify
+pnpm test app/components/base/button/index.spec.tsx
 ```
 
-To run the optimization manually:
+**Done in < 1 minute!** ✅
+
+---
+
+## 📊 How It Works
+
+### Component Complexity
+
+Script analyzes and scores components:
+
+- **0-10**: 🟢 Simple (5-10 min to test)
+- **11-30Menu 🟡 Medium (15-30 min to test)  
+- **31-50Menu 🟠 Complex (30-60 min to test)
+- **51+**: 🔴 Very Complex (60+ min, consider refactoring)
+
+### Test Scenarios (11 types)
+
+Defined in `.cursorrules`:
+
+**Must test**: Rendering, Props, Edge Cases  
+**CommonMenuInteractions, Accessibility, i18n, Async  
+**OptionalMenuState, Security, Performance, Snapshots
+
+Cursor AI auto-selects scenarios based on component features.
+
+---
+
+## 💡 Daily Workflow
 
 ```bash
-node scripts/optimize-standalone.js
+# New component
+pnpm test:gen app/components/new-feature/index.tsx
+# → Cursor → Apply → Done
+
+# Or even simpler in Cursor
+# Cmd+I → "Generate test" → Apply
 ```
 
-### What gets removed
+---
 
-- `node_modules/.pnpm/next@*/node_modules/next/dist/compiled/jest-worker`
-- `node_modules/.pnpm/terser-webpack-plugin@*/node_modules/jest-worker` (symlinks)
-- `node_modules/.pnpm/jest-worker@*` (actual packages)
+## 📋 Commands
 
-### Impact
+```bash
+pnpm test:gen <path>        # Generate test
+pnpm test [file]            # Run tests
+pnpm test --coverage        # View coverage
+pnpm lint                   # Code check
+pnpm type-check             # Type check
+```
 
-Removing jest-worker saves approximately 36KB per instance from the production image. While this may seem small, it helps ensure production images only contain necessary runtime dependencies.
+---
+
+## 🎯 Customize
+
+Edit `.cursorrules` to modify test standards for your team.
+
+```bash
+code .cursorrules
+git commit -m "docs: update test rules"
+```
+
