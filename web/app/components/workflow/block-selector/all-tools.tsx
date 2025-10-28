@@ -25,7 +25,7 @@ import PluginList, { type ListProps } from '@/app/components/workflow/block-sele
 import { PluginType } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import RAGToolSuggestions from './rag-tool-suggestions'
+import RAGToolRecommendations from './rag-tool-recommendations'
 
 type AllToolsProps = {
   className?: string
@@ -148,7 +148,7 @@ const AllTools = ({
         onScroll={pluginRef.current?.handleScroll}
       >
         {isShowRAGRecommendations && (
-          <RAGToolSuggestions
+          <RAGToolRecommendations
             viewType={isSupportGroupView ? activeView : ViewType.flat}
             onSelect={onSelect}
             onTagsChange={onTagsChange}
