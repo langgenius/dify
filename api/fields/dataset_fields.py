@@ -96,6 +96,7 @@ dataset_detail_fields = {
     "total_documents": fields.Integer,
     "total_available_documents": fields.Integer,
     "enable_api": fields.Boolean,
+    "is_multimodal": fields.Boolean,
 }
 
 dataset_query_detail_fields = {

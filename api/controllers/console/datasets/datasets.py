@@ -424,17 +424,17 @@ class DatasetApi(Resource):
         args = parser.parse_args()
         data = request.get_json()
         current_user, current_tenant_id = current_account_with_tenant()
-
+        args["is_multimodal"] = False
         # check embedding model setting
         if (
             data.get("indexing_technique") == "high_quality"
             and data.get("embedding_model_provider") is not None
             and data.get("embedding_model") is not None
         ):
-            DatasetService.check_embedding_model_setting(
+            is_multimodal = DatasetService.check_is_multimodal_model(
                 dataset.tenant_id, data.get("embedding_model_provider"), data.get("embedding_model")
             )
-
+            args["is_multimodal"] = is_multimodal
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         DatasetPermissionService.check_permission(
             current_user, dataset, data.get("permission"), data.get("partial_member_list")

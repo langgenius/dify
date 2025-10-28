@@ -7,7 +7,7 @@ import time
 import uuid
 from collections import Counter
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import sqlalchemy as sa
 from sqlalchemy import exists, func, select
@@ -18,7 +18,9 @@ from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.entities.model_entities import ModelFeature, ModelType
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -44,6 +46,7 @@ from models.dataset import (
     DocumentSegment,
     ExternalKnowledgeBindings,
     Pipeline,
+    SegmentAttachmentBinding,
 )
 from models.model import UploadFile
 from models.provider_ids import ModelProviderID
@@ -358,6 +361,27 @@ class DatasetService:
             )
         except ProviderTokenNotInitError as ex:
             raise ValueError(ex.description)
+    
+    @staticmethod
+    def check_is_multimodal_model(tenant_id: str, model_provider: str, model: str):
+        try:
+            model_manager = ModelManager()
+            model_instance = model_manager.get_model_instance(
+                tenant_id=tenant_id,
+                provider=model_provider,
+                model_type=ModelType.TEXT_EMBEDDING,
+                model=model,
+            )
+            text_embedding_model = cast(TextEmbeddingModel, model_instance.model_type_instance)
+            model_schema = text_embedding_model.get_model_schema(model_instance.model, model_instance.credentials)
+            if not model_schema:
+                raise ValueError("Model schema not found")
+            if model_schema.features and ModelFeature.VISION in model_schema.features:
+                return True
+            else:
+                return False
+        except LLMBadRequestError:
+            raise ValueError("No Model available. Please configure a valid provider in the Settings -> Model Provider.")
 
     @staticmethod
     def check_reranking_model_setting(tenant_id: str, reranking_model_provider: str, reranking_model: str):
@@ -2664,6 +2688,18 @@ class SegmentService:
             document.word_count += segment_document.word_count
             db.session.add(document)
             db.session.commit()
+
+            if args["attachment_ids"]:
+                for attachment_id in args["attachment_ids"]:
+                    binding = SegmentAttachmentBinding(
+                        tenant_id=current_user.current_tenant_id,
+                        dataset_id=document.dataset_id,
+                        document_id=document.id,
+                        segment_id=segment_document.id,
+                        attachment_id=attachment_id,
+                    )
+                    db.session.add(binding)
+                db.session.commit()
 
             # save vector index
             try:

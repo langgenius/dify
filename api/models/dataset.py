@@ -73,6 +73,7 @@ class Dataset(Base):
     pipeline_id = mapped_column(StringUUID, nullable=True)
     chunk_structure = mapped_column(db.String(255), nullable=True)
     enable_api = mapped_column(sa.Boolean, nullable=False, server_default=db.text("true"))
+    is_multimodal = mapped_column(sa.Boolean, nullable=False, server_default=db.text("false"))
 
     @property
     def total_documents(self):
@@ -851,6 +852,45 @@ class DocumentSegment(Base):
             offset += len(signed_url) - (end - start)
 
         return text
+    
+    @property
+    def attachments(self) -> list[dict[str, Any]]:
+        # Use JOIN to fetch attachments in a single query instead of two separate queries
+        attachments_with_bindings = db.session.execute(
+            select(SegmentAttachmentBinding, UploadFile)
+            .join(
+                UploadFile,
+                UploadFile.id == SegmentAttachmentBinding.attachment_id
+            )
+            .where(
+                SegmentAttachmentBinding.tenant_id == self.tenant_id,
+                SegmentAttachmentBinding.dataset_id == self.dataset_id,
+                SegmentAttachmentBinding.document_id == self.document_id
+            )
+        ).all()
+        if not attachments_with_bindings:
+            return []
+        attachment_list = []
+        for _, attachment in attachments_with_bindings:
+            upload_file_id = attachment.id
+            nonce = os.urandom(16).hex()
+            timestamp = str(int(time.time()))
+            data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
+            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
+            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+            encoded_sign = base64.urlsafe_b64encode(sign).decode()
+
+            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+            base_url = f"/files/{upload_file_id}/image-preview"
+            source_url = f"{base_url}?{params}"
+            attachment_list.append({
+                "name": attachment.name,
+                "size": attachment.size,
+                "extension": attachment.extension,
+                "mime_type": attachment.mime_type,
+                "source_url": source_url,
+            })
+        return attachment_list
 
 
 class ChildChunk(Base):
@@ -1320,3 +1360,22 @@ class PipelineRecommendedPlugin(Base):
     active = mapped_column(sa.Boolean, nullable=False, default=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+
+class SegmentAttachmentBinding(Base):
+    __tablename__ = "segment_attachment_bindings"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="segment_attachment_binding_pkey"),
+        sa.Index("segment_attachment_binding_tenant_idx", "tenant_id"),
+        sa.Index("segment_attachment_binding_dataset_idx", "dataset_id"),
+        sa.Index("segment_attachment_binding_document_idx", "document_id"),
+        sa.Index("segment_attachment_binding_segment_idx", "segment_id"),
+        sa.Index("segment_attachment_binding_attachment_idx", "attachment_id"),
+    )
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    segment_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    attachment_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())

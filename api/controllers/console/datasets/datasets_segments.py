@@ -251,6 +251,7 @@ class DatasetDocumentSegmentAddApi(Resource):
             .add_argument("content", type=str, required=True, nullable=False, location="json")
             .add_argument("answer", type=str, required=False, nullable=True, location="json")
             .add_argument("keywords", type=list, required=False, nullable=True, location="json")
+            .add_argument("attachment_ids", type=list, required=False, nullable=True, location="json")
         )
         args = parser.parse_args()
         SegmentService.segment_create_args_validate(args, document)
