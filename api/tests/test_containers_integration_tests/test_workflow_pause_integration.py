@@ -25,7 +25,7 @@ from datetime import timedelta
 
 import pytest
 from sqlalchemy import delete, select
-from sqlalchemy.orm import selectinload, sessionmaker
+from sqlalchemy.orm import selectinload, sessionmaker, Session
 
 from core.workflow.entities import WorkflowExecution
 from core.workflow.enums import WorkflowExecutionStatus
@@ -89,17 +89,6 @@ class PrunePausesTestCase:
     resume_age: timedelta | None
     expected_pruned_count: int
     description: str = ""
-
-
-def pause_workflow_success_cases() -> list[PauseWorkflowSuccessCase]:
-    """Create test cases for successful pause workflow operations."""
-    return [
-        PauseWorkflowSuccessCase(
-            name="pause_running_workflow",
-            initial_status=WorkflowExecutionStatus.RUNNING,
-            description="Should successfully pause a running workflow",
-        ),
-    ]
 
 
 def pause_workflow_failure_cases() -> list[PauseWorkflowFailureCase]:
@@ -363,9 +352,14 @@ class TestWorkflowPauseIntegration:
         assert retrieved_state == test_state
 
         # Verify database state
+        query = select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == workflow_run.id)
+        pause_model = self.session.scalars(query).first()
+        assert pause_model is not None
+        assert pause_model.resumed_at is None
+        assert pause_model.id == pause_entity.id
+
         self.session.refresh(workflow_run)
         assert workflow_run.status == WorkflowExecutionStatus.PAUSED
-        assert workflow_run.pause_id == pause_entity.id
 
         # Act - Get pause state
         retrieved_entity = repository.get_workflow_pause(workflow_run.id)
@@ -392,19 +386,20 @@ class TestWorkflowPauseIntegration:
         # Verify database state
         self.session.refresh(workflow_run)
         assert workflow_run.status == WorkflowExecutionStatus.RUNNING
-        assert workflow_run.pause_id is None
+        self.session.refresh(pause_model)
+        assert pause_model.resumed_at is not None
 
         # Act - Delete pause state
         repository.delete_workflow_pause(pause_entity)
 
         # Assert - Pause state deleted
-        deleted_pause = self.session.get(WorkflowPauseModel, pause_entity.id)
-        assert deleted_pause is None
+        with Session(bind=self.session.get_bind()) as session:
+            deleted_pause = session.get(WorkflowPauseModel, pause_entity.id)
+            assert deleted_pause is None
 
-    @pytest.mark.parametrize("test_case", pause_workflow_success_cases(), ids=lambda tc: tc.name)
-    def test_pause_workflow_success(self, test_case: PauseWorkflowSuccessCase):
+    def test_pause_workflow_success(self):
         """Test successful pause workflow scenarios."""
-        workflow_run = self._create_test_workflow_run(status=test_case.initial_status)
+        workflow_run = self._create_test_workflow_run(status=WorkflowExecutionStatus.RUNNING)
         test_state = self._create_test_state()
         repository = self._get_workflow_run_repository()
 
@@ -424,7 +419,11 @@ class TestWorkflowPauseIntegration:
 
         self.session.refresh(workflow_run)
         assert workflow_run.status == WorkflowExecutionStatus.PAUSED
-        assert workflow_run.pause_id == pause_entity.id
+        pause_query = select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == workflow_run.id)
+        pause_model = self.session.scalars(pause_query).first()
+        assert pause_model is not None
+        assert pause_model.id == pause_entity.id
+        assert pause_model.resumed_at is None
 
     @pytest.mark.parametrize("test_case", pause_workflow_failure_cases(), ids=lambda tc: tc.name)
     def test_pause_workflow_failure(self, test_case: PauseWorkflowFailureCase):
@@ -470,18 +469,17 @@ class TestWorkflowPauseIntegration:
 
         self.session.refresh(workflow_run)
         assert workflow_run.status == WorkflowExecutionStatus.RUNNING
-        assert workflow_run.pause_id is None
+        pause_query = select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == workflow_run.id)
+        pause_model = self.session.scalars(pause_query).first()
+        assert pause_model is not None
+        assert pause_model.id == pause_entity.id
+        assert pause_model.resumed_at is not None
 
-    @pytest.mark.parametrize("test_case", resume_workflow_failure_cases(), ids=lambda tc: tc.name)
-    def test_resume_workflow_failure(self, test_case: ResumeWorkflowFailureCase):
+    def test_resume_running_workflow(self):
         """Test resume workflow failure scenarios."""
-        workflow_run = self._create_test_workflow_run(status=test_case.initial_status)
+        workflow_run = self._create_test_workflow_run(status=WorkflowExecutionStatus.RUNNING)
         test_state = self._create_test_state()
         repository = self._get_workflow_run_repository()
-
-        if workflow_run.status != WorkflowExecutionStatus.RUNNING:
-            workflow_run.status = WorkflowExecutionStatus.RUNNING
-            self.session.commit()
 
         pause_entity = repository.create_workflow_pause(
             workflow_run_id=workflow_run.id,
@@ -490,21 +488,31 @@ class TestWorkflowPauseIntegration:
         )
 
         self.session.refresh(workflow_run)
+        workflow_run.status = WorkflowExecutionStatus.RUNNING
+        self.session.add(workflow_run)
+        self.session.commit()
 
-        if test_case.pause_resumed:
-            pause_entity = repository.resume_workflow_pause(
+        with pytest.raises(_WorkflowRunError):
+            repository.resume_workflow_pause(
                 workflow_run_id=workflow_run.id,
                 pause_entity=pause_entity,
             )
-            self.session.refresh(workflow_run)
-            workflow_run.status = WorkflowExecutionStatus.PAUSED
-            workflow_run.pause_id = pause_entity.id
-            self.session.add(workflow_run)
-            self.session.commit()
-        elif test_case.set_running_status:
-            workflow_run.status = WorkflowExecutionStatus.RUNNING
-            self.session.add(workflow_run)
-            self.session.commit()
+
+    def test_resume_resumed_pause(self):
+        """Test resume workflow failure scenarios."""
+        workflow_run = self._create_test_workflow_run(status=WorkflowExecutionStatus.RUNNING)
+        test_state = self._create_test_state()
+        repository = self._get_workflow_run_repository()
+
+        pause_entity = repository.create_workflow_pause(
+            workflow_run_id=workflow_run.id,
+            state_owner_user_id=self.test_user_id,
+            state=test_state,
+        )
+        pause_model = self.session.get(WorkflowPauseModel, pause_entity.id)
+        pause_model.resumed_at = naive_utc_now()
+        self.session.add(pause_model)
+        self.session.commit()
 
         with pytest.raises(_WorkflowRunError):
             repository.resume_workflow_pause(
@@ -550,65 +558,6 @@ class TestWorkflowPauseIntegration:
                 workflow_run_id=nonexistent_id,
                 pause_entity=pause_entity,
             )
-
-    def test_get_pause_state_missing_file(self):
-        """Test getting pause state when state file is missing."""
-        # Arrange
-        workflow_run = self._create_test_workflow_run()
-        test_state = self._create_test_state()
-        repository = self._get_workflow_run_repository()
-
-        pause_entity = repository.create_workflow_pause(
-            workflow_run_id=workflow_run.id,
-            state_owner_user_id=self.test_user_id,
-            state=test_state,
-        )
-
-        # Manually delete upload file to simulate missing file
-        pause_model = self.session.get(WorkflowPauseModel, pause_entity.id)
-        upload_file = self.session.get(UploadFile, pause_model.state_file_id)
-        if upload_file:
-            self.session.delete(upload_file)
-            self.session.commit()
-
-        # Act & Assert
-        with pytest.raises(_WorkflowRunError, match="StateFile not exists"):
-            repository.get_workflow_pause(workflow_run.id)
-
-    def test_concurrent_pause_operations(self):
-        """Test concurrent pause operations on different workflow runs."""
-        # Arrange
-        test_state = self._create_test_state()
-        repository = self._get_workflow_run_repository()
-        workflow_runs = []
-
-        # Act - Create pauses sequentially with different workflow runs
-        # Note: Each attempt uses a different workflow run to avoid validation conflicts
-        results = []
-        for _ in range(3):
-            workflow_run = self._create_test_workflow_run()
-            workflow_runs.append(workflow_run)
-
-            try:
-                result = repository.create_workflow_pause(
-                    workflow_run_id=workflow_run.id,
-                    state_owner_user_id=self.test_user_id,
-                    state=test_state,
-                )
-                results.append(result)
-            except Exception as e:
-                print(f"Exception during pause: {e}")
-                results.append(None)
-
-        # Assert - All should succeed since they use different workflow runs
-        successful_results = [r for r in results if r is not None]
-        assert len(successful_results) == 3
-
-        # Verify database state for all workflow runs
-        for workflow_run in workflow_runs:
-            self.session.refresh(workflow_run)
-            assert workflow_run.status == WorkflowExecutionStatus.PAUSED
-            assert workflow_run.pause_id is not None
 
     # ==================== Prune Functionality Tests ====================
 
@@ -871,16 +820,11 @@ class TestWorkflowPauseIntegration:
 
         # Assert - Verify file was uploaded to storage
         pause_model = self.session.get(WorkflowPauseModel, pause_entity.id)
-        upload_file = self.session.get(UploadFile, pause_model.state_file_id)
-
-        assert upload_file is not None
-        assert upload_file.name.startswith("workflow-state-")
-        assert upload_file.tenant_id == self.test_tenant_id
-        assert upload_file.created_by == self.test_user_id
+        assert pause_model.state_object_key != ""
 
         # Verify file content in storage
 
-        file_key = upload_file.key
+        file_key = pause_model.state_object_key
         storage_content = storage.load(file_key).decode()
         assert storage_content == test_state
 
@@ -905,9 +849,7 @@ class TestWorkflowPauseIntegration:
 
         # Get file info before deletion
         pause_model = self.session.get(WorkflowPauseModel, pause_entity.id)
-        upload_file = self.session.get(UploadFile, pause_model.state_file_id)
-        file_key = upload_file.key
-        file_id = upload_file.id
+        file_key = pause_model.state_object_key
 
         # Act - Delete pause state
         repository.delete_workflow_pause(pause_entity)
@@ -916,11 +858,6 @@ class TestWorkflowPauseIntegration:
         self.session.expire_all()  # Clear session to ensure fresh query
         deleted_pause = self.session.get(WorkflowPauseModel, pause_entity.id)
         assert deleted_pause is None
-
-        # File should also be deleted (delete_workflow_pause deletes both pause and file)
-        # This is the actual behavior - files are deleted along with pause records
-        upload_file_after = self.session.get(UploadFile, file_id)
-        assert upload_file_after is None  # File should be deleted
 
         try:
             content = storage.load(file_key).decode()
@@ -956,8 +893,9 @@ class TestWorkflowPauseIntegration:
 
         # Verify file size in database
         pause_model = self.session.get(WorkflowPauseModel, pause_entity.id)
-        upload_file = self.session.get(UploadFile, pause_model.state_file_id)
-        assert upload_file.size == len(large_state_json)
+        assert pause_model.state_object_key != ""
+        loaded_state = storage.load(pause_model.state_object_key)
+        assert loaded_state.decode() == large_state_json
 
     def test_multiple_pause_resume_cycles(self):
         """Test multiple pause/resume cycles on the same workflow run."""
@@ -994,21 +932,13 @@ class TestWorkflowPauseIntegration:
             print(f"Workflow run pause_id: {workflow_run.pause_id}")
 
             # Use the test session directly to verify the pause
-            stmt = (
-                select(WorkflowRun)
-                .options(selectinload(WorkflowRun.pause).options(selectinload(WorkflowPauseModel.state_file)))
-                .where(WorkflowRun.id == workflow_run.id)
-            )
+            stmt = select(WorkflowRun).options(selectinload(WorkflowRun.pause)).where(WorkflowRun.id == workflow_run.id)
             workflow_run_with_pause = self.session.scalar(stmt)
             pause_model = workflow_run_with_pause.pause
             print(f"Pause model from test session: {pause_model}")
 
             # Use test session directly to verify pause
-            stmt = (
-                select(WorkflowRun)
-                .options(selectinload(WorkflowRun.pause).options(selectinload(WorkflowPauseModel.state_file)))
-                .where(WorkflowRun.id == workflow_run.id)
-            )
+            stmt = select(WorkflowRun).options(selectinload(WorkflowRun.pause)).where(WorkflowRun.id == workflow_run.id)
             workflow_run_with_pause = self.session.scalar(stmt)
             pause_model = workflow_run_with_pause.pause
             print(f"Pause model from test session: {pause_model}")
@@ -1016,10 +946,10 @@ class TestWorkflowPauseIntegration:
             # Verify pause using test session directly
             assert pause_model is not None
             assert pause_model.id == pause_entity.id
-            assert pause_model.state_file is not None
+            assert pause_model.state_object_key != ""
 
             # Load file content using storage directly
-            file_content = storage.load(pause_model.state_file.key)
+            file_content = storage.load(pause_model.state_object_key)
             if isinstance(file_content, bytes):
                 file_content = file_content.decode()
             assert file_content == state
@@ -1034,11 +964,7 @@ class TestWorkflowPauseIntegration:
 
             # Verify resume - check that pause is marked as resumed
             self.session.expire_all()  # Clear session to ensure fresh query
-            stmt = (
-                select(WorkflowPauseModel)
-                .options(selectinload(WorkflowPauseModel.state_file))
-                .where(WorkflowPauseModel.id == pause_entity.id)
-            )
+            stmt = select(WorkflowPauseModel).where(WorkflowPauseModel.id == pause_entity.id)
             resumed_pause_model = self.session.scalar(stmt)
             assert resumed_pause_model is not None
             assert resumed_pause_model.resumed_at is not None
@@ -1047,42 +973,3 @@ class TestWorkflowPauseIntegration:
             self.session.refresh(workflow_run)
             assert workflow_run.status == WorkflowExecutionStatus.RUNNING
             assert workflow_run.pause_id is None
-
-    def test_get_workflow_current_pause(self):
-        """Test getting current active pause for a workflow."""
-        # Arrange
-        workflow_run = self._create_test_workflow_run()
-        test_state = self._create_test_state()
-        repository = self._get_workflow_run_repository()
-
-        # Act - Create pause state
-        pause_entity = repository.create_workflow_pause(
-            workflow_run_id=workflow_run.id,
-            state_owner_user_id=self.test_user_id,
-            state=test_state,
-        )
-
-        # Get current pause using workflow_id
-        current_pause = repository.get_workflow_current_pause(
-            workflow_id=self.test_workflow_id,
-        )
-
-        # Assert
-        assert current_pause is not None
-        assert current_pause.id == pause_entity.id
-        retrieved_state = current_pause.get_state()
-        if isinstance(retrieved_state, bytes):
-            retrieved_state = retrieved_state.decode()
-        assert retrieved_state == test_state
-
-        # Resume the workflow
-        repository.resume_workflow_pause(
-            workflow_run_id=workflow_run.id,
-            pause_entity=pause_entity,
-        )
-
-        # Get current pause again - should return None
-        current_pause_after = repository.get_workflow_current_pause(
-            workflow_id=self.test_workflow_id,
-        )
-        assert current_pause_after is None
