@@ -1,11 +1,8 @@
 import logging
-import time
 
 from celery import shared_task
 from sqlalchemy.orm import sessionmaker
 
-from core.trigger.debug.event_bus import TriggerDebugEventBus
-from core.trigger.debug.events import ScheduleDebugEvent, build_schedule_pool_key
 from core.workflow.nodes.trigger_schedule.exc import (
     ScheduleExecutionError,
     ScheduleNotFoundError,
@@ -59,39 +56,6 @@ def run_schedule_trigger(schedule_id: str) -> None:
                 ),
             )
             logger.info("Schedule %s triggered workflow: %s", schedule_id, response.workflow_trigger_log_id)
-
-            # Debug dispatch: Send event to waiting debug listeners (if any)
-            try:
-                event = ScheduleDebugEvent(
-                    timestamp=int(time.time()),
-                    node_id=schedule.node_id,
-                    inputs=inputs,
-                )
-                pool_key = build_schedule_pool_key(
-                    tenant_id=schedule.tenant_id,
-                    app_id=schedule.app_id,
-                    node_id=schedule.node_id,
-                )
-                dispatched_count = TriggerDebugEventBus.dispatch(
-                    tenant_id=schedule.tenant_id,
-                    event=event,
-                    pool_key=pool_key,
-                )
-                if dispatched_count > 0:
-                    logger.debug(
-                        "Dispatched schedule debug event to %d listener(s) for schedule %s",
-                        dispatched_count,
-                        schedule_id,
-                    )
-            except Exception as debug_error:
-                # Debug dispatch failure should not affect production workflow execution
-                logger.warning(
-                    "Failed to dispatch debug event for schedule %s: %s",
-                    schedule_id,
-                    str(debug_error),
-                    exc_info=True,
-                )
-
         except Exception as e:
             raise ScheduleExecutionError(
                 f"Failed to trigger workflow for schedule {schedule_id}, app {schedule.app_id}"

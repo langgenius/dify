@@ -20,3 +20,14 @@ def naive_utc_now() -> datetime.datetime:
     representing current UTC time.
     """
     return _now_func(datetime.UTC).replace(tzinfo=None)
+
+
+def ensure_naive_utc(dt: datetime.datetime) -> datetime.datetime:
+    """Return the datetime as naive UTC (tzinfo=None).
+
+    If the input is timezone-aware, convert to UTC and drop the tzinfo.
+    Assumes naive datetimes are already expressed in UTC.
+    """
+    if dt.tzinfo is None:
+        return dt
+    return dt.astimezone(datetime.UTC).replace(tzinfo=None)
