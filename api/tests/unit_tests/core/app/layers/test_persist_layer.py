@@ -6,6 +6,7 @@ import pytest
 
 from core.app.layers.persist_layer import PauseStatePersistenceLayer
 from core.variables.segments import Segment
+from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.graph_engine.entities.commands import GraphEngineCommand
 from core.workflow.graph_events.graph import (
     GraphRunFailedEvent,
@@ -13,7 +14,6 @@ from core.workflow.graph_events.graph import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from repositories.factory import DifyAPIRepositoryFactory
 

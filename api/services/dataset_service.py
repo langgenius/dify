@@ -1417,7 +1417,7 @@ class DocumentService:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         assert knowledge_config.data_source
-        assert knowledge_config.data_source.info_list.file_info_list
+        assert knowledge_config.data_source.info_list
 
         features = FeatureService.get_features(current_user.current_tenant_id)
 
@@ -1426,6 +1426,8 @@ class DocumentService:
                 count = 0
                 if knowledge_config.data_source:
                     if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                        if not knowledge_config.data_source.info_list.file_info_list:
+                            raise ValueError("File source info is required")
                         upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
                         count = len(upload_file_list)
                     elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
@@ -1531,6 +1533,8 @@ class DocumentService:
                 document_ids = []
                 duplicate_document_ids = []
                 if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                    if not knowledge_config.data_source.info_list.file_info_list:
+                        raise ValueError("File source info is required")
                     upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
                     for file_id in upload_file_list:
                         file = (

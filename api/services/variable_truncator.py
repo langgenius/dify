@@ -1,4 +1,5 @@
 import dataclasses
+from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any, Generic, TypeAlias, TypeVar, overload
 
@@ -57,7 +58,7 @@ class UnknownTypeError(Exception):
     pass
 
 
-JSONTypes: TypeAlias = int | float | str | list | dict | None | bool
+JSONTypes: TypeAlias = int | float | str | list[object] | dict[str, object] | None | bool
 
 
 @dataclasses.dataclass(frozen=True)
@@ -66,7 +67,17 @@ class TruncationResult:
     truncated: bool
 
 
-class VariableTruncator:
+class BaseTruncator(ABC):
+    @abstractmethod
+    def truncate(self, segment: Segment) -> TruncationResult:
+        pass
+
+    @abstractmethod
+    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
+        pass
+
+
+class VariableTruncator(BaseTruncator):
     """
     Handles variable truncation with structure-preserving strategies.
 
@@ -252,14 +263,14 @@ class VariableTruncator:
         truncated_value = value[:truncated_size] + "..."
         return _PartResult(truncated_value, self.calculate_json_size(truncated_value), True)
 
-    def _truncate_array(self, value: list, target_size: int) -> _PartResult[list]:
+    def _truncate_array(self, value: list[object], target_size: int) -> _PartResult[list[object]]:
         """
         Truncate array with correct strategy:
         1. First limit to 20 items
         2. If still too large, truncate individual items
         """
 
-        truncated_value: list[Any] = []
+        truncated_value: list[object] = []
         truncated = False
         used_size = self.calculate_json_size([])
 
@@ -282,7 +293,11 @@ class VariableTruncator:
             if used_size > target_size:
                 break
 
-            part_result = self._truncate_json_primitives(item, target_size - used_size)
+            remaining_budget = target_size - used_size
+            if item is None or isinstance(item, (str, list, dict, bool, int, float, UpdatedVariable)):
+                part_result = self._truncate_json_primitives(item, remaining_budget)
+            else:
+                raise UnknownTypeError(f"got unknown type {type(item)} in array truncation")
             truncated_value.append(part_result.value)
             used_size += part_result.value_size
             truncated = part_result.truncated
@@ -370,13 +385,18 @@ class VariableTruncator:
         return _PartResult(truncated_obj, used_size, truncated)
 
     @overload
+    def _truncate_json_primitives(
+        self, val: UpdatedVariable, target_size: int
+    ) -> _PartResult[Mapping[str, object]]: ...
+
+    @overload
     def _truncate_json_primitives(self, val: str, target_size: int) -> _PartResult[str]: ...
 
     @overload
-    def _truncate_json_primitives(self, val: list, target_size: int) -> _PartResult[list]: ...
+    def _truncate_json_primitives(self, val: list[object], target_size: int) -> _PartResult[list[object]]: ...
 
     @overload
-    def _truncate_json_primitives(self, val: dict, target_size: int) -> _PartResult[dict]: ...
+    def _truncate_json_primitives(self, val: dict[str, object], target_size: int) -> _PartResult[dict[str, object]]: ...
 
     @overload
     def _truncate_json_primitives(self, val: bool, target_size: int) -> _PartResult[bool]: ...  # type: ignore
@@ -391,7 +411,9 @@ class VariableTruncator:
     def _truncate_json_primitives(self, val: None, target_size: int) -> _PartResult[None]: ...
 
     def _truncate_json_primitives(
-        self, val: UpdatedVariable | str | list | dict | bool | int | float | None, target_size: int
+        self,
+        val: UpdatedVariable | str | list[object] | dict[str, object] | bool | int | float | None,
+        target_size: int,
     ) -> _PartResult[Any]:
         """Truncate a value within an object to fit within budget."""
         if isinstance(val, UpdatedVariable):
@@ -407,3 +429,38 @@ class VariableTruncator:
             return _PartResult(val, self.calculate_json_size(val), False)
         else:
             raise AssertionError("this statement should be unreachable.")
+
+
+class DummyVariableTruncator(BaseTruncator):
+    """
+    A no-op variable truncator that doesn't truncate any data.
+
+    This is used for Service API calls where truncation should be disabled
+    to maintain backward compatibility and provide complete data.
+    """
+
+    def truncate_variable_mapping(self, v: Mapping[str, Any]) -> tuple[Mapping[str, Any], bool]:
+        """
+        Return original mapping without truncation.
+
+        Args:
+            v: The variable mapping to process
+
+        Returns:
+            Tuple of (original_mapping, False) where False indicates no truncation occurred
+        """
+        return v, False
+
+    def truncate(self, segment: Segment) -> TruncationResult:
+        """
+        Return original segment without truncation.
+
+        Args:
+            segment: The segment to process
+
+        Returns:
+            The original segment unchanged
+        """
+        # For Service API, we want to preserve the original segment
+        # without any truncation, so just return it as-is
+        return TruncationResult(result=segment, truncated=False)

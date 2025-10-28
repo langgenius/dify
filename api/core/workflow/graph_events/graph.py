@@ -1,7 +1,7 @@
 from pydantic import Field
 
-from core.workflow.graph_events import BaseGraphEvent
 from core.workflow.entities.pause_reason import PauseReason
+from core.workflow.graph_events import BaseGraphEvent
 
 
 class GraphRunStartedEvent(BaseGraphEvent):

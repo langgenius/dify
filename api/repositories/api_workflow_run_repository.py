@@ -28,7 +28,7 @@ Example:
     runs = repo.get_paginated_workflow_runs(
         tenant_id="tenant-123",
         app_id="app-456",
-        triggered_from="debugging",
+        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
         limit=20
     )
     ```
@@ -41,7 +41,14 @@ from typing import Protocol
 from core.workflow.entities.workflow_pause import WorkflowPauseEntity
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
+from repositories.types import (
+    AverageInteractionStats,
+    DailyRunsStats,
+    DailyTerminalsStats,
+    DailyTokenCostStats,
+)
 
 
 class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
@@ -57,7 +64,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         self,
         tenant_id: str,
         app_id: str,
-        triggered_from: str,
+        triggered_from: WorkflowRunTriggeredFrom | Sequence[WorkflowRunTriggeredFrom],
         limit: int = 20,
         last_id: str | None = None,
         status: str | None = None,
@@ -72,7 +79,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         Args:
             tenant_id: Tenant identifier for multi-tenant isolation
             app_id: Application identifier
-            triggered_from: Filter by trigger source (e.g., "debugging", "app-run")
+            triggered_from: Filter by trigger source(s) (e.g., "debugging", "app-run", or list of values)
             limit: Maximum number of records to return (default: 20)
             last_id: Cursor for pagination - ID of the last record from previous page
             status: Optional filter by status (e.g., "running", "succeeded", "failed")
@@ -107,6 +114,31 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
 
         Returns:
             WorkflowRun object if found, None otherwise
+        """
+        ...
+
+    def get_workflow_run_by_id_without_tenant(
+        self,
+        run_id: str,
+    ) -> WorkflowRun | None:
+        """
+        Get a specific workflow run by ID without tenant/app context.
+
+        Retrieves a single workflow run using only the run ID, without
+        requiring tenant_id or app_id. This method is intended for internal
+        system operations like tracing and monitoring where the tenant context
+        is not available upfront.
+
+        Args:
+            run_id: Workflow run identifier
+
+        Returns:
+            WorkflowRun object if found, None otherwise
+
+        Note:
+            This method bypasses tenant isolation checks and should only be used
+            in trusted system contexts like ops trace collection. For user-facing
+            operations, use get_workflow_run_by_id() with proper tenant isolation.
         """
         ...
 
@@ -344,5 +376,121 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
 
         Raises:
             ValueError: If parameters are invalid
+        """
+        ...
+
+    def get_daily_runs_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[DailyRunsStats]:
+        """
+        Get daily runs statistics.
+
+        Retrieves daily workflow runs count grouped by date for a specific app
+        and trigger source. Used for workflow statistics dashboard.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            app_id: Application identifier
+            triggered_from: Filter by trigger source (e.g., "app-run")
+            start_date: Optional start date filter
+            end_date: Optional end date filter
+            timezone: Timezone for date grouping (default: "UTC")
+
+        Returns:
+            List of dictionaries containing date and runs count:
+            [{"date": "2024-01-01", "runs": 10}, ...]
+        """
+        ...
+
+    def get_daily_terminals_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[DailyTerminalsStats]:
+        """
+        Get daily terminals statistics.
+
+        Retrieves daily unique terminal count grouped by date for a specific app
+        and trigger source. Used for workflow statistics dashboard.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            app_id: Application identifier
+            triggered_from: Filter by trigger source (e.g., "app-run")
+            start_date: Optional start date filter
+            end_date: Optional end date filter
+            timezone: Timezone for date grouping (default: "UTC")
+
+        Returns:
+            List of dictionaries containing date and terminal count:
+            [{"date": "2024-01-01", "terminal_count": 5}, ...]
+        """
+        ...
+
+    def get_daily_token_cost_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[DailyTokenCostStats]:
+        """
+        Get daily token cost statistics.
+
+        Retrieves daily total token count grouped by date for a specific app
+        and trigger source. Used for workflow statistics dashboard.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            app_id: Application identifier
+            triggered_from: Filter by trigger source (e.g., "app-run")
+            start_date: Optional start date filter
+            end_date: Optional end date filter
+            timezone: Timezone for date grouping (default: "UTC")
+
+        Returns:
+            List of dictionaries containing date and token count:
+            [{"date": "2024-01-01", "token_count": 1000}, ...]
+        """
+        ...
+
+    def get_average_app_interaction_statistics(
+        self,
+        tenant_id: str,
+        app_id: str,
+        triggered_from: str,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        timezone: str = "UTC",
+    ) -> list[AverageInteractionStats]:
+        """
+        Get average app interaction statistics.
+
+        Retrieves daily average interactions per user grouped by date for a specific app
+        and trigger source. Used for workflow statistics dashboard.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            app_id: Application identifier
+            triggered_from: Filter by trigger source (e.g., "app-run")
+            start_date: Optional start date filter
+            end_date: Optional end date filter
+            timezone: Timezone for date grouping (default: "UTC")
+
+        Returns:
+            List of dictionaries containing date and average interactions:
+            [{"date": "2024-01-01", "interactions": 2.5}, ...]
         """
         ...

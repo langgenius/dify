@@ -10,6 +10,7 @@ import {
 } from '@remixicon/react'
 import { useMount } from 'ahooks'
 import type { Collection, CustomCollectionBackend, Tool } from '../types'
+import type { CollectionType } from '../types'
 import Type from './type'
 import Category from './category'
 import Tools from './tools'
@@ -129,7 +130,7 @@ const AddToolModal: FC<Props> = ({
     const nexModelConfig = produce(modelConfig, (draft: ModelConfig) => {
       draft.agentConfig.tools.push({
         provider_id: collection.id || collection.name,
-        provider_type: collection.type,
+        provider_type: collection.type as CollectionType,
         provider_name: collection.name,
         tool_name: tool.name,
         tool_label: tool.label[locale] || tool.label[locale.replaceAll('-', '_')],

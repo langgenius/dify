@@ -8,8 +8,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from core.workflow.enums import NodeState
 from core.workflow.entities.pause_reason import PauseReason
+from core.workflow.enums import NodeState
 
 from .node_execution import NodeExecution
 
