@@ -42,7 +42,7 @@ class AppImportApi(Resource):
             .add_argument("icon_background", type=str, location="json")
             .add_argument("app_id", type=str, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # Create service with session
         with Session(db.engine) as session:

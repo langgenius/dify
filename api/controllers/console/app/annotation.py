@@ -50,7 +50,7 @@ class AnnotationReplyActionApi(Resource):
             .add_argument("embedding_provider_name", required=True, type=str, location="json")
             .add_argument("embedding_model_name", required=True, type=str, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         if action == "enable":
             result = AppAnnotationService.enable_app_annotation(args, app_id)
         elif action == "disable":
@@ -101,7 +101,7 @@ class AppAnnotationSettingUpdateApi(Resource):
         annotation_setting_id = str(annotation_setting_id)
 
         parser = reqparse.RequestParser().add_argument("score_threshold", required=True, type=float, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, args)
         return result, 200
@@ -196,7 +196,7 @@ class AnnotationApi(Resource):
             .add_argument("question", required=True, type=str, location="json")
             .add_argument("answer", required=True, type=str, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         annotation = AppAnnotationService.insert_app_annotation_directly(args, app_id)
         return annotation
 
@@ -267,7 +267,7 @@ class AnnotationUpdateDeleteApi(Resource):
             .add_argument("question", required=True, type=str, location="json")
             .add_argument("answer", required=True, type=str, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         annotation = AppAnnotationService.update_app_annotation_directly(args, app_id, annotation_id)
         return annotation
 

@@ -43,7 +43,7 @@ class RecommendedAppListApi(Resource):
     def get(self):
         # language args
         parser = reqparse.RequestParser().add_argument("language", type=str, location="args")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         language = args.get("language")
         if language and language in languages:

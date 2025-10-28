@@ -54,7 +54,7 @@ class DatasetsHitTestingBase:
             .add_argument("retrieval_model", type=dict, required=False, location="json")
             .add_argument("external_retrieval_model", type=dict, required=False, location="json")
         )
-        return parser.parse_args()
+        return parser.parse_args(strict=True)
 
     @staticmethod
     def perform_hit_testing(dataset, args):

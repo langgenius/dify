@@ -30,7 +30,7 @@ class CodeBasedExtensionAPI(Resource):
     @account_initialization_required
     def get(self):
         parser = reqparse.RequestParser().add_argument("module", type=str, required=True, location="args")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return {"module": args["module"], "data": CodeBasedExtensionService.get_code_based_extension(args["module"])}
 
@@ -72,7 +72,7 @@ class APIBasedExtensionAPI(Resource):
             .add_argument("api_endpoint", type=str, required=True, location="json")
             .add_argument("api_key", type=str, required=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         _, current_tenant_id = current_account_with_tenant()
 
         extension_data = APIBasedExtension(
@@ -131,7 +131,7 @@ class APIBasedExtensionDetailAPI(Resource):
             .add_argument("api_endpoint", type=str, required=True, location="json")
             .add_argument("api_key", type=str, required=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         extension_data_from_db.name = args["name"]
         extension_data_from_db.api_endpoint = args["api_endpoint"]

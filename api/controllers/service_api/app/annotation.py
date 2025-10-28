@@ -46,7 +46,7 @@ class AnnotationReplyActionApi(Resource):
     @validate_app_token
     def post(self, app_model: App, action: Literal["enable", "disable"]):
         """Enable or disable annotation reply feature."""
-        args = annotation_reply_action_parser.parse_args()
+        args = annotation_reply_action_parser.parse_args(strict=True)
         if action == "enable":
             result = AppAnnotationService.enable_app_annotation(args, app_model.id)
         elif action == "disable":
@@ -141,7 +141,7 @@ class AnnotationListApi(Resource):
     @service_api_ns.marshal_with(build_annotation_model(service_api_ns), code=HTTPStatus.CREATED)
     def post(self, app_model: App):
         """Create a new annotation."""
-        args = annotation_create_parser.parse_args()
+        args = annotation_create_parser.parse_args(strict=True)
         annotation = AppAnnotationService.insert_app_annotation_directly(args, app_model.id)
         return annotation, 201
 
@@ -169,7 +169,7 @@ class AnnotationUpdateDeleteApi(Resource):
             raise Forbidden()
 
         annotation_id = str(annotation_id)
-        args = annotation_create_parser.parse_args()
+        args = annotation_create_parser.parse_args(strict=True)
         annotation = AppAnnotationService.update_app_annotation_directly(args, app_model.id, annotation_id)
         return annotation
 

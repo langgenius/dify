@@ -101,7 +101,7 @@ class AppAccessMode(Resource):
             .add_argument("appId", type=str, required=False, location="args")
             .add_argument("appCode", type=str, required=False, location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         features = FeatureService.get_system_features()
         if not features.webapp_auth.enabled:

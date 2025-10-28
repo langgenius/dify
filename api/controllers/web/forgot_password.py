@@ -45,7 +45,7 @@ class ForgotPasswordSendEmailApi(Resource):
             .add_argument("email", type=email, required=True, location="json")
             .add_argument("language", type=str, required=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
@@ -84,7 +84,7 @@ class ForgotPasswordCheckApi(Resource):
             .add_argument("code", type=str, required=True, location="json")
             .add_argument("token", type=str, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         user_email = args["email"]
 
@@ -137,7 +137,7 @@ class ForgotPasswordResetApi(Resource):
             .add_argument("new_password", type=valid_password, required=True, nullable=False, location="json")
             .add_argument("password_confirm", type=valid_password, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # Validate passwords match
         if args["new_password"] != args["password_confirm"]:

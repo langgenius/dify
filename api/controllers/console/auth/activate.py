@@ -35,7 +35,7 @@ class ActivateCheckApi(Resource):
         ),
     )
     def get(self):
-        args = active_check_parser.parse_args()
+        args = active_check_parser.parse_args(strict=True)
 
         workspaceId = args["workspace_id"]
         reg_email = args["email"]
@@ -85,7 +85,7 @@ class ActivateApi(Resource):
     )
     @api.response(400, "Already activated or invalid token")
     def post(self):
-        args = active_parser.parse_args()
+        args = active_parser.parse_args(strict=True)
 
         invitation = RegisterService.get_invitation_if_token_valid(args["workspace_id"], args["email"], args["token"])
         if invitation is None:

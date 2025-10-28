@@ -44,7 +44,7 @@ class WebsiteCrawlApi(Resource):
             .add_argument("url", type=str, required=True, nullable=True, location="json")
             .add_argument("options", type=dict, required=True, nullable=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # Create typed request and validate
         try:
@@ -75,7 +75,7 @@ class WebsiteCrawlStatusApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "provider", type=str, choices=["firecrawl", "watercrawl", "jinareader"], required=True, location="args"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # Create typed request and validate
         try:

@@ -43,7 +43,7 @@ class DailyMessageStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
@@ -118,7 +118,7 @@ class DailyConversationStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -186,7 +186,7 @@ class DailyTerminalsStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
@@ -260,7 +260,7 @@ class DailyTokenCostStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
@@ -337,7 +337,7 @@ class AverageSessionInteractionStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', c.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
@@ -430,7 +430,7 @@ class UserSatisfactionRateStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', m.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
@@ -513,7 +513,7 @@ class AverageResponseTimeStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
@@ -587,7 +587,7 @@ class TokensPerSecondStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         sql_query = """SELECT
     DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,

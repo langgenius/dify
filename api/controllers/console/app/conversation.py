@@ -74,7 +74,7 @@ class CompletionConversationApi(Resource):
             .add_argument("page", type=int_range(1, 99999), default=1, location="args")
             .add_argument("limit", type=int_range(1, 100), default=20, location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         query = sa.select(Conversation).where(
             Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
@@ -236,7 +236,7 @@ class ChatConversationApi(Resource):
                 location="args",
             )
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         subquery = (
             db.session.query(

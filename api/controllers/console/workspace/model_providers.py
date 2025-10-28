@@ -32,7 +32,7 @@ class ModelProviderListApi(Resource):
             choices=[mt.value for mt in ModelType],
             location="args",
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         provider_list = model_provider_service.get_provider_list(tenant_id=tenant_id, model_type=args.get("model_type"))
@@ -52,7 +52,7 @@ class ModelProviderCredentialApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "credential_id", type=uuid_value, required=False, nullable=True, location="args"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         credentials = model_provider_service.get_provider_credential(
@@ -74,7 +74,7 @@ class ModelProviderCredentialApi(Resource):
             .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
             .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
 
@@ -104,7 +104,7 @@ class ModelProviderCredentialApi(Resource):
             .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
             .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
 
@@ -131,7 +131,7 @@ class ModelProviderCredentialApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "credential_id", type=uuid_value, required=True, nullable=False, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         model_provider_service.remove_provider_credential(
@@ -153,7 +153,7 @@ class ModelProviderCredentialSwitchApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "credential_id", type=str, required=True, nullable=False, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         service = ModelProviderService()
         service.switch_active_provider_credential(
@@ -174,7 +174,7 @@ class ModelProviderValidateApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "credentials", type=dict, required=True, nullable=False, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         tenant_id = current_tenant_id
 
@@ -238,7 +238,7 @@ class PreferredProviderTypeUpdateApi(Resource):
             choices=["system", "custom"],
             location="json",
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         model_provider_service.switch_preferred_provider(

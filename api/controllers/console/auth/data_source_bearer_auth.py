@@ -51,7 +51,7 @@ class ApiKeyAuthDataSourceBinding(Resource):
             .add_argument("provider", type=str, required=True, nullable=False, location="json")
             .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         ApiKeyAuthService.validate_api_key_auth_args(args)
         try:
             ApiKeyAuthService.create_provider_auth(current_tenant_id, args)

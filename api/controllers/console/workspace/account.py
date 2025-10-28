@@ -60,7 +60,7 @@ class AccountInitApi(Resource):
         parser.add_argument("interface_language", type=supported_language, required=True, location="json").add_argument(
             "timezone", type=timezone, required=True, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         if dify_config.EDITION == "CLOUD":
             if not args["invitation_code"]:
@@ -115,7 +115,7 @@ class AccountNameApi(Resource):
     def post(self):
         current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # Validate account name length
         if len(args["name"]) < 3 or len(args["name"]) > 30:
@@ -135,7 +135,7 @@ class AccountAvatarApi(Resource):
     def post(self):
         current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser().add_argument("avatar", type=str, required=True, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         updated_account = AccountService.update_account(current_user, avatar=args["avatar"])
 
@@ -153,7 +153,7 @@ class AccountInterfaceLanguageApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "interface_language", type=supported_language, required=True, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         updated_account = AccountService.update_account(current_user, interface_language=args["interface_language"])
 
@@ -171,7 +171,7 @@ class AccountInterfaceThemeApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "interface_theme", type=str, choices=["light", "dark"], required=True, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         updated_account = AccountService.update_account(current_user, interface_theme=args["interface_theme"])
 
@@ -187,7 +187,7 @@ class AccountTimezoneApi(Resource):
     def post(self):
         current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser().add_argument("timezone", type=str, required=True, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # Validate timezone string, e.g. America/New_York, Asia/Shanghai
         if args["timezone"] not in pytz.all_timezones:
@@ -212,7 +212,7 @@ class AccountPasswordApi(Resource):
             .add_argument("new_password", type=str, required=True, location="json")
             .add_argument("repeat_new_password", type=str, required=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         if args["new_password"] != args["repeat_new_password"]:
             raise RepeatPasswordNotMatchError()
@@ -307,7 +307,7 @@ class AccountDeleteApi(Resource):
             .add_argument("token", type=str, required=True, location="json")
             .add_argument("code", type=str, required=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         if not AccountService.verify_account_deletion_code(args["token"], args["code"]):
             raise InvalidAccountDeletionCodeError()
@@ -326,7 +326,7 @@ class AccountDeleteUpdateFeedbackApi(Resource):
             .add_argument("email", type=str, required=True, location="json")
             .add_argument("feedback", type=str, required=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         BillingService.update_account_deletion_feedback(args["email"], args["feedback"])
 
@@ -374,7 +374,7 @@ class EducationApi(Resource):
             .add_argument("institution", type=str, required=True, location="json")
             .add_argument("role", type=str, required=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return BillingService.EducationIdentity.activate(account, args["token"], args["institution"], args["role"])
 
@@ -415,7 +415,7 @@ class EducationAutoCompleteApi(Resource):
             .add_argument("page", type=int, required=False, location="args", default=0)
             .add_argument("limit", type=int, required=False, location="args", default=20)
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return BillingService.EducationIdentity.autocomplete(args["keywords"], args["page"], args["limit"])
 
@@ -435,7 +435,7 @@ class ChangeEmailSendEmailApi(Resource):
             .add_argument("phase", type=str, required=False, location="json")
             .add_argument("token", type=str, required=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
@@ -483,7 +483,7 @@ class ChangeEmailCheckApi(Resource):
             .add_argument("code", type=str, required=True, location="json")
             .add_argument("token", type=str, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         user_email = args["email"]
 
@@ -527,7 +527,7 @@ class ChangeEmailResetApi(Resource):
             .add_argument("new_email", type=email, required=True, location="json")
             .add_argument("token", type=str, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         if AccountService.is_account_in_freeze(args["new_email"]):
             raise AccountInFreezeError()
@@ -560,7 +560,7 @@ class CheckEmailUnique(Resource):
     @setup_required
     def post(self):
         parser = reqparse.RequestParser().add_argument("email", type=email, required=True, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         if AccountService.is_account_in_freeze(args["email"]):
             raise AccountInFreezeError()
         if not AccountService.check_email_unique(args["email"]):

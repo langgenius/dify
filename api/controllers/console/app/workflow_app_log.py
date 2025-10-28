@@ -71,7 +71,7 @@ class WorkflowAppLogApi(Resource):
             .add_argument("page", type=int_range(1, 99999), default=1, location="args")
             .add_argument("limit", type=int_range(1, 100), default=20, location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         args.status = WorkflowExecutionStatus(args.status) if args.status else None
         if args.created_at__before:

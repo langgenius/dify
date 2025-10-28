@@ -48,7 +48,7 @@ class RuleGenerateApi(Resource):
             .add_argument("model_config", type=dict, required=True, nullable=False, location="json")
             .add_argument("no_variable", type=bool, required=True, default=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         _, current_tenant_id = current_account_with_tenant()
 
         try:
@@ -101,7 +101,7 @@ class RuleCodeGenerateApi(Resource):
             .add_argument("no_variable", type=bool, required=True, default=False, location="json")
             .add_argument("code_language", type=str, required=False, default="javascript", location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         _, current_tenant_id = current_account_with_tenant()
 
         try:
@@ -148,7 +148,7 @@ class RuleStructuredOutputGenerateApi(Resource):
             .add_argument("instruction", type=str, required=True, nullable=False, location="json")
             .add_argument("model_config", type=dict, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         _, current_tenant_id = current_account_with_tenant()
 
         try:
@@ -204,7 +204,7 @@ class InstructionGenerateApi(Resource):
             .add_argument("model_config", type=dict, required=True, nullable=False, location="json")
             .add_argument("ideal_output", type=str, required=False, default="", location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         _, current_tenant_id = current_account_with_tenant()
         code_template = (
             Python3CodeProvider.get_default_code()
@@ -302,7 +302,7 @@ class InstructionGenerationTemplateApi(Resource):
     @account_initialization_required
     def post(self):
         parser = reqparse.RequestParser().add_argument("type", type=str, required=True, default=False, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         match args["type"]:
             case "prompt":
                 from core.llm_generator.prompts import INSTRUCTION_GENERATE_TEMPLATE_PROMPT

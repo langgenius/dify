@@ -98,7 +98,7 @@ class RemoteFileUploadApi(WebApiResource):
             UnsupportedFileTypeError: File type not supported
         """
         parser = reqparse.RequestParser().add_argument("url", type=str, required=True, help="URL is required")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         url = args["url"]
 

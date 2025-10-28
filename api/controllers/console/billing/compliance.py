@@ -18,7 +18,7 @@ class ComplianceApi(Resource):
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
         parser = reqparse.RequestParser().add_argument("doc_name", type=str, required=True, location="args")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         ip_address = extract_remote_ip(request)
         device_info = request.headers.get("User-Agent", "Unknown device")

@@ -85,7 +85,7 @@ class DocumentAddByTextApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         """Create document by text."""
-        args = document_text_create_parser.parse_args()
+        args = document_text_create_parser.parse_args(strict=True)
 
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
@@ -175,7 +175,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id, document_id):
         """Update document by text."""
-        args = document_text_update_parser.parse_args()
+        args = document_text_update_parser.parse_args(strict=True)
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()

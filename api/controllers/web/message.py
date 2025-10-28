@@ -99,7 +99,7 @@ class MessageListApi(WebApiResource):
             .add_argument("first_id", type=uuid_value, location="args")
             .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             return MessageService.pagination_by_first_id(
@@ -150,7 +150,7 @@ class MessageFeedbackApi(WebApiResource):
             .add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
             .add_argument("content", type=str, location="json", default=None)
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             MessageService.create_feedback(
@@ -200,7 +200,7 @@ class MessageMoreLikeThisApi(WebApiResource):
         parser = reqparse.RequestParser().add_argument(
             "response_mode", type=str, required=True, choices=["blocking", "streaming"], location="args"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         streaming = args["response_mode"] == "streaming"
 

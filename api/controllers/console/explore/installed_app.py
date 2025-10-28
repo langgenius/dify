@@ -106,7 +106,7 @@ class InstalledAppsListApi(Resource):
     @cloud_edition_billing_resource_check("apps")
     def post(self):
         parser = reqparse.RequestParser().add_argument("app_id", type=str, required=True, help="Invalid app_id")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         recommended_app = db.session.query(RecommendedApp).where(RecommendedApp.app_id == args["app_id"]).first()
         if recommended_app is None:
@@ -164,7 +164,7 @@ class InstalledAppApi(InstalledAppResource):
 
     def patch(self, installed_app):
         parser = reqparse.RequestParser().add_argument("is_pinned", type=inputs.boolean)
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         commit_args = False
         if "is_pinned" in args:
