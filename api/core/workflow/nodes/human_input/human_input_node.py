@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.graph_events.pause_reason import HumanInputRequired
 from core.workflow.node_events import NodeRunResult, PauseRequestedEvent
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
@@ -64,7 +65,7 @@ class HumanInputNode(Node):
         return self._pause_generator()
 
     def _pause_generator(self):
-        yield PauseRequestedEvent(reason=self._node_data.pause_reason)
+        yield PauseRequestedEvent(reason=HumanInputRequired())
 
     def _is_completion_ready(self) -> bool:
         """Determine whether all required inputs are satisfied."""

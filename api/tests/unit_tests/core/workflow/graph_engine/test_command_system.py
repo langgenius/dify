@@ -8,6 +8,7 @@ from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_engine.entities.commands import AbortCommand, CommandType, PauseCommand
 from core.workflow.graph_events import GraphRunAbortedEvent, GraphRunPausedEvent, GraphRunStartedEvent
+from core.workflow.graph_events.pause_reason import SchedulingPause
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 
 
@@ -149,8 +150,8 @@ def test_pause_command():
     assert any(isinstance(e, GraphRunStartedEvent) for e in events)
     pause_events = [e for e in events if isinstance(e, GraphRunPausedEvent)]
     assert len(pause_events) == 1
-    assert pause_events[0].reason == "User requested pause"
+    assert pause_events[0].reason == SchedulingPause(message="User requested pause")
 
     graph_execution = engine.graph_runtime_state.graph_execution
     assert graph_execution.is_paused
-    assert graph_execution.pause_reason == "User requested pause"
+    assert graph_execution.pause_reason == SchedulingPause(message="User requested pause")
