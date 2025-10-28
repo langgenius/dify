@@ -290,9 +290,14 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         Resume a paused workflow.
 
-        Marks a paused workflow as resumed, clearing the pause state and
-        returning the workflow to running status. Returns the pause entity
+        Marks a paused workflow as resumed, set the `resumed_at` field of WorkflowPauseEntity
+        and returning the workflow to running status. Returns the pause entity
         that was resumed.
+
+        The returned `WorkflowPauseEntity` model has `resumed_at` set.
+
+        NOTE: this method does not delete the correspond `WorkflowPauseEntity` record and associated states.
+        It's the callers responsibility to clear the correspond state with `delete_workflow_pause`.
 
         Args:
             workflow_run_id: Identifier of the workflow run to resume
@@ -328,28 +333,6 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         Note:
             This operation is irreversible. The stored workflow state will be
             permanently deleted along with the pause record.
-        """
-        ...
-
-    def get_workflow_current_pause(
-        self,
-        workflow_id: str,
-    ) -> WorkflowPauseEntity | None:
-        """
-        Get the current active pause state for a workflow.
-
-        Retrieves the pause state for a workflow only if the workflow
-        is currently in a paused state. Returns None if the workflow
-        is not paused.
-
-        Args:
-            workflow_id: Identifier of the workflow to get current pause state for
-
-        Returns:
-            WorkflowPauseEntity if workflow is currently paused, None otherwise
-
-        Raises:
-            ValueError: If workflow_id is invalid
         """
         ...
 
