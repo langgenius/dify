@@ -36,15 +36,9 @@ import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useAvailableBlocks } from './use-available-blocks'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  fetchAllBuiltInTools,
-  fetchAllCustomTools,
-  fetchAllMCPTools,
-  fetchAllWorkflowTools,
-} from '@/service/tools'
+
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import { basePath } from '@/utils/var'
 import { useNodesMetaData } from '.'
 import { AppModeEnum } from '@/types/app'
 
@@ -455,51 +449,6 @@ export const useWorkflow = () => {
     getStartNodes,
     isFromStartNode,
     getNode,
-  }
-}
-
-export const useFetchToolsData = () => {
-  const workflowStore = useWorkflowStore()
-
-  const handleFetchAllTools = useCallback(async (type: string) => {
-    if (type === 'builtin') {
-      const buildInTools = await fetchAllBuiltInTools()
-
-      if (basePath) {
-        buildInTools.forEach((item) => {
-          if (typeof item.icon == 'string' && !item.icon.includes(basePath))
-            item.icon = `${basePath}${item.icon}`
-        })
-      }
-      workflowStore.setState({
-        buildInTools: buildInTools || [],
-      })
-    }
-    if (type === 'custom') {
-      const customTools = await fetchAllCustomTools()
-
-      workflowStore.setState({
-        customTools: customTools || [],
-      })
-    }
-    if (type === 'workflow') {
-      const workflowTools = await fetchAllWorkflowTools()
-
-      workflowStore.setState({
-        workflowTools: workflowTools || [],
-      })
-    }
-    if (type === 'mcp') {
-      const mcpTools = await fetchAllMCPTools()
-
-      workflowStore.setState({
-        mcpTools: mcpTools || [],
-      })
-    }
-  }, [workflowStore])
-
-  return {
-    handleFetchAllTools,
   }
 }
 

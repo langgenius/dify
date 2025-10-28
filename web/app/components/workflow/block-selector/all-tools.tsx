@@ -28,7 +28,7 @@ import type { Plugin } from '../../plugins/types'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import RAGToolSuggestions from './rag-tool-suggestions'
+import RAGToolRecommendations from './rag-tool-recommendations'
 import FeaturedTools from './featured-tools'
 import Link from 'next/link'
 import Divider from '@/app/components/base/divider'
@@ -211,7 +211,7 @@ const AllTools = ({
         >
           <div className={cn(shouldShowEmptyState && 'hidden')}>
             {isShowRAGRecommendations && onTagsChange && (
-              <RAGToolSuggestions
+              <RAGToolRecommendations
                 viewType={isSupportGroupView ? activeView : ViewType.flat}
                 onSelect={onSelect}
                 onTagsChange={onTagsChange}

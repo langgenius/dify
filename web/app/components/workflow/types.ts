@@ -16,7 +16,7 @@ import type {
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { PluginMeta } from '../plugins/types'
+import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 
@@ -453,16 +453,9 @@ export type ToolWithProvider = Collection & {
   meta: PluginMeta
 }
 
-export type UninstalledRecommendedPlugin = {
-  plugin_id: string
-  name: string
-  icon: string
-  plugin_unique_identifier: string
-}
-
 export type RAGRecommendedPlugins = {
   installed_recommended_plugins: ToolWithProvider[]
-  uninstalled_recommended_plugins: UninstalledRecommendedPlugin[]
+  uninstalled_recommended_plugins: Plugin[]
 }
 
 export enum SupportUploadFileTypes {

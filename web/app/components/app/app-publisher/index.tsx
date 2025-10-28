@@ -1,3 +1,33 @@
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import {
+  RiArrowDownSLine,
+  RiArrowRightSLine,
+  RiBuildingLine,
+  RiGlobalLine,
+  RiLockLine,
+  RiPlanetLine,
+  RiPlayCircleLine,
+  RiPlayList2Line,
+  RiTerminalBoxLine,
+  RiVerifiedBadgeLine,
+} from '@remixicon/react'
+import { useKeyPress } from 'ahooks'
+import Divider from '../../base/divider'
+import Loading from '../../base/loading'
+import Toast from '../../base/toast'
+import Tooltip from '../../base/tooltip'
+import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
+import AccessControl from '../app-access-control'
+import type { ModelAndParameter } from '../configuration/debug/types'
+import PublishWithMultipleModel from './publish-with-multiple-model'
+import SuggestedAction from './suggested-action'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
@@ -14,41 +44,11 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
-import { fetchAppDetail } from '@/service/apps'
+import { fetchAppDetailDirect } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { AppModeEnum } from '@/types/app'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { basePath } from '@/utils/var'
-import {
-  RiArrowDownSLine,
-  RiArrowRightSLine,
-  RiBuildingLine,
-  RiGlobalLine,
-  RiLockLine,
-  RiPlanetLine,
-  RiPlayCircleLine,
-  RiPlayList2Line,
-  RiTerminalBoxLine,
-  RiVerifiedBadgeLine,
-} from '@remixicon/react'
-import { useKeyPress } from 'ahooks'
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import Divider from '../../base/divider'
-import Loading from '../../base/loading'
-import Toast from '../../base/toast'
-import Tooltip from '../../base/tooltip'
-import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
-import AccessControl from '../app-access-control'
-import type { ModelAndParameter } from '../configuration/debug/types'
-import PublishWithMultipleModel from './publish-with-multiple-model'
-import SuggestedAction from './suggested-action'
 
 const ACCESS_MODE_MAP: Record<AccessMode, { label: string, icon: React.ElementType }> = {
   [AccessMode.ORGANIZATION]: {
@@ -222,11 +222,16 @@ const AppPublisher = ({
     }
   }, [appDetail?.id])
 
-  const handleAccessControlUpdate = useCallback(() => {
-    fetchAppDetail({ url: '/apps', id: appDetail!.id }).then((res) => {
+  const handleAccessControlUpdate = useCallback(async () => {
+    if (!appDetail)
+      return
+    try {
+      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail.id })
       setAppDetail(res)
+    }
+    finally {
       setShowAppAccessControl(false)
-    })
+    }
   }, [appDetail, setAppDetail])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {

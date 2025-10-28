@@ -49,6 +49,11 @@ import type { Emoji } from '@/app/components/tools/types'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 
 export type ChecklistItem = {
   id: string
@@ -71,9 +76,9 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
   const dataSourceList = useStore(s => s.dataSourceList)
   const { data: strategyProviders } = useStrategyProviders()
   const { data: triggerPlugins } = useAllTriggerPlugins()
@@ -119,7 +124,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       let usedVars: ValueSelector[] = []
 
       if (node.data.type === BlockEnum.Tool)
-        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
+        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools || [], customTools || [], workflowTools || [], language)
 
       if (node.data.type === BlockEnum.DataSource)
         moreDataForCheckValid = getDataSourceCheckParams(node.data as DataSourceNodeType, dataSourceList || [], language)
@@ -234,6 +239,9 @@ export const useChecklistBeforePublish = () => {
   const { getNodesAvailableVarList } = useGetNodesAvailableVarList()
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
 
   const getCheckData = useCallback((data: CommonNodeType<{}>, datasets: DataSet[]) => {
     let checkData = data
@@ -261,7 +269,7 @@ export const useChecklistBeforePublish = () => {
       } as CommonNodeType<KnowledgeBaseNodeType>
     }
     return checkData
-  }, [])
+  }, [embeddingModelList, rerankModelList])
 
   const handleCheckBeforePublish = useCallback(async () => {
     const {
@@ -270,9 +278,6 @@ export const useChecklistBeforePublish = () => {
     } = store.getState()
     const {
       dataSourceList,
-      buildInTools,
-      customTools,
-      workflowTools,
     } = workflowStore.getState()
     const nodes = getNodes()
     const filteredNodes = nodes.filter(node => node.type === CUSTOM_NODE)
@@ -306,7 +311,7 @@ export const useChecklistBeforePublish = () => {
       let moreDataForCheckValid
       let usedVars: ValueSelector[] = []
       if (node.data.type === BlockEnum.Tool)
-        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
+        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools || [], customTools || [], workflowTools || [], language)
 
       if (node.data.type === BlockEnum.DataSource)
         moreDataForCheckValid = getDataSourceCheckParams(node.data as DataSourceNodeType, dataSourceList || [], language)
@@ -379,7 +384,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [store, notify, t, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData, workflowStore])
+  }, [store, notify, t, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData, workflowStore, buildInTools, customTools, workflowTools])
 
   return {
     handleCheckBeforePublish,

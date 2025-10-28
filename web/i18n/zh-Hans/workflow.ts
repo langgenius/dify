@@ -828,6 +828,8 @@ const translation = {
         removeAbnormalOutput: '移除错误输出',
       },
       answerNodeWarningDesc: '并行模式警告：在迭代中，回答节点、会话变量赋值和工具持久读/写操作可能会导致异常。',
+      flattenOutput: '扁平化输出',
+      flattenOutputDesc: '启用时，如果所有迭代输出都是数组，它们将被扁平化为单个数组。禁用时，输出将保持嵌套数组结构。',
     },
     loop: {
       deleteTitle: '删除循环节点？',

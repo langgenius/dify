@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import ToolParameter
@@ -45,10 +46,14 @@ class ToolProviderApiEntity(BaseModel):
     server_url: str | None = Field(default="", description="The server url of the tool")
     updated_at: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
     server_identifier: str | None = Field(default="", description="The server identifier of the MCP tool")
-    timeout: float | None = Field(default=30.0, description="The timeout of the MCP tool")
-    sse_read_timeout: float | None = Field(default=300.0, description="The SSE read timeout of the MCP tool")
+
     masked_headers: dict[str, str] | None = Field(default=None, description="The masked headers of the MCP tool")
     original_headers: dict[str, str] | None = Field(default=None, description="The original headers of the MCP tool")
+    authentication: MCPAuthentication | None = Field(default=None, description="The OAuth config of the MCP tool")
+    is_dynamic_registration: bool = Field(default=True, description="Whether the MCP tool is dynamically registered")
+    configuration: MCPConfiguration | None = Field(
+        default=None, description="The timeout and sse_read_timeout of the MCP tool"
+    )
 
     @field_validator("tools", mode="before")
     @classmethod
@@ -71,8 +76,15 @@ class ToolProviderApiEntity(BaseModel):
         if self.type == ToolProviderType.MCP:
             optional_fields.update(self.optional_field("updated_at", self.updated_at))
             optional_fields.update(self.optional_field("server_identifier", self.server_identifier))
-            optional_fields.update(self.optional_field("timeout", self.timeout))
-            optional_fields.update(self.optional_field("sse_read_timeout", self.sse_read_timeout))
+            optional_fields.update(
+                self.optional_field(
+                    "configuration", self.configuration.model_dump() if self.configuration else MCPConfiguration()
+                )
+            )
+            optional_fields.update(
+                self.optional_field("authentication", self.authentication.model_dump() if self.authentication else None)
+            )
+            optional_fields.update(self.optional_field("is_dynamic_registration", self.is_dynamic_registration))
             optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
             optional_fields.update(self.optional_field("original_headers", self.original_headers))
         return {

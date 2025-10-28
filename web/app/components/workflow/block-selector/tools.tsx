@@ -30,7 +30,7 @@ type ToolsProps = {
   canChooseMCPTool?: boolean
   isShowRAGRecommendations?: boolean
 }
-const Blocks = ({
+const Tools = ({
   onSelect,
   canNotSelectMultiple,
   onSelectMultiple,
@@ -141,4 +141,4 @@ const Blocks = ({
   )
 }
 
-export default memo(Blocks)
+export default memo(Tools)

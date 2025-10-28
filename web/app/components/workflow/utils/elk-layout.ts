@@ -4,18 +4,18 @@ import { cloneDeep } from 'lodash-es'
 import type {
   Edge,
   Node,
-} from '../types'
+} from '@/app/components/workflow/types'
 import {
   BlockEnum,
-} from '../types'
+} from '@/app/components/workflow/types'
 import {
   CUSTOM_NODE,
   NODE_LAYOUT_HORIZONTAL_PADDING,
   NODE_LAYOUT_VERTICAL_PADDING,
-} from '../constants'
-import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
-import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
-import type { CaseItem, IfElseNodeType } from '../nodes/if-else/types'
+} from '@/app/components/workflow/constants'
+import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
+import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+import type { CaseItem, IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
 
 // Although the file name refers to Dagre, the implementation now relies on ELK's layered algorithm.
 // Keep the export signatures unchanged to minimise the blast radius while we migrate the layout stack.

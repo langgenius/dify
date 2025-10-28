@@ -43,7 +43,7 @@ export type FormOption = {
   icon?: string
 }
 
-export type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any>
+export type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any, any, any>
 
 export enum FormItemValidateStatusEnum {
   Success = 'success',

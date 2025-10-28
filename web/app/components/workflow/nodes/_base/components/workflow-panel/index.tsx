@@ -79,6 +79,7 @@ import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
 import { TriggerSubscription } from './trigger-subscription'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
+import { useAllBuiltInTools } from '@/service/use-tools'
 
 const getCustomRunForm = (params: CustomRunFormProps): React.JSX.Element => {
   const nodeType = params.payload.type
@@ -284,12 +285,14 @@ const BasePanel: FC<BasePanelProps> = ({
     return {}
   })()
 
-  const buildInTools = useStore(s => s.buildInTools)
+  const storeBuildInTools = useStore(s => s.buildInTools)
+  const { data: buildInTools } = useAllBuiltInTools()
   const currToolCollection = useMemo(() => {
-    return buildInTools.find(item => canFindTool(item.id, data.provider_id))
-  }, [buildInTools, data.provider_id])
+    const candidates = buildInTools ?? storeBuildInTools
+    return candidates?.find(item => canFindTool(item.id, data.provider_id))
+  }, [buildInTools, storeBuildInTools, data.provider_id])
   const needsToolAuth = useMemo(() => {
-    return (data.type === BlockEnum.Tool && currToolCollection?.allow_delete)
+    return data.type === BlockEnum.Tool && currToolCollection?.allow_delete
   }, [data.type, currToolCollection?.allow_delete])
 
   const { data: triggerProviders = [] } = useAllTriggerPlugins()
@@ -492,6 +495,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 className='px-4 pb-2'
                 pluginPayload={{
                   provider: currToolCollection?.name || '',
+                  providerType: currToolCollection?.type || '',
                   category: AuthCategory.tool,
                   detail: currToolCollection as any,
                 }}
@@ -504,6 +508,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   <AuthorizedInNode
                     pluginPayload={{
                       provider: currToolCollection?.name || '',
+                      providerType: currToolCollection?.type || '',
                       category: AuthCategory.tool,
                       detail: currToolCollection as any,
                     }}

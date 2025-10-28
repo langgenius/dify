@@ -344,6 +344,8 @@ export type WebsiteCrawlInfo = {
   description: string
   source_url: string
   title: string
+  provider?: string
+  job_id?: string
 }
 
 export type OnlineDocumentInfo = {

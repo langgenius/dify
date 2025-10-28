@@ -1,16 +1,13 @@
 import json
-from collections.abc import Mapping
 from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, cast
-from urllib.parse import urlparse
 
 import sqlalchemy as sa
 from deprecated import deprecated
 from sqlalchemy import ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.helper import encrypter
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
@@ -21,7 +18,7 @@ from .model import Account, App, Tenant
 from .types import StringUUID
 
 if TYPE_CHECKING:
-    from core.mcp.types import Tool as MCPTool
+    from core.entities.mcp_provider import MCPProviderEntity
     from core.tools.entities.common_entities import I18nObject
     from core.tools.entities.tool_bundle import ApiToolBundle
     from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
@@ -332,125 +329,35 @@ class MCPToolProvider(TypeBase):
         return db.session.query(Account).where(Account.id == self.user_id).first()
 
     @property
-    def tenant(self) -> Tenant | None:
-        return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
-
-    @property
     def credentials(self) -> dict[str, Any]:
         if not self.encrypted_credentials:
             return {}
         try:
-            return cast(dict[str, Any], json.loads(self.encrypted_credentials)) or {}
-        except json.JSONDecodeError:
-            return {}
-
-    @property
-    def mcp_tools(self) -> list["MCPTool"]:
-        from core.mcp.types import Tool as MCPTool
-
-        return [MCPTool.model_validate(tool) for tool in json.loads(self.tools)]
-
-    @property
-    def provider_icon(self) -> Mapping[str, str] | str:
-        from core.file import helpers as file_helpers
-
-        assert self.icon
-        try:
-            return json.loads(self.icon)
-        except json.JSONDecodeError:
-            return file_helpers.get_signed_file_url(self.icon)
-
-    @property
-    def decrypted_server_url(self) -> str:
-        return encrypter.decrypt_token(self.tenant_id, self.server_url)
-
-    @property
-    def decrypted_headers(self) -> dict[str, Any]:
-        """Get decrypted headers for MCP server requests."""
-        from core.entities.provider_entities import BasicProviderConfig
-        from core.helper.provider_cache import NoOpProviderCredentialCache
-        from core.tools.utils.encryption import create_provider_encrypter
-
-        try:
-            if not self.encrypted_headers:
-                return {}
-
-            headers_data = json.loads(self.encrypted_headers)
-
-            # Create dynamic config for all headers as SECRET_INPUT
-            config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data]
-
-            encrypter_instance, _ = create_provider_encrypter(
-                tenant_id=self.tenant_id,
-                config=config,
-                cache=NoOpProviderCredentialCache(),
-            )
-
-            result = encrypter_instance.decrypt(headers_data)
-            return result
+            return json.loads(self.encrypted_credentials)
         except Exception:
             return {}
 
     @property
-    def masked_headers(self) -> dict[str, Any]:
-        """Get masked headers for frontend display."""
-        from core.entities.provider_entities import BasicProviderConfig
-        from core.helper.provider_cache import NoOpProviderCredentialCache
-        from core.tools.utils.encryption import create_provider_encrypter
-
+    def headers(self) -> dict[str, Any]:
+        if self.encrypted_headers is None:
+            return {}
         try:
-            if not self.encrypted_headers:
-                return {}
-
-            headers_data = json.loads(self.encrypted_headers)
-
-            # Create dynamic config for all headers as SECRET_INPUT
-            config = [BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=key) for key in headers_data]
-
-            encrypter_instance, _ = create_provider_encrypter(
-                tenant_id=self.tenant_id,
-                config=config,
-                cache=NoOpProviderCredentialCache(),
-            )
-
-            # First decrypt, then mask
-            decrypted_headers = encrypter_instance.decrypt(headers_data)
-            result = encrypter_instance.mask_plugin_credentials(decrypted_headers)
-            return result
+            return json.loads(self.encrypted_headers)
         except Exception:
             return {}
 
     @property
-    def masked_server_url(self) -> str:
-        def mask_url(url: str, mask_char: str = "*") -> str:
-            """
-            mask the url to a simple string
-            """
-            parsed = urlparse(url)
-            base_url = f"{parsed.scheme}://{parsed.netloc}"
+    def tool_dict(self) -> list[dict[str, Any]]:
+        try:
+            return json.loads(self.tools) if self.tools else []
+        except (json.JSONDecodeError, TypeError):
+            return []
 
-            if parsed.path and parsed.path != "/":
-                return f"{base_url}/{mask_char * 6}"
-            else:
-                return base_url
+    def to_entity(self) -> "MCPProviderEntity":
+        """Convert to domain entity"""
+        from core.entities.mcp_provider import MCPProviderEntity
 
-        return mask_url(self.decrypted_server_url)
-
-    @property
-    def decrypted_credentials(self) -> dict[str, Any]:
-        from core.helper.provider_cache import NoOpProviderCredentialCache
-        from core.tools.mcp_tool.provider import MCPToolProviderController
-        from core.tools.utils.encryption import create_provider_encrypter
-
-        provider_controller = MCPToolProviderController.from_db(self)
-
-        encrypter, _ = create_provider_encrypter(
-            tenant_id=self.tenant_id,
-            config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
-            cache=NoOpProviderCredentialCache(),
-        )
-
-        return encrypter.decrypt(self.credentials)
+        return MCPProviderEntity.from_db_model(self)
 
 
 class ToolModelInvoke(TypeBase):

@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type {
   FormOption,
   ModelProvider,
@@ -38,7 +38,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { useInvalidateAllBuiltInTools, useInvalidateRAGRecommendedPlugins } from './use-tools'
+import { useInvalidateAllBuiltInTools } from './use-tools'
 import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { uninstallPlugin } from '@/service/plugins'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
@@ -195,14 +195,12 @@ export const useInstalledLatestVersion = (pluginIds: string[]) => {
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
-  const invalidateRAGRecommendedPlugins = useInvalidateRAGRecommendedPlugins()
   return () => {
     queryClient.invalidateQueries(
       {
         queryKey: useInstalledPluginListKey,
       })
     invalidateAllBuiltInTools()
-    invalidateRAGRecommendedPlugins()
   }
 }
 
@@ -548,7 +546,8 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[])
 }
 
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
-export const usePluginTaskList = (category?: PluginCategoryEnum) => {
+export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
+  const [initialized, setInitialized] = useState(false)
   const {
     canManagement,
   } = useReferenceSetting()
@@ -572,16 +571,21 @@ export const usePluginTaskList = (category?: PluginCategoryEnum) => {
 
   useEffect(() => {
     // After first fetch, refresh plugin list each time all tasks are done
-    if (!isRefetching) {
-      const lastData = cloneDeep(data)
-      const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
-      const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
-      if (taskDone) {
-        if (lastData?.tasks.length && !taskAllFailed)
-          refreshPluginList(category ? { category } as any : undefined, !category)
-      }
-    }
-  }, [isRefetching])
+    // Skip initialization period, because the query cache is not updated yet
+    if (!initialized || isRefetching)
+      return
+
+    const lastData = cloneDeep(data)
+    const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
+    const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
+    if (taskDone && lastData?.tasks.length && !taskAllFailed)
+      refreshPluginList(category ? { category } as any : undefined, !category)
+  }, [initialized, isRefetching, data, category, refreshPluginList])
+
+  useEffect(() => {
+    if (isFetched && !initialized)
+      setInitialized(true)
+  }, [isFetched, initialized])
 
   const handleRefetch = useCallback(() => {
     refetch()

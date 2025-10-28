@@ -72,7 +72,7 @@ export const isSystemVar = (valueSelector: ValueSelector) => {
 export const isGlobalVar = (valueSelector: ValueSelector) => {
   if(!isSystemVar(valueSelector)) return false
   const second = valueSelector[1]
-  // eslint-disable-next-line sonarjs/prefer-single-boolean-return
+
   if(['query', 'files'].includes(second))
     return false
   return true
