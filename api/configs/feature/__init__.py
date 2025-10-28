@@ -1124,6 +1124,13 @@ class SwaggerUIConfig(BaseSettings):
     )
 
 
+class TenantSelfTaskQueueConfig(BaseSettings):
+    TENANT_SELF_TASK_QUEUE_PULL_SIZE: int = Field(
+        description="Default batch size for tenant self task queue pull operations",
+        default=1,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1148,6 +1155,7 @@ class FeatureConfig(
     RagEtlConfig,
     RepositoryConfig,
     SecurityConfig,
+    TenantSelfTaskQueueConfig,
     ToolConfig,
     UpdateConfig,
     WorkflowConfig,
