@@ -5,6 +5,7 @@ from pydantic import Field
 
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities import AgentNodeStrategyInit
+from core.workflow.graph_events.pause_reason import PauseReason
 
 from .base import GraphNodeEventBase
 
@@ -54,4 +55,4 @@ class NodeRunRetryEvent(NodeRunStartedEvent):
 
 
 class NodeRunPauseRequestedEvent(GraphNodeEventBase):
-    reason: str | None = Field(default=None, description="Optional pause reason")
+    reason: PauseReason = Field(..., description="Optional pause reason")

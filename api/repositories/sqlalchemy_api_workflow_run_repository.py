@@ -24,16 +24,28 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import cast
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import and_, delete, func, null, or_, select
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 
+from core.workflow.entities.workflow_pause import WorkflowPauseEntity
+from core.workflow.enums import WorkflowExecutionStatus
+from extensions.ext_storage import storage
+from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
+from libs.uuid_utils import uuidv7
+from models.model import UploadFile
+from models.workflow import WorkflowPause as WorkflowPauseModel
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from services.file_service import FileService
 
 logger = logging.getLogger(__name__)
+
+
+class _WorkflowRunError(Exception):
+    pass
 
 
 class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
@@ -56,6 +68,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             session_maker: SQLAlchemy sessionmaker for database connections
         """
         self._session_maker = session_maker
+        self._file_service = FileService(session_maker)
 
     def get_paginated_workflow_runs(
         self,
@@ -275,3 +288,413 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
         logger.info("Total deleted %s workflow runs for app %s", total_deleted, app_id)
         return total_deleted
+
+    def create_workflow_pause(
+        self,
+        workflow_run_id: str,
+        state_owner_user_id: str,
+        state: str,
+    ) -> WorkflowPauseEntity:
+        """
+        Create a new workflow pause state.
+
+        Creates a pause state for a workflow run, storing the current execution
+        state and marking the workflow as paused. This is used when a workflow
+        needs to be suspended and later resumed.
+
+        Args:
+            workflow_run_id: Identifier of the workflow run to pause
+            state_owner_user_id: User ID who owns the pause state for file storage
+            state: Serialized workflow execution state (JSON string)
+
+        Returns:
+            RepositoryWorkflowPauseEntity representing the created pause state
+
+        Raises:
+            ValueError: If workflow_run_id is invalid or workflow run doesn't exist
+            RuntimeError: If workflow is already paused or in invalid state
+        """
+        with self._session_maker() as session, session.begin():
+            # Get the workflow run
+            workflow_run = session.get(WorkflowRun, workflow_run_id)
+            if workflow_run is None:
+                raise ValueError(f"WorkflowRun not found: {workflow_run_id}")
+
+            # Check if workflow is in RUNNING status
+            if workflow_run.status != WorkflowExecutionStatus.RUNNING:
+                raise _WorkflowRunError(
+                    f"Only WorkflowRun with RUNNING status can be paused, "
+                    f"workflow_run_id={workflow_run_id}, current_status={workflow_run.status}"
+                )
+
+            # Upload the state file
+            upload_file = self._file_service.upload_text(
+                text=state,
+                text_name=f"workflow-state-{uuidv7()}",
+                user_id=state_owner_user_id,
+                tenant_id=workflow_run.tenant_id,
+            )
+
+            # Create the pause record
+            pause_model = WorkflowPauseModel()
+            pause_model.id = str(uuidv7())
+            pause_model.tenant_id = workflow_run.tenant_id
+            pause_model.app_id = workflow_run.app_id
+            pause_model.workflow_id = workflow_run.workflow_id
+            pause_model.workflow_run_id = workflow_run.id
+            pause_model.state_file_id = upload_file.id
+            pause_model.created_at = naive_utc_now()
+
+            # Update workflow run status
+            workflow_run.pause_id = pause_model.id  # type: ignore
+            workflow_run.status = WorkflowExecutionStatus.PAUSED
+
+            # Save everything in a transaction
+            session.add(pause_model)
+            session.add(workflow_run)
+
+            logger.info("Created workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
+
+            return _PrivateWorkflowPauseEntity.from_models(pause_model, upload_file)
+
+    def get_workflow_pause(
+        self,
+        workflow_run_id: str,
+    ) -> WorkflowPauseEntity | None:
+        """
+        Get an existing workflow pause state.
+
+        Retrieves the pause state for a specific workflow run if it exists.
+        Used to check if a workflow is paused and to retrieve its saved state.
+
+        Args:
+            workflow_run_id: Identifier of the workflow run to get pause state for
+
+        Returns:
+            RepositoryWorkflowPauseEntity if pause state exists, None otherwise
+
+        Raises:
+            ValueError: If workflow_run_id is invalid
+        """
+        with self._session_maker() as session:
+            # Query workflow run with pause and state file
+            stmt = (
+                select(WorkflowRun)
+                .options(selectinload(WorkflowRun.pause).options(selectinload(WorkflowPauseModel.state_file)))
+                .where(WorkflowRun.id == workflow_run_id)
+            )
+            workflow_run = session.scalar(stmt)
+
+            if workflow_run is None:
+                raise ValueError(f"WorkflowRun not found: {workflow_run_id}")
+
+            pause_model = workflow_run.pause
+            if pause_model is None:
+                return None
+
+            if pause_model.state_file is None:
+                raise _WorkflowRunError(
+                    f"StateFile not exists for PauseState, WorkflowRun.id={workflow_run.id}, "
+                    f"WorkflowPause.id={pause_model.id}, WorkflowPause.state_file_id={pause_model.state_file_id}"
+                )
+
+            return _PrivateWorkflowPauseEntity.from_models(pause_model, pause_model.state_file)
+
+    def resume_workflow_pause(
+        self,
+        workflow_run_id: str,
+        pause_entity: WorkflowPauseEntity,
+    ) -> WorkflowPauseEntity:
+        """
+        Resume a paused workflow.
+
+        Marks a paused workflow as resumed, clearing the pause state and
+        returning the workflow to running status. Returns the pause entity
+        that was resumed.
+
+        Args:
+            workflow_run_id: Identifier of the workflow run to resume
+            pause_entity: The pause entity to resume
+
+        Returns:
+            RepositoryWorkflowPauseEntity representing the resumed pause state
+
+        Raises:
+            ValueError: If workflow_run_id is invalid
+            RuntimeError: If workflow is not paused or already resumed
+        """
+        with self._session_maker() as session, session.begin():
+            # Get the workflow run with pause
+            stmt = select(WorkflowRun).options(selectinload(WorkflowRun.pause)).where(WorkflowRun.id == workflow_run_id)
+            workflow_run = session.scalar(stmt)
+
+            if workflow_run is None:
+                raise ValueError(f"WorkflowRun not found: {workflow_run_id}")
+
+            if workflow_run.status != WorkflowExecutionStatus.PAUSED:
+                raise _WorkflowRunError(
+                    f"WorkflowRun is not in PAUSED status, workflow_run_id={workflow_run_id}, "
+                    f"current_status={workflow_run.status}"
+                )
+            if workflow_run.pause_id != pause_entity.id:
+                raise _WorkflowRunError(
+                    "different id in WorkflowRun and WorkflowPauseEntity, "
+                    f"WorkflowRun.pause_id={workflow_run.pause_id}, "
+                    f"WorkflowPauseEntity.id={pause_entity.id}"
+                )
+
+            pause_model = workflow_run.pause
+            if pause_model is None:
+                raise _WorkflowRunError(f"No pause state found for workflow run: {workflow_run_id}")
+
+            if pause_model.resumed_at is not None:
+                raise _WorkflowRunError(f"Cannot resume an already resumed pause, pause_id={pause_model.id}")
+
+            # Mark as resumed
+            pause_model.resumed_at = naive_utc_now()
+            workflow_run.pause_id = None  # type: ignore
+            workflow_run.status = WorkflowExecutionStatus.RUNNING
+
+            session.add(pause_model)
+            session.add(workflow_run)
+
+            # Get the state file for the return value
+            state_file = session.get(UploadFile, pause_model.state_file_id)
+            if state_file is None:
+                raise _WorkflowRunError(
+                    f"State file not found for pause: pause.id={pause_model.id}, "
+                    f"pause.state_file_id={pause_model.state_file_id}"
+                )
+
+            logger.info("Resumed workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
+
+            return _PrivateWorkflowPauseEntity.from_models(pause_model, state_file)
+
+    def delete_workflow_pause(
+        self,
+        pause_entity: WorkflowPauseEntity,
+    ) -> None:
+        """
+        Delete a workflow pause state.
+
+        Permanently removes the pause state for a workflow run, including
+        the stored state file. Used for cleanup operations when a paused
+        workflow is no longer needed.
+
+        Args:
+            pause_entity: The pause entity to delete
+
+        Raises:
+            ValueError: If pause_entity is invalid
+            _WorkflowRunError: If workflow is not paused
+
+        Note:
+            This operation is irreversible. The stored workflow state will be
+            permanently deleted along with the pause record.
+        """
+        with self._session_maker() as session, session.begin():
+            # Get the pause model by ID
+            pause_model = session.get(WorkflowPauseModel, pause_entity.id)
+            if pause_model is None:
+                raise _WorkflowRunError(f"WorkflowPause not found: {pause_entity.id}")
+
+            self._file_service.delete_file(pause_model.state_file_id)
+
+            # Delete the pause record
+            session.delete(pause_model)
+
+            logger.info("Deleted workflow pause %s for workflow run %s", pause_model.id, pause_model.workflow_run_id)
+
+    def get_workflow_current_pause(
+        self,
+        workflow_id: str,
+    ) -> WorkflowPauseEntity | None:
+        """
+        Get the current active pause state for a workflow.
+
+        Retrieves the pause state for a workflow only if the workflow
+        is currently in a paused state. Returns None if the workflow
+        is not paused.
+
+        Args:
+            workflow_id: Identifier of the workflow to get current pause state for
+
+        Returns:
+            RepositoryWorkflowPauseEntity if workflow is currently paused, None otherwise
+
+        Raises:
+            ValueError: If workflow_id is invalid
+        """
+        with self._session_maker() as session:
+            # Query for active pause state (not resumed) for the workflow
+            stmt = (
+                select(WorkflowPauseModel)
+                .options(selectinload(WorkflowPauseModel.state_file))
+                .where(
+                    WorkflowPauseModel.workflow_id == workflow_id,
+                    WorkflowPauseModel.resumed_at.is_(None),
+                )
+                .order_by(WorkflowPauseModel.created_at.desc())
+                .limit(1)
+            )
+
+            pause_model = session.scalar(stmt)
+            if pause_model is None:
+                return None
+
+            if pause_model.state_file is None:
+                raise _WorkflowRunError(
+                    f"StateFile not exists for PauseState, "
+                    f"WorkflowPause.id={pause_model.id}, "
+                    f"WorkflowPause.state_file_id={pause_model.state_file_id}"
+                )
+
+            return cast(
+                WorkflowPauseEntity, _PrivateWorkflowPauseEntity.from_models(pause_model, pause_model.state_file)
+            )
+
+    def prune_pauses(
+        self,
+        expiration: datetime,
+        resumption_expiration: datetime,
+        limit: int | None = None,
+    ) -> Sequence[str]:
+        """
+        Clean up expired and old pause states.
+
+        Removes pause states that have expired (created before expiration time)
+        and pause states that were resumed more than resumption_duration ago.
+        This is used for maintenance and cleanup operations.
+
+        Args:
+            expiration: Remove pause states created before this time
+            resumption_expiration: Remove pause states resumed before this time
+            limit: maximum number of records deleted in one call
+
+        Returns:
+            a list of ids for pause records that were pruned
+
+        Raises:
+            ValueError: If parameters are invalid
+        """
+        _limit: int = limit or 1000
+        pruned_record_ids: list[str] = []
+        cond = or_(
+            WorkflowPauseModel.created_at < expiration,
+            and_(
+                WorkflowPauseModel.resumed_at.is_not(null()),
+                WorkflowPauseModel.resumed_at < resumption_expiration,
+            ),
+        )
+        # First, collect pause records to delete with their state files
+        # Expired pauses (created before expiration time)
+        stmt = select(WorkflowPauseModel).where(cond).limit(_limit)
+
+        with self._session_maker(expire_on_commit=False) as session:
+            # Old resumed pauses (resumed more than resumption_duration ago)
+
+            # Get all records to delete
+            pauses_to_delete = session.scalars(stmt).all()
+
+        # Delete state files from storage
+        for pause in pauses_to_delete:
+            with self._session_maker(expire_on_commit=False) as session, session.begin():
+                # todo: this issues a separate query for each WorkflowPauseModel record.
+                # consider batching this lookup.
+                try:
+                    self._file_service.delete_file(pause.state_file_id)
+                    logger.info(
+                        "Deleted state file for pause, state_file_id=%s, pause_id=%s", pause.state_file_id, pause.id
+                    )
+                except Exception as e:
+                    logger.exception(
+                        "Failed to delete state file for pause, state_file_id=%s, pause_id=%s",
+                        pause.state_file_id,
+                        pause.id,
+                    )
+                    continue
+                deleted_pause_id = pause.id
+                session.delete(pause)
+                pruned_record_ids.append(deleted_pause_id)
+                logger.info(
+                    "workflow pause records deleted, id=%s, resumed_at=%s",
+                    pause.id,
+                    pause.resumed_at,
+                )
+
+                # Respect the limit by breaking after reaching it
+                if len(pruned_record_ids) >= _limit:
+                    break
+
+        return pruned_record_ids
+
+
+class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
+    """
+    Private implementation of WorkflowPauseEntity for SQLAlchemy repository.
+
+    This implementation is internal to the repository layer and provides
+    the concrete implementation of the WorkflowPauseEntity interface.
+    """
+
+    def __init__(
+        self,
+        *,
+        pause_model: WorkflowPauseModel,
+        state_file: UploadFile,
+    ) -> None:
+        self._pause_model = pause_model
+        self._state_file = state_file
+        self._cached_state: bytes | None = None
+
+    @classmethod
+    def from_models(cls, workflow_pause_model, upload_file_model) -> "_PrivateWorkflowPauseEntity":
+        """
+        Create a _PrivateWorkflowPauseEntity from database models.
+
+        Args:
+            workflow_pause_model: The WorkflowPause database model
+            upload_file_model: The UploadFile database model
+
+        Returns:
+            _PrivateWorkflowPauseEntity: The constructed entity
+
+        Raises:
+            ValueError: If required model attributes are missing
+        """
+        return cls(
+            pause_model=workflow_pause_model,
+            state_file=upload_file_model,
+        )
+
+    @property
+    def id(self) -> str:
+        return self._pause_model.id
+
+    @property
+    def workflow_execution_id(self) -> str:
+        return self._pause_model.workflow_run_id
+
+    def get_state(self) -> bytes:
+        """
+        Retrieve the serialized workflow state from storage.
+
+        Returns:
+            Mapping[str, Any]: The workflow state as a dictionary
+
+        Raises:
+            FileNotFoundError: If the state file cannot be found
+            IOError: If there are issues reading the state file
+            _Workflow: If the state cannot be deserialized properly
+        """
+        if self._cached_state is not None:
+            return self._cached_state
+
+        # Load the state from storage
+        state_data = storage.load(self._state_file.key)
+        self._cached_state = state_data
+        return state_data
+
+    @property
+    def resumed_at(self) -> datetime | None:
+        return self._pause_model.resumed_at

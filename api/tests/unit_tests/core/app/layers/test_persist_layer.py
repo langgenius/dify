@@ -62,7 +62,7 @@ class TestDataFactory:
         outputs: dict[str, object] | None = None,
     ) -> GraphRunPausedEvent:
         """Create a GraphRunPausedEvent for testing."""
-        return GraphRunPausedEvent(reason=SchedulingPause(), outputs=outputs or {})
+        return GraphRunPausedEvent(reason=SchedulingPause(message="test pause"), outputs=outputs or {})
 
     @staticmethod
     def create_graph_run_started_event() -> GraphRunStartedEvent:

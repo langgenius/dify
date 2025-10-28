@@ -1,32 +1,27 @@
+from sqlalchemy import Engine
+from sqlalchemy.orm import sessionmaker
+
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events.base import GraphEngineEvent
 from core.workflow.graph_events.graph import GraphRunPausedEvent
-from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
-from models.workflow import Workflow, WorkflowRun
-from services.workflow_run_service import WorkflowRunService
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.factory import DifyAPIRepositoryFactory
 
 
 class PauseStatePersistenceLayer(GraphEngineLayer):
-    def __init__(self, workflow_run_service: WorkflowRunService, workflow_run: WorkflowRun, workflow: Workflow):
-        self._workflow_run_service = workflow_run_service
-        self._workflow_run = workflow_run
-        self._workflow = workflow
+    def __init__(self, session_factory: Engine | sessionmaker, state_owner_user_id: str):
+        """Create a PauseStatePersistenceLayer.
 
-    def initialize(self, graph_runtime_state: ReadOnlyGraphRuntimeState, command_channel: CommandChannel) -> None:
+        The `state_owner_user_id` is used when creating state file for pause.
+        It generally should id of the creator of workflow.
         """
-        Initialize the layer with engine dependencies.
+        if isinstance(session_factory, Engine):
+            session_factory = sessionmaker(session_factory)
+        self._session_maker = session_factory
+        self._state_owner_user_id = state_owner_user_id
 
-        Called by GraphEngine before execution starts to inject the read-only runtime state
-        and command channel. This allows layers to observe engine context and send
-        commands, but prevents direct state modification.
-
-        Args:
-            graph_runtime_state: Read-only view of the runtime state
-            command_channel: Channel for sending commands to the engine
-        """
-        self.graph_runtime_state = graph_runtime_state
-        self.command_channel = command_channel
+    def _get_repo(self) -> APIWorkflowRunRepository:
+        return DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_maker)
 
     def on_graph_start(self) -> None:
         """
@@ -50,12 +45,17 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         Args:
             event: The event emitted by the engine
         """
-        if not isinstance(event, GraphRunPausedEvent):
-            return
+        if isinstance(event, GraphEngineEvent):
+            if not isinstance(event, GraphRunPausedEvent):
+                return
+
         assert self.graph_runtime_state is not None
-        self._workflow_run_service.save_pause_state(
-            self._workflow_run,
-            state_owner_user_id=self._workflow.created_by,
+        workflow_run_id: str | None = self.graph_runtime_state.system_variable.workflow_execution_id
+        assert workflow_run_id is not None
+        repo = self._get_repo()
+        repo.create_workflow_pause(
+            workflow_run_id=workflow_run_id,
+            state_owner_user_id=self._state_owner_user_id,
             state=self.graph_runtime_state.dumps(),
         )
 

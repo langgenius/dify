@@ -20,6 +20,8 @@ class HumanInputRequired(_PauseReasonBase):
 class SchedulingPause(_PauseReasonBase):
     TYPE = _PauseReasonType.SCHEDULED_PAUSE
 
+    message: str
+
 
 def _get_pause_reason_discriminator(v: Any) -> _PauseReasonType | None:
     if isinstance(v, _PauseReasonBase):
