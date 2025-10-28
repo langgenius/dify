@@ -414,7 +414,7 @@ class Executor:
                 # decode content safely
                 # RED: Modification - Do not directly decode content, show a placeholder with file metadata instead
                 # Includes filename, size, and MIME type for better logging context without exposing raw content
-                body_string += f"<file_content_binary: '{file_entry[1][0] or "unknown"}', size={len(content)} bytes, type='{file_entry[1][2] or "application/octet-stream"}'>\r\n"
+                body_string += f"<file_content_binary: '{file_entry[1][0] or 'unknown'}', size={len(content)} bytes, type='{file_entry[1][2] or 'application/octet-stream'}'>\r\n"
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:
