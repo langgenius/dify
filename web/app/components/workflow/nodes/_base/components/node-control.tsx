@@ -19,6 +19,8 @@ import {
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import Tooltip from '@/app/components/base/tooltip'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useWorkflowRunValidation } from '@/app/components/workflow/hooks/use-checklist'
+import Toast from '@/app/components/base/toast'
 
 type NodeControlProps = Pick<Node, 'id' | 'data'>
 const NodeControl: FC<NodeControlProps> = ({
@@ -30,6 +32,8 @@ const NodeControl: FC<NodeControlProps> = ({
   const { handleNodeSelect } = useNodesInteractions()
   const workflowStore = useWorkflowStore()
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
+  const { warningNodes } = useWorkflowRunValidation()
+  const warningForNode = warningNodes.find(item => item.id === id)
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setOpen(newOpen)
   }, [])
@@ -50,9 +54,15 @@ const NodeControl: FC<NodeControlProps> = ({
         {
           canRunBySingle(data.type, isChildNode) && (
             <div
-              className='flex h-5 w-5 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
+              className={`flex h-5 w-5 items-center justify-center rounded-md ${isSingleRunning ? 'cursor-pointer hover:bg-state-base-hover' : warningForNode ? 'cursor-not-allowed text-text-disabled' : 'cursor-pointer hover:bg-state-base-hover'}`}
               onClick={() => {
                 const action = isSingleRunning ? 'stop' : 'run'
+                if (!isSingleRunning && warningForNode) {
+                  const message = warningForNode.errorMessage || t('workflow.panel.checklistTip')
+                  Toast.notify({ type: 'error', message })
+                  return
+                }
+
                 const store = workflowStore.getState()
                 store.setInitShowLastRunTab(true)
                 store.setPendingSingleRun({
@@ -67,7 +77,7 @@ const NodeControl: FC<NodeControlProps> = ({
                   ? <Stop className='h-3 w-3' />
                   : (
                     <Tooltip
-                      popupContent={t('workflow.panel.runThisStep')}
+                      popupContent={warningForNode ? warningForNode.errorMessage || t('workflow.panel.checklistTip') : t('workflow.panel.runThisStep')}
                       asChild={false}
                     >
                       <RiPlayLargeLine className='h-3 w-3' />
