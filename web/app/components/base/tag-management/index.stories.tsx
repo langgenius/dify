@@ -18,7 +18,7 @@ const TagManagementPlayground = ({
 }: {
   type?: 'app' | 'knowledge'
 }) => {
-  const originalFetchRef = useRef<typeof globalThis.fetch>()
+  const originalFetchRef = useRef<typeof globalThis.fetch>(null)
   const tagsRef = useRef<Tag[]>(INITIAL_TAGS)
   const setTagList = useTagStore(s => s.setTagList)
   const showModal = useTagStore(s => s.showTagManagementModal)

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
+import { fn } from 'storybook/test'
 import { useState } from 'react'
 import FloatRightContainer from '.'
 
@@ -64,4 +65,10 @@ const ContainerDemo = () => {
 
 export const Playground: Story = {
   render: () => <ContainerDemo />,
+  args: {
+    isMobile: false,
+    isOpen: false,
+    onClose: fn(),
+    children: null,
+  },
 }

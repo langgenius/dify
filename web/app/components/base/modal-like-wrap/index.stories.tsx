@@ -68,6 +68,9 @@ export const Default: Story = {
       <BaseContent />
     </ModalLikeWrap>
   ),
+  args: {
+    children: null,
+  },
 }
 
 export const WithBackLink: Story = {
@@ -90,6 +93,7 @@ export const WithBackLink: Story = {
   ),
   args: {
     title: 'Select metadata type',
+    children: null,
   },
   parameters: {
     docs: {
@@ -114,6 +118,7 @@ export const CustomWidth: Story = {
   ),
   args: {
     title: 'Advanced configuration',
+    children: null,
   },
   parameters: {
     docs: {

@@ -32,6 +32,8 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 type AppFormInstance = Parameters<FormStoryRender>[0]
+type ContactFieldsProps = React.ComponentProps<typeof ContactFields>
+type ContactFieldsFormApi = ContactFieldsProps['form']
 
 type PlaygroundFormFieldsProps = {
   form: AppFormInstance
@@ -39,7 +41,9 @@ type PlaygroundFormFieldsProps = {
 }
 
 const PlaygroundFormFields = ({ form, status }: PlaygroundFormFieldsProps) => {
-  const name = useStore(form.store, state => state.values.name)
+  type PlaygroundFormValues = typeof demoFormOpts.defaultValues
+  const name = useStore(form.store, state => (state.values as PlaygroundFormValues).name)
+  const contactFormApi = form as ContactFieldsFormApi
 
   return (
     <form
@@ -77,7 +81,7 @@ const PlaygroundFormFields = ({ form, status }: PlaygroundFormFieldsProps) => {
         )}
       />
 
-      {!!name && <ContactFields form={form} />}
+      {!!name && <ContactFields form={contactFormApi} />}
 
       <form.AppForm>
         <form.Actions />
@@ -99,14 +103,14 @@ const FormPlayground = () => {
         ...demoFormOpts,
         validators: {
           onSubmit: ({ value }) => {
-            const result = UserSchema.safeParse(value)
+            const result = UserSchema.safeParse(value as typeof demoFormOpts.defaultValues)
             if (!result.success)
               return result.error.issues[0].message
             return undefined
           },
         },
         onSubmit: ({ value }) => {
-          setStatus(`Successfully saved profile for ${value?.name || 'Unknown user'}.`)
+          setStatus('Successfully saved profile.')
         },
       }}
     >
@@ -200,7 +204,6 @@ const FieldGallery = () => {
                 description="Control the maximum number of runs per user each day."
                 min={10}
                 max={100}
-                step={10}
               />
             )}
           />
@@ -301,7 +304,8 @@ const CustomActionsStory = () => {
         },
         validators: {
           onChange: ({ value }) => {
-            if (!value.datasetName || value.datasetName.length < 3)
+            const nextValues = value as { datasetName?: string }
+            if (!nextValues.datasetName || nextValues.datasetName.length < 3)
               return 'Dataset name must contain at least 3 characters.'
             return undefined
           },

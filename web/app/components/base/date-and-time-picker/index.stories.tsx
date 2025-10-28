@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
+import { fn } from 'storybook/test'
 import { useState } from 'react'
 import DatePicker from './date-picker'
 import dayjs from './utils/dayjs'
@@ -21,6 +22,8 @@ const meta = {
     timezone: dayjs.tz.guess(),
     needTimePicker: true,
     placeholder: 'Select schedule time',
+    onChange: fn(),
+    onClear: fn(),
   },
 } satisfies Meta<typeof DatePicker>
 
@@ -47,6 +50,11 @@ const DatePickerPlayground = (props: DatePickerProps) => {
 
 export const Playground: Story = {
   render: args => <DatePickerPlayground {...args} />,
+  args: {
+    ...meta.args,
+    needTimePicker: false,
+    placeholder: 'Select due date',
+  },
   parameters: {
     docs: {
       source: {
@@ -75,6 +83,11 @@ export const DateOnly: Story = {
       placeholder="Select due date"
     />
   ),
+  args: {
+    ...meta.args,
+    needTimePicker: false,
+    placeholder: 'Select due date',
+  },
   parameters: {
     docs: {
       source: {

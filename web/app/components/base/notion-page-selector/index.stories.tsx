@@ -97,11 +97,14 @@ const productPages = {
   ],
 }
 
+type NotionApiResponse = typeof marketingPages
+const emptyNotionResponse: NotionApiResponse = { notion_info: [] }
+
 const useMockNotionApi = () => {
   const responseMap = useMemo(() => ({
     [`${DATASET_ID}:cred-1`]: marketingPages,
     [`${DATASET_ID}:cred-2`]: productPages,
-  }), [])
+  }) satisfies Record<`${typeof DATASET_ID}:${typeof CREDENTIALS[number]['id']}`, NotionApiResponse>, [])
 
   useEffect(() => {
     const originalFetch = globalThis.fetch?.bind(globalThis)
@@ -117,8 +120,15 @@ const useMockNotionApi = () => {
         const parsed = new URL(url, globalThis.location.origin)
         const datasetId = parsed.searchParams.get('dataset_id') || ''
         const credentialId = parsed.searchParams.get('credential_id') || ''
-        const key = `${datasetId}:${credentialId}`
-        const payload = responseMap[key] || { notion_info: [] }
+        let payload: NotionApiResponse = emptyNotionResponse
+
+        if (datasetId === DATASET_ID) {
+          const credential = CREDENTIALS.find(item => item.id === credentialId)
+          if (credential) {
+            const mapKey = `${DATASET_ID}:${credential.id}` as keyof typeof responseMap
+            payload = responseMap[mapKey]
+          }
+        }
 
         return new Response(
           JSON.stringify(payload),

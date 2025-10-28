@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
+import { fn } from 'storybook/test'
 import { useState } from 'react'
 import Dropdown, { type Item } from '.'
 
@@ -53,6 +54,11 @@ const DropdownDemo = (props: React.ComponentProps<typeof Dropdown>) => {
 
 export const Playground: Story = {
   render: args => <DropdownDemo {...args} />,
+  args: {
+    items: PRIMARY_ITEMS,
+    secondItems: SECONDARY_ITEMS,
+    onSelect: fn(),
+  },
 }
 
 export const CustomTrigger: Story = {
@@ -72,4 +78,8 @@ export const CustomTrigger: Story = {
       )}
     />
   ),
+  args: {
+    items: PRIMARY_ITEMS,
+    onSelect: fn(),
+  },
 }

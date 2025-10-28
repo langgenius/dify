@@ -1,16 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
 import { ThemeProvider } from 'next-themes'
 import type { ReactNode } from 'react'
-import DifyLogo, { type LogoSize, type LogoStyle } from './dify-logo'
+import DifyLogo from './dify-logo'
 import LogoSite from './logo-site'
 import LogoEmbeddedChatHeader from './logo-embedded-chat-header'
 import LogoEmbeddedChatAvatar from './logo-embedded-chat-avatar'
-
-type LogoStoryArgs = {
-  size: LogoSize
-  style: LogoStyle
-  theme: 'light' | 'dark'
-}
 
 const meta = {
   title: 'Base/General/Logo',
@@ -26,7 +20,6 @@ const meta = {
   args: {
     size: 'medium',
     style: 'default',
-    theme: 'light',
   },
   argTypes: {
     size: {
@@ -36,10 +29,6 @@ const meta = {
     style: {
       control: 'radio',
       options: ['default', 'monochromeWhite'],
-    },
-    theme: {
-      control: 'inline-radio',
-      options: ['light', 'dark'],
     },
   },
   tags: ['autodocs'],
@@ -61,9 +50,9 @@ const ThemePreview = ({ theme, children }: { theme: 'light' | 'dark'; children: 
 }
 
 export const Playground: Story = {
-  render: ({ size, style, theme }) => {
+  render: ({ size, style }) => {
     return (
-      <ThemePreview theme={theme!}>
+      <ThemePreview theme="dark">
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
             <span className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Primary logo</span>
@@ -85,27 +74,6 @@ export const Playground: Story = {
               <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-text-tertiary">Embedded avatar</span>
               <LogoEmbeddedChatAvatar className="border-divider-strong rounded-2xl border" />
             </div>
-          </div>
-        </div>
-      </ThemePreview>
-    )
-  },
-}
-
-export const DarkThemeReference: Story = {
-  args: {
-    theme: 'dark',
-    style: 'monochromeWhite',
-  },
-  render: ({ size, style, theme }) => {
-    return (
-      <ThemePreview theme={theme!}>
-        <div className="flex flex-col gap-4">
-          <p className="text-xs text-text-secondary">
-            The monochrome white asset ensures correct contrast on layered dark surfaces.
-          </p>
-          <div className="border-divider-strong bg-background-default/30 flex items-center justify-center rounded-xl border p-6">
-            <DifyLogo size={size} style={style} />
           </div>
         </div>
       </ThemePreview>

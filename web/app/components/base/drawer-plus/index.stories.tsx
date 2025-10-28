@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
+import { fn } from 'storybook/test'
 import { useState } from 'react'
 import DrawerPlus from '.'
 
@@ -19,19 +20,32 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-const DrawerPlusDemo = (props: React.ComponentProps<typeof DrawerPlus>) => {
+type DrawerPlusProps = React.ComponentProps<typeof DrawerPlus>
+
+const storyBodyElement: React.JSX.Element = (
+  <div className="space-y-3 p-6 text-sm text-text-secondary">
+    <p>
+      DrawerPlus allows rich content with sticky header/footer and responsive masking on mobile. Great for editing flows or showing execution logs.
+    </p>
+    <div className="rounded-lg border border-divider-subtle bg-components-panel-bg p-3 text-xs">
+      Body content scrolls if it exceeds the allotted height.
+    </div>
+  </div>
+)
+
+const DrawerPlusDemo = (props: Partial<DrawerPlusProps>) => {
   const [open, setOpen] = useState(false)
 
-  const defaultBody = (
-    <div className="space-y-3 p-6 text-sm text-text-secondary">
-      <p>
-        DrawerPlus allows rich content with sticky header/footer and responsive masking on mobile. Great for editing flows or showing execution logs.
-      </p>
-      <div className="rounded-lg border border-divider-subtle bg-components-panel-bg p-3 text-xs">
-        Body content scrolls if it exceeds the allotted height.
-      </div>
-    </div>
-  )
+  const {
+    body,
+    title,
+    foot,
+    isShow: _isShow,
+    onHide: _onHide,
+    ...rest
+  } = props
+
+  const resolvedBody: React.JSX.Element = body ?? storyBodyElement
 
   return (
     <div className="flex h-[400px] items-center justify-center bg-background-default-subtle">
@@ -44,12 +58,12 @@ const DrawerPlusDemo = (props: React.ComponentProps<typeof DrawerPlus>) => {
       </button>
 
       <DrawerPlus
-        {...props}
+        {...rest as Omit<DrawerPlusProps, 'isShow' | 'onHide' | 'title' | 'body' | 'foot'>}
         isShow={open}
         onHide={() => setOpen(false)}
-        title={props.title ?? 'Workflow execution details'}
-        body={props.body ?? defaultBody}
-        foot={props.foot}
+        title={title ?? 'Workflow execution details'}
+        body={resolvedBody}
+        foot={foot}
       />
     </div>
   )
@@ -57,6 +71,12 @@ const DrawerPlusDemo = (props: React.ComponentProps<typeof DrawerPlus>) => {
 
 export const Playground: Story = {
   render: args => <DrawerPlusDemo {...args} />,
+  args: {
+    isShow: false,
+    onHide: fn(),
+    title: 'Edit configuration',
+    body: storyBodyElement,
+  },
 }
 
 export const WithFooter: Story = {
@@ -94,5 +114,11 @@ export const WithFooter: Story = {
       )
     }
     return <FooterDemo />
+  },
+  args: {
+    isShow: false,
+    onHide: fn(),
+    title: 'Edit configuration!',
+    body: storyBodyElement,
   },
 }

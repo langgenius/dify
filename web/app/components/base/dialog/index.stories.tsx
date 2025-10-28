@@ -102,6 +102,7 @@ export const Default: Story = {
         </button>
       </>
     ),
+    children: null,
   },
 }
 
@@ -110,6 +111,7 @@ export const WithoutFooter: Story = {
   args: {
     footer: undefined,
     title: 'Read-only summary',
+    children: null,
   },
   parameters: {
     docs: {
@@ -127,6 +129,7 @@ export const CustomStyling: Story = {
     bodyClassName: 'bg-gray-50 rounded-xl p-5',
     footerClassName: 'justify-between px-4 pb-4 pt-4',
     titleClassName: 'text-lg text-primary-600',
+    children: null,
     footer: (
       <>
         <span className="text-xs text-gray-400">Last synced 2 minutes ago</span>

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
+import { fn } from 'storybook/test'
 import { useState } from 'react'
 import Drawer from '.'
 
@@ -55,6 +56,11 @@ const DrawerDemo = (props: React.ComponentProps<typeof Drawer>) => {
 
 export const Playground: Story = {
   render: args => <DrawerDemo {...args} />,
+  args: {
+    children: null,
+    isOpen: false,
+    onClose: fn(),
+  },
   parameters: {
     docs: {
       source: {
@@ -88,6 +94,11 @@ export const CustomFooter: Story = {
       }
     />
   ),
+  args: {
+    children: null,
+    isOpen: false,
+    onClose: fn(),
+  },
   parameters: {
     docs: {
       source: {

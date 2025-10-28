@@ -44,7 +44,7 @@ const LoadingPreview = ({ type }: { type: 'area' | 'app' }) => {
 }
 
 export const AreaSpinner: Story = {
-  render: ({ type }) => <LoadingPreview type={type!} />,
+  render: () => <LoadingPreview type="area" />,
 }
 
 export const AppSpinner: Story = {

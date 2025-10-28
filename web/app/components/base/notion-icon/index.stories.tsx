@@ -67,7 +67,7 @@ export const WorkspaceInitials: Story = {
 export const PageEmoji: Story = {
   render: args => (
     <div className="flex items-center gap-3 rounded-lg border border-divider-subtle bg-components-panel-bg p-4">
-      <NotionIcon {...args} type="page" src={{ type: 'emoji', emoji: '🧠' }} />
+      <NotionIcon {...args} type="page" src={{ type: 'emoji', emoji: '🧠', url: '' }} />
       <span className="text-sm text-text-secondary">Page-level emoji icon returned by the API.</span>
     </div>
   ),
@@ -89,7 +89,7 @@ export const PageImage: Story = {
       <NotionIcon
         {...args}
         type="page"
-        src={{ type: 'url', url: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=80&q=60' }}
+        src={{ type: 'url', url: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=80&q=60', emoji: '' }}
       />
       <span className="text-sm text-text-secondary">Page icon resolved from an image URL.</span>
     </div>

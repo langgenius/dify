@@ -29,9 +29,14 @@ const meta = {
       control: false,
       description: 'Invoked when the overlay/backdrop is clicked.',
     },
+    children: {
+      control: false,
+      table: { disable: true },
+    },
   },
   args: {
     show: false,
+    children: null,
   },
 } satisfies Meta<typeof ContentDialog>
 

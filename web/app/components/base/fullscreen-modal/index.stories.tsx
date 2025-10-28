@@ -53,4 +53,7 @@ const ModalDemo = (props: React.ComponentProps<typeof FullScreenModal>) => {
 
 export const Playground: Story = {
   render: args => <ModalDemo {...args} />,
+  args: {
+    open: false,
+  },
 }

@@ -169,11 +169,14 @@ const ImageUploaderPlayground = ({ readonly }: Story['args']) => {
 
 export const Playground: Story = {
   render: args => <ImageUploaderPlayground {...args} />,
+  args: {
+    list: [],
+  },
 }
 
 export const ReadonlyList: Story = {
   render: args => <ImageUploaderPlayground {...args} />,
   args: {
-    readonly: true,
+    list: [],
   },
 }

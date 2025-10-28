@@ -4,9 +4,6 @@ import { FeaturesProvider } from '.'
 import NewFeaturePanel from './new-feature-panel'
 import type { Features } from './types'
 
-const useDocLinkMock = () => () => '#docs'
-const useDefaultModelMock = () => ({ data: { provider: 'mock', model: 'mock-model' } })
-
 const DEFAULT_FEATURES: Features = {
   moreLikeThis: { enabled: false },
   opening: { enabled: false },
@@ -58,8 +55,6 @@ const FeaturesDemo = () => {
       </div>
 
       <NewFeaturePanel
-        useDocLinkFn={useDocLinkMock}
-        useDefaultModelFn={useDefaultModelMock}
         show={show}
         isChatMode
         disabled={false}
@@ -72,4 +67,7 @@ const FeaturesDemo = () => {
 
 export const Playground: Story = {
   render: () => <FeaturesDemo />,
+  args: {
+    children: null,
+  },
 }

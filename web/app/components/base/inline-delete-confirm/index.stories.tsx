@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
+import { fn } from 'storybook/test'
 import { useState } from 'react'
 import InlineDeleteConfirm from '.'
 
@@ -23,6 +24,8 @@ const meta = {
     title: 'Delete this item?',
     confirmText: 'Delete',
     cancelText: 'Cancel',
+    onConfirm: fn(),
+    onCancel: fn(),
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof InlineDeleteConfirm>

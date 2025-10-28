@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
+import { fn } from 'storybook/test'
 import { useState } from 'react'
 import FileUploaderInAttachmentWrapper from './index'
 import type { FileEntity } from '../types'
@@ -96,8 +97,14 @@ const AttachmentDemo = (props: React.ComponentProps<typeof FileUploaderInAttachm
 
 export const Playground: Story = {
   render: args => <AttachmentDemo {...args} />,
+  args: {
+    onChange: fn(),
+  },
 }
 
 export const Disabled: Story = {
   render: args => <AttachmentDemo {...args} isDisabled />,
+  args: {
+    onChange: fn(),
+  },
 }
