@@ -34,7 +34,7 @@ from core.workflow.graph_events.pause_reason import SchedulingPause
 from core.workflow.runtime.graph_runtime_state import GraphRuntimeState
 from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
 from core.workflow.runtime.read_only_wrappers import ReadOnlyGraphRuntimeStateWrapper
-from core.workflow.runtime.variable_pool import VariablePool
+from core.workflow.runtime.variable_pool import SystemVariable, VariablePool
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models import Account
@@ -78,7 +78,7 @@ class TestPauseStatePersistenceLayerTestContainers:
     @pytest.fixture
     def workflow_run_service(self, engine: Engine, file_service: FileService):
         """Create WorkflowRunService instance with TestContainers engine and FileService."""
-        return WorkflowRunService(engine, file_service)
+        return WorkflowRunService(engine)
 
     @pytest.fixture(autouse=True)
     def setup_test_data(self, db_session_with_containers, file_service, workflow_run_service):
@@ -203,12 +203,15 @@ class TestPauseStatePersistenceLayerTestContainers:
         total_tokens: int = 0,
         node_run_steps: int = 0,
         variables: dict[tuple[str, str], object] | None = None,
+        workflow_run_id: str | None = None,
     ) -> ReadOnlyGraphRuntimeState:
         """Create a real GraphRuntimeState for testing."""
         start_at = time()
 
+        execution_id = workflow_run_id or getattr(self, "test_workflow_run_id", None) or str(uuid.uuid4())
+
         # Create variable pool
-        variable_pool = VariablePool()
+        variable_pool = VariablePool(system_variables=SystemVariable(workflow_execution_id=execution_id))
         if variables:
             for (node_id, var_key), value in variables.items():
                 variable_pool.add([node_id, var_key], value)
@@ -232,12 +235,24 @@ class TestPauseStatePersistenceLayerTestContainers:
         self,
         workflow_run: WorkflowRun | None = None,
         workflow: Workflow | None = None,
+        state_owner_user_id: str | None = None,
     ) -> PauseStatePersistenceLayer:
         """Create PauseStatePersistenceLayer with real dependencies."""
+        owner_id = state_owner_user_id
+        if owner_id is None:
+            if workflow is not None and workflow.created_by:
+                owner_id = workflow.created_by
+            elif workflow_run is not None and workflow_run.created_by:
+                owner_id = workflow_run.created_by
+            else:
+                owner_id = getattr(self, "test_user_id", None)
+
+        assert owner_id is not None
+        owner_id = str(owner_id)
+
         return PauseStatePersistenceLayer(
-            workflow_run_service=self.workflow_run_service,
-            workflow_run=workflow_run or self.test_workflow_run,
-            workflow=workflow or self.test_workflow,
+            session_factory=self.session.get_bind(),
+            state_owner_user_id=owner_id,
         )
 
     def test_complete_pause_flow_with_real_dependencies(self, db_session_with_containers):
@@ -328,11 +343,12 @@ class TestPauseStatePersistenceLayerTestContainers:
         layer.on_event(event)
 
         # Assert - Retrieve and verify
-        pause_entity = self.workflow_run_service.get_pause_state(self.test_workflow_run_id)
+        pause_entity = self.workflow_run_service._workflow_run_repo.get_workflow_pause(self.test_workflow_run_id)
         assert pause_entity is not None
-        assert pause_entity.workflow_run_id == self.test_workflow_run_id
+        assert pause_entity.workflow_execution_id == self.test_workflow_run_id
 
-        retrieved_state = json.loads(pause_entity.get_state())
+        state_bytes = pause_entity.get_state()
+        retrieved_state = json.loads(state_bytes.decode())
         expected_state = json.loads(graph_runtime_state.dumps())
 
         assert retrieved_state == expected_state
@@ -444,6 +460,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         graph_runtime_state = self._create_graph_runtime_state(
             outputs={"creator_test": "different_creator"},
+            workflow_run_id=different_workflow_run.id,
         )
 
         command_channel = _TestCommandChannelImpl()
@@ -462,7 +479,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert pause_model is not None
 
         # Verify the state owner is the workflow creator
-        pause_entity = self.workflow_run_service.get_pause_state(different_workflow_run.id)
+        pause_entity = self.workflow_run_service._workflow_run_repo.get_workflow_pause(different_workflow_run.id)
         assert pause_entity is not None
 
         # The state should be saved with workflow.created_by as the owner
