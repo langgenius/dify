@@ -243,6 +243,7 @@ class LLMNode(Node):
                 variable_pool=variable_pool,
                 jinja2_variables=self._node_data.prompt_config.jinja2_variables,
                 tenant_id=self.tenant_id,
+                citation_enabled=self._node_data.context.citation_enabled,
             )
 
             # handle invoke result
@@ -649,6 +650,10 @@ class LLMNode(Node):
             elif isinstance(context_value_variable, ArraySegment):
                 context_str = ""
                 original_retriever_resource: list[RetrievalSourceMetadata] = []
+                citation_enabled = (
+                    node_data.context.citation_enabled if hasattr(node_data.context, "citation_enabled") else False
+                )
+
                 for item in context_value_variable.value:
                     if isinstance(item, str):
                         context_str += item + "\n"
@@ -656,7 +661,17 @@ class LLMNode(Node):
                         if "content" not in item:
                             raise InvalidContextStructureError(f"Invalid context structure: {item}")
 
-                        context_str += item["content"] + "\n"
+                        # Extract position for citation
+                        position = None
+                        if isinstance(item, dict) and "metadata" in item:
+                            position = item["metadata"].get("position")
+
+                        # Add citation marker if enabled and position exists
+                        content = item["content"]
+                        if citation_enabled and position is not None:
+                            context_str += f"{content} [{position}]\n"
+                        else:
+                            context_str += content + "\n"
 
                         retriever_resource = self._convert_to_original_retriever_resource(item)
                         if retriever_resource:
@@ -732,8 +747,17 @@ class LLMNode(Node):
         variable_pool: VariablePool,
         jinja2_variables: Sequence[VariableSelector],
         tenant_id: str,
+        citation_enabled: bool = False,
     ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
         prompt_messages: list[PromptMessage] = []
+
+        # Add citation instruction if enabled and context contains citations
+        if citation_enabled and context and "[" in context and "]" in context:
+            citation_instruction = (
+                "\n\nIMPORTANT: When answering, please cite the sources by including the citation markers "
+                "(e.g., [1], [2]) at the end of relevant sentences. Place the citation at the sentence end."
+            )
+            context = context + citation_instruction
 
         if isinstance(prompt_template, list):
             # For chat model

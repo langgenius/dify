@@ -19,6 +19,7 @@ class ModelConfig(BaseModel):
 class ContextConfig(BaseModel):
     enabled: bool
     variable_selector: list[str] | None = None
+    citation_enabled: bool = False
 
 
 class VisionConfigOptions(BaseModel):
