@@ -23,7 +23,7 @@ from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 
-from .errors.file import FileTooLargeError, UnsupportedFileTypeError
+from .errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -61,8 +61,6 @@ class FileService:
 
         # check if extension is in blacklist
         if extension and extension in dify_config.UPLOAD_FILE_EXTENSION_BLACKLIST:
-            from .errors.file import BlockedFileExtensionError
-
             raise BlockedFileExtensionError(f"File extension '.{extension}' is not allowed for security reasons")
 
         if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:

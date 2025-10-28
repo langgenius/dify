@@ -351,7 +351,7 @@ class FileUploadConfig(BaseSettings):
         if not self.inner_UPLOAD_FILE_EXTENSION_BLACKLIST:
             return set()
         return {
-            ext.strip().lower().lstrip(".")
+            ext.strip().lower().strip(".")
             for ext in self.inner_UPLOAD_FILE_EXTENSION_BLACKLIST.split(",")
             if ext.strip()
         }
