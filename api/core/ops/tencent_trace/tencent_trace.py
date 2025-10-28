@@ -33,6 +33,7 @@ from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTrigger
 
 logger = logging.getLogger(__name__)
 
+
 class TencentDataTrace(BaseTraceInstance):
     """
     Tencent APM trace implementation with single responsibility principle.

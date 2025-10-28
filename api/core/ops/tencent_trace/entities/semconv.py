@@ -68,7 +68,8 @@ LLM_OPERATION_DURATION = "gen_ai.client.operation.duration"
 GEN_AI_TOKEN_USAGE = "gen_ai.client.token.usage"
 GEN_AI_SERVER_TIME_TO_FIRST_TOKEN = "gen_ai.server.time_to_first_token"
 GEN_AI_STREAMING_TIME_TO_GENERATE = "gen_ai.streaming.time_to_generate"
-GEN_AI_TRACE_DURATION = "gen_ai.trace.duration" # The duration of the entire LLM trace which is exclusive to tencent apm
+# The LLM trace duration which is exclusive to tencent apm
+GEN_AI_TRACE_DURATION = "gen_ai.trace.duration"
 
 # Token Usage Attributes
 GEN_AI_OPERATION_NAME = "gen_ai.operation.name"
