@@ -40,7 +40,6 @@ def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict]:
     return response.json()["data"]["plugins"]
 
 
-
 def batch_fetch_plugin_manifests_ignore_deserialization_error(
     plugin_ids: list[str],
 ) -> Sequence[MarketplacePluginDeclaration]:
