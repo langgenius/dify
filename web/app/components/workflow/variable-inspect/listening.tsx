@@ -8,6 +8,8 @@ import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAnd
 import { useStore } from '../store'
 import { useGetToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
 import type { TFunction } from 'i18next'
+import { getNextExecutionTime } from '@/app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator'
+import type { ScheduleTriggerNodeType } from '@/app/components/workflow/nodes/trigger-schedule/types'
 
 const resolveListeningDescription = (
   message: string | undefined,
@@ -18,9 +20,13 @@ const resolveListeningDescription = (
   if (message)
     return message
 
-  const nodeDescription = (triggerNode?.data as { desc?: string })?.desc
-  if (nodeDescription)
-    return nodeDescription
+  if (triggerType === BlockEnum.TriggerSchedule) {
+    const scheduleData = triggerNode?.data as ScheduleTriggerNodeType | undefined
+    const nextTriggerTime = scheduleData ? getNextExecutionTime(scheduleData) : ''
+    return t('workflow.debug.variableInspect.listening.tipSchedule', {
+      nextTriggerTime: nextTriggerTime || t('workflow.debug.variableInspect.listening.defaultScheduleTime'),
+    })
+  }
 
   if (triggerType === BlockEnum.TriggerPlugin) {
     const pluginName = (triggerNode?.data as { provider_name?: string; title?: string })?.provider_name
@@ -33,6 +39,10 @@ const resolveListeningDescription = (
     const nodeName = (triggerNode?.data as { title?: string })?.title || t('workflow.debug.variableInspect.listening.defaultNodeName')
     return t('workflow.debug.variableInspect.listening.tip', { nodeName })
   }
+
+  const nodeDescription = (triggerNode?.data as { desc?: string })?.desc
+  if (nodeDescription)
+    return nodeDescription
 
   return t('workflow.debug.variableInspect.listening.tipFallback')
 }
@@ -71,7 +81,6 @@ const Listening: FC<ListeningProps> = ({
   const listeningTriggerNodeId = useStore(s => s.listeningTriggerNodeId)
   const listeningTriggerNodeIds = useStore(s => s.listeningTriggerNodeIds)
   const listeningTriggerIsAll = useStore(s => s.listeningTriggerIsAll)
-  const triggerType = listeningTriggerType || BlockEnum.TriggerWebhook
 
   const getToolIcon = useGetToolIcon()
 
@@ -81,6 +90,8 @@ const Listening: FC<ListeningProps> = ({
   const triggerNode = listeningTriggerNodeId
     ? nodes.find(node => node.id === listeningTriggerNodeId)
     : undefined
+  const inferredTriggerType = (triggerNode?.data as { type?: BlockEnum })?.type
+  const triggerType = listeningTriggerType || inferredTriggerType || BlockEnum.TriggerWebhook
 
   let displayNodes: Node[] = []
 
@@ -138,7 +149,7 @@ const Listening: FC<ListeningProps> = ({
       </div>
       <div className='flex flex-col gap-1'>
         <div className='system-sm-semibold text-text-secondary'>{t('workflow.debug.variableInspect.listening.title')}</div>
-        <div className='system-xs-regular text-text-tertiary'>{description}</div>
+        <div className='system-xs-regular whitespace-pre-line text-text-tertiary'>{description}</div>
       </div>
       <div>
         <Button
