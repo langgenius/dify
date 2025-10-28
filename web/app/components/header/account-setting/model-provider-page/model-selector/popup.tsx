@@ -22,7 +22,7 @@ type PopupProps = {
   defaultModel?: DefaultModel
   modelList: Model[]
   onSelect: (provider: string, model: ModelItem) => void
-  scopeFeatures?: string[]
+  scopeFeatures?: ModelFeatureEnum[]
   onHide: () => void
 }
 const Popup: FC<PopupProps> = ({
