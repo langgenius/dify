@@ -569,11 +569,12 @@ class WorkflowRun(Base):
     pause_id: Mapped[StringUUID | None] = mapped_column(StringUUID, nullable=True)
 
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
+        "WorkflowPause",
+        primaryjoin="WorkflowRun.id == foreign(WorkflowPause.workflow_run_id)",
+        uselist=False,
         # require explicit preloading.
         lazy="raise",
-        foreign_keys=[pause_id],
-        uselist=False,
-        primaryjoin="WorkflowRun.pause_id == WorkflowPause.id",
+        back_populates="workflow_run",
     )
 
     @property
@@ -1613,6 +1614,7 @@ def is_system_variable_editable(name: str) -> bool:
 
 class WorkflowPause(ModelMixin, Base):
     __tablename__ = "workflow_pauses"
+    __table_args__ = (UniqueConstraint("workflow_run_id"),)
 
     # `tenant_id` identifies the tenant associated with this pause,
     # corresponding to the `id` field in the `Tenant` model.
@@ -1662,19 +1664,8 @@ class WorkflowPause(ModelMixin, Base):
     #
     # The value of `state` is a JSON-formatted string representing a JSON object (e.g., `{}`).
 
-    state_file_id: Mapped[str] = mapped_column(
-        StringUUID,
-        nullable=False,
-    )
-
-    # Relationship to UploadFile
-    state_file: Mapped["UploadFile"] = orm.relationship(
-        foreign_keys=[state_file_id],
-        # require explicit preloading.
-        lazy="raise",
-        uselist=False,
-        primaryjoin="WorkflowPause.state_file_id == UploadFile.id",
-    )
+    # state_object_key is
+    state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
 
     # Relationship to WorkflowRun
     workflow_run: Mapped["WorkflowRun"] = orm.relationship(
@@ -1683,4 +1674,5 @@ class WorkflowPause(ModelMixin, Base):
         lazy="raise",
         uselist=False,
         primaryjoin="WorkflowPause.workflow_run_id == WorkflowRun.id",
+        back_populates="pause",
     )
