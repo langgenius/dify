@@ -3,7 +3,7 @@ from typing import final
 
 from typing_extensions import override
 
-from core.workflow.graph_events.pause_reason import SchedulingPause
+from core.workflow.entities.pause_reason import SchedulingPause
 
 from ..domain.graph_execution import GraphExecution
 from ..entities.commands import AbortCommand, GraphEngineCommand, PauseCommand

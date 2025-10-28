@@ -5,7 +5,7 @@ from pydantic import Field
 
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities import AgentNodeStrategyInit
-from core.workflow.graph_events.pause_reason import PauseReason
+from core.workflow.entities.pause_reason import PauseReason
 
 from .base import GraphNodeEventBase
 

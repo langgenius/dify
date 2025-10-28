@@ -30,7 +30,7 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.graph_engine.entities.commands import GraphEngineCommand
 from core.workflow.graph_events.graph import GraphRunPausedEvent
-from core.workflow.graph_events.pause_reason import SchedulingPause
+from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.runtime.graph_runtime_state import GraphRuntimeState
 from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyGraphRuntimeState
 from core.workflow.runtime.read_only_wrappers import ReadOnlyGraphRuntimeStateWrapper

@@ -13,7 +13,7 @@ from core.workflow.graph_events.graph import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
 )
-from core.workflow.graph_events.pause_reason import SchedulingPause
+from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from repositories.factory import DifyAPIRepositoryFactory
 

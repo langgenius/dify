@@ -8,7 +8,7 @@ from core.workflow.graph_engine import GraphEngine
 from core.workflow.graph_engine.command_channels import InMemoryChannel
 from core.workflow.graph_engine.entities.commands import AbortCommand, CommandType, PauseCommand
 from core.workflow.graph_events import GraphRunAbortedEvent, GraphRunPausedEvent, GraphRunStartedEvent
-from core.workflow.graph_events.pause_reason import SchedulingPause
+from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 
 
