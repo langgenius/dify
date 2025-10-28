@@ -412,16 +412,14 @@ class Executor:
                 body_string += f"--{boundary}\r\n"
                 body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
                 # decode content safely
-                try:
-                    body_string += content.decode("utf-8")
-                except UnicodeDecodeError:
-                    body_string += content.decode("utf-8", errors="replace")
-                body_string += "\r\n"
+                # 🔴 修改：不直接解码 content，而是显示占位符
+                body_string += f"<file_content_binary, size={len(content)} bytes>\r\n"
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:
+                # 🔴 修改：如果 content 是 bytes，不直接解码
                 if isinstance(self.content, bytes):
-                    body_string = self.content.decode("utf-8", errors="replace")
+                    body_string = f"<binary_content, size={len(self.content)} bytes>"
                 else:
                     body_string = self.content
             elif self.data and self.node_data.body.type == "x-www-form-urlencoded":
