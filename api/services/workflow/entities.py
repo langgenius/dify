@@ -58,12 +58,11 @@ class ScheduleTriggerData(TriggerData):
 class PluginTriggerMetadata(TriggerMetadata):
     """Plugin trigger metadata"""
 
-    plugin_id: str
     endpoint_id: str
     plugin_unique_identifier: str
     provider_id: str
-    icon_url: str
-    icon_dark_url: str
+    icon_filename: str
+    icon_dark_filename: str
 
 
 class PluginTriggerData(TriggerData):

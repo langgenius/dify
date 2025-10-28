@@ -1,6 +1,7 @@
 import json
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
@@ -9,6 +10,7 @@ from core.workflow.enums import WorkflowExecutionStatus
 from models import Account, App, EndUser, WorkflowAppLog, WorkflowRun
 from models.enums import CreatorUserRole
 from models.trigger import WorkflowTriggerLog
+from services.plugin.plugin_service import PluginService
 
 
 # Since the workflow_app_log table has exceeded 100 million records, we use an additional details field to extend it
@@ -23,20 +25,12 @@ class LogView:
         self.log = log
         self.details_ = details
 
+    @property
+    def details(self) -> dict | None:
+        return self.details_
+
     def __getattr__(self, name):
         return getattr(self.log, name)
-
-
-# Helpers
-def _safe_json_loads(val):
-    if not val:
-        return None
-    if isinstance(val, str):
-        try:
-            return json.loads(val)
-        except Exception:
-            return None
-    return val
 
 
 class WorkflowAppService:
@@ -76,19 +70,15 @@ class WorkflowAppService:
         )
 
         if detail:
-            # Correlated scalar subquery: fetch latest trigger_metadata per workflow_run_id
-            meta_expr = (
-                select(WorkflowTriggerLog.trigger_metadata)
-                .where(
-                    WorkflowTriggerLog.workflow_run_id == WorkflowAppLog.workflow_run_id,
-                    WorkflowTriggerLog.app_id == app_model.id,
+            # Simple left join by workflow_run_id to fetch trigger_metadata
+            stmt = stmt.outerjoin(
+                WorkflowTriggerLog,
+                and_(
                     WorkflowTriggerLog.tenant_id == app_model.tenant_id,
-                )
-                .order_by(WorkflowTriggerLog.created_at.desc())
-                .limit(1)
-                .scalar_subquery()
-            )
-            stmt = stmt.add_columns(meta_expr)
+                    WorkflowTriggerLog.app_id == app_model.id,
+                    WorkflowTriggerLog.workflow_run_id == WorkflowAppLog.workflow_run_id,
+                ),
+            ).add_columns(WorkflowTriggerLog.trigger_metadata)
 
         if keyword or status:
             stmt = stmt.join(WorkflowRun, WorkflowRun.id == WorkflowAppLog.workflow_run_id)
@@ -161,7 +151,10 @@ class WorkflowAppService:
         # Execute query and get items
         if detail:
             rows = session.execute(offset_stmt).all()
-            items = [LogView(log, {"trigger_metadata": _safe_json_loads(meta_val)}) for log, meta_val in rows]
+            items = [
+                LogView(log, {"trigger_metadata": self.handle_trigger_metadata(app_model.tenant_id, meta_val)})
+                for log, meta_val in rows
+            ]
         else:
             items = [LogView(log, None) for log in session.scalars(offset_stmt).all()]
         return {
@@ -171,6 +164,30 @@ class WorkflowAppService:
             "has_more": total > page * limit,
             "data": items,
         }
+
+    def handle_trigger_metadata(self, tenant_id: str, meta_val: str) -> dict[str, Any]:
+        metadata: dict[str, Any] | None = self._safe_json_loads(meta_val)
+        if not metadata:
+            return {}
+        icon = metadata.get("icon_filename")
+        icon_dark = metadata.get("icon_dark_filename")
+        return {
+            "icon": PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=icon) if icon else None,
+            "icon_dark": PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=icon_dark)
+            if icon_dark
+            else None,
+        }
+
+    @staticmethod
+    def _safe_json_loads(val):
+        if not val:
+            return None
+        if isinstance(val, str):
+            try:
+                return json.loads(val)
+            except Exception:
+                return None
+        return val
 
     @staticmethod
     def _safe_parse_uuid(value: str):

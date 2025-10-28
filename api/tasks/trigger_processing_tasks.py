@@ -18,7 +18,7 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
-from core.trigger.entities.api_entities import TriggerProviderApiEntity
+from core.trigger.entities.entities import TriggerProviderEntity
 from core.trigger.provider import PluginTriggerProviderController
 from core.trigger.trigger_manager import TriggerManager
 from core.workflow.enums import NodeType
@@ -139,7 +139,7 @@ def dispatch_triggered_workflow(
     provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
         tenant_id=subscription.tenant_id, provider_id=TriggerProviderID(subscription.provider_id)
     )
-    trigger_entity: TriggerProviderApiEntity = provider_controller.to_api_entity()
+    trigger_entity: TriggerProviderEntity = provider_controller.entity
     with Session(db.engine) as session:
         workflows: Mapping[str, Workflow] = _get_latest_workflows_by_app_ids(session, subscribers)
 
@@ -204,12 +204,11 @@ def dispatch_triggered_workflow(
                 endpoint_id=subscription.endpoint_id,
                 inputs=invoke_response.variables,
                 trigger_metadata=PluginTriggerMetadata(
-                    plugin_id=trigger_entity.plugin_id or "",
-                    plugin_unique_identifier=trigger_entity.plugin_unique_identifier or "",
+                    plugin_unique_identifier=provider_controller.plugin_unique_identifier or "",
                     endpoint_id=subscription.endpoint_id,
                     provider_id=subscription.provider_id,
-                    icon_url=trigger_entity.icon or "",
-                    icon_dark_url=trigger_entity.icon_dark or "",
+                    icon_filename=trigger_entity.identity.icon or "",
+                    icon_dark_filename=trigger_entity.identity.icon_dark or "",
                 ),
             )
 

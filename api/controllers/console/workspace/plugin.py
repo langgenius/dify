@@ -125,7 +125,7 @@ class PluginAssetApi(Resource):
         req.add_argument("file_name", type=str, required=True, location="args")
         args = req.parse_args()
 
-        current_user, tenant_id = current_account_with_tenant()
+        _, tenant_id = current_account_with_tenant()
         try:
             binary = PluginService.extract_asset(tenant_id, args["plugin_unique_identifier"], args["file_name"])
             return send_file(io.BytesIO(binary), mimetype="application/octet-stream")
@@ -715,7 +715,7 @@ class PluginReadmeApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        current_user, tenant_id = current_account_with_tenant()
+        _, tenant_id = current_account_with_tenant()
         parser = reqparse.RequestParser()
         parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
         parser.add_argument("language", type=str, required=False, location="args")

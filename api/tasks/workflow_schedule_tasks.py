@@ -1,7 +1,5 @@
 import logging
 import time
-from datetime import UTC, datetime
-from zoneinfo import ZoneInfo
 
 from celery import shared_task
 from sqlalchemy.orm import sessionmaker
@@ -47,10 +45,7 @@ def run_schedule_trigger(schedule_id: str) -> None:
             raise TenantOwnerNotFoundError(f"No owner or admin found for tenant {schedule.tenant_id}")
 
         try:
-            current_utc = datetime.now(UTC)
-            schedule_tz = ZoneInfo(schedule.timezone) if schedule.timezone else UTC
-            current_in_tz = current_utc.astimezone(schedule_tz)
-            inputs = {"current_time": current_in_tz.isoformat()}
+            inputs = {}
 
             # Production dispatch: Trigger the workflow normally
             response = AsyncWorkflowService.trigger_workflow_async(

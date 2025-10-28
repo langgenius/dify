@@ -137,7 +137,11 @@ class ScheduleTriggerDebugEventPoller(TriggerDebugEventPoller):
         )
         if not schedule_event:
             return None
-        return TriggerDebugEvent(workflow_args=schedule_event.inputs, node_id=self.node_id)
+        workflow_args: Mapping[str, Any] = {
+            "inputs": schedule_event.inputs or {},
+            "files": [],
+        }
+        return TriggerDebugEvent(workflow_args=workflow_args, node_id=self.node_id)
 
 
 def create_event_poller(

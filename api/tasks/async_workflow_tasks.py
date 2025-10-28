@@ -143,7 +143,7 @@ def _execute_workflow_common(
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=False,
                 call_depth=0,
-                triggered_from=trigger_data.trigger_type,
+                triggered_from=trigger_data.trigger_from,
                 root_node_id=trigger_data.root_node_id,
                 layers=[
                     TimeSliceLayer(cfs_plan_scheduler),
