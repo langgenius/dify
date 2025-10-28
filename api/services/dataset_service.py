@@ -1426,6 +1426,8 @@ class DocumentService:
                 count = 0
                 if knowledge_config.data_source:
                     if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                        if not knowledge_config.data_source.info_list.file_info_list:
+                            raise ValueError("File source info is required")
                         upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
                         count = len(upload_file_list)
                     elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
@@ -1531,6 +1533,8 @@ class DocumentService:
                 document_ids = []
                 duplicate_document_ids = []
                 if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                    if not knowledge_config.data_source.info_list.file_info_list:
+                        raise ValueError("File source info is required")
                     upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
                     for file_id in upload_file_list:
                         file = (
