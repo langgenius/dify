@@ -1,7 +1,9 @@
 import {
   memo,
+  useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiAddLine } from '@remixicon/react'
 import Collapse from '@/app/components/workflow/nodes/_base/components/collapse'
 import type {
   Node,
@@ -17,6 +19,8 @@ import { useMemory } from './hooks/use-memory'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { MemoryMode } from '@/app/components/workflow/types'
 import BlockMemory from './block-memory'
+import { ActionButton } from '@/app/components/base/action-button'
+import cn from '@/utils/classnames'
 
 type MemoryProps = Pick<Node, 'id' | 'data'> & {
   readonly?: boolean
@@ -37,6 +41,14 @@ const MemorySystem = ({
     memoryType,
     handleUpdateMemory,
   } = useMemory(id, data as LLMNodeType)
+
+  const renderTrigger = useCallback((open?: boolean) => {
+    return (
+      <ActionButton className={cn('shrink-0', open && 'bg-state-base-hover')}>
+        <RiAddLine className='h-4 w-4' />
+      </ActionButton>
+    )
+  }, [])
 
   return (
     <>
@@ -64,7 +76,10 @@ const MemorySystem = ({
                       <>
                         <Divider type='vertical' className='!ml-1.5 !mr-1 h-3 !w-px bg-divider-regular' />
                         <div onClick={e => e.stopPropagation()}>
-                          <MemoryCreateButton />
+                          <MemoryCreateButton
+                            nodeId={id}
+                            renderTrigger={renderTrigger}
+                          />
                         </div>
                       </>
                     )

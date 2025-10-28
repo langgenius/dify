@@ -3,8 +3,55 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
-export const useMemorySchema = () => {
+export const useMemorySchema = (nodeScopeMemoryVariable?: { nodeId: string }) => {
   const { t } = useTranslation()
+
+  const scopeSchema = [
+    {
+      name: 'scope',
+      label: t('workflow.chatVariable.modal.scope'),
+      type: FormTypeEnum.radio,
+      default: 'app',
+      fieldClassName: 'flex justify-between',
+      inputClassName: 'w-[102px]',
+      options: [
+        {
+          label: 'App',
+          value: 'app',
+        },
+        {
+          label: 'Node',
+          value: 'node',
+        },
+      ],
+      show_on: [
+        {
+          variable: 'value_type',
+          value: [ChatVarType.Memory],
+        },
+      ],
+      selfFormProps: {
+        withTopDivider: true,
+      },
+    },
+    {
+      name: 'node_id',
+      label: 'Node',
+      type: FormTypeEnum.nodeSelector,
+      fieldClassName: 'flex justify-between',
+      default: '',
+      show_on: [
+        {
+          variable: 'value_type',
+          value: [ChatVarType.Memory],
+        },
+        {
+          variable: 'scope',
+          value: 'node',
+        },
+      ],
+    },
+  ]
 
   return [
     {
@@ -90,50 +137,7 @@ export const useMemorySchema = () => {
         inputWrapperClassName: 'w-[102px]',
       },
     },
-    {
-      name: 'scope',
-      label: t('workflow.chatVariable.modal.scope'),
-      type: FormTypeEnum.radio,
-      default: 'app',
-      fieldClassName: 'flex justify-between',
-      inputClassName: 'w-[102px]',
-      options: [
-        {
-          label: 'App',
-          value: 'app',
-        },
-        {
-          label: 'Node',
-          value: 'node',
-        },
-      ],
-      show_on: [
-        {
-          variable: 'value_type',
-          value: [ChatVarType.Memory],
-        },
-      ],
-      selfFormProps: {
-        withTopDivider: true,
-      },
-    },
-    {
-      name: 'node_id',
-      label: 'Node',
-      type: FormTypeEnum.nodeSelector,
-      fieldClassName: 'flex justify-between',
-      default: '',
-      show_on: [
-        {
-          variable: 'value_type',
-          value: [ChatVarType.Memory],
-        },
-        {
-          variable: 'scope',
-          value: 'node',
-        },
-      ],
-    },
+    ...(!nodeScopeMemoryVariable ? scopeSchema : []),
     {
       name: 'term',
       label: t('workflow.chatVariable.modal.term'),
@@ -238,14 +242,15 @@ export const useMemorySchema = () => {
   ] as FormSchema[]
 }
 
-export const useMemoryDefaultValues = () => {
+export const useMemoryDefaultValues = (nodeScopeMemoryVariable?: { nodeId: string }) => {
   return {
     template: '',
     instruction: '',
     strategy: 'on_turns',
     update_turns: 500,
     preserved_turns: 10,
-    scope: 'app',
+    scope: nodeScopeMemoryVariable ? 'node' : 'app',
+    node_id: nodeScopeMemoryVariable?.nodeId || '',
     term: 'session',
     more: false,
     model: '',

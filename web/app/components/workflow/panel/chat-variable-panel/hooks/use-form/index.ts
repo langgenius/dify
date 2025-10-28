@@ -10,14 +10,14 @@ import {
 } from './use-memory-schema'
 import type { ConversationVariable, MemoryVariable } from '@/app/components/workflow/types'
 
-export const useForm = (chatVar?: ConversationVariable | MemoryVariable) => {
+export const useForm = (chatVar?: ConversationVariable | MemoryVariable, nodeScopeMemoryVariable?: { nodeId: string }) => {
   const { t } = useTranslation()
 
   const typeSchema = useTypeSchema()
   const valueSchema = useValueSchema()
   const editInJSONSchema = useEditInJSONSchema()
-  const memorySchema = useMemorySchema()
-  const memoryDefaultValues = useMemoryDefaultValues()
+  const memorySchema = useMemorySchema(nodeScopeMemoryVariable)
+  const memoryDefaultValues = useMemoryDefaultValues(nodeScopeMemoryVariable)
 
   const formSchemas = useMemo(() => {
     return [

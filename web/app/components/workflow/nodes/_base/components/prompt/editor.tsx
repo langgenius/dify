@@ -341,7 +341,7 @@ const Editor: FC<Props> = ({
           </div>
         </div>
       </Wrap>
-      {isMemorySupported && <MemoryCreateButton instanceId={instanceId} hideTrigger />}
+      {isMemorySupported && <MemoryCreateButton nodeId={nodeId || ''} instanceId={instanceId} hideTrigger />}
     </>
 
   )

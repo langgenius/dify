@@ -13,6 +13,7 @@ import ActionButton from '@/app/components/base/action-button'
 import { useMemoryVariables } from './hooks/use-memory-variables'
 import Confirm from '@/app/components/base/confirm'
 import { Memory as MemoryIcon } from '@/app/components/base/icons/src/vender/line/others'
+import VariableModal from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal'
 
 type BlockMemoryProps = {
   id: string
@@ -20,16 +21,17 @@ type BlockMemoryProps = {
 }
 const BlockMemory = ({ id }: BlockMemoryProps) => {
   const { t } = useTranslation()
-  const { memoryVariablesInUsed } = useMemoryVariables(id)
+  const {
+    memoryVariablesInUsed,
+    editMemoryVariable,
+    handleSetEditMemoryVariable,
+    handleEdit,
+  } = useMemoryVariables(id)
   const [showConfirm, setShowConfirm] = useState<{
     title: string
     desc: string
     onConfirm: () => void
   } | undefined>(undefined)
-
-  const handleEdit = (blockId: string) => {
-    console.log('edit', blockId)
-  }
 
   const handleDelete = (blockId: string) => {
     setShowConfirm({
@@ -67,7 +69,7 @@ const BlockMemory = ({ id }: BlockMemoryProps) => {
               <ActionButton
                 className='hidden shrink-0 group-hover:block'
                 size='m'
-                onClick={() => handleEdit(memoryVariable.id)}
+                onClick={() => handleSetEditMemoryVariable(memoryVariable.id)}
               >
                 <RiEditLine className='h-4 w-4 text-text-tertiary' />
               </ActionButton>
@@ -90,6 +92,16 @@ const BlockMemory = ({ id }: BlockMemoryProps) => {
             onConfirm={showConfirm.onConfirm}
             title={showConfirm.title}
             content={showConfirm.desc}
+          />
+        )
+      }
+      {
+        !!editMemoryVariable && (
+          <VariableModal
+            chatVar={editMemoryVariable}
+            onClose={() => handleSetEditMemoryVariable(undefined)}
+            onSave={handleEdit}
+            nodeScopeMemoryVariable={{ nodeId: id }}
           />
         )
       }

@@ -19,15 +19,20 @@ import VariableForm from '@/app/components/base/form/form-scenarios/variable'
 import { useForm } from '../hooks'
 
 export type ModalPropsType = {
+  className?: string
   chatVar?: ConversationVariable | MemoryVariable
   onClose: () => void
   onSave: (chatVar: ConversationVariable | MemoryVariable) => void
+  nodeScopeMemoryVariable?: {
+    nodeId: string
+  }
 }
 
 const ChatVariableModal = ({
   chatVar,
   onClose,
   onSave,
+  nodeScopeMemoryVariable,
 }: ModalPropsType) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -36,7 +41,7 @@ const ChatVariableModal = ({
   const {
     formSchemas,
     defaultValues,
-  } = useForm(chatVar)
+  } = useForm(chatVar, nodeScopeMemoryVariable)
   const formRef = useRef<FormRefObject>(null)
   const form = useTanstackForm({
     defaultValues,
