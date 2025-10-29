@@ -160,6 +160,8 @@ class SystemFeatureModel(BaseModel):
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
     enable_change_email: bool = True
     plugin_manager: PluginManagerModel = PluginManagerModel()
+    enable_trial_app: bool = False
+    enable_explore_banner: bool = False
 
 
 class FeatureService:
@@ -215,6 +217,8 @@ class FeatureService:
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
+        system_features.enable_trial_app = dify_config.ENABLE_TRIAL_APP
+        system_features.enable_explore_banner = dify_config.ENABLE_EXPLORE_BANNER
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):
