@@ -22,7 +22,7 @@ import uuid
 from time import time
 
 import pytest
-from sqlalchemy import Engine, delete
+from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session
 
 from core.app.layers.persist_layer import PauseStatePersistenceLayer
@@ -289,21 +289,19 @@ class TestPauseStatePersistenceLayerTestContainers:
         self.session.refresh(self.test_workflow_run)
         workflow_run = self.session.get(WorkflowRun, self.test_workflow_run_id)
         assert workflow_run is not None
-        assert workflow_run.pause_id is not None
         assert workflow_run.status == WorkflowExecutionStatus.PAUSED
 
         # Verify pause state exists in database
-        pause_model = self.session.get(WorkflowPauseModel, workflow_run.pause_id)
+        pause_model = self.session.scalars(
+            select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == workflow_run.id)
+        ).first()
         assert pause_model is not None
         assert pause_model.workflow_id == self.test_workflow_id
         assert pause_model.workflow_run_id == self.test_workflow_run_id
-        assert pause_model.state_file_id is not None
+        assert pause_model.state_object_key != ""
+        assert pause_model.resumed_at is None
 
-        # Verify state was saved to storage
-        upload_file = self.session.get(UploadFile, pause_model.state_file_id)
-        assert upload_file is not None
-
-        storage_content = storage.load(upload_file.key).decode()
+        storage_content = storage.load(pause_model.state_object_key).decode()
         expected_state = json.loads(graph_runtime_state.dumps())
         actual_state = json.loads(storage_content)
 
@@ -377,12 +375,15 @@ class TestPauseStatePersistenceLayerTestContainers:
         with Session(bind=self.session.get_bind(), expire_on_commit=False) as new_session:
             workflow_run = new_session.get(WorkflowRun, self.test_workflow_run_id)
             assert workflow_run is not None
-            assert workflow_run.pause_id is not None
             assert workflow_run.status == WorkflowExecutionStatus.PAUSED
 
-            pause_model = new_session.get(WorkflowPauseModel, workflow_run.pause_id)
+            pause_model = new_session.scalars(
+                select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == workflow_run.id)
+            ).first()
             assert pause_model is not None
             assert pause_model.workflow_run_id == self.test_workflow_run_id
+            assert pause_model.resumed_at is None
+            assert pause_model.state_object_key != ""
 
     def test_file_storage_integration(self, db_session_with_containers):
         """Test integration with file storage system."""
@@ -406,17 +407,14 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         # Assert - Verify file was uploaded to storage
         self.session.refresh(self.test_workflow_run)
-        pause_model = self.session.get(WorkflowPauseModel, self.test_workflow_run.pause_id)
+        pause_model = self.session.scalars(
+            select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == self.test_workflow_run.id)
+        ).first()
         assert pause_model is not None
-        assert pause_model.state_file_id is not None
-
-        upload_file = self.session.get(UploadFile, pause_model.state_file_id)
-        assert upload_file is not None
-        assert upload_file.size > 0
+        assert pause_model.state_object_key != ""
 
         # Verify content in storage
-        file_key = upload_file.key
-        storage_content = storage.load(file_key).decode()
+        storage_content = storage.load(pause_model.state_object_key).decode()
         assert storage_content == graph_runtime_state.dumps()
 
     def test_workflow_with_different_creators(self, db_session_with_containers):
@@ -473,21 +471,14 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         # Assert - Should use workflow creator (not run creator)
         self.session.refresh(different_workflow_run)
-        assert different_workflow_run.pause_id is not None
-
-        pause_model = self.session.get(WorkflowPauseModel, different_workflow_run.pause_id)
+        pause_model = self.session.scalars(
+            select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == different_workflow_run.id)
+        ).first()
         assert pause_model is not None
 
         # Verify the state owner is the workflow creator
         pause_entity = self.workflow_run_service._workflow_run_repo.get_workflow_pause(different_workflow_run.id)
         assert pause_entity is not None
-
-        # The state should be saved with workflow.created_by as the owner
-        # This is verified by checking that the file was uploaded successfully
-        # (FileService uses the state_owner_user_id parameter)
-        upload_file = self.session.get(UploadFile, pause_model.state_file_id)
-        assert upload_file is not None
-        assert upload_file.created_by == different_user_id
 
     def test_layer_ignores_non_pause_events(self, db_session_with_containers):
         """Test that layer ignores non-pause events."""
@@ -512,7 +503,6 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         # Assert - No pause state should be created
         self.session.refresh(self.test_workflow_run)
-        assert self.test_workflow_run.pause_id is None
         assert self.test_workflow_run.status == WorkflowExecutionStatus.RUNNING
 
         pause_states = (
