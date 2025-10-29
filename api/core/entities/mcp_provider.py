@@ -14,7 +14,6 @@ from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.types import OAuthClientInformation, OAuthClientMetadata, OAuthTokens
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.utils.encryption import create_provider_encrypter
 
 if TYPE_CHECKING:
     from models.tools import MCPToolProvider
@@ -272,6 +271,9 @@ class MCPProviderEntity(BaseModel):
 
     def _decrypt_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """Generic method to decrypt dictionary fields"""
+        # Lazy import to avoid circular dependency
+        from core.tools.utils.encryption import create_provider_encrypter
+
         if not data:
             return {}
 
