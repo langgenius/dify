@@ -30,6 +30,8 @@ export const useHelpline = () => {
     }
 
     const showHorizontalHelpLineNodes = nodes.filter((n) => {
+      if (n.hidden)
+        return false
       if (n.id === node.id)
         return false
 
@@ -74,6 +76,8 @@ export const useHelpline = () => {
     }
 
     const showVerticalHelpLineNodes = nodes.filter((n) => {
+      if (n.hidden)
+        return false
       if (n.id === node.id)
         return false
       if (n.data.isInIteration)
