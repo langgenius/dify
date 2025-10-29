@@ -40,8 +40,16 @@ from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
 
-from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
-from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader, WorkflowDraftVariableService
+from .errors.workflow_service import (
+    ConversationVariableDescriptionTooLongError,
+    DraftWorkflowDeletionError,
+    WorkflowInUseError,
+)
+from .workflow_draft_variable_service import (
+    DraftVariableSaver,
+    DraftVarLoader,
+    WorkflowDraftVariableService,
+)
 
 
 class WorkflowService:
@@ -187,6 +195,42 @@ class WorkflowService:
 
         return workflows, has_more
 
+    def _validate_conversation_variable_descriptions(
+        self,
+        conversation_variables: Sequence[Variable],
+        existing_workflow: Workflow | None = None,
+    ) -> None:
+        """
+        Validate conversation variable descriptions for length constraints.
+
+        Args:
+            conversation_variables: List of conversation variables to validate
+            existing_workflow: Existing workflow for backward compatibility check (optional)
+
+        Raises:
+            ConversationVariableDescriptionTooLongError: If any description exceeds the length limit and shouldn't be allowed
+        """
+        MAX_CONVERSATION_VARIABLE_DESCRIPTION_LENGTH = 256
+
+        # Check if existing workflow has any conversation variables with long descriptions
+        has_existing_long_descriptions = False
+        if existing_workflow and existing_workflow.conversation_variables:
+            for var in existing_workflow.conversation_variables:
+                if len(var.description) > MAX_CONVERSATION_VARIABLE_DESCRIPTION_LENGTH:
+                    has_existing_long_descriptions = True
+                    break
+
+        # Validate new conversation variables
+        for variable in conversation_variables:
+            description_length = len(variable.description)
+            if description_length > MAX_CONVERSATION_VARIABLE_DESCRIPTION_LENGTH:
+                # Allow existing workflows with long descriptions to be updated
+                # But don't allow new long descriptions or extending existing ones
+                if not has_existing_long_descriptions:
+                    raise ConversationVariableDescriptionTooLongError(
+                        current_length=description_length, max_length=MAX_CONVERSATION_VARIABLE_DESCRIPTION_LENGTH
+                    )
+
     def sync_draft_workflow(
         self,
         *,
@@ -210,6 +254,12 @@ class WorkflowService:
 
         # validate features structure
         self.validate_features_structure(app_model=app_model, features=features)
+
+        # validate conversation variable descriptions
+        self._validate_conversation_variable_descriptions(
+            conversation_variables=conversation_variables,
+            existing_workflow=workflow,
+        )
 
         # create draft workflow if not found
         if not workflow:
