@@ -6,7 +6,7 @@ import { markdownContentSVG } from './__mocks__/markdownContentSVG'
 import Answer from '.'
 
 const meta = {
-  title: 'Base/Chat Answer',
+  title: 'Base/Chat/Chat Answer',
   component: Answer,
   parameters: {
     layout: 'fullscreen',

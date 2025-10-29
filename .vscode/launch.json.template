@@ -40,7 +40,7 @@
                 "-c",
                 "1",
                 "-Q",
-                "dataset,generation,mail,ops_trace",
+                "dataset,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,priority_pipeline,pipeline",
                 "--loglevel",
                 "INFO"
             ],
