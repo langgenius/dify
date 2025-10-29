@@ -1265,8 +1265,8 @@ class RagPipelineService:
         )
         providers_map = {provider.plugin_id: provider.to_dict() for provider in providers}
 
-        plugin_manifests = marketplace.batch_fetch_plugin_manifests(plugin_ids)
-        plugin_manifests_map = {manifest.plugin_id: manifest for manifest in plugin_manifests}
+        plugin_manifests = marketplace.batch_fetch_plugin_by_ids(plugin_ids)
+        plugin_manifests_map = {manifest["plugin_id"]: manifest for manifest in plugin_manifests}
 
         installed_plugin_list = []
         uninstalled_plugin_list = []
@@ -1276,14 +1276,7 @@ class RagPipelineService:
             else:
                 plugin_manifest = plugin_manifests_map.get(plugin_id)
                 if plugin_manifest:
-                    uninstalled_plugin_list.append(
-                        {
-                            "plugin_id": plugin_id,
-                            "name": plugin_manifest.name,
-                            "icon": plugin_manifest.icon,
-                            "plugin_unique_identifier": plugin_manifest.latest_package_identifier,
-                        }
-                    )
+                    uninstalled_plugin_list.append(plugin_manifest)
 
         # Build recommended plugins list
         return {
