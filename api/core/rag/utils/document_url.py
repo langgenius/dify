@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from core.file import helpers as file_helpers
 from models.dataset import Document as DatasetDocument
