@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { InstallStep } from '../../types'
 import Install from './steps/install'
 import Installed from './steps/installed'
-import type { Dependency, InstallStatusResponse, Plugin } from '../../types'
+import type { Dependency, InstallStatus, Plugin } from '../../types'
 
 type Props = {
   step: InstallStep
@@ -26,8 +26,8 @@ const ReadyToInstall: FC<Props> = ({
   isFromMarketPlace,
 }) => {
   const [installedPlugins, setInstalledPlugins] = useState<Plugin[]>([])
-  const [installStatus, setInstallStatus] = useState<InstallStatusResponse[]>([])
-  const handleInstalled = useCallback((plugins: Plugin[], installStatus: InstallStatusResponse[]) => {
+  const [installStatus, setInstallStatus] = useState<InstallStatus[]>([])
+  const handleInstalled = useCallback((plugins: Plugin[], installStatus: InstallStatus[]) => {
     setInstallStatus(installStatus)
     setInstalledPlugins(plugins)
     onStepChange(InstallStep.installed)
