@@ -45,9 +45,8 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         Args:
             event: The event emitted by the engine
         """
-        if isinstance(event, GraphEngineEvent):
-            if not isinstance(event, GraphRunPausedEvent):
-                return
+        if not isinstance(event, GraphRunPausedEvent):
+            return
 
         assert self.graph_runtime_state is not None
         workflow_run_id: str | None = self.graph_runtime_state.system_variable.workflow_execution_id

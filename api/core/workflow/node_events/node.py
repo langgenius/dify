@@ -44,4 +44,4 @@ class StreamCompletedEvent(NodeEventBase):
 
 
 class PauseRequestedEvent(NodeEventBase):
-    reason: PauseReason = Field(..., description="Optional pause reason")
+    reason: PauseReason = Field(..., description="pause reason")

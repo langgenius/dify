@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from core.app.layers.persist_layer import PauseStatePersistenceLayer
+from core.app.layers.pause_state_persist_layer import PauseStatePersistenceLayer
 from core.variables.segments import Segment
 from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.graph_engine.entities.commands import GraphEngineCommand

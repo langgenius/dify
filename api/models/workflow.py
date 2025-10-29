@@ -38,7 +38,7 @@ from factories import variable_factory
 from libs import helper
 
 from .account import Account
-from .base import Base, ModelMixin
+from .base import Base, DefaultFieldsMixin
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType
 from .types import EnumText, StringUUID
@@ -1608,7 +1608,7 @@ def is_system_variable_editable(name: str) -> bool:
     return name in _EDITABLE_SYSTEM_VARIABLE
 
 
-class WorkflowPause(ModelMixin, Base):
+class WorkflowPause(DefaultFieldsMixin, Base):
     """
     WorkflowPause records the paused state and related metadata for a specific workflow run.
 
@@ -1627,24 +1627,6 @@ class WorkflowPause(ModelMixin, Base):
         # on a potentially large table—we reference `WorkflowRun` from `WorkflowPause` and enforce a unique
         # constraint on `workflow_run_id` to guarantee a one-to-one relationship.
         UniqueConstraint("workflow_run_id"),
-    )
-
-    # `tenant_id` identifies the tenant associated with this pause,
-    # corresponding to the `id` field in the `Tenant` model.
-    tenant_id: Mapped[str] = mapped_column(
-        StringUUID,
-        nullable=False,
-    )
-
-    # `app_id` represents the application identifier associated with this state.
-    # It corresponds to the `id` field in the `App` model.
-    #
-    # While this field is technically redundant (as the corresponding app can be
-    # determined by querying the `Workflow`), it is retained to simplify data
-    # cleanup and management processes.
-    app_id: Mapped[str] = mapped_column(
-        StringUUID,
-        nullable=False,
     )
 
     # `workflow_id` represents the unique identifier of the workflow associated with this pause.

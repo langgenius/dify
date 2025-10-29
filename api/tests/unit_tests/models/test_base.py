@@ -1,7 +1,7 @@
-from models.base import ModelMixin
+from models.base import DefaultFieldsMixin
 
 
-class FooModel(ModelMixin):
+class FooModel(DefaultFieldsMixin):
     def __init__(self, id: str):
         self.id = id
 

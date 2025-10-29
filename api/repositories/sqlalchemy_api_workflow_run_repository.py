@@ -366,8 +366,6 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             # Create the pause record
             pause_model = WorkflowPauseModel()
             pause_model.id = str(uuidv7())
-            pause_model.tenant_id = workflow_run.tenant_id
-            pause_model.app_id = workflow_run.app_id
             pause_model.workflow_id = workflow_run.workflow_id
             pause_model.workflow_run_id = workflow_run.id
             pause_model.state_object_key = state_obj_key

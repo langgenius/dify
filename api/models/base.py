@@ -21,7 +21,7 @@ class TypeBase(MappedAsDataclass, DeclarativeBase):
     metadata = metadata
 
 
-class ModelMixin:
+class DefaultFieldsMixin:
     id: Mapped[str] = mapped_column(
         StringUUID,
         primary_key=True,

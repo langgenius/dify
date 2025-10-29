@@ -244,12 +244,7 @@ class TestWorkflowPauseIntegration:
     def _cleanup_test_data(self):
         """Clean up test data after each test method."""
         # Clean up workflow pauses
-        self.session.execute(
-            delete(WorkflowPauseModel).where(
-                WorkflowPauseModel.tenant_id == self.test_tenant_id,
-                WorkflowPauseModel.app_id == self.test_app_id,
-            )
-        )
+        self.session.execute(delete(WorkflowPauseModel))
         # Clean up upload files
         self.session.execute(
             delete(UploadFile).where(
@@ -775,13 +770,6 @@ class TestWorkflowPauseIntegration:
         assert pause_entity1.id != pause_entity2.id
         assert pause_entity1.workflow_execution_id != pause_entity2.workflow_execution_id
 
-        # Verify tenant isolation in database
-        pause1_model = self.session.get(WorkflowPauseModel, pause_entity1.id)
-        pause2_model = self.session.get(WorkflowPauseModel, pause_entity2.id)
-
-        assert pause1_model.tenant_id == self.test_tenant_id
-        assert pause2_model.tenant_id == tenant2.id
-
     def test_cross_tenant_access_restriction(self):
         """Test that cross-tenant access is properly restricted."""
         # This test would require tenant-specific repositories
@@ -798,8 +786,6 @@ class TestWorkflowPauseIntegration:
 
         # Verify pause is properly scoped
         pause_model = self.session.get(WorkflowPauseModel, pause_entity.id)
-        assert pause_model.tenant_id == self.test_tenant_id
-        assert pause_model.app_id == self.test_app_id
         assert pause_model.workflow_id == self.test_workflow_id
 
     # ==================== File Storage Integration Tests ====================

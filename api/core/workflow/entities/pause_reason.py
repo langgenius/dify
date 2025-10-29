@@ -1,12 +1,12 @@
-from enum import StrEnum
+from enum import StrEnum, auto
 from typing import Annotated, Any, ClassVar, TypeAlias
 
 from pydantic import BaseModel, Discriminator, Tag
 
 
 class _PauseReasonType(StrEnum):
-    HUMAN_INPUT_REQUIRED = "human_input_required"
-    SCHEDULED_PAUSE = "schduled_pause"
+    HUMAN_INPUT_REQUIRED = auto()
+    SCHEDULED_PAUSE = auto()
 
 
 class _PauseReasonBase(BaseModel):

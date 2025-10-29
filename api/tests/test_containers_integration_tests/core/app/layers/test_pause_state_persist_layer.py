@@ -25,7 +25,7 @@ import pytest
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session
 
-from core.app.layers.persist_layer import PauseStatePersistenceLayer
+from core.app.layers.pause_state_persist_layer import PauseStatePersistenceLayer
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.enums import WorkflowExecutionStatus
@@ -166,12 +166,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         """Clean up test data after each test method."""
         try:
             # Clean up workflow pauses
-            self.session.execute(
-                delete(WorkflowPauseModel).where(
-                    WorkflowPauseModel.tenant_id == self.test_tenant_id,
-                    WorkflowPauseModel.app_id == self.test_app_id,
-                )
-            )
+            self.session.execute(delete(WorkflowPauseModel))
             # Clean up upload files
             self.session.execute(
                 delete(UploadFile).where(

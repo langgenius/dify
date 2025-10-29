@@ -28,6 +28,6 @@ class PauseCommandHandler(CommandHandler):
         assert isinstance(command, PauseCommand)
         logger.debug("Pausing workflow %s: %s", execution.workflow_id, command.reason)
         # Convert string reason to PauseReason if needed
-        reason = command.reason or "unknown reason"
+        reason = command.reason
         pause_reason = SchedulingPause(message=reason)
         execution.pause(pause_reason)

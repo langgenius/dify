@@ -55,4 +55,4 @@ class NodeRunRetryEvent(NodeRunStartedEvent):
 
 
 class NodeRunPauseRequestedEvent(GraphNodeEventBase):
-    reason: PauseReason = Field(..., description="Optional pause reason")
+    reason: PauseReason = Field(..., description="pause reason")

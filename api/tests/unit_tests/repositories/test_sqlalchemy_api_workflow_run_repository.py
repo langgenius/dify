@@ -96,8 +96,6 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         """Create a sample WorkflowPauseModel."""
         pause = Mock(spec=WorkflowPauseModel)
         pause.id = "pause-123"
-        pause.tenant_id = "tenant-123"
-        pause.app_id = "app-123"
         pause.workflow_id = "workflow-123"
         pause.workflow_run_id = "workflow-run-123"
         pause.state_object_key = "workflow-state-123.json"
