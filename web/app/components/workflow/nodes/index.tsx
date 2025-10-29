@@ -29,6 +29,14 @@ const CustomNode = (props: NodeProps) => {
 }
 CustomNode.displayName = 'CustomNode'
 
+const areNodePropsEqual = (prev: NodeProps, next: NodeProps) => {
+  return prev.id === next.id
+    && prev.type === next.type
+    && prev.data === next.data
+    && prev.isConnectable === next.isConnectable
+    && prev.selected === next.selected
+}
+
 export type PanelProps = {
   type: Node['type']
   id: Node['id']
@@ -61,4 +69,4 @@ export const Panel = memo((props: PanelProps) => {
 
 Panel.displayName = 'Panel'
 
-export default memo(CustomNode)
+export default memo(CustomNode, areNodePropsEqual)

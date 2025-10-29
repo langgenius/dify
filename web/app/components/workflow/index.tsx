@@ -23,6 +23,7 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import type { NodeDragHandler } from 'reactflow'
 import type {
   Viewport,
 } from 'reactflow'
@@ -109,6 +110,9 @@ const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
 }
 
+const INITIAL_RENDER_NODE_LIMIT = 200
+const VIEWPORT_NODE_BUFFER = 600
+
 export type WorkflowProps = {
   nodes: Node[]
   edges: Edge[]
@@ -125,6 +129,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
 }) => {
   const workflowContainerRef = useRef<HTMLDivElement>(null)
   const workflowStore = useWorkflowStore()
+  const mousePositionRafRef = useRef<number | null>(null)
+  const lastMouseEventRef = useRef<{ clientX: number; clientY: number } | null>(null)
+  const viewportUpdateRafRef = useRef<number | null>(null)
   const reactflow = useReactFlow()
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
@@ -140,6 +147,73 @@ export const Workflow: FC<WorkflowProps> = memo(({
       return '100%'
     return workflowCanvasHeight - bottomPanelHeight
   }, [workflowCanvasHeight, bottomPanelHeight])
+  const [visibleNodeIds, setVisibleNodeIds] = useState<string[]>(() => {
+    if (!originalNodes || !originalNodes.length)
+      return []
+    return originalNodes.slice(0, INITIAL_RENDER_NODE_LIMIT).map(node => node.id)
+  })
+  const visibleNodeIdSetRef = useRef<Set<string>>(new Set(visibleNodeIds))
+  const isDraggingNodeRef = useRef(false)
+  const [isDraggingNode, setIsDraggingNode] = useState(false)
+
+  const ensureVisibleNodeIds = useCallback((candidateNodeIds: string[]) => {
+    if (!candidateNodeIds || !candidateNodeIds.length)
+      return
+
+    const nextSet = new Set(visibleNodeIdSetRef.current)
+    let changed = false
+
+    candidateNodeIds.forEach((nodeId) => {
+      if (!nextSet.has(nodeId)) {
+        nextSet.add(nodeId)
+        changed = true
+      }
+    })
+
+    if (!changed)
+      return
+
+    visibleNodeIdSetRef.current = nextSet
+    setVisibleNodeIds(Array.from(nextSet))
+  }, [])
+
+  const updateVisibleNodesByViewport = useCallback(() => {
+    if (!workflowContainerRef.current || typeof reactflow.screenToFlowPosition !== 'function')
+      return
+
+    const rect = workflowContainerRef.current.getBoundingClientRect()
+    const {
+      width,
+      height,
+      left,
+      top,
+      right,
+      bottom,
+    } = rect
+    if (!width || !height)
+      return
+
+    const topLeft = reactflow.screenToFlowPosition({ x: left, y: top })
+    const bottomRight = reactflow.screenToFlowPosition({ x: right, y: bottom })
+
+    const minX = Math.min(topLeft.x, bottomRight.x) - VIEWPORT_NODE_BUFFER
+    const maxX = Math.max(topLeft.x, bottomRight.x) + VIEWPORT_NODE_BUFFER
+    const minY = Math.min(topLeft.y, bottomRight.y) - VIEWPORT_NODE_BUFFER
+    const maxY = Math.max(topLeft.y, bottomRight.y) + VIEWPORT_NODE_BUFFER
+
+    const nodesInViewport = nodes
+      .filter((node) => {
+        const { position, positionAbsolute } = node
+        const referencePosition = positionAbsolute ?? position
+        if (!referencePosition)
+          return false
+        const { x, y } = referencePosition
+        return x >= minX && x <= maxX && y >= minY && y <= maxY
+      })
+      .map(node => node.id)
+
+    ensureVisibleNodeIds(nodesInViewport)
+  }, [ensureVisibleNodeIds, nodes, reactflow])
 
   // update workflow Canvas width and height
   useEffect(() => {
@@ -189,6 +263,14 @@ export const Workflow: FC<WorkflowProps> = memo(({
   })
 
   useEffect(() => {
+    if (!originalNodes || !originalNodes.length)
+      return
+    const initialIds = originalNodes.slice(0, INITIAL_RENDER_NODE_LIMIT).map(node => node.id)
+    visibleNodeIdSetRef.current = new Set(initialIds)
+    setVisibleNodeIds(initialIds)
+  }, [originalNodes])
+
+  useEffect(() => {
     setAutoFreeze(false)
 
     return () => {
@@ -229,25 +311,57 @@ export const Workflow: FC<WorkflowProps> = memo(({
       e.preventDefault()
   })
   useEventListener('mousemove', (e) => {
-    const containerClientRect = workflowContainerRef.current?.getBoundingClientRect()
+    lastMouseEventRef.current = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+    }
 
-    if (containerClientRect) {
+    if (mousePositionRafRef.current !== null)
+      return
+
+    mousePositionRafRef.current = requestAnimationFrame(() => {
+      mousePositionRafRef.current = null
+      const latestMousePosition = lastMouseEventRef.current
+      const containerClientRect = workflowContainerRef.current?.getBoundingClientRect()
+
+      if (!latestMousePosition || !containerClientRect)
+        return
+
       workflowStore.setState({
         mousePosition: {
-          pageX: e.clientX,
-          pageY: e.clientY,
-          elementX: e.clientX - containerClientRect.left,
-          elementY: e.clientY - containerClientRect.top,
+          pageX: latestMousePosition.clientX,
+          pageY: latestMousePosition.clientY,
+          elementX: latestMousePosition.clientX - containerClientRect.left,
+          elementY: latestMousePosition.clientY - containerClientRect.top,
         },
       })
-    }
+    })
   })
+  useEffect(() => {
+    return () => {
+      if (viewportUpdateRafRef.current !== null)
+        cancelAnimationFrame(viewportUpdateRafRef.current)
+      if (mousePositionRafRef.current !== null)
+        cancelAnimationFrame(mousePositionRafRef.current)
+    }
+  }, [])
   const { handleFetchAllTools } = useFetchToolsData()
   useEffect(() => {
-    handleFetchAllTools('builtin')
-    handleFetchAllTools('custom')
-    handleFetchAllTools('workflow')
-    handleFetchAllTools('mcp')
+    if (typeof window === 'undefined')
+      return
+
+    const fetchAllTools = () => {
+      handleFetchAllTools('builtin')
+      handleFetchAllTools('custom')
+      handleFetchAllTools('workflow')
+      handleFetchAllTools('mcp')
+    }
+
+    const timeoutId = window.setTimeout(fetchAllTools, 300)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
   }, [handleFetchAllTools])
 
   const {
@@ -283,8 +397,21 @@ export const Workflow: FC<WorkflowProps> = memo(({
   } = useWorkflow()
 
   useOnViewportChange({
+    onChange: () => {
+      if (isDraggingNodeRef.current)
+        return
+
+      if (viewportUpdateRafRef.current !== null)
+        return
+      viewportUpdateRafRef.current = requestAnimationFrame(() => {
+        viewportUpdateRafRef.current = null
+        updateVisibleNodesByViewport()
+      })
+    },
     onEnd: () => {
       handleSyncWorkflowDraft()
+      if (!isDraggingNodeRef.current)
+        updateVisibleNodesByViewport()
     },
   })
 
@@ -343,6 +470,97 @@ export const Workflow: FC<WorkflowProps> = memo(({
     }
   }
 
+  useEffect(() => {
+    if (isDraggingNodeRef.current)
+      return
+    updateVisibleNodesByViewport()
+  }, [nodes, updateVisibleNodesByViewport])
+
+  useEffect(() => {
+    if (isDraggingNodeRef.current)
+      return
+
+    const currentNodeIds = new Set(nodes.map(node => node.id))
+    const nextSet = new Set<string>()
+    let hasChanges = false
+    visibleNodeIdSetRef.current.forEach((nodeId) => {
+      if (currentNodeIds.has(nodeId))
+        nextSet.add(nodeId)
+      else
+        hasChanges = true
+    })
+
+    if (hasChanges) {
+      visibleNodeIdSetRef.current = nextSet
+      setVisibleNodeIds(Array.from(nextSet))
+    }
+  }, [nodes])
+
+  useEffect(() => {
+    if (isDraggingNodeRef.current)
+      return
+
+    const visibleNodeIdSet = new Set(visibleNodeIds)
+    setNodes((prevNodes) => {
+      let hasChanges = false
+      const nextNodes = prevNodes.map((node) => {
+        const shouldBeVisible = visibleNodeIdSet.has(node.id)
+        const isHidden = !!node.hidden
+        if (isHidden === !shouldBeVisible)
+          return node
+        hasChanges = true
+        return {
+          ...node,
+          hidden: !shouldBeVisible,
+        }
+      })
+      return hasChanges ? nextNodes : prevNodes
+    })
+    setEdges((prevEdges) => {
+      let hasChanges = false
+      const nextEdges = prevEdges.map((edge) => {
+        const shouldBeVisible = visibleNodeIdSet.has(edge.source) && visibleNodeIdSet.has(edge.target)
+        const isHidden = !!edge.hidden
+        if (isHidden === !shouldBeVisible)
+          return edge
+        hasChanges = true
+        return {
+          ...edge,
+          hidden: !shouldBeVisible,
+        }
+      })
+      return hasChanges ? nextEdges : prevEdges
+    })
+  }, [setEdges, setNodes, visibleNodeIds])
+
+  const setDraggingState = useCallback((value: boolean) => {
+    isDraggingNodeRef.current = value
+    setIsDraggingNode(value)
+  }, [])
+
+  const handleNodeDragStartWithVisibility = useCallback<NodeDragHandler>((event, node) => {
+    handleNodeDragStart(event, node)
+
+    if (nodesReadOnly)
+      return
+
+    if (
+      node.type === CUSTOM_ITERATION_START_NODE
+      || node.type === CUSTOM_LOOP_START_NODE
+      || node.type === CUSTOM_NOTE_NODE
+    )
+      return
+
+    if (!isDraggingNodeRef.current)
+      setDraggingState(true)
+  }, [handleNodeDragStart, nodesReadOnly, setDraggingState])
+
+  const handleNodeDragStopWithVisibility = useCallback<NodeDragHandler>((event, node) => {
+    setDraggingState(false)
+    handleNodeDragStop(event, node)
+    updateVisibleNodesByViewport()
+  }, [handleNodeDragStop, setDraggingState, updateVisibleNodesByViewport])
+
   return (
     <div
       id='workflow-container'
@@ -362,9 +580,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
         <Control />
       </div>
       <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
-      <PanelContextmenu />
-      <NodeContextmenu />
-      <SelectionContextmenu />
+      { !isDraggingNode && <PanelContextmenu /> }
+      { !isDraggingNode && <NodeContextmenu /> }
+      { !isDraggingNode && <SelectionContextmenu /> }
       <HelpLine />
       {
         !!showConfirm && (
@@ -383,9 +601,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
         edgeTypes={edgeTypes}
         nodes={nodes}
         edges={edges}
-        onNodeDragStart={handleNodeDragStart}
+        onNodeDragStart={handleNodeDragStartWithVisibility}
         onNodeDrag={handleNodeDrag}
-        onNodeDragStop={handleNodeDragStop}
+        onNodeDragStop={handleNodeDragStopWithVisibility}
         onNodeMouseEnter={handleNodeEnter}
         onNodeMouseLeave={handleNodeLeave}
         onNodeClick={handleNodeClick}
@@ -402,7 +620,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onPaneContextMenu={handlePaneContextMenu}
         onSelectionContextMenu={handleSelectionContextMenu}
         connectionLineComponent={CustomConnectionLine}
-        // TODO: For LOOP node, how to distinguish between ITERATION and LOOP here? Maybe both are the same?
+        // NOTE: LOOP and ITERATION nodes currently share the same z-index styling.
         connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
