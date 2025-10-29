@@ -3,7 +3,6 @@
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from models.model import UploadFile
 from models.workflow import WorkflowPause as WorkflowPauseModel
 from repositories.sqlalchemy_api_workflow_run_repository import _PrivateWorkflowPauseEntity
 

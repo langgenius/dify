@@ -25,7 +25,7 @@ from datetime import timedelta
 
 import pytest
 from sqlalchemy import delete, select
-from sqlalchemy.orm import selectinload, sessionmaker, Session
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from core.workflow.entities import WorkflowExecution
 from core.workflow.enums import WorkflowExecutionStatus
@@ -911,7 +911,6 @@ class TestWorkflowPauseIntegration:
             if i > 0:
                 self.session.refresh(workflow_run)  # Refresh to get latest state from session
                 workflow_run.status = WorkflowExecutionStatus.RUNNING
-                workflow_run.pause_id = None  # Clear pause_id for next cycle
                 self.session.commit()
                 self.session.refresh(workflow_run)  # Refresh again after commit
 
@@ -925,23 +924,12 @@ class TestWorkflowPauseIntegration:
 
             # Verify pause
             self.session.expire_all()  # Clear session to ensure fresh query
-            self.session.refresh(workflow_run)  # Refresh workflow_run to get latest pause_id
-
-            # Debug: Check workflow_run state
-            print(f"Workflow run status: {workflow_run.status}")
-            print(f"Workflow run pause_id: {workflow_run.pause_id}")
+            self.session.refresh(workflow_run)
 
             # Use the test session directly to verify the pause
             stmt = select(WorkflowRun).options(selectinload(WorkflowRun.pause)).where(WorkflowRun.id == workflow_run.id)
             workflow_run_with_pause = self.session.scalar(stmt)
             pause_model = workflow_run_with_pause.pause
-            print(f"Pause model from test session: {pause_model}")
-
-            # Use test session directly to verify pause
-            stmt = select(WorkflowRun).options(selectinload(WorkflowRun.pause)).where(WorkflowRun.id == workflow_run.id)
-            workflow_run_with_pause = self.session.scalar(stmt)
-            pause_model = workflow_run_with_pause.pause
-            print(f"Pause model from test session: {pause_model}")
 
             # Verify pause using test session directly
             assert pause_model is not None
@@ -972,4 +960,3 @@ class TestWorkflowPauseIntegration:
             # Verify workflow run status
             self.session.refresh(workflow_run)
             assert workflow_run.status == WorkflowExecutionStatus.RUNNING
-            assert workflow_run.pause_id is None
