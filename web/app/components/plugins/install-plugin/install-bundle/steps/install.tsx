@@ -99,15 +99,9 @@ const Install: FC<Props> = ({
       // if not all settled, keep checking the status of the plugins
       handleRefetch()
       const installStatus = await Promise.all(res.map(async (item, index) => {
-        if (item.status === TaskStatus.success) {
+        if (item.status !== TaskStatus.running) {
           return {
-            success: true,
-            isFromMarketPlace: allPlugins[selectedIndexes[index]].type === 'marketplace',
-          }
-        }
-        if (item.status === TaskStatus.failed) {
-          return {
-            success: false,
+            success: item.status === TaskStatus.success,
             isFromMarketPlace: allPlugins[selectedIndexes[index]].type === 'marketplace',
           }
         }
