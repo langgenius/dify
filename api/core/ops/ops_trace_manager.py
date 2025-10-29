@@ -619,6 +619,8 @@ class TraceTask:
             file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
             file_list.append(file_url)
 
+        streaming_metrics = self._extract_streaming_metrics(message_data)
+
         metadata = {
             "conversation_id": message_data.conversation_id,
             "ls_provider": message_data.model_provider,
@@ -651,6 +653,9 @@ class TraceTask:
             metadata=metadata,
             message_file_data=message_file_data,
             conversation_mode=conversation_mode,
+            gen_ai_server_time_to_first_token=streaming_metrics.get("gen_ai_server_time_to_first_token"),
+            llm_streaming_time_to_generate=streaming_metrics.get("llm_streaming_time_to_generate"),
+            is_streaming_request=streaming_metrics.get("is_streaming_request", False),
         )
 
         return message_trace_info
@@ -875,6 +880,24 @@ class TraceTask:
         )
 
         return generate_name_trace_info
+
+    def _extract_streaming_metrics(self, message_data) -> dict:
+        if not message_data.message_metadata:
+            return {}
+
+        try:
+            metadata = json.loads(message_data.message_metadata)
+            usage = metadata.get("usage", {})
+            time_to_first_token = usage.get("time_to_first_token")
+            time_to_generate = usage.get("time_to_generate")
+
+            return {
+                "gen_ai_server_time_to_first_token": time_to_first_token,
+                "llm_streaming_time_to_generate": time_to_generate,
+                "is_streaming_request": time_to_first_token is not None,
+            }
+        except (json.JSONDecodeError, AttributeError):
+            return {}
 
 
 trace_manager_timer: threading.Timer | None = None
