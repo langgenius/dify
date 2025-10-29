@@ -47,14 +47,24 @@ def decode_jwt_token(app_code: str | None = None):
         if not tk:
             raise Unauthorized("App token is missing.")
         decoded = PassportService().verify(tk)
-        app_code = decoded.get("app_code")
+        # Preserve app_code from header if JWT token doesn't contain one
+        jwt_app_code = decoded.get("app_code")
+        if jwt_app_code:
+            app_code = jwt_app_code
         app_id = decoded.get("app_id")
+
+        # Validate required fields from JWT token
+        if not app_id:
+            raise Unauthorized("Invalid token: missing app_id.")
+        if not app_code:
+            raise Unauthorized("Invalid token: missing app_code.")
+
         with Session(db.engine, expire_on_commit=False) as session:
             app_model = session.scalar(select(App).where(App.id == app_id))
             site = session.scalar(select(Site).where(Site.code == app_code))
             if not app_model:
                 raise NotFound()
-            if not app_code or not site:
+            if not site:
                 raise BadRequest("Site URL is no longer valid.")
             if app_model.enable_site is False:
                 raise BadRequest("Site is disabled.")
