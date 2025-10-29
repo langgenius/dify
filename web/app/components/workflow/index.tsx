@@ -1,6 +1,6 @@
 'use client'
 
-import type { FC } from 'react'
+import type { CSSProperties, FC } from 'react'
 import {
   memo,
   useCallback,
@@ -118,6 +118,10 @@ const edgeTypes = {
 
 const INITIAL_RENDER_NODE_LIMIT = 200
 const VIEWPORT_NODE_BUFFER = 600
+const BACKGROUND_GAP: [number, number] = [14, 14]
+const CONNECTION_LINE_CONTAINER_STYLE: CSSProperties = {
+  zIndex: ITERATION_CHILDREN_Z_INDEX,
+}
 
 export type WorkflowProps = {
   nodes: Node[]
@@ -153,34 +157,21 @@ export const Workflow: FC<WorkflowProps> = memo(({
       return '100%'
     return workflowCanvasHeight - bottomPanelHeight
   }, [workflowCanvasHeight, bottomPanelHeight])
-  const [visibleNodeIds, setVisibleNodeIds] = useState<string[]>(() => {
+  const initialVisibleNodeIds = useMemo(() => {
     if (!originalNodes || !originalNodes.length)
       return []
     return originalNodes.slice(0, INITIAL_RENDER_NODE_LIMIT).map(node => node.id)
-  })
-  const visibleNodeIdSetRef = useRef<Set<string>>(new Set(visibleNodeIds))
+  }, [originalNodes])
+  const visibleNodeIdSetRef = useRef<Set<string>>(new Set(initialVisibleNodeIds))
   const isDraggingNodeRef = useRef(false)
   const [isDraggingNode, setIsDraggingNode] = useState(false)
 
-  const ensureVisibleNodeIds = useCallback((candidateNodeIds: string[]) => {
-    if (!candidateNodeIds || !candidateNodeIds.length)
+  const setVisibleNodeIds = useCallback((candidateNodeIds: string[]) => {
+    if (!candidateNodeIds)
       return
 
-    const nextSet = new Set(visibleNodeIdSetRef.current)
-    let changed = false
-
-    candidateNodeIds.forEach((nodeId) => {
-      if (!nextSet.has(nodeId)) {
-        nextSet.add(nodeId)
-        changed = true
-      }
-    })
-
-    if (!changed)
-      return
-
+    const nextSet = new Set(candidateNodeIds)
     visibleNodeIdSetRef.current = nextSet
-    setVisibleNodeIds(Array.from(nextSet))
   }, [])
 
   const updateVisibleNodesByViewport = useCallback(() => {
@@ -218,8 +209,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
       })
       .map(node => node.id)
 
-    ensureVisibleNodeIds(nodesInViewport)
-  }, [ensureVisibleNodeIds, nodes, reactflow])
+    setVisibleNodeIds(nodesInViewport)
+  }, [nodes, reactflow, setVisibleNodeIds])
 
   // update workflow Canvas width and height
   useEffect(() => {
@@ -274,7 +265,37 @@ export const Workflow: FC<WorkflowProps> = memo(({
     const initialIds = originalNodes.slice(0, INITIAL_RENDER_NODE_LIMIT).map(node => node.id)
     visibleNodeIdSetRef.current = new Set(initialIds)
     setVisibleNodeIds(initialIds)
-  }, [originalNodes])
+  }, [originalNodes, setVisibleNodeIds])
+
+  useEffect(() => {
+    setNodes((prevNodes) => {
+      let changed = false
+      const nextNodes = prevNodes.map((node) => {
+        if (!node.hidden)
+          return node
+        changed = true
+        return {
+          ...node,
+          hidden: false,
+        }
+      })
+      return changed ? nextNodes : prevNodes
+    })
+
+    setEdges((prevEdges) => {
+      let changed = false
+      const nextEdges = prevEdges.map((edge) => {
+        if (!edge.hidden)
+          return edge
+        changed = true
+        return {
+          ...edge,
+          hidden: false,
+        }
+      })
+      return changed ? nextEdges : prevEdges
+    })
+  }, [setEdges, setNodes])
 
   useEffect(() => {
     setAutoFreeze(false)
@@ -370,6 +391,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
     }
   }, [handleFetchAllTools])
 
+  const getVisibleNodeIds = useCallback(() => visibleNodeIdSetRef.current, [])
+
   const {
     handleNodeDragStart,
     handleNodeDrag,
@@ -383,7 +406,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleNodeContextMenu,
     handleHistoryBack,
     handleHistoryForward,
-  } = useNodesInteractions()
+  } = useNodesInteractions({ getVisibleNodeIds })
   const {
     handleEdgeEnter,
     handleEdgeLeave,
@@ -488,56 +511,13 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
     const currentNodeIds = new Set(nodes.map(node => node.id))
     const nextSet = new Set<string>()
-    let hasChanges = false
     visibleNodeIdSetRef.current.forEach((nodeId) => {
       if (currentNodeIds.has(nodeId))
         nextSet.add(nodeId)
-      else
-        hasChanges = true
     })
 
-    if (hasChanges) {
-      visibleNodeIdSetRef.current = nextSet
-      setVisibleNodeIds(Array.from(nextSet))
-    }
-  }, [nodes])
-
-  useEffect(() => {
-    if (isDraggingNodeRef.current)
-      return
-
-    const visibleNodeIdSet = new Set(visibleNodeIds)
-    setNodes((prevNodes) => {
-      let hasChanges = false
-      const nextNodes = prevNodes.map((node) => {
-        const shouldBeVisible = visibleNodeIdSet.has(node.id)
-        const isHidden = !!node.hidden
-        if (isHidden === !shouldBeVisible)
-          return node
-        hasChanges = true
-        return {
-          ...node,
-          hidden: !shouldBeVisible,
-        }
-      })
-      return hasChanges ? nextNodes : prevNodes
-    })
-    setEdges((prevEdges) => {
-      let hasChanges = false
-      const nextEdges = prevEdges.map((edge) => {
-        const shouldBeVisible = visibleNodeIdSet.has(edge.source) && visibleNodeIdSet.has(edge.target)
-        const isHidden = !!edge.hidden
-        if (isHidden === !shouldBeVisible)
-          return edge
-        hasChanges = true
-        return {
-          ...edge,
-          hidden: !shouldBeVisible,
-        }
-      })
-      return hasChanges ? nextEdges : prevEdges
-    })
-  }, [setEdges, setNodes, visibleNodeIds])
+    setVisibleNodeIds(Array.from(nextSet))
+  }, [nodes, setVisibleNodeIds])
 
   const setDraggingState = useCallback((value: boolean) => {
     isDraggingNodeRef.current = value
@@ -628,7 +608,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onSelectionContextMenu={handleSelectionContextMenu}
         connectionLineComponent={CustomConnectionLine}
         // NOTE: LOOP and ITERATION nodes currently share the same z-index styling.
-        connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
+        connectionLineContainerStyle={CONNECTION_LINE_CONTAINER_STYLE}
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
         deleteKeyCode={null}
@@ -645,10 +625,11 @@ export const Workflow: FC<WorkflowProps> = memo(({
         selectionKeyCode={null}
         selectionMode={SelectionMode.Partial}
         selectionOnDrag={controlMode === ControlMode.Pointer && !workflowReadOnly}
+        onlyRenderVisibleElements
         minZoom={0.25}
       >
         <Background
-          gap={[14, 14]}
+          gap={BACKGROUND_GAP}
           size={2}
           className="bg-workflow-canvas-workflow-bg"
           color='var(--color-workflow-canvas-workflow-dot-color)'

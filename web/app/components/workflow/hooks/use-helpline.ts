@@ -3,13 +3,18 @@ import { useStoreApi } from 'reactflow'
 import type { Node } from '../types'
 import { useWorkflowStore } from '../store'
 
+type HelplineOptions = {
+  nodes?: Node[];
+  visibleNodeIds?: Set<string>;
+}
+
 export const useHelpline = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
 
-  const handleSetHelpline = useCallback((node: Node) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+  const handleSetHelpline = useCallback((node: Node, options?: HelplineOptions) => {
+    const nodes = options?.nodes ?? store.getState().getNodes()
+    const visibleNodeIds = options?.visibleNodeIds
     const {
       setHelpLineHorizontal,
       setHelpLineVertical,
@@ -30,6 +35,8 @@ export const useHelpline = () => {
     }
 
     const showHorizontalHelpLineNodes = nodes.filter((n) => {
+      if (visibleNodeIds && !visibleNodeIds.has(n.id))
+        return false
       if (n.hidden)
         return false
       if (n.id === node.id)
@@ -76,6 +83,8 @@ export const useHelpline = () => {
     }
 
     const showVerticalHelpLineNodes = nodes.filter((n) => {
+      if (visibleNodeIds && !visibleNodeIds.has(n.id))
+        return false
       if (n.hidden)
         return false
       if (n.id === node.id)

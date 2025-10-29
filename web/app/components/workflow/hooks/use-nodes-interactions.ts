@@ -68,7 +68,11 @@ import type { RAGPipelineVariables } from '@/models/pipeline'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
 
-export const useNodesInteractions = () => {
+type UseNodesInteractionsOptions = {
+  getVisibleNodeIds?: () => Set<string> | undefined;
+}
+
+export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
   const { t } = useTranslation()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
@@ -193,11 +197,13 @@ export const useNodesInteractions = () => {
       height: primaryPendingNode.height ?? primaryCurrentNode.height,
     }
 
+    const visibleNodeIds = options?.getVisibleNodeIds?.()
+
     const { restrictPosition } = handleNodeIterationChildDrag(primaryCandidateNode)
     const { restrictPosition: restrictLoopPosition }
       = handleNodeLoopChildDrag(primaryCandidateNode)
     const { showHorizontalHelpLineNodes, showVerticalHelpLineNodes }
-      = handleSetHelpline(primaryCandidateNode)
+      = handleSetHelpline(primaryCandidateNode, { nodes, visibleNodeIds })
 
     const nextPrimaryX = resolveAxisPosition(
       'x',
@@ -287,6 +293,7 @@ export const useNodesInteractions = () => {
     handleNodeIterationChildDrag,
     handleNodeLoopChildDrag,
     handleSetHelpline,
+    options?.getVisibleNodeIds,
   ])
 
   const handleNodeDrag = useCallback<NodeDragHandler>(
