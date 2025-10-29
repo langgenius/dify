@@ -137,6 +137,19 @@ const translation = {
     envPanelButton: 'Dodaj spremenljivko',
     envDescription: 'Okoljske spremenljivke se lahko uporabljajo za shranjevanje zasebnih informacij in poverilnic. So samo za branje in jih je mogoče ločiti od DSL datoteke med izvozem.',
   },
+  globalVar: {
+    title: 'Sistemske spremenljivke',
+    description: 'Sistemske spremenljivke so globalne spremenljivke, do katerih lahko vsako vozlišče dostopa brez povezovanja, če je tip pravilen, na primer ID končnega uporabnika in ID poteka dela.',
+    fieldsDescription: {
+      conversationId: 'ID pogovora',
+      dialogCount: 'Število pogovorov',
+      userId: 'ID uporabnika',
+      triggerTimestamp: 'Časovni žig začetka delovanja aplikacije',
+      appId: 'ID aplikacije',
+      workflowId: 'ID poteka dela',
+      workflowRunId: 'ID izvajanja poteka dela',
+    },
+  },
   chatVariable: {
     modal: {
       namePlaceholder: 'Ime spremenljivke',

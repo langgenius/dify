@@ -142,6 +142,19 @@ const translation = {
       export: 'シークレット値付きでエクスポート',
     },
   },
+  globalVar: {
+    title: 'システム変数',
+    description: 'システム変数は、タイプが適合していれば配線なしで任意のノードから参照できるグローバル変数です。エンドユーザーIDやワークフローIDなどが含まれます。',
+    fieldsDescription: {
+      conversationId: '会話ID',
+      dialogCount: '会話数',
+      userId: 'ユーザーID',
+      triggerTimestamp: 'アプリケーションの起動タイムスタンプ',
+      appId: 'アプリケーションID',
+      workflowId: 'ワークフローID',
+      workflowRunId: 'ワークフロー実行ID',
+    },
+  },
   sidebar: {
     exportWarning: '現在保存されているバージョンをエクスポート',
     exportWarningDesc: 'これは現在保存されているワークフローのバージョンをエクスポートします。エディターで未保存の変更がある場合は、まずワークフローキャンバスのエクスポートオプションを使用して保存してください。',

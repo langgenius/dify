@@ -145,6 +145,19 @@ const translation = {
       export: '导出包含 Secret 值的 DSL',
     },
   },
+  globalVar: {
+    title: '系统变量',
+    description: '系统变量是全局变量，在类型匹配时无需连线即可被任意节点引用，例如终端用户 ID 和工作流 ID。',
+    fieldsDescription: {
+      conversationId: '会话 ID',
+      dialogCount: '会话次数',
+      userId: '用户 ID',
+      triggerTimestamp: '应用开始运行的时间戳',
+      appId: '应用 ID',
+      workflowId: '工作流 ID',
+      workflowRunId: '工作流运行 ID',
+    },
+  },
   sidebar: {
     exportWarning: '导出当前已保存版本',
     exportWarningDesc: '这将导出您工作流的当前已保存版本。如果您在编辑器中有未保存的更改，请先使用工作流画布中的导出选项保存它们。',

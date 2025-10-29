@@ -137,6 +137,19 @@ const translation = {
       export: '導出帶有機密值的 DSL',
     },
   },
+  globalVar: {
+    title: '系統變數',
+    description: '系統變數是全域變數，在類型符合時可由任意節點在無需連線的情況下引用，例如終端使用者 ID 與工作流程 ID。',
+    fieldsDescription: {
+      conversationId: '對話 ID',
+      dialogCount: '對話次數',
+      userId: '使用者 ID',
+      triggerTimestamp: '應用程式開始運行的時間戳',
+      appId: '應用程式 ID',
+      workflowId: '工作流程 ID',
+      workflowRunId: '工作流程執行 ID',
+    },
+  },
   chatVariable: {
     panelTitle: '對話變數',
     panelDescription: '對話變數用於儲存 LLM 需要記住的互動資訊，包括對話歷史、上傳的檔案、使用者偏好等。這些變數可讀寫。',

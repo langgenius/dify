@@ -137,6 +137,19 @@ const translation = {
       export: 'Gizli değerlerle DSL\'yi dışa aktar',
     },
   },
+  globalVar: {
+    title: 'Sistem Değişkenleri',
+    description: 'Sistem değişkenleri, tipi uyumlu olduğunda herhangi bir düğümün bağlantı gerektirmeden başvurabileceği küresel değişkenlerdir; örneğin son kullanıcı kimliği ve iş akışı kimliği.',
+    fieldsDescription: {
+      conversationId: 'Konuşma Kimliği',
+      dialogCount: 'Konuşma Sayısı',
+      userId: 'Kullanıcı Kimliği',
+      triggerTimestamp: 'Uygulamanın çalışmaya başladığı zaman damgası',
+      appId: 'Uygulama Kimliği',
+      workflowId: 'İş Akışı Kimliği',
+      workflowRunId: 'İş akışı yürütme kimliği',
+    },
+  },
   chatVariable: {
     panelTitle: 'Konuşma Değişkenleri',
     panelDescription: 'Konuşma Değişkenleri, LLM\'nin hatırlaması gereken interaktif bilgileri (konuşma geçmişi, yüklenen dosyalar, kullanıcı tercihleri dahil) depolamak için kullanılır. Bunlar okunabilir ve yazılabilirdir.',

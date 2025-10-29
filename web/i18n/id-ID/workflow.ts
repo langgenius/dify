@@ -137,6 +137,19 @@ const translation = {
     envPanelTitle: 'Variabel Lingkungan',
     envDescription: 'Variabel lingkungan dapat digunakan untuk menyimpan informasi pribadi dan kredensial. Mereka hanya baca dan dapat dipisahkan dari file DSL selama ekspor.',
   },
+  globalVar: {
+    title: 'Variabel Sistem',
+    description: 'Variabel sistem adalah variabel global yang dapat dirujuk oleh node apa pun tanpa koneksi jika tipenya sesuai, seperti ID pengguna akhir dan ID alur kerja.',
+    fieldsDescription: {
+      conversationId: 'ID percakapan',
+      dialogCount: 'Jumlah percakapan',
+      userId: 'ID pengguna',
+      triggerTimestamp: 'Cap waktu saat aplikasi mulai berjalan',
+      appId: 'ID aplikasi',
+      workflowId: 'ID alur kerja',
+      workflowRunId: 'ID eksekusi alur kerja',
+    },
+  },
   chatVariable: {
     modal: {
       valuePlaceholder: 'Nilai default, biarkan kosong untuk tidak diatur',

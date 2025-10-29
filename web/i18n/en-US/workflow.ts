@@ -153,7 +153,7 @@ const translation = {
       conversationId: 'Conversation ID',
       dialogCount: 'Conversation Count',
       userId: 'User ID',
-      triggerTimestamp: 'Application trigger time',
+      triggerTimestamp: 'Application start timestamp',
       appId: 'Application ID',
       workflowId: 'Workflow ID',
       workflowRunId: 'Workflow run ID',
