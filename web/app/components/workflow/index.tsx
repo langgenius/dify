@@ -544,8 +544,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
     setIsDraggingNode(value)
   }, [])
 
-  const handleNodeDragStartWithVisibility = useCallback<NodeDragHandler>((event, node) => {
-    handleNodeDragStart(event, node)
+  const handleNodeDragStartWithVisibility = useCallback<NodeDragHandler>((event, node, nodesParam) => {
+    handleNodeDragStart(event, node, nodesParam)
 
     if (nodesReadOnly)
       return
@@ -561,9 +561,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
       setDraggingState(true)
   }, [handleNodeDragStart, nodesReadOnly, setDraggingState])
 
-  const handleNodeDragStopWithVisibility = useCallback<NodeDragHandler>((event, node) => {
+  const handleNodeDragStopWithVisibility = useCallback<NodeDragHandler>((event, node, nodesParam) => {
     setDraggingState(false)
-    handleNodeDragStop(event, node)
+    handleNodeDragStop(event, node, nodesParam)
     updateVisibleNodesByViewport()
   }, [handleNodeDragStop, setDraggingState, updateVisibleNodesByViewport])
 
