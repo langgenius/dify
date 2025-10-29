@@ -3,12 +3,7 @@ import type {
   RefObject,
   SetStateAction,
 } from 'react'
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   BlockEnum,
@@ -35,6 +30,7 @@ import Divider from '@/app/components/base/divider'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { getMarketplaceUrl } from '@/utils/var'
 import { useGetLanguage } from '@/context/i18n'
+import type { OnSelectBlock } from '@/app/components/workflow/types'
 
 const marketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
 
@@ -202,6 +198,12 @@ const AllTools = ({
     && (featuredLoading || featuredPlugins.length > 0)
   const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
 
+  const handleRAGSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
+    if (!pluginDefaultValue)
+      return
+    onSelect(type, pluginDefaultValue as ToolDefaultValue)
+  }, [onSelect])
+
   return (
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
       <div className='flex items-center justify-between border-b border-divider-subtle px-3'>
@@ -236,7 +238,7 @@ const AllTools = ({
             {isShowRAGRecommendations && onTagsChange && (
               <RAGToolRecommendations
                 viewType={isSupportGroupView ? activeView : ViewType.flat}
-                onSelect={onSelect}
+                onSelect={handleRAGSelect}
                 onTagsChange={onTagsChange}
               />
             )}
@@ -274,7 +276,6 @@ const AllTools = ({
                   hasSearchText={hasSearchText}
                   selectedTools={selectedTools}
                   canChooseMCPTool={canChooseMCPTool}
-                  isShowRAGRecommendations={isShowRAGRecommendations}
                 />
               </>
             )}

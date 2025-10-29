@@ -1,9 +1,4 @@
-import {
-  memo,
-  useMemo,
-  useRef,
-} from 'react'
-import { useTranslation } from 'react-i18next'
+import { memo, useMemo, useRef } from 'react'
 import type { BlockEnum, ToolWithProvider } from '../types'
 import IndexBar, { groupItems } from './index-bar'
 import type { ToolDefaultValue, ToolValue } from './types'
@@ -28,7 +23,6 @@ type ToolsProps = {
   indexBarClassName?: string
   selectedTools?: ToolValue[]
   canChooseMCPTool?: boolean
-  isShowRAGRecommendations?: boolean
 }
 const Tools = ({
   onSelect,
@@ -43,10 +37,8 @@ const Tools = ({
   indexBarClassName,
   selectedTools,
   canChooseMCPTool,
-  isShowRAGRecommendations = false,
 }: ToolsProps) => {
   // const tools: any = []
-  const { t } = useTranslation()
   const language = useGetLanguage()
   const isFlatView = viewType === ViewType.flat
   const isShowLetterIndex = isFlatView && tools.length > 10
@@ -103,11 +95,6 @@ const Tools = ({
       {!tools.length && !hasSearchText && (
         <div className='py-10'>
           <Empty type={toolType!} isAgent={isAgent} />
-        </div>
-      )}
-      {!!tools.length && isShowRAGRecommendations && (
-        <div className='system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary'>
-          {t('tools.allTools')}
         </div>
       )}
       {!!tools.length && (
