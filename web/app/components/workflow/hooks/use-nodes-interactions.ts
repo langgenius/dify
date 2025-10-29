@@ -88,7 +88,7 @@ export const useNodesInteractions = () => {
     y: number;
   })
   const dragAnimationFrameRef = useRef<number | null>(null)
-  const pendingDragNodeRef = useRef<Node | null>(null)
+  const pendingDragNodesRef = useRef<Map<string, Node>>(new Map())
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
   const { saveStateToHistory, undo, redo } = useWorkflowHistory()
@@ -123,41 +123,51 @@ export const useNodesInteractions = () => {
     return () => {
       if (dragAnimationFrameRef.current !== null)
         cancelAnimationFrame(dragAnimationFrameRef.current)
+      pendingDragNodesRef.current.clear()
     }
   }, [])
 
-  const applyNodeDragPosition = useCallback((pendingNode: Node) => {
+  const applyNodeDragPosition = useCallback((pendingNodes: Node[]) => {
+    if (!pendingNodes.length)
+      return
+
     const { getNodes, setNodes } = store.getState()
     const nodes = getNodes()
 
-    const { restrictPosition } = handleNodeIterationChildDrag(pendingNode)
-    const { restrictPosition: restrictLoopPosition }
-      = handleNodeLoopChildDrag(pendingNode)
-
-    const { showHorizontalHelpLineNodes, showVerticalHelpLineNodes }
-      = handleSetHelpline(pendingNode)
-    const showHorizontalHelpLineNodesLength
-      = showHorizontalHelpLineNodes.length
-    const showVerticalHelpLineNodesLength = showVerticalHelpLineNodes.length
-
     const newNodes = produce(nodes, (draft) => {
-      const currentNode = draft.find(n => n.id === pendingNode.id)!
+      pendingNodes.forEach((pendingNode) => {
+        const currentNode = draft.find(n => n.id === pendingNode.id)
+        if (!currentNode)
+          return
 
-      if (showVerticalHelpLineNodesLength > 0)
-        currentNode.position.x = showVerticalHelpLineNodes[0].position.x
-      else if (restrictPosition.x !== undefined)
-        currentNode.position.x = restrictPosition.x
-      else if (restrictLoopPosition.x !== undefined)
-        currentNode.position.x = restrictLoopPosition.x
-      else currentNode.position.x = pendingNode.position.x
+        const { restrictPosition } = handleNodeIterationChildDrag(pendingNode)
+        const { restrictPosition: restrictLoopPosition }
+          = handleNodeLoopChildDrag(pendingNode)
 
-      if (showHorizontalHelpLineNodesLength > 0)
-        currentNode.position.y = showHorizontalHelpLineNodes[0].position.y
-      else if (restrictPosition.y !== undefined)
-        currentNode.position.y = restrictPosition.y
-      else if (restrictLoopPosition.y !== undefined)
-        currentNode.position.y = restrictLoopPosition.y
-      else currentNode.position.y = pendingNode.position.y
+        const { showHorizontalHelpLineNodes, showVerticalHelpLineNodes }
+          = handleSetHelpline(pendingNode)
+        const showHorizontalHelpLineNodesLength
+          = showHorizontalHelpLineNodes.length
+        const showVerticalHelpLineNodesLength = showVerticalHelpLineNodes.length
+
+        if (showVerticalHelpLineNodesLength > 0)
+          currentNode.position.x = showVerticalHelpLineNodes[0].position.x
+        else if (restrictPosition.x !== undefined)
+          currentNode.position.x = restrictPosition.x
+        else if (restrictLoopPosition.x !== undefined)
+          currentNode.position.x = restrictLoopPosition.x
+        else
+          currentNode.position.x = pendingNode.position.x
+
+        if (showHorizontalHelpLineNodesLength > 0)
+          currentNode.position.y = showHorizontalHelpLineNodes[0].position.y
+        else if (restrictPosition.y !== undefined)
+          currentNode.position.y = restrictPosition.y
+        else if (restrictLoopPosition.y !== undefined)
+          currentNode.position.y = restrictLoopPosition.y
+        else
+          currentNode.position.y = pendingNode.position.y
+      })
     })
     setNodes(newNodes)
   }, [
@@ -177,19 +187,19 @@ export const useNodesInteractions = () => {
 
       e.stopPropagation()
 
-      pendingDragNodeRef.current = node
+      pendingDragNodesRef.current.set(node.id, node)
 
       if (dragAnimationFrameRef.current !== null)
         return
 
       dragAnimationFrameRef.current = requestAnimationFrame(() => {
         dragAnimationFrameRef.current = null
-        const pendingNode = pendingDragNodeRef.current
-        if (!pendingNode)
+        if (!pendingDragNodesRef.current.size)
           return
 
-        applyNodeDragPosition(pendingNode)
-        pendingDragNodeRef.current = null
+        const pendingNodes = Array.from(pendingDragNodesRef.current.values())
+        pendingDragNodesRef.current.clear()
+        applyNodeDragPosition(pendingNodes)
       })
     },
     [
@@ -209,25 +219,27 @@ export const useNodesInteractions = () => {
         cancelAnimationFrame(dragAnimationFrameRef.current)
         dragAnimationFrameRef.current = null
       }
-      const pendingNode = pendingDragNodeRef.current
-      if (pendingNode)
-        applyNodeDragPosition(pendingNode)
-      else
-        applyNodeDragPosition(node)
-      pendingDragNodeRef.current = null
-
+      const pendingNodes = pendingDragNodesRef.current.size
+        ? Array.from(pendingDragNodesRef.current.values())
+        : []
+      pendingDragNodesRef.current.clear()
       const { x, y } = dragNodeStartPosition.current
-      if (!(x === node.position.x && y === node.position.y)) {
-        setHelpLineHorizontal()
-        setHelpLineVertical()
-        handleSyncWorkflowDraft()
+      const hasMoved = !(x === node.position.x && y === node.position.y)
+      if (!hasMoved)
+        return
+      if (!pendingNodes.some(pendingNode => pendingNode.id === node.id))
+        pendingNodes.push(node)
+      applyNodeDragPosition(pendingNodes)
 
-        if (x !== 0 && y !== 0) {
-          // selecting a note will trigger a drag stop event with x and y as 0
-          saveStateToHistory(WorkflowHistoryEvent.NodeDragStop, {
-            nodeId: node.id,
-          })
-        }
+      setHelpLineHorizontal()
+      setHelpLineVertical()
+      handleSyncWorkflowDraft()
+
+      if (x !== 0 && y !== 0) {
+        // selecting a note will trigger a drag stop event with x and y as 0
+        saveStateToHistory(WorkflowHistoryEvent.NodeDragStop, {
+          nodeId: node.id,
+        })
       }
     },
     [
