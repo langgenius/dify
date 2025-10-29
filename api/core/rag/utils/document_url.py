@@ -5,7 +5,7 @@ from core.file import helpers as file_helpers
 from models.dataset import Document as DatasetDocument
 
 
-def document_url_for_dataset_document(document: DatasetDocument) -> Optional[str]:
+def document_url_for_dataset_document(document: DatasetDocument) -> str | None:
     """
     Compute a user-accessible URL for the original document referenced by a dataset Document.
     - upload_file: returns a signed preview URL
@@ -43,8 +43,7 @@ def document_url_for_dataset_document(document: DatasetDocument) -> Optional[str
         return None
 
 
-def document_url_for_external_metadata(metadata: Optional[Mapping[str, Any]]) -> Optional[str]:
+def document_url_for_external_metadata(metadata: Mapping[str, Any] | None) -> str | None:
     if not metadata:
         return None
     return metadata.get("url") or metadata.get("source_url")  # type: ignore[index]
-
