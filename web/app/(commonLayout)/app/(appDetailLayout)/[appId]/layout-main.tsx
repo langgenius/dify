@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { useUnmount } from 'ahooks'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useReducer } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   RiDashboard2Fill,
@@ -19,7 +19,6 @@ import s from './style.module.css'
 import cn from '@/utils/classnames'
 import { useStore } from '@/app/components/app/store'
 import AppSideBar from '@/app/components/app-sidebar'
-import type { NavIcon } from '@/app/components/app-sidebar/navLink'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
@@ -32,6 +31,29 @@ import dynamic from 'next/dynamic'
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
 })
+
+type State = {
+  isLoadingAppDetail: boolean
+  appDetailRes: App | null
+}
+
+type Action
+  = | { type: 'FETCH_START' }
+  | { type: 'FETCH_SUCCESS'; payload: App }
+  | { type: 'FETCH_FAILURE' }
+
+const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case 'FETCH_START':
+      return { ...state, isLoadingAppDetail: true, appDetailRes: null }
+    case 'FETCH_SUCCESS':
+      return { ...state, isLoadingAppDetail: false, appDetailRes: action.payload }
+    case 'FETCH_FAILURE':
+      return { ...state, isLoadingAppDetail: false }
+    default:
+      return state
+  }
+}
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -55,14 +77,11 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     setAppSidebarExpand: state.setAppSidebarExpand,
   })))
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
-  const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
-  const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
-  const [navigation, setNavigation] = useState<Array<{
-    name: string
-    href: string
-    icon: NavIcon
-    selectedIcon: NavIcon
-  }>>([])
+  const [state, dispatch] = useReducer(reducer, {
+    isLoadingAppDetail: false,
+    appDetailRes: null,
+  })
+  const { isLoadingAppDetail, appDetailRes } = state
 
   const getNavigationConfig = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: string) => {
     const navConfig = [
@@ -102,6 +121,13 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return navConfig
   }, [t])
 
+  const navigation = useMemo(() => {
+    if (!appDetailRes)
+      return []
+
+    return getNavigationConfig(appId, isCurrentWorkspaceEditor, appDetailRes.mode)
+  }, [appDetailRes, appId, getNavigationConfig, isCurrentWorkspaceEditor])
+
   useDocumentTitle(appDetail?.name || t('common.menus.appDetail'))
 
   useEffect(() => {
@@ -117,14 +143,13 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   useEffect(() => {
     setAppDetail()
-    setIsLoadingAppDetail(true)
+    dispatch({ type: 'FETCH_START' })
     fetchAppDetailDirect({ url: '/apps', id: appId }).then((res: App) => {
-      setAppDetailRes(res)
+      dispatch({ type: 'FETCH_SUCCESS', payload: res })
     }).catch((e: any) => {
+      dispatch({ type: 'FETCH_FAILURE' })
       if (e.status === 404)
         router.replace('/apps')
-    }).finally(() => {
-      setIsLoadingAppDetail(false)
     })
   }, [appId, pathname])
 
@@ -138,17 +163,15 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       router.replace(`/app/${appId}/overview`)
       return
     }
-    if ((res.mode === 'workflow' || res.mode === 'advanced-chat') && (pathname).endsWith('configuration')) {
+    if ((res.mode === 'workflow' || res.mode === 'advanced-chat') && (pathname).endsWith('configuration'))
       router.replace(`/app/${appId}/workflow`)
-    }
-    else if ((res.mode !== 'workflow' && res.mode !== 'advanced-chat') && (pathname).endsWith('workflow')) {
+
+    else if ((res.mode !== 'workflow' && res.mode !== 'advanced-chat') && (pathname).endsWith('workflow'))
       router.replace(`/app/${appId}/configuration`)
-    }
-    else {
+
+    else
       setAppDetail({ ...res, enable_sso: false })
-      setNavigation(getNavigationConfig(appId, isCurrentWorkspaceEditor, res.mode))
-    }
-  }, [appDetailRes, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace])
+  }, [appDetailRes, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, appId, setAppDetail])
 
   useUnmount(() => {
     setAppDetail()
