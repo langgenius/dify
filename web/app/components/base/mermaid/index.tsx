@@ -236,7 +236,8 @@ const Flowchart = (props: FlowchartProps) => {
             .split('\n')
             .map((line) => {
               // Gantt charts have specific syntax needs.
-              const taskMatch = line.match(/^\s*([^:]+?)\s*:\s*(.*)/)
+              const taskRegex = /^\s*([^:]+?)\s*:\s*(.*)/
+              const taskMatch = taskRegex.exec(line)
               if (!taskMatch)
                 return line // Not a task line, return as is.
 
@@ -245,7 +246,12 @@ const Flowchart = (props: FlowchartProps) => {
 
               // Rule 1: Correct multiple "after" dependencies ONLY if they exist.
               // This is a common mistake, e.g., "..., after task1, after task2, ..."
-              const afterCount = (paramsStr.match(/after /g) || []).length
+              const afterMatches: string[] = []
+              const afterRegex = /after /g
+              let afterMatch
+              while ((afterMatch = afterRegex.exec(paramsStr)) !== null)
+                afterMatches.push(afterMatch[0])
+              const afterCount = afterMatches.length
               if (afterCount > 1)
                 paramsStr = paramsStr.replace(/,\s*after\s+/g, ' ')
 

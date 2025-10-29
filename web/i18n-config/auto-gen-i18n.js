@@ -183,7 +183,8 @@ export default translation
     if (fs.existsSync(toGenLanguageFilePath)) {
       const originalContent = fs.readFileSync(toGenLanguageFilePath, 'utf8')
       // Extract original template literal content for resolutionTooltip
-      const originalMatch = originalContent.match(/(resolutionTooltip):\s*`([^`]*)`/s)
+      const regex = /(resolutionTooltip):\s*`([^`]*)`/s
+      const originalMatch = regex.exec(originalContent)
       if (originalMatch) {
         const [fullMatch, key, value] = originalMatch
         res = res.replace(
