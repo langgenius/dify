@@ -22,7 +22,7 @@ type Props = {
   value: PluginTriggerVarInputs
   onChange: (value: PluginTriggerVarInputs) => void
   inPanel?: boolean
-  currentTrigger?: Event
+  currentEvent?: Event
   currentProvider?: TriggerWithProvider
   extraParams?: Record<string, any>
   disableVariableInsertion?: boolean
@@ -35,7 +35,7 @@ const TriggerFormItem: FC<Props> = ({
   value,
   onChange,
   inPanel,
-  currentTrigger,
+  currentEvent,
   currentProvider,
   extraParams,
   disableVariableInsertion = false,
@@ -91,7 +91,7 @@ const TriggerFormItem: FC<Props> = ({
         value={value}
         onChange={onChange}
         inPanel={inPanel}
-        currentTool={currentTrigger}
+        currentTool={currentEvent}
         currentProvider={currentProvider}
         providerType='trigger'
         extraParams={extraParams}
