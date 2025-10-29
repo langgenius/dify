@@ -360,7 +360,7 @@ class TestWorkflowResponseConverterServiceApiTruncation:
             app_id="test_app_id",
             app_config=app_config,
             tenant_id="test_tenant",
-            app_mode="workflow",
+            app_mode=AppMode.WORKFLOW,
             invoke_from=invoke_from,
             inputs={"test_input": "test_value"},
             user_id="test_user_id",

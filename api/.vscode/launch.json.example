@@ -54,7 +54,7 @@
                 "--loglevel",
                 "DEBUG",
                 "-Q",
-                "dataset,generation,mail,ops_trace,app_deletion,workflow"
+                "dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor"
             ]
         }
     ]

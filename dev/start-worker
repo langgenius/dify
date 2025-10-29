@@ -26,12 +26,16 @@ show_help() {
   echo "  workflow_sandbox      - Sandbox tier workflows (cloud edition)"
   echo "  schedule_poller       - Schedule polling tasks"
   echo "  schedule_executor     - Schedule execution tasks"
-  echo "  generation            - Content generation tasks"
   echo "  mail                  - Email notifications"
   echo "  ops_trace             - Operations tracing"
   echo "  app_deletion          - Application cleanup"
   echo "  plugin                - Plugin operations"
   echo "  workflow_storage      - Workflow storage tasks"
+  echo "  conversation          - Conversation tasks"
+  echo "  priority_pipeline     - High priority pipeline tasks"
+  echo "  pipeline              - Standard pipeline tasks"
+  echo "  triggered_workflow_dispatcher - Trigger dispatcher tasks"
+  echo "  trigger_refresh_executor - Trigger refresh tasks"
 }
 
 # Parse command line arguments
@@ -81,10 +85,10 @@ if [[ -z "${QUEUES}" ]]; then
   # Configure queues based on edition
   if [[ "${EDITION}" == "CLOUD" ]]; then
     # Cloud edition: separate queues for dataset and trigger tasks
-    QUEUES="dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,priority_pipeline,pipeline"
+    QUEUES="dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor"
   else
     # Community edition (SELF_HOSTED): dataset and workflow have separate queues
-    QUEUES="dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,priority_pipeline,pipeline"
+    QUEUES="dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor"
   fi
   
   echo "No queues specified, using edition-based defaults: ${QUEUES}"
