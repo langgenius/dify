@@ -1609,8 +1609,25 @@ def is_system_variable_editable(name: str) -> bool:
 
 
 class WorkflowPause(ModelMixin, Base):
+    """
+    WorkflowPause records the paused state and related metadata for a specific workflow run.
+
+    Each `WorkflowRun` can have zero or one associated `WorkflowPause`, depending on its execution status.
+    If a `WorkflowRun` is in the `PAUSED` state, there must be a corresponding `WorkflowPause`
+    that has not yet been resumed.
+    Otherwise, there should be no active (non-resumed) `WorkflowPause` linked to that run.
+
+    This model captures the execution context required to resume workflow processing at a later time.
+    """
+
     __tablename__ = "workflow_pauses"
-    __table_args__ = (UniqueConstraint("workflow_run_id"),)
+    __table_args__ = (
+        # Design Note:
+        # Instead of adding a `pause_id` field to the `WorkflowRun` model—which would require a migration
+        # on a potentially large table—we reference `WorkflowRun` from `WorkflowPause` and enforce a unique
+        # constraint on `workflow_run_id` to guarantee a one-to-one relationship.
+        UniqueConstraint("workflow_run_id"),
+    )
 
     # `tenant_id` identifies the tenant associated with this pause,
     # corresponding to the `id` field in the `Tenant` model.
@@ -1650,17 +1667,17 @@ class WorkflowPause(ModelMixin, Base):
 
     # `resumed_at` records the timestamp when the suspended workflow was resumed.
     # It is set to `NULL` if the workflow has not been resumed.
+    #
+    # NOTE: Resuming a suspended WorkflowPause does not delete the record immediately.
+    # It only set `resumed_at` to a non-null value.
     resumed_at: Mapped[datetime | None] = mapped_column(
         sa.DateTime,
         nullable=True,
     )
 
-    # `state_file_id` is the id of File containing the serialized runtime state of the `GraphEngine`,
-    # capturing the workflow's execution context at the time of pause.
-    #
-    # The value of `state` is a JSON-formatted string representing a JSON object (e.g., `{}`).
-
-    # state_object_key is
+    # state_object_key stores the object key referencing the serialized runtime state
+    # of the `GraphEngine`. This object captures the complete execution context of the
+    # workflow at the moment it was paused, enabling accurate resumption.
     state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
 
     # Relationship to WorkflowRun
