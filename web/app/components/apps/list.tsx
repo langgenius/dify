@@ -160,7 +160,7 @@ const List = () => {
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, setSize, anchorRef, data, error, containerRef])
+  }, [isLoading, setSize, data, error])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)
