@@ -230,3 +230,16 @@ class Tool(ABC):
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.JSON, message=ToolInvokeMessage.JsonMessage(json_object=object)
         )
+
+    def create_variable_message(
+        self, variable_name: str, variable_value: Any, stream: bool = False
+    ) -> ToolInvokeMessage:
+        """
+        create a variable message
+        """
+        return ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.VARIABLE,
+            message=ToolInvokeMessage.VariableMessage(
+                variable_name=variable_name, variable_value=variable_value, stream=stream
+            ),
+        )

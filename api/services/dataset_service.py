@@ -1416,8 +1416,6 @@ class DocumentService:
         # check document limit
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        assert knowledge_config.data_source
-        assert knowledge_config.data_source.info_list.file_info_list
 
         features = FeatureService.get_features(current_user.current_tenant_id)
 
@@ -1426,6 +1424,8 @@ class DocumentService:
                 count = 0
                 if knowledge_config.data_source:
                     if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                        if not knowledge_config.data_source.info_list.file_info_list:
+                            raise ValueError("File source info is required")
                         upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
                         count = len(upload_file_list)
                     elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
@@ -1446,7 +1446,7 @@ class DocumentService:
                     DocumentService.check_documents_upload_quota(count, features)
 
         # if dataset is empty, update dataset data_source_type
-        if not dataset.data_source_type:
+        if not dataset.data_source_type and knowledge_config.data_source:
             dataset.data_source_type = knowledge_config.data_source.info_list.data_source_type
 
         if not dataset.indexing_technique:
@@ -1492,6 +1492,10 @@ class DocumentService:
             documents.append(document)
             batch = document.batch
         else:
+            # When creating new documents, data_source must be provided
+            if not knowledge_config.data_source:
+                raise ValueError("Data source is required when creating new documents")
+
             batch = time.strftime("%Y%m%d%H%M%S") + str(100000 + secrets.randbelow(exclusive_upper_bound=900000))
             # save process rule
             if not dataset_process_rule:
@@ -1531,6 +1535,8 @@ class DocumentService:
                 document_ids = []
                 duplicate_document_ids = []
                 if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                    if not knowledge_config.data_source.info_list.file_info_list:
+                        raise ValueError("File source info is required")
                     upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
                     for file_id in upload_file_list:
                         file = (
