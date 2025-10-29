@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from yarl import URL
 
 from configs import dify_config
-from core.entities.mcp_provider import MCPConfiguration
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.mcp.types import Tool as MCPTool
 from core.plugin.entities.plugin_daemon import CredentialType, PluginDatasourceProviderEntity
@@ -231,6 +230,8 @@ class ToolTransformService:
         user_name: str | None = None,
         include_sensitive: bool = True,
     ) -> ToolProviderApiEntity:
+        from core.entities.mcp_provider import MCPConfiguration
+
         # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
         if user_name is None:
             user = db_provider.load_user()
