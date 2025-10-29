@@ -99,20 +99,26 @@ If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscod
 
 ## Test
 
-We start to use [Jest](https://jestjs.io/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
+We use [Jest](https://jestjs.io/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
 
-You can create a test file with a suffix of `.spec` beside the file that to be tested. For example, if you want to test a file named `util.ts`. The test file name should be `util.spec.ts`.
+**📖 Complete Testing Guide**: See [scripts/TESTING.md](./scripts/TESTING.md) for detailed testing specifications, best practices, and examples.
 
-Run test:
+### Example Code
+
+If you are not familiar with writing tests, refer to:
+
+- [classnames.spec.ts](./utils/classnames.spec.ts) - Utility function test example
+- [index.spec.tsx](./app/components/base/button/index.spec.tsx) - Component test example
+
+### Analyze Component Complexity
+
+Before writing tests, use the script to analyze component complexity:
 
 ```bash
-pnpm run test
+pnpm analyze-component app/components/your-component/index.tsx
 ```
 
-If you are not familiar with writing tests, here is some code to refer to:
-
-- [classnames.spec.ts](./utils/classnames.spec.ts)
-- [index.spec.tsx](./app/components/base/button/index.spec.tsx)
+This will help you determine the testing strategy. See [scripts/TESTING.md](./scripts/TESTING.md) for details.
 
 ## Documentation
 
