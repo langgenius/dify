@@ -27,6 +27,9 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<LLMNodeType>(id, payload)
   const inputRef = useRef(inputs)
+  useEffect(() => {
+    inputRef.current = inputs
+  }, [inputs])
 
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
 
