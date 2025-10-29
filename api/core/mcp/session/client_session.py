@@ -288,7 +288,7 @@ class ClientSession(
 
     def complete(
         self,
-        ref: types.ResourceReference | types.PromptReference,
+        ref: types.ResourceTemplateReference | types.PromptReference,
         argument: dict[str, str],
     ) -> types.CompleteResult:
         """Send a completion/complete request."""
@@ -298,7 +298,7 @@ class ClientSession(
                     method="completion/complete",
                     params=types.CompleteRequestParams(
                         ref=ref,
-                        argument=types.CompletionArgument(**argument),
+                        argument=types.CompletionArgument.model_validate(argument),
                     ),
                 )
             ),

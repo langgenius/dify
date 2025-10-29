@@ -61,18 +61,18 @@ class Dataset(Base):
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     embedding_model = mapped_column(db.String(255), nullable=True)
     embedding_model_provider = mapped_column(db.String(255), nullable=True)
-    keyword_number = db.Column(db.Integer, nullable=True, server_default=db.text("10"))
+    keyword_number = mapped_column(sa.Integer, nullable=True, server_default=db.text("10"))
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(JSONB, nullable=True)
-    built_in_field_enabled = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
-    icon_info = db.Column(JSONB, nullable=True)
-    runtime_mode = db.Column(db.String(255), nullable=True, server_default=db.text("'general'::character varying"))
-    pipeline_id = db.Column(StringUUID, nullable=True)
-    chunk_structure = db.Column(db.String(255), nullable=True)
-    enable_api = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
+    built_in_field_enabled = mapped_column(sa.Boolean, nullable=False, server_default=db.text("false"))
+    icon_info = mapped_column(JSONB, nullable=True)
+    runtime_mode = mapped_column(db.String(255), nullable=True, server_default=db.text("'general'::character varying"))
+    pipeline_id = mapped_column(StringUUID, nullable=True)
+    chunk_structure = mapped_column(db.String(255), nullable=True)
+    enable_api = mapped_column(sa.Boolean, nullable=False, server_default=db.text("true"))
 
     @property
     def total_documents(self):
@@ -184,7 +184,7 @@ class Dataset(Base):
     @property
     def retrieval_model_dict(self):
         default_retrieval_model = {
-            "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+            "search_method": RetrievalMethod.SEMANTIC_SEARCH,
             "reranking_enable": False,
             "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
             "top_k": 2,
@@ -754,7 +754,7 @@ class DocumentSegment(Base):
         if process_rule and process_rule.mode == "hierarchical":
             rules_dict = process_rule.rules_dict
             if rules_dict:
-                rules = Rule(**rules_dict)
+                rules = Rule.model_validate(rules_dict)
                 if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
                     child_chunks = (
                         db.session.query(ChildChunk)
@@ -772,7 +772,7 @@ class DocumentSegment(Base):
         if process_rule and process_rule.mode == "hierarchical":
             rules_dict = process_rule.rules_dict
             if rules_dict:
-                rules = Rule(**rules_dict)
+                rules = Rule.model_validate(rules_dict)
                 if rules.parent_mode:
                     child_chunks = (
                         db.session.query(ChildChunk)
@@ -1226,28 +1226,19 @@ class PipelineBuiltInTemplate(Base):  # type: ignore[name-defined]
     __tablename__ = "pipeline_built_in_templates"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_built_in_template_pkey"),)
 
-    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
-    name = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text, nullable=False)
-    chunk_structure = db.Column(db.String(255), nullable=False)
-    icon = db.Column(db.JSON, nullable=False)
-    yaml_content = db.Column(db.Text, nullable=False)
-    copyright = db.Column(db.String(255), nullable=False)
-    privacy_policy = db.Column(db.String(255), nullable=False)
-    position = db.Column(db.Integer, nullable=False)
-    install_count = db.Column(db.Integer, nullable=False, default=0)
-    language = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    created_by = db.Column(StringUUID, nullable=False)
-    updated_by = db.Column(StringUUID, nullable=True)
-
-    @property
-    def created_user_name(self):
-        account = db.session.query(Account).where(Account.id == self.created_by).first()
-        if account:
-            return account.name
-        return ""
+    id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    name = mapped_column(db.String(255), nullable=False)
+    description = mapped_column(sa.Text, nullable=False)
+    chunk_structure = mapped_column(db.String(255), nullable=False)
+    icon = mapped_column(sa.JSON, nullable=False)
+    yaml_content = mapped_column(sa.Text, nullable=False)
+    copyright = mapped_column(db.String(255), nullable=False)
+    privacy_policy = mapped_column(db.String(255), nullable=False)
+    position = mapped_column(sa.Integer, nullable=False)
+    install_count = mapped_column(sa.Integer, nullable=False, default=0)
+    language = mapped_column(db.String(255), nullable=False)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]
@@ -1257,20 +1248,20 @@ class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]
         db.Index("pipeline_customized_template_tenant_idx", "tenant_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
-    tenant_id = db.Column(StringUUID, nullable=False)
-    name = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text, nullable=False)
-    chunk_structure = db.Column(db.String(255), nullable=False)
-    icon = db.Column(db.JSON, nullable=False)
-    position = db.Column(db.Integer, nullable=False)
-    yaml_content = db.Column(db.Text, nullable=False)
-    install_count = db.Column(db.Integer, nullable=False, default=0)
-    language = db.Column(db.String(255), nullable=False)
-    created_by = db.Column(StringUUID, nullable=False)
-    updated_by = db.Column(StringUUID, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    tenant_id = mapped_column(StringUUID, nullable=False)
+    name = mapped_column(db.String(255), nullable=False)
+    description = mapped_column(sa.Text, nullable=False)
+    chunk_structure = mapped_column(db.String(255), nullable=False)
+    icon = mapped_column(sa.JSON, nullable=False)
+    position = mapped_column(sa.Integer, nullable=False)
+    yaml_content = mapped_column(sa.Text, nullable=False)
+    install_count = mapped_column(sa.Integer, nullable=False, default=0)
+    language = mapped_column(db.String(255), nullable=False)
+    created_by = mapped_column(StringUUID, nullable=False)
+    updated_by = mapped_column(StringUUID, nullable=True)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def created_user_name(self):
@@ -1284,17 +1275,17 @@ class Pipeline(Base):  # type: ignore[name-defined]
     __tablename__ = "pipelines"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_pkey"),)
 
-    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
-    tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
-    name = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
-    workflow_id = db.Column(StringUUID, nullable=True)
-    is_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    is_published = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    created_by = db.Column(StringUUID, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = db.Column(StringUUID, nullable=True)
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    name = mapped_column(db.String(255), nullable=False)
+    description = mapped_column(sa.Text, nullable=False, server_default=db.text("''::character varying"))
+    workflow_id = mapped_column(StringUUID, nullable=True)
+    is_public = mapped_column(sa.Boolean, nullable=False, server_default=db.text("false"))
+    is_published = mapped_column(sa.Boolean, nullable=False, server_default=db.text("false"))
+    created_by = mapped_column(StringUUID, nullable=True)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_by = mapped_column(StringUUID, nullable=True)
+    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     def retrieve_dataset(self, session: Session):
         return session.query(Dataset).where(Dataset.pipeline_id == self.id).first()
@@ -1307,25 +1298,25 @@ class DocumentPipelineExecutionLog(Base):
         db.Index("document_pipeline_execution_logs_document_id_idx", "document_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
-    pipeline_id = db.Column(StringUUID, nullable=False)
-    document_id = db.Column(StringUUID, nullable=False)
-    datasource_type = db.Column(db.String(255), nullable=False)
-    datasource_info = db.Column(db.Text, nullable=False)
-    datasource_node_id = db.Column(db.String(255), nullable=False)
-    input_data = db.Column(db.JSON, nullable=False)
-    created_by = db.Column(StringUUID, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    pipeline_id = mapped_column(StringUUID, nullable=False)
+    document_id = mapped_column(StringUUID, nullable=False)
+    datasource_type = mapped_column(db.String(255), nullable=False)
+    datasource_info = mapped_column(sa.Text, nullable=False)
+    datasource_node_id = mapped_column(db.String(255), nullable=False)
+    input_data = mapped_column(sa.JSON, nullable=False)
+    created_by = mapped_column(StringUUID, nullable=True)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class PipelineRecommendedPlugin(Base):
     __tablename__ = "pipeline_recommended_plugins"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_recommended_plugin_pkey"),)
 
-    id = db.Column(StringUUID, server_default=db.text("uuidv7()"))
-    plugin_id = db.Column(db.Text, nullable=False)
-    provider_name = db.Column(db.Text, nullable=False)
-    position = db.Column(db.Integer, nullable=False, default=0)
-    active = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    plugin_id = mapped_column(sa.Text, nullable=False)
+    provider_name = mapped_column(sa.Text, nullable=False)
+    position = mapped_column(sa.Integer, nullable=False, default=0)
+    active = mapped_column(sa.Boolean, nullable=False, default=True)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())

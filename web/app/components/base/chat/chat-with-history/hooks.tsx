@@ -8,7 +8,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { useLocalStorageState } from 'ahooks'
-import produce from 'immer'
+import { produce } from 'immer'
 import type {
   Callback,
   ChatConfig,
@@ -128,7 +128,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         const localState = localStorage.getItem('webappSidebarCollapse')
         return localState === 'collapsed'
       }
-      catch (e) {
+      catch {
         // localStorage may be disabled in private browsing mode or by security settings
         // fallback to default value
         return false
@@ -142,7 +142,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       try {
         localStorage.setItem('webappSidebarCollapse', state ? 'collapsed' : 'expanded')
       }
-      catch (e) {
+      catch {
         // localStorage may be disabled, continue without persisting state
       }
     }
@@ -235,13 +235,15 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         }
       }
 
-      if(item.checkbox) {
+      if (item.checkbox) {
+        const preset = initInputs[item.checkbox.variable] === true
         return {
           ...item.checkbox,
-          default: false,
+          default: preset || item.default || item.checkbox.default,
           type: 'checkbox',
         }
       }
+
       if (item.select) {
         const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
         return {

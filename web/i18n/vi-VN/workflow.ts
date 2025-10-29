@@ -328,6 +328,7 @@ const translation = {
     addNextStep: 'Thêm bước tiếp theo trong quy trình này',
     maximize: 'Tối đa hóa Canvas',
     minimize: 'Thoát chế độ toàn màn hình',
+    optional_and_hidden: '(tùy chọn & ẩn)',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'Nội dung được tạo',
+        reasoning_content: 'Nội dung lập luận',
         usage: 'Thông tin sử dụng mô hình',
       },
       singleRun: {
@@ -944,6 +946,11 @@ const translation = {
       indexMethodIsRequired: 'Phương pháp chỉ mục là bắt buộc',
       chunksInput: 'Mảnh',
       chunksInputTip: 'Biến đầu vào của nút cơ sở tri thức là Chunks. Loại biến là một đối tượng với một JSON Schema cụ thể mà phải nhất quán với cấu trúc chunk đã chọn.',
+      chunksVariableIsRequired: 'Biến Chunks là bắt buộc',
+      embeddingModelIsRequired: 'Cần có mô hình nhúng',
+      rerankingModelIsRequired: 'Cần có mô hình sắp xếp lại',
+      embeddingModelIsInvalid: 'Mô hình nhúng không hợp lệ',
+      rerankingModelIsInvalid: 'Mô hình xếp hạng lại không hợp lệ',
     },
   },
   tracing: {

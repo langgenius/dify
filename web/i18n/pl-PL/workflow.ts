@@ -328,6 +328,7 @@ const translation = {
     organizeBlocks: 'Organizuj węzły',
     minimize: 'Wyjdź z trybu pełnoekranowego',
     maximize: 'Maksymalizuj płótno',
+    optional_and_hidden: '(opcjonalne i ukryte)',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'Generowana treść',
+        reasoning_content: 'Treść rozumowania',
         usage: 'Informacje o użyciu modelu',
       },
       singleRun: {
@@ -944,6 +946,11 @@ const translation = {
       chunkIsRequired: 'Wymagana jest struktura porcji',
       chunksInput: 'Kawałki',
       chunksInputTip: 'Zmienna wejściowa węzła bazy wiedzy to Chunks. Typ zmiennej to obiekt z określonym schematem JSON, który musi być zgodny z wybraną strukturą chunk.',
+      embeddingModelIsRequired: 'Wymagany jest model osadzania',
+      chunksVariableIsRequired: 'Wymagana jest zmienna Chunks',
+      rerankingModelIsRequired: 'Wymagany jest model ponownego rankingu',
+      embeddingModelIsInvalid: 'Model osadzania jest nieprawidłowy',
+      rerankingModelIsInvalid: 'Model ponownego rankingowania jest nieprawidłowy',
     },
   },
   tracing: {

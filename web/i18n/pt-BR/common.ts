@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Desmarcar tudo',
     selectAll: 'Selecionar tudo',
     config: 'Configuração',
+    no: 'Não',
+    yes: 'Sim',
+    deleteConfirmTitle: 'Excluir?',
+    confirmAction: 'Por favor, confirme sua ação.',
   },
   placeholder: {
     input: 'Por favor, insira',
@@ -165,6 +169,7 @@ const translation = {
     github: 'GitHub',
     support: 'Suporte',
     compliance: 'Conformidade',
+    contactUs: 'Contate-Nos',
   },
   settings: {
     accountGroup: 'CONTA',
@@ -501,6 +506,7 @@ const translation = {
       addNewModelCredential: 'Adicionar nova credencial de modelo',
     },
     parametersInvalidRemoved: 'Alguns parâmetros são inválidos e foram removidos',
+    installDataSourceProvider: 'Instalar provedores de fontes de dados',
   },
   dataSource: {
     add: 'Adicionar uma fonte de dados',

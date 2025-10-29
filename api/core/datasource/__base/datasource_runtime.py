@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING, Any, Optional
 
-from openai import BaseModel
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 # Import InvokeFrom locally to avoid circular import
 from core.app.entities.app_invoke_entities import InvokeFrom

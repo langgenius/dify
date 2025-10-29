@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'Seleziona tutto',
     deSelectAll: 'Deseleziona tutto',
     config: 'Config',
+    no: 'No',
+    yes: 'Sì',
+    confirmAction: 'Per favore conferma la tua azione.',
+    deleteConfirmTitle: 'Eliminare?',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -174,6 +178,7 @@ const translation = {
     support: 'Supporto',
     compliance: 'Conformità',
     github: 'GitHub',
+    contactUs: 'Contattaci',
   },
   settings: {
     accountGroup: 'ACCOUNT',
@@ -527,6 +532,7 @@ const translation = {
       editModelCredential: 'Modificare le credenziali del modello',
     },
     parametersInvalidRemoved: 'Alcuni parametri non sono validi e sono stati rimossi.',
+    installDataSourceProvider: 'Installa i fornitori di sorgenti dati',
   },
   dataSource: {
     add: 'Aggiungi una fonte di dati',

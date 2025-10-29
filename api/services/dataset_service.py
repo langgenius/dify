@@ -29,7 +29,7 @@ from extensions.ext_redis import redis_client
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
-from models.account import Account, TenantAccountRole
+from models import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
     ChildChunk,
@@ -93,7 +93,7 @@ logger = logging.getLogger(__name__)
 class DatasetService:
     @staticmethod
     def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
-        query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc())
+        query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
         if user:
             # get permitted dataset ids
@@ -241,9 +241,9 @@ class DatasetService:
         dataset.created_by = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
-        dataset.embedding_model_provider = embedding_model.provider if embedding_model else None  # type: ignore
-        dataset.embedding_model = embedding_model.model if embedding_model else None  # type: ignore
-        dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None  # type: ignore
+        dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
+        dataset.embedding_model = embedding_model.model if embedding_model else None
+        dataset.retrieval_model = retrieval_model.model_dump() if retrieval_model else None
         dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
         db.session.add(dataset)
@@ -1416,6 +1416,8 @@ class DocumentService:
         # check document limit
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
+        assert knowledge_config.data_source
+        assert knowledge_config.data_source.info_list
 
         features = FeatureService.get_features(current_user.current_tenant_id)
 
@@ -1424,15 +1426,18 @@ class DocumentService:
                 count = 0
                 if knowledge_config.data_source:
                     if knowledge_config.data_source.info_list.data_source_type == "upload_file":
-                        upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids  # type: ignore
+                        if not knowledge_config.data_source.info_list.file_info_list:
+                            raise ValueError("File source info is required")
+                        upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
                         count = len(upload_file_list)
                     elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
-                        notion_info_list = knowledge_config.data_source.info_list.notion_info_list
-                        for notion_info in notion_info_list:  # type: ignore
+                        notion_info_list = knowledge_config.data_source.info_list.notion_info_list or []
+                        for notion_info in notion_info_list:
                             count = count + len(notion_info.pages)
                     elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
                         website_info = knowledge_config.data_source.info_list.website_info_list
-                        count = len(website_info.urls)  # type: ignore
+                        assert website_info
+                        count = len(website_info.urls)
                     batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
 
                     if features.billing.subscription.plan == "sandbox" and count > 1:
@@ -1444,7 +1449,7 @@ class DocumentService:
 
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
-            dataset.data_source_type = knowledge_config.data_source.info_list.data_source_type  # type: ignore
+            dataset.data_source_type = knowledge_config.data_source.info_list.data_source_type
 
         if not dataset.indexing_technique:
             if knowledge_config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
@@ -1470,7 +1475,7 @@ class DocumentService:
                 dataset.collection_binding_id = dataset_collection_binding.id
                 if not dataset.retrieval_model:
                     default_retrieval_model = {
-                        "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+                        "search_method": RetrievalMethod.SEMANTIC_SEARCH,
                         "reranking_enable": False,
                         "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
                         "top_k": 4,
@@ -1481,7 +1486,7 @@ class DocumentService:
                         knowledge_config.retrieval_model.model_dump()
                         if knowledge_config.retrieval_model
                         else default_retrieval_model
-                    )  # type: ignore
+                    )
 
         documents = []
         if knowledge_config.original_document_id:
@@ -1523,11 +1528,14 @@ class DocumentService:
                     db.session.flush()
             lock_name = f"add_document_lock_dataset_id_{dataset.id}"
             with redis_client.lock(lock_name, timeout=600):
+                assert dataset_process_rule
                 position = DocumentService.get_documents_position(dataset.id)
                 document_ids = []
                 duplicate_document_ids = []
-                if knowledge_config.data_source.info_list.data_source_type == "upload_file":  # type: ignore
-                    upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids  # type: ignore
+                if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                    if not knowledge_config.data_source.info_list.file_info_list:
+                        raise ValueError("File source info is required")
+                    upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
                     for file_id in upload_file_list:
                         file = (
                             db.session.query(UploadFile)
@@ -1540,7 +1548,7 @@ class DocumentService:
                             raise FileNotExistsError()
 
                         file_name = file.name
-                        data_source_info = {
+                        data_source_info: dict[str, str | bool] = {
                             "upload_file_id": file_id,
                         }
                         # check duplicate
@@ -1557,7 +1565,7 @@ class DocumentService:
                                 .first()
                             )
                             if document:
-                                document.dataset_process_rule_id = dataset_process_rule.id  # type: ignore
+                                document.dataset_process_rule_id = dataset_process_rule.id
                                 document.updated_at = naive_utc_now()
                                 document.created_from = created_from
                                 document.doc_form = knowledge_config.doc_form
@@ -1571,8 +1579,8 @@ class DocumentService:
                                 continue
                         document = DocumentService.build_document(
                             dataset,
-                            dataset_process_rule.id,  # type: ignore
-                            knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+                            dataset_process_rule.id,
+                            knowledge_config.data_source.info_list.data_source_type,
                             knowledge_config.doc_form,
                             knowledge_config.doc_language,
                             data_source_info,
@@ -1587,7 +1595,7 @@ class DocumentService:
                         document_ids.append(document.id)
                         documents.append(document)
                         position += 1
-                elif knowledge_config.data_source.info_list.data_source_type == "notion_import":  # type: ignore
+                elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
                     notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
                     if not notion_info_list:
                         raise ValueError("No notion info list found.")
@@ -1616,15 +1624,15 @@ class DocumentService:
                                     "credential_id": notion_info.credential_id,
                                     "notion_workspace_id": workspace_id,
                                     "notion_page_id": page.page_id,
-                                    "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,
+                                    "notion_page_icon": page.page_icon.model_dump() if page.page_icon else None,  # type: ignore
                                     "type": page.type,
                                 }
                                 # Truncate page name to 255 characters to prevent DB field length errors
                                 truncated_page_name = page.page_name[:255] if page.page_name else "nopagename"
                                 document = DocumentService.build_document(
                                     dataset,
-                                    dataset_process_rule.id,  # type: ignore
-                                    knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+                                    dataset_process_rule.id,
+                                    knowledge_config.data_source.info_list.data_source_type,
                                     knowledge_config.doc_form,
                                     knowledge_config.doc_language,
                                     data_source_info,
@@ -1644,8 +1652,8 @@ class DocumentService:
                     # delete not selected documents
                     if len(exist_document) > 0:
                         clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
-                elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":  # type: ignore
-                    website_info = knowledge_config.data_source.info_list.website_info_list  # type: ignore
+                elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
+                    website_info = knowledge_config.data_source.info_list.website_info_list
                     if not website_info:
                         raise ValueError("No website info list found.")
                     urls = website_info.urls
@@ -1663,8 +1671,8 @@ class DocumentService:
                             document_name = url
                         document = DocumentService.build_document(
                             dataset,
-                            dataset_process_rule.id,  # type: ignore
-                            knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+                            dataset_process_rule.id,
+                            knowledge_config.data_source.info_list.data_source_type,
                             knowledge_config.doc_form,
                             knowledge_config.doc_language,
                             data_source_info,
@@ -1752,7 +1760,7 @@ class DocumentService:
     #             dataset.collection_binding_id = dataset_collection_binding.id
     #             if not dataset.retrieval_model:
     #                 default_retrieval_model = {
-    #                     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    #                     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     #                     "reranking_enable": False,
     #                     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     #                     "top_k": 2,
@@ -2071,7 +2079,7 @@ class DocumentService:
         # update document data source
         if document_data.data_source:
             file_name = ""
-            data_source_info = {}
+            data_source_info: dict[str, str | bool] = {}
             if document_data.data_source.info_list.data_source_type == "upload_file":
                 if not document_data.data_source.info_list.file_info_list:
                     raise ValueError("No file info list found.")
@@ -2128,7 +2136,7 @@ class DocumentService:
                             "url": url,
                             "provider": website_info.provider,
                             "job_id": website_info.job_id,
-                            "only_main_content": website_info.only_main_content,  # type: ignore
+                            "only_main_content": website_info.only_main_content,
                             "mode": "crawl",
                         }
             document.data_source_type = document_data.data_source.info_list.data_source_type
@@ -2154,7 +2162,7 @@ class DocumentService:
 
         db.session.query(DocumentSegment).filter_by(document_id=document.id).update(
             {DocumentSegment.status: "re_segment"}
-        )  # type: ignore
+        )
         db.session.commit()
         # trigger async task
         document_indexing_update_task.delay(document.dataset_id, document.id)
@@ -2164,25 +2172,26 @@ class DocumentService:
     def save_document_without_dataset_id(tenant_id: str, knowledge_config: KnowledgeConfig, account: Account):
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
+        assert knowledge_config.data_source
 
         features = FeatureService.get_features(current_user.current_tenant_id)
 
         if features.billing.enabled:
             count = 0
-            if knowledge_config.data_source.info_list.data_source_type == "upload_file":  # type: ignore
+            if knowledge_config.data_source.info_list.data_source_type == "upload_file":
                 upload_file_list = (
-                    knowledge_config.data_source.info_list.file_info_list.file_ids  # type: ignore
-                    if knowledge_config.data_source.info_list.file_info_list  # type: ignore
+                    knowledge_config.data_source.info_list.file_info_list.file_ids
+                    if knowledge_config.data_source.info_list.file_info_list
                     else []
                 )
                 count = len(upload_file_list)
-            elif knowledge_config.data_source.info_list.data_source_type == "notion_import":  # type: ignore
-                notion_info_list = knowledge_config.data_source.info_list.notion_info_list  # type: ignore
+            elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
+                notion_info_list = knowledge_config.data_source.info_list.notion_info_list
                 if notion_info_list:
                     for notion_info in notion_info_list:
                         count = count + len(notion_info.pages)
-            elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":  # type: ignore
-                website_info = knowledge_config.data_source.info_list.website_info_list  # type: ignore
+            elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
+                website_info = knowledge_config.data_source.info_list.website_info_list
                 if website_info:
                     count = len(website_info.urls)
             if features.billing.subscription.plan == "sandbox" and count > 1:
@@ -2196,16 +2205,18 @@ class DocumentService:
         dataset_collection_binding_id = None
         retrieval_model = None
         if knowledge_config.indexing_technique == "high_quality":
+            assert knowledge_config.embedding_model_provider
+            assert knowledge_config.embedding_model
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                knowledge_config.embedding_model_provider,  # type: ignore
-                knowledge_config.embedding_model,  # type: ignore
+                knowledge_config.embedding_model_provider,
+                knowledge_config.embedding_model,
             )
             dataset_collection_binding_id = dataset_collection_binding.id
         if knowledge_config.retrieval_model:
             retrieval_model = knowledge_config.retrieval_model
         else:
             retrieval_model = RetrievalModel(
-                search_method=RetrievalMethod.SEMANTIC_SEARCH.value,
+                search_method=RetrievalMethod.SEMANTIC_SEARCH,
                 reranking_enable=False,
                 reranking_model=RerankingModel(reranking_provider_name="", reranking_model_name=""),
                 top_k=4,
@@ -2215,7 +2226,7 @@ class DocumentService:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="",
-            data_source_type=knowledge_config.data_source.info_list.data_source_type,  # type: ignore
+            data_source_type=knowledge_config.data_source.info_list.data_source_type,
             indexing_technique=knowledge_config.indexing_technique,
             created_by=account.id,
             embedding_model=knowledge_config.embedding_model,
@@ -2224,7 +2235,7 @@ class DocumentService:
             retrieval_model=retrieval_model.model_dump() if retrieval_model else None,
         )
 
-        db.session.add(dataset)  # type: ignore
+        db.session.add(dataset)
         db.session.flush()
 
         documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account)

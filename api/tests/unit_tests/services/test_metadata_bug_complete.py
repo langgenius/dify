@@ -41,7 +41,10 @@ class TestMetadataBugCompleteValidation:
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
 
-        with patch("services.metadata_service.current_user", mock_user):
+        with patch(
+            "services.metadata_service.current_account_with_tenant",
+            return_value=(mock_user, mock_user.current_tenant_id),
+        ):
             # Should crash with TypeError
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
@@ -51,7 +54,10 @@ class TestMetadataBugCompleteValidation:
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
 
-        with patch("services.metadata_service.current_user", mock_user):
+        with patch(
+            "services.metadata_service.current_account_with_tenant",
+            return_value=(mock_user, mock_user.current_tenant_id),
+        ):
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
 
@@ -74,9 +80,11 @@ class TestMetadataBugCompleteValidation:
     def test_4_fixed_api_layer_rejects_null(self, app):
         """Test Layer 4: Fixed API configuration properly rejects null values."""
         # Test Console API create endpoint (fixed)
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=False, location="json")
+            .add_argument("name", type=str, required=True, nullable=False, location="json")
+        )
 
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             with pytest.raises(BadRequest):
@@ -94,9 +102,11 @@ class TestMetadataBugCompleteValidation:
 
     def test_5_fixed_api_accepts_valid_values(self, app):
         """Test that fixed API still accepts valid non-null values."""
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=False, location="json")
+            .add_argument("name", type=str, required=True, nullable=False, location="json")
+        )
 
         with app.test_request_context(json={"type": "string", "name": "valid_name"}, content_type="application/json"):
             args = parser.parse_args()
@@ -106,9 +116,11 @@ class TestMetadataBugCompleteValidation:
     def test_6_simulated_buggy_behavior(self, app):
         """Test simulating the original buggy behavior with nullable=True."""
         # Simulate the old buggy configuration
-        buggy_parser = reqparse.RequestParser()
-        buggy_parser.add_argument("type", type=str, required=True, nullable=True, location="json")
-        buggy_parser.add_argument("name", type=str, required=True, nullable=True, location="json")
+        buggy_parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=True, location="json")
+            .add_argument("name", type=str, required=True, nullable=True, location="json")
+        )
 
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             # This would pass in the buggy version
@@ -118,7 +130,7 @@ class TestMetadataBugCompleteValidation:
 
             # But would crash when trying to create MetadataArgs
             with pytest.raises((ValueError, TypeError)):
-                MetadataArgs(**args)
+                MetadataArgs.model_validate(args)
 
     def test_7_end_to_end_validation_layers(self):
         """Test all validation layers work together correctly."""
@@ -131,7 +143,7 @@ class TestMetadataBugCompleteValidation:
         valid_data = {"type": "string", "name": "test_metadata"}
 
         # Should create valid Pydantic object
-        metadata_args = MetadataArgs(**valid_data)
+        metadata_args = MetadataArgs.model_validate(valid_data)
         assert metadata_args.type == "string"
         assert metadata_args.name == "test_metadata"
 

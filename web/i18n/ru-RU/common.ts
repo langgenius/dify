@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'Выбрать все',
     deSelectAll: 'Снять выделение со всех',
     config: 'Конфигурация',
+    yes: 'Да',
+    no: 'Нет',
+    deleteConfirmTitle: 'Удалить?',
+    confirmAction: 'Пожалуйста, подтвердите ваше действие.',
   },
   errorMsg: {
     fieldRequired: '{{field}} обязательно',
@@ -169,6 +173,7 @@ const translation = {
     github: 'ГитХаб',
     compliance: 'Соблюдение',
     support: 'Поддержка',
+    contactUs: 'Свяжитесь с нами',
   },
   settings: {
     accountGroup: 'АККАУНТ',
@@ -505,6 +510,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'Учетные данные используются и не могут быть удалены',
     },
     parametersInvalidRemoved: 'Некоторые параметры недействительны и были удалены',
+    installDataSourceProvider: 'Установить поставщиков источников данных',
   },
   dataSource: {
     add: 'Добавить источник данных',

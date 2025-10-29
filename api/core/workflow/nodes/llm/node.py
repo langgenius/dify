@@ -23,6 +23,7 @@ from core.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
     LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
     LLMStructuredOutput,
     LLMUsage,
 )
@@ -51,7 +52,7 @@ from core.variables import (
     StringSegment,
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities import GraphInitParams, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.enums import (
     ErrorStrategy,
     NodeType,
@@ -70,6 +71,7 @@ from core.workflow.node_events import (
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
+from core.workflow.runtime import VariablePool
 
 from . import llm_utils
 from .entities import (
@@ -92,7 +94,7 @@ from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.entities import GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +129,7 @@ class LLMNode(Node):
             graph_runtime_state=graph_runtime_state,
         )
         # LLM file outputs, used for MultiModal outputs.
-        self._file_outputs: list[File] = []
+        self._file_outputs = []
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -165,6 +167,7 @@ class LLMNode(Node):
         node_inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
         result_text = ""
+        clean_text = ""
         usage = LLMUsage.empty_usage()
         finish_reason = None
         reasoning_content = None
@@ -277,6 +280,13 @@ class LLMNode(Node):
                     else:
                         # Extract clean text from <think> tags
                         clean_text, _ = LLMNode._split_reasoning(result_text, self._node_data.reasoning_format)
+
+                    # Process structured output if available from the event.
+                    structured_output = (
+                        LLMStructuredOutput(structured_output=event.structured_output)
+                        if event.structured_output
+                        else None
+                    )
 
                     # deduct quota
                     llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
@@ -431,10 +441,14 @@ class LLMNode(Node):
         usage = LLMUsage.empty_usage()
         finish_reason = None
         full_text_buffer = io.StringIO()
+        collected_structured_output = None  # Collect structured_output from streaming chunks
         # Consume the invoke result and handle generator exception
         try:
             for result in invoke_result:
                 if isinstance(result, LLMResultChunkWithStructuredOutput):
+                    # Collect structured_output from the chunk
+                    if result.structured_output is not None:
+                        collected_structured_output = dict(result.structured_output)
                     yield result
                 if isinstance(result, LLMResultChunk):
                     contents = result.delta.message.content
@@ -482,6 +496,8 @@ class LLMNode(Node):
             finish_reason=finish_reason,
             # Reasoning content for workflow variables and downstream nodes
             reasoning_content=reasoning_content,
+            # Pass structured output if collected from streaming chunks
+            structured_output=collected_structured_output,
         )
 
     @staticmethod
@@ -936,7 +952,7 @@ class LLMNode(Node):
             variable_mapping["#files#"] = typed_node_data.vision.configs.variable_selector
 
         if typed_node_data.memory:
-            variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY.value]
+            variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY]
 
         if typed_node_data.prompt_config:
             enable_jinja = False
@@ -1048,7 +1064,7 @@ class LLMNode(Node):
     @staticmethod
     def handle_blocking_result(
         *,
-        invoke_result: LLMResult,
+        invoke_result: LLMResult | LLMResultWithStructuredOutput,
         saver: LLMFileSaver,
         file_outputs: list["File"],
         reasoning_format: Literal["separated", "tagged"] = "tagged",
@@ -1079,6 +1095,8 @@ class LLMNode(Node):
             finish_reason=None,
             # Reasoning content for workflow variables and downstream nodes
             reasoning_content=reasoning_content,
+            # Pass structured output if enabled
+            structured_output=getattr(invoke_result, "structured_output", None),
         )
 
     @staticmethod

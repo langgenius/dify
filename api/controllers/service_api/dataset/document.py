@@ -35,37 +35,31 @@ from services.entities.knowledge_entities.knowledge_entities import KnowledgeCon
 from services.file_service import FileService
 
 # Define parsers for document operations
-document_text_create_parser = reqparse.RequestParser()
-document_text_create_parser.add_argument("name", type=str, required=True, nullable=False, location="json")
-document_text_create_parser.add_argument("text", type=str, required=True, nullable=False, location="json")
-document_text_create_parser.add_argument("process_rule", type=dict, required=False, nullable=True, location="json")
-document_text_create_parser.add_argument("original_document_id", type=str, required=False, location="json")
-document_text_create_parser.add_argument(
-    "doc_form", type=str, default="text_model", required=False, nullable=False, location="json"
-)
-document_text_create_parser.add_argument(
-    "doc_language", type=str, default="English", required=False, nullable=False, location="json"
-)
-document_text_create_parser.add_argument(
-    "indexing_technique", type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False, location="json"
-)
-document_text_create_parser.add_argument("retrieval_model", type=dict, required=False, nullable=True, location="json")
-document_text_create_parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
-document_text_create_parser.add_argument(
-    "embedding_model_provider", type=str, required=False, nullable=True, location="json"
+document_text_create_parser = (
+    reqparse.RequestParser()
+    .add_argument("name", type=str, required=True, nullable=False, location="json")
+    .add_argument("text", type=str, required=True, nullable=False, location="json")
+    .add_argument("process_rule", type=dict, required=False, nullable=True, location="json")
+    .add_argument("original_document_id", type=str, required=False, location="json")
+    .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
+    .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
+    .add_argument(
+        "indexing_technique", type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False, location="json"
+    )
+    .add_argument("retrieval_model", type=dict, required=False, nullable=True, location="json")
+    .add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
+    .add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
 )
 
-document_text_update_parser = reqparse.RequestParser()
-document_text_update_parser.add_argument("name", type=str, required=False, nullable=True, location="json")
-document_text_update_parser.add_argument("text", type=str, required=False, nullable=True, location="json")
-document_text_update_parser.add_argument("process_rule", type=dict, required=False, nullable=True, location="json")
-document_text_update_parser.add_argument(
-    "doc_form", type=str, default="text_model", required=False, nullable=False, location="json"
+document_text_update_parser = (
+    reqparse.RequestParser()
+    .add_argument("name", type=str, required=False, nullable=True, location="json")
+    .add_argument("text", type=str, required=False, nullable=True, location="json")
+    .add_argument("process_rule", type=dict, required=False, nullable=True, location="json")
+    .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
+    .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
+    .add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
 )
-document_text_update_parser.add_argument(
-    "doc_language", type=str, default="English", required=False, nullable=False, location="json"
-)
-document_text_update_parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
 
 
 @service_api_ns.route(
@@ -108,19 +102,21 @@ class DocumentAddByTextApi(DatasetApiResource):
         if text is None or name is None:
             raise ValueError("Both 'text' and 'name' must be non-null values.")
 
-        if args.get("embedding_model_provider"):
-            DatasetService.check_embedding_model_setting(
-                tenant_id, args.get("embedding_model_provider"), args.get("embedding_model")
-            )
+        embedding_model_provider = args.get("embedding_model_provider")
+        embedding_model = args.get("embedding_model")
+        if embedding_model_provider and embedding_model:
+            DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model)
+
+        retrieval_model = args.get("retrieval_model")
         if (
-            args.get("retrieval_model")
-            and args.get("retrieval_model").get("reranking_model")
-            and args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")
+            retrieval_model
+            and retrieval_model.get("reranking_model")
+            and retrieval_model.get("reranking_model").get("reranking_provider_name")
         ):
             DatasetService.check_reranking_model_setting(
                 tenant_id,
-                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
-                args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
+                retrieval_model.get("reranking_model").get("reranking_provider_name"),
+                retrieval_model.get("reranking_model").get("reranking_model_name"),
             )
 
         if not current_user:
@@ -134,7 +130,7 @@ class DocumentAddByTextApi(DatasetApiResource):
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
         }
         args["data_source"] = data_source
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         # validate args
         DocumentService.document_create_args_validate(knowledge_config)
 
@@ -187,15 +183,16 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         if not dataset:
             raise ValueError("Dataset does not exist.")
 
+        retrieval_model = args.get("retrieval_model")
         if (
-            args.get("retrieval_model")
-            and args.get("retrieval_model").get("reranking_model")
-            and args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")
+            retrieval_model
+            and retrieval_model.get("reranking_model")
+            and retrieval_model.get("reranking_model").get("reranking_provider_name")
         ):
             DatasetService.check_reranking_model_setting(
                 tenant_id,
-                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
-                args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
+                retrieval_model.get("reranking_model").get("reranking_provider_name"),
+                retrieval_model.get("reranking_model").get("reranking_model_name"),
             )
 
         # indexing_technique is already set in dataset since this is an update
@@ -218,7 +215,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
             args["data_source"] = data_source
         # validate args
         args["original_document_id"] = str(document_id)
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         DocumentService.document_create_args_validate(knowledge_config)
 
         try:
@@ -325,7 +322,7 @@ class DocumentAddByFileApi(DatasetApiResource):
         }
         args["data_source"] = data_source
         # validate args
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         DocumentService.document_create_args_validate(knowledge_config)
 
         dataset_process_rule = dataset.latest_process_rule if "process_rule" not in args else None
@@ -423,7 +420,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         # validate args
         args["original_document_id"] = str(document_id)
 
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig.model_validate(args)
         DocumentService.document_create_args_validate(knowledge_config)
 
         try:

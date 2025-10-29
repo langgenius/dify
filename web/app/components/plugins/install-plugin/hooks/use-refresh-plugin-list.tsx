@@ -2,11 +2,12 @@ import { useModelList } from '@/app/components/header/account-setting/model-prov
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useProviderContext } from '@/context/provider-context'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders } from '@/service/use-tools'
+import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders, useInvalidateRAGRecommendedPlugins } from '@/service/use-tools'
 import { useInvalidateStrategyProviders } from '@/service/use-strategy'
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { PluginType } from '../../types'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
+import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
 
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
@@ -19,7 +20,11 @@ const useRefreshPluginList = () => {
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
   const invalidateAllDataSources = useInvalidDataSourceList()
 
+  const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
+
   const invalidateStrategyProviders = useInvalidateStrategyProviders()
+
+  const invalidateRAGRecommendedPlugins = useInvalidateRAGRecommendedPlugins()
   return {
     refreshPluginList: (manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | null, refreshAllType?: boolean) => {
       // installed list
@@ -29,11 +34,14 @@ const useRefreshPluginList = () => {
       if ((manifest && PluginType.tool.includes(manifest.category)) || refreshAllType) {
         invalidateAllToolProviders()
         invalidateAllBuiltInTools()
+        invalidateRAGRecommendedPlugins()
         // TODO: update suggested tools. It's a function in hook useMarketplacePlugins,handleUpdatePlugins
       }
 
-      if ((manifest && PluginType.datasource.includes(manifest.category)) || refreshAllType)
+      if ((manifest && PluginType.datasource.includes(manifest.category)) || refreshAllType) {
         invalidateAllDataSources()
+        invalidateDataSourceListAuth()
+      }
 
       // model select
       if ((manifest && PluginType.model.includes(manifest.category)) || refreshAllType) {

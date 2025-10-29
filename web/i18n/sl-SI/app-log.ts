@@ -82,6 +82,7 @@ const translation = {
     workflowTitle: 'Podrobnosti dnevnika',
     fileListDetail: 'Podrobnosti',
     fileListLabel: 'Podrobnosti o datoteki',
+    testWithParams: 'Preizkus s parametri',
   },
   promptLog: 'Dnevnik PROMPT-ov',
   agentLog: 'Dnevnik pomočnika',

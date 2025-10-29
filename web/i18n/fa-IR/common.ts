@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'انتخاب همه',
     deSelectAll: 'همه را انتخاب نکنید',
     config: 'تنظیمات',
+    no: 'نه',
+    deleteConfirmTitle: 'حذف شود؟',
+    yes: 'بله',
+    confirmAction: 'لطفاً اقدام خود را تأیید کنید.',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
@@ -169,6 +173,7 @@ const translation = {
     github: 'گیت‌هاب',
     compliance: 'انطباق',
     support: 'پشتیبانی',
+    contactUs: 'با ما تماس بگیرید',
   },
   settings: {
     accountGroup: 'حساب کاربری',
@@ -505,6 +510,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'اعتبار در حال استفاده است و قابل حذف نیست',
     },
     parametersInvalidRemoved: 'برخی پارامترها نامعتبر هستند و حذف شده‌اند',
+    installDataSourceProvider: 'نصب ارائه‌دهندگان منبع داده',
   },
   dataSource: {
     add: 'افزودن منبع داده',

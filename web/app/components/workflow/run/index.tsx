@@ -81,9 +81,12 @@ const RunPanel: FC<RunProps> = ({
 
   const switchTab = async (tab: string) => {
     setCurrentTab(tab)
-    if (tab === 'RESULT')
-      runDetailUrl && await getResult()
-    tracingListUrl && await getTracingList()
+    if (tab === 'RESULT') {
+      if (runDetailUrl)
+        await getResult()
+    }
+    if (tracingListUrl)
+      await getTracingList()
   }
 
   useEffect(() => {

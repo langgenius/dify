@@ -4,7 +4,6 @@ from decimal import Decimal
 import pytz
 import sqlalchemy as sa
 from flask import jsonify
-from flask_login import current_user
 from flask_restx import Resource, fields, reqparse
 
 from controllers.console import api, console_ns
@@ -13,7 +12,7 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from libs.helper import DatetimeString
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models import AppMode, Message
 
 
@@ -37,11 +36,13 @@ class DailyMessageStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account = current_user
+        account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -52,7 +53,8 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
+        assert account.timezone is not None
 
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
@@ -109,13 +111,15 @@ class DailyConversationStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account = current_user
+        account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        )
         args = parser.parse_args()
-
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -127,7 +131,7 @@ class DailyConversationStatistic(Resource):
                 sa.func.count(sa.distinct(Message.conversation_id)).label("conversation_count"),
             )
             .select_from(Message)
-            .where(Message.app_id == app_model.id, Message.invoke_from != InvokeFrom.DEBUGGER.value)
+            .where(Message.app_id == app_model.id, Message.invoke_from != InvokeFrom.DEBUGGER)
         )
 
         if args["start"]:
@@ -175,11 +179,13 @@ class DailyTerminalsStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account = current_user
+        account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -190,8 +196,8 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
-
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -247,11 +253,13 @@ class DailyTokenCostStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account = current_user
+        account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -263,8 +271,8 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
-
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -322,11 +330,13 @@ class AverageSessionInteractionStatistic(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     def get(self, app_model):
-        account = current_user
+        account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -345,8 +355,8 @@ FROM
         WHERE
             c.app_id = :app_id
             AND m.invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
-
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -413,11 +423,13 @@ class UserSatisfactionRateStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account = current_user
+        account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -432,8 +444,8 @@ LEFT JOIN
 WHERE
     m.app_id = :app_id
     AND m.invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
-
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -494,11 +506,13 @@ class AverageResponseTimeStatistic(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     def get(self, app_model):
-        account = current_user
+        account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -509,8 +523,8 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
-
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 
@@ -566,11 +580,13 @@ class TokensPerSecondStatistic(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        account = current_user
+        account, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -584,8 +600,8 @@ FROM
 WHERE
     app_id = :app_id
     AND invoke_from != :invoke_from"""
-        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER.value}
-
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
+        assert account.timezone is not None
         timezone = pytz.timezone(account.timezone)
         utc_timezone = pytz.utc
 

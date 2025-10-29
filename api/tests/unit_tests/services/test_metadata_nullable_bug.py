@@ -29,7 +29,10 @@ class TestMetadataNullableBug:
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
 
-        with patch("services.metadata_service.current_user", mock_user):
+        with patch(
+            "services.metadata_service.current_account_with_tenant",
+            return_value=(mock_user, mock_user.current_tenant_id),
+        ):
             # This should crash with TypeError when calling len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
@@ -40,7 +43,10 @@ class TestMetadataNullableBug:
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
 
-        with patch("services.metadata_service.current_user", mock_user):
+        with patch(
+            "services.metadata_service.current_account_with_tenant",
+            return_value=(mock_user, mock_user.current_tenant_id),
+        ):
             # This should crash with TypeError when calling len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
@@ -48,9 +54,11 @@ class TestMetadataNullableBug:
     def test_api_parser_accepts_null_values(self, app):
         """Test that API parser configuration incorrectly accepts null values."""
         # Simulate the current API parser configuration
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=True, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=True, location="json")
+            .add_argument("name", type=str, required=True, nullable=True, location="json")
+        )
 
         # Simulate request data with null values
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
@@ -66,9 +74,11 @@ class TestMetadataNullableBug:
     def test_integration_bug_scenario(self, app):
         """Test the complete bug scenario from API to service layer."""
         # Step 1: API parser accepts null values (current buggy behavior)
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=True, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=True, location="json")
+            .add_argument("name", type=str, required=True, nullable=True, location="json")
+        )
 
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             args = parser.parse_args()
@@ -76,7 +86,7 @@ class TestMetadataNullableBug:
             # Step 2: Try to create MetadataArgs with None values
             # This should fail at Pydantic validation level
             with pytest.raises((ValueError, TypeError)):
-                metadata_args = MetadataArgs(**args)
+                metadata_args = MetadataArgs.model_validate(args)
 
         # Step 3: If we bypass Pydantic (simulating the bug scenario)
         # Move this outside the request context to avoid Flask-Login issues
@@ -88,7 +98,10 @@ class TestMetadataNullableBug:
         mock_user.current_tenant_id = "tenant-123"
         mock_user.id = "user-456"
 
-        with patch("services.metadata_service.current_user", mock_user):
+        with patch(
+            "services.metadata_service.current_account_with_tenant",
+            return_value=(mock_user, mock_user.current_tenant_id),
+        ):
             # Step 4: Service layer crashes on len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
                 MetadataService.create_metadata("dataset-123", mock_metadata_args)
@@ -96,9 +109,11 @@ class TestMetadataNullableBug:
     def test_correct_nullable_false_configuration_works(self, app):
         """Test that the correct nullable=False configuration works as expected."""
         # This tests the FIXED configuration
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("type", type=str, required=True, nullable=False, location="json")
+            .add_argument("name", type=str, required=True, nullable=False, location="json")
+        )
 
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             # This should fail with BadRequest due to nullable=False

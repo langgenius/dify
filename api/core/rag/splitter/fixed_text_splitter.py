@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from core.model_manager import ModelInstance
@@ -52,7 +53,7 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         """Create a new TextSplitter."""
         super().__init__(**kwargs)
         self._fixed_separator = fixed_separator
-        self._separators = separators or ["\n\n", "\n", " ", ""]
+        self._separators = separators or ["\n\n", "\n", "。", ". ", " ", ""]
 
     def split_text(self, text: str) -> list[str]:
         """Split incoming text and return chunks."""
@@ -90,16 +91,19 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         # Now that we have the separator, split the text
         if separator:
             if separator == " ":
-                splits = text.split()
+                splits = re.split(r" +", text)
             else:
                 splits = text.split(separator)
                 splits = [item + separator if i < len(splits) else item for i, item in enumerate(splits)]
         else:
             splits = list(text)
-        splits = [s for s in splits if (s not in {"", "\n"})]
+        if separator == "\n":
+            splits = [s for s in splits if s != ""]
+        else:
+            splits = [s for s in splits if (s not in {"", "\n"})]
         _good_splits = []
         _good_splits_lengths = []  # cache the lengths of the splits
-        _separator = "" if self._keep_separator else separator
+        _separator = separator if self._keep_separator else ""
         s_lens = self._length_function(splits)
         if separator != "":
             for s, s_len in zip(splits, s_lens):
