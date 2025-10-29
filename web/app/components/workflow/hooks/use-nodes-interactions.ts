@@ -225,8 +225,11 @@ export const useNodesInteractions = () => {
       pendingDragNodesRef.current.clear()
       const { x, y } = dragNodeStartPosition.current
       const hasMoved = !(x === node.position.x && y === node.position.y)
-      if (!hasMoved)
+      if (!hasMoved) {
+        setHelpLineHorizontal()
+        setHelpLineVertical()
         return
+      }
       if (!pendingNodes.some(pendingNode => pendingNode.id === node.id))
         pendingNodes.push(node)
       applyNodeDragPosition(pendingNodes)
