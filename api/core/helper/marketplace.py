@@ -30,14 +30,15 @@ def batch_fetch_plugin_manifests(plugin_ids: list[str]) -> Sequence[MarketplaceP
 
 
 def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict]:
-    if len(plugin_ids) == 0:
+    if not plugin_ids:
         return []
 
     url = str(marketplace_api_url / "api/v1/plugins/batch")
     response = httpx.post(url, json={"plugin_ids": plugin_ids}, headers={"X-Dify-Version": dify_config.project.version})
     response.raise_for_status()
 
-    return response.json()["data"]["plugins"]
+    data = response.json()
+    return data.get("data", {}).get("plugins", [])
 
 
 def batch_fetch_plugin_manifests_ignore_deserialization_error(
