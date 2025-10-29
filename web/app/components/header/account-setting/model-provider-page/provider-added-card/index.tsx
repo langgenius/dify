@@ -11,6 +11,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { ConfigurationMethodEnum } from '../declarations'
+import type { ModelProviderQuotaGetPaid } from '../utils'
 import {
   MODEL_PROVIDER_QUOTA_GET_PAID,
   modelTypeFormat,
@@ -18,7 +19,6 @@ import {
 import ProviderIcon from '../provider-icon'
 import ModelBadge from '../model-badge'
 import CredentialPanel from './credential-panel'
-import QuotaPanel from './quota-panel'
 import ModelList from './model-list'
 import { fetchModelProviderModelList } from '@/service/common'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -49,7 +49,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const systemConfig = provider.system_configuration
   const hasModelList = fetched && !!modelList.length
   const { isCurrentWorkspaceManager } = useAppContext()
-  const showQuota = systemConfig.enabled && [...MODEL_PROVIDER_QUOTA_GET_PAID].includes(provider.provider) && !IS_CE_EDITION
+  const showQuota = systemConfig.enabled && [...MODEL_PROVIDER_QUOTA_GET_PAID].includes(provider.provider as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
   const showCredential = configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && isCurrentWorkspaceManager
 
   const getModelList = async (providerName: string) => {
@@ -104,13 +104,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             }
           </div>
         </div>
-        {
-          showQuota && (
-            <QuotaPanel
-              provider={provider}
-            />
-          )
-        }
         {
           showCredential && (
             <CredentialPanel
