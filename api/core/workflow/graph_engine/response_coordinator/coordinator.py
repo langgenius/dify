@@ -510,6 +510,20 @@ class ResponseStreamCoordinator:
                     events = self.try_flush()
 
             return events
+            
+    def has_pending_sessions(self) -> bool:
+        """
+        Check if there are any pending response sessions.
+
+        Returns:
+            True if there are active, waiting, or未激活的 response sessions
+        """
+        with self._lock:
+            return (
+                self._active_session is not None
+                or len(self._waiting_sessions) > 0
+                or len(self._response_sessions) > 0
+            )
 
     # ============= Internal Stream Management Methods =============
 
