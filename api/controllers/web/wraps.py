@@ -49,7 +49,6 @@ def decode_jwt_token(app_code: str | None = None):
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
         app_id = decoded.get("app_id")
-
         with Session(db.engine, expire_on_commit=False) as session:
             app_model = session.scalar(select(App).where(App.id == app_id))
             site = session.scalar(select(Site).where(Site.code == app_code))
