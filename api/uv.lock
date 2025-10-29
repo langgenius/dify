@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11, <3.13"
 resolution-markers = [
     "python_full_version >= '3.12.4' and platform_python_implementation != 'PyPy' and sys_platform == 'linux'",
@@ -1590,7 +1590,7 @@ dev = [
     { name = "ruff", specifier = "~=0.14.0" },
     { name = "scipy-stubs", specifier = ">=1.15.3.0" },
     { name = "sseclient-py", specifier = ">=1.8.0" },
-    { name = "testcontainers", specifier = "~=4.10.0" },
+    { name = "testcontainers", specifier = "~=4.13.2" },
     { name = "ty", specifier = "~=0.0.1a19" },
     { name = "types-aiofiles", specifier = "~=24.1.0" },
     { name = "types-beautifulsoup4", specifier = "~=4.12.0" },
@@ -5907,7 +5907,7 @@ wheels = [
 
 [[package]]
 name = "testcontainers"
-version = "4.10.0"
+version = "4.13.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docker" },
@@ -5916,9 +5916,9 @@ dependencies = [
     { name = "urllib3" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/49/9c618aff1c50121d183cdfbc3a4a5cf2727a2cde1893efe6ca55c7009196/testcontainers-4.10.0.tar.gz", hash = "sha256:03f85c3e505d8b4edeb192c72a961cebbcba0dd94344ae778b4a159cb6dcf8d3", size = 63327, upload-time = "2025-04-02T16:13:27.582Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/18/51/edac83edab339d8b4dce9a7b659163afb1ea7e011bfed1d5573d495a4485/testcontainers-4.13.2.tar.gz", hash = "sha256:2315f1e21b059427a9d11e8921f85fef322fbe0d50749bcca4eaa11271708ba4", size = 78692, upload-time = "2025-10-07T21:53:07.531Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1c/0a/824b0c1ecf224802125279c3effff2e25ed785ed046e67da6e53d928de4c/testcontainers-4.10.0-py3-none-any.whl", hash = "sha256:31ed1a81238c7e131a2a29df6db8f23717d892b592fa5a1977fd0dcd0c23fc23", size = 107414, upload-time = "2025-04-02T16:13:25.785Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/5e/73aa94770f1df0595364aed526f31d54440db5492911e2857318ed326e51/testcontainers-4.13.2-py3-none-any.whl", hash = "sha256:0209baf8f4274b568cde95bef2cadf7b1d33b375321f793790462e235cd684ee", size = 124771, upload-time = "2025-10-07T21:53:05.937Z" },
 ]
 
 [[package]]

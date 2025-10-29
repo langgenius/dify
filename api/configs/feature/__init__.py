@@ -337,6 +337,11 @@ class HttpConfig(BaseSettings):
     HTTP-related configurations for the application
     """
 
+    COOKIE_DOMAIN: str = Field(
+        description="Explicit cookie domain for console/service cookies when sharing across subdomains",
+        default="",
+    )
+
     API_COMPRESSION_ENABLED: bool = Field(
         description="Enable or disable gzip compression for HTTP responses",
         default=False,

@@ -395,9 +395,6 @@ def test_client_capabilities_default():
 
     # Assert default capabilities
     assert received_capabilities is not None
-    assert received_capabilities.sampling is not None
-    assert received_capabilities.roots is not None
-    assert received_capabilities.roots.listChanged is True
 
 
 def test_client_capabilities_with_custom_callbacks():

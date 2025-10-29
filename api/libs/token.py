@@ -30,17 +30,28 @@ def is_secure() -> bool:
     return dify_config.CONSOLE_WEB_URL.startswith("https") and dify_config.CONSOLE_API_URL.startswith("https")
 
 
+def _cookie_domain() -> str | None:
+    """
+    Returns the normalized cookie domain.
+
+    Leading dots are stripped from the configured domain. Historically, a leading dot
+    indicated that a cookie should be sent to all subdomains, but modern browsers treat
+    'example.com' and '.example.com' identically. This normalization ensures consistent
+    behavior and avoids confusion.
+    """
+    domain = dify_config.COOKIE_DOMAIN.strip()
+    domain = domain.removeprefix(".")
+    return domain or None
+
+
 def _real_cookie_name(cookie_name: str) -> str:
-    if is_secure():
+    if is_secure() and _cookie_domain() is None:
         return "__Host-" + cookie_name
     else:
         return cookie_name
 
 
 def _try_extract_from_header(request: Request) -> str | None:
-    """
-    Try to extract access token from header
-    """
     auth_header = request.headers.get("Authorization")
     if auth_header:
         if " " not in auth_header:
@@ -55,27 +66,19 @@ def _try_extract_from_header(request: Request) -> str | None:
     return None
 
 
+def extract_refresh_token(request: Request) -> str | None:
+    return request.cookies.get(_real_cookie_name(COOKIE_NAME_REFRESH_TOKEN))
+
+
 def extract_csrf_token(request: Request) -> str | None:
-    """
-    Try to extract CSRF token from header or cookie.
-    """
     return request.headers.get(HEADER_NAME_CSRF_TOKEN)
 
 
 def extract_csrf_token_from_cookie(request: Request) -> str | None:
-    """
-    Try to extract CSRF token from cookie.
-    """
     return request.cookies.get(_real_cookie_name(COOKIE_NAME_CSRF_TOKEN))
 
 
 def extract_access_token(request: Request) -> str | None:
-    """
-    Try to extract access token from cookie, header or params.
-
-    Access token is either for console session or webapp passport exchange.
-    """
-
     def _try_extract_from_cookie(request: Request) -> str | None:
         return request.cookies.get(_real_cookie_name(COOKIE_NAME_ACCESS_TOKEN))
 
@@ -83,20 +86,10 @@ def extract_access_token(request: Request) -> str | None:
 
 
 def extract_webapp_access_token(request: Request) -> str | None:
-    """
-    Try to extract webapp access token from cookie, then header.
-    """
-
     return request.cookies.get(_real_cookie_name(COOKIE_NAME_WEBAPP_ACCESS_TOKEN)) or _try_extract_from_header(request)
 
 
 def extract_webapp_passport(app_code: str, request: Request) -> str | None:
-    """
-    Try to extract app token from header or params.
-
-    Webapp access token (part of passport) is only used for webapp session.
-    """
-
     def _try_extract_passport_token_from_cookie(request: Request) -> str | None:
         return request.cookies.get(_real_cookie_name(COOKIE_NAME_PASSPORT + "-" + app_code))
 
@@ -112,6 +105,7 @@ def set_access_token_to_cookie(request: Request, response: Response, token: str,
         _real_cookie_name(COOKIE_NAME_ACCESS_TOKEN),
         value=token,
         httponly=True,
+        domain=_cookie_domain(),
         secure=is_secure(),
         samesite=samesite,
         max_age=int(dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 60),
@@ -124,6 +118,7 @@ def set_refresh_token_to_cookie(request: Request, response: Response, token: str
         _real_cookie_name(COOKIE_NAME_REFRESH_TOKEN),
         value=token,
         httponly=True,
+        domain=_cookie_domain(),
         secure=is_secure(),
         samesite="Lax",
         max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
@@ -136,6 +131,7 @@ def set_csrf_token_to_cookie(request: Request, response: Response, token: str):
         _real_cookie_name(COOKIE_NAME_CSRF_TOKEN),
         value=token,
         httponly=False,
+        domain=_cookie_domain(),
         secure=is_secure(),
         samesite="Lax",
         max_age=int(60 * dify_config.ACCESS_TOKEN_EXPIRE_MINUTES),
@@ -154,6 +150,7 @@ def _clear_cookie(
         "",
         expires=0,
         path="/",
+        domain=_cookie_domain(),
         secure=is_secure(),
         httponly=http_only,
         samesite=samesite,
@@ -174,6 +171,19 @@ def clear_refresh_token_from_cookie(response: Response):
 
 def clear_csrf_token_from_cookie(response: Response):
     _clear_cookie(response, COOKIE_NAME_CSRF_TOKEN, http_only=False)
+
+
+def build_force_logout_cookie_headers() -> list[str]:
+    """
+    Generate Set-Cookie header values that clear all auth-related cookies.
+    This mirrors the behavior of the standard cookie clearing helpers while
+    allowing callers that do not have a Response instance to reuse the logic.
+    """
+    response = Response()
+    clear_access_token_from_cookie(response)
+    clear_csrf_token_from_cookie(response)
+    clear_refresh_token_from_cookie(response)
+    return response.headers.getlist("Set-Cookie")
 
 
 def check_csrf_token(request: Request, user_id: str):
