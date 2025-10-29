@@ -18,7 +18,7 @@ else:
     #
     # See `api/docker/entrypoint.sh` (lines 33 and 47) for details.
     #
-    # For third-party library patching, refer to `gunicorn_conf.py` and `celery_entrypoint.py`.
+    # For third-party library patching, refer to `gunicorn.conf.py` and `celery_entrypoint.py`.
 
     from app_factory import create_app
 
