@@ -1,7 +1,7 @@
 from collections.abc import Mapping
-from copy import deepcopy
 from typing import Any, Optional
 
+from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType
 from core.workflow.node_events import NodeRunResult
@@ -66,7 +66,6 @@ class TriggerEventNode(Node):
         """
 
         # Get trigger data passed when workflow was triggered
-        inputs = deepcopy(self.graph_runtime_state.variable_pool.user_inputs)
         metadata = {
             WorkflowNodeExecutionMetadataKey.TRIGGER_INFO: {
                 "provider_id": self._node_data.provider_id,
@@ -74,9 +73,17 @@ class TriggerEventNode(Node):
                 "plugin_unique_identifier": self._node_data.plugin_unique_identifier,
             },
         }
+        node_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
+        system_inputs = self.graph_runtime_state.variable_pool.system_variables.to_dict()
+
+        # TODO: System variables should be directly accessible, no need for special handling
+        # Set system variables as node outputs.
+        for var in system_inputs:
+            node_inputs[SYSTEM_VARIABLE_NODE_ID + "." + var] = system_inputs[var]
+        outputs = dict(node_inputs)
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs={},
-            outputs=inputs,
+            inputs=node_inputs,
+            outputs=outputs,
             metadata=metadata,
         )

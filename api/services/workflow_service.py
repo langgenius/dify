@@ -1007,10 +1007,11 @@ def _setup_variable_pool(
     conversation_variables: list[Variable],
 ):
     # Only inject system variables for START node type.
-    if node_type == NodeType.START:
+    if node_type == NodeType.START or node_type.is_trigger_node:
         system_variable = SystemVariable(
             user_id=user_id,
             app_id=workflow.app_id,
+            timestamp=int(naive_utc_now().timestamp()),
             workflow_id=workflow.id,
             files=files or [],
             workflow_execution_id=str(uuid.uuid4()),

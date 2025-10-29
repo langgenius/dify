@@ -1026,7 +1026,7 @@ class DraftVariableSaver:
             return
         if self._node_type == NodeType.VARIABLE_ASSIGNER:
             draft_vars = self._build_from_variable_assigner_mapping(process_data=process_data)
-        elif self._node_type == NodeType.START:
+        elif self._node_type == NodeType.START or self._node_type.is_trigger_node:
             draft_vars = self._build_variables_from_start_mapping(outputs)
         else:
             draft_vars = self._build_variables_from_mapping(outputs)

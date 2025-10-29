@@ -19,6 +19,7 @@ from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.enums import UserFrom
 from models.workflow import Workflow
 
@@ -67,6 +68,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             files=self.application_generate_entity.files,
             user_id=self._sys_user_id,
             app_id=app_config.app_id,
+            timestamp=int(naive_utc_now().timestamp()),
             workflow_id=app_config.workflow_id,
             workflow_execution_id=self.application_generate_entity.workflow_execution_id,
         )
