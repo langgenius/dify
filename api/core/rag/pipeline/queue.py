@@ -10,12 +10,12 @@ TASK_WRAPPER_PREFIX = "__WRAPPER__:"
 @dataclass
 class TaskWrapper:
     data: Any
-    
+
     def serialize(self) -> str:
         return json.dumps(self.data, ensure_ascii=False)
-    
+
     @classmethod
-    def deserialize(cls, serialized_data: str) -> 'TaskWrapper':
+    def deserialize(cls, serialized_data: str) -> "TaskWrapper":
         data = json.loads(serialized_data)
         return cls(data)
 
@@ -26,6 +26,7 @@ class TenantSelfTaskQueue:
     It uses Redis list to store tasks, and Redis key to store task waiting flag.
     Support tasks that can be serialized by json.
     """
+
     DEFAULT_TASK_TTL = 60 * 60
 
     def __init__(self, tenant_id: str, unique_key: str):
@@ -55,33 +56,33 @@ class TenantSelfTaskQueue:
                 wrapper = TaskWrapper(task)
                 serialized_data = wrapper.serialize()
                 serialized_tasks.append(f"{TASK_WRAPPER_PREFIX}{serialized_data}")
-        
+
         redis_client.lpush(self.queue, *serialized_tasks)
-    
+
     def pull_tasks(self, count: int = 1) -> list:
         if count <= 0:
             return []
-        
+
         tasks = []
         for _ in range(count):
             serialized_task = redis_client.rpop(self.queue)
             if not serialized_task:
                 break
-            
+
             if isinstance(serialized_task, bytes):
-                serialized_task = serialized_task.decode('utf-8')
-            
+                serialized_task = serialized_task.decode("utf-8")
+
             # Check if use TaskWrapper or not
             if serialized_task.startswith(TASK_WRAPPER_PREFIX):
                 try:
-                    wrapper_data = serialized_task[len(TASK_WRAPPER_PREFIX):]
+                    wrapper_data = serialized_task[len(TASK_WRAPPER_PREFIX) :]
                     wrapper = TaskWrapper.deserialize(wrapper_data)
                     tasks.append(wrapper.data)
                 except (json.JSONDecodeError, TypeError, ValueError):
                     tasks.append(serialized_task)
             else:
                 tasks.append(serialized_task)
-        
+
         return tasks
 
     def get_next_task(self):

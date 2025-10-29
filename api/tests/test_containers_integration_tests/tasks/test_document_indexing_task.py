@@ -19,7 +19,7 @@ from tasks.document_indexing_task import (
 
 class TestDocumentIndexingTasks:
     """Integration tests for document indexing tasks using testcontainers.
-    
+
     This test class covers:
     - Core _document_indexing function
     - Deprecated document_indexing_task function
@@ -249,7 +249,7 @@ class TestDocumentIndexingTasks:
         # Verify documents were updated to parsing status
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
-            updated_document = db.session.query(Document).filter(Document.id == doc_id).first()
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
             assert updated_document.indexing_status == "parsing"
             assert updated_document.processing_started_at is not None
 
@@ -316,7 +316,7 @@ class TestDocumentIndexingTasks:
         # Verify only existing documents were updated
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in existing_document_ids:
-            updated_document = db.session.query(Document).filter(Document.id == doc_id).first()
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
             assert updated_document.indexing_status == "parsing"
             assert updated_document.processing_started_at is not None
 
@@ -360,7 +360,7 @@ class TestDocumentIndexingTasks:
         # Verify documents were still updated to parsing status before the exception
         # Re-query documents from database since _document_indexing close the session
         for doc_id in document_ids:
-            updated_document = db.session.query(Document).filter(Document.id == doc_id).first()
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
             assert updated_document.indexing_status == "parsing"
             assert updated_document.processing_started_at is not None
 
@@ -434,7 +434,7 @@ class TestDocumentIndexingTasks:
         # Verify all documents were updated to parsing status
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
-            updated_document = db.session.query(Document).filter(Document.id == doc_id).first()
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
             assert updated_document.indexing_status == "parsing"
             assert updated_document.processing_started_at is not None
 
@@ -494,7 +494,7 @@ class TestDocumentIndexingTasks:
         # Assert: Verify error handling
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
-            updated_document = db.session.query(Document).filter(Document.id == doc_id).first()
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
             assert updated_document.indexing_status == "error"
             assert updated_document.error is not None
             assert "batch upload" in updated_document.error
@@ -532,7 +532,7 @@ class TestDocumentIndexingTasks:
         # Verify documents were updated to parsing status
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
-            updated_document = db.session.query(Document).filter(Document.id == doc_id).first()
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
             assert updated_document.indexing_status == "parsing"
             assert updated_document.processing_started_at is not None
 
@@ -572,7 +572,7 @@ class TestDocumentIndexingTasks:
         # Verify documents were still updated to parsing status before the exception
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
-            updated_document = db.session.query(Document).filter(Document.id == doc_id).first()
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
             assert updated_document.indexing_status == "parsing"
             assert updated_document.processing_started_at is not None
 
@@ -597,7 +597,7 @@ class TestDocumentIndexingTasks:
         # Assert: Verify processing occurred (core logic is tested in _document_indexing tests)
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
-    
+
     def test_normal_document_indexing_task_success(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
@@ -667,6 +667,7 @@ class TestDocumentIndexingTasks:
 
         # Mock the task function
         from unittest.mock import MagicMock
+
         mock_task_func = MagicMock()
 
         # Act: Execute the wrapper function
@@ -679,7 +680,7 @@ class TestDocumentIndexingTasks:
         # Verify documents were updated (same as _document_indexing)
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
-            updated_document = db.session.query(Document).filter(Document.id == doc_id).first()
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
             assert updated_document.indexing_status == "parsing"
             assert updated_document.processing_started_at is not None
 
@@ -714,18 +715,19 @@ class TestDocumentIndexingTasks:
 
         # Mock the task function
         from unittest.mock import MagicMock
+
         mock_task_func = MagicMock()
 
         # Use real Redis for TenantSelfTaskQueue
         from core.rag.pipeline.queue import TenantSelfTaskQueue
-        
+
         # Create real queue instance
         queue = TenantSelfTaskQueue(tenant_id, "document_indexing")
-        
+
         # Add waiting tasks to the real Redis queue
         waiting_tasks = [
             DocumentTask(tenant_id=tenant_id, dataset_id=dataset.id, document_ids=["waiting-doc-1"]),
-            DocumentTask(tenant_id=tenant_id, dataset_id=dataset.id, document_ids=["waiting-doc-2"])
+            DocumentTask(tenant_id=tenant_id, dataset_id=dataset.id, document_ids=["waiting-doc-2"]),
         ]
         # Convert DocumentTask objects to dictionaries for serialization
         waiting_task_dicts = [asdict(task) for task in waiting_tasks]
@@ -740,7 +742,7 @@ class TestDocumentIndexingTasks:
 
         # Verify task function was called for each waiting task
         assert mock_task_func.delay.call_count == 1
-        
+
         # Verify correct parameters for each call
         calls = mock_task_func.delay.call_args_list
         assert calls[0][1] == {"tenant_id": tenant_id, "dataset_id": dataset_id, "document_ids": ["waiting-doc-1"]}
@@ -775,6 +777,7 @@ class TestDocumentIndexingTasks:
 
         # Mock the task function
         from unittest.mock import MagicMock
+
         mock_task_func = MagicMock()
 
         # Use real Redis for TenantSelfTaskQueue
@@ -782,7 +785,7 @@ class TestDocumentIndexingTasks:
 
         # Create real queue instance
         queue = TenantSelfTaskQueue(tenant_id, "document_indexing")
-        
+
         # Add waiting task to the real Redis queue
         waiting_task = DocumentTask(tenant_id=tenant_id, dataset_id=dataset.id, document_ids=["waiting-doc-1"])
         queue.push_tasks([asdict(waiting_task)])
@@ -798,13 +801,13 @@ class TestDocumentIndexingTasks:
         # Verify documents were still updated to parsing status before the exception
         # Re-query documents from database since _document_indexing uses a different session
         for doc_id in document_ids:
-            updated_document = db.session.query(Document).filter(Document.id == doc_id).first()
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
             assert updated_document.indexing_status == "parsing"
             assert updated_document.processing_started_at is not None
 
         # Verify waiting task was still processed despite core processing error
         mock_task_func.delay.assert_called_once()
-        
+
         # Verify correct parameters for the call
         call = mock_task_func.delay.call_args
         assert call[1] == {"tenant_id": tenant_id, "dataset_id": dataset_id, "document_ids": ["waiting-doc-1"]}
@@ -831,7 +834,7 @@ class TestDocumentIndexingTasks:
         dataset2, documents2 = self._create_test_dataset_and_documents(
             db_session_with_containers, mock_external_service_dependencies, document_count=1
         )
-        
+
         tenant1_id = dataset1.tenant_id
         tenant2_id = dataset2.tenant_id
         dataset1_id = dataset1.id
@@ -841,19 +844,20 @@ class TestDocumentIndexingTasks:
 
         # Mock the task function
         from unittest.mock import MagicMock
+
         mock_task_func = MagicMock()
 
         # Use real Redis for TenantSelfTaskQueue
         from core.rag.pipeline.queue import TenantSelfTaskQueue
-        
+
         # Create queue instances for both tenants
         queue1 = TenantSelfTaskQueue(tenant1_id, "document_indexing")
         queue2 = TenantSelfTaskQueue(tenant2_id, "document_indexing")
-        
+
         # Add waiting tasks to both queues
         waiting_task1 = DocumentTask(tenant_id=tenant1_id, dataset_id=dataset1.id, document_ids=["tenant1-doc-1"])
         waiting_task2 = DocumentTask(tenant_id=tenant2_id, dataset_id=dataset2.id, document_ids=["tenant2-doc-1"])
-        
+
         queue1.push_tasks([asdict(waiting_task1)])
         queue2.push_tasks([asdict(waiting_task2)])
 
@@ -880,4 +884,3 @@ class TestDocumentIndexingTasks:
         # Verify queue keys are different
         assert queue1.queue != queue2.queue
         assert queue1.task_key != queue2.task_key
-

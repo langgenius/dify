@@ -26,7 +26,7 @@ class RagPipelineTaskProxy:
     @cached_property
     def features(self):
         return FeatureService.get_features(self.dataset_tenant_id)
-    
+
     def _upload_invoke_entities(self) -> str:
         text = [item.model_dump() for item in self.rag_pipeline_invoke_entities]
         name = "rag_pipeline_invoke_entities.json"
@@ -34,7 +34,7 @@ class RagPipelineTaskProxy:
         json_text = json.dumps(text)
         upload_file = FileService(db.engine).upload_text(json_text, name, self.user_id, self.dataset_tenant_id)
         return upload_file.id
-    
+
     def _send_to_direct_queue(self, upload_file_id: str, task_func: Callable):
         logger.info("send file %s to direct queue", upload_file_id)
         task_func.delay(  # type: ignore
@@ -75,7 +75,7 @@ class RagPipelineTaskProxy:
             "dispatch args: %s - %s - %s",
             self.dataset_tenant_id,
             self.features.billing.enabled,
-            self.features.billing.subscription.plan
+            self.features.billing.subscription.plan,
         )
 
         # dispatch to different pipeline queue with tenant isolation when billing enabled
@@ -95,7 +95,7 @@ class RagPipelineTaskProxy:
             logger.warning(
                 "Received empty rag pipeline invoke entities, no tasks delivered: %s %s",
                 self.dataset_tenant_id,
-                self.user_id
+                self.user_id,
             )
             return
         self._dispatch()

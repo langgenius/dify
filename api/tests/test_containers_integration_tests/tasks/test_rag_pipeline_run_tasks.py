@@ -21,7 +21,7 @@ from tasks.rag_pipeline.rag_pipeline_run_task import rag_pipeline_run_task
 
 class TestRagPipelineRunTasks:
     """Integration tests for RAG pipeline run tasks using testcontainers.
-    
+
     This test class covers:
     - priority_rag_pipeline_run_task function
     - rag_pipeline_run_task function
@@ -37,10 +37,7 @@ class TestRagPipelineRunTasks:
         """Mock PipelineGenerator._generate method."""
         with patch("core.app.apps.pipeline.pipeline_generator.PipelineGenerator._generate") as mock_generate:
             # Mock the _generate method to return a simple response
-            mock_generate.return_value = {
-                "answer": "Test response",
-                "metadata": {"test": "data"}
-            }
+            mock_generate.return_value = {"answer": "Test response", "metadata": {"test": "data"}}
             yield mock_generate
 
     @pytest.fixture
@@ -229,7 +226,7 @@ class TestRagPipelineRunTasks:
         account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
         entities = self._create_rag_pipeline_invoke_entities(account, tenant, pipeline, workflow, count=2)
         file_content = self._create_file_content_for_entities(entities)
-        
+
         # Mock file service
         file_id = str(uuid.uuid4())
         mock_file_service["get_content"].return_value = file_content
@@ -274,7 +271,7 @@ class TestRagPipelineRunTasks:
         account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
         entities = self._create_rag_pipeline_invoke_entities(account, tenant, pipeline, workflow, count=3)
         file_content = self._create_file_content_for_entities(entities)
-        
+
         # Mock file service
         file_id = str(uuid.uuid4())
         mock_file_service["get_content"].return_value = file_content
@@ -317,14 +314,14 @@ class TestRagPipelineRunTasks:
         account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
         entities = self._create_rag_pipeline_invoke_entities(account, tenant, pipeline, workflow, count=1)
         file_content = self._create_file_content_for_entities(entities)
-        
+
         # Mock file service
         file_id = str(uuid.uuid4())
         mock_file_service["get_content"].return_value = file_content
 
         # Use real Redis for TenantSelfTaskQueue
         queue = TenantSelfTaskQueue(tenant.id, "pipeline")
-        
+
         # Add waiting tasks to the real Redis queue
         waiting_file_ids = [str(uuid.uuid4()) for _ in range(2)]
         queue.push_tasks(waiting_file_ids)
@@ -343,11 +340,11 @@ class TestRagPipelineRunTasks:
 
             # Verify waiting tasks were processed, pull 1 task a time by default
             assert mock_delay.call_count == 1
-            
+
             # Verify correct parameters for the call
             call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get('rag_pipeline_invoke_entities_file_id') == waiting_file_ids[0]
-            assert call_kwargs.get('tenant_id') == tenant.id
+            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_ids[0]
+            assert call_kwargs.get("tenant_id") == tenant.id
 
             # Verify queue still has remaining tasks (only 1 was pulled)
             remaining_tasks = queue.pull_tasks(count=10)
@@ -371,23 +368,23 @@ class TestRagPipelineRunTasks:
         account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
         entities = self._create_rag_pipeline_invoke_entities(account, tenant, pipeline, workflow, count=1)
         file_content = self._create_file_content_for_entities(entities)
-        
+
         # Mock file service
         file_id = str(uuid.uuid4())
         mock_file_service["get_content"].return_value = file_content
 
         # Simulate legacy Redis queue format - direct file IDs in Redis list
         from extensions.ext_redis import redis_client
-        
+
         # Legacy queue key format (old code)
         legacy_queue_key = f"tenant_self_pipeline_task_queue:{tenant.id}"
         legacy_task_key = f"tenant_pipeline_task:{tenant.id}"
-        
+
         # Add legacy format data to Redis (simulating old code behavior)
         legacy_file_ids = [str(uuid.uuid4()) for _ in range(3)]
         for file_id_legacy in legacy_file_ids:
             redis_client.lpush(legacy_queue_key, file_id_legacy)
-        
+
         # Set the task key to indicate there are waiting tasks (legacy behavior)
         redis_client.set(legacy_task_key, 1, ex=60 * 60)
 
@@ -406,8 +403,8 @@ class TestRagPipelineRunTasks:
 
             # Verify correct parameters for the call
             call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get('rag_pipeline_invoke_entities_file_id') == legacy_file_ids[0]
-            assert call_kwargs.get('tenant_id') == tenant.id
+            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == legacy_file_ids[0]
+            assert call_kwargs.get("tenant_id") == tenant.id
 
             # Verify that new code can process legacy queue entries
             # The new TenantSelfTaskQueue should be able to read from the legacy format
@@ -437,14 +434,14 @@ class TestRagPipelineRunTasks:
         account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
         entities = self._create_rag_pipeline_invoke_entities(account, tenant, pipeline, workflow, count=1)
         file_content = self._create_file_content_for_entities(entities)
-        
+
         # Mock file service
         file_id = str(uuid.uuid4())
         mock_file_service["get_content"].return_value = file_content
 
         # Use real Redis for TenantSelfTaskQueue
         queue = TenantSelfTaskQueue(tenant.id, "pipeline")
-        
+
         # Add waiting tasks to the real Redis queue
         waiting_file_ids = [str(uuid.uuid4()) for _ in range(3)]
         queue.push_tasks(waiting_file_ids)
@@ -461,11 +458,11 @@ class TestRagPipelineRunTasks:
 
             # Verify waiting tasks were processed, pull 1 task a time by default
             assert mock_delay.call_count == 1
-            
+
             # Verify correct parameters for the call
             call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get('rag_pipeline_invoke_entities_file_id') == waiting_file_ids[0]
-            assert call_kwargs.get('tenant_id') == tenant.id
+            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_ids[0]
+            assert call_kwargs.get("tenant_id") == tenant.id
 
             # Verify queue still has remaining tasks (only 1 was pulled)
             remaining_tasks = queue.pull_tasks(count=10)
@@ -488,7 +485,7 @@ class TestRagPipelineRunTasks:
         account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
         entities = self._create_rag_pipeline_invoke_entities(account, tenant, pipeline, workflow, count=1)
         file_content = self._create_file_content_for_entities(entities)
-        
+
         # Mock file service
         file_id = str(uuid.uuid4())
         mock_file_service["get_content"].return_value = file_content
@@ -498,7 +495,7 @@ class TestRagPipelineRunTasks:
 
         # Use real Redis for TenantSelfTaskQueue
         queue = TenantSelfTaskQueue(tenant.id, "pipeline")
-        
+
         # Add waiting task to the real Redis queue
         waiting_file_id = str(uuid.uuid4())
         queue.push_tasks([waiting_file_id])
@@ -518,11 +515,11 @@ class TestRagPipelineRunTasks:
 
             # Verify waiting task was still processed despite core processing error
             mock_delay.assert_called_once()
-            
+
             # Verify correct parameters for the call
             call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get('rag_pipeline_invoke_entities_file_id') == waiting_file_id
-            assert call_kwargs.get('tenant_id') == tenant.id
+            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id
+            assert call_kwargs.get("tenant_id") == tenant.id
 
             # Verify queue is empty after processing (task was pulled)
             remaining_tasks = queue.pull_tasks(count=10)
@@ -545,7 +542,7 @@ class TestRagPipelineRunTasks:
         account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
         entities = self._create_rag_pipeline_invoke_entities(account, tenant, pipeline, workflow, count=1)
         file_content = self._create_file_content_for_entities(entities)
-        
+
         # Mock file service
         file_id = str(uuid.uuid4())
         mock_file_service["get_content"].return_value = file_content
@@ -555,7 +552,7 @@ class TestRagPipelineRunTasks:
 
         # Use real Redis for TenantSelfTaskQueue
         queue = TenantSelfTaskQueue(tenant.id, "pipeline")
-        
+
         # Add waiting task to the real Redis queue
         waiting_file_id = str(uuid.uuid4())
         queue.push_tasks([waiting_file_id])
@@ -573,11 +570,11 @@ class TestRagPipelineRunTasks:
 
             # Verify waiting task was still processed despite core processing error
             mock_delay.assert_called_once()
-            
+
             # Verify correct parameters for the call
             call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get('rag_pipeline_invoke_entities_file_id') == waiting_file_id
-            assert call_kwargs.get('tenant_id') == tenant.id
+            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id
+            assert call_kwargs.get("tenant_id") == tenant.id
 
             # Verify queue is empty after processing (task was pulled)
             remaining_tasks = queue.pull_tasks(count=10)
@@ -597,13 +594,13 @@ class TestRagPipelineRunTasks:
         # Arrange: Create test data for two different tenants
         account1, tenant1, pipeline1, workflow1 = self._create_test_pipeline_and_workflow(db_session_with_containers)
         account2, tenant2, pipeline2, workflow2 = self._create_test_pipeline_and_workflow(db_session_with_containers)
-        
+
         entities1 = self._create_rag_pipeline_invoke_entities(account1, tenant1, pipeline1, workflow1, count=1)
         entities2 = self._create_rag_pipeline_invoke_entities(account2, tenant2, pipeline2, workflow2, count=1)
-        
+
         file_content1 = self._create_file_content_for_entities(entities1)
         file_content2 = self._create_file_content_for_entities(entities2)
-        
+
         # Mock file service
         file_id1 = str(uuid.uuid4())
         file_id2 = str(uuid.uuid4())
@@ -612,11 +609,11 @@ class TestRagPipelineRunTasks:
         # Use real Redis for TenantSelfTaskQueue
         queue1 = TenantSelfTaskQueue(tenant1.id, "pipeline")
         queue2 = TenantSelfTaskQueue(tenant2.id, "pipeline")
-        
+
         # Add waiting tasks to both queues
         waiting_file_id1 = str(uuid.uuid4())
         waiting_file_id2 = str(uuid.uuid4())
-        
+
         queue1.push_tasks([waiting_file_id1])
         queue2.push_tasks([waiting_file_id2])
 
@@ -635,8 +632,8 @@ class TestRagPipelineRunTasks:
             # Verify only tenant1's waiting task was processed
             mock_delay.assert_called_once()
             call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get('rag_pipeline_invoke_entities_file_id') == waiting_file_id1
-            assert call_kwargs.get('tenant_id') == tenant1.id
+            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id1
+            assert call_kwargs.get("tenant_id") == tenant1.id
 
             # Verify tenant1's queue is empty
             remaining_tasks1 = queue1.pull_tasks(count=10)
@@ -664,13 +661,13 @@ class TestRagPipelineRunTasks:
         # Arrange: Create test data for two different tenants
         account1, tenant1, pipeline1, workflow1 = self._create_test_pipeline_and_workflow(db_session_with_containers)
         account2, tenant2, pipeline2, workflow2 = self._create_test_pipeline_and_workflow(db_session_with_containers)
-        
+
         entities1 = self._create_rag_pipeline_invoke_entities(account1, tenant1, pipeline1, workflow1, count=1)
         entities2 = self._create_rag_pipeline_invoke_entities(account2, tenant2, pipeline2, workflow2, count=1)
-        
+
         file_content1 = self._create_file_content_for_entities(entities1)
         file_content2 = self._create_file_content_for_entities(entities2)
-        
+
         # Mock file service
         file_id1 = str(uuid.uuid4())
         file_id2 = str(uuid.uuid4())
@@ -679,11 +676,11 @@ class TestRagPipelineRunTasks:
         # Use real Redis for TenantSelfTaskQueue
         queue1 = TenantSelfTaskQueue(tenant1.id, "pipeline")
         queue2 = TenantSelfTaskQueue(tenant2.id, "pipeline")
-        
+
         # Add waiting tasks to both queues
         waiting_file_id1 = str(uuid.uuid4())
         waiting_file_id2 = str(uuid.uuid4())
-        
+
         queue1.push_tasks([waiting_file_id1])
         queue2.push_tasks([waiting_file_id2])
 
@@ -700,8 +697,8 @@ class TestRagPipelineRunTasks:
             # Verify only tenant1's waiting task was processed
             mock_delay.assert_called_once()
             call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get('rag_pipeline_invoke_entities_file_id') == waiting_file_id1
-            assert call_kwargs.get('tenant_id') == tenant1.id
+            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id1
+            assert call_kwargs.get("tenant_id") == tenant1.id
 
             # Verify tenant1's queue is empty
             remaining_tasks1 = queue1.pull_tasks(count=10)
@@ -854,14 +851,14 @@ class TestRagPipelineRunTasks:
         """
         # Arrange: Create test data
         account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
-        
+
         # Mock file service to raise exception
         file_id = str(uuid.uuid4())
         mock_file_service["get_content"].side_effect = Exception("File not found")
 
         # Use real Redis for TenantSelfTaskQueue
         queue = TenantSelfTaskQueue(tenant.id, "pipeline")
-        
+
         # Add waiting task to the real Redis queue
         waiting_file_id = str(uuid.uuid4())
         queue.push_tasks([waiting_file_id])
@@ -880,11 +877,11 @@ class TestRagPipelineRunTasks:
 
             # Verify waiting task was still processed despite file error
             mock_delay.assert_called_once()
-            
+
             # Verify correct parameters for the call
             call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get('rag_pipeline_invoke_entities_file_id') == waiting_file_id
-            assert call_kwargs.get('tenant_id') == tenant.id
+            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id
+            assert call_kwargs.get("tenant_id") == tenant.id
 
             # Verify queue is empty after processing (task was pulled)
             remaining_tasks = queue.pull_tasks(count=10)
@@ -904,14 +901,14 @@ class TestRagPipelineRunTasks:
         """
         # Arrange: Create test data
         account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
-        
+
         # Mock file service to raise exception
         file_id = str(uuid.uuid4())
         mock_file_service["get_content"].side_effect = Exception("File not found")
 
         # Use real Redis for TenantSelfTaskQueue
         queue = TenantSelfTaskQueue(tenant.id, "pipeline")
-        
+
         # Add waiting task to the real Redis queue
         waiting_file_id = str(uuid.uuid4())
         queue.push_tasks([waiting_file_id])
@@ -928,11 +925,11 @@ class TestRagPipelineRunTasks:
 
             # Verify waiting task was still processed despite file error
             mock_delay.assert_called_once()
-            
+
             # Verify correct parameters for the call
             call_kwargs = mock_delay.call_args[1] if mock_delay.call_args else {}
-            assert call_kwargs.get('rag_pipeline_invoke_entities_file_id') == waiting_file_id
-            assert call_kwargs.get('tenant_id') == tenant.id
+            assert call_kwargs.get("rag_pipeline_invoke_entities_file_id") == waiting_file_id
+            assert call_kwargs.get("tenant_id") == tenant.id
 
             # Verify queue is empty after processing (task was pulled)
             remaining_tasks = queue.pull_tasks(count=10)

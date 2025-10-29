@@ -25,34 +25,34 @@ class DocumentIndexingTaskProxy:
     def _send_to_direct_queue(self, task_func: Callable):
         logger.info("send dataset %s to direct queue", self.dataset_id)
         task_func.delay(  # type: ignore
-            tenant_id=self.tenant_id,
-            dataset_id=self.dataset_id,
-            document_ids=self.document_ids
+            tenant_id=self.tenant_id, dataset_id=self.dataset_id, document_ids=self.document_ids
         )
 
     def _send_to_tenant_queue(self, task_func: Callable):
         logger.info("send dataset %s to tenant queue", self.dataset_id)
         if self.tenant_self_task_queue.get_task_key():
             # Add to waiting queue using List operations (lpush)
-            self.tenant_self_task_queue.push_tasks([
-                asdict(
-                    DocumentTask(tenant_id=self.tenant_id, dataset_id=self.dataset_id, document_ids=self.document_ids)
-                )
-            ])
+            self.tenant_self_task_queue.push_tasks(
+                [
+                    asdict(
+                        DocumentTask(
+                            tenant_id=self.tenant_id, dataset_id=self.dataset_id, document_ids=self.document_ids
+                        )
+                    )
+                ]
+            )
             logger.info("push tasks: %s - %s", self.dataset_id, self.document_ids)
         else:
             # Set flag and execute task
             self.tenant_self_task_queue.set_task_waiting_time()
             task_func.delay(  # type: ignore
-                tenant_id=self.tenant_id,
-                dataset_id=self.dataset_id,
-                document_ids=self.document_ids
+                tenant_id=self.tenant_id, dataset_id=self.dataset_id, document_ids=self.document_ids
             )
             logger.info("init tasks: %s - %s", self.dataset_id, self.document_ids)
 
     def _send_to_default_tenant_queue(self):
         self._send_to_tenant_queue(normal_document_indexing_task)
-    
+
     def _send_to_priority_tenant_queue(self):
         self._send_to_tenant_queue(priority_document_indexing_task)
 
@@ -64,7 +64,7 @@ class DocumentIndexingTaskProxy:
             "dispatch args: %s - %s - %s",
             self.tenant_id,
             self.features.billing.enabled,
-            self.features.billing.subscription.plan
+            self.features.billing.subscription.plan,
         )
         # dispatch to different indexing queue with tenant isolation when billing enabled
         if self.features.billing.enabled:
