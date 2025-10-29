@@ -1,30 +1,20 @@
-import ReactMarkdown from 'react-markdown'
-import RemarkMath from 'remark-math'
-import RemarkBreaks from 'remark-breaks'
-import RehypeKatex from 'rehype-katex'
-import RemarkGfm from 'remark-gfm'
-import RehypeRaw from 'rehype-raw'
+import { AudioBlock, Img, Link, MarkdownButton, MarkdownForm, Paragraph, PluginImg, PluginParagraph, ScriptBlock, ThinkBlock, VideoBlock } from '@/app/components/base/markdown-blocks'
 import { ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
-import AudioBlock from '@/app/components/base/markdown-blocks/audio-block'
-import Img from '@/app/components/base/markdown-blocks/img'
-import Link from '@/app/components/base/markdown-blocks/link'
-import MarkdownButton from '@/app/components/base/markdown-blocks/button'
-import MarkdownForm from '@/app/components/base/markdown-blocks/form'
-import Paragraph from '@/app/components/base/markdown-blocks/paragraph'
-import ScriptBlock from '@/app/components/base/markdown-blocks/script-block'
-import ThinkBlock from '@/app/components/base/markdown-blocks/think-block'
-import VideoBlock from '@/app/components/base/markdown-blocks/video-block'
-import { customUrlTransform } from './markdown-utils'
-
-import type { FC } from 'react'
-
 import dynamic from 'next/dynamic'
+import type { FC } from 'react'
+import ReactMarkdown from 'react-markdown'
+import RehypeKatex from 'rehype-katex'
+import RehypeRaw from 'rehype-raw'
+import RemarkBreaks from 'remark-breaks'
+import RemarkGfm from 'remark-gfm'
+import RemarkMath from 'remark-math'
+import { customUrlTransform } from './markdown-utils'
 
 const CodeBlock = dynamic(() => import('@/app/components/base/markdown-blocks/code-block'), { ssr: false })
 
 export type SimplePluginInfo = {
   pluginUniqueIdentifier: string
-  plugin_id: string
+  pluginId: string
 }
 
 export type ReactMarkdownWrapperProps = {
@@ -70,11 +60,11 @@ export const ReactMarkdownWrapper: FC<ReactMarkdownWrapperProps> = (props) => {
       disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body', ...(props.customDisallowedElements || [])]}
       components={{
         code: CodeBlock,
-        img: (props: any) => <Img {...props} pluginInfo={pluginInfo} />,
+        img: (props: any) => pluginInfo ? <PluginImg {...props} pluginInfo={pluginInfo} /> : <Img {...props} />,
         video: VideoBlock,
         audio: AudioBlock,
         a: Link,
-        p: (props: any) => <Paragraph {...props} pluginInfo={pluginInfo} />,
+        p: (props: any) => pluginInfo ? <PluginParagraph {...props} pluginInfo={pluginInfo} /> : <Paragraph {...props} />,
         button: MarkdownButton,
         form: MarkdownForm,
         script: ScriptBlock as any,

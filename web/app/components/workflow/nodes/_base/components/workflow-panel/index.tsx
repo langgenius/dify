@@ -342,6 +342,25 @@ const BasePanel: FC<BasePanelProps> = ({
     )
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
+  const readmeEntranceComponent = useMemo(() => {
+    let pluginDetail
+    switch (data.type) {
+      case BlockEnum.Tool:
+        pluginDetail = currToolCollection
+        break
+      case BlockEnum.DataSource:
+        pluginDetail = currentDataSource
+        break
+      case BlockEnum.TriggerPlugin:
+        pluginDetail = currentTriggerProvider
+        break
+
+      default:
+        break
+    }
+    return !pluginDetail ? null : <ReadmeEntrance pluginDetail={pluginDetail as any} className='mt-auto' />
+  }, [data.type, currToolCollection, currentDataSource, currentTriggerProvider])
+
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
@@ -564,7 +583,7 @@ const BasePanel: FC<BasePanelProps> = ({
           <Split />
         </div>
         {tabType === TabType.settings && (
-          <div className='flex-1 overflow-y-auto'>
+          <div className='flex flex-1 flex-col overflow-y-auto'>
             <div>
               {cloneElement(children as any, {
                 id,
@@ -609,6 +628,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 </div>
               )
             }
+            {readmeEntranceComponent}
           </div>
         )}
 
@@ -628,8 +648,6 @@ const BasePanel: FC<BasePanelProps> = ({
           />
         )}
 
-        {data.type === BlockEnum.Tool && <ReadmeEntrance pluginDetail={currToolCollection as any} className='mt-auto' />}
-        {data.type === BlockEnum.DataSource && <ReadmeEntrance pluginDetail={currentDataSource as any} className='mt-auto' />}
       </div>
     </div>
   )
