@@ -25,6 +25,10 @@ from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities.metadata_entities import Condition, MetadataCondition
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.rag.utils.document_url import (
+    document_url_for_dataset_document,
+    document_url_for_external_metadata,
+)
 from core.variables import (
     StringSegment,
 )
@@ -368,6 +372,10 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node):
                 "title": item.metadata.get("title"),
                 "content": item.page_content,
             }
+            # enrich with document_url for external metadata
+            doc_url = document_url_for_external_metadata(item.metadata)
+            if doc_url:
+                source["metadata"]["document_url"] = doc_url
             retrieval_resource_list.append(source)
         # deal with dify documents
         if dify_documents:
@@ -415,6 +423,13 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node):
                             source["content"] = f"question:{segment.get_sign_content()} \nanswer:{segment.answer}"
                         else:
                             source["content"] = segment.get_sign_content()
+                        # enrich with document_url for internal dataset document
+                        try:
+                            doc_url = document_url_for_dataset_document(document)
+                            if doc_url:
+                                source["metadata"]["document_url"] = doc_url
+                        except Exception:
+                            pass
                         retrieval_resource_list.append(source)
         if retrieval_resource_list:
             retrieval_resource_list = sorted(

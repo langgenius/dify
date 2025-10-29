@@ -649,6 +649,7 @@ const translation = {
     citation: {
       title: '引用',
       linkToDataset: 'ナレッジへのリンク',
+      viewOriginal: 'ソース',
       characters: '文字数：',
       hitCount: '検索回数：',
       vectorHash: 'ベクトルハッシュ：',

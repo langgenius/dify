@@ -652,6 +652,7 @@ const translation = {
     citation: {
       title: '引用',
       linkToDataset: '跳转至知识库',
+      viewOriginal: '源文件',
       characters: '字符：',
       hitCount: '召回次数：',
       vectorHash: '向量哈希：',

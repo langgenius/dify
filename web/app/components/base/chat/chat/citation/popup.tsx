@@ -73,16 +73,26 @@ const Popup: FC<PopupProps> = ({
                             {source.segment_position || index + 1}
                           </div>
                         </div>
-                        {
-                          showHitInfo && (
+                        <div className='hidden items-center gap-3 group-hover:flex'>
+                          {source.document_url && (
+                            <Link
+                              href={source.document_url}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              className='flex h-[18px] items-center text-xs text-text-accent'>
+                              {t('common.chat.citation.viewOriginal')}
+                              <ArrowUpRight className='ml-1 h-3 w-3' />
+                            </Link>
+                          )}
+                          {showHitInfo && (
                             <Link
                               href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
-                              className='hidden h-[18px] items-center text-xs text-text-accent group-hover:flex'>
+                              className='flex h-[18px] items-center text-xs text-text-accent'>
                               {t('common.chat.citation.linkToDataset')}
                               <ArrowUpRight className='ml-1 h-3 w-3' />
                             </Link>
-                          )
-                        }
+                          )}
+                        </div>
                       </div>
                       <div className='break-words text-[13px] text-text-secondary'>{source.content}</div>
                       {

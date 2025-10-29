@@ -10,6 +10,7 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.rag.utils.document_url import document_url_for_dataset_document
 from fields.conversation_fields import build_message_file_model
 from fields.message_fields import build_agent_thought_model, build_feedback_model
 from fields.raws import FilesContainedField
@@ -67,6 +68,27 @@ def build_message_model(api_or_ns: Api | Namespace):
     agent_thought_model = build_agent_thought_model(api_or_ns)
     message_file_model = build_message_file_model(api_or_ns)
 
+    # Helper: rebuild retriever resources with fresh signed URLs for uploads
+    def _fresh_retriever_resources(obj):
+        try:
+            metadata = json.loads(obj.message_metadata) if obj.message_metadata else {}
+            resources = metadata.get("retriever_resources", []) or []
+            for res in resources:
+                try:
+                    doc_id = res.get("document_id")
+                    if doc_id:
+                        doc = services.dataset_service.DatasetService.get_document_by_id(doc_id)
+                        if doc:
+                            url = document_url_for_dataset_document(doc)
+                            if url:
+                                res["document_url"] = url
+                except Exception:
+                    # Do not block message retrieval on URL regeneration issues
+                    continue
+            return resources
+        except Exception:
+            return []
+
     # Then build the message fields with nested models
     message_fields = {
         "id": fields.String,
@@ -77,11 +99,7 @@ def build_message_model(api_or_ns: Api | Namespace):
         "answer": fields.String(attribute="re_sign_file_url_answer"),
         "message_files": fields.List(fields.Nested(message_file_model)),
         "feedback": fields.Nested(feedback_model, attribute="user_feedback", allow_null=True),
-        "retriever_resources": fields.Raw(
-            attribute=lambda obj: json.loads(obj.message_metadata).get("retriever_resources", [])
-            if obj.message_metadata
-            else []
-        ),
+        "retriever_resources": fields.Raw(attribute=_fresh_retriever_resources),
         "created_at": TimestampField,
         "agent_thoughts": fields.List(fields.Nested(agent_thought_model)),
         "status": fields.String,

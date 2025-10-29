@@ -13,6 +13,7 @@ from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.rag.models.document import Document as RagDocument
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.rag.utils.document_url import document_url_for_dataset_document
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
@@ -128,6 +129,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                             retriever_from=self.retriever_from,
                             score=document_score_list.get(segment.index_node_id),
                             doc_metadata=document.doc_metadata,
+                            document_url=document_url_for_dataset_document(document),
                         )
 
                         if self.retriever_from == "dev":

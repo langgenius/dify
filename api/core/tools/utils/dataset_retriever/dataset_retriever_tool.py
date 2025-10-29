@@ -10,6 +10,10 @@ from core.rag.entities.context_entities import DocumentContext
 from core.rag.models.document import Document as RetrievalDocument
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.rag.utils.document_url import (
+    document_url_for_dataset_document,
+    document_url_for_external_metadata,
+)
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from models.dataset import Dataset
@@ -113,6 +117,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                         data_source_type="external",
                         retriever_from=self.retriever_from,
                         score=item.metadata.get("score"),
+                        document_url=document_url_for_external_metadata(item.metadata),
                         title=item.metadata.get("title"),
                         content=item.page_content,
                     )
@@ -205,6 +210,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                     retriever_from=self.retriever_from,
                                     score=record.score or 0.0,
                                     doc_metadata=document.doc_metadata,
+                                    document_url=document_url_for_dataset_document(document),
                                 )
 
                                 if self.retriever_from == "dev":

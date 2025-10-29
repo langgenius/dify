@@ -53,6 +53,10 @@ from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
+from core.rag.utils.document_url import (
+    document_url_for_dataset_document,
+    document_url_for_external_metadata,
+)
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from libs.json_in_md_parser import parse_and_check_json_markdown
@@ -226,6 +230,7 @@ class DatasetRetrieval:
                 data_source_type="external",
                 retriever_from=invoke_from.to_source(),
                 score=item.metadata.get("score"),
+                document_url=document_url_for_external_metadata(item.metadata),
                 content=item.page_content,
             )
             retrieval_resource_list.append(source)
@@ -270,6 +275,7 @@ class DatasetRetrieval:
                                 retriever_from=invoke_from.to_source(),
                                 score=record.score or 0.0,
                                 doc_metadata=document.doc_metadata,
+                                document_url=document_url_for_dataset_document(document),
                             )
 
                             if invoke_from.to_source() == "dev":

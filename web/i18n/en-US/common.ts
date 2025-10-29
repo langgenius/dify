@@ -658,6 +658,7 @@ const translation = {
     citation: {
       title: 'CITATIONS',
       linkToDataset: 'Link to Knowledge',
+      viewOriginal: 'View Original',
       characters: 'Characters:',
       hitCount: 'Retrieval count:',
       vectorHash: 'Vector hash:',

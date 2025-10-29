@@ -55,6 +55,7 @@ export type CitationItem = {
   dataset_id: string
   document_id: string
   document_name: string
+  document_url?: string
   hit_count: number
   index_node_hash: string
   segment_id: string

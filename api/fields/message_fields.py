@@ -43,6 +43,7 @@ retriever_resource_fields = {
     "dataset_name": fields.String,
     "document_id": fields.String,
     "document_name": fields.String,
+    "document_url": fields.String,
     "data_source_type": fields.String,
     "segment_id": fields.String,
     "score": fields.Float,
