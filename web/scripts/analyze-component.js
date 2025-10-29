@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Component Analyzer for Cursor AI
+ * Component Analyzer for Test Generation
  *
- * Analyzes a component and generates a structured prompt for Cursor AI.
- * Copy the output and paste into Cursor Chat (Cmd+L) or Composer (Cmd+I).
+ * Analyzes a component and generates a structured prompt for AI assistants.
+ * Works with Cursor, GitHub Copilot, and other AI coding tools.
  *
  * Usage:
  *   node scripts/analyze-component.js <component-path>
@@ -11,6 +11,8 @@
  * Examples:
  *   node scripts/analyze-component.js app/components/base/button/index.tsx
  *   node scripts/analyze-component.js app/components/workflow/nodes/llm/panel.tsx
+ *
+ * For complete testing guidelines, see: web/scripts/TESTING.md
  */
 
 const fs = require('node:fs')
@@ -272,16 +274,16 @@ class ComponentAnalyzer {
 }
 
 // ============================================================================
-// Prompt Builder for Cursor
+// Prompt Builder for AI Assistants
 // ============================================================================
 
-class CursorPromptBuilder {
+class TestPromptBuilder {
   build(analysis, _sourceCode) {
     const testPath = analysis.path.replace(/\.tsx?$/, '.spec.tsx')
 
     return `
 ╔════════════════════════════════════════════════════════════════════════════╗
-║                  📋 GENERATE TEST FOR DIFY COMPONENT                        ║
+║                 📋 GENERATE TEST FOR DIFY COMPONENT                         ║
 ╚════════════════════════════════════════════════════════════════════════════╝
 
 📍 Component: ${analysis.name}
@@ -307,7 +309,7 @@ Features Detected:
   ${analysis.hasAPI ? '✓' : '✗'} API calls
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📝 TASK FOR CURSOR AI:
+📝 TASK:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Please generate a comprehensive test file for this component at:
@@ -316,16 +318,18 @@ Please generate a comprehensive test file for this component at:
 The component is located at:
   ${analysis.path}
 
-Follow the testing guidelines in .cursorrules file.
+Follow the testing guidelines in:
+  - web/scripts/TESTING.md (complete testing guide)
+  - .cursorrules (quick reference for Cursor users)
 
 ${this.getSpecificGuidelines(analysis)}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📋 COPY THIS TO CURSOR:
+📋 PROMPT FOR AI ASSISTANT (COPY THIS TO YOUR AI ASSISTANT):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Generate a comprehensive test file for @${analysis.path} following the project's testing guidelines in .cursorrules.
+Generate a comprehensive test file for @${analysis.path} following the project's testing guidelines in web/scripts/TESTING.md.
 
 Including but not limited to:
 ${this.buildFocusPoints(analysis)}
@@ -514,8 +518,13 @@ Examples:
   node scripts/analyze-component.js app/components/base/button/index.tsx
   node scripts/analyze-component.js app/components/workflow/nodes/llm/panel.tsx
 
-This tool analyzes your component and generates a prompt for Cursor AI.
-Copy the output and use it in Cursor Chat (Cmd+L) or Composer (Cmd+I).
+This tool analyzes your component and generates a prompt for AI assistants.
+Copy the output and use it with:
+  - Cursor (Cmd+L for Chat, Cmd+I for Composer)
+  - GitHub Copilot Chat (Cmd+I)
+  - Claude, ChatGPT, or any other AI coding tool
+
+For complete testing guidelines, see: web/scripts/TESTING.md
     `)
     process.exit(1)
   }
@@ -587,8 +596,8 @@ This component is too complex to test effectively. Please consider:
     process.exit(0)
   }
 
-  // Build prompt for Cursor
-  const builder = new CursorPromptBuilder()
+  // Build prompt for AI assistant
+  const builder = new TestPromptBuilder()
   const prompt = builder.build(analysis, sourceCode)
 
   // Output
@@ -619,8 +628,13 @@ This component is too complex to test effectively. Please consider:
       encoding: 'utf-8',
     })
 
-    if (result.status === 0)
-      console.log('\n📋 Prompt copied to clipboard! Paste it in Cursor Chat (Cmd+L).\n')
+    if (result.status === 0) {
+      console.log('\n📋 Prompt copied to clipboard!')
+      console.log('   Paste it in your AI assistant:')
+      console.log('   - Cursor: Cmd+L (Chat) or Cmd+I (Composer)')
+      console.log('   - GitHub Copilot Chat: Cmd+I')
+      console.log('   - Or any other AI coding tool\n')
+    }
   }
   catch {
     // pbcopy failed, but don't break the script

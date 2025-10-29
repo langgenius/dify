@@ -10,7 +10,7 @@ Frontend development utility scripts.
 
 ---
 
-## 🚀 Generate Tests (Using Cursor AI)
+## 🚀 Generate Tests (Using AI Assistants)
 
 ### Quick Start
 
@@ -18,11 +18,14 @@ Frontend development utility scripts.
 # 1. Analyze component
 pnpm test:gen app/components/base/button/index.tsx
 
-# Output: Component analysis + Cursor prompt (auto-copied)
+# Output: Component analysis + AI prompt (auto-copied to clipboard)
 
-# 2. In Cursor: Cmd+L → Cmd+V → Enter → Apply
+# 2. Paste in your AI assistant:
+#    - Cursor: Cmd+L (Chat) or Cmd+I (Composer) → Cmd+V → Enter
+#    - GitHub Copilot Chat: Cmd+I → Cmd+V → Enter
+#    - Claude/ChatGPT: Paste the prompt directly
 
-# 3. Verify
+# 3. Apply the generated test and verify
 pnpm test app/components/base/button/index.spec.tsx
 ```
 
@@ -37,19 +40,19 @@ pnpm test app/components/base/button/index.spec.tsx
 Script analyzes and scores components:
 
 - **0-10**: 🟢 Simple (5-10 min to test)
-- **11-30Menu 🟡 Medium (15-30 min to test)  
-- **31-50Menu 🟠 Complex (30-60 min to test)
+- **11-30**: 🟡 Medium (15-30 min to test)  
+- **31-50**: 🟠 Complex (30-60 min to test)
 - **51+**: 🔴 Very Complex (60+ min, consider refactoring)
 
-### Test Scenarios (11 types)
+### Test Scenarios
 
-Defined in `.cursorrules`:
+Defined in `TESTING.md`:
 
 **Must test**: Rendering, Props, Edge Cases  
-**CommonMenuInteractions, Accessibility, i18n, Async  
-**OptionalMenuState, Security, Performance, Snapshots
+**Conditional**: State, Effects, Events, API calls, Routing  
+**Optional**: Accessibility, Performance, Snapshots
 
-Cursor AI auto-selects scenarios based on component features.
+AI assistant auto-selects scenarios based on component features.
 
 ---
 
@@ -58,10 +61,12 @@ Cursor AI auto-selects scenarios based on component features.
 ```bash
 # New component
 pnpm test:gen app/components/new-feature/index.tsx
-# → Cursor → Apply → Done
+# → Paste in AI assistant → Apply → Done
 
-# Or even simpler in Cursor
-# Cmd+I → "Generate test" → Apply
+# Quick shortcuts:
+# Cursor users: Cmd+I → "Generate test for [file]" → Apply
+# Copilot users: Cmd+I → Paste prompt → Accept
+# Others: Copy prompt → Paste in your AI tool
 ```
 
 ---
@@ -80,10 +85,24 @@ pnpm type-check             # Type check
 
 ## 🎯 Customize
 
-Edit `.cursorrules` to modify test standards for your team.
+Edit testing standards for your team:
 
 ```bash
+# Complete testing guide (for all team members)
+code web/scripts/TESTING.md
+
+# Quick reference for Cursor users
 code .cursorrules
-git commit -m "docs: update test rules"
+
+# Commit your changes
+git commit -m "docs: update test standards"
 ```
+
+---
+
+## 📚 Resources
+
+- **Testing Guide**: [TESTING.md](./TESTING.md) - Complete testing specifications
+- **Quick Reference**: [.cursorrules](../../.cursorrules) - For Cursor users
+- **Examples**: [classnames.spec.ts](../utils/classnames.spec.ts), [button/index.spec.tsx](../app/components/base/button/index.spec.tsx)
 
