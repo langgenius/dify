@@ -210,19 +210,6 @@ class Tool(ABC):
             meta=meta,
         )
 
-    def create_variable_message(self, variable_name: str, variable_value: Any) -> ToolInvokeMessage:
-        """
-        create a variable message
-
-        :param variable_name: the name of the variable
-        :param variable_value: the value of the variable
-        :return: the variable message
-        """
-        return ToolInvokeMessage(
-            type=ToolInvokeMessage.MessageType.VARIABLE,
-            message=ToolInvokeMessage.VariableMessage(variable_name=variable_name, variable_value=variable_value),
-        )
-
     def create_json_message(self, object: dict) -> ToolInvokeMessage:
         """
         create a json message
