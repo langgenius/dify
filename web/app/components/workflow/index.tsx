@@ -568,6 +568,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         'relative h-full w-full min-w-[960px]',
         workflowReadOnly && 'workflow-panel-animation',
         nodeAnimation && 'workflow-node-animation',
+        isDraggingNode && 'workflow-dragging',
       )}
       ref={workflowContainerRef}
     >

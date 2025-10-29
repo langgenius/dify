@@ -1,5 +1,10 @@
 import type { MouseEvent } from 'react'
-import { useCallback, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { produce } from 'immer'
 import type {
@@ -82,6 +87,8 @@ export const useNodesInteractions = () => {
     x: number;
     y: number;
   })
+  const dragAnimationFrameRef = useRef<number | null>(null)
+  const pendingDragNodeRef = useRef<Node | null>(null)
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
   const { saveStateToHistory, undo, redo } = useWorkflowHistory()
@@ -112,6 +119,54 @@ export const useNodesInteractions = () => {
     [workflowStore, getNodesReadOnly],
   )
 
+  useEffect(() => {
+    return () => {
+      if (dragAnimationFrameRef.current !== null)
+        cancelAnimationFrame(dragAnimationFrameRef.current)
+    }
+  }, [])
+
+  const applyNodeDragPosition = useCallback((pendingNode: Node) => {
+    const { getNodes, setNodes } = store.getState()
+    const nodes = getNodes()
+
+    const { restrictPosition } = handleNodeIterationChildDrag(pendingNode)
+    const { restrictPosition: restrictLoopPosition }
+      = handleNodeLoopChildDrag(pendingNode)
+
+    const { showHorizontalHelpLineNodes, showVerticalHelpLineNodes }
+      = handleSetHelpline(pendingNode)
+    const showHorizontalHelpLineNodesLength
+      = showHorizontalHelpLineNodes.length
+    const showVerticalHelpLineNodesLength = showVerticalHelpLineNodes.length
+
+    const newNodes = produce(nodes, (draft) => {
+      const currentNode = draft.find(n => n.id === pendingNode.id)!
+
+      if (showVerticalHelpLineNodesLength > 0)
+        currentNode.position.x = showVerticalHelpLineNodes[0].position.x
+      else if (restrictPosition.x !== undefined)
+        currentNode.position.x = restrictPosition.x
+      else if (restrictLoopPosition.x !== undefined)
+        currentNode.position.x = restrictLoopPosition.x
+      else currentNode.position.x = pendingNode.position.x
+
+      if (showHorizontalHelpLineNodesLength > 0)
+        currentNode.position.y = showHorizontalHelpLineNodes[0].position.y
+      else if (restrictPosition.y !== undefined)
+        currentNode.position.y = restrictPosition.y
+      else if (restrictLoopPosition.y !== undefined)
+        currentNode.position.y = restrictLoopPosition.y
+      else currentNode.position.y = pendingNode.position.y
+    })
+    setNodes(newNodes)
+  }, [
+    store,
+    handleNodeIterationChildDrag,
+    handleNodeLoopChildDrag,
+    handleSetHelpline,
+  ])
+
   const handleNodeDrag = useCallback<NodeDragHandler>(
     (e, node: Node) => {
       if (getNodesReadOnly()) return
@@ -120,48 +175,26 @@ export const useNodesInteractions = () => {
 
       if (node.type === CUSTOM_LOOP_START_NODE) return
 
-      const { getNodes, setNodes } = store.getState()
       e.stopPropagation()
 
-      const nodes = getNodes()
+      pendingDragNodeRef.current = node
 
-      const { restrictPosition } = handleNodeIterationChildDrag(node)
-      const { restrictPosition: restrictLoopPosition }
-        = handleNodeLoopChildDrag(node)
+      if (dragAnimationFrameRef.current !== null)
+        return
 
-      const { showHorizontalHelpLineNodes, showVerticalHelpLineNodes }
-        = handleSetHelpline(node)
-      const showHorizontalHelpLineNodesLength
-        = showHorizontalHelpLineNodes.length
-      const showVerticalHelpLineNodesLength = showVerticalHelpLineNodes.length
+      dragAnimationFrameRef.current = requestAnimationFrame(() => {
+        dragAnimationFrameRef.current = null
+        const pendingNode = pendingDragNodeRef.current
+        if (!pendingNode)
+          return
 
-      const newNodes = produce(nodes, (draft) => {
-        const currentNode = draft.find(n => n.id === node.id)!
-
-        if (showVerticalHelpLineNodesLength > 0)
-          currentNode.position.x = showVerticalHelpLineNodes[0].position.x
-        else if (restrictPosition.x !== undefined)
-          currentNode.position.x = restrictPosition.x
-        else if (restrictLoopPosition.x !== undefined)
-          currentNode.position.x = restrictLoopPosition.x
-        else currentNode.position.x = node.position.x
-
-        if (showHorizontalHelpLineNodesLength > 0)
-          currentNode.position.y = showHorizontalHelpLineNodes[0].position.y
-        else if (restrictPosition.y !== undefined)
-          currentNode.position.y = restrictPosition.y
-        else if (restrictLoopPosition.y !== undefined)
-          currentNode.position.y = restrictLoopPosition.y
-        else currentNode.position.y = node.position.y
+        applyNodeDragPosition(pendingNode)
+        pendingDragNodeRef.current = null
       })
-      setNodes(newNodes)
     },
     [
       getNodesReadOnly,
-      store,
-      handleNodeIterationChildDrag,
-      handleNodeLoopChildDrag,
-      handleSetHelpline,
+      applyNodeDragPosition,
     ],
   )
 
@@ -171,6 +204,17 @@ export const useNodesInteractions = () => {
         = workflowStore.getState()
 
       if (getNodesReadOnly()) return
+
+      if (dragAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(dragAnimationFrameRef.current)
+        dragAnimationFrameRef.current = null
+      }
+      const pendingNode = pendingDragNodeRef.current
+      if (pendingNode)
+        applyNodeDragPosition(pendingNode)
+      else
+        applyNodeDragPosition(node)
+      pendingDragNodeRef.current = null
 
       const { x, y } = dragNodeStartPosition.current
       if (!(x === node.position.x && y === node.position.y)) {
@@ -191,6 +235,7 @@ export const useNodesInteractions = () => {
       getNodesReadOnly,
       saveStateToHistory,
       handleSyncWorkflowDraft,
+      applyNodeDragPosition,
     ],
   )
 
