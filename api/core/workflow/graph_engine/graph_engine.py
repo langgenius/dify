@@ -96,7 +96,7 @@ class GraphEngine:
 
         # === State Management ===
         # Unified state manager handles all node state transitions and queue operations
-        self._state_manager = GraphStateManager(self._graph, self._ready_queue)
+        self._state_manager = GraphStateManager(self._graph, self._ready_queue, self._response_coordinator)
 
         # === Response Coordination ===
         # Coordinates response streaming from response nodes
