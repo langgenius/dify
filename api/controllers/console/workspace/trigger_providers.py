@@ -469,9 +469,7 @@ class TriggerOAuthClientManageApi(Resource):
                 tenant_id=user.current_tenant_id,
                 provider_id=provider_id,
             )
-
-            # Check if there's a system OAuth client
-            system_client = TriggerProviderService.get_oauth_client(
+            system_client_exists = TriggerProviderService.is_oauth_system_client_exists(
                 tenant_id=user.current_tenant_id,
                 provider_id=provider_id,
             )
@@ -479,8 +477,8 @@ class TriggerOAuthClientManageApi(Resource):
             redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback"
             return jsonable_encoder(
                 {
-                    "configured": bool(custom_params or system_client),
-                    "system_configured": bool(system_client),
+                    "configured": bool(custom_params or system_client_exists),
+                    "system_configured": system_client_exists,
                     "custom_configured": bool(custom_params),
                     "oauth_client_schema": provider_controller.get_oauth_client_schema(),
                     "custom_enabled": is_custom_enabled,

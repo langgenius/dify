@@ -471,7 +471,7 @@ class TriggerProviderService:
 
             is_verified = PluginService.is_plugin_verified(tenant_id, provider_id.plugin_id)
             if not is_verified:
-                return oauth_params
+                return None
 
             # Check for system-level OAuth client
             system_client: TriggerOAuthSystemClient | None = (
@@ -487,6 +487,22 @@ class TriggerProviderService:
                     raise ValueError(f"Error decrypting system oauth params: {e}")
 
             return oauth_params
+
+    @classmethod
+    def is_oauth_system_client_exists(cls, tenant_id: str, provider_id: TriggerProviderID) -> bool:
+        """
+        Check if system OAuth client exists for a trigger provider.
+        """
+        is_verified = PluginService.is_plugin_verified(tenant_id, provider_id.plugin_id)
+        if not is_verified:
+            return False
+        with Session(db.engine, expire_on_commit=False) as session:
+            system_client: TriggerOAuthSystemClient | None = (
+                session.query(TriggerOAuthSystemClient)
+                .filter_by(plugin_id=provider_id.plugin_id, provider=provider_id.provider_name)
+                .first()
+            )
+            return system_client is not None
 
     @classmethod
     def save_custom_oauth_client_params(
