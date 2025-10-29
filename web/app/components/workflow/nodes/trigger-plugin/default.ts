@@ -219,6 +219,7 @@ const buildOutputVars = (schema: Record<string, any>, schemaTypeDefinitions?: Sc
 const metaData = genNodeMetaData({
   sort: 1,
   type: BlockEnum.TriggerPlugin,
+  helpLinkUri: 'plugin-trigger',
   isStart: true,
 })
 
