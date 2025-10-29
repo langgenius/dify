@@ -710,7 +710,7 @@ class TestDocumentIndexingTasks:
         )
         document_ids = [doc.id for doc in documents]
         tenant_id = dataset.tenant_id
-        dateset_id = dataset.id
+        dataset_id = dataset.id
 
         # Mock the task function
         from unittest.mock import MagicMock
@@ -743,7 +743,7 @@ class TestDocumentIndexingTasks:
         
         # Verify correct parameters for each call
         calls = mock_task_func.delay.call_args_list
-        assert calls[0][1] == {"tenant_id": tenant_id, "dataset_id": dateset_id, "document_ids": ["waiting-doc-1"]}
+        assert calls[0][1] == {"tenant_id": tenant_id, "dataset_id": dataset_id, "document_ids": ["waiting-doc-1"]}
 
         # Verify queue is empty after processing (tasks were pulled)
         remaining_tasks = queue.pull_tasks(count=10)  # Pull more than we added
@@ -768,7 +768,7 @@ class TestDocumentIndexingTasks:
         )
         document_ids = [doc.id for doc in documents]
         tenant_id = dataset.tenant_id
-        dateset_id = dataset.id
+        dataset_id = dataset.id
 
         # Mock IndexingRunner to raise an exception
         mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = Exception("Test error")
@@ -807,7 +807,7 @@ class TestDocumentIndexingTasks:
         
         # Verify correct parameters for the call
         call = mock_task_func.delay.call_args
-        assert call[1] == {"tenant_id": tenant_id, "dataset_id": dateset_id, "document_ids": ["waiting-doc-1"]}
+        assert call[1] == {"tenant_id": tenant_id, "dataset_id": dataset_id, "document_ids": ["waiting-doc-1"]}
 
         # Verify queue is empty after processing (task was pulled)
         remaining_tasks = queue.pull_tasks(count=10)
