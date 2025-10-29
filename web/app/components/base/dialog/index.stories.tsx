@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import Dialog from '.'
 
 const meta = {
-  title: 'Base/Dialog/Dialog',
+  title: 'Base/Feedback/Dialog',
   component: Dialog,
   parameters: {
     layout: 'fullscreen',
@@ -130,6 +130,7 @@ export const CustomStyling: Story = {
     bodyClassName: 'bg-gray-50 rounded-xl p-5',
     footerClassName: 'justify-between px-4 pb-4 pt-4',
     titleClassName: 'text-lg text-primary-600',
+    children: null,
     footer: (
       <>
         <span className="text-xs text-gray-400">Last synced 2 minutes ago</span>
