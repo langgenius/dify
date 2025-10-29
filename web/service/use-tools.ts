@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { del, get, post, put } from './base'
 import type {
   Collection,
@@ -17,6 +18,10 @@ import {
 
 const NAME_SPACE = 'tools'
 
+const fetchAllBuiltInTools = () => {
+  return get<ToolWithProvider[]>('/workspaces/current/tools/builtin')
+}
+
 const useAllToolProvidersKey = [NAME_SPACE, 'allToolProviders']
 export const useAllToolProviders = (enabled = true) => {
   return useQuery<Collection[]>({
@@ -34,7 +39,7 @@ const useAllBuiltInToolsKey = [NAME_SPACE, 'builtIn']
 export const useAllBuiltInTools = () => {
   return useQuery<ToolWithProvider[]>({
     queryKey: useAllBuiltInToolsKey,
-    queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/builtin'),
+    queryFn: fetchAllBuiltInTools,
   })
 }
 
@@ -42,11 +47,15 @@ export const useInvalidateAllBuiltInTools = () => {
   return useInvalid(useAllBuiltInToolsKey)
 }
 
+const fetchAllCustomTools = () => {
+  return get<ToolWithProvider[]>('/workspaces/current/tools/api')
+}
+
 const useAllCustomToolsKey = [NAME_SPACE, 'customTools']
 export const useAllCustomTools = () => {
   return useQuery<ToolWithProvider[]>({
     queryKey: useAllCustomToolsKey,
-    queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/api'),
+    queryFn: fetchAllCustomTools,
   })
 }
 
@@ -54,11 +63,15 @@ export const useInvalidateAllCustomTools = () => {
   return useInvalid(useAllCustomToolsKey)
 }
 
+const fetchAllWorkflowTools = () => {
+  return get<ToolWithProvider[]>('/workspaces/current/tools/workflow')
+}
+
 const useAllWorkflowToolsKey = [NAME_SPACE, 'workflowTools']
 export const useAllWorkflowTools = () => {
   return useQuery<ToolWithProvider[]>({
     queryKey: useAllWorkflowToolsKey,
-    queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/workflow'),
+    queryFn: fetchAllWorkflowTools,
   })
 }
 
@@ -66,11 +79,15 @@ export const useInvalidateAllWorkflowTools = () => {
   return useInvalid(useAllWorkflowToolsKey)
 }
 
+const fetchAllMCPTools = () => {
+  return get<ToolWithProvider[]>('/workspaces/current/tools/mcp')
+}
+
 const useAllMCPToolsKey = [NAME_SPACE, 'MCPTools']
 export const useAllMCPTools = () => {
   return useQuery<ToolWithProvider[]>({
     queryKey: useAllMCPToolsKey,
-    queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/mcp'),
+    queryFn: fetchAllMCPTools,
   })
 }
 
@@ -86,6 +103,43 @@ const useInvalidToolsKeyMap: Record<string, QueryKey> = {
 }
 export const useInvalidToolsByType = (type: CollectionType | string) => {
   return useInvalid(useInvalidToolsKeyMap[type])
+}
+
+const toolsQueryConfig: Record<'builtin' | 'custom' | 'workflow' | 'mcp', { key: QueryKey; fetcher: () => Promise<ToolWithProvider[]> }> = {
+  builtin: {
+    key: useAllBuiltInToolsKey,
+    fetcher: fetchAllBuiltInTools,
+  },
+  custom: {
+    key: useAllCustomToolsKey,
+    fetcher: fetchAllCustomTools,
+  },
+  workflow: {
+    key: useAllWorkflowToolsKey,
+    fetcher: fetchAllWorkflowTools,
+  },
+  mcp: {
+    key: useAllMCPToolsKey,
+    fetcher: fetchAllMCPTools,
+  },
+}
+
+export type ToolCollectionFetchType = keyof typeof toolsQueryConfig
+
+export const useFetchToolsData = () => {
+  const queryClient = useQueryClient()
+
+  const handleFetchAllTools = useCallback((type: ToolCollectionFetchType) => {
+    const config = toolsQueryConfig[type]
+    return queryClient.prefetchQuery({
+      queryKey: config.key,
+      queryFn: config.fetcher,
+    })
+  }, [queryClient])
+
+  return {
+    handleFetchAllTools,
+  }
 }
 
 export const useCreateMCP = () => {
