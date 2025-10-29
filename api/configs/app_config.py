@@ -26,7 +26,7 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
         super().__init__(settings_cls)
 
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def __call__(self) -> dict[str, Any]:
         current_state = self.current_state

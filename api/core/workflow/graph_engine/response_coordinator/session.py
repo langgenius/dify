@@ -41,7 +41,7 @@ class ResponseSession:
             TypeError: If node is not an AnswerNode or EndNode
         """
         if not isinstance(node, AnswerNode | EndNode | KnowledgeIndexNode):
-            raise TypeError
+            raise TypeError()
         return cls(
             node_id=node.id,
             template=node.get_streaming_template(),

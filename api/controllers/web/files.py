@@ -62,7 +62,7 @@ class FileApi(WebApiResource):
 
         file = request.files["file"]
         if not file.filename:
-            raise FilenameNotExistsError
+            raise FilenameNotExistsError()
 
         source = request.form.get("source")
         if source not in ("datasets", None):

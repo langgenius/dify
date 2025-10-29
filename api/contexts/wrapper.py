@@ -45,7 +45,7 @@ class RecyclableContextVar(Generic[T]):
         else:
             # thread_recycles >= self_updates, means current context is invalid
             if isinstance(default, HiddenValue) or default is _default:
-                raise LookupError
+                raise LookupError()
             else:
                 return default
 
