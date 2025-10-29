@@ -153,7 +153,7 @@ const List = () => {
         if (entries[0].isIntersecting && !isLoading && !error && hasMore)
           setSize((size: number) => size + 1)
       }, {
-        root: containerRef.current || null,
+        root: containerRef.current,
         rootMargin: `${dynamicMargin}px`,
         threshold: 0.1, // Trigger when 10% of the anchor element is visible
       })
