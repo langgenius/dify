@@ -64,6 +64,7 @@ describe('Rendering', () => {
 ```
 
 **Key Points**:
+
 - Verify component renders properly
 - Check key elements exist
 - Use semantic queries (getByRole, getByLabelText)
@@ -71,6 +72,7 @@ describe('Rendering', () => {
 ### 2. Props Testing (REQUIRED - All Components)
 
 **Must Test**:
+
 - ✅ Different values for each prop
 - ✅ Required vs optional props
 - ✅ Default values
@@ -81,6 +83,7 @@ describe('Rendering', () => {
 #### useState
 
 When testing state-related components:
+
 - ✅ Test initial state values
 - ✅ Test all state transitions
 - ✅ Test state reset/cleanup scenarios
@@ -88,6 +91,7 @@ When testing state-related components:
 #### useEffect
 
 When testing side effects:
+
 - ✅ Test effect execution conditions
 - ✅ Verify dependencies array correctness
 - ✅ Test cleanup function on unmount
@@ -116,6 +120,7 @@ When testing side effects:
 ### 5. Event Handlers
 
 **Must Test**:
+
 - ✅ All onClick, onChange, onSubmit handlers
 - ✅ Keyboard events (Enter, Escape, Tab, etc.)
 - ✅ Verify event.preventDefault() calls (if needed)
@@ -126,6 +131,7 @@ When testing side effects:
 ### 6. API Calls and Async Operations
 
 **Must Test**:
+
 - ✅ Mock all API calls using `jest.mock`
 - ✅ Test retry logic (if applicable)
 - ✅ Verify error handling and user feedback
@@ -134,6 +140,7 @@ When testing side effects:
 ### 7. Next.js Routing
 
 **Must Test**:
+
 - ✅ Mock useRouter, usePathname, useSearchParams
 - ✅ Test navigation behavior and parameters
 - ✅ Test query string handling
@@ -143,6 +150,7 @@ When testing side effects:
 ### 8. Edge Cases (REQUIRED - All Components)
 
 **Must Test**:
+
 - ✅ null/undefined/empty values
 - ✅ Boundary conditions
 - ✅ Error states
@@ -159,6 +167,7 @@ When testing side effects:
 ### 10. Snapshot Testing (Use Sparingly)
 
 **Only Use For**:
+
 - ✅ Stable UI (icons, badges, static layouts)
 - ✅ Snapshot small sections only
 - ✅ Prefer explicit assertions over snapshots
@@ -229,6 +238,7 @@ describe('ComponentName', () => {
 ### General
 
 1. **i18n**: Always return key
+
    ```typescript
    jest.mock('react-i18next', () => ({
      useTranslation: () => ({
@@ -237,18 +247,20 @@ describe('ComponentName', () => {
    }))
    ```
 
-2. **Toast**: Mock toast component
+1. **Toast**: Mock toast component
+
    ```typescript
    jest.mock('@/app/components/base/toast', () => ({
      notify: jest.fn(),
    }))
    ```
 
-3. **Forms**: Test validation logic thoroughly
+1. **Forms**: Test validation logic thoroughly
 
 ### Workflow Components (`workflow/`)
 
 **Must Test**:
+
 - ⚙️ **Node configuration**: Test all node configuration options
 - ✔️ **Data validation**: Verify input/output validation rules
 - 🔄 **Variable passing**: Test data flow between nodes
@@ -259,6 +271,7 @@ describe('ComponentName', () => {
 ### Dataset Components (`dataset/`)
 
 **Must Test**:
+
 - 📤 **File upload**: Test file upload and validation
 - 📄 **File types**: Verify supported format handling
 - 📃 **Pagination**: Test data loading and pagination
@@ -269,6 +282,7 @@ describe('ComponentName', () => {
 ### Configuration Components (`app/configuration`, `config/`)
 
 **Must Test**:
+
 - ✅ **Form validation**: Test all validation rules thoroughly
 - 💾 **Save/reset functionality**: Test data persistence
 - 🔒 **Required vs optional fields**: Verify field validation
@@ -305,6 +319,7 @@ describe('ComponentName', () => {
 ## Coverage Goals
 
 Aim for 100% coverage:
+
 - **Line coverage**: >95%
 - **Branch coverage**: >95%
 - **Function coverage**: 100%
@@ -379,14 +394,15 @@ screen.debug(screen.getByRole('button'))
 ### Finding Elements
 
 Priority order (recommended top to bottom):
+
 1. `getByRole` - Most recommended, follows accessibility standards
-2. `getByLabelText` - Form fields
-3. `getByPlaceholderText` - Only when no label
-4. `getByText` - Non-interactive elements
-5. `getByDisplayValue` - Current form value
-6. `getByAltText` - Images
-7. `getByTitle` - Last choice
-8. `getByTestId` - Only as last resort
+1. `getByLabelText` - Form fields
+1. `getByPlaceholderText` - Only when no label
+1. `getByText` - Non-interactive elements
+1. `getByDisplayValue` - Current form value
+1. `getByAltText` - Images
+1. `getByTitle` - Last choice
+1. `getByTestId` - Only as last resort
 
 ### Async Debugging
 
@@ -408,6 +424,7 @@ const element = await screen.findByText('Async Content')
 ## Reference Examples
 
 Test examples in the project:
+
 - [classnames.spec.ts](../utils/classnames.spec.ts) - Utility function tests
 - [index.spec.tsx](../app/components/base/button/index.spec.tsx) - Component tests
 
@@ -454,6 +471,6 @@ it('should update counter', () => {
 })
 ```
 
----
+______________________________________________________________________
 
 **Remember**: Writing tests is not just about coverage, but ensuring code quality and maintainability. Good tests should be clear, concise, and meaningful.

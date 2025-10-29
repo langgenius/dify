@@ -5,10 +5,10 @@ Frontend development utility scripts.
 ## 📋 Scripts
 
 - `generate-icons.js` - Generate PWA icons
-- `optimize-standalone.js` - Optimize build output  
+- `optimize-standalone.js` - Optimize build output
 - `analyze-component.js` - **Test generation helper** ⭐
 
----
+______________________________________________________________________
 
 ## 🚀 Generate Tests (Using AI Assistants)
 
@@ -31,7 +31,7 @@ pnpm test app/components/base/button/index.spec.tsx
 
 **Done in < 1 minute!** ✅
 
----
+______________________________________________________________________
 
 ## 📊 How It Works
 
@@ -40,7 +40,7 @@ pnpm test app/components/base/button/index.spec.tsx
 Script analyzes and scores components:
 
 - **0-10**: 🟢 Simple (5-10 min to test)
-- **11-30**: 🟡 Medium (15-30 min to test)  
+- **11-30**: 🟡 Medium (15-30 min to test)
 - **31-50**: 🟠 Complex (30-60 min to test)
 - **51+**: 🔴 Very Complex (60+ min, consider refactoring)
 
@@ -48,13 +48,13 @@ Script analyzes and scores components:
 
 Defined in `TESTING.md`:
 
-**Must test**: Rendering, Props, Edge Cases  
-**Conditional**: State, Effects, Events, API calls, Routing  
+**Must test**: Rendering, Props, Edge Cases\
+**Conditional**: State, Effects, Events, API calls, Routing\
 **Optional**: Accessibility, Performance, Snapshots
 
 AI assistant auto-selects scenarios based on component features.
 
----
+______________________________________________________________________
 
 ## 💡 Daily Workflow
 
@@ -69,7 +69,7 @@ pnpm test:gen app/components/new-feature/index.tsx
 # Others: Copy prompt → Paste in your AI tool
 ```
 
----
+______________________________________________________________________
 
 ## 📋 Commands
 
@@ -81,7 +81,7 @@ pnpm lint                   # Code check
 pnpm type-check             # Type check
 ```
 
----
+______________________________________________________________________
 
 ## 🎯 Customize
 
@@ -98,11 +98,10 @@ code .cursorrules
 git commit -m "docs: update test standards"
 ```
 
----
+______________________________________________________________________
 
 ## 📚 Resources
 
 - **Testing Guide**: [TESTING.md](./TESTING.md) - Complete testing specifications
 - **Quick Reference**: [.cursorrules](../../.cursorrules) - For Cursor users
 - **Examples**: [classnames.spec.ts](../utils/classnames.spec.ts), [button/index.spec.tsx](../app/components/base/button/index.spec.tsx)
-
