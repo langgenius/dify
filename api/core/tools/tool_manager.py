@@ -8,7 +8,6 @@ from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import sqlalchemy as sa
-from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from yarl import URL
@@ -289,10 +288,8 @@ class ToolManager:
                     credentials=decrypted_credentials,
                 )
                 # update the credentials
-                builtin_provider.encrypted_credentials = (
-                    TypeAdapter(dict[str, Any])
-                    .dump_json(encrypter.encrypt(dict(refreshed_credentials.credentials)))
-                    .decode("utf-8")
+                builtin_provider.encrypted_credentials = json.dumps(
+                    encrypter.encrypt(refreshed_credentials.credentials)
                 )
                 builtin_provider.expires_at = refreshed_credentials.expires_at
                 db.session.commit()
@@ -322,7 +319,7 @@ class ToolManager:
             return api_provider.get_tool(tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
-                    credentials=encrypter.decrypt(credentials),
+                    credentials=dict(encrypter.decrypt(credentials)),
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,
                 )

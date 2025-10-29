@@ -374,7 +374,7 @@ class DatasourceProviderService:
 
     def get_tenant_oauth_client(
         self, tenant_id: str, datasource_provider_id: DatasourceProviderID, mask: bool = False
-    ) -> dict[str, Any] | None:
+    ) -> Mapping[str, Any] | None:
         """
         get tenant oauth client
         """
@@ -434,7 +434,7 @@ class DatasourceProviderService:
             )
             if tenant_oauth_client_params:
                 encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
-                return encrypter.decrypt(tenant_oauth_client_params.client_params)
+                return dict(encrypter.decrypt(tenant_oauth_client_params.client_params))
 
             provider_controller = self.provider_manager.fetch_datasource_provider(
                 tenant_id=tenant_id, provider_id=str(datasource_provider_id)
