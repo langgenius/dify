@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import type {
   CodeNodeType,

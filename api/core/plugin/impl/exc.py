@@ -40,7 +40,7 @@ class PluginDaemonBadRequestError(PluginDaemonClientSideError):
     description: str = "Bad Request"
 
 
-class PluginInvokeError(PluginDaemonClientSideError):
+class PluginInvokeError(PluginDaemonClientSideError, ValueError):
     description: str = "Invoke Error"
 
     def _get_error_object(self) -> Mapping:

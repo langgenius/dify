@@ -1,5 +1,5 @@
 import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
-import { Fragment, cloneElement, useRef } from 'react'
+import { Fragment, cloneElement, isValidElement, useRef } from 'react'
 import cn from '@/utils/classnames'
 
 export type HtmlContentProps = {
@@ -103,15 +103,17 @@ export default function CustomPopover({
                         })
                       }
                     >
-                      {cloneElement(htmlContent as React.ReactElement, {
-                        open,
-                        onClose: close,
-                        ...(manualClose
-                          ? {
-                            onClick: close,
-                          }
-                          : {}),
-                      })}
+                      {isValidElement(htmlContent)
+                        ? cloneElement(htmlContent as React.ReactElement<HtmlContentProps>, {
+                          open,
+                          onClose: close,
+                          ...(manualClose
+                            ? {
+                              onClick: close,
+                            }
+                            : {}),
+                        })
+                        : htmlContent}
                     </div>
                   )}
                 </PopoverPanel>

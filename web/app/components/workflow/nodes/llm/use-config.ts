@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { EditionType, VarType } from '../../types'
 import type { Memory, PromptItem, ValueSelector, Var, Variable } from '../../types'
 import { useStore } from '../../store'
