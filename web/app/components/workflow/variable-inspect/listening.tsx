@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import { type FC, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type Node, useStoreApi } from 'reactflow'
 import Button from '@/app/components/base/button'
@@ -11,6 +11,8 @@ import type { TFunction } from 'i18next'
 import { getNextExecutionTime } from '@/app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator'
 import type { ScheduleTriggerNodeType } from '@/app/components/workflow/nodes/trigger-schedule/types'
 import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
+import Tooltip from '@/app/components/base/tooltip'
+import copy from 'copy-to-clipboard'
 
 const resolveListeningDescription = (
   message: string | undefined,
@@ -96,6 +98,20 @@ const Listening: FC<ListeningProps> = ({
   const webhookDebugUrl = triggerType === BlockEnum.TriggerWebhook
     ? (triggerNode?.data as WebhookTriggerNodeType | undefined)?.webhook_debug_url
     : undefined
+  const [debugUrlCopied, setDebugUrlCopied] = useState(false)
+
+  useEffect(() => {
+    if (!debugUrlCopied)
+      return
+
+    const timer = window.setTimeout(() => {
+      setDebugUrlCopied(false)
+    }, 2000)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [debugUrlCopied])
 
   let displayNodes: Node[] = []
 
@@ -156,13 +172,33 @@ const Listening: FC<ListeningProps> = ({
         <div className='system-xs-regular whitespace-pre-line text-text-tertiary'>{description}</div>
       </div>
       {webhookDebugUrl && (
-        <div className='flex items-center gap-1 rounded-lg transition-colors'>
-          <div className='system-xs-regular whitespace-pre-line text-text-tertiary'>
+        <div className='flex items-center gap-2'>
+          <div className='system-xs-regular shrink-0 whitespace-pre-line text-text-tertiary'>
             {t('workflow.nodes.triggerWebhook.debugUrlTitle')}
           </div>
-          <div className='truncate text-xs leading-4 text-text-primary'>
-            {webhookDebugUrl}
-          </div>
+          <Tooltip
+            popupContent={debugUrlCopied
+              ? t('workflow.nodes.triggerWebhook.debugUrlCopied')
+              : t('workflow.nodes.triggerWebhook.debugUrlCopy')}
+            popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-sm rounded-md px-1.5 py-1"
+            position="top"
+            offset={{ mainAxis: -4 }}
+            needsDelay={true}
+          >
+            <button
+              type='button'
+              aria-label={t('workflow.nodes.triggerWebhook.debugUrlCopy') || ''}
+              className={`inline-flex items-center rounded-[6px] border border-divider-regular bg-components-badge-white-to-dark px-1.5 py-[2px] font-mono text-[13px] leading-[18px] text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-components-panel-border ${debugUrlCopied ? 'bg-components-panel-on-panel-item-bg-hover text-text-primary' : ''}`}
+              onClick={() => {
+                copy(webhookDebugUrl)
+                setDebugUrlCopied(true)
+              }}
+            >
+              <span className='whitespace-nowrap text-text-primary'>
+                {webhookDebugUrl}
+              </span>
+            </button>
+          </Tooltip>
         </div>
       )}
       <div>
