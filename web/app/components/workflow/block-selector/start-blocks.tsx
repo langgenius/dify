@@ -36,6 +36,13 @@ const StartBlocks = ({
   const filteredBlocks = useMemo(() => {
     // Check if Start node already exists in workflow
     const hasStartNode = nodes.some(node => (node.data as CommonNodeType)?.type === BlockEnumValues.Start)
+    const normalizedSearch = searchText.toLowerCase()
+    const getDisplayName = (blockType: BlockEnum) => {
+      if (blockType === BlockEnumValues.TriggerWebhook)
+        return t('workflow.customWebhook')
+
+      return t(`workflow.blocks.${blockType}`)
+    }
 
     return START_BLOCKS.filter((block) => {
       // Hide User Input (Start) if it already exists in workflow
@@ -43,13 +50,14 @@ const StartBlocks = ({
         return false
 
       // Filter by search text
-      if (!block.title.toLowerCase().includes(searchText.toLowerCase()))
+      const displayName = getDisplayName(block.type).toLowerCase()
+      if (!displayName.includes(normalizedSearch) && !block.title.toLowerCase().includes(normalizedSearch))
         return false
 
       // availableBlocksTypes now contains properly filtered entry node types from parent
       return availableBlocksTypes.includes(block.type)
     })
-  }, [searchText, availableBlocksTypes, nodes])
+  }, [searchText, availableBlocksTypes, nodes, t])
 
   const isEmpty = filteredBlocks.length === 0
 
