@@ -145,9 +145,9 @@ const List = () => {
     }
 
     if (anchorRef.current && containerRef.current) {
-      // Calculate dynamic rootMargin based on container height for better responsiveness
+      // Calculate dynamic rootMargin: clamps to 100-200px range, using 20% of container height as the base value for better responsiveness
       const containerHeight = containerRef.current.clientHeight
-      const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200)) // Between 100px and 200px, or 20% of container height
+      const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200)) // Clamps to 100-200px range, using 20% of container height as the base value
 
       observer = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && !isLoading && !error && hasMore)
