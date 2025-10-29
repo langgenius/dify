@@ -27,9 +27,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "celery",
-            "env": {
-                "GEVENT_SUPPORT": "True"
-            },
+            "env": {},
             "args": [
                 "-A",
                 "app.celery",
