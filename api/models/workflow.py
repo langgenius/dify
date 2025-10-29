@@ -564,10 +564,6 @@ class WorkflowRun(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
 
-    # Represents the state of a paused workflow.
-    # This field is non-null when `status == PAUSED` and null otherwise.
-    pause_id: Mapped[StringUUID | None] = mapped_column(StringUUID, nullable=True)
-
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
         "WorkflowPause",
         primaryjoin="WorkflowRun.id == foreign(WorkflowPause.workflow_run_id)",
