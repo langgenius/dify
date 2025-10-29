@@ -19,7 +19,7 @@ RUN apt-get update \
           # basic environment
           g++ \
           # for building gmpy2
-          libgmp-dev libmpfr-dev libmpc-dev
+          libmpfr-dev libmpc-dev
 
 # Install Python dependencies
 COPY pyproject.toml uv.lock ./
