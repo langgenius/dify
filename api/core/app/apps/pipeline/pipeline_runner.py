@@ -14,7 +14,12 @@ from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.enums import WorkflowType
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.workflow.graph_events import GraphEngineEvent, GraphRunFailedEvent
+from core.workflow.graph_events import (
+    GraphEngineEvent,
+    GraphRunFailedEvent,
+    GraphRunPartialSucceededEvent,
+    GraphRunSucceededEvent,
+)
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
@@ -23,6 +28,7 @@ from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.dataset import Document, Pipeline
 from models.enums import UserFrom
 from models.model import EndUser
@@ -273,15 +279,32 @@ class PipelineRunner(WorkflowBasedAppRunner):
         """
         Update document status
         """
-        if isinstance(event, GraphRunFailedEvent):
-            if document_id and dataset_id:
-                document = (
-                    db.session.query(Document)
-                    .where(Document.id == document_id, Document.dataset_id == dataset_id)
-                    .first()
-                )
-                if document:
-                    document.indexing_status = "error"
-                    document.error = event.error or "Unknown error"
-                    db.session.add(document)
-                    db.session.commit()
+        if not document_id or not dataset_id:
+            return
+
+        document = (
+            db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
+        )
+
+        if not document:
+            return
+
+        if isinstance(event, GraphRunSucceededEvent):
+            # Update document status to completed
+            document.indexing_status = "completed"
+            document.completed_at = naive_utc_now()
+            document.error = None
+            db.session.add(document)
+            db.session.commit()
+        elif isinstance(event, GraphRunPartialSucceededEvent):
+            # Update document status to error with partial success message
+            document.indexing_status = "error"
+            document.error = f"Partial success with {event.exceptions_count} exceptions"
+            db.session.add(document)
+            db.session.commit()
+        elif isinstance(event, GraphRunFailedEvent):
+            # Update document status to error
+            document.indexing_status = "error"
+            document.error = event.error or "Unknown error"
+            db.session.add(document)
+            db.session.commit()
