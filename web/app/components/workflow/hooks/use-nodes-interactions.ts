@@ -220,13 +220,7 @@ export const useNodesInteractions = () => {
     }
 
     const pendingNodeIds = new Set(pendingNodes.map(node => node.id))
-    const selectedNodeIds = nodes
-      .filter(node => node.data.selected)
-      .map(node => node.id)
-    const nodeIdsToMove = new Set<string>([
-      ...pendingNodeIds,
-      ...selectedNodeIds,
-    ])
+    const nodeIdsToMove = new Set<string>(pendingNodeIds)
     nodeIdsToMove.add(primaryCurrentNode.id)
 
     const nextPositions = new Map<string, { x: number; y: number }>()
