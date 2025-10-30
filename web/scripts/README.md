@@ -1,108 +1,38 @@
-# Web Scripts
+# Production Build Optimization Scripts
 
-Frontend development utility scripts.
+## optimize-standalone.js
 
-## 📋 Scripts
+This script removes unnecessary development dependencies from the Next.js standalone build output to reduce the production Docker image size.
 
-- `generate-icons.js` - Generate PWA icons
-- `optimize-standalone.js` - Optimize build output  
-- `analyze-component.js` - **Test generation helper** ⭐
+### What it does
 
----
+The script specifically targets and removes `jest-worker` packages that are bundled with Next.js but not needed in production. These packages are included because:
 
-## 🚀 Generate Tests (Using AI Assistants)
+1. Next.js includes jest-worker in its compiled dependencies
+1. terser-webpack-plugin (used by Next.js for minification) depends on jest-worker
+1. pnpm's dependency resolution creates symlinks to jest-worker in various locations
 
-### Quick Start
+### Usage
 
-```bash
-# 1. Analyze component
-pnpm test:gen app/components/base/button/index.tsx
-
-# Output: Component analysis + AI prompt (auto-copied to clipboard)
-
-# 2. Paste in your AI assistant:
-#    - Cursor: Cmd+L (Chat) or Cmd+I (Composer) → Cmd+V → Enter
-#    - GitHub Copilot Chat: Cmd+I → Cmd+V → Enter
-#    - Claude/ChatGPT: Paste the prompt directly
-
-# 3. Apply the generated test and verify
-pnpm test app/components/base/button/index.spec.tsx
-```
-
-**Done in < 1 minute!** ✅
-
----
-
-## 📊 How It Works
-
-### Component Complexity
-
-Script analyzes and scores components:
-
-- **0-10**: 🟢 Simple (5-10 min to test)
-- **11-30**: 🟡 Medium (15-30 min to test)  
-- **31-50**: 🟠 Complex (30-60 min to test)
-- **51+**: 🔴 Very Complex (60+ min, consider refactoring)
-
-### Test Scenarios
-
-Defined in `TESTING.md`:
-
-**Must test**: Rendering, Props, Edge Cases  
-**Conditional**: State, Effects, Events, API calls, Routing  
-**Optional**: Accessibility, Performance, Snapshots
-
-AI assistant auto-selects scenarios based on component features.
-
----
-
-## 💡 Daily Workflow
+The script is automatically run during Docker builds via the `build:docker` npm script:
 
 ```bash
-# New component
-pnpm test:gen app/components/new-feature/index.tsx
-# → Paste in AI assistant → Apply → Done
-
-# Quick shortcuts:
-# Cursor users: Cmd+I → "Generate test for [file]" → Apply
-# Copilot users: Cmd+I → Paste prompt → Accept
-# Others: Copy prompt → Paste in your AI tool
+# Docker build (removes jest-worker after build)
+pnpm build:docker
 ```
 
----
-
-## 📋 Commands
+To run the optimization manually:
 
 ```bash
-pnpm test:gen <path>        # Generate test
-pnpm test [file]            # Run tests
-pnpm test --coverage        # View coverage
-pnpm lint                   # Code check
-pnpm type-check             # Type check
+node scripts/optimize-standalone.js
 ```
 
----
+### What gets removed
 
-## 🎯 Customize
+- `node_modules/.pnpm/next@*/node_modules/next/dist/compiled/jest-worker`
+- `node_modules/.pnpm/terser-webpack-plugin@*/node_modules/jest-worker` (symlinks)
+- `node_modules/.pnpm/jest-worker@*` (actual packages)
 
-Edit testing standards for your team:
+### Impact
 
-```bash
-# Complete testing guide (for all team members)
-code web/scripts/TESTING.md
-
-# Quick reference for Cursor users
-code .cursorrules
-
-# Commit your changes
-git commit -m "docs: update test standards"
-```
-
----
-
-## 📚 Resources
-
-- **Testing Guide**: [TESTING.md](./TESTING.md) - Complete testing specifications
-- **Quick Reference**: [.cursorrules](../../.cursorrules) - For Cursor users
-- **Examples**: [classnames.spec.ts](../utils/classnames.spec.ts), [button/index.spec.tsx](../app/components/base/button/index.spec.tsx)
-
+Removing jest-worker saves approximately 36KB per instance from the production image. While this may seem small, it helps ensure production images only contain necessary runtime dependencies.

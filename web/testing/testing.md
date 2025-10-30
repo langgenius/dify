@@ -25,6 +25,14 @@ pnpm test -- --coverage
 pnpm test -- path/to/file.spec.tsx
 ```
 
+## Project Test Setup
+
+- **Configuration**: `jest.config.ts` loads the Testing Library presets, sets the `@happy-dom/jest-environment`, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
+- **Global setup**: `jest.setup.ts` already imports `@testing-library/jest-dom` and runs `cleanup()` after every test. Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
+- **Manual mocks**: Place reusable mocks inside `web/__mocks__/`. Use `jest.mock('module-name')` to point to these helpers rather than redefining mocks in every spec.
+- **Script utilities**: `web/testing/analyze-component.js` reports component complexity; `pnpm analyze-component <path>` should be part of the planning step for non-trivial components.
+- **Integration suites**: Files in `web/__tests__/` exercise cross-component flows. Prefer adding new end-to-end style specs there rather than mixing them into component directories.
+
 ## Component Complexity Guidelines
 
 Use `pnpm analyze-component <path>` to analyze component complexity and adopt different testing strategies based on the results.
@@ -53,15 +61,6 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
 Apply the following test scenarios based on component features:
 
 ### 1. Rendering Tests (REQUIRED - All Components)
-
-```typescript
-describe('Rendering', () => {
-  it('should render without crashing', () => {
-    render(<Component />)
-    expect(screen.getByRole('...')).toBeInTheDocument()
-  })
-})
-```
 
 **Key Points**:
 - Verify component renders properly
@@ -99,6 +98,13 @@ When testing side effects:
 - ✅ Test cleanup functions (useEffect return value)
 - ✅ Use `waitFor()` for async state changes
 
+#### Context, Providers, and Stores
+
+- ✅ Wrap components with the actual provider from `web/context` or `app/components/.../context` whenever practical.
+- ✅ When creating lightweight provider stubs, mirror the real default values and surface helper builders (for example `createMockWorkflowContext`).
+- ✅ Reset shared stores (React context, Zustand, TanStack Query cache) between tests to avoid leaking state. Prefer helper factory functions over module-level singletons in specs.
+- ✅ For hooks that read from context, use `renderHook` with a custom wrapper that supplies required providers.
+
 ### 4. Performance Optimization
 
 #### useCallback
@@ -130,6 +136,14 @@ When testing side effects:
 - ✅ Test retry logic (if applicable)
 - ✅ Verify error handling and user feedback
 - ✅ Use `waitFor()` for async operations
+- ✅ For `@tanstack/react-query`, instantiate a fresh `QueryClient` per spec and wrap with `QueryClientProvider`
+- ✅ Clear timers, intervals, and pending promises between tests when using fake timers
+
+**Guidelines**:
+
+- Prefer spying on `global.fetch`/`axios`/`ky` and returning deterministic responses over reaching out to the network.
+- Use MSW (`msw` is already installed) when you need declarative request handlers across multiple specs.
+- Keep async assertions inside `await waitFor(...)` blocks or the async `findBy*` queries to avoid race conditions.
 
 ### 7. Next.js Routing
 
@@ -322,6 +336,7 @@ const mockSetState = jest.fn()
 jest.spyOn(React, 'useState').mockImplementation((init) => [init, mockSetState])
 
 // Mock useContext
+const mockUser = { name: 'Test User' };
 jest.spyOn(React, 'useContext').mockReturnValue({ user: mockUser })
 ```
 
@@ -358,7 +373,7 @@ jest.mock('next/navigation', () => ({
 // next/image
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: any) => <img {...props} />,
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
 }))
 ```
 

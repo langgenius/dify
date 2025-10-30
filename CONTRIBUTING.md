@@ -77,7 +77,7 @@ How we prioritize:
 
 For setting up the frontend service, please refer to our comprehensive [guide](https://github.com/langgenius/dify/blob/main/web/README.md) in the `web/README.md` file. This document provides detailed instructions to help you set up the frontend environment properly.
 
-**Testing**: All React components must have comprehensive test coverage. See [web/scripts/TESTING.md](https://github.com/langgenius/dify/blob/main/web/scripts/TESTING.md) for detailed testing guidelines.
+**Testing**: All React components must have comprehensive test coverage. See [web/testing/testing.md](https://github.com/langgenius/dify/blob/main/web/testing/testing.md) for the canonical frontend testing guidelines and follow every requirement described there.
 
 #### Backend
 

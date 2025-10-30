@@ -1,69 +1,13 @@
 # Cursor Rules for Dify Project
 
-## Frontend Testing Guidelines
+## Automated Test Generation
 
-> **📖 Complete Testing Documentation**: For detailed testing specifications and guidelines, see [`web/scripts/TESTING.md`](./web/scripts/TESTING.md)
-
-When generating tests for React components:
-
-### Key Requirements
-
-1. **Tech Stack**: Next.js 15 + React 19 + TypeScript + Jest + React Testing Library
-2. **File Naming**: `ComponentName.spec.tsx` (same directory as component)
-3. **Code Style**:
-   - Use `fireEvent` (not `userEvent`)
-   - AAA pattern (Arrange → Act → Assert)
-   - Test names: `"should [behavior] when [condition]"`
-   - No `any` types
-   - Cleanup after each test: `afterEach(() => jest.clearAllMocks())`
-
-### Required Tests (All Components)
-
-- ✅ Renders without crashing
-- ✅ Props (required, optional, defaults)
-- ✅ Edge cases (null, undefined, empty values)
-
-### Conditional Tests (When Present in Component)
-
-- 🔄 **useState** → State initialization, transitions, cleanup
-- ⚡ **useEffect** → Execution, dependencies, cleanup
-- 🎯 **Event Handlers** → onClick, onChange, onSubmit, keyboard events
-- 🌐 **API Calls** → Loading, success, error states
-- 🔀 **Next.js Routing** → Navigation, params, query strings
-- 🚀 **useCallback/useMemo** → Referential equality, dependencies
-- ⚙️ **Workflow Components** → Node config, data flow, validation
-- 📚 **Dataset Components** → Upload, pagination, search
-- 🎛️ **Configuration Components** → Form validation, persistence
-
-### Component Complexity Strategy
-
-- **Complexity > 50**: Refactor before testing, use integration tests and `test.each()`
-- **Complexity 30-50**: Use multiple `describe` blocks to group tests
-- **500+ lines**: Consider splitting component
-
-### Coverage Goals
-
-Aim for 100% coverage:
-- Line coverage: >95%
-- Branch coverage: >95%
-- Function coverage: 100%
-- Statement coverage: 100%
-
-### Dify-Specific Mocks
-
-```typescript
-
-// Toast
-jest.mock('@/app/components/base/toast')
-
-// Next.js Router
-jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(),
-  usePathname: jest.fn(),
-  useSearchParams: jest.fn(),
-}))
-```
-
----
-
-**Important**: The above is a quick reference only. When generating tests, strictly follow the complete specifications in [`web/scripts/TESTING.md`](./web/scripts/TESTING.md), including detailed examples, best practices, and FAQs.
+- Use `web/testing/TESTING.md` as the canonical instruction set for generating frontend automated tests.
+- When proposing or saving tests, re-read that document and follow every requirement.
+- Quick reference:
+  - Tech stack: Next.js 15, React 19, TypeScript, Jest 29.7, React Testing Library 16.0, `@happy-dom/jest-environment`
+  - Test files: `ComponentName.spec.tsx` in the same directory as the component
+  - Style: Arrange → Act → Assert, descriptive names (`"should [behavior] when [condition]"`), use `fireEvent`, clear mocks in `afterEach`
+  - Baseline coverage: rendering, all prop permutations, `null`/`undefined`/empty edge cases
+  - Conditional coverage: hook state/effects, event handlers, async flows, routing, performance hooks, and domain-specific workflows/configuration/dataset behaviors
+  - Target coverage: line & branch >95%, function & statement 100%

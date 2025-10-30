@@ -1,19 +1,4 @@
 #!/usr/bin/env node
-/**
- * Component Analyzer for Test Generation
- *
- * Analyzes a component and generates a structured prompt for AI assistants.
- * Works with Cursor, GitHub Copilot, and other AI coding tools.
- *
- * Usage:
- *   node scripts/analyze-component.js <component-path>
- *
- * Examples:
- *   node scripts/analyze-component.js app/components/base/button/index.tsx
- *   node scripts/analyze-component.js app/components/workflow/nodes/llm/panel.tsx
- *
- * For complete testing guidelines, see: web/scripts/TESTING.md
- */
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -23,13 +8,14 @@ const path = require('node:path')
 // ============================================================================
 
 class ComponentAnalyzer {
-  analyze(code, filePath) {
+  analyze(code, filePath, absolutePath) {
+    const resolvedPath = absolutePath ?? path.resolve(process.cwd(), filePath)
     const fileName = path.basename(filePath, path.extname(filePath))
-    const complexity = this.calculateComplexity(code)
     const lineCount = code.split('\n').length
+    const complexity = this.calculateComplexity(code, lineCount)
 
     // Count usage references (may take a few seconds)
-    const usageCount = this.countUsageReferences(filePath)
+    const usageCount = this.countUsageReferences(filePath, resolvedPath)
 
     // Calculate test priority
     const priority = this.calculateTestPriority(complexity, usageCount)
@@ -54,10 +40,13 @@ class ComponentAnalyzer {
   }
 
   detectType(filePath, code) {
-    if (filePath.includes('/hooks/')) return 'hook'
-    if (filePath.includes('/utils/')) return 'util'
-    if (filePath.includes('/page.tsx')) return 'page'
-    if (code.includes('useState') || code.includes('useEffect')) return 'component'
+    const normalizedPath = filePath.replace(/\\/g, '/')
+    if (normalizedPath.includes('/hooks/')) return 'hook'
+    if (normalizedPath.includes('/utils/')) return 'util'
+    if (/\/page\.(t|j)sx?$/.test(normalizedPath)) return 'page'
+    if (/\/layout\.(t|j)sx?$/.test(normalizedPath)) return 'layout'
+    if (/\/providers?\//.test(normalizedPath)) return 'provider'
+    if (/use[A-Z]\w+/.test(code)) return 'component'
     return 'component'
   }
 
@@ -71,17 +60,19 @@ class ComponentAnalyzer {
    *   31-50: 🟠 Complex (30-60 min to test)
    *   51+: 🔴 Very Complex (60+ min, consider splitting)
    */
-  calculateComplexity(code) {
+  calculateComplexity(code, lineCount) {
     let score = 0
 
+    const count = pattern => this.countMatches(code, pattern)
+
     // ===== React Hooks (State Management Complexity) =====
-    const stateHooks = (code.match(/useState/g) || []).length
-    const effectHooks = (code.match(/useEffect/g) || []).length
-    const callbackHooks = (code.match(/useCallback/g) || []).length
-    const memoHooks = (code.match(/useMemo/g) || []).length
-    const refHooks = (code.match(/useRef/g) || []).length
-    const customHooks = (code.match(/use[A-Z]\w+/g) || []).length
-                        - (stateHooks + effectHooks + callbackHooks + memoHooks + refHooks)
+    const stateHooks = count(/useState/g)
+    const effectHooks = count(/useEffect/g)
+    const callbackHooks = count(/useCallback/g)
+    const memoHooks = count(/useMemo/g)
+    const refHooks = count(/useRef/g)
+    const totalHooks = count(/use[A-Z]\w+/g)
+    const customHooks = Math.max(0, totalHooks - (stateHooks + effectHooks + callbackHooks + memoHooks + refHooks))
 
     score += stateHooks * 5 // Each state +5 (need to test state changes)
     score += effectHooks * 6 // Each effect +6 (need to test deps & cleanup)
@@ -91,63 +82,63 @@ class ComponentAnalyzer {
     score += customHooks * 3 // Each custom hook +3
 
     // ===== Control Flow Complexity (Cyclomatic Complexity) =====
-    score += (code.match(/if\s*\(/g) || []).length * 2 // if statement
-    score += (code.match(/else\s+if/g) || []).length * 2 // else if
-    score += (code.match(/\?\s*[^:]+\s*:/g) || []).length * 1 // ternary operator
-    score += (code.match(/switch\s*\(/g) || []).length * 3 // switch
-    score += (code.match(/case\s+/g) || []).length * 1 // case branch
-    score += (code.match(/&&/g) || []).length * 1 // logical AND
-    score += (code.match(/\|\|/g) || []).length * 1 // logical OR
-    score += (code.match(/\?\?/g) || []).length * 1 // nullish coalescing
+    score += count(/if\s*\(/g) * 2 // if statement
+    score += count(/else\s+if/g) * 2 // else if
+    score += count(/\?\s*[^:]+\s*:/g) * 1 // ternary operator
+    score += count(/switch\s*\(/g) * 3 // switch
+    score += count(/case\s+/g) * 1 // case branch
+    score += count(/&&/g) * 1 // logical AND
+    score += count(/\|\|/g) * 1 // logical OR
+    score += count(/\?\?/g) * 1 // nullish coalescing
 
     // ===== Loop Complexity =====
-    score += (code.match(/\.map\(/g) || []).length * 2 // map
-    score += (code.match(/\.filter\(/g) || []).length * 1 // filter
-    score += (code.match(/\.reduce\(/g) || []).length * 3 // reduce (complex)
-    score += (code.match(/for\s*\(/g) || []).length * 2 // for loop
-    score += (code.match(/while\s*\(/g) || []).length * 3 // while loop
+    score += count(/\.map\(/g) * 2 // map
+    score += count(/\.filter\(/g) * 1 // filter
+    score += count(/\.reduce\(/g) * 3 // reduce (complex)
+    score += count(/for\s*\(/g) * 2 // for loop
+    score += count(/while\s*\(/g) * 3 // while loop
 
     // ===== Props and Events Complexity =====
-    const propsMatches = code.match(/(\w+)\s*:\s*\w+/g) || []
-    const propsCount = Math.min(propsMatches.length, 20) // Max 20 props
+    const propsMatches = this.countMatches(code, /(\w+)\s*:\s*\w+/g)
+    const propsCount = Math.min(propsMatches, 20) // Max 20 props
     score += Math.floor(propsCount / 2) // Every 2 props +1
 
-    const eventHandlers = (code.match(/on[A-Z]\w+/g) || []).length
+    const eventHandlers = count(/on[A-Z]\w+/g)
     score += eventHandlers * 2 // Each event handler +2
 
     // ===== API Call Complexity =====
-    score += (code.match(/fetch\(/g) || []).length * 4 // fetch
-    score += (code.match(/axios\./g) || []).length * 4 // axios
-    score += (code.match(/useSWR/g) || []).length * 4 // SWR
-    score += (code.match(/useQuery/g) || []).length * 4 // React Query
-    score += (code.match(/\.then\(/g) || []).length * 2 // Promise
-    score += (code.match(/await\s+/g) || []).length * 2 // async/await
+    score += count(/fetch\(/g) * 4 // fetch
+    score += count(/axios\./g) * 4 // axios
+    score += count(/useSWR/g) * 4 // SWR
+    score += count(/useQuery/g) * 4 // React Query
+    score += count(/\.then\(/g) * 2 // Promise
+    score += count(/await\s+/g) * 2 // async/await
 
     // ===== Third-party Library Integration =====
-    const hasReactFlow = /reactflow|ReactFlow/.test(code)
-    const hasMonaco = /@monaco-editor/.test(code)
-    const hasEcharts = /echarts/.test(code)
-    const hasLexical = /lexical/.test(code)
+    const integrations = [
+      { pattern: /reactflow|ReactFlow/, weight: 15 },
+      { pattern: /@monaco-editor/, weight: 12 },
+      { pattern: /echarts/, weight: 8 },
+      { pattern: /lexical/, weight: 10 },
+    ]
 
-    if (hasReactFlow) score += 15 // ReactFlow is very complex
-    if (hasMonaco) score += 12 // Monaco Editor
-    if (hasEcharts) score += 8 // Echarts
-    if (hasLexical) score += 10 // Lexical Editor
+    integrations.forEach(({ pattern, weight }) => {
+      if (pattern.test(code)) score += weight
+    })
 
     // ===== Code Size Complexity =====
-    const lines = code.split('\n').length
-    if (lines > 500) score += 10
-    else if (lines > 300) score += 6
-    else if (lines > 150) score += 3
+    if (lineCount > 500) score += 10
+    else if (lineCount > 300) score += 6
+    else if (lineCount > 150) score += 3
 
     // ===== Nesting Depth (deep nesting reduces readability) =====
     const maxNesting = this.calculateNestingDepth(code)
     score += Math.max(0, (maxNesting - 3)) * 2 // Over 3 levels, +2 per level
 
     // ===== Context and Global State =====
-    score += (code.match(/useContext/g) || []).length * 3
-    score += (code.match(/useStore|useAppStore/g) || []).length * 4
-    score += (code.match(/zustand|redux/g) || []).length * 3
+    score += count(/useContext/g) * 3
+    score += count(/useStore|useAppStore/g) * 4
+    score += count(/zustand|redux/g) * 3
 
     return Math.min(score, 100) // Max 100 points
   }
@@ -158,14 +149,73 @@ class ComponentAnalyzer {
   calculateNestingDepth(code) {
     let maxDepth = 0
     let currentDepth = 0
+    let inString = false
+    let stringChar = ''
+    let escapeNext = false
+    let inSingleLineComment = false
+    let inMultiLineComment = false
 
     for (let i = 0; i < code.length; i++) {
-      if (code[i] === '{') {
+      const char = code[i]
+      const nextChar = code[i + 1]
+
+      if (inSingleLineComment) {
+        if (char === '\n') inSingleLineComment = false
+        continue
+      }
+
+      if (inMultiLineComment) {
+        if (char === '*' && nextChar === '/') {
+          inMultiLineComment = false
+          i++
+        }
+        continue
+      }
+
+      if (inString) {
+        if (escapeNext) {
+          escapeNext = false
+          continue
+        }
+
+        if (char === '\\') {
+          escapeNext = true
+          continue
+        }
+
+        if (char === stringChar) {
+          inString = false
+          stringChar = ''
+        }
+        continue
+      }
+
+      if (char === '/' && nextChar === '/') {
+        inSingleLineComment = true
+        i++
+        continue
+      }
+
+      if (char === '/' && nextChar === '*') {
+        inMultiLineComment = true
+        i++
+        continue
+      }
+
+      if (char === '"' || char === '\'' || char === '`') {
+        inString = true
+        stringChar = char
+        continue
+      }
+
+      if (char === '{') {
         currentDepth++
         maxDepth = Math.max(maxDepth, currentDepth)
+        continue
       }
-      else if (code[i] === '}') {
-        currentDepth--
+
+      if (char === '}') {
+        currentDepth = Math.max(currentDepth - 1, 0)
       }
     }
 
@@ -174,52 +224,137 @@ class ComponentAnalyzer {
 
   /**
    * Count how many times a component is referenced in the codebase
-   * Uses grep for searching import statements
+   * Scans TypeScript sources for import statements referencing the component
    */
-  countUsageReferences(filePath) {
+  countUsageReferences(filePath, absolutePath) {
     try {
-      const { execSync } = require('node:child_process')
+      const resolvedComponentPath = absolutePath ?? path.resolve(process.cwd(), filePath)
+      const fileName = path.basename(resolvedComponentPath, path.extname(resolvedComponentPath))
 
-      // Get component name from file path
-      const fileName = path.basename(filePath, path.extname(filePath))
-
-      // If the file is index.tsx, use the parent directory name as the component name
-      // e.g., app/components/base/avatar/index.tsx -> search for 'avatar'
-      // Otherwise use the file name
-      // e.g., app/components/base/button.tsx -> search for 'button'
       let searchName = fileName
       if (fileName === 'index') {
-        const parentDir = path.dirname(filePath)
+        const parentDir = path.dirname(resolvedComponentPath)
         searchName = path.basename(parentDir)
       }
 
-      // Build search pattern for import statements
-      // Match: from '@/app/components/base/avatar'
-      // Match: from './avatar'
-      // Match: from '../avatar'
-      // Simplified pattern to avoid shell quote issues
-      const searchPattern = `/${searchName}'`
+      if (!searchName) return 0
 
-      // Use grep to search across all TypeScript files
-      // -r: recursive
-      // -l: list files with matches only
-      // --include: only .ts and .tsx files
-      // --exclude: exclude test and story files
-      const grepCommand = `grep -rl --include="*.ts" --include="*.tsx" --exclude="*.spec.ts" --exclude="*.spec.tsx" --exclude="*.test.ts" --exclude="*.test.tsx" --exclude="*.stories.tsx" "${searchPattern}" app/ 2>/dev/null | wc -l`
+      const searchRoots = this.collectSearchRoots(resolvedComponentPath)
+      if (searchRoots.length === 0) return 0
 
-      // eslint-disable-next-line sonarjs/os-command
-      const result = execSync(grepCommand, {
-        cwd: process.cwd(),
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore'],
-      })
+      const escapedName = ComponentAnalyzer.escapeRegExp(searchName)
+      const patterns = [
+        new RegExp(`from\\s+['\"][^'\"]*(?:/|^)${escapedName}(?:['\"/]|$)`),
+        new RegExp(`import\\s*\\(\\s*['\"][^'\"]*(?:/|^)${escapedName}(?:['\"/]|$)`),
+        new RegExp(`export\\s+(?:\\*|{[^}]*})\\s*from\\s+['\"][^'\"]*(?:/|^)${escapedName}(?:['\"/]|$)`),
+        new RegExp(`require\\(\\s*['\"][^'\"]*(?:/|^)${escapedName}(?:['\"/]|$)`),
+      ]
 
-      return Number.parseInt(result.trim(), 10) || 0
+      const visited = new Set()
+      let usageCount = 0
+
+      const stack = [...searchRoots]
+      while (stack.length > 0) {
+        const currentDir = stack.pop()
+        if (!currentDir || visited.has(currentDir)) continue
+        visited.add(currentDir)
+
+        const entries = fs.readdirSync(currentDir, { withFileTypes: true })
+
+        entries.forEach(entry => {
+          const entryPath = path.join(currentDir, entry.name)
+
+          if (entry.isDirectory()) {
+            if (this.shouldSkipDir(entry.name)) return
+            stack.push(entryPath)
+            return
+          }
+
+          if (!this.shouldInspectFile(entry.name)) return
+
+          const normalizedEntryPath = path.resolve(entryPath)
+          if (normalizedEntryPath === path.resolve(resolvedComponentPath)) return
+
+          const source = fs.readFileSync(entryPath, 'utf-8')
+          if (!source.includes(searchName)) return
+
+          if (patterns.some(pattern => {
+            pattern.lastIndex = 0
+            return pattern.test(source)
+          })) {
+            usageCount += 1
+          }
+        })
+      }
+
+      return usageCount
     }
     catch {
       // If command fails, return 0
       return 0
     }
+  }
+
+  collectSearchRoots(resolvedComponentPath) {
+    const roots = new Set()
+
+    let currentDir = path.dirname(resolvedComponentPath)
+    const workspaceRoot = process.cwd()
+
+    while (currentDir && currentDir !== path.dirname(currentDir)) {
+      if (path.basename(currentDir) === 'app') {
+        roots.add(currentDir)
+        break
+      }
+
+      if (currentDir === workspaceRoot) break
+      currentDir = path.dirname(currentDir)
+    }
+
+    const fallbackRoots = [
+      path.join(workspaceRoot, 'app'),
+      path.join(workspaceRoot, 'web', 'app'),
+      path.join(workspaceRoot, 'src'),
+    ]
+
+    fallbackRoots.forEach(root => {
+      if (fs.existsSync(root) && fs.statSync(root).isDirectory()) roots.add(root)
+    })
+
+    return Array.from(roots)
+  }
+
+  shouldSkipDir(dirName) {
+    const normalized = dirName.toLowerCase()
+    return [
+      'node_modules',
+      '.git',
+      '.next',
+      'dist',
+      'out',
+      'coverage',
+      'build',
+      '__tests__',
+      '__mocks__',
+    ].includes(normalized)
+  }
+
+  shouldInspectFile(fileName) {
+    const normalized = fileName.toLowerCase()
+    if (!(/\.(ts|tsx)$/i.test(fileName))) return false
+    if (normalized.endsWith('.d.ts')) return false
+    if (/\.(spec|test)\.(ts|tsx)$/.test(normalized)) return false
+    if (normalized.endsWith('.stories.tsx')) return false
+    return true
+  }
+
+  countMatches(code, pattern) {
+    const matches = code.match(pattern)
+    return matches ? matches.length : 0
+  }
+
+  static escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   }
 
   /**
@@ -318,10 +453,6 @@ Please generate a comprehensive test file for this component at:
 The component is located at:
   ${analysis.path}
 
-Follow the testing guidelines in:
-  - web/scripts/TESTING.md (complete testing guide)
-  - .cursorrules (quick reference for Cursor users)
-
 ${this.getSpecificGuidelines(analysis)}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -329,7 +460,7 @@ ${this.getSpecificGuidelines(analysis)}
 📋 PROMPT FOR AI ASSISTANT (COPY THIS TO YOUR AI ASSISTANT):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Generate a comprehensive test file for @${analysis.path} following the project's testing guidelines in web/scripts/TESTING.md.
+Generate a comprehensive test file for @${analysis.path}
 
 Including but not limited to:
 ${this.buildFocusPoints(analysis)}
@@ -500,6 +631,31 @@ Create the test file at: ${testPath}
   }
 }
 
+function extractCopyContent(prompt) {
+  const marker = '📋 PROMPT FOR AI ASSISTANT'
+  const markerIndex = prompt.indexOf(marker)
+  if (markerIndex === -1) return ''
+
+  const section = prompt.slice(markerIndex)
+  const lines = section.split('\n')
+  const firstDivider = lines.findIndex(line => line.includes('━━━━━━━━'))
+  if (firstDivider === -1) return ''
+
+  const startIdx = firstDivider + 1
+  let endIdx = lines.length
+
+  for (let i = startIdx; i < lines.length; i++) {
+    if (lines[i].includes('━━━━━━━━')) {
+      endIdx = i
+      break
+    }
+  }
+
+  if (startIdx >= endIdx) return ''
+
+  return lines.slice(startIdx, endIdx).join('\n').trim()
+}
+
 // ============================================================================
 // Main Function
 // ============================================================================
@@ -511,20 +667,13 @@ function main() {
     console.error(`
 ❌ Error: Component path is required
 
-Usage:
-  node scripts/analyze-component.js <component-path>
-
-Examples:
-  node scripts/analyze-component.js app/components/base/button/index.tsx
-  node scripts/analyze-component.js app/components/workflow/nodes/llm/panel.tsx
-
 This tool analyzes your component and generates a prompt for AI assistants.
 Copy the output and use it with:
   - Cursor (Cmd+L for Chat, Cmd+I for Composer)
   - GitHub Copilot Chat (Cmd+I)
   - Claude, ChatGPT, or any other AI coding tool
 
-For complete testing guidelines, see: web/scripts/TESTING.md
+For complete testing guidelines, see: web/testing/TESTING.md
     `)
     process.exit(1)
   }
@@ -543,7 +692,7 @@ For complete testing guidelines, see: web/scripts/TESTING.md
 
   // Analyze
   const analyzer = new ComponentAnalyzer()
-  const analysis = analyzer.analyze(sourceCode, componentPath)
+  const analysis = analyzer.analyze(sourceCode, componentPath, absolutePath)
 
   // Check if component is too complex - suggest refactoring instead of testing
   if (analysis.complexity > 50 || analysis.lineCount > 300) {
@@ -608,19 +757,7 @@ This component is too complex to test effectively. Please consider:
 
     const checkPbcopy = spawnSync('which', ['pbcopy'], { stdio: 'pipe' })
     if (checkPbcopy.status !== 0) return
-    const parts = prompt.split('📋 COPY THIS TO CURSOR:')
-    if (parts.length < 2) return
-
-    const afterMarker = parts[1]
-    const lines = afterMarker.split('\n')
-
-    const startIdx = lines.findIndex(line => line.includes('━━━')) + 1
-    const endIdx = lines.findIndex((line, idx) => idx > startIdx && line.includes('━━━'))
-
-    if (startIdx === 0 || endIdx === -1) return
-
-    const copyContent = lines.slice(startIdx, endIdx).join('\n').trim()
-
+    const copyContent = extractCopyContent(prompt)
     if (!copyContent) return
 
     const result = spawnSync('pbcopy', [], {
