@@ -1326,7 +1326,7 @@ wheels = [
 
 [[package]]
 name = "dify-api"
-version = "1.9.2"
+version = "1.10.0-rc1"
 source = { virtual = "." }
 dependencies = [
     { name = "apscheduler" },
