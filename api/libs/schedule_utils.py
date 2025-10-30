@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from typing import Optional
 
 import pytz
 from croniter import croniter

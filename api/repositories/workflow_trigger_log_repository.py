@@ -8,7 +8,7 @@ proper indexing and batch operations.
 
 from collections.abc import Sequence
 from enum import StrEnum
-from typing import Optional, Protocol
+from typing import Protocol
 
 from models.trigger import WorkflowTriggerLog
 

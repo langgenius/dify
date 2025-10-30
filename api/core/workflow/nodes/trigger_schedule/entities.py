@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Union
+from typing import Literal, Union
 
 from pydantic import BaseModel, Field
 
@@ -11,9 +11,7 @@ class TriggerScheduleNodeData(BaseNodeData):
     """
 
     mode: str = Field(default="visual", description="Schedule mode: visual or cron")
-    frequency: str | None = Field(
-        default=None, description="Frequency for visual mode: hourly, daily, weekly, monthly"
-    )
+    frequency: str | None = Field(default=None, description="Frequency for visual mode: hourly, daily, weekly, monthly")
     cron_expression: str | None = Field(default=None, description="Cron expression for cron mode")
     visual_config: dict | None = Field(default=None, description="Visual configuration details")
     timezone: str = Field(default="UTC", description="Timezone for schedule execution")

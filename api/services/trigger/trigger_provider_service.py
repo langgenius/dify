@@ -3,7 +3,7 @@ import logging
 import time as _time
 import uuid
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session

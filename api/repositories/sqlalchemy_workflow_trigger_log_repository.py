@@ -4,7 +4,6 @@ SQLAlchemy implementation of WorkflowTriggerLogRepository.
 
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
-from typing import Optional
 
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
