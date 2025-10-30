@@ -150,7 +150,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         'relative flex rounded-2xl border',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
         data._waitingRun && 'opacity-70',
-        data._dimmed && 'opacity-30',
+        data._pluginInstallLocked && 'cursor-not-allowed',
       )}
       ref={nodeRef}
       style={{
@@ -158,6 +158,17 @@ const BaseNode: FC<BaseNodeProps> = ({
         height: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.height : 'auto',
       }}
     >
+      {(data._dimmed || data._pluginInstallLocked) && (
+        <div
+          className={cn(
+            'absolute inset-0 rounded-2xl transition-opacity',
+            data._pluginInstallLocked
+              ? 'pointer-events-auto z-30 bg-workflow-block-parma-bg opacity-80 backdrop-blur-[2px]'
+              : 'pointer-events-none z-20 bg-workflow-block-parma-bg opacity-50',
+          )}
+          data-testid='workflow-node-install-overlay'
+        />
+      )}
       {
         data.type === BlockEnum.DataSource && (
           <div className='absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]'>

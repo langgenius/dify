@@ -23,17 +23,19 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
   } = useNodePluginInstallation(data)
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
   const { handleNodeDataUpdate } = useNodeDataUpdate()
+  const shouldLock = !isChecking && isMissing && canInstall && Boolean(uniqueIdentifier)
 
   useEffect(() => {
-    if (data._dimmed === shouldDim)
+    if (data._pluginInstallLocked === shouldLock && data._dimmed === shouldDim)
       return
     handleNodeDataUpdate({
       id,
       data: {
+        _pluginInstallLocked: shouldLock,
         _dimmed: shouldDim,
       },
     })
-  }, [data._dimmed, handleNodeDataUpdate, id, shouldDim])
+  }, [data._pluginInstallLocked, data._dimmed, handleNodeDataUpdate, id, shouldDim, shouldLock])
 
   const hasConfigs = toolConfigs.length > 0
 
@@ -43,7 +45,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
   return (
     <div className='relative mb-1 px-3 py-1'>
       {showInstallButton && (
-        <div className='absolute right-3 top-[-32px] z-20'>
+        <div className='pointer-events-auto absolute right-3 top-[-32px] z-40'>
           <InstallPluginButton
             size='small'
             className='!font-medium !text-text-accent'
@@ -58,7 +60,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
         </div>
       )}
       {hasConfigs && (
-        <div className='space-y-0.5'>
+        <div className='space-y-0.5' aria-disabled={shouldDim}>
           {toolConfigs.map((key, index) => (
             <div key={index} className='flex h-6 items-center justify-between space-x-1 rounded-md  bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary'>
               <div title={key} className='max-w-[100px] shrink-0 truncate text-xs font-medium uppercase text-text-tertiary'>
