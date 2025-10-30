@@ -33,6 +33,17 @@ pnpm test -- path/to/file.spec.tsx
 - **Script utilities**: `web/testing/analyze-component.js` reports component complexity; `pnpm analyze-component <path>` should be part of the planning step for non-trivial components.
 - **Integration suites**: Files in `web/__tests__/` exercise cross-component flows. Prefer adding new end-to-end style specs there rather than mixing them into component directories.
 
+## Test Authoring Principles
+
+- **Single behavior per test**: Each test verifies one user-observable behavior.
+- **Black-box first**: Assert external behavior and observable outputs, avoid internal implementation details.
+- **Semantic naming**: Use `should <behavior> when <condition>` and group related cases with `describe(<subject or scenario>)`.
+- **AAA / Given–When–Then**: Separate Arrange, Act, and Assert clearly with code blocks or comments.
+- **Minimal but sufficient assertions**: Keep only the expectations that express the essence of the behavior.
+- **Reusable test data**: Prefer test data builders or factories over hard-coded masses of data.
+- **De-flake**: Control time, randomness, network, concurrency, and ordering.
+- **Fast & stable**: Keep unit tests running in milliseconds; reserve integration tests for cross-module behavior with isolation.
+
 ## Component Complexity Guidelines
 
 Use `pnpm analyze-component <path>` to analyze component complexity and adopt different testing strategies based on the results.
@@ -69,34 +80,11 @@ Apply the following test scenarios based on component features:
 
 ### 2. Props Testing (REQUIRED - All Components)
 
-**Must Test**:
-- ✅ Different values for each prop
-- ✅ Required vs optional props
-- ✅ Default values
-- ✅ Props type validation
+Exercise the prop combinations that change observable behavior. Show how required props gate functionality, how optional props fall back to their defaults, and how invalid combinations surface through user-facing safeguards. Let TypeScript catch structural issues; keep runtime assertions focused on what the component renders or triggers.
 
 ### 3. State Management
 
-#### useState
-
-When testing state-related components:
-- ✅ Test initial state values
-- ✅ Test all state transitions
-- ✅ Test state reset/cleanup scenarios
-
-#### useEffect
-
-When testing side effects:
-- ✅ Test effect execution conditions
-- ✅ Verify dependencies array correctness
-- ✅ Test cleanup function on unmount
-
-#### useState + useEffect Combined
-
-- ✅ Test state initialization and updates
-- ✅ Test useEffect dependencies array
-- ✅ Test cleanup functions (useEffect return value)
-- ✅ Use `waitFor()` for async state changes
+Treat component state as part of the public behavior: confirm the initial render in context, execute the interactions or prop updates that move the state machine, and assert the resulting UI or side effects. Use `waitFor()`/async queries whenever transitions resolve asynchronously, and only check cleanup paths when they change what a user sees or experiences (duplicate events, lingering timers, etc.).
 
 #### Context, Providers, and Stores
 
@@ -107,25 +95,11 @@ When testing side effects:
 
 ### 4. Performance Optimization
 
-#### useCallback
-
-- ✅ Verify callbacks maintain referential equality
-- ✅ Test callback dependencies
-- ✅ Ensure re-renders don't recreate functions unnecessarily
-
-#### useMemo
-
-- ✅ Test memoization dependencies
-- ✅ Ensure expensive computations are cached
-- ✅ Verify memo recomputation conditions
+Cover memoized callbacks or values only when they influence observable behavior—memoized children, subscription updates, expensive computations. Trigger realistic re-renders and assert the outcomes (avoided rerenders, reused results) instead of inspecting hook internals.
 
 ### 5. Event Handlers
 
-**Must Test**:
-- ✅ All onClick, onChange, onSubmit handlers
-- ✅ Keyboard events (Enter, Escape, Tab, etc.)
-- ✅ Verify event.preventDefault() calls (if needed)
-- ✅ Test event bubbling/propagation
+Simulate the interactions that matter to users—primary clicks, change events, submits, and relevant keyboard shortcuts—and confirm the resulting behavior. When handlers prevent defaults or rely on bubbling, cover the scenarios where that choice affects the UI or downstream flows.
 
 **Note**: Use `fireEvent` (not `userEvent`)
 
@@ -147,12 +121,7 @@ When testing side effects:
 
 ### 7. Next.js Routing
 
-**Must Test**:
-- ✅ Mock useRouter, usePathname, useSearchParams
-- ✅ Test navigation behavior and parameters
-- ✅ Test query string handling
-- ✅ Verify route guards/redirects (if any)
-- ✅ Test URL parameter updates
+Mock the specific Next.js navigation hooks your component consumes (`useRouter`, `usePathname`, `useSearchParams`) and drive realistic routing flows—query parameters, redirects, guarded routes, URL updates—while asserting the rendered outcome or navigation side effects.
 
 ### 8. Edge Cases (REQUIRED - All Components)
 
@@ -172,11 +141,7 @@ When testing side effects:
 
 ### 10. Snapshot Testing (Use Sparingly)
 
-**Only Use For**:
-- ✅ Stable UI (icons, badges, static layouts)
-- ✅ Snapshot small sections only
-- ✅ Prefer explicit assertions over snapshots
-- ✅ Update snapshots intentionally, not automatically
+Reserve snapshots for static, deterministic fragments (icons, badges, layout chrome). Keep them tight, prefer explicit assertions for behavior, and review any snapshot updates deliberately instead of accepting them wholesale.
 
 **Note**: Dify is a desktop application. **No need for** responsive/mobile testing.
 
