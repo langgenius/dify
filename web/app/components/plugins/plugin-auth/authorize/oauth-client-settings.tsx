@@ -160,7 +160,9 @@ const OAuthClientSettings = ({
       wrapperClassName='!z-[101]'
       clickOutsideNotClose={true}
     >
-      <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
+      {pluginPayload.detail && (
+        <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
+      )}
       <AuthForm
         formFromProps={form}
         ref={formRef}
