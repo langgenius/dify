@@ -13,6 +13,7 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
+import { ModelModeType } from '@/types/app'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
@@ -44,6 +45,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
   } = useConfig(id, data)
 
   const model = inputs.model
+  const modelMode = (model?.mode as ModelModeType | undefined) ?? ModelModeType.chat
 
   return (
     <div className='pt-2'>
@@ -56,7 +58,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             popupClassName='!w-[387px]'
             isInWorkflow
             isAdvancedMode={true}
-            mode={model?.mode}
+            mode={modelMode}
             provider={model?.provider}
             completionParams={model.completion_params}
             modelId={model.name}

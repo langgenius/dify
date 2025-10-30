@@ -110,7 +110,7 @@ const Configuration: FC = () => {
   const pathname = usePathname()
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
-  const [mode, setMode] = useState<AppModeEnum>()
+  const [mode, setMode] = useState<AppModeEnum>(AppModeEnum.CHAT)
   const [publishedConfig, setPublishedConfig] = useState<PublishConfig | null>(null)
 
   const [conversationId, setConversationId] = useState<string | null>('')
@@ -705,8 +705,7 @@ const Configuration: FC = () => {
         provider: currentRerankProvider?.provider,
         model: currentRerankModel?.model,
       })
-      setDatasetConfigs({
-        retrieval_model: RETRIEVE_TYPE.multiWay,
+      const datasetConfigsToSet = {
         ...modelConfig.dataset_configs,
         ...retrievalConfig,
         ...(retrievalConfig.reranking_model ? {
@@ -715,7 +714,9 @@ const Configuration: FC = () => {
             reranking_provider_name: correctModelProvider(retrievalConfig.reranking_model.provider),
           },
         } : {}),
-      } as DatasetConfigs)
+      } as DatasetConfigs
+      datasetConfigsToSet.retrieval_model = datasetConfigsToSet.retrieval_model ?? RETRIEVE_TYPE.multiWay
+      setDatasetConfigs(datasetConfigsToSet)
       setHasFetchedDetail(true)
     })()
   }, [appId])

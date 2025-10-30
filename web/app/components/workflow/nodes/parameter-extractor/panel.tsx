@@ -19,6 +19,7 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import Tooltip from '@/app/components/base/tooltip'
 import { VarType } from '@/app/components/workflow/types'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
+import { ModelModeType } from '@/types/app'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 const i18nCommonPrefix = 'workflow.common'
@@ -55,6 +56,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
   } = useConfig(id, data)
 
   const model = inputs.model
+  const modelMode = (model?.mode as ModelModeType | undefined) ?? ModelModeType.chat
 
   return (
     <div className='pt-2'>
@@ -67,7 +69,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             popupClassName='!w-[387px]'
             isInWorkflow
             isAdvancedMode={true}
-            mode={model?.mode}
+            mode={modelMode}
             provider={model?.provider}
             completionParams={model?.completion_params}
             modelId={model?.name}

@@ -22,6 +22,7 @@ import Switch from '@/app/components/base/switch'
 import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import Toast from '@/app/components/base/toast'
+import { ModelModeType } from '@/types/app'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -94,6 +95,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
       }
     })()
   }, [inputs.model.completion_params])
+  const modelMode = (model?.mode as ModelModeType | undefined) ?? ModelModeType.chat
 
   return (
     <div className='mt-2'>
@@ -106,7 +108,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             popupClassName='!w-[387px]'
             isInWorkflow
             isAdvancedMode={true}
-            mode={model?.mode}
+            mode={modelMode}
             provider={model?.provider}
             completionParams={model?.completion_params}
             modelId={model?.name}

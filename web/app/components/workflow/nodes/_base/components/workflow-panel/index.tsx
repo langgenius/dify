@@ -297,14 +297,14 @@ const BasePanel: FC<BasePanelProps> = ({
   const { setDetail } = usePluginStore()
 
   useEffect(() => {
-    if (currentTriggerPlugin) {
+    if (currentTriggerPlugin?.subscription_constructor) {
       setDetail({
         name: currentTriggerPlugin.label[language],
         plugin_id: currentTriggerPlugin.plugin_id || '',
+        plugin_unique_identifier: currentTriggerPlugin.plugin_unique_identifier || '',
+        id: currentTriggerPlugin.id,
         provider: currentTriggerPlugin.name,
         declaration: {
-          tool: undefined,
-          // @ts-expect-error just remain the necessary fields
           trigger: {
             subscription_schema: currentTriggerPlugin.subscription_schema || [],
             subscription_constructor: currentTriggerPlugin.subscription_constructor,
@@ -312,7 +312,7 @@ const BasePanel: FC<BasePanelProps> = ({
         },
       })
     }
-  }, [currentTriggerPlugin, setDetail])
+  }, [currentTriggerPlugin, language, setDetail])
 
   const dataSourceList = useStore(s => s.dataSourceList)
 

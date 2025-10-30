@@ -139,7 +139,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
   const { mutate: updateBuilder } = useUpdateTriggerSubscriptionBuilder()
 
-  const manualPropertiesSchema = detail?.declaration.trigger.subscription_schema || [] // manual
+  const manualPropertiesSchema = detail?.declaration?.trigger?.subscription_schema || [] // manual
   const manualPropertiesFormRef = React.useRef<FormRefObject>(null)
 
   const subscriptionFormRef = React.useRef<FormRefObject>(null)
