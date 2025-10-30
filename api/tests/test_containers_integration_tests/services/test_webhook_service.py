@@ -9,6 +9,7 @@ from werkzeug.datastructures import FileStorage
 
 from models.model import App
 from models.trigger import WorkflowWebhookTrigger
+from models.workflow import Workflow
 from services.account_service import AccountService, TenantService
 from services.trigger.webhook_service import WebhookService
 
