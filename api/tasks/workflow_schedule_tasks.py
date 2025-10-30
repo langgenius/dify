@@ -42,8 +42,6 @@ def run_schedule_trigger(schedule_id: str) -> None:
             raise TenantOwnerNotFoundError(f"No owner or admin found for tenant {schedule.tenant_id}")
 
         try:
-            inputs = {}
-
             # Production dispatch: Trigger the workflow normally
             response = AsyncWorkflowService.trigger_workflow_async(
                 session=session,
@@ -51,7 +49,7 @@ def run_schedule_trigger(schedule_id: str) -> None:
                 trigger_data=ScheduleTriggerData(
                     app_id=schedule.app_id,
                     root_node_id=schedule.node_id,
-                    inputs=inputs,
+                    inputs={},
                     tenant_id=schedule.tenant_id,
                 ),
             )
