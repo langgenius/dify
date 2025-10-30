@@ -982,7 +982,6 @@ const Configuration: FC = () => {
                       <>
                         <ModelParameterModal
                           isAdvancedMode={isAdvancedMode}
-                          mode={mode}
                           provider={modelConfig.provider}
                           completionParams={completionParams}
                           modelId={modelConfig.model_id}
