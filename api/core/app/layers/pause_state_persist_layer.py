@@ -1,5 +1,5 @@
 from sqlalchemy import Engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events.base import GraphEngineEvent
@@ -9,7 +9,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 
 
 class PauseStatePersistenceLayer(GraphEngineLayer):
-    def __init__(self, session_factory: Engine | sessionmaker, state_owner_user_id: str):
+    def __init__(self, session_factory: Engine | sessionmaker[Session], state_owner_user_id: str):
         """Create a PauseStatePersistenceLayer.
 
         The `state_owner_user_id` is used when creating state file for pause.
