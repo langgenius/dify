@@ -214,7 +214,6 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
               portalToFollowElemContentClassName='z-[1000]'
               isAdvancedMode={true}
               provider={model.provider}
-              mode={model.mode}
               completionParams={model.completion_params}
               modelId={model.name}
               setModel={handleModelChange}

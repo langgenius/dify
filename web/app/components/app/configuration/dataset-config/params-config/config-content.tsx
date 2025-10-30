@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import WeightedScore from './weighted-score'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
-import { ModelModeType, RETRIEVE_TYPE } from '@/types/app'
+import { RETRIEVE_TYPE } from '@/types/app'
 import type {
   DatasetConfigs,
 } from '@/models/debug'
@@ -142,7 +142,6 @@ const ConfigContent: FC<Props> = ({
   }
 
   const model = singleRetrievalConfig // Legacy code, for compatibility, have to keep it
-  const singleRetrievalMode = (model?.mode as ModelModeType | undefined) ?? ModelModeType.unset
 
   const rerankingModeOptions = [
     {
@@ -369,7 +368,6 @@ const ConfigContent: FC<Props> = ({
             popupClassName='!w-[387px]'
             portalToFollowElemContentClassName='!z-[1002]'
             isAdvancedMode={true}
-            mode={singleRetrievalMode}
             provider={model?.provider}
             completionParams={model?.completion_params}
             modelId={model?.name}
