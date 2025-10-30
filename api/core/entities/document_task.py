@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 
@@ -11,4 +12,4 @@ class DocumentTask:
 
     tenant_id: str
     dataset_id: str
-    document_ids: list[str]
+    document_ids: Sequence[str]

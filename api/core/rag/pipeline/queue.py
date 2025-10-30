@@ -27,7 +27,7 @@ class TenantSelfTaskQueue:
     Support tasks that can be serialized by json.
     """
 
-    DEFAULT_TASK_TTL = 60 * 60
+    DEFAULT_TASK_TTL = 60 * 60  # 1 hour
 
     def __init__(self, tenant_id: str, unique_key: str):
         self.tenant_id = tenant_id
