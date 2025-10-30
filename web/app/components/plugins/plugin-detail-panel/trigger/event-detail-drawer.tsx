@@ -17,7 +17,7 @@ import {
 import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { TriggerEvent } from '../../types'
+import type { TriggerEvent } from '@/app/components/plugins/types'
 
 type EventDetailDrawerProps = {
   eventInfo: TriggerEvent

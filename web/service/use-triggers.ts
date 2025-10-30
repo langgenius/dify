@@ -149,6 +149,8 @@ export const useUpdateTriggerSubscriptionBuilder = () => {
       subscriptionBuilderId: string
       name?: string
       properties?: Record<string, any>
+      parameters?: Record<string, any>
+      credentials?: Record<string, any>
     }) => {
       const { provider, subscriptionBuilderId, ...body } = payload
       return post<TriggerSubscriptionBuilder>(
@@ -180,7 +182,7 @@ export const useVerifyTriggerSubscriptionBuilder = () => {
 export type BuildTriggerSubscriptionPayload = {
   provider: string
   subscriptionBuilderId: string
-  name: string
+  name?: string
   parameters?: Record<string, any>
 }
 

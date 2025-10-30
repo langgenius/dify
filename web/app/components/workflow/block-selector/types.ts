@@ -216,7 +216,7 @@ export type TriggerWithProvider = Collection & {
   meta: PluginMeta
   plugin_unique_identifier: string
   credentials_schema?: TriggerCredentialField[]
-  subscription_constructor: PluginTriggerSubscriptionConstructor
+  subscription_constructor?: PluginTriggerSubscriptionConstructor | null
   subscription_schema?: ParametersSchema[]
   supported_creation_methods: SupportedCreationMethods[]
 }
