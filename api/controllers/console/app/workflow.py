@@ -1144,7 +1144,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
         except InvokeRateLimitError as ex:
             raise InvokeRateLimitHttpError(ex.description)
         except Exception:
-            logger.exception("Error running draft workflow trigger webhook run")
+            logger.exception("Error running draft workflow trigger run-all")
             return jsonable_encoder(
                 {
                     "status": "error",
