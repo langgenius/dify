@@ -61,5 +61,5 @@ class TriggerHttpRequestCachingService:
         """
         storage.save(
             f"{cls._TRIGGER_STORAGE_PATH}/{request_id}.payload",
-            TypeAdapter(Mapping[str, Any]).dump_json(payload),
+            TypeAdapter(Mapping[str, Any]).dump_json(payload),  # type: ignore
         )

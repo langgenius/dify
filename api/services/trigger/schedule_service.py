@@ -258,6 +258,8 @@ class ScheduleService:
 
             return ScheduleConfig(node_id=node_id, cron_expression=cron_expression, timezone=timezone)
 
+        return None
+
     @staticmethod
     def visual_to_cron(frequency: str, visual_config: VisualConfig) -> str:
         """
