@@ -51,6 +51,7 @@
   <a href="../tr-TR/README.md"><img alt="Türkçe README" src="https://img.shields.io/badge/Türkçe-d9d9d9"></a>
   <a href="../vi-VN/README.md"><img alt="README Tiếng Việt" src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-d9d9d9"></a>
   <a href="../de-DE/README.md"><img alt="README in Deutsch" src="https://img.shields.io/badge/German-d9d9d9"></a>
+  <a href="../it-IT/README.md"><img alt="README in Italiano" src="https://img.shields.io/badge/Italiano-d9d9d9"></a>
   <a href="../bn-BD/README.md"><img alt="README in বাংলা" src="https://img.shields.io/badge/বাংলা-d9d9d9"></a>
 </p>
 
@@ -63,7 +64,7 @@ Dify è una piattaforma open-source per lo sviluppo di applicazioni LLM. La sua 
 > - CPU >= 2 Core
 > - RAM >= 4 GiB
 
-</br>
+<br/>
 
 Il modo più semplice per avviare il server Dify è tramite [docker compose](../../docker/docker-compose.yaml). Prima di eseguire Dify con i seguenti comandi, assicuratevi che [Docker](https://docs.docker.com/get-docker/) e [Docker Compose](https://docs.docker.com/compose/install/) siano installati sul vostro sistema:
 
@@ -109,14 +110,14 @@ Tutte le offerte di Dify sono dotate di API corrispondenti, permettendovi di int
 
 ## Utilizzo di Dify
 
-- **Cloud </br>**
+- **Cloud <br/>**
   Ospitiamo un servizio [Dify Cloud](https://dify.ai) che chiunque può provare senza configurazione. Offre tutte le funzionalità della versione self-hosted e include 200 chiamate GPT-4 gratuite nel piano sandbox.
 
-- **Dify Community Edition Self-Hosted</br>**
-  Avviate rapidamente Dify nel vostro ambiente con questa [guida di avvio rapido](#quick-start). Utilizzate la nostra [documentazione](https://docs.dify.ai) per ulteriori informazioni e istruzioni dettagliate.
+- **Dify Community Edition Self-Hosted<br/>**
+  Avviate rapidamente Dify nel vostro ambiente con questa [guida di avvio rapido](#avvio-rapido). Utilizzate la nostra [documentazione](https://docs.dify.ai) per ulteriori informazioni e istruzioni dettagliate.
 
-- **Dify per Aziende / Organizzazioni</br>**
-  Offriamo funzionalità aggiuntive specifiche per le aziende. [Potete comunicarci le vostre domande tramite questo chatbot](https://udify.app/chat/22L1zSxg6yW1cWQg) o [inviateci un'email](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) per discutere le vostre esigenze aziendali. </br>
+- **Dify per Aziende / Organizzazioni<br/>**
+  Offriamo funzionalità aggiuntive specifiche per le aziende. [Potete comunicarci le vostre domande tramite questo chatbot](https://udify.app/chat/22L1zSxg6yW1cWQg) o [inviateci un'email](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) per discutere le vostre esigenze aziendali. <br/>
 
   > Per startup e piccole imprese che utilizzano AWS, date un'occhiata a [Dify Premium su AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) e distribuitelo con un solo clic nel vostro AWS VPC. Si tratta di un'offerta AMI conveniente con l'opzione di creare app con logo e branding personalizzati.
 
@@ -182,14 +183,14 @@ Distribuite Dify con un clic in AKS utilizzando [Azure DevOps Pipeline Helm Char
 
 ## Contribuire
 
-Se desiderate contribuire con codice, leggete la nostra [Guida ai Contributi](./CONTRIBUTING.md). Allo stesso tempo, vi chiediamo di supportare Dify condividendolo sui social media e presentandolo a eventi e conferenze.
+Se desiderate contribuire con codice, leggete la nostra [Guida ai Contributi](../../CONTRIBUTING.md). Allo stesso tempo, vi chiediamo di supportare Dify condividendolo sui social media e presentandolo a eventi e conferenze.
 
 > Cerchiamo collaboratori che aiutino a tradurre Dify in altre lingue oltre al mandarino o all'inglese. Se siete interessati a collaborare, leggete il [README i18n](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) per ulteriori informazioni e lasciate un commento nel canale `global-users` del nostro [server della community Discord](https://discord.gg/8Tpq4AcN9c).
 
 ## Community & Contatti
 
 - [GitHub Discussion](https://github.com/langgenius/dify/discussions). Ideale per: condividere feedback e porre domande.
-- [GitHub Issues](https://github.com/langgenius/dify/issues). Ideale per: bug che riscontrate durante l'utilizzo di Dify.AI e proposte di funzionalità. Consultate la nostra [Guida ai Contributi](./CONTRIBUTING.md).
+- [GitHub Issues](https://github.com/langgenius/dify/issues). Ideale per: bug che riscontrate durante l'utilizzo di Dify.AI e proposte di funzionalità. Consultate la nostra [Guida ai Contributi](../../CONTRIBUTING.md).
 - [Discord](https://discord.gg/FngNHpbcY7). Ideale per: condividere le vostre applicazioni e interagire con la community.
 - [X(Twitter)](https://twitter.com/dify_ai). Ideale per: condividere le vostre applicazioni e interagire con la community.
 
