@@ -178,7 +178,7 @@ export type ConversationVariable = {
 
 export type GlobalVariable = {
   name: string
-  value_type: 'string' | 'number'
+  value_type: 'string' | 'number' | 'integer'
   description: string
 }
 
