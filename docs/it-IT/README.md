@@ -211,4 +211,3 @@ Per proteggere la vostra privacy, evitate di pubblicare problemi di sicurezza su
 ## Licenza
 
 Questo repository è disponibile sotto la [Dify Open Source License](../../LICENSE), che è essenzialmente Apache 2.0 con alcune restrizioni aggiuntive.
-
