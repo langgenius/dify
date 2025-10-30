@@ -451,6 +451,7 @@ export type MoreInfo = {
 export type ToolWithProvider = Collection & {
   tools: Tool[]
   meta: PluginMeta
+  plugin_unique_identifier?: string
 }
 
 export type RAGRecommendedPlugins = {
