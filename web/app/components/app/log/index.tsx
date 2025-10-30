@@ -3,7 +3,6 @@ import type { FC, SVGProps } from 'react'
 import React, { useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { useDebounce } from 'ahooks'
 import { omit } from 'lodash-es'
 import dayjs from 'dayjs'
@@ -15,6 +14,7 @@ import Pagination from '@/app/components/base/pagination'
 import Loading from '@/app/components/base/loading'
 import { fetchChatConversations, fetchCompletionConversations } from '@/service/log'
 import { APP_PAGE_LIMIT } from '@/config'
+import { getRedirectionPath } from '@/utils/app-redirection'
 import type { App, AppMode } from '@/types/app'
 export type ILogsProps = {
   appDetail: App
@@ -33,18 +33,25 @@ const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
   </svg>
 }
 
-const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
+const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
   const { t } = useTranslation()
-  const pathname = usePathname()
-  const pathSegments = pathname.split('/')
-  pathSegments.pop()
+
+  const getWebAppType = (appType: AppMode) => {
+    if (appType !== 'completion' && appType !== 'workflow')
+      return 'chat'
+    return appType
+  }
+
   return <div className='flex h-full items-center justify-center'>
     <div className='box-border h-fit w-[560px] rounded-2xl bg-background-section-burn px-5 py-4'>
       <span className='system-md-semibold text-text-secondary'>{t('appLog.table.empty.element.title')}<ThreeDotsIcon className='relative -left-1.5 -top-3 inline text-text-secondary' /></span>
       <div className='system-sm-regular mt-2 text-text-tertiary'>
         <Trans
           i18nKey="appLog.table.empty.element.content"
-          components={{ shareLink: <Link href={appUrl} className='text-util-colors-blue-blue-600' target='_blank' rel='noopener noreferrer' />, testLink: <Link href={`${pathSegments.join('/')}/overview`} className='text-util-colors-blue-blue-600' /> }}
+          components={{
+            shareLink: <Link href={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} className='text-util-colors-blue-blue-600' target='_blank' rel='noopener noreferrer' />,
+            testLink: <Link href={getRedirectionPath(true, appDetail)} className='text-util-colors-blue-blue-600' />,
+          }}
         />
       </div>
     </div>
@@ -78,12 +85,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...omit(debouncedQueryParams, ['period']),
   }
 
-  const getWebAppType = (appType: AppMode) => {
-    if (appType !== 'completion' && appType !== 'workflow')
-      return 'chat'
-    return appType
-  }
-
   // When the details are obtained, proceed to the next request
   const { data: chatConversations, mutate: mutateChatList } = useSWR(() => isChatMode
     ? {
@@ -110,7 +111,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           ? <Loading type='app' />
           : total > 0
             ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
-            : <EmptyElement appUrl={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
+            : <EmptyElement appDetail={appDetail} />
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
