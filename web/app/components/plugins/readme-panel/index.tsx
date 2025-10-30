@@ -2,7 +2,6 @@
 import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import { Markdown } from '@/app/components/base/markdown'
-import Modal from '@/app/components/base/modal'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { usePluginReadme } from '@/service/use-plugins'
 import cn from '@/utils/classnames'
@@ -85,29 +84,36 @@ const ReadmePanel: FC = () => {
     </div>
   )
 
-  return showType === ReadmeShowType.drawer ? createPortal(
-    <div className='pointer-events-none fixed inset-0 z-[9997] flex justify-start'>
-      <div
-        className={cn(
-          'pointer-events-auto mb-2 ml-2 mr-2 mt-16 w-[600px] max-w-[600px] justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl',
-        )}
-      >
-        {children}
+  const portalContent = showType === ReadmeShowType.drawer
+    ? (
+      <div className='pointer-events-none fixed inset-0 z-[9997] flex justify-start'>
+        <div
+          className={cn(
+            'pointer-events-auto mb-2 ml-2 mr-2 mt-16 w-[600px] max-w-[600px] justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl',
+          )}
+        >
+          {children}
+        </div>
       </div>
-    </div>,
+    )
+    : (
+      <div className='pointer-events-none fixed inset-0 z-[9997] flex items-center justify-center p-2'>
+        <div
+          className={cn(
+            'pointer-events-auto relative h-[calc(100vh-16px)] w-full max-w-[800px] rounded-2xl bg-components-panel-bg p-0 shadow-xl',
+          )}
+          onClick={(event) => {
+            event.stopPropagation()
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    )
+
+  return createPortal(
+    portalContent,
     document.body,
-  ) : (
-    <Modal
-      isShow={!!detail}
-      onClose={onClose}
-      overlayOpacity={true}
-      className='h-[calc(100vh-16px)] max-w-[800px] p-0'
-      wrapperClassName='!z-[102]'
-      containerClassName='p-2'
-      clickOutsideNotClose={true}
-    >
-      {children}
-    </Modal>
   )
 }
 

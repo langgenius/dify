@@ -1,5 +1,17 @@
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import Tooltip from '@/app/components/base/tooltip'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import {
+  AuthCategory,
+  AuthorizedInDataSourceNode,
+  AuthorizedInNode,
+  PluginAuth,
+  PluginAuthInDataSourceNode,
+} from '@/app/components/plugins/plugin-auth'
+import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
+import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
+import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   WorkflowHistoryEvent,
@@ -11,7 +23,14 @@ import {
   useToolIcon,
   useWorkflowHistory,
 } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
+import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
+import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
+import { useLogs } from '@/app/components/workflow/run/hooks'
+import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, type Node, NodeRunningStatus } from '@/app/components/workflow/types'
 import {
@@ -20,16 +39,18 @@ import {
   hasRetryNode,
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
+import { useModalContext } from '@/context/modal-context'
+import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { FlowType } from '@/types/common'
+import { canFindTool } from '@/utils'
 import cn from '@/utils/classnames'
 import {
   RiCloseLine,
   RiPlayLargeLine,
 } from '@remixicon/react'
-import type {
-  FC,
-  ReactNode,
-} from 'react'
+import { debounce } from 'lodash-es'
+import type { FC, ReactNode } from 'react'
 import React, {
   cloneElement,
   memo,
@@ -42,44 +63,18 @@ import React, {
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useResizePanel } from '../../hooks/use-resize-panel'
+import BeforeRunForm from '../before-run-form'
+import PanelWrap from '../before-run-form/panel-wrap'
 import ErrorHandleOnPanel from '../error-handle/error-handle-on-panel'
 import HelpLink from '../help-link'
 import NextStep from '../next-step'
 import PanelOperator from '../panel-operator'
 import RetryOnPanel from '../retry/retry-on-panel'
-import {
-  DescriptionInput,
-  TitleInput,
-} from '../title-description-input'
-import Tab, { TabType } from './tab'
-// import AuthMethodSelector from '@/app/components/workflow/nodes/trigger-plugin/components/auth-method-selector'
-import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import {
-  AuthCategory,
-  AuthorizedInDataSourceNode,
-  AuthorizedInNode,
-  PluginAuth,
-  PluginAuthInDataSourceNode,
-} from '@/app/components/plugins/plugin-auth'
-import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
-import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
-import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
-import { useLogs } from '@/app/components/workflow/run/hooks'
-import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
-import { useModalContext } from '@/context/modal-context'
-import { FlowType } from '@/types/common'
-import { canFindTool } from '@/utils'
-import { debounce } from 'lodash-es'
-import BeforeRunForm from '../before-run-form'
-import PanelWrap from '../before-run-form/panel-wrap'
+import { DescriptionInput, TitleInput } from '../title-description-input'
 import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
+import Tab, { TabType } from './tab'
 import { TriggerSubscription } from './trigger-subscription'
-import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
-import { useAllBuiltInTools } from '@/service/use-tools'
 
 const getCustomRunForm = (params: CustomRunFormProps): React.JSX.Element => {
   const nodeType = params.payload.type
@@ -103,6 +98,7 @@ const BasePanel: FC<BasePanelProps> = ({
   children,
 }) => {
   const { t } = useTranslation()
+  const language = useLanguage()
   const { showMessageLogModal } = useAppStore(useShallow(state => ({
     showMessageLogModal: state.showMessageLogModal,
   })))
@@ -224,6 +220,7 @@ const BasePanel: FC<BasePanelProps> = ({
   useEffect(() => {
     hasClickRunning.current = false
   }, [id])
+
   const {
     nodesMap,
   } = useNodesMetaData()
@@ -278,12 +275,7 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [pendingSingleRun, id, handleSingleRun, handleStop, setPendingSingleRun])
 
   const logParams = useLogs()
-  const passedLogParams = (() => {
-    if ([BlockEnum.Tool, BlockEnum.Agent, BlockEnum.Iteration, BlockEnum.Loop].includes(data.type))
-      return logParams
-
-    return {}
-  })()
+  const passedLogParams = useMemo(() => [BlockEnum.Tool, BlockEnum.Agent, BlockEnum.Iteration, BlockEnum.Loop].includes(data.type) ? logParams : {}, [data.type, logParams])
 
   const storeBuildInTools = useStore(s => s.buildInTools)
   const { data: buildInTools } = useAllBuiltInTools()
@@ -295,16 +287,32 @@ const BasePanel: FC<BasePanelProps> = ({
     return data.type === BlockEnum.Tool && currToolCollection?.allow_delete
   }, [data.type, currToolCollection?.allow_delete])
 
-  const { data: triggerProviders = [] } = useAllTriggerPlugins()
-  const currentTriggerProvider = useMemo(() => {
-    if (!data.provider_id || !data.provider_name)
+  // only fetch trigger plugins when the node is a trigger plugin
+  const { data: triggerPlugins = [] } = useAllTriggerPlugins(data.type === BlockEnum.TriggerPlugin)
+  const currentTriggerPlugin = useMemo(() => {
+    if (data.type !== BlockEnum.TriggerPlugin || !data.plugin_id || !triggerPlugins?.length)
       return undefined
-    return triggerProviders.find(p => p.name === data.provider_id) // todo: confirm
-  }, [data.type, data.provider_id, data.provider_name, triggerProviders])
+    return triggerPlugins?.find(p => p.plugin_id === data.plugin_id)
+  }, [data.type, data.plugin_id, triggerPlugins])
+  const { setDetail } = usePluginStore()
 
-  const showTriggerConfig = useMemo(() => {
-    return data.type === BlockEnum.TriggerPlugin && currentTriggerProvider
-  }, [data.type, currentTriggerProvider])
+  useEffect(() => {
+    if (currentTriggerPlugin) {
+      setDetail({
+        name: currentTriggerPlugin.label[language],
+        plugin_id: currentTriggerPlugin.plugin_id || '',
+        provider: currentTriggerPlugin.name,
+        declaration: {
+          tool: undefined,
+          // @ts-expect-error just remain the necessary fields
+          trigger: {
+            subscription_schema: currentTriggerPlugin.subscription_schema || [],
+            subscription_constructor: currentTriggerPlugin.subscription_constructor,
+          },
+        },
+      })
+    }
+  }, [currentTriggerPlugin, setDetail])
 
   const dataSourceList = useStore(s => s.dataSourceList)
 
@@ -352,14 +360,14 @@ const BasePanel: FC<BasePanelProps> = ({
         pluginDetail = currentDataSource
         break
       case BlockEnum.TriggerPlugin:
-        pluginDetail = currentTriggerProvider
+        pluginDetail = currentTriggerPlugin
         break
 
       default:
         break
     }
     return !pluginDetail ? null : <ReadmeEntrance pluginDetail={pluginDetail as any} className='mt-auto' />
-  }, [data.type, currToolCollection, currentDataSource, currentTriggerProvider])
+  }, [data.type, currToolCollection, currentDataSource, currentTriggerPlugin])
 
   if (logParams.showSpecialResultPanel) {
     return (
@@ -558,9 +566,9 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            showTriggerConfig && (
+            currentTriggerPlugin && (
               <TriggerSubscription
-                data={data}
+                subscriptionIdSelected={data.subscription_id}
                 onSubscriptionChange={handleSubscriptionChange}
               >
                 <Tab
@@ -571,7 +579,7 @@ const BasePanel: FC<BasePanelProps> = ({
             )
           }
           {
-            !needsToolAuth && !currentDataSource && !showTriggerConfig && (
+            !needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
               <div className='flex items-center justify-between pl-4 pr-3'>
                 <Tab
                   value={tabType}
