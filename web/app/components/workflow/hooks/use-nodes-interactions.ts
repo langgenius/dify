@@ -109,14 +109,7 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
 
       if (
         node.type === CUSTOM_ITERATION_START_NODE
-        || node.type === CUSTOM_NOTE_NODE
-      ) {
-        draggingNodeIdRef.current = null
-        return
-      }
-
-      if (
-        node.type === CUSTOM_LOOP_START_NODE
+        || node.type === CUSTOM_LOOP_START_NODE
         || node.type === CUSTOM_NOTE_NODE
       ) {
         draggingNodeIdRef.current = null
