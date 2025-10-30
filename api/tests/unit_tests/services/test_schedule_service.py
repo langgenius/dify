@@ -62,12 +62,10 @@ class TestScheduleService(unittest.TestCase):
 
     def test_calculate_next_run_at_invalid_cron(self):
         """Test calculating next run time with invalid cron expression."""
-        from croniter import CroniterBadCronError
-
         cron_expr = "invalid cron"
         timezone = "UTC"
 
-        with pytest.raises(CroniterBadCronError):
+        with pytest.raises(ValueError):
             calculate_next_run_at(cron_expr, timezone)
 
     def test_calculate_next_run_at_invalid_timezone(self):
@@ -109,7 +107,7 @@ class TestScheduleService(unittest.TestCase):
         mock_session.add.assert_called_once()
         mock_session.flush.assert_called_once()
 
-    @patch("services.schedule_service.calculate_next_run_at")
+    @patch("services.trigger.schedule_service.calculate_next_run_at")
     def test_update_schedule(self, mock_calculate_next_run):
         """Test updating an existing schedule."""
         mock_session = MagicMock(spec=Session)
@@ -189,7 +187,7 @@ class TestScheduleService(unittest.TestCase):
         assert "Schedule not found: non-existent-id" in str(context.value)
         mock_session.delete.assert_not_called()
 
-    @patch("services.schedule_service.select")
+    @patch("services.trigger.schedule_service.select")
     def test_get_tenant_owner(self, mock_select):
         """Test getting tenant owner account."""
         mock_session = MagicMock(spec=Session)
@@ -211,7 +209,7 @@ class TestScheduleService(unittest.TestCase):
         assert result is not None
         assert result.id == "owner-account-id"
 
-    @patch("services.schedule_service.select")
+    @patch("services.trigger.schedule_service.select")
     def test_get_tenant_owner_fallback_to_admin(self, mock_select):
         """Test getting tenant owner falls back to admin if no owner."""
         mock_session = MagicMock(spec=Session)
@@ -233,7 +231,7 @@ class TestScheduleService(unittest.TestCase):
         assert result is not None
         assert result.id == "admin-account-id"
 
-    @patch("services.schedule_service.calculate_next_run_at")
+    @patch("services.trigger.schedule_service.calculate_next_run_at")
     def test_update_next_run_at(self, mock_calculate_next_run):
         """Test updating next run time after schedule triggered."""
         mock_session = MagicMock(spec=Session)
