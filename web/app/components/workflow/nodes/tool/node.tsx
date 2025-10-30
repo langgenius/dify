@@ -1,12 +1,14 @@
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import type { ToolNodeType } from './types'
 
 const Node: FC<NodeProps<ToolNodeType>> = ({
+  id,
   data,
 }) => {
   const { tool_configurations, paramSchemas } = data
@@ -17,8 +19,21 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
     uniqueIdentifier,
     canInstall,
     onInstallSuccess,
+    shouldDim,
   } = useNodePluginInstallation(data)
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
+  const { handleNodeDataUpdate } = useNodeDataUpdate()
+
+  useEffect(() => {
+    if (data._dimmed === shouldDim)
+      return
+    handleNodeDataUpdate({
+      id,
+      data: {
+        _dimmed: shouldDim,
+      },
+    })
+  }, [data._dimmed, handleNodeDataUpdate, id, shouldDim])
 
   const hasConfigs = toolConfigs.length > 0
 

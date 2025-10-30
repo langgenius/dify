@@ -1,10 +1,11 @@
 import NodeStatus, { NodeStatusEnum } from '@/app/components/base/node-status'
 import type { NodeProps } from '@/app/components/workflow/types'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import type { PluginTriggerNodeType } from './types'
 import useConfig from './use-config'
 
@@ -50,8 +51,21 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
     uniqueIdentifier,
     canInstall,
     onInstallSuccess,
+    shouldDim,
   } = useNodePluginInstallation(data)
+  const { handleNodeDataUpdate } = useNodeDataUpdate()
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
+
+  useEffect(() => {
+    if (data._dimmed === shouldDim)
+      return
+    handleNodeDataUpdate({
+      id,
+      data: {
+        _dimmed: shouldDim,
+      },
+    })
+  }, [data._dimmed, handleNodeDataUpdate, id, shouldDim])
 
   const { t } = useTranslation()
 

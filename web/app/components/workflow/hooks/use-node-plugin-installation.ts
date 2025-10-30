@@ -99,12 +99,15 @@ const useToolInstallation = (data: ToolNodeType): InstallationState => {
       invalidateTools()
   }, [invalidateTools])
 
+  const shouldDim = (!!collectionInfo && !isResolved) || (isResolved && !matchedCollection)
+
   return {
     isChecking: !!collectionInfo && !isResolved,
     isMissing: isResolved && !matchedCollection,
     uniqueIdentifier,
     canInstall,
     onInstallSuccess,
+    shouldDim,
   }
 }
 
@@ -138,12 +141,15 @@ const useTriggerInstallation = (data: PluginTriggerNodeType): InstallationState 
     invalidateTriggers()
   }, [invalidateTriggers])
 
+  const shouldDim = isLoading || (!isLoading && !!triggerProviders && !matchedProvider)
+
   return {
     isChecking: isLoading,
     isMissing: !isLoading && !!triggerProviders && !matchedProvider,
     uniqueIdentifier,
     canInstall,
     onInstallSuccess,
+    shouldDim,
   }
 }
 
@@ -175,12 +181,15 @@ const useDataSourceInstallation = (data: DataSourceNodeType): InstallationState 
 
   const hasLoadedList = dataSourceList !== undefined
 
+  const shouldDim = !hasLoadedList || (hasLoadedList && !matchedPlugin)
+
   return {
     isChecking: !hasLoadedList,
     isMissing: hasLoadedList && !matchedPlugin,
     uniqueIdentifier,
     canInstall,
     onInstallSuccess,
+    shouldDim,
   }
 }
 
@@ -203,6 +212,7 @@ export const useNodePluginInstallation = (data: CommonNodeType): InstallationSta
         uniqueIdentifier: undefined,
         canInstall: false,
         onInstallSuccess: () => undefined,
+        shouldDim: false,
       }
   }
 }

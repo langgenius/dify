@@ -1,11 +1,13 @@
 import type { FC } from 'react'
-import { memo } from 'react'
+import { memo, useEffect } from 'react'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import type { DataSourceNodeType } from './types'
 
 const Node: FC<NodeProps<DataSourceNodeType>> = ({
+  id,
   data,
 }) => {
   const {
@@ -14,7 +16,20 @@ const Node: FC<NodeProps<DataSourceNodeType>> = ({
     uniqueIdentifier,
     canInstall,
     onInstallSuccess,
+    shouldDim,
   } = useNodePluginInstallation(data)
+  const { handleNodeDataUpdate } = useNodeDataUpdate()
+
+  useEffect(() => {
+    if (data._dimmed === shouldDim)
+      return
+    handleNodeDataUpdate({
+      id,
+      data: {
+        _dimmed: shouldDim,
+      },
+    })
+  }, [data._dimmed, handleNodeDataUpdate, id, shouldDim])
 
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
 
