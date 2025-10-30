@@ -102,4 +102,4 @@ def handle_webhook_debug(webhook_id: str):
         raise
     except Exception as e:
         logger.exception("Webhook debug processing failed for %s", webhook_id)
-        return jsonify({"error": "Internal server error", "message": str(e)}), 500
+        return jsonify({"error": "Internal server error", "message": "An internal error has occurred."}), 500

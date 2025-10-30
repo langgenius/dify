@@ -196,7 +196,7 @@ class WorkflowTriggerLog(Base):
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     root_node_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    trigger_metadata: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    trigger_metadata: Mapped[str] = mapped_column(sa.Text, nullable=False)
     trigger_type: Mapped[str] = mapped_column(EnumText(AppTriggerType, length=50), nullable=False)
     trigger_data: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Full TriggerData as JSON
     inputs: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Just inputs for easy viewing

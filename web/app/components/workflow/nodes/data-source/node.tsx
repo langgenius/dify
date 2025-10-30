@@ -1,10 +1,55 @@
 import type { FC } from 'react'
-import { memo } from 'react'
-import type { DataSourceNodeType } from './types'
+import { memo, useEffect } from 'react'
 import type { NodeProps } from '@/app/components/workflow/types'
-const Node: FC<NodeProps<DataSourceNodeType>> = () => {
+import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
+import type { DataSourceNodeType } from './types'
+
+const Node: FC<NodeProps<DataSourceNodeType>> = ({
+  id,
+  data,
+}) => {
+  const {
+    isChecking,
+    isMissing,
+    uniqueIdentifier,
+    canInstall,
+    onInstallSuccess,
+    shouldDim,
+  } = useNodePluginInstallation(data)
+  const { handleNodeDataUpdate } = useNodeDataUpdate()
+
+  useEffect(() => {
+    if (data._dimmed === shouldDim)
+      return
+    handleNodeDataUpdate({
+      id,
+      data: {
+        _dimmed: shouldDim,
+      },
+    })
+  }, [data._dimmed, handleNodeDataUpdate, id, shouldDim])
+
+  const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
+
+  if (!showInstallButton)
+    return null
+
   return (
-    <div>
+    <div className='relative mb-1 px-3 py-1'>
+      <div className='absolute right-3 top-[-32px] z-20'>
+        <InstallPluginButton
+          size='small'
+          extraIdentifiers={[
+            data.plugin_id,
+            data.provider_name,
+          ].filter(Boolean) as string[]}
+          className='!font-medium !text-text-accent'
+          uniqueIdentifier={uniqueIdentifier!}
+          onSuccess={onInstallSuccess}
+        />
+      </div>
     </div>
   )
 }

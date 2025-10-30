@@ -30,6 +30,7 @@ export type DataSourceNodeType = CommonNodeType & {
   datasource_label: string
   datasource_parameters: ToolVarInputs
   datasource_configurations: Record<string, any>
+  plugin_unique_identifier?: string
 }
 
 export type CustomRunFormProps = {

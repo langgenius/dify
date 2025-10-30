@@ -59,6 +59,7 @@ export type ToolDefaultValue = PluginCommonDefaultValue & {
   meta?: PluginMeta
   plugin_id?: string
   provider_icon?: Collection['icon']
+  plugin_unique_identifier?: string
 }
 
 export type DataSourceDefaultValue = Omit<PluginCommonDefaultValue, 'provider_id'> & {
@@ -69,6 +70,7 @@ export type DataSourceDefaultValue = Omit<PluginCommonDefaultValue, 'provider_id
   datasource_label: string
   title: string
   fileExtensions?: string[]
+  plugin_unique_identifier?: string
 }
 
 export type PluginDefaultValue = ToolDefaultValue | DataSourceDefaultValue | TriggerDefaultValue

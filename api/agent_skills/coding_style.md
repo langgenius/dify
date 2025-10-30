@@ -19,7 +19,6 @@
 - Prefer simple functions over classes for lightweight helpers.
 - Keep files below 800 lines; split when necessary.
 - Keep code readable—no clever hacks.
-- Never use type annotations.
 - Never use `print`; log with `logger = logging.getLogger(__name__)`.
 
 ## Guiding Principles

@@ -32,6 +32,7 @@ from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
+from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
 from services.workflow.entities import PluginTriggerData, PluginTriggerDispatchData, PluginTriggerMetadata
 
 logger = logging.getLogger(__name__)
@@ -121,10 +122,7 @@ def dispatch_triggered_workflow(
     request = TriggerHttpRequestCachingService.get_request(request_id)
     payload = TriggerHttpRequestCachingService.get_payload(request_id)
 
-    from services.trigger.trigger_service import TriggerService
-    # FIXME: we should avoid import modules inside methods
-
-    subscribers: list[WorkflowPluginTrigger] = TriggerService.get_subscriber_triggers(
+    subscribers: list[WorkflowPluginTrigger] = TriggerSubscriptionOperatorService.get_subscriber_triggers(
         tenant_id=subscription.tenant_id, subscription_id=subscription.id, event_name=event_name
     )
     if not subscribers:

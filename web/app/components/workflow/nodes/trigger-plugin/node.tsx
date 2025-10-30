@@ -1,8 +1,11 @@
 import NodeStatus, { NodeStatusEnum } from '@/app/components/base/node-status'
 import type { NodeProps } from '@/app/components/workflow/types'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import type { PluginTriggerNodeType } from './types'
 import useConfig from './use-config'
 
@@ -42,6 +45,27 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
   const { subscriptions } = useConfig(id, data)
   const { config = {}, subscription_id } = data
   const configKeys = Object.keys(config)
+  const {
+    isChecking,
+    isMissing,
+    uniqueIdentifier,
+    canInstall,
+    onInstallSuccess,
+    shouldDim,
+  } = useNodePluginInstallation(data)
+  const { handleNodeDataUpdate } = useNodeDataUpdate()
+  const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
+
+  useEffect(() => {
+    if (data._dimmed === shouldDim)
+      return
+    handleNodeDataUpdate({
+      id,
+      data: {
+        _dimmed: shouldDim,
+      },
+    })
+  }, [data._dimmed, handleNodeDataUpdate, id, shouldDim])
 
   const { t } = useTranslation()
 
@@ -50,7 +74,22 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
   }, [subscription_id, subscriptions])
 
   return (
-    <div className="mb-1 px-3 py-1">
+    <div className="relative mb-1 px-3 py-1">
+      {showInstallButton && (
+        <div className="absolute right-3 top-[-32px] z-20">
+          <InstallPluginButton
+            size="small"
+            extraIdentifiers={[
+              data.plugin_id,
+              data.provider_id,
+              data.provider_name,
+            ].filter(Boolean) as string[]}
+            className="!font-medium !text-text-accent"
+            uniqueIdentifier={uniqueIdentifier!}
+            onSuccess={onInstallSuccess}
+          />
+        </div>
+      )}
       <div className="space-y-0.5">
         {!isValidSubscription && <NodeStatus status={NodeStatusEnum.warning} message={t('pluginTrigger.node.status.warning')} />}
         {isValidSubscription && configKeys.map((key, index) => (

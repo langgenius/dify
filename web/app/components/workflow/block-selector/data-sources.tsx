@@ -63,6 +63,7 @@ const DataSources = ({
       datasource_name: toolDefaultValue?.tool_name,
       datasource_label: toolDefaultValue?.tool_label,
       title: toolDefaultValue?.title,
+      plugin_unique_identifier: toolDefaultValue?.plugin_unique_identifier,
     }
     // Update defaultValue with fileExtensions if this is the local file data source
     if (toolDefaultValue?.provider_id === 'langgenius/file' && toolDefaultValue?.provider_name === 'file') {
