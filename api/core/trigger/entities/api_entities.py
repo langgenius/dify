@@ -31,7 +31,7 @@ class EventApiEntity(BaseModel):
     identity: EventIdentity = Field(description="The identity of the trigger")
     description: I18nObject = Field(description="The description of the trigger")
     parameters: list[EventParameter] = Field(description="The parameters of the trigger")
-    output_schema: Optional[Mapping[str, Any]] = Field(description="The output schema of the trigger")
+    output_schema: Mapping[str, Any] | None = Field(description="The output schema of the trigger")
 
 
 class TriggerProviderApiEntity(BaseModel):
@@ -39,19 +39,19 @@ class TriggerProviderApiEntity(BaseModel):
     name: str = Field(..., description="The name of the trigger provider")
     label: I18nObject = Field(..., description="The label of the trigger provider")
     description: I18nObject = Field(..., description="The description of the trigger provider")
-    icon: Optional[str] = Field(default=None, description="The icon of the trigger provider")
-    icon_dark: Optional[str] = Field(default=None, description="The dark icon of the trigger provider")
+    icon: str | None = Field(default=None, description="The icon of the trigger provider")
+    icon_dark: str | None = Field(default=None, description="The dark icon of the trigger provider")
     tags: list[str] = Field(default_factory=list, description="The tags of the trigger provider")
 
-    plugin_id: Optional[str] = Field(default="", description="The plugin id of the tool")
-    plugin_unique_identifier: Optional[str] = Field(default="", description="The unique identifier of the tool")
+    plugin_id: str | None = Field(default="", description="The plugin id of the tool")
+    plugin_unique_identifier: str | None = Field(default="", description="The unique identifier of the tool")
 
     supported_creation_methods: list[TriggerCreationMethod] = Field(
         default_factory=list,
         description="Supported creation methods for the trigger provider. like 'OAUTH', 'APIKEY', 'MANUAL'.",
     )
 
-    subscription_constructor: Optional[SubscriptionConstructor] = Field(
+    subscription_constructor: SubscriptionConstructor | None = Field(
         default=None, description="The subscription constructor of the trigger provider"
     )
 

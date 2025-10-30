@@ -63,7 +63,7 @@ class WorkflowTriggerLogRepository(Protocol):
         """
         ...
 
-    def get_by_id(self, trigger_log_id: str, tenant_id: Optional[str] = None) -> Optional[WorkflowTriggerLog]:
+    def get_by_id(self, trigger_log_id: str, tenant_id: str | None = None) -> WorkflowTriggerLog | None:
         """
         Get a trigger log by its ID.
 

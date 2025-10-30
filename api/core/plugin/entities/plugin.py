@@ -73,7 +73,7 @@ class PluginDeclaration(BaseModel):
         models: list[str] | None = Field(default_factory=list[str])
         endpoints: list[str] | None = Field(default_factory=list[str])
         datasources: list[str] | None = Field(default_factory=list[str])
-        triggers: Optional[list[str]] = Field(default_factory=list[str])
+        triggers: list[str] | None = Field(default_factory=list[str])
 
     class Meta(BaseModel):
         minimum_dify_version: str | None = Field(default=None)

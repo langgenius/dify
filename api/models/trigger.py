@@ -194,32 +194,32 @@ class WorkflowTriggerLog(Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    workflow_run_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
-    root_node_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    root_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     trigger_metadata: Mapped[str] = mapped_column(sa.Text, nullable=False)
     trigger_type: Mapped[str] = mapped_column(EnumText(AppTriggerType, length=50), nullable=False)
     trigger_data: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Full TriggerData as JSON
     inputs: Mapped[str] = mapped_column(sa.Text, nullable=False)  # Just inputs for easy viewing
-    outputs: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    outputs: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
 
     status: Mapped[str] = mapped_column(
         EnumText(WorkflowTriggerStatus, length=50), nullable=False, default=WorkflowTriggerStatus.PENDING
     )
-    error: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    error: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
 
     queue_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    celery_task_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     retry_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
 
-    elapsed_time: Mapped[Optional[float]] = mapped_column(sa.Float, nullable=True)
-    total_tokens: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
+    elapsed_time: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    triggered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    triggered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     @property
     def created_by_account(self):
@@ -383,7 +383,7 @@ class AppTrigger(Base):
     id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    node_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=False)
+    node_id: Mapped[str | None] = mapped_column(String(64), nullable=False)
     trigger_type: Mapped[str] = mapped_column(EnumText(AppTriggerType, length=50), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), server_default="", nullable=True)
@@ -435,7 +435,7 @@ class WorkflowSchedulePlan(Base):
     timezone: Mapped[str] = mapped_column(String(64), nullable=False)
 
     # Schedule control
-    next_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    next_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()

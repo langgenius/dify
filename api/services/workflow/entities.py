@@ -30,7 +30,7 @@ class TriggerData(BaseModel):
 
     app_id: str
     tenant_id: str
-    workflow_id: Optional[str] = None
+    workflow_id: str | None = None
     root_node_id: str
     inputs: Mapping[str, Any]
     files: Sequence[Mapping[str, Any]] = Field(default_factory=list)
@@ -101,10 +101,10 @@ class AsyncTriggerExecutionResult(BaseModel):
 
     execution_id: str
     status: AsyncTriggerStatus
-    result: Optional[Mapping[str, Any]] = None
-    error: Optional[str] = None
-    elapsed_time: Optional[float] = None
-    total_tokens: Optional[int] = None
+    result: Mapping[str, Any] | None = None
+    error: str | None = None
+    elapsed_time: float | None = None
+    total_tokens: int | None = None
 
     model_config = ConfigDict(use_enum_values=True)
 
@@ -131,15 +131,15 @@ class TriggerLogResponse(BaseModel):
     status: str
     queue_name: str
     retry_count: int
-    celery_task_id: Optional[str] = None
-    workflow_run_id: Optional[str] = None
-    error: Optional[str] = None
-    outputs: Optional[str] = None
-    elapsed_time: Optional[float] = None
-    total_tokens: Optional[int] = None
-    created_at: Optional[str] = None
-    triggered_at: Optional[str] = None
-    finished_at: Optional[str] = None
+    celery_task_id: str | None = None
+    workflow_run_id: str | None = None
+    error: str | None = None
+    outputs: str | None = None
+    elapsed_time: float | None = None
+    total_tokens: int | None = None
+    created_at: str | None = None
+    triggered_at: str | None = None
+    finished_at: str | None = None
 
     model_config = ConfigDict(use_enum_values=True)
 

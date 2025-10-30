@@ -56,9 +56,9 @@ const getTriggerPluginNodeData = (
     event_description: triggerConfig.event_description,
     title: triggerConfig.event_label || triggerConfig.title || fallbackTitle,
     desc: triggerConfig.event_description || fallbackDesc,
-    output_schema: { ...(triggerConfig.output_schema || {}) },
+    output_schema: { ...triggerConfig.output_schema },
     parameters_schema: triggerConfig.paramSchemas ? [...triggerConfig.paramSchemas] : [],
-    config: { ...(triggerConfig.params || {}) },
+    config: { ...triggerConfig.params },
     subscription_id: triggerConfig.subscription_id,
     plugin_unique_identifier: triggerConfig.plugin_unique_identifier,
     is_team_authorization: triggerConfig.is_team_authorization,
@@ -124,8 +124,8 @@ const WorkflowChildren = () => {
         ...baseNodeData,
         ...triggerNodeData,
         config: {
-          ...(baseNodeData as { config?: Record<string, any> }).config || {},
-          ...(triggerNodeData.config || {}),
+          ...(baseNodeData as { config?: Record<string, any> }).config,
+          ...triggerNodeData.config,
         },
       }
     })()

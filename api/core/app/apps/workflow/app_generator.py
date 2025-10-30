@@ -54,8 +54,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[True],
         call_depth: int,
-        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
-        root_node_id: Optional[str] = None,
+        triggered_from: WorkflowRunTriggeredFrom | None = None,
+        root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Generator[Mapping[str, Any] | str, None, None]: ...
 
@@ -70,8 +70,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[False],
         call_depth: int,
-        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
-        root_node_id: Optional[str] = None,
+        triggered_from: WorkflowRunTriggeredFrom | None = None,
+        root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Mapping[str, Any]: ...
 
@@ -86,8 +86,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
-        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
-        root_node_id: Optional[str] = None,
+        triggered_from: WorkflowRunTriggeredFrom | None = None,
+        root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]: ...
 
@@ -101,8 +101,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
-        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
-        root_node_id: Optional[str] = None,
+        triggered_from: WorkflowRunTriggeredFrom | None = None,
+        root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]:
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
@@ -223,7 +223,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
-        root_node_id: Optional[str] = None,
+        root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
         """
@@ -457,7 +457,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         variable_loader: VariableLoader,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        root_node_id: Optional[str] = None,
+        root_node_id: str | None = None,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> None:
         """

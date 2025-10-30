@@ -30,6 +30,7 @@
 ## SQLAlchemy Patterns
 
 - Models inherit from `models.base.Base`; never create ad-hoc metadata or engines.
+
 - Open sessions with context managers:
 
   ```python
@@ -44,7 +45,9 @@
   ```
 
 - Use SQLAlchemy expressions; avoid raw SQL unless necessary.
+
 - Introduce repository abstractions only for very large tables (e.g., workflow executions) to support alternative storage strategies.
+
 - Always scope queries by `tenant_id` and protect write paths with safeguards (`FOR UPDATE`, row counts, etc.).
 
 ## Storage & External IO
@@ -56,7 +59,9 @@
 ## Pydantic Usage
 
 - Define DTOs with Pydantic v2 models and forbid extras by default.
+
 - Use `@field_validator` / `@model_validator` for domain rules.
+
 - Example:
 
   ```python

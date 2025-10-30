@@ -12,7 +12,7 @@ class ProviderConfigCache(Protocol):
     Interface for provider configuration cache operations
     """
 
-    def get(self) -> Optional[dict[str, Any]]:
+    def get(self) -> dict[str, Any] | None:
         """Get cached provider configuration"""
         ...
 

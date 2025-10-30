@@ -30,7 +30,7 @@ class AppGenerateService:
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
-        root_node_id: Optional[str] = None,
+        root_node_id: str | None = None,
     ):
         """
         App Content Generate

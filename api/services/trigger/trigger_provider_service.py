@@ -117,7 +117,7 @@ class TriggerProviderService:
         parameters: Mapping[str, Any],
         properties: Mapping[str, Any],
         credentials: Mapping[str, str],
-        subscription_id: Optional[str] = None,
+        subscription_id: str | None = None,
         credential_expires_at: int = -1,
         expires_at: int = -1,
     ) -> Mapping[str, Any]:
@@ -435,7 +435,7 @@ class TriggerProviderService:
             return {"result": "success", "expires_at": int(refreshed.expires_at)}
 
     @classmethod
-    def get_oauth_client(cls, tenant_id: str, provider_id: TriggerProviderID) -> Optional[Mapping[str, Any]]:
+    def get_oauth_client(cls, tenant_id: str, provider_id: TriggerProviderID) -> Mapping[str, Any] | None:
         """
         Get OAuth client configuration for a provider.
         First tries tenant-level OAuth, then falls back to system OAuth.
@@ -509,8 +509,8 @@ class TriggerProviderService:
         cls,
         tenant_id: str,
         provider_id: TriggerProviderID,
-        client_params: Optional[Mapping[str, Any]] = None,
-        enabled: Optional[bool] = None,
+        client_params: Mapping[str, Any] | None = None,
+        enabled: bool | None = None,
     ) -> Mapping[str, Any]:
         """
         Save or update custom OAuth client parameters for a trigger provider.
