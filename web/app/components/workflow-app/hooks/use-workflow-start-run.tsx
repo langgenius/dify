@@ -41,9 +41,11 @@ export const useWorkflowStartRun = () => {
       setShowDebugAndPreviewPanel,
       setShowInputsPanel,
       setShowEnvPanel,
+      setShowGlobalVariablePanel,
     } = workflowStore.getState()
 
     setShowEnvPanel(false)
+    setShowGlobalVariablePanel(false)
 
     if (showDebugAndPreviewPanel) {
       handleCancelDebugAndPreviewPanel()
@@ -72,6 +74,7 @@ export const useWorkflowStartRun = () => {
       setShowDebugAndPreviewPanel,
       setShowInputsPanel,
       setShowEnvPanel,
+      setShowGlobalVariablePanel,
       setListeningTriggerType,
       setListeningTriggerNodeId,
       setListeningTriggerNodeIds,
@@ -91,6 +94,7 @@ export const useWorkflowStartRun = () => {
     }
 
     setShowEnvPanel(false)
+    setShowGlobalVariablePanel(false)
 
     if (showDebugAndPreviewPanel) {
       handleCancelDebugAndPreviewPanel()
@@ -125,6 +129,7 @@ export const useWorkflowStartRun = () => {
       setShowDebugAndPreviewPanel,
       setShowInputsPanel,
       setShowEnvPanel,
+      setShowGlobalVariablePanel,
       setListeningTriggerType,
       setListeningTriggerNodeId,
       setListeningTriggerNodeIds,
@@ -144,6 +149,7 @@ export const useWorkflowStartRun = () => {
     }
 
     setShowEnvPanel(false)
+    setShowGlobalVariablePanel(false)
 
     if (!showDebugAndPreviewPanel)
       setShowDebugAndPreviewPanel(true)
@@ -174,6 +180,7 @@ export const useWorkflowStartRun = () => {
       setShowDebugAndPreviewPanel,
       setShowInputsPanel,
       setShowEnvPanel,
+      setShowGlobalVariablePanel,
       setListeningTriggerType,
       setListeningTriggerNodeId,
       setListeningTriggerNodeIds,
@@ -193,6 +200,7 @@ export const useWorkflowStartRun = () => {
     }
 
     setShowEnvPanel(false)
+    setShowGlobalVariablePanel(false)
 
     if (!showDebugAndPreviewPanel)
       setShowDebugAndPreviewPanel(true)
@@ -223,6 +231,7 @@ export const useWorkflowStartRun = () => {
       setShowDebugAndPreviewPanel,
       setShowInputsPanel,
       setShowEnvPanel,
+      setShowGlobalVariablePanel,
       setListeningTriggerIsAll,
       setListeningTriggerNodeIds,
       setListeningTriggerNodeId,
@@ -232,6 +241,7 @@ export const useWorkflowStartRun = () => {
       return
 
     setShowEnvPanel(false)
+    setShowGlobalVariablePanel(false)
     setShowInputsPanel(false)
     setListeningTriggerIsAll(true)
     setListeningTriggerNodeIds(nodeIds)
@@ -258,10 +268,12 @@ export const useWorkflowStartRun = () => {
       setHistoryWorkflowData,
       setShowEnvPanel,
       setShowChatVariablePanel,
+      setShowGlobalVariablePanel,
     } = workflowStore.getState()
 
     setShowEnvPanel(false)
     setShowChatVariablePanel(false)
+    setShowGlobalVariablePanel(false)
 
     if (showDebugAndPreviewPanel)
       handleCancelDebugAndPreviewPanel()
