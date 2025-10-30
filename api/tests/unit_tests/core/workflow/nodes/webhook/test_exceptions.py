@@ -149,7 +149,7 @@ def test_webhook_error_attributes():
     assert WebhookConfigError.__name__ == "WebhookConfigError"
 
     # Test that all error classes have proper __module__
-    expected_module = "core.workflow.nodes.webhook.exc"
+    expected_module = "core.workflow.nodes.trigger_webhook.exc"
     assert WebhookNodeError.__module__ == expected_module
     assert WebhookTimeoutError.__module__ == expected_module
     assert WebhookNotFoundError.__module__ == expected_module
