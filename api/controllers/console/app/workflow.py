@@ -1072,7 +1072,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
             return jsonable_encoder(node_execution)
         except Exception as e:
             logger.exception("Error running draft workflow trigger node")
-            return jsonable_encoder({"status": "error", "error": str(e)}), 500
+            return jsonable_encoder({"status": "error", "error": "An unexpected error occurred while running the node."}), 500
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run-all")
