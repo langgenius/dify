@@ -23,9 +23,6 @@ from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
-from core.workflow.nodes.trigger_schedule.entities import TriggerScheduleNodeData
-from core.workflow.nodes.trigger_webhook.entities import WebhookData
 from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
@@ -634,13 +631,7 @@ class WorkflowService:
                     app=app_model,
                     workflow=draft_workflow,
                 )
-                if node_type == NodeType.TRIGGER_WEBHOOK:
-                    start_data = WebhookData.model_validate(node_data)
-                elif node_type == NodeType.TRIGGER_PLUGIN:
-                    start_data = TriggerEventNodeData.model_validate(node_data)
-                elif node_type == NodeType.TRIGGER_SCHEDULE:
-                    start_data = TriggerScheduleNodeData.model_validate(node_data)
-                else:
+                if node_type is NodeType.START:
                     start_data = StartNodeData.model_validate(node_data)
                     user_inputs = _rebuild_file_for_user_inputs_in_start_node(
                         tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
