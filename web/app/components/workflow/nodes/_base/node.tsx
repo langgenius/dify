@@ -43,7 +43,7 @@ import NodeControl from './components/node-control'
 import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
 import RetryOnNode from './components/retry/retry-on-node'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
-import EntryNodeContainer from './components/entry-node-container'
+import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
@@ -353,12 +353,12 @@ const BaseNode: FC<BaseNodeProps> = ({
     </div>
   )
 
-  const isEntryNode = TRIGGER_NODE_TYPES.includes(data.type as any) || data.type === BlockEnum.Start
   const isStartNode = data.type === BlockEnum.Start
+  const isEntryNode = TRIGGER_NODE_TYPES.includes(data.type as any) || isStartNode
 
   return isEntryNode ? (
     <EntryNodeContainer
-      nodeType={isStartNode ? 'start' : 'trigger'}
+      nodeType={isStartNode ? StartNodeTypeEnum.Start : StartNodeTypeEnum.Trigger}
     >
       {nodeContent}
     </EntryNodeContainer>

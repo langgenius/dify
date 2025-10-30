@@ -2,21 +2,26 @@ import type { FC, ReactNode } from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+export enum StartNodeTypeEnum {
+  Start = 'start',
+  Trigger = 'trigger',
+}
+
 type EntryNodeContainerProps = {
   children: ReactNode
   customLabel?: string
-  nodeType?: 'start' | 'trigger'
+  nodeType?: StartNodeTypeEnum
 }
 
 const EntryNodeContainer: FC<EntryNodeContainerProps> = ({
   children,
   customLabel,
-  nodeType = 'trigger',
+  nodeType = StartNodeTypeEnum.Trigger,
 }) => {
   const { t } = useTranslation()
 
   const label = useMemo(() => {
-    const translationKey = nodeType === 'start' ? 'entryNodeStatus' : 'triggerStatus'
+    const translationKey = nodeType === StartNodeTypeEnum.Start ? 'entryNodeStatus' : 'triggerStatus'
     return customLabel || t(`workflow.${translationKey}.enabled`)
   }, [customLabel, nodeType, t])
 
