@@ -56,7 +56,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         call_depth: int,
         triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
         root_node_id: Optional[str] = None,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Generator[Mapping[str, Any] | str, None, None]: ...
 
     @overload
@@ -72,7 +72,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         call_depth: int,
         triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
         root_node_id: Optional[str] = None,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -88,7 +88,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         call_depth: int,
         triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
         root_node_id: Optional[str] = None,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]: ...
 
     def generate(
@@ -103,7 +103,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         call_depth: int = 0,
         triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
         root_node_id: Optional[str] = None,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]:
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
@@ -202,7 +202,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
             root_node_id=root_node_id,
-            layers=layers,
+            graph_engine_layers=graph_engine_layers,
         )
 
     def resume(self, *, workflow_run_id: str) -> None:
@@ -224,7 +224,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         root_node_id: Optional[str] = None,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
         """
         Generate App response.
@@ -263,7 +263,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 "root_node_id": root_node_id,
                 "workflow_execution_repository": workflow_execution_repository,
                 "workflow_node_execution_repository": workflow_node_execution_repository,
-                "layers": layers,
+                "graph_engine_layers": graph_engine_layers,
             },
         )
 
@@ -458,7 +458,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         root_node_id: Optional[str] = None,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> None:
         """
         Generate worker in a new thread.
@@ -503,7 +503,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow_execution_repository=workflow_execution_repository,
                 workflow_node_execution_repository=workflow_node_execution_repository,
                 root_node_id=root_node_id,
-                layers=layers,
+                graph_engine_layers=graph_engine_layers,
             )
 
             try:

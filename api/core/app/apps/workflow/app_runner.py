@@ -41,12 +41,13 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         root_node_id: Optional[str] = None,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ):
         super().__init__(
             queue_manager=queue_manager,
             variable_loader=variable_loader,
             app_id=application_generate_entity.app_config.app_id,
+            graph_engine_layers=graph_engine_layers,
         )
         self.application_generate_entity = application_generate_entity
         self._workflow = workflow
@@ -54,7 +55,6 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._root_node_id = root_node_id
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
-        self._layers = layers or []
 
     def run(self):
         """
