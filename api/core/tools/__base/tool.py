@@ -215,8 +215,8 @@ class Tool(ABC):
         create a json message
         """
         return ToolInvokeMessage(
-            type=ToolInvokeMessage.MessageType.JSON, 
-            message=ToolInvokeMessage.JsonMessage(json_object=object, suppress_output=suppress_output)
+            type=ToolInvokeMessage.MessageType.JSON,
+            message=ToolInvokeMessage.JsonMessage(json_object=object, suppress_output=suppress_output),
         )
 
     def create_variable_message(
