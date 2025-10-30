@@ -1304,7 +1304,6 @@ name = "dify-api"
 version = "1.9.2"
 source = { virtual = "." }
 dependencies = [
-    { name = "aiomysql" },
     { name = "arize-phoenix-otel" },
     { name = "azure-identity" },
     { name = "beautifulsoup4" },
@@ -1496,7 +1495,6 @@ vdb = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiomysql", specifier = ">=0.2.0" },
     { name = "arize-phoenix-otel", specifier = "~=0.9.2" },
     { name = "azure-identity", specifier = "==1.16.1" },
     { name = "beautifulsoup4", specifier = "==4.12.2" },
@@ -1675,7 +1673,7 @@ vdb = [
     { name = "pgvector", specifier = "==0.2.5" },
     { name = "pymilvus", specifier = "~=2.5.0" },
     { name = "pymochow", specifier = "==2.2.9" },
-    { name = "pyobvector", specifier = "~=0.2.16" },
+    { name = "pyobvector", specifier = "~=0.2.15" },
     { name = "qdrant-client", specifier = "==1.9.0" },
     { name = "tablestore", specifier = "==6.2.0" },
     { name = "tcvectordb", specifier = "~=1.6.4" },
