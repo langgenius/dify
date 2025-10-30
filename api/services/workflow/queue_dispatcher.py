@@ -148,4 +148,4 @@ class QueueDispatcherManager:
             SandboxQueueDispatcher,  # Default to sandbox for unknown plans
         )
 
-        return dispatcher_class()
+        return dispatcher_class()  # type: ignore
