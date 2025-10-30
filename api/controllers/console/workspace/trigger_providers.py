@@ -427,7 +427,7 @@ class TriggerOAuthCallbackApi(Resource):
         expires_at = credentials_response.expires_at
 
         if not credentials:
-            raise Exception("Failed to get OAuth credentials")
+            raise ValueError("Failed to get OAuth credentials from the provider.")
 
         # Update subscription builder
         TriggerSubscriptionBuilderService.update_trigger_subscription_builder(
