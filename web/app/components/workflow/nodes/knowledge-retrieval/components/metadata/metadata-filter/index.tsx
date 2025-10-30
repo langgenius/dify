@@ -11,7 +11,7 @@ import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-re
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { noop } from 'lodash-es'
-import { AppModeEnum } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 
 type MetadataFilterProps = {
   metadataFilterMode?: MetadataFilteringModeEnum
@@ -27,6 +27,7 @@ const MetadataFilter = ({
 }: MetadataFilterProps) => {
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(true)
+  const metadataModelMode = (metadataModelConfig?.mode as ModelModeType | undefined) ?? ModelModeType.chat
 
   const handleMetadataFilterModeChangeWrapped = useCallback((mode: MetadataFilteringModeEnum) => {
     if (mode === MetadataFilteringModeEnum.automatic)
@@ -85,7 +86,7 @@ const MetadataFilter = ({
                   popupClassName='!w-[387px]'
                   isInWorkflow
                   isAdvancedMode={true}
-                  mode={metadataModelConfig?.mode || AppModeEnum.CHAT}
+                  mode={metadataModelMode}
                   provider={metadataModelConfig?.provider || ''}
                   completionParams={metadataModelConfig?.completion_params || { temperature: 0.7 }}
                   modelId={metadataModelConfig?.name || ''}
