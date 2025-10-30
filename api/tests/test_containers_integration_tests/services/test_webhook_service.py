@@ -8,7 +8,7 @@ from flask import Flask
 from werkzeug.datastructures import FileStorage
 
 from models.model import App
-from models.workflow import Workflow, WorkflowWebhookTrigger
+from models.trigger import WorkflowWebhookTrigger
 from services.account_service import AccountService, TenantService
 from services.trigger.webhook_service import WebhookService
 
