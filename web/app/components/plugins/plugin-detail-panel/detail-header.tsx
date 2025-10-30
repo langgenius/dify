@@ -335,6 +335,7 @@ const DetailHeader = ({
             pluginPayload={{
               provider: provider?.name || '',
               category: AuthCategory.tool,
+              providerType: provider?.type || '',
               detail,
             }}
           />

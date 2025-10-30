@@ -318,6 +318,7 @@ const ToolSelector: FC<Props> = ({
                       pluginPayload={{
                         provider: currentProvider.name,
                         category: AuthCategory.tool,
+                        providerType: currentProvider.type,
                         detail: currentProvider as any,
                       }}
                       credentialId={value?.credential_id}
