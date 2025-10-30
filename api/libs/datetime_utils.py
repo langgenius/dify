@@ -44,38 +44,26 @@ def parse_time_range(
     """
     tz = pytz.timezone(tzname)
     utc = pytz.utc
-    start_dt: datetime.datetime | None = None
-    end_dt: datetime.datetime | None = None
 
-    if start:
-        dt = datetime.datetime.strptime(start, "%Y-%m-%d %H:%M").replace(second=0)
-        try:
-            # Explicitly specify is_dst=None to avoid DST ambiguity
-            start_dt = tz.localize(dt, is_dst=None).astimezone(utc)
-        except ValueError as e:
-            raise ValueError(f"Invalid start time format: {e}")
-        except pytz.AmbiguousTimeError:
-            # If DST ambiguity occurs, use standard time
-            start_dt = tz.localize(dt, is_dst=False).astimezone(utc)
-        except pytz.NonExistentTimeError:
-            # If time doesn't exist (e.g., during DST transition), adjust forward by 1 hour
-            dt = dt + datetime.timedelta(hours=1)
-            start_dt = tz.localize(dt, is_dst=None).astimezone(utc)
+    def _parse(time_str: str | None, label: str) -> datetime.datetime | None:
+        if not time_str:
+            return None
 
-    if end:
-        dt = datetime.datetime.strptime(end, "%Y-%m-%d %H:%M").replace(second=0)
         try:
-            # Explicitly specify is_dst=None to avoid DST ambiguity
-            end_dt = tz.localize(dt, is_dst=None).astimezone(utc)
+            dt = datetime.datetime.strptime(time_str, "%Y-%m-%d %H:%M").replace(second=0)
         except ValueError as e:
-            raise ValueError(f"Invalid end time format: {e}")
+            raise ValueError(f"Invalid {label} time format: {e}")
+
+        try:
+            return tz.localize(dt, is_dst=None).astimezone(utc)
         except pytz.AmbiguousTimeError:
-            # If DST ambiguity occurs, use standard time
-            end_dt = tz.localize(dt, is_dst=False).astimezone(utc)
+            return tz.localize(dt, is_dst=False).astimezone(utc)
         except pytz.NonExistentTimeError:
-            # If time doesn't exist (e.g., during DST transition), adjust forward by 1 hour
-            dt = dt + datetime.timedelta(hours=1)
-            end_dt = tz.localize(dt, is_dst=None).astimezone(utc)
+            dt += datetime.timedelta(hours=1)
+            return tz.localize(dt, is_dst=None).astimezone(utc)
+
+    start_dt = _parse(start, "start")
+    end_dt = _parse(end, "end")
 
     # Range validation
     if start_dt and end_dt and start_dt > end_dt:
