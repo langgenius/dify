@@ -1212,9 +1212,13 @@ class Message(Base):
     @property
     def workflow_run(self):
         if self.workflow_run_id:
-            from .workflow import WorkflowRun
+            from sqlalchemy.orm import sessionmaker
 
-            return db.session.query(WorkflowRun).where(WorkflowRun.id == self.workflow_run_id).first()
+            from repositories.factory import DifyAPIRepositoryFactory
+
+            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+            repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            return repo.get_workflow_run_by_id_without_tenant(run_id=self.workflow_run_id)
 
         return None
 

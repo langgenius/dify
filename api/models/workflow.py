@@ -1034,7 +1034,13 @@ class WorkflowAppLog(Base):
 
     @property
     def workflow_run(self):
-        return db.session.get(WorkflowRun, self.workflow_run_id)
+        from sqlalchemy.orm import sessionmaker
+
+        from repositories.factory import DifyAPIRepositoryFactory
+
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        return repo.get_workflow_run_by_id_without_tenant(run_id=self.workflow_run_id)
 
     @property
     def created_by_account(self):
