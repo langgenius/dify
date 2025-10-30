@@ -189,13 +189,8 @@ class TriggerManager:
                 request=request,
                 payload=payload,
             )
-        except EventIgnoreError as e:
+        except EventIgnoreError:
             return TriggerInvokeEventResponse(variables={}, cancelled=True)
-        except PluginInvokeError as e:
-            logger.exception("Failed to invoke trigger event")
-            raise TriggerPluginInvokeError(
-                description=e.to_user_friendly_error(plugin_name=provider.entity.identity.name)
-            ) from e
 
     @classmethod
     def subscribe_trigger(
