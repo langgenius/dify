@@ -135,6 +135,8 @@ class TestCelerySSLConfiguration:
         mock_config.WORKFLOW_SCHEDULE_POLLER_INTERVAL = 1
         mock_config.WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE = 100
         mock_config.WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK = 0
+        mock_config.ENABLE_TRIGGER_PROVIDER_REFRESH_TASK = False
+        mock_config.TRIGGER_PROVIDER_REFRESH_INTERVAL = 15
 
         with patch("extensions.ext_celery.dify_config", mock_config):
             from dify_app import DifyApp
