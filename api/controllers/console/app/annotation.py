@@ -16,6 +16,7 @@ from fields.annotation_fields import (
     annotation_fields,
     annotation_hit_history_fields,
 )
+from libs.helper import uuid_value
 from libs.login import login_required
 from services.annotation_service import AppAnnotationService
 
@@ -175,8 +176,10 @@ class AnnotationApi(Resource):
         api.model(
             "CreateAnnotationRequest",
             {
-                "question": fields.String(required=True, description="Question text"),
-                "answer": fields.String(required=True, description="Answer text"),
+                "message_id": fields.String(description="Message ID (optional)"),
+                "question": fields.String(description="Question text (required when message_id not provided)"),
+                "answer": fields.String(description="Answer text (use 'answer' or 'content')"),
+                "content": fields.String(description="Content text (use 'answer' or 'content')"),
                 "annotation_reply": fields.Raw(description="Annotation reply data"),
             },
         )
@@ -193,11 +196,14 @@ class AnnotationApi(Resource):
         app_id = str(app_id)
         parser = (
             reqparse.RequestParser()
-            .add_argument("question", required=True, type=str, location="json")
-            .add_argument("answer", required=True, type=str, location="json")
+            .add_argument("message_id", required=False, type=uuid_value, location="json")
+            .add_argument("question", required=False, type=str, location="json")
+            .add_argument("answer", required=False, type=str, location="json")
+            .add_argument("content", required=False, type=str, location="json")
+            .add_argument("annotation_reply", required=False, type=dict, location="json")
         )
         args = parser.parse_args()
-        annotation = AppAnnotationService.insert_app_annotation_directly(args, app_id)
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(args, app_id)
         return annotation
 
     @setup_required
