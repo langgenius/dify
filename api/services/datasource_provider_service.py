@@ -338,7 +338,7 @@ class DatasourceProviderService:
                     key: value if value != HIDDEN_VALUE else original_params.get(key, UNKNOWN_VALUE)
                     for key, value in client_params.items()
                 }
-                tenant_oauth_client_params.client_params = encrypter.encrypt(new_params)
+                tenant_oauth_client_params.client_params = dict(encrypter.encrypt(new_params))
 
             if enabled is not None:
                 tenant_oauth_client_params.enabled = enabled

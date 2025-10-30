@@ -10,9 +10,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.encryption import create_tool_provider_encrypter
 from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEntity
 from core.trigger.entities.entities import SubscriptionBuilder
-from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
-from models.provider_ids import TriggerProviderID
 from models.tools import BuiltinToolProvider
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
@@ -84,7 +82,6 @@ class PluginParameterService:
                     credentials = encrypter.decrypt(db_record.credentials)
                     credential_type = db_record.credential_type
             case "trigger":
-                provider_controller = TriggerManager.get_trigger_provider(tenant_id, TriggerProviderID(provider))
                 subscription: TriggerProviderSubscriptionApiEntity | SubscriptionBuilder | None
                 if credential_id:
                     subscription = TriggerSubscriptionBuilderService.get_subscription_builder(credential_id)
@@ -100,8 +97,6 @@ class PluginParameterService:
 
                 credentials = subscription.credentials
                 credential_type = subscription.credential_type or CredentialType.UNAUTHORIZED
-            case _:
-                raise ValueError(f"Invalid provider type: {provider_type}")
 
         return (
             DynamicSelectClient()
