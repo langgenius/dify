@@ -7,15 +7,25 @@ import { useCheckInstalled, useInstallPackageFromMarketPlace } from '@/service/u
 
 type InstallPluginButtonProps = Omit<ComponentProps<typeof Button>, 'children' | 'loading'> & {
   uniqueIdentifier: string
+  extraIdentifiers?: string[]
   onSuccess?: () => void
 }
 
 export const InstallPluginButton = (props: InstallPluginButtonProps) => {
-  const { className, uniqueIdentifier, onSuccess, ...rest } = props
+  const {
+    className,
+    uniqueIdentifier,
+    extraIdentifiers = [],
+    onSuccess,
+    ...rest
+  } = props
   const { t } = useTranslation()
+  const identifiers = Array.from(new Set(
+    [uniqueIdentifier, ...extraIdentifiers].filter((item): item is string => Boolean(item)),
+  ))
   const manifest = useCheckInstalled({
-    pluginIds: [uniqueIdentifier],
-    enabled: !!uniqueIdentifier,
+    pluginIds: identifiers,
+    enabled: identifiers.length > 0,
   })
   const install = useInstallPackageFromMarketPlace()
   const isLoading = manifest.isLoading || install.isPending
@@ -31,7 +41,13 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
     })
   }
   if (!manifest.data) return null
-  if (manifest.data.plugins.some(plugin => plugin.id === uniqueIdentifier)) return null
+  const identifierSet = new Set(identifiers)
+  const isInstalled = manifest.data.plugins.some(plugin => (
+    identifierSet.has(plugin.id)
+    || (plugin.plugin_unique_identifier && identifierSet.has(plugin.plugin_unique_identifier))
+    || (plugin.plugin_id && identifierSet.has(plugin.plugin_id))
+  ))
+  if (isInstalled) return null
   return <Button
     variant={'secondary'}
     disabled={isLoading}

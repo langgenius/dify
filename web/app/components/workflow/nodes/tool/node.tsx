@@ -32,6 +32,11 @@ const Node: FC<NodeProps<ToolNodeType>> = ({
           <InstallPluginButton
             size='small'
             className='!font-medium !text-text-accent'
+            extraIdentifiers={[
+              data.plugin_id,
+              data.provider_id,
+              data.provider_name,
+            ].filter(Boolean) as string[]}
             uniqueIdentifier={uniqueIdentifier!}
             onSuccess={onInstallSuccess}
           />

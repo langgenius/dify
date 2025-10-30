@@ -26,6 +26,10 @@ const Node: FC<NodeProps<DataSourceNodeType>> = ({
       <div className='absolute right-3 top-[-32px] z-20'>
         <InstallPluginButton
           size='small'
+          extraIdentifiers={[
+            data.plugin_id,
+            data.provider_name,
+          ].filter(Boolean) as string[]}
           className='!font-medium !text-text-accent'
           uniqueIdentifier={uniqueIdentifier!}
           onSuccess={onInstallSuccess}
