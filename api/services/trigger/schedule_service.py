@@ -204,7 +204,7 @@ class ScheduleService:
         return ScheduleConfig(node_id=node_id, cron_expression=cron_expression, timezone=timezone)
 
     @staticmethod
-    def extract_schedule_config(workflow: Workflow) -> Optional[ScheduleConfig]:
+    def extract_schedule_config(workflow: Workflow) -> ScheduleConfig | None:
         """
         Extracts schedule configuration from workflow graph.
 

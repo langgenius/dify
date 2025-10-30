@@ -186,7 +186,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     (variable: InputVar, varDetail: InputVar) => {
       const newInputs = produce(inputs, (draft) => {
         const nextEventParameters = normalizeEventParameters({
-          ...(draft.event_parameters || {}),
+          ...draft.event_parameters,
           [variable.variable]: {
             type: VarKindType.variable,
             value: varDetail.variable,

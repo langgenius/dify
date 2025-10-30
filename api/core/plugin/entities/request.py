@@ -246,7 +246,7 @@ class RequestFetchAppInfo(BaseModel):
 
 class TriggerInvokeEventResponse(BaseModel):
     variables: Mapping[str, Any] = Field(default_factory=dict)
-    cancelled: Optional[bool] = False
+    cancelled: bool | None = False
 
     model_config = ConfigDict(protected_namespaces=(), arbitrary_types_allowed=True)
 

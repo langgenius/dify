@@ -33,7 +33,7 @@ def handle(sender, **kwargs):
     sync_schedule_from_workflow(tenant_id=app.tenant_id, app_id=app.id, workflow=published_workflow)
 
 
-def sync_schedule_from_workflow(tenant_id: str, app_id: str, workflow: Workflow) -> Optional[WorkflowSchedulePlan]:
+def sync_schedule_from_workflow(tenant_id: str, app_id: str, workflow: Workflow) -> WorkflowSchedulePlan | None:
     """
     Sync schedule plan from workflow graph configuration.
 

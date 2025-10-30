@@ -67,7 +67,7 @@ class WebhookService:
         with Session(db.engine) as session:
             # Get webhook trigger
             webhook_trigger = (
-                session.query(WorkflowWebhookTrigger).filter(WorkflowWebhookTrigger.webhook_id == webhook_id).first()
+                session.query(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.webhook_id == webhook_id).first()
             )
             if not webhook_trigger:
                 raise ValueError(f"Webhook not found: {webhook_id}")

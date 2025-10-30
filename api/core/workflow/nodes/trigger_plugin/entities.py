@@ -39,7 +39,7 @@ class TriggerEventNodeData(BaseNodeData):
             return type
 
     title: str
-    desc: Optional[str] = None
+    desc: str | None = None
     plugin_id: str = Field(..., description="Plugin ID")
     provider_id: str = Field(..., description="Provider ID")
     event_name: str = Field(..., description="Event name")

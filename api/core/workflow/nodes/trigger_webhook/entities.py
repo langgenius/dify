@@ -75,5 +75,5 @@ class WebhookData(BaseNodeData):
     response_body: str = ""  # Template for response body
 
     # Webhook specific fields (not from client data, set internally)
-    webhook_id: Optional[str] = None  # Set when webhook trigger is created
+    webhook_id: str | None = None  # Set when webhook trigger is created
     timeout: int = 30  # Timeout in seconds to wait for webhook response

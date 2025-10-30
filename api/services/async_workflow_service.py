@@ -224,7 +224,7 @@ class AsyncWorkflowService:
         return cls.trigger_workflow_async(session, user, trigger_data)
 
     @classmethod
-    def get_trigger_log(cls, workflow_trigger_log_id: str, tenant_id: Optional[str] = None) -> Optional[dict[str, Any]]:
+    def get_trigger_log(cls, workflow_trigger_log_id: str, tenant_id: str | None = None) -> dict[str, Any] | None:
         """
         Get trigger log by ID
 
@@ -293,7 +293,7 @@ class AsyncWorkflowService:
             return [log.to_dict() for log in logs]
 
     @staticmethod
-    def _get_workflow(workflow_service: WorkflowService, app_model: App, workflow_id: Optional[str] = None) -> Workflow:
+    def _get_workflow(workflow_service: WorkflowService, app_model: App, workflow_id: str | None = None) -> Workflow:
         """
         Get workflow for the app
 

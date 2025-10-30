@@ -14,8 +14,8 @@ Trigger is a collection of nodes that we called `Start` nodes, also, the concept
 Before `Trigger` concept is introduced, it's what we called `Start` node, but now, to avoid confusion, it was renamed to `UserInput` node, has a strong relation with `ServiceAPI` in `controllers/service_api/app`
 
 1. `UserInput` node introduces a list of arguments that need to be provided by the user, finally it will be converted into variables in the workflow variable pool.
-2. `ServiceAPI` accept those arguments, and pass through them into `UserInput` node.
-3. For its detailed implementation, please refer to `core/workflow/nodes/start`
+1. `ServiceAPI` accept those arguments, and pass through them into `UserInput` node.
+1. For its detailed implementation, please refer to `core/workflow/nodes/start`
 
 ### Trigger Webhook
 
@@ -34,7 +34,7 @@ To Achieve this, a `WorkflowSchedulePlan` model was introduced in `models/trigge
 `Trigger Plugin` node allows user define there own distributed trigger plugin, whenever a request was received, Dify forwards it to the plugin and wait for parsed variables from it.
 
 1. Requests were saved in storage by `services/trigger/trigger_request_service.py`, referenced by `services/trigger/trigger_service.py`.`TriggerService`.`process_endpoint`
-2. Plugins accept those requests and parse variables from it, see `core/plugin/impl/trigger.py` for details.
+1. Plugins accept those requests and parse variables from it, see `core/plugin/impl/trigger.py` for details.
 
 A `subscription` concept was out here by Dify, it means an endpoint address from Dify was bound to thirdparty webhook service like `Github` `Slack` `Linear` `GoogleDrive` `Gmail` etc. Once a subscription was created, Dify continually receives requests from the platforms and handle them one by one.
 
