@@ -14,6 +14,7 @@ from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
 from models.trigger import WorkflowSchedulePlan
 from models.workflow import Workflow
+from services.errors.account import AccountNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +125,7 @@ class ScheduleService:
         session.flush()
 
     @staticmethod
-    def get_tenant_owner(session: Session, tenant_id: str) -> Optional[Account]:
+    def get_tenant_owner(session: Session, tenant_id: str) -> Account:
         """
         Returns an account to execute scheduled workflows on behalf of the tenant.
         Prioritizes owner over admin to ensure proper authorization hierarchy.
@@ -144,7 +145,12 @@ class ScheduleService:
             ).scalar_one_or_none()
 
         if result:
-            return session.get(Account, result.account_id)
+            account = session.get(Account, result.account_id)
+            if not account:
+                raise AccountNotFoundError(f"Account not found: {result.account_id}")
+            return account
+        else:
+            raise AccountNotFoundError(f"Account not found for tenant: {tenant_id}")
 
     @staticmethod
     def update_next_run_at(

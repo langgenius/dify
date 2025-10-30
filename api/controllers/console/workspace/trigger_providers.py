@@ -20,8 +20,8 @@ from models.account import Account
 from models.provider_ids import TriggerProviderID
 from services.plugin.oauth_service import OAuthProxyService
 from services.trigger.trigger_provider_service import TriggerProviderService
-from services.trigger.trigger_service import TriggerService
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
+from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
 
 logger = logging.getLogger(__name__)
 
@@ -265,7 +265,7 @@ class TriggerSubscriptionDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, subscription_id):
+    def post(self, subscription_id: str):
         """Delete a subscription instance"""
         user = current_user
         assert isinstance(user, Account)
@@ -282,7 +282,7 @@ class TriggerSubscriptionDeleteApi(Resource):
                     subscription_id=subscription_id,
                 )
                 # Delete plugin triggers
-                TriggerService.delete_plugin_trigger_by_subscription(
+                TriggerSubscriptionOperatorService.delete_plugin_trigger_by_subscription(
                     session=session,
                     tenant_id=user.current_tenant_id,
                     subscription_id=subscription_id,
