@@ -17,13 +17,11 @@ type SubscriptionTriggerButtonProps = {
   onClick?: () => void
   isOpen?: boolean
   className?: string
-  onSelect: (v: SimpleSubscription, callback?: () => void) => void
 }
 
 const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
   selectedId,
   onClick,
-  onSelect,
   isOpen = false,
   className,
 }) => {
@@ -109,7 +107,6 @@ export const SubscriptionSelectorEntry = ({ selectedId, onSelect }: {
           selectedId={selectedId}
           onClick={() => setIsOpen(!isOpen)}
           isOpen={isOpen}
-          onSelect={onSelect}
         />
       </div>
     </PortalToFollowElemTrigger>

@@ -16,7 +16,7 @@ export const getToolCheckParams = (
   workflowTools: ToolWithProvider[],
   language: string,
 ) => {
-  const { provider_id, provider_type, tool_name: tool_name } = toolData
+  const { provider_id, provider_type, tool_name } = toolData
   const isBuiltIn = provider_type === CollectionType.builtIn
   const currentTools = provider_type === CollectionType.builtIn ? buildInTools : provider_type === CollectionType.custom ? customTools : workflowTools
   const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))

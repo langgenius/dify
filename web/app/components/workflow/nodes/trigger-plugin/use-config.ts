@@ -83,7 +83,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
   const {
     provider_id,
     provider_name,
-    event_name: event_name,
+    event_name,
     config = {},
     event_parameters: rawEventParameters = {},
     subscription_id,
