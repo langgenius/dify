@@ -27,6 +27,9 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<LLMNodeType>(id, payload)
   const inputRef = useRef(inputs)
+  useEffect(() => {
+    inputRef.current = inputs
+  }, [inputs])
 
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
 
@@ -117,7 +120,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   } = useConfigVision(model, {
     payload: inputs.vision,
     onChange: (newPayload) => {
-      const newInputs = produce(inputs, (draft) => {
+      const newInputs = produce(inputRef.current, (draft) => {
         draft.vision = newPayload
       })
       setInputs(newInputs)
@@ -148,11 +151,11 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   }, [model.provider, currentProvider, currentModel, handleModelChanged])
 
   const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputRef.current, (draft) => {
       draft.model.completion_params = newParams
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [setInputs])
 
   // change to vision model to set vision enabled, else disabled
   useEffect(() => {
@@ -238,29 +241,29 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   // context
   const handleContextVarChange = useCallback((newVar: ValueSelector | string) => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputRef.current, (draft) => {
       draft.context.variable_selector = newVar as ValueSelector || []
       draft.context.enabled = !!(newVar && newVar.length > 0)
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [setInputs])
 
   const handlePromptChange = useCallback((newPrompt: PromptItem[] | PromptItem) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.prompt_template = newPrompt
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [setInputs])
 
   const handleMemoryChange = useCallback((newMemory?: Memory) => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputRef.current, (draft) => {
       draft.memory = newMemory
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [setInputs])
 
   const handleSyeQueryChange = useCallback((newQuery: string) => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputRef.current, (draft) => {
       if (!draft.memory) {
         draft.memory = {
           window: {
@@ -275,7 +278,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       }
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [setInputs])
 
   // structure output
   const { data: modelList } = useModelList(ModelTypeEnum.textGeneration)
@@ -286,22 +289,22 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   const [structuredOutputCollapsed, setStructuredOutputCollapsed] = useState(true)
   const handleStructureOutputEnableChange = useCallback((enabled: boolean) => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputRef.current, (draft) => {
       draft.structured_output_enabled = enabled
     })
     setInputs(newInputs)
     if (enabled)
       setStructuredOutputCollapsed(false)
     deleteNodeInspectorVars(id)
-  }, [inputs, setInputs, deleteNodeInspectorVars, id])
+  }, [setInputs, deleteNodeInspectorVars, id])
 
   const handleStructureOutputChange = useCallback((newOutput: StructuredOutput) => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputRef.current, (draft) => {
       draft.structured_output = newOutput
     })
     setInputs(newInputs)
     deleteNodeInspectorVars(id)
-  }, [inputs, setInputs, deleteNodeInspectorVars, id])
+  }, [setInputs, deleteNodeInspectorVars, id])
 
   const filterInputVar = useCallback((varPayload: Var) => {
     return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile].includes(varPayload.type)
@@ -317,11 +320,11 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   // reasoning format
   const handleReasoningFormatChange = useCallback((reasoningFormat: 'tagged' | 'separated') => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputRef.current, (draft) => {
       draft.reasoning_format = reasoningFormat
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [setInputs])
 
   const {
     availableVars,
