@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus

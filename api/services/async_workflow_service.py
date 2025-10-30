@@ -7,7 +7,7 @@ with support for different subscription tiers, rate limiting, and execution trac
 
 import json
 from datetime import UTC, datetime
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from celery.result import AsyncResult
 from sqlalchemy import select

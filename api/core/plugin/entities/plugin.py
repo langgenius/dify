@@ -1,7 +1,7 @@
 import datetime
 from collections.abc import Mapping
 from enum import StrEnum, auto
-from typing import Any, Optional
+from typing import Any
 
 from packaging.version import InvalidVersion, Version
 from pydantic import BaseModel, Field, field_validator, model_validator

@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, cast
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session

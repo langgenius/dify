@@ -3,7 +3,7 @@ import time
 from collections.abc import Mapping
 from datetime import datetime
 from functools import cached_property
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, Index, Integer, String, UniqueConstraint, func

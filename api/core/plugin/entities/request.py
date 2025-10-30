@@ -1,7 +1,7 @@
 import binascii
 import json
 from collections.abc import Mapping
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from flask import Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
