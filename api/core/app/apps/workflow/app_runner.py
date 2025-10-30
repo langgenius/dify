@@ -6,7 +6,6 @@ from typing import Optional, cast
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
-from core.app.engine_layers.suspend_layer import SuspendLayer
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
@@ -144,12 +143,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             trace_manager=self.application_generate_entity.trace_manager,
         )
 
-        suspend_layer = SuspendLayer()
-
         workflow_entry.graph_engine.layer(persistence_layer)
-        workflow_entry.graph_engine.layer(suspend_layer)
-
-        for layer in self._layers:
+        for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
 
         generator = workflow_entry.run()
