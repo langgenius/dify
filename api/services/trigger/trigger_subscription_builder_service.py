@@ -472,7 +472,7 @@ class TriggerSubscriptionBuilderService:
                 response=response,
             )
             return response
-        except Exception as e:
+        except Exception:
             logger.exception("Error during validation endpoint dispatch for endpoint_id=%s", endpoint_id)
             error_response = Response(status=500, response="An internal error has occurred.")
             cls.append_log(endpoint_id=endpoint_id, request=request, response=error_response)
