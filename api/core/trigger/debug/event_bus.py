@@ -107,7 +107,7 @@ class TriggerDebugEventBus:
         Returns:
             Event object if available, None otherwise
         """
-        address_id: str = hashlib.sha1(f"{user_id}|{app_id}|{node_id}".encode()).hexdigest()
+        address_id: str = hashlib.sha256(f"{user_id}|{app_id}|{node_id}".encode()).hexdigest()
         address: str = f"trigger_debug_inbox:{tenant_id}:{address_id}"
 
         try:
