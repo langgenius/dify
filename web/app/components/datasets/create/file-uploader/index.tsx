@@ -105,8 +105,6 @@ const FileUploader = ({
     return isValidType && isValidSize
   }, [fileUploadConfig, notify, t, ACCEPTS])
 
-  type UploadResult = Awaited<ReturnType<typeof upload>>
-
   const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     const formData = new FormData()
     formData.append('file', fileItem.file)
