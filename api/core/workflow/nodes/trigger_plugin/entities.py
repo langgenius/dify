@@ -62,7 +62,7 @@ class TriggerEventNodeData(BaseNodeData):
             Mapping[str, Any]: A dictionary containing the generated parameters.
 
         """
-        result: Mapping[str, Any] = {}
+        result: dict[str, Any] = {}
         for parameter_name in self.event_parameters:
             parameter: EventParameter | None = parameter_schemas.get(parameter_name)
             if not parameter:
