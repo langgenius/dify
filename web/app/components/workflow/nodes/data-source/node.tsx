@@ -19,17 +19,19 @@ const Node: FC<NodeProps<DataSourceNodeType>> = ({
     shouldDim,
   } = useNodePluginInstallation(data)
   const { handleNodeDataUpdate } = useNodeDataUpdate()
+  const shouldLock = !isChecking && isMissing && canInstall && Boolean(uniqueIdentifier)
 
   useEffect(() => {
-    if (data._dimmed === shouldDim)
+    if (data._pluginInstallLocked === shouldLock && data._dimmed === shouldDim)
       return
     handleNodeDataUpdate({
       id,
       data: {
+        _pluginInstallLocked: shouldLock,
         _dimmed: shouldDim,
       },
     })
-  }, [data._dimmed, handleNodeDataUpdate, id, shouldDim])
+  }, [data._pluginInstallLocked, data._dimmed, handleNodeDataUpdate, id, shouldDim, shouldLock])
 
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
 
@@ -38,7 +40,7 @@ const Node: FC<NodeProps<DataSourceNodeType>> = ({
 
   return (
     <div className='relative mb-1 px-3 py-1'>
-      <div className='absolute right-3 top-[-32px] z-20'>
+      <div className='pointer-events-auto absolute right-3 top-[-32px] z-40'>
         <InstallPluginButton
           size='small'
           extraIdentifiers={[

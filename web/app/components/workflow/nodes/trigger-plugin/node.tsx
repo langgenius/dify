@@ -55,17 +55,19 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
   } = useNodePluginInstallation(data)
   const { handleNodeDataUpdate } = useNodeDataUpdate()
   const showInstallButton = !isChecking && isMissing && canInstall && uniqueIdentifier
+  const shouldLock = !isChecking && isMissing && canInstall && Boolean(uniqueIdentifier)
 
   useEffect(() => {
-    if (data._dimmed === shouldDim)
+    if (data._pluginInstallLocked === shouldLock && data._dimmed === shouldDim)
       return
     handleNodeDataUpdate({
       id,
       data: {
+        _pluginInstallLocked: shouldLock,
         _dimmed: shouldDim,
       },
     })
-  }, [data._dimmed, handleNodeDataUpdate, id, shouldDim])
+  }, [data._pluginInstallLocked, data._dimmed, handleNodeDataUpdate, id, shouldDim, shouldLock])
 
   const { t } = useTranslation()
 
@@ -76,7 +78,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
   return (
     <div className="relative mb-1 px-3 py-1">
       {showInstallButton && (
-        <div className="absolute right-3 top-[-32px] z-20">
+        <div className="pointer-events-auto absolute right-3 top-[-32px] z-40">
           <InstallPluginButton
             size="small"
             extraIdentifiers={[
@@ -90,7 +92,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
           />
         </div>
       )}
-      <div className="space-y-0.5">
+      <div className="space-y-0.5" aria-disabled={shouldDim}>
         {!isValidSubscription && <NodeStatus status={NodeStatusEnum.warning} message={t('pluginTrigger.node.status.warning')} />}
         {isValidSubscription && configKeys.map((key, index) => (
           <div
