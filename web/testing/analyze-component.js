@@ -631,6 +631,60 @@ Create the test file at: ${testPath}
   }
 }
 
+class TestReviewPromptBuilder {
+  build({ analysis, testPath, testCode, originalPromptSection }) {
+    const trimmedTestCode = testCode.trim()
+    const formattedOriginalPrompt = originalPromptSection
+      ? originalPromptSection
+          .split('\n')
+          .map(line => (line.trim().length > 0 ? `  ${line}` : ''))
+          .join('\n')
+          .trimEnd()
+      : '  (original generation prompt unavailable)'
+
+    return `
+╔════════════════════════════════════════════════════════════════════════════╗
+║                 ✅ REVIEW TEST FOR DIFY COMPONENT                           ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+📍 Component: ${analysis.name}
+📂 Component Path: ${analysis.path}
+🧪 Test File: ${testPath}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 REVIEW TASK:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 PROMPT FOR AI ASSISTANT (COPY THIS TO YOUR AI ASSISTANT):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You are reviewing the frontend test coverage for @${analysis.path}.
+
+Original generation requirements:
+${formattedOriginalPrompt}
+
+Test file under review:
+${testPath}
+
+Checklist (ensure every item is addressed in your review):
+- Confirm the tests satisfy all requirements listed above and in web/testing/TESTING.md.
+- Verify Arrange → Act → Assert structure, mocks, and cleanup follow project conventions.
+- Ensure all detected component features (state, effects, routing, API, events, etc.) are exercised, including edge cases and error paths.
+- Check coverage of prop variations, null/undefined inputs, and high-priority workflows implied by usage score.
+- Validate mocks/stubs interact correctly with Next.js router, network calls, and async updates.
+- Ensure naming, describe/it structure, and placement match repository standards.
+
+Output format:
+1. Start with a single word verdict: PASS or FAIL.
+2. If FAIL, list each missing requirement or defect as a separate bullet with actionable fixes.
+3. Highlight any optional improvements or refactors after mandatory issues.
+4. Mention any additional tests or tooling steps (e.g., pnpm lint/test) the developer should run.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`
+  }
+}
+
 function extractCopyContent(prompt) {
   const marker = '📋 PROMPT FOR AI ASSISTANT'
   const markerIndex = prompt.indexOf(marker)
@@ -661,7 +715,18 @@ function extractCopyContent(prompt) {
 // ============================================================================
 
 function main() {
-  const args = process.argv.slice(2)
+  const rawArgs = process.argv.slice(2)
+
+  let isReviewMode = false
+  const args = []
+
+  rawArgs.forEach(arg => {
+    if (arg === '--review') {
+      isReviewMode = true
+      return
+    }
+    args.push(arg)
+  })
 
   if (args.length === 0) {
     console.error(`
@@ -695,7 +760,7 @@ For complete testing guidelines, see: web/testing/TESTING.md
   const analysis = analyzer.analyze(sourceCode, componentPath, absolutePath)
 
   // Check if component is too complex - suggest refactoring instead of testing
-  if (analysis.complexity > 50 || analysis.lineCount > 300) {
+  if (!isReviewMode && (analysis.complexity > 50 || analysis.lineCount > 300)) {
     console.log(`
 ╔════════════════════════════════════════════════════════════════════════════╗
 ║                     ⚠️  COMPONENT TOO COMPLEX TO TEST                       ║
@@ -747,7 +812,33 @@ This component is too complex to test effectively. Please consider:
 
   // Build prompt for AI assistant
   const builder = new TestPromptBuilder()
-  const prompt = builder.build(analysis, sourceCode)
+  const generationPrompt = builder.build(analysis, sourceCode)
+
+  let prompt = generationPrompt
+
+  if (isReviewMode) {
+    const providedTestPath = args[1]
+    const inferredTestPath = inferTestPath(componentPath)
+    const testPath = providedTestPath ?? inferredTestPath
+    const absoluteTestPath = path.resolve(process.cwd(), testPath)
+
+    if (!fs.existsSync(absoluteTestPath)) {
+      console.error(`❌ Error: Test file not found: ${testPath}`)
+      process.exit(1)
+    }
+
+    const testCode = fs.readFileSync(absoluteTestPath, 'utf-8')
+    const reviewBuilder = new TestReviewPromptBuilder()
+    const originalPromptSection = extractCopyContent(generationPrompt)
+    const normalizedTestPath = path.relative(process.cwd(), absoluteTestPath) || testPath
+
+    prompt = reviewBuilder.build({
+      analysis,
+      testPath: normalizedTestPath,
+      testCode,
+      originalPromptSection,
+    })
+  }
 
   // Output
   console.log(prompt)
@@ -776,6 +867,12 @@ This component is too complex to test effectively. Please consider:
   catch {
     // pbcopy failed, but don't break the script
   }
+}
+
+function inferTestPath(componentPath) {
+  const ext = path.extname(componentPath)
+  if (!ext) return `${componentPath}.spec.ts`
+  return componentPath.replace(ext, `.spec${ext}`)
 }
 
 // ============================================================================
