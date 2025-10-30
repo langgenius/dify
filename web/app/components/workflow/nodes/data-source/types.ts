@@ -1,13 +1,9 @@
-import type { CommonNodeType, Node, ValueSelector } from '@/app/components/workflow/types'
+import type { CommonNodeType, Node } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, VarInInspect } from '@/types/workflow'
 import type { Dispatch, SetStateAction } from 'react'
-
-export enum VarType {
-  variable = 'variable',
-  constant = 'constant',
-  mixed = 'mixed',
-}
+import type { ResourceVarInputs } from '../_base/types'
+export { VarKindType as VarType } from '../_base/types'
 
 export enum DataSourceClassification {
   localFile = 'local_file',
@@ -16,10 +12,7 @@ export enum DataSourceClassification {
   onlineDrive = 'online_drive',
 }
 
-export type ToolVarInputs = Record<string, {
-  type: VarType
-  value?: string | ValueSelector | any
-}>
+export type ToolVarInputs = ResourceVarInputs
 
 export type DataSourceNodeType = CommonNodeType & {
   fileExtensions?: string[]
