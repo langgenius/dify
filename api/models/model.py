@@ -936,7 +936,7 @@ class Message(Base):
     )
     parent_message_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     provider_response_latency: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
-    total_price: Mapped[Decimal] = mapped_column(sa.Numeric(10, 7))
+    total_price: Mapped[Decimal | None] = mapped_column(sa.Numeric(10, 7))
     currency: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'normal'::character varying")
