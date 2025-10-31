@@ -62,7 +62,7 @@ def test_schedule_poller_handles_aware_next_run(monkeypatch: pytest.MonkeyPatch)
     redis_client = _DummyRedis()
     poller = _make_poller(monkeypatch, redis_client)
 
-    base_now = datetime(2025, 1, 1, 12, 0, 0)
+    base_now = datetime(2025, 1, 1, 12, 0, 10)
     aware_next_run = datetime(2025, 1, 1, 12, 0, 5, tzinfo=UTC)
 
     monkeypatch.setattr(event_selectors, "naive_utc_now", lambda: base_now)

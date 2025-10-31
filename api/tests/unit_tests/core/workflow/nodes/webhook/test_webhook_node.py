@@ -5,8 +5,6 @@ from core.file import File, FileTransferMethod, FileType
 from core.variables import StringVariable
 from core.workflow.entities.graph_init_params import GraphInitParams
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.answer.entities import AnswerStreamGenerateRoute
-from core.workflow.nodes.end.entities import EndStreamParam
 from core.workflow.nodes.trigger_webhook.entities import (
     ContentType,
     Method,
@@ -43,17 +41,6 @@ def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) 
             invoke_from=InvokeFrom.SERVICE_API,
             call_depth=0,
         ),
-        graph=Graph(
-            root_node_id="1",
-            answer_stream_generate_routes=AnswerStreamGenerateRoute(
-                answer_dependencies={},
-                answer_generate_route={},
-            ),
-            end_stream_param=EndStreamParam(
-                end_dependencies={},
-                end_stream_variable_selector_mapping={},
-            ),
-        ),
         graph_runtime_state=GraphRuntimeState(
             variable_pool=variable_pool,
             start_at=0,
@@ -85,7 +72,7 @@ def test_webhook_node_basic_initialization():
 
     node = create_webhook_node(data, variable_pool)
 
-    assert node.node_type.value == "webhook"
+    assert node.node_type.value == "trigger-webhook"
     assert node.version() == "1"
     assert node._get_title() == "Test Webhook"
     assert node._node_data.method == Method.POST
@@ -101,7 +88,7 @@ def test_webhook_node_default_config():
 
     assert config["type"] == "webhook"
     assert config["config"]["method"] == "get"
-    assert config["config"]["content-type"] == "application/json"
+    assert config["config"]["content_type"] == "application/json"
     assert config["config"]["headers"] == []
     assert config["config"]["params"] == []
     assert config["config"]["body"] == []
@@ -142,7 +129,7 @@ def test_webhook_node_run_with_headers():
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs["Authorization"] == "Bearer token123"
-    assert result.outputs["Content-Type"] == "application/json"  # Case-insensitive match
+    assert result.outputs["Content_Type"] == "application/json"  # Case-insensitive match
     assert "_webhook_raw" in result.outputs
 
 
@@ -376,8 +363,8 @@ def test_webhook_node_run_case_insensitive_headers():
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert result.outputs["Content-Type"] == "application/json"
-    assert result.outputs["X-API-KEY"] == "key123"
+    assert result.outputs["Content_Type"] == "application/json"
+    assert result.outputs["X_API_KEY"] == "key123"
     assert result.outputs["authorization"] == "Bearer token"
 
 
@@ -436,13 +423,12 @@ def test_webhook_node_different_methods(method):
     assert node._node_data.method == method
 
 
-def test_webhook_data_alias_content_type():
-    """Test that content-type field alias works correctly."""
-    # Test both ways of setting content_type
-    data1 = WebhookData(title="Test", **{"content-type": "application/json"})
+def test_webhook_data_content_type_field():
+    """Test that content_type accepts both raw strings and enum values."""
+    data1 = WebhookData(title="Test", content_type="application/json")
     assert data1.content_type == ContentType.JSON
 
-    data2 = WebhookData(title="Test", **{"content-type": ContentType.FORM_DATA})
+    data2 = WebhookData(title="Test", content_type=ContentType.FORM_DATA)
     assert data2.content_type == ContentType.FORM_DATA
 
 

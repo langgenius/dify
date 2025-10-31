@@ -13,14 +13,14 @@ import contexts
 from configs import dify_config
 from core.plugin.entities.plugin_daemon import CredentialType, PluginTriggerProviderEntity
 from core.plugin.entities.request import TriggerInvokeEventResponse
-from core.plugin.impl.exc import PluginDaemonError, PluginInvokeError, PluginNotFoundError
+from core.plugin.impl.exc import PluginDaemonError, PluginNotFoundError
 from core.plugin.impl.trigger import PluginTriggerClient
 from core.trigger.entities.entities import (
     EventEntity,
     Subscription,
     UnsubscribeResult,
 )
-from core.trigger.errors import EventIgnoreError, TriggerPluginInvokeError
+from core.trigger.errors import EventIgnoreError
 from core.trigger.provider import PluginTriggerProviderController
 from models.provider_ids import TriggerProviderID
 
@@ -189,13 +189,8 @@ class TriggerManager:
                 request=request,
                 payload=payload,
             )
-        except EventIgnoreError as e:
+        except EventIgnoreError:
             return TriggerInvokeEventResponse(variables={}, cancelled=True)
-        except PluginInvokeError as e:
-            logger.exception("Failed to invoke trigger event")
-            raise TriggerPluginInvokeError(
-                description=e.to_user_friendly_error(plugin_name=provider.entity.identity.name)
-            ) from e
 
     @classmethod
     def subscribe_trigger(

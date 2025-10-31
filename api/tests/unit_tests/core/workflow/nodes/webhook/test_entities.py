@@ -30,7 +30,7 @@ def test_content_type_enum():
     assert ContentType.FORM_DATA == "multipart/form-data"
     assert ContentType.FORM_URLENCODED == "application/x-www-form-urlencoded"
     assert ContentType.TEXT == "text/plain"
-    assert ContentType.FORM == "form"
+    assert ContentType.BINARY == "application/octet-stream"
 
     # Test all enum values are strings
     for content_type in ContentType:
@@ -79,7 +79,17 @@ def test_webhook_body_parameter_creation():
 
 def test_webhook_body_parameter_types():
     """Test WebhookBodyParameter type validation."""
-    valid_types = ["string", "number", "boolean", "object", "array", "file"]
+    valid_types = [
+        "string",
+        "number",
+        "boolean",
+        "object",
+        "array[string]",
+        "array[number]",
+        "array[boolean]",
+        "array[object]",
+        "file",
+    ]
 
     for param_type in valid_types:
         param = WebhookBodyParameter(name="test", type=param_type)
@@ -127,7 +137,7 @@ def test_webhook_data_creation_full():
         title="Full Webhook Test",
         desc="A comprehensive webhook test",
         method=Method.POST,
-        **{"content-type": ContentType.FORM_DATA},
+        content_type=ContentType.FORM_DATA,
         headers=headers,
         params=params,
         body=body,
@@ -151,18 +161,12 @@ def test_webhook_data_creation_full():
 
 
 def test_webhook_data_content_type_alias():
-    """Test WebhookData content_type field alias."""
-    # Test using the alias "content-type"
-    data1 = WebhookData(title="Test", **{"content-type": "application/json"})
+    """Test WebhookData content_type accepts both strings and enum values."""
+    data1 = WebhookData(title="Test", content_type="application/json")
     assert data1.content_type == ContentType.JSON
 
-    # Test using the alias with enum value
-    data2 = WebhookData(title="Test", **{"content-type": ContentType.FORM_DATA})
+    data2 = WebhookData(title="Test", content_type=ContentType.FORM_DATA)
     assert data2.content_type == ContentType.FORM_DATA
-
-    # Test both approaches result in same field
-    assert hasattr(data1, "content_type")
-    assert hasattr(data2, "content_type")
 
 
 def test_webhook_data_model_dump():
@@ -196,12 +200,12 @@ def test_webhook_data_model_dump_with_alias():
     """Test WebhookData model serialization includes alias."""
     data = WebhookData(
         title="Test Webhook",
-        **{"content-type": ContentType.FORM_DATA},
+        content_type=ContentType.FORM_DATA,
     )
 
     dumped = data.model_dump(by_alias=True)
-    assert "content-type" in dumped
-    assert dumped["content-type"] == "multipart/form-data"
+    assert "content_type" in dumped
+    assert dumped["content_type"] == "multipart/form-data"
 
 
 def test_webhook_data_validation_errors():
@@ -214,9 +218,9 @@ def test_webhook_data_validation_errors():
     with pytest.raises(ValidationError):
         WebhookData(title="Test", method="invalid_method")
 
-    # Invalid content_type via alias
+    # Invalid content_type
     with pytest.raises(ValidationError):
-        WebhookData(title="Test", **{"content-type": "invalid/type"})
+        WebhookData(title="Test", content_type="invalid/type")
 
     # Invalid status_code (should be int) - use non-numeric string
     with pytest.raises(ValidationError):
@@ -276,7 +280,17 @@ def test_webhook_body_parameter_edge_cases():
     assert file_param.required is True
 
     # Test all valid types
-    for param_type in ["string", "number", "boolean", "object", "array", "file"]:
+    for param_type in [
+        "string",
+        "number",
+        "boolean",
+        "object",
+        "array[string]",
+        "array[number]",
+        "array[boolean]",
+        "array[object]",
+        "file",
+    ]:
         param = WebhookBodyParameter(name=f"test_{param_type}", type=param_type)
         assert param.type == param_type
 
