@@ -12,8 +12,10 @@ from celery import shared_task  # type: ignore
 from flask import current_app, g
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
+from core.rag.pipeline.queue import TenantSelfTaskQueue
 from core.repositories.factory import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from models import Account, Tenant
@@ -21,6 +23,8 @@ from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from services.file_service import FileService
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="priority_pipeline")
@@ -69,6 +73,27 @@ def priority_rag_pipeline_run_task(
         logging.exception(click.style(f"Error running rag pipeline, tenant_id: {tenant_id}", fg="red"))
         raise
     finally:
+        tenant_self_pipeline_task_queue = TenantSelfTaskQueue(tenant_id, "pipeline")
+
+        # Check if there are waiting tasks in the queue
+        # Use rpop to get the next task from the queue (FIFO order)
+        next_file_ids = tenant_self_pipeline_task_queue.pull_tasks(count=dify_config.TENANT_SELF_TASK_QUEUE_PULL_SIZE)
+        logger.info("priority rag pipeline tenant isolation queue next files: %s", next_file_ids)
+
+        if next_file_ids:
+            for next_file_id in next_file_ids:
+                # Process the next waiting task
+                # Keep the flag set to indicate a task is running
+                tenant_self_pipeline_task_queue.set_task_waiting_time()
+                priority_rag_pipeline_run_task.delay(  # type: ignore
+                    rag_pipeline_invoke_entities_file_id=next_file_id.decode("utf-8")
+                    if isinstance(next_file_id, bytes)
+                    else next_file_id,
+                    tenant_id=tenant_id,
+                )
+        else:
+            # No more waiting tasks, clear the flag
+            tenant_self_pipeline_task_queue.delete_task_key()
         file_service = FileService(db.engine)
         file_service.delete_file(rag_pipeline_invoke_entities_file_id)
         db.session.close()

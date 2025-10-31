@@ -7,4 +7,4 @@ cd "$SCRIPT_DIR/.."
 
 uv --directory api run \
 	celery -A app.celery worker \
-	-P gevent -c 1 --loglevel INFO -Q dataset,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,priority_pipeline,pipeline
+	-P gevent -c 1 --loglevel INFO -Q dataset,priority_dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,priority_pipeline,pipeline
