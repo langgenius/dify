@@ -309,16 +309,6 @@ class TencentDataTrace(BaseTraceInstance):
             # Record LLM duration
             if hasattr(self.trace_client, "record_llm_duration"):
                 latency_s = float(usage.get("latency", 0.0))
-            outputs = node_execution.outputs or {}
-            usage = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
-
-            model_provider = process_data.get("model_provider", "unknown")
-            model_name = process_data.get("model_name", "unknown")
-            model_mode = process_data.get("model_mode", "chat")
-
-            # Record LLM duration
-            if hasattr(self.trace_client, "record_llm_duration"):
-                latency_s = float(usage.get("latency", 0.0))
 
                 if latency_s > 0:
                     # Determine if streaming from usage metrics
