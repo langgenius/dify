@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { InputNumber } from '.'
 
 const meta = {
-  title: 'Base/InputNumber',
+  title: 'Base/Data Entry/InputNumber',
   component: InputNumber,
   parameters: {
     layout: 'centered',

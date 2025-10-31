@@ -2,6 +2,6 @@ import type { TypeWithI18N } from '@/app/components/header/account-setting/model
 
 export type Label = {
   name: string
-  label: TypeWithI18N
-  icon: string
+  label: TypeWithI18N | string
+  icon?: string
 }

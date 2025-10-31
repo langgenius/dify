@@ -8,8 +8,7 @@
             "module": "flask",
             "env": {
                 "FLASK_APP": "app.py",
-                "FLASK_ENV": "development",
-                "GEVENT_SUPPORT": "True"
+                "FLASK_ENV": "development"
             },
             "args": [
                 "run",
@@ -28,9 +27,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "celery",
-            "env": {
-                "GEVENT_SUPPORT": "True"
-            },
+            "env": {},
             "args": [
                 "-A",
                 "app.celery",
@@ -40,7 +37,7 @@
                 "-c",
                 "1",
                 "-Q",
-                "dataset,generation,mail,ops_trace",
+                "dataset,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,priority_pipeline,pipeline",
                 "--loglevel",
                 "INFO"
             ],

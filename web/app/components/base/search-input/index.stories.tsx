@@ -3,7 +3,7 @@ import { useState } from 'react'
 import SearchInput from '.'
 
 const meta = {
-  title: 'Base/SearchInput',
+  title: 'Base/Data Entry/SearchInput',
   component: SearchInput,
   parameters: {
     layout: 'centered',
