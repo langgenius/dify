@@ -84,6 +84,7 @@ class WorkflowBasedAppRunner:
         workflow_id: str = "",
         tenant_id: str = "",
         user_id: str = "",
+        root_node_id: str | None = None,
     ) -> Graph:
         """
         Init graph
@@ -117,7 +118,7 @@ class WorkflowBasedAppRunner:
         )
 
         # init graph
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
 
         if not graph:
             raise ValueError("graph not found in workflow")

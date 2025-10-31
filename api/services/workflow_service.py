@@ -623,7 +623,7 @@ class WorkflowService:
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
         node_data = node_config.get("data", {})
-        if node_type == NodeType.START:
+        if node_type.is_start_node:
             with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
                 conversation_id = draft_var_srv.get_or_create_conversation(
@@ -631,10 +631,11 @@ class WorkflowService:
                     app=app_model,
                     workflow=draft_workflow,
                 )
-                start_data = StartNodeData.model_validate(node_data)
-                user_inputs = _rebuild_file_for_user_inputs_in_start_node(
-                    tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
-                )
+                if node_type is NodeType.START:
+                    start_data = StartNodeData.model_validate(node_data)
+                    user_inputs = _rebuild_file_for_user_inputs_in_start_node(
+                        tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
+                    )
                 # init variable pool
                 variable_pool = _setup_variable_pool(
                     query=query,
@@ -997,10 +998,11 @@ def _setup_variable_pool(
     conversation_variables: list[Variable],
 ):
     # Only inject system variables for START node type.
-    if node_type == NodeType.START:
+    if node_type == NodeType.START or node_type.is_trigger_node:
         system_variable = SystemVariable(
             user_id=user_id,
             app_id=workflow.app_id,
+            timestamp=int(naive_utc_now().timestamp()),
             workflow_id=workflow.id,
             files=files or [],
             workflow_execution_id=str(uuid.uuid4()),

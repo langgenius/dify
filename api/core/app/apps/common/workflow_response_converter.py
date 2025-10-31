@@ -37,6 +37,7 @@ from core.file import FILE_MODEL_IDENTITY, File
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
+from core.trigger.trigger_manager import TriggerManager
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.workflow.enums import (
     NodeType,
@@ -302,6 +303,11 @@ class WorkflowResponseConverter:
             )
             response.data.extras["icon"] = provider_entity.declaration.identity.generate_datasource_icon_url(
                 self._application_generate_entity.app_config.tenant_id
+            )
+        elif event.node_type == NodeType.TRIGGER_PLUGIN:
+            response.data.extras["icon"] = TriggerManager.get_trigger_plugin_icon(
+                self._application_generate_entity.app_config.tenant_id,
+                event.provider_id,
             )
 
         return response

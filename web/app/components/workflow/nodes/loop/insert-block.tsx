@@ -25,11 +25,11 @@ const InsertBlock = ({
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
-  const handleInsert = useCallback<OnSelectBlock>((nodeType, toolDefaultValue) => {
+  const handleInsert = useCallback<OnSelectBlock>((nodeType, pluginDefaultValue) => {
     handleNodeAdd(
       {
         nodeType,
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       {
         nextNodeId: startNodeId,

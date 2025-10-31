@@ -435,7 +435,7 @@ html[data-theme="dark"] {
   --color-workflow-block-bg: #27272b;
   --color-workflow-block-bg-transparent: rgb(39 39 43 / 0.96);
   --color-workflow-block-border-highlight: rgb(200 206 218 / 0.2);
-  --color-workflow-block-wrapper-bg-1: #27272b;
+  --color-workflow-block-wrapper-bg-1: #323236;
   --color-workflow-block-wrapper-bg-2: rgb(39 39 43 / 0.2);
 
   --color-workflow-canvas-workflow-dot-color: rgb(133 133 173 / 0.11);

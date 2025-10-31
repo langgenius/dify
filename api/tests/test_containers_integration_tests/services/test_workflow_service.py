@@ -584,7 +584,16 @@ class TestWorkflowService:
         account = self._create_test_account(db_session_with_containers, fake)
         app = self._create_test_app(db_session_with_containers, fake)
 
-        graph = {"nodes": [{"id": "start", "type": "start"}], "edges": []}
+        graph = {
+            "nodes": [
+                {
+                    "id": "start",
+                    "type": "start",
+                    "data": {"type": "start", "title": "Start"},
+                }
+            ],
+            "edges": [],
+        }
         features = {"features": ["feature1", "feature2"]}
         # Don't pre-calculate hash, let the service generate it
         unique_hash = None
@@ -632,7 +641,21 @@ class TestWorkflowService:
         # Get the actual hash that was generated
         original_hash = existing_workflow.unique_hash
 
-        new_graph = {"nodes": [{"id": "start", "type": "start"}, {"id": "end", "type": "end"}], "edges": []}
+        new_graph = {
+            "nodes": [
+                {
+                    "id": "start",
+                    "type": "start",
+                    "data": {"type": "start", "title": "Start"},
+                },
+                {
+                    "id": "end",
+                    "type": "end",
+                    "data": {"type": "end", "title": "End"},
+                },
+            ],
+            "edges": [],
+        }
         new_features = {"features": ["feature1", "feature2", "feature3"]}
 
         environment_variables = []
@@ -679,7 +702,16 @@ class TestWorkflowService:
         # Get the actual hash that was generated
         original_hash = existing_workflow.unique_hash
 
-        new_graph = {"nodes": [{"id": "start", "type": "start"}], "edges": []}
+        new_graph = {
+            "nodes": [
+                {
+                    "id": "start",
+                    "type": "start",
+                    "data": {"type": "start", "title": "Start"},
+                }
+            ],
+            "edges": [],
+        }
         new_features = {"features": ["feature1"]}
         # Use a different hash to trigger the error
         mismatched_hash = "different_hash_12345"

@@ -1,4 +1,6 @@
 'use client'
+import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
+import cn from '@/utils/classnames'
 import {
   RiArchive2Line,
   RiBrain2Line,
@@ -7,22 +9,22 @@ import {
   RiPuzzle2Line,
   RiSpeakAiLine,
 } from '@remixicon/react'
-import { PluginType } from '../types'
+import { useCallback, useEffect } from 'react'
+import { PluginCategoryEnum } from '../types'
 import { useMarketplaceContext } from './context'
 import {
   useMixedTranslation,
   useSearchBoxAutoAnimate,
 } from './hooks'
-import cn from '@/utils/classnames'
-import { useCallback, useEffect } from 'react'
 
 export const PLUGIN_TYPE_SEARCH_MAP = {
   all: 'all',
-  model: PluginType.model,
-  tool: PluginType.tool,
-  agent: PluginType.agent,
-  extension: PluginType.extension,
-  datasource: PluginType.datasource,
+  model: PluginCategoryEnum.model,
+  tool: PluginCategoryEnum.tool,
+  agent: PluginCategoryEnum.agent,
+  extension: PluginCategoryEnum.extension,
+  datasource: PluginCategoryEnum.datasource,
+  trigger: PluginCategoryEnum.trigger,
   bundle: 'bundle',
 }
 type PluginTypeSwitchProps = {
@@ -62,6 +64,11 @@ const PluginTypeSwitch = ({
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
       text: t('plugin.category.datasources'),
       icon: <RiDatabase2Line className='mr-1.5 h-4 w-4' />,
+    },
+    {
+      value: PLUGIN_TYPE_SEARCH_MAP.trigger,
+      text: t('plugin.category.triggers'),
+      icon: <TriggerIcon className='mr-1.5 h-4 w-4' />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,

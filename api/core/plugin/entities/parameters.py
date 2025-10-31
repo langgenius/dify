@@ -39,7 +39,7 @@ class PluginParameterType(StrEnum):
     TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
     ANY = CommonParameterType.ANY
     DYNAMIC_SELECT = CommonParameterType.DYNAMIC_SELECT
-
+    CHECKBOX = CommonParameterType.CHECKBOX
     # deprecated, should not use.
     SYSTEM_FILES = CommonParameterType.SYSTEM_FILES
 
@@ -94,6 +94,7 @@ def as_normal_type(typ: StrEnum):
     if typ.value in {
         PluginParameterType.SECRET_INPUT,
         PluginParameterType.SELECT,
+        PluginParameterType.CHECKBOX,
     }:
         return "string"
     return typ.value
@@ -102,7 +103,13 @@ def as_normal_type(typ: StrEnum):
 def cast_parameter_value(typ: StrEnum, value: Any, /):
     try:
         match typ.value:
-            case PluginParameterType.STRING | PluginParameterType.SECRET_INPUT | PluginParameterType.SELECT:
+            case (
+                PluginParameterType.STRING
+                | PluginParameterType.SECRET_INPUT
+                | PluginParameterType.SELECT
+                | PluginParameterType.CHECKBOX
+                | PluginParameterType.DYNAMIC_SELECT
+            ):
                 if value is None:
                     return ""
                 else:

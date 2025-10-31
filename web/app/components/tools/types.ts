@@ -34,6 +34,7 @@ export enum CollectionType {
   workflow = 'workflow',
   mcp = 'mcp',
   datasource = 'datasource',
+  trigger = 'trigger',
 }
 
 export type Emoji = {
@@ -65,6 +66,7 @@ export type Collection = {
   masked_headers?: Record<string, string>
   is_authorized?: boolean
   provider?: string
+  credential_id?: string
   is_dynamic_registration?: boolean
   authentication?: {
     client_id?: string
@@ -84,6 +86,7 @@ export type ToolParameter = {
   form: string
   llm_description: string
   required: boolean
+  multiple: boolean
   default: string
   options?: {
     label: TypeWithI18N
@@ -93,7 +96,33 @@ export type ToolParameter = {
   max?: number
 }
 
+export type TriggerParameter = {
+  name: string
+  label: TypeWithI18N
+  human_description: TypeWithI18N
+  type: string
+  form: string
+  llm_description: string
+  required: boolean
+  multiple: boolean
+  default: string
+  options?: {
+    label: TypeWithI18N
+    value: string
+  }[]
+}
+
 // Action
+export type Event = {
+  name: string
+  author: string
+  label: TypeWithI18N
+  description: TypeWithI18N
+  parameters: TriggerParameter[]
+  labels: string[]
+  output_schema: Record<string, any>
+}
+
 export type Tool = {
   name: string
   author: string

@@ -30,6 +30,7 @@ const translation = {
   overview: {
     title: '概览',
     appInfo: {
+      title: 'Web App',
       explanation: '开箱即用的 AI web app',
       accessibleAddress: '公开访问 URL',
       preview: '预览',
@@ -37,6 +38,10 @@ const translation = {
       regenerate: '重新生成',
       regenerateNotice: '您是否要重新生成公开访问 URL？',
       preUseReminder: '使用前请先打开开关',
+      enableTooltip: {
+        description: '要启用此功能，请在画布中添加用户输入节点。（草稿中可能已存在，发布后生效）',
+        learnMore: '了解更多',
+      },
       settings: {
         entry: '设置',
         title: 'web app 设置',
@@ -120,6 +125,14 @@ const translation = {
       explanation: '可集成至你的应用的后端即服务',
       accessibleAddress: 'API 访问凭据',
       doc: '查阅 API 文档',
+    },
+    triggerInfo: {
+      title: '触发器',
+      explanation: '工作流触发器管理',
+      triggersAdded: '已添加 {{count}} 个触发器',
+      noTriggerAdded: '未添加触发器',
+      triggerStatusDescription: '触发器节点状态显示在这里。（草稿中可能已存在，发布后生效）',
+      learnAboutTriggers: '了解触发器',
     },
     status: {
       running: '运行中',

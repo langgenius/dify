@@ -15,7 +15,8 @@ import Pagination from '@/app/components/base/pagination'
 import Loading from '@/app/components/base/loading'
 import { fetchChatConversations, fetchCompletionConversations } from '@/service/log'
 import { APP_PAGE_LIMIT } from '@/config'
-import type { App, AppMode } from '@/types/app'
+import type { App } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 export type ILogsProps = {
   appDetail: App
 }
@@ -63,7 +64,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
 
   // Get the app type first
-  const isChatMode = appDetail.mode !== 'completion'
+  const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
 
   const query = {
     page: currPage + 1,
@@ -78,9 +79,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...omit(debouncedQueryParams, ['period']),
   }
 
-  const getWebAppType = (appType: AppMode) => {
-    if (appType !== 'completion' && appType !== 'workflow')
-      return 'chat'
+  const getWebAppType = (appType: AppModeEnum) => {
+    if (appType !== AppModeEnum.COMPLETION && appType !== AppModeEnum.WORKFLOW)
+      return AppModeEnum.CHAT
     return appType
   }
 

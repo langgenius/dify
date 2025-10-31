@@ -1,14 +1,15 @@
 'use client'
-import React, { useState } from 'react'
-import dayjs from 'dayjs'
-import quarterOfYear from 'dayjs/plugin/quarterOfYear'
-import { useTranslation } from 'react-i18next'
+import { TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
 import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, MessagesChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/app-chart'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
-import { TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { AppModeEnum } from '@/types/app'
+import dayjs from 'dayjs'
+import quarterOfYear from 'dayjs/plugin/quarterOfYear'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 dayjs.extend(quarterOfYear)
 
@@ -24,8 +25,8 @@ export type IChartViewProps = {
 export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const { t } = useTranslation()
   const appDetail = useAppStore(state => state.appDetail)
-  const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
-  const isWorkflow = appDetail?.mode === 'workflow'
+  const isChatApp = appDetail?.mode !== AppModeEnum.COMPLETION && appDetail?.mode !== AppModeEnum.WORKFLOW
+  const isWorkflow = appDetail?.mode === AppModeEnum.WORKFLOW
   const [period, setPeriod] = useState<PeriodParams>({ name: t('appLog.filter.period.last7days'), query: { start: today.subtract(7, 'day').startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } })
 
   const onSelect = (item: Item) => {

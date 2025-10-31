@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
 import { generateRule } from '@/service/debug'
 import type { GenRes } from '@/service/debug'
-import type { ModelModeType } from '@/types/app'
-import type { AppType, CompletionParams, Model } from '@/types/app'
+import type { AppModeEnum, ModelModeType } from '@/types/app'
+import type { CompletionParams, Model } from '@/types/app'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
@@ -33,7 +33,7 @@ export type IGetCodeGeneratorResProps = {
   flowId: string
   nodeId: string
   currentCode?: string
-  mode: AppType
+  mode: AppModeEnum
   isShow: boolean
   codeLanguages: CodeLanguage
   onClose: () => void
@@ -142,7 +142,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         ideal_output: ideaOutput,
         language: languageMap[codeLanguages] || 'javascript',
       })
-      if((res as any).code) // not current or current is the same as the template would return a code field
+      if ((res as any).code) // not current or current is the same as the template would return a code field
         res.modified = (res as any).code
 
       if (error) {
@@ -214,7 +214,6 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
               portalToFollowElemContentClassName='z-[1000]'
               isAdvancedMode={true}
               provider={model.provider}
-              mode={model.mode}
               completionParams={model.completion_params}
               modelId={model.name}
               setModel={handleModelChange}

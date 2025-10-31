@@ -47,7 +47,7 @@ import { fetchAppDetailDirect, updateAppModelConfig } from '@/service/apps'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
 import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
-import { AgentStrategy, AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
+import { AgentStrategy, AppModeEnum, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { PromptMode } from '@/models/debug'
 import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
@@ -110,7 +110,7 @@ const Configuration: FC = () => {
   const pathname = usePathname()
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
-  const [mode, setMode] = useState('')
+  const [mode, setMode] = useState<AppModeEnum>(AppModeEnum.CHAT)
   const [publishedConfig, setPublishedConfig] = useState<PublishConfig | null>(null)
 
   const [conversationId, setConversationId] = useState<string | null>('')
@@ -209,7 +209,7 @@ const Configuration: FC = () => {
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   })
-  const isAgent = mode === 'agent-chat'
+  const isAgent = mode === AppModeEnum.AGENT_CHAT
 
   const isOpenAI = modelConfig.provider === 'langgenius/openai/openai'
 
@@ -451,7 +451,7 @@ const Configuration: FC = () => {
       const appMode = mode
 
       if (modeMode === ModelModeType.completion) {
-        if (appMode !== AppType.completion) {
+        if (appMode !== AppModeEnum.COMPLETION) {
           if (!completionPromptConfig.prompt?.text || !completionPromptConfig.conversation_histories_role.assistant_prefix || !completionPromptConfig.conversation_histories_role.user_prefix)
             await migrateToDefaultPrompt(true, ModelModeType.completion)
         }
@@ -554,7 +554,7 @@ const Configuration: FC = () => {
       }
       setCollectionList(collectionList)
       const res = await fetchAppDetailDirect({ url: '/apps', id: appId })
-      setMode(res.mode)
+      setMode(res.mode as AppModeEnum)
       const modelConfig = res.model_config as BackendModelConfig
       const promptMode = modelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
       doSetPromptMode(promptMode)
@@ -665,10 +665,10 @@ const Configuration: FC = () => {
           external_data_tools: modelConfig.external_data_tools ?? [],
           system_parameters: modelConfig.system_parameters,
           dataSets: datasets || [],
-          agentConfig: res.mode === 'agent-chat' ? {
+          agentConfig: res.mode === AppModeEnum.AGENT_CHAT ? {
             max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
             ...modelConfig.agent_mode,
-              // remove dataset
+            // remove dataset
             enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true
             tools: (modelConfig.agent_mode?.tools ?? []).filter((tool: any) => {
               return !tool.dataset
@@ -705,7 +705,7 @@ const Configuration: FC = () => {
         provider: currentRerankProvider?.provider,
         model: currentRerankModel?.model,
       })
-      setDatasetConfigs({
+      const datasetConfigsToSet = {
         ...modelConfig.dataset_configs,
         ...retrievalConfig,
         ...(retrievalConfig.reranking_model ? {
@@ -714,13 +714,15 @@ const Configuration: FC = () => {
             reranking_provider_name: correctModelProvider(retrievalConfig.reranking_model.provider),
           },
         } : {}),
-      } as DatasetConfigs)
+      } as DatasetConfigs
+      datasetConfigsToSet.retrieval_model = datasetConfigsToSet.retrieval_model ?? RETRIEVE_TYPE.multiWay
+      setDatasetConfigs(datasetConfigsToSet)
       setHasFetchedDetail(true)
     })()
   }, [appId])
 
   const promptEmpty = (() => {
-    if (mode !== AppType.completion)
+    if (mode !== AppModeEnum.COMPLETION)
       return false
 
     if (isAdvancedMode) {
@@ -734,7 +736,7 @@ const Configuration: FC = () => {
     else { return !modelConfig.configs.prompt_template }
   })()
   const cannotPublish = (() => {
-    if (mode !== AppType.completion) {
+    if (mode !== AppModeEnum.COMPLETION) {
       if (!isAdvancedMode)
         return false
 
@@ -749,7 +751,7 @@ const Configuration: FC = () => {
     }
     else { return promptEmpty }
   })()
-  const contextVarEmpty = mode === AppType.completion && dataSets.length > 0 && !hasSetContextVar
+  const contextVarEmpty = mode === AppModeEnum.COMPLETION && dataSets.length > 0 && !hasSetContextVar
   const onPublish = async (modelAndParameter?: ModelAndParameter, features?: FeaturesData) => {
     const modelId = modelAndParameter?.model || modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
@@ -759,7 +761,7 @@ const Configuration: FC = () => {
       notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty') })
       return
     }
-    if (isAdvancedMode && mode !== AppType.completion) {
+    if (isAdvancedMode && mode !== AppModeEnum.COMPLETION) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
           notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty') })
@@ -981,7 +983,6 @@ const Configuration: FC = () => {
                       <>
                         <ModelParameterModal
                           isAdvancedMode={isAdvancedMode}
-                          mode={mode}
                           provider={modelConfig.provider}
                           completionParams={completionParams}
                           modelId={modelConfig.model_id}
@@ -1089,7 +1090,7 @@ const Configuration: FC = () => {
               show
               inWorkflow={false}
               showFileUpload={false}
-              isChatMode={mode !== 'completion'}
+              isChatMode={mode !== AppModeEnum.COMPLETION}
               disabled={false}
               onChange={handleFeaturesChange}
               onClose={() => setShowAppConfigureFeaturesModal(false)}

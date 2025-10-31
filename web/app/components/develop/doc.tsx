@@ -18,7 +18,7 @@ import TemplateChatJa from './template/template_chat.ja.mdx'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { AppModeEnum, Theme } from '@/types/app'
 import cn from '@/utils/classnames'
 
 type IDocProps = {
@@ -115,7 +115,7 @@ const Doc = ({ appDetail }: IDocProps) => {
   }
 
   const Template = useMemo(() => {
-    if (appDetail?.mode === 'chat' || appDetail?.mode === 'agent-chat') {
+    if (appDetail?.mode === AppModeEnum.CHAT || appDetail?.mode === AppModeEnum.AGENT_CHAT) {
       switch (locale) {
         case LanguagesSupported[1]:
           return <TemplateChatZh appDetail={appDetail} variables={variables} inputs={inputs} />
@@ -125,7 +125,7 @@ const Doc = ({ appDetail }: IDocProps) => {
           return <TemplateChatEn appDetail={appDetail} variables={variables} inputs={inputs} />
       }
     }
-    if (appDetail?.mode === 'advanced-chat') {
+    if (appDetail?.mode === AppModeEnum.ADVANCED_CHAT) {
       switch (locale) {
         case LanguagesSupported[1]:
           return <TemplateAdvancedChatZh appDetail={appDetail} variables={variables} inputs={inputs} />
@@ -135,7 +135,7 @@ const Doc = ({ appDetail }: IDocProps) => {
           return <TemplateAdvancedChatEn appDetail={appDetail} variables={variables} inputs={inputs} />
       }
     }
-    if (appDetail?.mode === 'workflow') {
+    if (appDetail?.mode === AppModeEnum.WORKFLOW) {
       switch (locale) {
         case LanguagesSupported[1]:
           return <TemplateWorkflowZh appDetail={appDetail} variables={variables} inputs={inputs} />
@@ -145,7 +145,7 @@ const Doc = ({ appDetail }: IDocProps) => {
           return <TemplateWorkflowEn appDetail={appDetail} variables={variables} inputs={inputs} />
       }
     }
-    if (appDetail?.mode === 'completion') {
+    if (appDetail?.mode === AppModeEnum.COMPLETION) {
       switch (locale) {
         case LanguagesSupported[1]:
           return <TemplateZh appDetail={appDetail} variables={variables} inputs={inputs} />

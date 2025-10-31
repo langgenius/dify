@@ -8,7 +8,6 @@ from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import sqlalchemy as sa
-from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from yarl import URL
@@ -39,6 +38,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import Tool
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -49,7 +49,6 @@ from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
-    CredentialType,
     ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
@@ -289,10 +288,8 @@ class ToolManager:
                     credentials=decrypted_credentials,
                 )
                 # update the credentials
-                builtin_provider.encrypted_credentials = (
-                    TypeAdapter(dict[str, Any])
-                    .dump_json(encrypter.encrypt(dict(refreshed_credentials.credentials)))
-                    .decode("utf-8")
+                builtin_provider.encrypted_credentials = json.dumps(
+                    encrypter.encrypt(refreshed_credentials.credentials)
                 )
                 builtin_provider.expires_at = refreshed_credentials.expires_at
                 db.session.commit()
@@ -322,7 +319,7 @@ class ToolManager:
             return api_provider.get_tool(tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
-                    credentials=encrypter.decrypt(credentials),
+                    credentials=dict(encrypter.decrypt(credentials)),
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,
                 )
@@ -833,7 +830,7 @@ class ToolManager:
             controller=controller,
         )
 
-        masked_credentials = encrypter.mask_tool_credentials(encrypter.decrypt(credentials))
+        masked_credentials = encrypter.mask_plugin_credentials(encrypter.decrypt(credentials))
 
         try:
             icon = json.loads(provider_obj.icon)

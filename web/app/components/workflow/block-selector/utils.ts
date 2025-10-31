@@ -17,6 +17,7 @@ export const transformDataSourceToTool = (dataSourceItem: DataSourceItem) => {
     is_authorized: dataSourceItem.is_authorized,
     labels: dataSourceItem.declaration.identity.tags || [],
     plugin_id: dataSourceItem.plugin_id,
+    plugin_unique_identifier: dataSourceItem.plugin_unique_identifier,
     tools: dataSourceItem.declaration.datasources.map((datasource) => {
       return {
         name: datasource.identity.name,

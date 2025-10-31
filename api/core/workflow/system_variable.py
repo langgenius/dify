@@ -29,6 +29,8 @@ class SystemVariable(BaseModel):
     app_id: str | None = None
     workflow_id: str | None = None
 
+    timestamp: int | None = None
+
     files: Sequence[File] = Field(default_factory=list)
 
     # NOTE: The `workflow_execution_id` field was previously named `workflow_run_id`.
@@ -108,6 +110,8 @@ class SystemVariable(BaseModel):
             d[SystemVariableKey.DATASOURCE_INFO] = self.datasource_info
         if self.invoke_from is not None:
             d[SystemVariableKey.INVOKE_FROM] = self.invoke_from
+        if self.timestamp is not None:
+            d[SystemVariableKey.TIMESTAMP] = self.timestamp
         return d
 
     def as_view(self) -> "SystemVariableReadOnlyView":

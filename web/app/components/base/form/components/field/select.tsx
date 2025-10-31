@@ -11,7 +11,9 @@ type SelectFieldProps = {
   options: Option[]
   onChange?: (value: string) => void
   className?: string
-} & Omit<PureSelectProps, 'options' | 'value' | 'onChange'>
+} & Omit<PureSelectProps, 'options' | 'value' | 'onChange' | 'multiple'> & {
+  multiple?: false
+}
 
 const SelectField = ({
   label,

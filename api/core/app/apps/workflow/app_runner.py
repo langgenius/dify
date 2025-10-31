@@ -1,5 +1,6 @@
 import logging
 import time
+from collections.abc import Sequence
 from typing import cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -8,6 +9,7 @@ from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
+from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
@@ -16,6 +18,7 @@ from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.enums import UserFrom
 from models.workflow import Workflow
 
@@ -35,17 +38,21 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         variable_loader: VariableLoader,
         workflow: Workflow,
         system_user_id: str,
+        root_node_id: str | None = None,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ):
         super().__init__(
             queue_manager=queue_manager,
             variable_loader=variable_loader,
             app_id=application_generate_entity.app_config.app_id,
+            graph_engine_layers=graph_engine_layers,
         )
         self.application_generate_entity = application_generate_entity
         self._workflow = workflow
         self._sys_user_id = system_user_id
+        self._root_node_id = root_node_id
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
 
@@ -60,6 +67,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             files=self.application_generate_entity.files,
             user_id=self._sys_user_id,
             app_id=app_config.app_id,
+            timestamp=int(naive_utc_now().timestamp()),
             workflow_id=app_config.workflow_id,
             workflow_execution_id=self.application_generate_entity.workflow_execution_id,
         )
@@ -92,6 +100,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 workflow_id=self._workflow.id,
                 tenant_id=self._workflow.tenant_id,
                 user_id=self.application_generate_entity.user_id,
+                root_node_id=self._root_node_id,
             )
 
         # RUN WORKFLOW

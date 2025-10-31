@@ -1,4 +1,5 @@
 // import { RETRIEVAL_OUTPUT_STRUCT } from '../../constants'
+import { AppModeEnum } from '@/types/app'
 import { BlockEnum, EditionType } from '../../types'
 import { type NodeDefault, type PromptItem, PromptRole } from '../../types'
 import type { LLMNodeType } from './types'
@@ -36,7 +37,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     model: {
       provider: '',
       name: '',
-      mode: 'chat',
+      mode: AppModeEnum.CHAT,
       completion_params: {
         temperature: 0.7,
       },
@@ -63,7 +64,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
       errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.model`) })
 
     if (!errorMessages && !payload.memory) {
-      const isChatModel = payload.model.mode === 'chat'
+      const isChatModel = payload.model.mode === AppModeEnum.CHAT
       const isPromptEmpty = isChatModel
         ? !(payload.prompt_template as PromptItem[]).some((t) => {
           if (t.edition_type === EditionType.jinja2)
@@ -77,14 +78,14 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     }
 
     if (!errorMessages && !!payload.memory) {
-      const isChatModel = payload.model.mode === 'chat'
+      const isChatModel = payload.model.mode === AppModeEnum.CHAT
       // payload.memory.query_prompt_template not pass is default: {{#sys.query#}}
       if (isChatModel && !!payload.memory.query_prompt_template && !payload.memory.query_prompt_template.includes('{{#sys.query#}}'))
         errorMessages = t('workflow.nodes.llm.sysQueryInUser')
     }
 
     if (!errorMessages) {
-      const isChatModel = payload.model.mode === 'chat'
+      const isChatModel = payload.model.mode === AppModeEnum.CHAT
       const isShowVars = (() => {
         if (isChatModel)
           return (payload.prompt_template as PromptItem[]).some(item => item.edition_type === EditionType.jinja2)

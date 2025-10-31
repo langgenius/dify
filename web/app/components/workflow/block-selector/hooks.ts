@@ -3,48 +3,68 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { BLOCKS, START_BLOCKS } from './constants'
 import {
   TabsEnum,
   ToolTypeEnum,
 } from './types'
 
-export const useTabs = (noBlocks?: boolean, noSources?: boolean, noTools?: boolean) => {
+export const useBlocks = () => {
+  const { t } = useTranslation()
+
+  return BLOCKS.map((block) => {
+    return {
+      ...block,
+      title: t(`workflow.blocks.${block.type}`),
+    }
+  })
+}
+
+export const useStartBlocks = () => {
+  const { t } = useTranslation()
+
+  return START_BLOCKS.map((block) => {
+    return {
+      ...block,
+      title: t(`workflow.blocks.${block.type}`),
+    }
+  })
+}
+
+export const useTabs = ({ noBlocks, noSources, noTools, noStart = true, defaultActiveTab }: {
+  noBlocks?: boolean
+  noSources?: boolean
+  noTools?: boolean
+  noStart?: boolean
+  defaultActiveTab?: TabsEnum
+}) => {
   const { t } = useTranslation()
   const tabs = useMemo(() => {
-    return [
-      ...(
-        noBlocks
-          ? []
-          : [
-            {
-              key: TabsEnum.Blocks,
-              name: t('workflow.tabs.blocks'),
-            },
-          ]
-      ),
-      ...(
-        noSources
-          ? []
-          : [
-            {
-              key: TabsEnum.Sources,
-              name: t('workflow.tabs.sources'),
-            },
-          ]
-      ),
-      ...(
-        noTools
-          ? []
-          : [
-            {
-              key: TabsEnum.Tools,
-              name: t('workflow.tabs.tools'),
-            },
-          ]
-      ),
-    ]
-  }, [t, noBlocks, noSources, noTools])
+    return [{
+      key: TabsEnum.Blocks,
+      name: t('workflow.tabs.blocks'),
+      show: !noBlocks,
+    }, {
+      key: TabsEnum.Sources,
+      name: t('workflow.tabs.sources'),
+      show: !noSources,
+    }, {
+      key: TabsEnum.Tools,
+      name: t('workflow.tabs.tools'),
+      show: !noTools,
+    },
+    {
+      key: TabsEnum.Start,
+      name: t('workflow.tabs.start'),
+      show: !noStart,
+    }].filter(tab => tab.show)
+  }, [t, noBlocks, noSources, noTools, noStart])
+
   const initialTab = useMemo(() => {
+    // If a default tab is specified, use it
+    if (defaultActiveTab)
+      return defaultActiveTab
+
     if (noBlocks)
       return noTools ? TabsEnum.Sources : TabsEnum.Tools
 
@@ -52,7 +72,7 @@ export const useTabs = (noBlocks?: boolean, noSources?: boolean, noTools?: boole
       return noBlocks ? TabsEnum.Sources : TabsEnum.Blocks
 
     return TabsEnum.Blocks
-  }, [noBlocks, noSources, noTools])
+  }, [noBlocks, noSources, noTools, defaultActiveTab])
   const [activeTab, setActiveTab] = useState(initialTab)
 
   return {

@@ -18,6 +18,7 @@ def init_app(app: DifyApp):
     from controllers.inner_api import bp as inner_api_bp
     from controllers.mcp import bp as mcp_bp
     from controllers.service_api import bp as service_api_bp
+    from controllers.trigger import bp as trigger_bp
     from controllers.web import bp as web_bp
 
     CORS(
@@ -56,3 +57,11 @@ def init_app(app: DifyApp):
 
     app.register_blueprint(inner_api_bp)
     app.register_blueprint(mcp_bp)
+
+    # Register trigger blueprint with CORS for webhook calls
+    CORS(
+        trigger_bp,
+        allow_headers=["Content-Type", "Authorization", "X-App-Code"],
+        methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+    )
+    app.register_blueprint(trigger_bp)

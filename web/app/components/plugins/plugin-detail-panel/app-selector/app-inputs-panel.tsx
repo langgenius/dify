@@ -6,7 +6,7 @@ import AppInputsForm from '@/app/components/plugins/plugin-detail-panel/app-sele
 import { useAppDetail } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { useFileUploadConfig } from '@/service/use-common'
-import { Resolution } from '@/types/app'
+import { AppModeEnum, Resolution } from '@/types/app'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import type { App } from '@/types/app'
 import type { FileUpload } from '@/app/components/base/features/types'
@@ -30,7 +30,7 @@ const AppInputsPanel = ({
 }: Props) => {
   const { t } = useTranslation()
   const inputsRef = useRef<any>(value?.inputs || {})
-  const isBasicApp = appDetail.mode !== 'advanced-chat' && appDetail.mode !== 'workflow'
+  const isBasicApp = appDetail.mode !== AppModeEnum.ADVANCED_CHAT && appDetail.mode !== AppModeEnum.WORKFLOW
   const { data: fileUploadConfig } = useFileUploadConfig()
   const { data: currentApp, isFetching: isAppLoading } = useAppDetail(appDetail.id)
   const { data: currentWorkflow, isFetching: isWorkflowLoading } = useAppWorkflow(isBasicApp ? '' : appDetail.id)
@@ -77,7 +77,7 @@ const AppInputsPanel = ({
             required: false,
           }
         }
-        if(item.checkbox) {
+        if (item.checkbox) {
           return {
             ...item.checkbox,
             type: 'checkbox',
@@ -148,7 +148,7 @@ const AppInputsPanel = ({
         }
       }) || []
     }
-    if ((currentApp.mode === 'completion' || currentApp.mode === 'workflow') && basicAppFileConfig.enabled) {
+    if ((currentApp.mode === AppModeEnum.COMPLETION || currentApp.mode === AppModeEnum.WORKFLOW) && basicAppFileConfig.enabled) {
       inputFormSchema.push({
         label: 'Image Upload',
         variable: '#image#',

@@ -1,6 +1,7 @@
-import type { ToolCredential, ToolParameter } from '../types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import type { TriggerEventParameter } from '../../plugins/types'
+import type { ToolCredential, ToolParameter } from '../types'
 
 export const toType = (type: string) => {
   switch (type) {
@@ -14,6 +15,21 @@ export const toType = (type: string) => {
       return type
   }
 }
+
+export const triggerEventParametersToFormSchemas = (parameters: TriggerEventParameter[]) => {
+  if (!parameters?.length)
+    return []
+
+  return parameters.map((parameter) => {
+    return {
+      ...parameter,
+      type: toType(parameter.type),
+      _type: parameter.type,
+      tooltip: parameter.description,
+    }
+  })
+}
+
 export const toolParametersToFormSchemas = (parameters: ToolParameter[]) => {
   if (!parameters)
     return []
@@ -165,7 +181,7 @@ export const getConfiguredValue = (value: Record<string, any>, formSchemas: { va
 const getVarKindType = (type: FormTypeEnum) => {
   if (type === FormTypeEnum.file || type === FormTypeEnum.files)
     return VarKindType.variable
-  if (type === FormTypeEnum.select || type === FormTypeEnum.boolean || type === FormTypeEnum.textNumber)
+  if (type === FormTypeEnum.select || type === FormTypeEnum.checkbox || type === FormTypeEnum.textNumber)
     return VarKindType.constant
   if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
     return VarKindType.mixed

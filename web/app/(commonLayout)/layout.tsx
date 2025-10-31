@@ -10,6 +10,7 @@ import { ProviderContextProvider } from '@/context/provider-context'
 import { ModalContextProvider } from '@/context/modal-context'
 import GotoAnything from '@/app/components/goto-anything'
 import Zendesk from '@/app/components/base/zendesk'
+import ReadmePanel from '@/app/components/plugins/readme-panel'
 
 const Layout = ({ children }: { children: ReactNode }) => {
   return (
@@ -24,6 +25,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                   <Header />
                 </HeaderWrapper>
                 {children}
+                <ReadmePanel />
                 <GotoAnything />
               </ModalContextProvider>
             </ProviderContextProvider>

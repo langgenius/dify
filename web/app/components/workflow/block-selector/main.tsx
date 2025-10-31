@@ -51,6 +51,9 @@ export type NodeSelectorProps = {
   dataSources?: ToolWithProvider[]
   noBlocks?: boolean
   noTools?: boolean
+  showStartTab?: boolean
+  defaultActiveTab?: TabsEnum
+  forceShowStartContent?: boolean
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -70,6 +73,9 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   dataSources = [],
   noBlocks = false,
   noTools = false,
+  showStartTab = false,
+  defaultActiveTab,
+  forceShowStartContent = false,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -91,22 +97,26 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     e.stopPropagation()
     handleOpenChange(!open)
   }, [handleOpenChange, open, disabled])
-  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
+
+  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
     handleOpenChange(false)
-    onSelect(type, toolDefaultValue)
+    onSelect(type, pluginDefaultValue)
   }, [handleOpenChange, onSelect])
 
   const {
     activeTab,
     setActiveTab,
     tabs,
-  } = useTabs(noBlocks, !dataSources.length, noTools)
+  } = useTabs({ noBlocks, noSources: !dataSources.length, noTools, noStart: !showStartTab, defaultActiveTab })
 
   const handleActiveTabChange = useCallback((newActiveTab: TabsEnum) => {
     setActiveTab(newActiveTab)
   }, [setActiveTab])
 
   const searchPlaceholder = useMemo(() => {
+    if (activeTab === TabsEnum.Start)
+      return t('workflow.tabs.searchTrigger')
+
     if (activeTab === TabsEnum.Blocks)
       return t('workflow.tabs.searchBlock')
 
@@ -156,6 +166,17 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             onActiveTabChange={handleActiveTabChange}
             filterElem={
               <div className='relative m-2' onClick={e => e.stopPropagation()}>
+                {activeTab === TabsEnum.Start && (
+                  <SearchBox
+                    autoFocus
+                    search={searchText}
+                    onSearchChange={setSearchText}
+                    tags={tags}
+                    onTagsChange={setTags}
+                    placeholder={searchPlaceholder}
+                    inputClassName='grow'
+                  />
+                )}
                 {activeTab === TabsEnum.Blocks && (
                   <Input
                     showLeftIcon
@@ -180,6 +201,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                 )}
                 {activeTab === TabsEnum.Tools && (
                   <SearchBox
+                    autoFocus
                     search={searchText}
                     onSearchChange={setSearchText}
                     tags={tags}
@@ -198,6 +220,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             dataSources={dataSources}
             noTools={noTools}
             onTagsChange={setTags}
+            forceShowStartContent={forceShowStartContent}
           />
         </div>
       </PortalToFollowElemContent>

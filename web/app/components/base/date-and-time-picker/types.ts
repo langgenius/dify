@@ -30,6 +30,7 @@ export type DatePickerProps = {
   renderTrigger?: (props: TriggerProps) => React.ReactNode
   minuteFilter?: (minutes: string[]) => string[]
   popupZIndexClassname?: string
+  notClearable?: boolean
 }
 
 export type DatePickerHeaderProps = {
@@ -63,6 +64,12 @@ export type TimePickerProps = {
   title?: string
   minuteFilter?: (minutes: string[]) => string[]
   popupClassName?: string
+  notClearable?: boolean
+  triggerFullWidth?: boolean
+  /** Show timezone label inline with the time picker */
+  showTimezone?: boolean
+  /** Placement of the popup relative to the trigger */
+  placement?: 'bottom-start' | 'bottom-end' | 'bottom'
 }
 
 export type TimePickerFooterProps = {

@@ -8,6 +8,7 @@ from libs.helper import TimestampField
 workflow_app_log_partial_fields = {
     "id": fields.String,
     "workflow_run": fields.Nested(workflow_run_for_log_fields, attribute="workflow_run", allow_null=True),
+    "details": fields.Raw(attribute="details"),
     "created_from": fields.String,
     "created_by_role": fields.String,
     "created_by_account": fields.Nested(simple_account_fields, attribute="created_by_account", allow_null=True),

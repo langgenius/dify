@@ -8,12 +8,15 @@ import { intersection } from 'lodash-es'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   useAvailableBlocks,
+  useIsChatMode,
   useNodesInteractions,
 } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import type {
   Node,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
+import { FlowType } from '@/types/common'
 
 type ChangeBlockProps = {
   nodeId: string
@@ -31,6 +34,9 @@ const ChangeBlock = ({
     availablePrevBlocks,
     availableNextBlocks,
   } = useAvailableBlocks(nodeData.type, nodeData.isInIteration || nodeData.isInLoop)
+  const isChatMode = useIsChatMode()
+  const flowType = useHooksStore(s => s.configsMap?.flowType)
+  const showStartTab = flowType !== FlowType.ragPipeline && !isChatMode
 
   const availableNodes = useMemo(() => {
     if (availablePrevBlocks.length && availableNextBlocks.length)
@@ -41,8 +47,8 @@ const ChangeBlock = ({
       return availableNextBlocks
   }, [availablePrevBlocks, availableNextBlocks])
 
-  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
-    handleNodeChange(nodeId, type, sourceHandle, toolDefaultValue)
+  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
+    handleNodeChange(nodeId, type, sourceHandle, pluginDefaultValue)
   }, [handleNodeChange, nodeId, sourceHandle])
 
   const renderTrigger = useCallback(() => {
@@ -64,6 +70,7 @@ const ChangeBlock = ({
       trigger={renderTrigger}
       popupClassName='min-w-[240px]'
       availableBlocksTypes={availableNodes}
+      showStartTab={showStartTab}
     />
   )
 }

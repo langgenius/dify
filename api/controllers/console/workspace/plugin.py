@@ -114,6 +114,25 @@ class PluginIconApi(Resource):
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 
 
+@console_ns.route("/workspaces/current/plugin/asset")
+class PluginAssetApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        req = reqparse.RequestParser()
+        req.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+        req.add_argument("file_name", type=str, required=True, location="args")
+        args = req.parse_args()
+
+        _, tenant_id = current_account_with_tenant()
+        try:
+            binary = PluginService.extract_asset(tenant_id, args["plugin_unique_identifier"], args["file_name"])
+            return send_file(io.BytesIO(binary), mimetype="application/octet-stream")
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+
 @console_ns.route("/workspaces/current/plugin/upload/pkg")
 class PluginUploadFromPkgApi(Resource):
     @setup_required
@@ -558,19 +577,21 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
             .add_argument("provider", type=str, required=True, location="args")
             .add_argument("action", type=str, required=True, location="args")
             .add_argument("parameter", type=str, required=True, location="args")
+            .add_argument("credential_id", type=str, required=False, location="args")
             .add_argument("provider_type", type=str, required=True, location="args")
         )
         args = parser.parse_args()
 
         try:
             options = PluginParameterService.get_dynamic_select_options(
-                tenant_id,
-                user_id,
-                args["plugin_id"],
-                args["provider"],
-                args["action"],
-                args["parameter"],
-                args["provider_type"],
+                tenant_id=tenant_id,
+                user_id=user_id,
+                plugin_id=args["plugin_id"],
+                provider=args["provider"],
+                action=args["action"],
+                parameter=args["parameter"],
+                credential_id=args["credential_id"],
+                provider_type=args["provider_type"],
             )
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
@@ -686,3 +707,23 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
         args = req.parse_args()
 
         return jsonable_encoder({"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args["plugin_id"])})
+
+
+@console_ns.route("/workspaces/current/plugin/readme")
+class PluginReadmeApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        _, tenant_id = current_account_with_tenant()
+        parser = reqparse.RequestParser()
+        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+        parser.add_argument("language", type=str, required=False, location="args")
+        args = parser.parse_args()
+        return jsonable_encoder(
+            {
+                "readme": PluginService.fetch_plugin_readme(
+                    tenant_id, args["plugin_unique_identifier"], args.get("language", "en-US")
+                )
+            }
+        )

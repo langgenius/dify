@@ -16,17 +16,25 @@ import { useTranslation } from 'react-i18next'
 import { useHover } from 'ahooks'
 import McpToolNotSupportTooltip from '../../nodes/_base/components/mcp-tool-not-support-tooltip'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
+import { basePath } from '@/utils/var'
+
+const normalizeProviderIcon = (icon: ToolWithProvider['icon']) => {
+  if (typeof icon === 'string' && basePath && icon.startsWith('/') && !icon.startsWith(`${basePath}/`))
+    return `${basePath}${icon}`
+  return icon
+}
 
 type Props = {
   className?: string
   payload: ToolWithProvider
   viewType: ViewType
   hasSearchText: boolean
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
   canChooseMCPTool?: boolean
+  isShowLetterIndex?: boolean
 }
 
 const Tool: FC<Props> = ({
@@ -85,6 +93,9 @@ const Tool: FC<Props> = ({
                 provider_id: payload.id,
                 provider_type: payload.type,
                 provider_name: payload.name,
+                plugin_id: payload.plugin_id,
+                plugin_unique_identifier: payload.plugin_unique_identifier,
+                provider_icon: normalizeProviderIcon(payload.icon),
                 tool_name: tool.name,
                 tool_label: tool.label[language],
                 tool_description: tool.description[language],
@@ -164,6 +175,9 @@ const Tool: FC<Props> = ({
               provider_id: payload.id,
               provider_type: payload.type,
               provider_name: payload.name,
+              plugin_id: payload.plugin_id,
+              plugin_unique_identifier: payload.plugin_unique_identifier,
+              provider_icon: normalizeProviderIcon(payload.icon),
               tool_name: tool.name,
               tool_label: tool.label[language],
               tool_description: tool.description[language],

@@ -24,7 +24,7 @@ import useNodeInfo from '../nodes/_base/hooks/use-node-info'
 import { useBoolean } from 'ahooks'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import GetCodeGeneratorResModal from '../../app/configuration/config/code-generator/get-code-generator-res'
-import { AppType } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import { useHooksStore } from '../hooks-store'
 import { useCallback, useMemo } from 'react'
 import { useNodesInteractions, useToolIcon } from '../hooks'
@@ -282,7 +282,7 @@ const Right = ({
         isCodeBlock
           ? <GetCodeGeneratorResModal
             isShow
-            mode={AppType.chat}
+            mode={AppModeEnum.CHAT}
             onClose={handleHidePromptGenerator}
             flowId={configsMap?.flowId || ''}
             nodeId={nodeId}
@@ -291,7 +291,7 @@ const Right = ({
             onFinished={handleUpdatePrompt}
           />
           : <GetAutomaticResModal
-            mode={AppType.chat}
+            mode={AppModeEnum.CHAT}
             isShow
             onClose={handleHidePromptGenerator}
             onFinished={handleUpdatePrompt}

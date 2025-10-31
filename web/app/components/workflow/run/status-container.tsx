@@ -14,6 +14,7 @@ const StatusContainer: FC<Props> = ({
   children,
 }) => {
   const { theme } = useTheme()
+
   return (
     <div
       className={cn(

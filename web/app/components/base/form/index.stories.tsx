@@ -102,14 +102,14 @@ const FormPlayground = () => {
       options={{
         ...demoFormOpts,
         validators: {
-          onSubmit: ({ value }) => {
-            const result = UserSchema.safeParse(value as typeof demoFormOpts.defaultValues)
+          onSubmit: ({ value: formValue }) => {
+            const result = UserSchema.safeParse(formValue as typeof demoFormOpts.defaultValues)
             if (!result.success)
               return result.error.issues[0].message
             return undefined
           },
         },
-        onSubmit: ({ value }) => {
+        onSubmit: () => {
           setStatus('Successfully saved profile.')
         },
       }}

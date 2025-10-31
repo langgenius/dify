@@ -10,6 +10,7 @@ export type IDrawerProps = {
   description?: string
   dialogClassName?: string
   dialogBackdropClassName?: string
+  containerClassName?: string
   panelClassName?: string
   children: React.ReactNode
   footer?: React.ReactNode
@@ -22,6 +23,7 @@ export type IDrawerProps = {
   onCancel?: () => void
   onOk?: () => void
   unmount?: boolean
+  noOverlay?: boolean
 }
 
 export default function Drawer({
@@ -29,6 +31,7 @@ export default function Drawer({
   description = '',
   dialogClassName = '',
   dialogBackdropClassName = '',
+  containerClassName = '',
   panelClassName = '',
   children,
   footer,
@@ -41,6 +44,7 @@ export default function Drawer({
   onCancel,
   onOk,
   unmount = false,
+  noOverlay = false,
 }: IDrawerProps) {
   const { t } = useTranslation()
   return (
@@ -53,15 +57,15 @@ export default function Drawer({
       }}
       className={cn('fixed inset-0 z-[30] overflow-y-auto', dialogClassName)}
     >
-      <div className={cn('flex h-screen w-screen justify-end', positionCenter && '!justify-center')}>
+      <div className={cn('flex h-screen w-screen justify-end', positionCenter && '!justify-center', containerClassName)}>
         {/* mask */}
-        <DialogBackdrop
+        {!noOverlay && <DialogBackdrop
           className={cn('fixed inset-0 z-[40]', mask && 'bg-black/30', dialogBackdropClassName)}
           onClick={() => {
             if (!clickOutsideNotOpen)
               onClose()
           }}
-        />
+        />}
         <div className={cn('relative z-[50] flex w-full max-w-sm flex-col justify-between overflow-hidden bg-components-panel-bg p-6 text-left align-middle shadow-xl', panelClassName)}>
           <>
             <div className='flex justify-between'>

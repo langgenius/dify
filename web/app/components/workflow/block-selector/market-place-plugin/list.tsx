@@ -1,5 +1,6 @@
 'use client'
-import React, { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import type { RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import useStickyScroll, { ScrollPosition } from '../use-sticky-scroll'
 import Item from './item'
@@ -17,6 +18,7 @@ export type ListProps = {
   tags: string[]
   toolContentClassName?: string
   disableMaxWidth?: boolean
+  hideFindMoreFooter?: boolean
   ref?: React.Ref<ListRef>
 }
 
@@ -29,6 +31,7 @@ const List = ({
   list,
   toolContentClassName,
   disableMaxWidth = false,
+  hideFindMoreFooter = false,
   ref,
 }: ListProps) => {
   const { t } = useTranslation()
@@ -39,7 +42,7 @@ const List = ({
 
   const { handleScroll, scrollPosition } = useStickyScroll({
     wrapElemRef,
-    nextToStickyELemRef,
+    nextToStickyELemRef: nextToStickyELemRef as RefObject<HTMLElement>,
   })
   const stickyClassName = useMemo(() => {
     switch (scrollPosition) {
@@ -69,6 +72,9 @@ const List = ({
   }
 
   if (noFilter) {
+    if (hideFindMoreFooter)
+      return null
+
     return (
       <Link
         className='system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'

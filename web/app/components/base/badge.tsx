@@ -20,7 +20,7 @@ const Badge = ({
   return (
     <div
       className={cn(
-        'relative inline-flex h-5 items-center rounded-[5px] border border-divider-deep px-[5px] leading-3 text-text-tertiary',
+        'relative inline-flex h-5 items-center whitespace-nowrap rounded-[5px] border border-divider-deep px-[5px] leading-3 text-text-tertiary',
         uppercase ? 'system-2xs-medium-uppercase' : 'system-xs-medium',
         className,
       )}

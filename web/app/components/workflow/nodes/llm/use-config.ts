@@ -18,6 +18,7 @@ import {
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { AppModeEnum } from '@/types/app'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -49,7 +50,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   // model
   const model = inputs.model
   const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === 'chat'
+  const isChatModel = modelMode === AppModeEnum.CHAT
 
   const isCompletionModel = !isChatModel
 
@@ -134,7 +135,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       draft.model.mode = model.mode!
       const isModeChange = model.mode !== inputRef.current.model.mode
       if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
-        appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
+        appendDefaultPromptConfig(draft, defaultConfig, model.mode === AppModeEnum.CHAT)
     })
     setInputs(newInputs)
     setModelChanged(true)
