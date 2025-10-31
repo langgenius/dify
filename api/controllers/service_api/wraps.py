@@ -101,7 +101,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                         TenantAccountJoin.role == "owner",
                         Tenant.status == TenantStatus.NORMAL,
                     )
-                    .first()
+                    .one_or_none()
                 )
 
                 if tenant_owner_info:
