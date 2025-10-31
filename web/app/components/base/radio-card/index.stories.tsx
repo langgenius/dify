@@ -4,7 +4,7 @@ import { RiCloudLine, RiCpuLine, RiDatabase2Line, RiLightbulbLine, RiRocketLine,
 import RadioCard from '.'
 
 const meta = {
-  title: 'Base/RadioCard',
+  title: 'Base/Data Entry/RadioCard',
   component: RadioCard,
   parameters: {
     layout: 'centered',
@@ -138,7 +138,8 @@ const WithConfigurationDemo = () => {
 
 export const WithConfiguration: Story = {
   render: () => <WithConfigurationDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Multiple cards selection
 const MultipleCardsDemo = () => {
@@ -190,7 +191,8 @@ const MultipleCardsDemo = () => {
 
 export const MultipleCards: Story = {
   render: () => <MultipleCardsDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Cloud provider selection
 const CloudProviderSelectionDemo = () => {
@@ -247,7 +249,8 @@ const CloudProviderSelectionDemo = () => {
 
 export const CloudProviderSelection: Story = {
   render: () => <CloudProviderSelectionDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Deployment strategy
 const DeploymentStrategyDemo = () => {
@@ -313,7 +316,8 @@ const DeploymentStrategyDemo = () => {
 
 export const DeploymentStrategy: Story = {
   render: () => <DeploymentStrategyDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - Storage options
 const StorageOptionsDemo = () => {
@@ -388,7 +392,8 @@ const StorageOptionsDemo = () => {
 
 export const StorageOptions: Story = {
   render: () => <StorageOptionsDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - API authentication method
 const APIAuthMethodDemo = () => {
@@ -458,7 +463,8 @@ const APIAuthMethodDemo = () => {
 
 export const APIAuthMethod: Story = {
   render: () => <APIAuthMethodDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Interactive playground
 const PlaygroundDemo = () => {
@@ -501,4 +507,5 @@ const PlaygroundDemo = () => {
 
 export const Playground: Story = {
   render: () => <PlaygroundDemo />,
-}
+  parameters: { controls: { disable: true } },
+} as unknown as Story

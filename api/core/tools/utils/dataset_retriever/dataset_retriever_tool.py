@@ -191,18 +191,18 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                 DatasetDocument.enabled == True,
                                 DatasetDocument.archived == False,
                             )
-                            document = db.session.scalar(dataset_document_stmt)  # type: ignore
+                            document = db.session.scalar(dataset_document_stmt)
                             if dataset and document:
                                 source = RetrievalSourceMetadata(
                                     dataset_id=dataset.id,
                                     dataset_name=dataset.name,
-                                    document_id=document.id,  # type: ignore
-                                    document_name=document.name,  # type: ignore
-                                    data_source_type=document.data_source_type,  # type: ignore
+                                    document_id=document.id,
+                                    document_name=document.name,
+                                    data_source_type=document.data_source_type,
                                     segment_id=segment.id,
                                     retriever_from=self.retriever_from,
                                     score=record.score or 0.0,
-                                    doc_metadata=document.doc_metadata,  # type: ignore
+                                    doc_metadata=document.doc_metadata,
                                 )
 
                                 if self.retriever_from == "dev":

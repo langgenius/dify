@@ -542,8 +542,8 @@ class BuiltinToolManageService:
             try:
                 # handle include, exclude
                 if is_filtered(
-                    include_set=dify_config.POSITION_TOOL_INCLUDES_SET,  # type: ignore
-                    exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,  # type: ignore
+                    include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
+                    exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
                     data=provider_controller,
                     name_func=lambda x: x.entity.identity.name,
                 ):

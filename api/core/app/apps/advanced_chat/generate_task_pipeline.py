@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 import time
@@ -60,6 +61,7 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.nodes import NodeType
@@ -388,6 +390,14 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         should_direct_answer = self._handle_output_moderation_chunk(delta_text)
         if should_direct_answer:
             return
+
+        current_time = time.perf_counter()
+        if self._task_state.first_token_time is None and delta_text.strip():
+            self._task_state.first_token_time = current_time
+            self._task_state.is_streaming_response = True
+
+        if delta_text.strip():
+            self._task_state.last_token_time = current_time
 
         # Only publish tts message at text chunk streaming
         if tts_publisher and queue_message:
@@ -770,7 +780,33 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         message.answer = answer_text
         message.updated_at = naive_utc_now()
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline.start_at
-        message.message_metadata = self._task_state.metadata.model_dump_json()
+
+        # Set usage first before dumping metadata
+        if graph_runtime_state and graph_runtime_state.llm_usage:
+            usage = graph_runtime_state.llm_usage
+            message.message_tokens = usage.prompt_tokens
+            message.message_unit_price = usage.prompt_unit_price
+            message.message_price_unit = usage.prompt_price_unit
+            message.answer_tokens = usage.completion_tokens
+            message.answer_unit_price = usage.completion_unit_price
+            message.answer_price_unit = usage.completion_price_unit
+            message.total_price = usage.total_price
+            message.currency = usage.currency
+            self._task_state.metadata.usage = usage
+        else:
+            usage = LLMUsage.empty_usage()
+            self._task_state.metadata.usage = usage
+
+        # Add streaming metrics to usage if available
+        if self._task_state.is_streaming_response and self._task_state.first_token_time:
+            start_time = self._base_task_pipeline.start_at
+            first_token_time = self._task_state.first_token_time
+            last_token_time = self._task_state.last_token_time or first_token_time
+            usage.time_to_first_token = round(first_token_time - start_time, 3)
+            usage.time_to_generate = round(last_token_time - first_token_time, 3)
+
+        metadata = self._task_state.metadata.model_dump()
+        message.message_metadata = json.dumps(jsonable_encoder(metadata))
         message_files = [
             MessageFile(
                 message_id=message.id,
@@ -787,20 +823,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             for file in self._recorded_files
         ]
         session.add_all(message_files)
-
-        if graph_runtime_state and graph_runtime_state.llm_usage:
-            usage = graph_runtime_state.llm_usage
-            message.message_tokens = usage.prompt_tokens
-            message.message_unit_price = usage.prompt_unit_price
-            message.message_price_unit = usage.prompt_price_unit
-            message.answer_tokens = usage.completion_tokens
-            message.answer_unit_price = usage.completion_unit_price
-            message.answer_price_unit = usage.completion_price_unit
-            message.total_price = usage.total_price
-            message.currency = usage.currency
-            self._task_state.metadata.usage = usage
-        else:
-            self._task_state.metadata.usage = LLMUsage.empty_usage()
 
     def _seed_graph_runtime_state_from_queue_manager(self) -> None:
         """Bootstrap the cached runtime state from the queue manager when present."""
