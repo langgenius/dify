@@ -43,7 +43,7 @@ class TTSTool(BuiltinTool):
             content_text=tool_parameters.get("text"),  # type: ignore
             user=user_id,
             tenant_id=self.runtime.tenant_id,
-            voice=voice,  # type: ignore
+            voice=voice,
         )
         buffer = io.BytesIO()
         for chunk in tts:

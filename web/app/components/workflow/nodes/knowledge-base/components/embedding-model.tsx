@@ -57,6 +57,7 @@ const EmbeddingModel = ({
         modelList={embeddingModelList}
         onSelect={handleEmbeddingModelChange}
         readonly={readonly}
+        showDeprecatedWarnIcon
       />
     </Field>
   )

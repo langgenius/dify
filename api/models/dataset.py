@@ -1253,34 +1253,21 @@ class DatasetMetadataBinding(TypeBase):
 
 class PipelineBuiltInTemplate(TypeBase):  # type: ignore[name-defined]
     __tablename__ = "pipeline_built_in_templates"
-    __table_args__ = (sa.PrimaryKeyConstraint("id", name="pipeline_built_in_template_pkey"),)
+    __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_built_in_template_pkey"),)
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"), init=False)
-    name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    description: Mapped[str] = mapped_column(sa.Text, nullable=False)
-    chunk_structure: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    icon: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
-    yaml_content: Mapped[str] = mapped_column(sa.Text, nullable=False)
-    copyright: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    privacy_policy: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0, init=False)
-    language: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
-    )
-    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, init=False)
-
-    @property
-    def created_user_name(self):
-        account = db.session.query(Account).where(Account.id == self.created_by).first()
-        if account:
-            return account.name
-        return ""
+    id = mapped_column(StringUUID, server_default=db.text("uuidv7()"))
+    name = mapped_column(db.String(255), nullable=False)
+    description = mapped_column(sa.Text, nullable=False)
+    chunk_structure = mapped_column(db.String(255), nullable=False)
+    icon = mapped_column(sa.JSON, nullable=False)
+    yaml_content = mapped_column(sa.Text, nullable=False)
+    copyright = mapped_column(db.String(255), nullable=False)
+    privacy_policy = mapped_column(db.String(255), nullable=False)
+    position = mapped_column(sa.Integer, nullable=False)
+    install_count = mapped_column(sa.Integer, nullable=False, default=0)
+    language = mapped_column(db.String(255), nullable=False)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class PipelineCustomizedTemplate(TypeBase):  # type: ignore[name-defined]

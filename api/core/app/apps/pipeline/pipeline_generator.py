@@ -255,7 +255,7 @@ class PipelineGenerator(BaseAppGenerator):
             json_text = json.dumps(text)
             upload_file = FileService(db.engine).upload_text(json_text, name, user.id, dataset.tenant_id)
             features = FeatureService.get_features(dataset.tenant_id)
-            if features.billing.subscription.plan == "sandbox":
+            if features.billing.enabled and features.billing.subscription.plan == "sandbox":
                 tenant_pipeline_task_key = f"tenant_pipeline_task:{dataset.tenant_id}"
                 tenant_self_pipeline_task_queue = f"tenant_self_pipeline_task_queue:{dataset.tenant_id}"
 

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 import sqlalchemy as sa
 from flask import request
-from flask_login import UserMixin  # type: ignore[import-untyped]
+from flask_login import UserMixin
 from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -944,43 +944,41 @@ class Message(TypeBase):
         Index("message_app_mode_idx", "app_mode"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    model_provider: Mapped[str | None] = mapped_column(String(255), nullable=True, init=False)
-    model_id: Mapped[str | None] = mapped_column(String(255), nullable=True, init=False)
-    override_model_configs: Mapped[str | None] = mapped_column(sa.Text, init=False)
+    model_provider: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    model_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    override_model_configs: Mapped[str | None] = mapped_column(sa.Text)
     conversation_id: Mapped[str] = mapped_column(StringUUID, sa.ForeignKey("conversations.id"), nullable=False)
     _inputs: Mapped[dict[str, Any]] = mapped_column("inputs", sa.JSON)
     query: Mapped[str] = mapped_column(sa.Text, nullable=False)
-    message: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
-    message_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"), init=False)
-    message_unit_price: Mapped[float] = mapped_column(sa.Numeric(10, 4), nullable=False, init=False)
-    message_price_unit: Mapped[float] = mapped_column(
-        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"), init=False
+    message: Mapped[dict[str, Any]] = mapped_column(sa.JSON, nullable=False)
+    message_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
+    message_unit_price: Mapped[Decimal] = mapped_column(sa.Numeric(10, 4), nullable=False)
+    message_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001")
     )
     answer: Mapped[str] = mapped_column(sa.Text, nullable=False)
-    answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"), init=False)
-    answer_unit_price: Mapped[float] = mapped_column(sa.Numeric(10, 4), nullable=False, init=False)
-    answer_price_unit: Mapped[float] = mapped_column(
-        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"), init=False
+    answer_tokens: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
+    answer_unit_price: Mapped[Decimal] = mapped_column(sa.Numeric(10, 4), nullable=False)
+    answer_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001")
     )
-    parent_message_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, init=False)
-    provider_response_latency: Mapped[float] = mapped_column(
-        sa.Float, nullable=False, server_default=sa.text("0"), init=False
-    )
-    total_price: Mapped[float | None] = mapped_column(sa.Numeric(10, 7), init=False)
-    currency: Mapped[str] = mapped_column(String(255), nullable=False, init=False)
+    parent_message_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    provider_response_latency: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
+    total_price: Mapped[Decimal | None] = mapped_column(sa.Numeric(10, 7))
+    currency: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'normal'::character varying"), init=False
+        String(255), nullable=False, server_default=sa.text("'normal'::character varying")
     )
-    error: Mapped[str | None] = mapped_column(sa.Text, init=False)
-    message_metadata: Mapped[str | None] = mapped_column(sa.Text, init=False)
-    invoke_from: Mapped[str | None] = mapped_column(String(255), nullable=True, init=False)
+    error: Mapped[str | None] = mapped_column(sa.Text)
+    message_metadata: Mapped[str | None] = mapped_column(sa.Text)
+    invoke_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
     from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
     from_account_id: Mapped[str | None] = mapped_column(StringUUID)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, server_default=func.current_timestamp())
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
     app_mode: Mapped[str | None] = mapped_column(String(255), nullable=True)

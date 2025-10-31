@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import type { InstallStatusResponse, Plugin } from '../../../types'
+import type { InstallStatus, Plugin } from '../../../types'
 import Card from '@/app/components/plugins/card'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +11,7 @@ import { MARKETPLACE_API_PREFIX } from '@/config'
 
 type Props = {
   list: Plugin[]
-  installStatus: InstallStatusResponse[]
+  installStatus: InstallStatus[]
   onCancel: () => void
   isHideButton?: boolean
 }

@@ -193,15 +193,16 @@ class MCPAppApi(Resource):
             except ValidationError as e:
                 raise MCPRequestError(mcp_types.INVALID_PARAMS, f"Invalid MCP request: {str(e)}")
 
-    def _retrieve_end_user(self, tenant_id: str, mcp_server_id: str, session: Session) -> EndUser | None:
-        """Get end user from existing session - optimized query"""
-        return (
-            session.query(EndUser)
-            .where(EndUser.tenant_id == tenant_id)
-            .where(EndUser.session_id == mcp_server_id)
-            .where(EndUser.type == "mcp")
-            .first()
-        )
+    def _retrieve_end_user(self, tenant_id: str, mcp_server_id: str) -> EndUser | None:
+        """Get end user - manages its own database session"""
+        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+            return (
+                session.query(EndUser)
+                .where(EndUser.tenant_id == tenant_id)
+                .where(EndUser.session_id == mcp_server_id)
+                .where(EndUser.type == "mcp")
+                .first()
+            )
 
     def _create_end_user(
         self, client_name: str, tenant_id: str, app_id: str, mcp_server_id: str, session: Session
@@ -231,7 +232,7 @@ class MCPAppApi(Resource):
         request_id: Union[int, str],
     ) -> mcp_types.JSONRPCResponse | mcp_types.JSONRPCError | None:
         """Handle MCP request and return response"""
-        end_user = self._retrieve_end_user(mcp_server.tenant_id, mcp_server.id, session)
+        end_user = self._retrieve_end_user(mcp_server.tenant_id, mcp_server.id)
 
         if not end_user and isinstance(mcp_request.root, mcp_types.InitializeRequest):
             client_info = mcp_request.root.params.clientInfo

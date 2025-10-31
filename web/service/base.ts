@@ -114,6 +114,15 @@ export type IOtherOptions = {
   onDataSourceNodeError?: IOnDataSourceNodeError
 }
 
+function jumpTo(url: string) {
+  if (!url)
+    return
+  const targetPath = new URL(url, globalThis.location.origin).pathname
+  if (targetPath === globalThis.location.pathname)
+    return
+  globalThis.location.href = url
+}
+
 function unicodeToChar(text: string) {
   if (!text)
     return ''
@@ -127,7 +136,7 @@ const WBB_APP_LOGIN_PATH = '/webapp-signin'
 function requiredWebSSOLogin(message?: string, code?: number) {
   const params = new URLSearchParams()
   // prevent redirect loop
-  if(globalThis.location.pathname === WBB_APP_LOGIN_PATH)
+  if (globalThis.location.pathname === WBB_APP_LOGIN_PATH)
     return
 
   params.append('redirect_url', encodeURIComponent(`${globalThis.location.pathname}${globalThis.location.search}`))
@@ -576,11 +585,11 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (code === 'not_init_validated' && IS_CE_EDITION) {
-        globalThis.location.href = `${globalThis.location.origin}${basePath}/init`
+        jumpTo(`${globalThis.location.origin}${basePath}/init`)
         return Promise.reject(err)
       }
       if (code === 'not_setup' && IS_CE_EDITION) {
-        globalThis.location.href = `${globalThis.location.origin}${basePath}/install`
+        jumpTo(`${globalThis.location.origin}${basePath}/install`)
         return Promise.reject(err)
       }
 
@@ -589,15 +598,14 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       if (refreshErr === null)
         return baseFetch<T>(url, options, otherOptionsForBaseFetch)
       if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
-        globalThis.location.href = loginUrl
+        jumpTo(loginUrl)
         return Promise.reject(err)
       }
       if (!silent) {
         Toast.notify({ type: 'error', message })
         return Promise.reject(err)
       }
-      if (globalThis.location.href !== loginUrl)
-        globalThis.location.href = loginUrl
+      jumpTo(loginUrl)
       return Promise.reject(err)
     }
     else {

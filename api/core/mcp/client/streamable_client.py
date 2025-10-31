@@ -434,45 +434,48 @@ def streamablehttp_client(
     server_to_client_queue: ServerToClientQueue = queue.Queue()  # For messages FROM server TO client
     client_to_server_queue: ClientToServerQueue = queue.Queue()  # For messages FROM client TO server
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        try:
-            with create_ssrf_proxy_mcp_http_client(
-                headers=transport.request_headers,
-                timeout=httpx.Timeout(transport.timeout, read=transport.sse_read_timeout),
-            ) as client:
-                # Define callbacks that need access to thread pool
-                def start_get_stream():
-                    """Start a worker thread to handle server-initiated messages."""
-                    executor.submit(transport.handle_get_stream, client, server_to_client_queue)
+    executor = ThreadPoolExecutor(max_workers=2)
+    try:
+        with create_ssrf_proxy_mcp_http_client(
+            headers=transport.request_headers,
+            timeout=httpx.Timeout(transport.timeout, read=transport.sse_read_timeout),
+        ) as client:
+            # Define callbacks that need access to thread pool
+            def start_get_stream():
+                """Start a worker thread to handle server-initiated messages."""
+                executor.submit(transport.handle_get_stream, client, server_to_client_queue)
 
-                # Start the post_writer worker thread
-                executor.submit(
-                    transport.post_writer,
-                    client,
-                    client_to_server_queue,  # Queue for messages FROM client TO server
-                    server_to_client_queue,  # Queue for messages FROM server TO client
-                    start_get_stream,
-                )
+            # Start the post_writer worker thread
+            executor.submit(
+                transport.post_writer,
+                client,
+                client_to_server_queue,  # Queue for messages FROM client TO server
+                server_to_client_queue,  # Queue for messages FROM server TO client
+                start_get_stream,
+            )
 
-                try:
-                    yield (
-                        server_to_client_queue,  # Queue for receiving messages FROM server
-                        client_to_server_queue,  # Queue for sending messages TO server
-                        transport.get_session_id,
-                    )
-                finally:
-                    if transport.session_id and terminate_on_close:
-                        transport.terminate_session(client)
-
-                    # Signal threads to stop
-                    client_to_server_queue.put(None)
-        finally:
-            # Clear any remaining items and add None sentinel to unblock any waiting threads
             try:
-                while not client_to_server_queue.empty():
-                    client_to_server_queue.get_nowait()
-            except queue.Empty:
-                pass
+                yield (
+                    server_to_client_queue,  # Queue for receiving messages FROM server
+                    client_to_server_queue,  # Queue for sending messages TO server
+                    transport.get_session_id,
+                )
+            finally:
+                if transport.session_id and terminate_on_close:
+                    transport.terminate_session(client)
 
-            client_to_server_queue.put(None)
-            server_to_client_queue.put(None)
+                # Signal threads to stop
+                client_to_server_queue.put(None)
+    finally:
+        # Clear any remaining items and add None sentinel to unblock any waiting threads
+        try:
+            while not client_to_server_queue.empty():
+                client_to_server_queue.get_nowait()
+        except queue.Empty:
+            pass
+
+        client_to_server_queue.put(None)
+        server_to_client_queue.put(None)
+
+        # Shutdown executor without waiting to prevent hanging
+        executor.shutdown(wait=False)

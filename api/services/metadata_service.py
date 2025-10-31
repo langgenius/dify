@@ -89,7 +89,7 @@ class MetadataService:
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
             db.session.commit()
-            return metadata  # type: ignore
+            return metadata
         except Exception:
             logger.exception("Update metadata name failed")
         finally:
