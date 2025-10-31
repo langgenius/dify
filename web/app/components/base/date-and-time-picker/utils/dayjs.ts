@@ -150,7 +150,7 @@ export const toDayjs = (value: string | Dayjs | undefined, options: ToDayjsOptio
 
   if (format) {
     const parsedWithFormat = tzName
-      ? dayjs.tz(trimmed, format, tzName, true)
+      ? dayjs(trimmed, format, true).tz(tzName, true)
       : dayjs(trimmed, format, true)
     if (parsedWithFormat.isValid())
       return parsedWithFormat
@@ -191,7 +191,7 @@ export const toDayjs = (value: string | Dayjs | undefined, options: ToDayjsOptio
   const candidateFormats = formats ?? COMMON_PARSE_FORMATS
   for (const fmt of candidateFormats) {
     const parsed = tzName
-      ? dayjs.tz(trimmed, fmt, tzName, true)
+      ? dayjs(trimmed, fmt, true).tz(tzName, true)
       : dayjs(trimmed, fmt, true)
     if (parsed.isValid())
       return parsed

@@ -322,6 +322,8 @@ def migrate_knowledge_vector_database() -> None:
             )
 
             datasets = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
+            if not datasets.items:
+                break
         except SQLAlchemyError:
             raise
 
