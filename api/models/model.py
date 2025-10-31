@@ -941,8 +941,8 @@ class Message(Base):
     status: Mapped[str] = mapped_column(
         String(255), nullable=False, server_default=sa.text("'normal'::character varying")
     )
-    error: Mapped[str] = mapped_column(sa.Text)
-    message_metadata: Mapped[str] = mapped_column(sa.Text)
+    error: Mapped[str | None] = mapped_column(sa.Text)
+    message_metadata: Mapped[str | None] = mapped_column(sa.Text)
     invoke_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
     from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
