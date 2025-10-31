@@ -10,6 +10,7 @@ from core.helper.encrypter import (
     encrypt_token,
     get_decrypt_decoding,
     obfuscated_token,
+    encrypt_secret_keys,
 )
 from libs.rsa import PrivkeyNotFoundError
 
@@ -36,6 +37,59 @@ class TestObfuscatedToken:
         assert token not in obfuscated
         assert "*" * 12 in obfuscated
 
+    def test_encrypt_secret_keys_simple_dict(self):
+        data = {
+            "api_key": "fake-secret-key",
+            "username": "admin"
+        }
+        secret_vars = {"api_key"}
+
+        result = encrypt_secret_keys(data, secret_vars)
+
+        # api_key should be obfuscated
+        assert result["api_key"] == obfuscated_token("fake-secret-key")
+        # username should remain unchanged
+        assert result["username"] == "admin"
+
+    def test_encrypt_secret_keys_nested_dict(self):
+        data = {
+            "outer": {
+                "inner_secret": "super-secret",
+                "inner_public": "visible"
+            },
+            "non_secret": "plain"
+        }
+        secret_vars = {"inner_secret"}
+
+        result = encrypt_secret_keys(data, secret_vars)
+
+        assert result["outer"]["inner_secret"] == obfuscated_token("super-secret")
+        assert result["outer"]["inner_public"] == "visible"
+        assert result["non_secret"] == "plain"
+
+    def test_encrypt_secret_keys_list_of_dicts(self):
+        data = [
+            {"token1": "abc123", "id": 1},
+            {"token2": "xyz789", "id": 2}
+        ]
+        secret_vars = {"token1","token2"}
+
+        result = encrypt_secret_keys(data, secret_vars)
+
+        assert result[0]["token1"] == obfuscated_token("abc123")
+        assert result[1]["token2"] == obfuscated_token("xyz789")
+        assert result[0]["id"] == 1
+
+
+    def test_encrypt_secret_keys_non_secret_scalar(self):
+        # When the object is just a string, it should remain unchanged
+        result = encrypt_secret_keys("hello-world", secret_variables={"api_key"})
+        assert result == "hello-world"
+
+    def test_encrypt_secret_keys_handles_empty_inputs(self):
+        assert encrypt_secret_keys({}, {"secret"}) == {}
+        assert encrypt_secret_keys([], {"secret"}) == []
+        assert encrypt_secret_keys(None, {"secret"}) is None
 
 class TestEncryptToken:
     @patch("models.engine.db.session.query")
