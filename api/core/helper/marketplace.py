@@ -11,6 +11,20 @@ marketplace_api_url = URL(str(dify_config.MARKETPLACE_API_URL))
 
 
 def get_plugin_pkg_url(plugin_unique_identifier: str) -> str:
+    # Parse org/name:version format (without checksum)
+    if "/" in plugin_unique_identifier and ":" in plugin_unique_identifier:
+        # Remove checksum if present (format: org/name:version@checksum)
+        if "@" in plugin_unique_identifier:
+            plugin_unique_identifier = plugin_unique_identifier.split("@")[0]
+
+        # Parse org/name:version
+        org_and_name, version = plugin_unique_identifier.rsplit(":", 1)
+        org, name = org_and_name.split("/", 1)
+
+        # Use new endpoint format
+        return str(marketplace_api_url / f"api/v1/plugins/{org}/{name}/{version}/download")
+
+    # Fallback to old format with query param
     return str((marketplace_api_url / "api/v1/plugins/download").with_query(unique_identifier=plugin_unique_identifier))
 
 
