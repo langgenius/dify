@@ -135,6 +135,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
+        for layer in self._graph_engine_layers:
+            workflow_entry.graph_engine.layer(layer)
 
         generator = workflow_entry.run()
 

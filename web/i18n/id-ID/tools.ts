@@ -185,6 +185,12 @@ const translation = {
       headerValuePlaceholder: 'Bearer 123',
       noHeaders: 'Tidak ada header kustom yang dikonfigurasi',
       maskedHeadersTip: 'Nilai header disembunyikan untuk keamanan. Perubahan akan memperbarui nilai yang sebenarnya.',
+      clientSecretPlaceholder: 'Rahasia Klien',
+      authentication: 'Otentikasi',
+      useDynamicClientRegistration: 'Gunakan Pendaftaran Klien Dinamis',
+      configurations: 'Konfigurasi',
+      clientSecret: 'Rahasia Klien',
+      clientID: 'ID Klien',
     },
     operation: {
       edit: 'Mengedit',
