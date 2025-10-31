@@ -11,6 +11,7 @@ import type { FileEntity } from './types'
 import { useFileStore } from './store'
 import {
   fileUpload,
+  getFileUploadErrorMessage,
   getSupportFileType,
   isAllowedFileExtension,
 } from './utils'
@@ -172,8 +173,9 @@ export const useFile = (fileConfig: FileUpload) => {
         onSuccessCallback: (res) => {
           handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
-        onErrorCallback: () => {
-          notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerUploadError') })
+        onErrorCallback: (error?: any) => {
+          const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)
+          notify({ type: 'error', message: errorMessage })
           handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
       }, !!params.token)
@@ -279,8 +281,9 @@ export const useFile = (fileConfig: FileUpload) => {
           onSuccessCallback: (res) => {
             handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
-          onErrorCallback: () => {
-            notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerUploadError') })
+          onErrorCallback: (error?: any) => {
+            const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)
+            notify({ type: 'error', message: errorMessage })
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
         }, !!params.token)

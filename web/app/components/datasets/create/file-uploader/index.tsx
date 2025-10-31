@@ -18,6 +18,7 @@ import { LanguagesSupported } from '@/i18n-config/language'
 import { IS_CE_EDITION } from '@/config'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
+import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
 
 type IFileUploaderProps = {
   fileList: FileItem[]
@@ -134,7 +135,8 @@ const FileUploader = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        notify({ type: 'error', message: e?.response?.code === 'forbidden' ? e?.response?.message : t('datasetCreation.stepOne.uploader.failed') })
+        const errorMessage = getFileUploadErrorMessage(e, t('datasetCreation.stepOne.uploader.failed'), t)
+        notify({ type: 'error', message: errorMessage })
         onFileUpdate(fileItem, -2, fileListRef.current)
         return Promise.resolve({ ...fileItem })
       })
