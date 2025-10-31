@@ -10,6 +10,7 @@ from flask import abort, request
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import current_account_with_tenant
@@ -133,7 +134,7 @@ def cloud_edition_billing_knowledge_limit_check(resource: str):
             features = FeatureService.get_features(current_tenant_id)
             if features.billing.enabled:
                 if resource == "add_segment":
-                    if features.billing.subscription.plan == "sandbox":
+                    if features.billing.subscription.plan == CloudPlan.SANDBOX:
                         abort(
                             403,
                             "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.",

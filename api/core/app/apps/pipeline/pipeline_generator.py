@@ -40,6 +40,7 @@ from core.workflow.repositories.draft_variable_repository import DraftVariableSa
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.flask_utils import preserve_flask_contexts
@@ -255,7 +256,7 @@ class PipelineGenerator(BaseAppGenerator):
             json_text = json.dumps(text)
             upload_file = FileService(db.engine).upload_text(json_text, name, user.id, dataset.tenant_id)
             features = FeatureService.get_features(dataset.tenant_id)
-            if features.billing.enabled and features.billing.subscription.plan == "sandbox":
+            if features.billing.enabled and features.billing.subscription.plan == CloudPlan.SANDBOX:
                 tenant_pipeline_task_key = f"tenant_pipeline_task:{dataset.tenant_id}"
                 tenant_self_pipeline_task_queue = f"tenant_self_pipeline_task_queue:{dataset.tenant_id}"
 
