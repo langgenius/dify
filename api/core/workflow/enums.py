@@ -92,7 +92,7 @@ class WorkflowType(StrEnum):
 
 
 class WorkflowExecutionStatus(StrEnum):
-    # State diagram for the workflw status:
+    # State diagram for the workflow status:
     # (@) means start, (*) means end
     #
     #       ┌------------------>------------------------->------------------->--------------┐
@@ -161,13 +161,13 @@ class WorkflowExecutionStatus(StrEnum):
     # This enum value is currently unused.
     SCHEDULED = "scheduled"
 
-    # `RUNNING` means the workflow is exeuting.
+    # `RUNNING` means the workflow is executing.
     RUNNING = "running"
 
     # `SUCCEEDED` means the execution of workflow succeed without any error.
     SUCCEEDED = "succeeded"
 
-    # `FAILED` means the execution of workflow failed without some errors.
+    # `FAILED` means the execution of the workflow failed due to errors.
     FAILED = "failed"
 
     # `STOPPED` means the execution of workflow was stopped, either manually

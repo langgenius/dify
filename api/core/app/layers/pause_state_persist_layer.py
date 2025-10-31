@@ -48,9 +48,12 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         if not isinstance(event, GraphRunPausedEvent):
             return
 
-        assert self.graph_runtime_state is not None
+        if self.graph_runtime_state is None:
+            raise RuntimeError("graph_runtime_state is None when processing GraphRunPausedEvent")
+        
         workflow_run_id: str | None = self.graph_runtime_state.system_variable.workflow_execution_id
-        assert workflow_run_id is not None
+        if workflow_run_id is None:
+            raise ValueError("workflow_execution_id is None when processing GraphRunPausedEvent")
         repo = self._get_repo()
         repo.create_workflow_pause(
             workflow_run_id=workflow_run_id,
