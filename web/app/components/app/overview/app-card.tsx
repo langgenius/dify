@@ -163,7 +163,7 @@ function AppCard({
   }, [appDetail])
   const handleAccessControlUpdate = useCallback(async () => {
     try {
-      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail!.id })
+      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail?.id || '' })
       setAppDetail(res)
       setShowAccessControl(false)
     }
@@ -345,7 +345,7 @@ function AppCard({
               mode={appInfo.mode}
             />
             {
-              showAccessControl && <AccessControl app={appDetail!}
+              showAccessControl && appDetail && <AccessControl app={appDetail}
                 onConfirm={handleAccessControlUpdate}
                 onClose={() => { setShowAccessControl(false) }} />
             }

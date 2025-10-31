@@ -25,13 +25,14 @@ export const useWorkflowInit = () => {
     nodes: nodesTemplate,
     edges: edgesTemplate,
   } = useWorkflowTemplate()
-  const appDetail = useAppStore(state => state.appDetail)!
+  const appDetail = useAppStore(state => state.appDetail)
   const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
-    workflowStore.setState({ appId: appDetail.id, appName: appDetail.name })
-  }, [appDetail.id, workflowStore])
+    if (appDetail)
+      workflowStore.setState({ appId: appDetail.id, appName: appDetail.name })
+  }, [appDetail?.id, workflowStore])
 
   const handleUpdateWorkflowFileUploadConfig = useCallback((config: FileUploadConfigResponse) => {
     const { setFileUploadConfig } = workflowStore.getState()
@@ -43,6 +44,8 @@ export const useWorkflowInit = () => {
   } = useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
 
   const handleGetInitialWorkflowData = useCallback(async () => {
+    if (!appDetail) return
+
     try {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       setData(res)
@@ -90,9 +93,11 @@ export const useWorkflowInit = () => {
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
+    if (!appDetail) return
+
     try {
-      const nodesDefaultConfigsData = await fetchNodesDefaultConfigs(`/apps/${appDetail?.id}/workflows/default-workflow-block-configs`)
-      const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${appDetail?.id}/workflows/publish`)
+      const nodesDefaultConfigsData = await fetchNodesDefaultConfigs(`/apps/${appDetail.id}/workflows/default-workflow-block-configs`)
+      const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${appDetail.id}/workflows/publish`)
       workflowStore.setState({
         nodesDefaultConfigs: nodesDefaultConfigsData.reduce((acc, block) => {
           if (!acc[block.type])

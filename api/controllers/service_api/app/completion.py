@@ -2,6 +2,7 @@ import logging
 
 from flask import request
 from flask_restx import Resource, reqparse
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -26,12 +27,14 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
+from extensions.ext_database import db
 from libs import helper
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.workflow_alias_service import WorkflowAliasService
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +67,15 @@ chat_parser = (
         help="Auto generate conversation name",
     )
     .add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
+)
+chat_parser.add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
+chat_parser.add_argument(
+    "workflow_alias",
+    type=str,
+    required=False,
+    default="",
+    location="json",
+    help="Workflow alias for advanced chat",
 )
 
 
@@ -183,6 +195,11 @@ class ChatApi(Resource):
 
         args = chat_parser.parse_args()
 
+        workflow_alias = args.get("workflow_alias")
+        if workflow_alias:
+            workflow_id = self._fetch_workflow_id_by_alias(app_model=app_model, workflow_alias=workflow_alias)
+            args["workflow_id"] = workflow_id
+
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
@@ -223,6 +240,29 @@ class ChatApi(Resource):
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()
+
+    def _fetch_workflow_id_by_alias(self, *, app_model: App, workflow_alias: str = "") -> str:
+        """
+        Resolve workflow_alias to workflow_id
+        Priority: workflow_alias > workflow_id > latest published workflow
+        """
+        if workflow_alias:
+            workflow_alias_service = WorkflowAliasService()
+            with Session(db.engine) as session:
+                workflow = workflow_alias_service.get_workflow_by_alias(
+                    session=session,
+                    app_id=app_model.id,
+                    name=workflow_alias,
+                )
+
+                if not workflow:
+                    raise WorkflowNotFoundError(f"Workflow with alias '{workflow_alias}' not found")
+
+                workflow_id = workflow.id
+
+            return workflow_id
+
+        return ""
 
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")

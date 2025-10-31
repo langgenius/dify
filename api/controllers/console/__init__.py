@@ -1,20 +1,24 @@
 from importlib import import_module
+from typing import TYPE_CHECKING
 
 from flask import Blueprint
 from flask_restx import Namespace
 
 from libs.external_api import ExternalApi
 
+if TYPE_CHECKING:
+    from flask_restx import Api
+
+console_ns = Namespace("console", description="Console management API operations", path="/")
+
 bp = Blueprint("console", __name__, url_prefix="/console/api")
 
-api = ExternalApi(
+api: "Api" = ExternalApi(
     bp,
     version="1.0",
     title="Console API",
     description="Console management APIs for app configuration, monitoring, and administration",
 )
-
-console_ns = Namespace("console", description="Console management API operations", path="/")
 
 RESOURCE_MODULES = (
     "controllers.console.app.app_import",
@@ -67,6 +71,9 @@ from .app import (
     workflow_run,
     workflow_statistic,
 )
+
+# Register workflow alias routes
+from .app.workflow_alias import WorkflowAliasApi
 
 # Import auth controllers
 from .auth import (
@@ -129,6 +136,9 @@ from .workspace import (
     workspace,
 )
 
+api.add_resource(
+    WorkflowAliasApi, "/apps/<uuid:app_id>/workflow-aliases", "/apps/<uuid:app_id>/workflow-aliases/<uuid:alias_id>"
+)
 api.add_namespace(console_ns)
 
 __all__ = [
