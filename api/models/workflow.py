@@ -86,7 +86,7 @@ class _InvalidGraphDefinitionError(Exception):
     pass
 
 
-class Workflow(Base):
+class Workflow(TypeBase):
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
 
@@ -125,18 +125,20 @@ class Workflow(Base):
         sa.Index("workflow_version_idx", "tenant_id", "app_id", "version"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    type: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[WorkflowType] = mapped_column(String(255), nullable=False)
     version: Mapped[str] = mapped_column(String(255), nullable=False)
-    marked_name: Mapped[str] = mapped_column(default="", server_default="")
-    marked_comment: Mapped[str] = mapped_column(default="", server_default="")
     graph: Mapped[str] = mapped_column(sa.Text)
     _features: Mapped[str] = mapped_column("features", sa.TEXT)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by: Mapped[str | None] = mapped_column(StringUUID)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, init=False)
+    marked_name: Mapped[str] = mapped_column(default="", server_default="")
+    marked_comment: Mapped[str] = mapped_column(default="", server_default="")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
@@ -144,13 +146,13 @@ class Workflow(Base):
         server_onupdate=func.current_timestamp(),
     )
     _environment_variables: Mapped[str] = mapped_column(
-        "environment_variables", sa.Text, nullable=False, server_default="{}"
+        "environment_variables", sa.Text, nullable=False, server_default="{}", default="{}"
     )
     _conversation_variables: Mapped[str] = mapped_column(
-        "conversation_variables", sa.Text, nullable=False, server_default="{}"
+        "conversation_variables", sa.Text, nullable=False, server_default="{}", default="{}"
     )
     _rag_pipeline_variables: Mapped[str] = mapped_column(
-        "rag_pipeline_variables", db.Text, nullable=False, server_default="{}"
+        "rag_pipeline_variables", sa.Text, nullable=False, server_default="{}", default="{}"
     )
 
     VERSION_DRAFT = "draft"
@@ -172,22 +174,24 @@ class Workflow(Base):
         marked_name: str = "",
         marked_comment: str = "",
     ) -> "Workflow":
-        workflow = Workflow()
-        workflow.id = str(uuid4())
-        workflow.tenant_id = tenant_id
-        workflow.app_id = app_id
-        workflow.type = type
-        workflow.version = version
-        workflow.graph = graph
-        workflow.features = features
-        workflow.created_by = created_by
-        workflow.environment_variables = environment_variables or []
-        workflow.conversation_variables = conversation_variables or []
-        workflow.rag_pipeline_variables = rag_pipeline_variables or []
-        workflow.marked_name = marked_name
-        workflow.marked_comment = marked_comment
-        workflow.created_at = naive_utc_now()
-        workflow.updated_at = workflow.created_at
+        n = naive_utc_now()
+        workflow = Workflow(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            app_id=app_id,
+            type=type,
+            version=version,
+            graph=graph,
+            _features=features,
+            created_by=created_by,
+            environment_variables=environment_variables or [],
+            conversation_variables=conversation_variables or [],
+            rag_pipeline_variables=rag_pipeline_variables or [],
+            marked_name=marked_name,
+            marked_comment=marked_comment,
+            created_at=n,
+            updated_at=n,
+        )
         return workflow
 
     @property
@@ -495,7 +499,7 @@ class Workflow(Base):
         return str(d)
 
 
-class WorkflowRun(Base):
+class WorkflowRun(TypeBase):
     """
     Workflow Run
 
@@ -635,28 +639,28 @@ class WorkflowRun(Base):
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "WorkflowRun":
-        return cls(
-            id=data.get("id"),
-            tenant_id=data.get("tenant_id"),
-            app_id=data.get("app_id"),
-            workflow_id=data.get("workflow_id"),
-            type=data.get("type"),
-            triggered_from=data.get("triggered_from"),
-            version=data.get("version"),
-            graph=json.dumps(data.get("graph")),
-            inputs=json.dumps(data.get("inputs")),
-            status=data.get("status"),
-            outputs=json.dumps(data.get("outputs")),
-            error=data.get("error"),
-            elapsed_time=data.get("elapsed_time"),
-            total_tokens=data.get("total_tokens"),
-            total_steps=data.get("total_steps"),
-            created_by_role=data.get("created_by_role"),
-            created_by=data.get("created_by"),
-            created_at=data.get("created_at"),
-            finished_at=data.get("finished_at"),
-            exceptions_count=data.get("exceptions_count"),
-        )
+        workflow_run = cls()
+        workflow_run.id = data.get("id")  # type: ignore
+        workflow_run.tenant_id = data.get("tenant_id")  # type: ignore
+        workflow_run.app_id = data.get("app_id")  # type: ignore
+        workflow_run.workflow_id = data.get("workflow_id")  # type: ignore
+        workflow_run.type = data.get("type")  # type: ignore
+        workflow_run.triggered_from = data.get("triggered_from")  # type: ignore
+        workflow_run.version = data.get("version")  # type: ignore
+        workflow_run.graph = json.dumps(data.get("graph"))
+        workflow_run.inputs = json.dumps(data.get("inputs"))
+        workflow_run.status = data.get("status")  # type: ignore
+        workflow_run.outputs = json.dumps(data.get("outputs"))
+        workflow_run.error = data.get("error")
+        workflow_run.elapsed_time = data.get("elapsed_time", 0)
+        workflow_run.total_tokens = data.get("total_tokens", 0)
+        workflow_run.total_steps = data.get("total_steps", 0)
+        workflow_run.created_by_role = data.get("created_by_role")  # type: ignore
+        workflow_run.created_by = data.get("created_by")  # type: ignore
+        workflow_run.created_at = data.get("created_at")  # type: ignore
+        workflow_run.finished_at = data.get("finished_at")
+        workflow_run.exceptions_count = data.get("exceptions_count", 0)
+        return workflow_run
 
 
 class WorkflowNodeExecutionTriggeredFrom(StrEnum):
@@ -669,7 +673,7 @@ class WorkflowNodeExecutionTriggeredFrom(StrEnum):
     RAG_PIPELINE_RUN = "rag-pipeline-run"
 
 
-class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offload_data` preloaded in most cases.
+class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `offload_data` preloaded in most cases.
     """
     Workflow Node Execution
 
@@ -762,29 +766,29 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
             ),
         )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID)
     triggered_from: Mapped[str] = mapped_column(String(255))
-    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
     index: Mapped[int] = mapped_column(sa.Integer)
-    predecessor_node_id: Mapped[str | None] = mapped_column(String(255))
-    node_execution_id: Mapped[str | None] = mapped_column(String(255))
+    predecessor_node_id: Mapped[str | None] = mapped_column(String(255), default=None)
+    node_execution_id: Mapped[str | None] = mapped_column(String(255), default=None)
     node_id: Mapped[str] = mapped_column(String(255))
     node_type: Mapped[str] = mapped_column(String(255))
     title: Mapped[str] = mapped_column(String(255))
-    inputs: Mapped[str | None] = mapped_column(sa.Text)
-    process_data: Mapped[str | None] = mapped_column(sa.Text)
-    outputs: Mapped[str | None] = mapped_column(sa.Text)
+    inputs: Mapped[str | None] = mapped_column(sa.Text, default=None)
+    process_data: Mapped[str | None] = mapped_column(sa.Text, default=None)
+    outputs: Mapped[str | None] = mapped_column(sa.Text, default=None)
     status: Mapped[str] = mapped_column(String(255))
-    error: Mapped[str | None] = mapped_column(sa.Text)
-    elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"))
-    execution_metadata: Mapped[str | None] = mapped_column(sa.Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
+    error: Mapped[str | None] = mapped_column(sa.Text, default=None)
+    elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"), default=0)
+    execution_metadata: Mapped[str | None] = mapped_column(sa.Text, default=None)
     created_by_role: Mapped[str] = mapped_column(String(255))
     created_by: Mapped[str] = mapped_column(StringUUID)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), init=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
 
     offload_data: Mapped[list["WorkflowNodeExecutionOffload"]] = orm.relationship(
         "WorkflowNodeExecutionOffload",
@@ -792,6 +796,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         uselist=True,
         lazy="raise",
         back_populates="execution",
+        init=False,
     )
 
     @staticmethod
@@ -915,7 +920,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         return self._load_full_content(session, offload.file_id, storage)
 
 
-class WorkflowNodeExecutionOffload(Base):
+class WorkflowNodeExecutionOffload(TypeBase):
     __tablename__ = "workflow_node_execution_offload"
     __table_args__ = (
         # PostgreSQL 14 treats NULL values as distinct in unique constraints by default,
@@ -940,10 +945,6 @@ class WorkflowNodeExecutionOffload(Base):
         server_default=sa.text("uuidv7()"),
     )
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=naive_utc_now, server_default=func.current_timestamp()
-    )
-
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
 
@@ -952,6 +953,10 @@ class WorkflowNodeExecutionOffload(Base):
     # and should be considered for garbage collection.
     node_execution_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     type_: Mapped[ExecutionOffLoadType] = mapped_column(EnumText(ExecutionOffLoadType), name="type", nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=naive_utc_now, server_default=func.current_timestamp(), init=False
+    )
 
     # Design Decision: Combining inputs and outputs into a single object was considered to reduce I/O
     # operations. However, due to the current design of `WorkflowNodeExecutionRepository`,
@@ -969,7 +974,7 @@ class WorkflowNodeExecutionOffload(Base):
     # observability and system reliability.
 
     # `file_id` references to the offloaded storage object containing the data.
-    file_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    file_id: Mapped[str] = mapped_column(StringUUID, nullable=False, init=False)
 
     execution: Mapped[WorkflowNodeExecutionModel] = orm.relationship(
         foreign_keys=[node_execution_id],
@@ -977,6 +982,7 @@ class WorkflowNodeExecutionOffload(Base):
         uselist=False,
         primaryjoin="WorkflowNodeExecutionOffload.node_execution_id == WorkflowNodeExecutionModel.id",
         back_populates="offload_data",
+        init=False,
     )
 
     file: Mapped[Optional["UploadFile"]] = orm.relationship(
@@ -984,6 +990,7 @@ class WorkflowNodeExecutionOffload(Base):
         lazy="raise",
         uselist=False,
         primaryjoin="WorkflowNodeExecutionOffload.file_id == UploadFile.id",
+        init=False,
     )
 
 
@@ -1010,7 +1017,7 @@ class WorkflowAppLogCreatedFrom(StrEnum):
         raise ValueError(f"invalid workflow app log created from value {value}")
 
 
-class WorkflowAppLog(Base):
+class WorkflowAppLog(TypeBase):
     """
     Workflow App execution log, excluding workflow debugging records.
 
@@ -1046,11 +1053,11 @@ class WorkflowAppLog(Base):
         sa.Index("workflow_app_log_workflow_run_id_idx", "workflow_run_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    workflow_run_id: Mapped[str] = mapped_column(StringUUID)
+    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
     created_from: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1086,10 +1093,10 @@ class WorkflowAppLog(Base):
         }
 
 
-class ConversationVariable(Base):
+class ConversationVariable(TypeBase):
     __tablename__ = "workflow_conversation_variables"
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, init=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False, primary_key=True, index=True)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
     data: Mapped[str] = mapped_column(sa.Text, nullable=False)
@@ -1156,7 +1163,11 @@ class WorkflowDraftVariable(Base):
     __allow_unmapped__ = True
 
     # id is the unique identifier of a draft variable.
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, primary_key=True, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
+
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -1174,7 +1185,6 @@ class WorkflowDraftVariable(Base):
     )
 
     # "`app_id` maps to the `id` field in the `model.App` model."
-    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     # `last_edited_at` records when the value of a given draft variable
     # is edited.
@@ -1196,20 +1206,21 @@ class WorkflowDraftVariable(Base):
     #
     # However, there's one caveat. The id of the first "Answer" node in chatflow is "answer". (Other
     # "Answer" node conform the rules above.)
-    node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="node_id")
+    node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="node_id", init=False)
 
     # From `VARIABLE_PATTERN`, we may conclude that the length of a top level variable is less than
     # 80 chars.
     #
     # ref: api/core/workflow/entities/variable_pool.py:18
-    name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    name: Mapped[str] = mapped_column(sa.String(255), nullable=False, init=False)
     description: Mapped[str] = mapped_column(
         sa.String(255),
         default="",
         nullable=False,
+        init=False,
     )
 
-    selector: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="selector")
+    selector: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="selector", init=False)
 
     # The data type of this variable's value
     #
@@ -1217,18 +1228,18 @@ class WorkflowDraftVariable(Base):
     # which may differ from the original value's type. Typically, they are the same,
     # but in cases where the structurally truncated  value still exceeds the size limit,
     # text slicing is applied, and the `value_type` is converted to `STRING`.
-    value_type: Mapped[SegmentType] = mapped_column(EnumText(SegmentType, length=20))
+    value_type: Mapped[SegmentType] = mapped_column(EnumText(SegmentType, length=20), init=False)
 
     # The variable's value serialized as a JSON string
     #
     # If the variable is offloaded, `value` contains a truncated version, not the full original value.
-    value: Mapped[str] = mapped_column(sa.Text, nullable=False, name="value")
+    value: Mapped[str] = mapped_column(sa.Text, nullable=False, name="value", init=False)
 
     # Controls whether the variable should be displayed in the variable inspection panel
-    visible: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
+    visible: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True, init=False)
 
     # Determines whether this variable can be modified by users
-    editable: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    editable: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False, init=False)
 
     # The `node_execution_id` field identifies the workflow node execution that created this variable.
     # It corresponds to the `id` field in the `WorkflowNodeExecutionModel` model.
@@ -1260,6 +1271,7 @@ class WorkflowDraftVariable(Base):
             "Indicates whether the current value is the default for a conversation variable. "
             "Always `FALSE` for other types of variables."
         ),
+        init=False,
     )
 
     # Relationship to WorkflowDraftVariableFile
@@ -1268,6 +1280,7 @@ class WorkflowDraftVariable(Base):
         lazy="raise",
         uselist=False,
         primaryjoin="WorkflowDraftVariableFile.id == WorkflowDraftVariable.file_id",
+        init=False,
     )
 
     # Cache for deserialized value
@@ -1281,7 +1294,7 @@ class WorkflowDraftVariable(Base):
     #
     # Use double underscore prefix for better encapsulation,
     # making this attribute harder to access from outside the class.
-    __value: Segment | None
+    __value: Segment | None = None
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """
@@ -1517,7 +1530,7 @@ class WorkflowDraftVariable(Base):
         return self.last_edited_at is not None
 
 
-class WorkflowDraftVariableFile(Base):
+class WorkflowDraftVariableFile(TypeBase):
     """Stores metadata about files associated with large workflow draft variables.
 
     This model acts as an intermediary between WorkflowDraftVariable and UploadFile,
@@ -1531,12 +1544,7 @@ class WorkflowDraftVariableFile(Base):
     __tablename__ = "workflow_draft_variable_files"
 
     # Primary key
-    id: Mapped[str] = mapped_column(
-        StringUUID,
-        primary_key=True,
-        default=uuidv7,
-        server_default=sa.text("uuidv7()"),
-    )
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=uuidv7, server_default=sa.text("uuidv7()"))
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -1549,18 +1557,21 @@ class WorkflowDraftVariableFile(Base):
         StringUUID,
         nullable=False,
         comment="The tenant to which the WorkflowDraftVariableFile belongs, referencing Tenant.id",
+        init=False,
     )
 
     app_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
         comment="The application to which the WorkflowDraftVariableFile belongs, referencing App.id",
+        init=False,
     )
 
     user_id: Mapped[str] = mapped_column(
         StringUUID,
         nullable=False,
         comment="The owner to of the WorkflowDraftVariableFile, referencing Account.id",
+        init=False,
     )
 
     # Reference to the `UploadFile.id` field
@@ -1568,6 +1579,7 @@ class WorkflowDraftVariableFile(Base):
         StringUUID,
         nullable=False,
         comment="Reference to UploadFile containing the large variable data",
+        init=False,
     )
 
     # -------------- metadata about the variable content --------------
@@ -1577,6 +1589,7 @@ class WorkflowDraftVariableFile(Base):
         sa.BigInteger,
         nullable=False,
         comment="Size of the original variable content in bytes",
+        init=False,
     )
 
     length: Mapped[int | None] = mapped_column(
@@ -1587,12 +1600,14 @@ class WorkflowDraftVariableFile(Base):
             "this represents the number of elements. For object types, it indicates the number of keys. "
             "For other types, the value is NULL."
         ),
+        init=False,
     )
 
     # The `value_type` field records the type of the original value.
     value_type: Mapped[SegmentType] = mapped_column(
         EnumText(SegmentType, length=20),
         nullable=False,
+        init=False,
     )
 
     # Relationship to UploadFile
@@ -1601,6 +1616,7 @@ class WorkflowDraftVariableFile(Base):
         lazy="raise",
         uselist=False,
         primaryjoin="WorkflowDraftVariableFile.upload_file_id == UploadFile.id",
+        init=False,
     )
 
 

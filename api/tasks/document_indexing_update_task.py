@@ -51,7 +51,9 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
             index_node_ids = [segment.index_node_id for segment in segments]
 
             # delete from vector index
-            index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
+            cleaned_node_ids = [node_id for node_id in index_node_ids if node_id is not None]
+            node_ids_param = cleaned_node_ids or None
+            index_processor.clean(dataset, node_ids_param, with_keywords=True, delete_child_chunks=True)
 
             for segment in segments:
                 db.session.delete(segment)
