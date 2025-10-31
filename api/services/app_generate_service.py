@@ -2,8 +2,6 @@ import uuid
 from collections.abc import Generator, Mapping
 from typing import Any, Union
 
-from openai._exceptions import RateLimitError
-
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
@@ -122,8 +120,6 @@ class AppGenerateService:
                 )
             else:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
-        except RateLimitError as e:
-            raise InvokeRateLimitError(str(e))
         except Exception:
             rate_limit.exit(request_id)
             raise

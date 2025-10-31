@@ -2,7 +2,6 @@ import {
   useCallback,
 } from 'react'
 import { uniqBy } from 'lodash-es'
-import { useTranslation } from 'react-i18next'
 import {
   getIncomers,
   getOutgoers,
@@ -24,9 +23,7 @@ import {
   useStore,
   useWorkflowStore,
 } from '../store'
-import { getParallelInfo } from '../utils'
 import {
-  PARALLEL_DEPTH_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
 import type { IterationNodeType } from '../nodes/iteration/types'
@@ -35,16 +32,9 @@ import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useAvailableBlocks } from './use-available-blocks'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import {
-  fetchAllBuiltInTools,
-  fetchAllCustomTools,
-  fetchAllMCPTools,
-  fetchAllWorkflowTools,
-} from '@/service/tools'
+
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import { basePath } from '@/utils/var'
-import { MAX_PARALLEL_LIMIT } from '@/config'
 import { useNodesMetaData } from '.'
 
 export const useIsChatMode = () => {
@@ -54,9 +44,7 @@ export const useIsChatMode = () => {
 }
 
 export const useWorkflow = () => {
-  const { t } = useTranslation()
   const store = useStoreApi()
-  const workflowStore = useWorkflowStore()
   const { getAvailableBlocks } = useAvailableBlocks()
   const { nodesMap } = useNodesMetaData()
 
@@ -290,20 +278,6 @@ export const useWorkflow = () => {
     return isUsed
   }, [isVarUsedInNodes])
 
-  const checkParallelLimit = useCallback((nodeId: string, nodeHandle = 'source') => {
-    const {
-      edges,
-    } = store.getState()
-    const connectedEdges = edges.filter(edge => edge.source === nodeId && edge.sourceHandle === nodeHandle)
-    if (connectedEdges.length > MAX_PARALLEL_LIMIT - 1) {
-      const { setShowTips } = workflowStore.getState()
-      setShowTips(t('workflow.common.parallelTip.limit', { num: MAX_PARALLEL_LIMIT }))
-      return false
-    }
-
-    return true
-  }, [store, workflowStore, t])
-
   const getRootNodesById = useCallback((nodeId: string) => {
     const {
       getNodes,
@@ -374,34 +348,7 @@ export const useWorkflow = () => {
     return startNodes
   }, [nodesMap, getRootNodesById])
 
-  const checkNestedParallelLimit = useCallback((nodes: Node[], edges: Edge[], targetNode?: Node) => {
-    const startNodes = getStartNodes(nodes, targetNode)
-
-    for (let i = 0; i < startNodes.length; i++) {
-      const {
-        parallelList,
-        hasAbnormalEdges,
-      } = getParallelInfo(startNodes[i], nodes, edges)
-      const { workflowConfig } = workflowStore.getState()
-
-      if (hasAbnormalEdges)
-        return false
-
-      for (let i = 0; i < parallelList.length; i++) {
-        const parallel = parallelList[i]
-
-        if (parallel.depth > (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT)) {
-          const { setShowTips } = workflowStore.getState()
-          setShowTips(t('workflow.common.parallelTip.depthLimit', { num: (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT) }))
-          return false
-        }
-      }
-    }
-
-    return true
-  }, [t, workflowStore, getStartNodes])
-
-  const isValidConnection = useCallback(({ source, sourceHandle, target }: Connection) => {
+  const isValidConnection = useCallback(({ source, sourceHandle: _sourceHandle, target }: Connection) => {
     const {
       edges,
       getNodes,
@@ -409,9 +356,6 @@ export const useWorkflow = () => {
     const nodes = getNodes()
     const sourceNode: Node = nodes.find(node => node.id === source)!
     const targetNode: Node = nodes.find(node => node.id === target)!
-
-    if (!checkParallelLimit(source!, sourceHandle || 'source'))
-      return false
 
     if (sourceNode.type === CUSTOM_NOTE_NODE || targetNode.type === CUSTOM_NOTE_NODE)
       return false
@@ -445,7 +389,7 @@ export const useWorkflow = () => {
     }
 
     return !hasCycle(targetNode)
-  }, [store, checkParallelLimit, getAvailableBlocks])
+  }, [store, getAvailableBlocks])
 
   return {
     getNodeById,
@@ -457,59 +401,12 @@ export const useWorkflow = () => {
     isVarUsedInNodes,
     removeUsedVarInNodes,
     isNodeVarsUsedInNodes,
-    checkParallelLimit,
-    checkNestedParallelLimit,
     isValidConnection,
     getBeforeNodeById,
     getIterationNodeChildren,
     getLoopNodeChildren,
     getRootNodesById,
     getStartNodes,
-  }
-}
-
-export const useFetchToolsData = () => {
-  const workflowStore = useWorkflowStore()
-
-  const handleFetchAllTools = useCallback(async (type: string) => {
-    if (type === 'builtin') {
-      const buildInTools = await fetchAllBuiltInTools()
-
-      if (basePath) {
-        buildInTools.forEach((item) => {
-          if (typeof item.icon == 'string' && !item.icon.includes(basePath))
-            item.icon = `${basePath}${item.icon}`
-        })
-      }
-      workflowStore.setState({
-        buildInTools: buildInTools || [],
-      })
-    }
-    if (type === 'custom') {
-      const customTools = await fetchAllCustomTools()
-
-      workflowStore.setState({
-        customTools: customTools || [],
-      })
-    }
-    if (type === 'workflow') {
-      const workflowTools = await fetchAllWorkflowTools()
-
-      workflowStore.setState({
-        workflowTools: workflowTools || [],
-      })
-    }
-    if (type === 'mcp') {
-      const mcpTools = await fetchAllMCPTools()
-
-      workflowStore.setState({
-        mcpTools: mcpTools || [],
-      })
-    }
-  }, [workflowStore])
-
-  return {
-    handleFetchAllTools,
   }
 }
 

@@ -25,8 +25,8 @@ export type TextareaProps = {
   destructive?: boolean
   styleCss?: CSSProperties
   ref?: React.Ref<HTMLTextAreaElement>
-  onFocus?: () => void
-  onBlur?: () => void
+  onFocus?: React.FocusEventHandler<HTMLTextAreaElement>
+  onBlur?: React.FocusEventHandler<HTMLTextAreaElement>
 } & React.TextareaHTMLAttributes<HTMLTextAreaElement> & VariantProps<typeof textareaVariants>
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(

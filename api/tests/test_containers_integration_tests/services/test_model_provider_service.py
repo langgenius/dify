@@ -5,7 +5,7 @@ from faker import Faker
 
 from core.entities.model_entities import ModelStatus
 from core.model_runtime.entities.model_entities import FetchFrom, ModelType
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType
 from services.model_provider_service import ModelProviderService
 
@@ -67,7 +67,7 @@ class TestModelProviderService:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)

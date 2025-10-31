@@ -340,6 +340,7 @@ const translation = {
     moveToThisNode: '定位至此节点',
     maximize: '最大化画布',
     minimize: '退出最大化',
+    optional_and_hidden: '（选填 & 隐藏）',
   },
   nodes: {
     common: {
@@ -456,6 +457,7 @@ const translation = {
       },
       outputVars: {
         output: '生成内容',
+        reasoning_content: '推理内容',
         usage: '模型用量信息',
       },
       singleRun: {
@@ -786,6 +788,8 @@ const translation = {
         removeAbnormalOutput: '移除错误输出',
       },
       answerNodeWarningDesc: '并行模式警告：在迭代中，回答节点、会话变量赋值和工具持久读/写操作可能会导致异常。',
+      flattenOutput: '扁平化输出',
+      flattenOutputDesc: '启用时，如果所有迭代输出都是数组，它们将被扁平化为单个数组。禁用时，输出将保持嵌套数组结构。',
     },
     loop: {
       deleteTitle: '删除循环节点？',
@@ -955,7 +959,12 @@ const translation = {
       aboutRetrieval: '关于知识检索。',
       chunkIsRequired: '分段结构是必需的',
       indexMethodIsRequired: '索引方法是必需的',
+      chunksVariableIsRequired: 'Chunks 变量是必需的',
+      embeddingModelIsRequired: 'Embedding 模型是必需的',
+      embeddingModelIsInvalid: '无效的 Embedding 模型',
       retrievalSettingIsRequired: '检索设置是必需的',
+      rerankingModelIsRequired: 'Reranking 模型是必需的',
+      rerankingModelIsInvalid: '无效的 Reranking 模型',
     },
   },
   tracing: {

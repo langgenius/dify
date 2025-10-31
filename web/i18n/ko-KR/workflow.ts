@@ -349,6 +349,7 @@ const translation = {
     addNextStep: '이 워크플로우에 다음 단계를 추가하세요.',
     minimize: '전체 화면 종료',
     maximize: '캔버스 전체 화면',
+    optional_and_hidden: '(선택 사항 및 숨김)',
   },
   nodes: {
     common: {
@@ -469,6 +470,7 @@ const translation = {
       },
       outputVars: {
         output: '생성된 내용',
+        reasoning_content: '추론 내용',
         usage: '모델 사용 정보',
       },
       singleRun: {
@@ -992,6 +994,11 @@ const translation = {
       retrievalSettingIsRequired: '검색 설정이 필요합니다.',
       chunksInput: '청크',
       chunksInputTip: '지식 기반 노드의 입력 변수는 Chunks입니다. 변수 유형은 선택된 청크 구조와 일치해야 하는 특정 JSON 스키마를 가진 객체입니다.',
+      chunksVariableIsRequired: 'Chunks 변수는 필수입니다',
+      embeddingModelIsRequired: '임베딩 모델이 필요합니다',
+      rerankingModelIsRequired: '재순위 모델이 필요합니다',
+      rerankingModelIsInvalid: '재정렬 모델이 유효하지 않습니다',
+      embeddingModelIsInvalid: '임베딩 모델이 유효하지 않습니다',
     },
   },
   tracing: {

@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: '全不選',
     selectAll: '全選',
     config: '配置',
+    yes: '是',
+    confirmAction: '請確認您的操作。',
+    deleteConfirmTitle: '刪除？',
+    no: '不',
   },
   placeholder: {
     input: '請輸入',
@@ -165,6 +169,7 @@ const translation = {
     support: '支持',
     github: 'GitHub',
     compliance: '合規',
+    contactUs: '聯絡我們',
   },
   settings: {
     accountGroup: '賬戶',
@@ -501,6 +506,7 @@ const translation = {
       selectModelCredential: '選取模型認證',
     },
     parametersInvalidRemoved: '一些參數無效，已被移除',
+    installDataSourceProvider: '安裝資料來源提供者',
   },
   dataSource: {
     add: '新增資料來源',

@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'Izberi vse',
     deSelectAll: 'Odberi vse',
     config: 'Konfiguracija',
+    no: 'Ne',
+    confirmAction: 'Prosimo, potrdite svoje dejanje.',
+    deleteConfirmTitle: 'Izbrisati?',
+    yes: 'Da',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -169,6 +173,7 @@ const translation = {
     support: 'Podpora',
     github: 'GitHub',
     compliance: 'Skladnost',
+    contactUs: 'Kontaktirajte nas',
   },
   settings: {
     accountGroup: 'SPLOŠNO',
@@ -586,6 +591,7 @@ const translation = {
       customModelCredentials: 'Poverilnice modela po meri',
     },
     parametersInvalidRemoved: 'Nekateri parametri so neveljavni in so bili odstranjeni.',
+    installDataSourceProvider: 'Namestite ponudnike podatkovnih virov',
   },
   dataSource: {
     notion: {

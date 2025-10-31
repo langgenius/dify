@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
-from constants.languages import language_timezone_mapping, languages
+from constants.languages import get_valid_language, language_timezone_mapping
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
@@ -22,6 +22,7 @@ from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
+from libs.token import generate_csrf_token
 from models.account import (
     Account,
     AccountIntegrate,
@@ -76,6 +77,7 @@ logger = logging.getLogger(__name__)
 class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
+    csrf_token: str
 
 
 REFRESH_TOKEN_PREFIX = "refresh_token:"
@@ -127,7 +129,7 @@ class AccountService:
         if not account:
             return None
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
         current_tenant = db.session.query(TenantAccountJoin).filter_by(account_id=account.id, current=True).first()
@@ -178,7 +180,7 @@ class AccountService:
         if not account:
             raise AccountPasswordError("Invalid email or password.")
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise AccountLoginError("Account is banned.")
 
         if password and invite_token and account.password is None:
@@ -193,8 +195,8 @@ class AccountService:
         if account.password is None or not compare_password(password, account.password, account.password_salt):
             raise AccountPasswordError("Invalid email or password.")
 
-        if account.status == AccountStatus.PENDING.value:
-            account.status = AccountStatus.ACTIVE.value
+        if account.status == AccountStatus.PENDING:
+            account.status = AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
 
         db.session.commit()
@@ -246,10 +248,8 @@ class AccountService:
                 )
             )
 
-        account = Account()
-        account.email = email
-        account.name = name
-
+        password_to_set = None
+        salt_to_set = None
         if password:
             valid_password(password)
 
@@ -261,14 +261,18 @@ class AccountService:
             password_hashed = hash_password(password, salt)
             base64_password_hashed = base64.b64encode(password_hashed).decode()
 
-            account.password = base64_password_hashed
-            account.password_salt = base64_salt
+            password_to_set = base64_password_hashed
+            salt_to_set = base64_salt
 
-        account.interface_language = interface_language
-        account.interface_theme = interface_theme
-
-        # Set timezone based on language
-        account.timezone = language_timezone_mapping.get(interface_language, "UTC")
+        account = Account(
+            name=name,
+            email=email,
+            password=password_to_set,
+            password_salt=salt_to_set,
+            interface_language=interface_language,
+            interface_theme=interface_theme,
+            timezone=language_timezone_mapping.get(interface_language, "UTC"),
+        )
 
         db.session.add(account)
         db.session.commit()
@@ -355,7 +359,7 @@ class AccountService:
     @staticmethod
     def close_account(account: Account):
         """Close account"""
-        account.status = AccountStatus.CLOSED.value
+        account.status = AccountStatus.CLOSED
         db.session.commit()
 
     @staticmethod
@@ -395,16 +399,17 @@ class AccountService:
         if ip_address:
             AccountService.update_login_info(account=account, ip_address=ip_address)
 
-        if account.status == AccountStatus.PENDING.value:
-            account.status = AccountStatus.ACTIVE.value
+        if account.status == AccountStatus.PENDING:
+            account.status = AccountStatus.ACTIVE
             db.session.commit()
 
         access_token = AccountService.get_account_jwt_token(account=account)
         refresh_token = _generate_refresh_token()
+        csrf_token = generate_csrf_token(account.id)
 
         AccountService._store_refresh_token(refresh_token, account.id)
 
-        return TokenPair(access_token=access_token, refresh_token=refresh_token)
+        return TokenPair(access_token=access_token, refresh_token=refresh_token, csrf_token=csrf_token)
 
     @staticmethod
     def logout(*, account: Account):
@@ -429,8 +434,9 @@ class AccountService:
 
         AccountService._delete_refresh_token(refresh_token, account.id)
         AccountService._store_refresh_token(new_refresh_token, account.id)
+        csrf_token = generate_csrf_token(account.id)
 
-        return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token)
+        return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token, csrf_token=csrf_token)
 
     @staticmethod
     def load_logged_in_account(*, account_id: str):
@@ -764,7 +770,7 @@ class AccountService:
         if not account:
             return None
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
         return account
@@ -1028,7 +1034,7 @@ class TenantService:
     @staticmethod
     def create_tenant_member(tenant: Tenant, account: Account, role: str = "normal") -> TenantAccountJoin:
         """Create tenant member"""
-        if role == TenantAccountRole.OWNER.value:
+        if role == TenantAccountRole.OWNER:
             if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
                 logger.error("Tenant %s has already an owner.", tenant.id)
                 raise Exception("Tenant already has an owner.")
@@ -1253,7 +1259,7 @@ class RegisterService:
         return f"member_invite:token:{token}"
 
     @classmethod
-    def setup(cls, email: str, name: str, password: str, ip_address: str):
+    def setup(cls, email: str, name: str, password: str, ip_address: str, language: str):
         """
         Setup dify
 
@@ -1263,11 +1269,10 @@ class RegisterService:
         :param ip_address: ip address
         """
         try:
-            # Register
             account = AccountService.create_account(
                 email=email,
                 name=name,
-                interface_language=languages[0],
+                interface_language=get_valid_language(language),
                 password=password,
                 is_setup=True,
             )
@@ -1309,11 +1314,11 @@ class RegisterService:
             account = AccountService.create_account(
                 email=email,
                 name=name,
-                interface_language=language or languages[0],
+                interface_language=get_valid_language(language),
                 password=password,
                 is_setup=is_setup,
             )
-            account.status = AccountStatus.ACTIVE.value if not status else status.value
+            account.status = status or AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
 
             if open_id is not None and provider is not None:
@@ -1374,7 +1379,7 @@ class RegisterService:
                 TenantService.create_tenant_member(tenant, account, role)
 
             # Support resend invitation email when the account is pending status
-            if account.status != AccountStatus.PENDING.value:
+            if account.status != AccountStatus.PENDING:
                 raise AccountAlreadyInTenantError("Account already in tenant.")
 
         token = cls.generate_invite_token(tenant, account)

@@ -294,6 +294,11 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             description={t(`${i18nPrefix}.outputVars.output`)}
           />
           <VarItem
+            name='reasoning_content'
+            type='string'
+            description={t(`${i18nPrefix}.outputVars.reasoning_content`)}
+          />
+          <VarItem
             name='usage'
             type='object'
             description={t(`${i18nPrefix}.outputVars.usage`)}
