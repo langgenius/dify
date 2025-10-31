@@ -158,6 +158,7 @@ services:
     restart: always
     volumes:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
+      - ./ssrf_proxy/squid.conf.dev.template:/etc/squid/squid.conf.dev.template
       - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
     entrypoint:
       [

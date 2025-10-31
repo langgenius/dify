@@ -229,6 +229,9 @@ web/public/fallback-*.js
 api/.env.backup
 /clickzetta
 
+# SSRF Proxy - ignore the conf.d directory that's created for testing/local overrides
+docker/ssrf_proxy/conf.d/
+
 # Benchmark
 scripts/stress-test/setup/config/
 scripts/stress-test/reports/
@@ -236,3 +239,4 @@ scripts/stress-test/reports/
 # mcp
 .playwright-mcp/
 .serena/
+
