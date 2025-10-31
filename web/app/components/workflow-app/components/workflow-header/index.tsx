@@ -30,7 +30,7 @@ const WorkflowHeader = () => {
   }, [setCurrentLogItem, setShowMessageLogModal])
 
   const viewHistoryProps = useMemo(() => {
-    if (!appDetail) return null
+    if (!appDetail) return undefined
 
     return {
       onClearLogAndMessageModal: handleClearLogAndMessageModal,
