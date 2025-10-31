@@ -15,6 +15,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         The `state_owner_user_id` is used when creating state file for pause.
         It generally should id of the creator of workflow.
         """
+        super().__init__()
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(session_factory)
         self._session_maker = session_factory

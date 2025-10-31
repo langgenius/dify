@@ -181,8 +181,8 @@ class TestPauseStatePersistenceLayer:
 
         assert layer._session_maker is session_factory
         assert layer._state_owner_user_id == state_owner_user_id
-        assert not hasattr(layer, "graph_runtime_state")
-        assert not hasattr(layer, "command_channel")
+        assert layer.graph_runtime_state is None
+        assert layer.command_channel is None
 
     def test_initialize_sets_dependencies(self):
         session_factory = Mock(name="session_factory")
