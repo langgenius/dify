@@ -25,7 +25,7 @@ api_key_fields = {
 api_key_list = {"data": fields.List(fields.Nested(api_key_fields), attribute="items")}
 
 
-def _get_resource(resource_id, tenant_id, resource_model):
+def _get_resource(resource_id: str, tenant_id: str, resource_model: type[App | Dataset]) -> App | Dataset:
     if resource_model == App:
         with Session(db.engine) as session:
             resource = session.execute(
@@ -47,13 +47,13 @@ class BaseApiKeyListResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
-    resource_model: type | None = None
+    resource_model: type[App | Dataset] | None = None
     resource_id_field: str | None = None
     token_prefix: str | None = None
     max_keys = 10
 
     @marshal_with(api_key_list)
-    def get(self, resource_id):
+    def get(self, resource_id: str) -> dict:
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         _, current_tenant_id = current_account_with_tenant()
@@ -101,10 +101,10 @@ class BaseApiKeyResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
     resource_type: str | None = None
-    resource_model: type | None = None
+    resource_model: type[App | Dataset] | None = None
     resource_id_field: str | None = None
 
-    def delete(self, resource_id, api_key_id):
+    def delete(self, resource_id: str, api_key_id: str) -> tuple[dict[str, str], int]:
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         api_key_id = str(api_key_id)
@@ -140,7 +140,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @api.doc(description="Get all API keys for an app")
     @api.doc(params={"resource_id": "App ID"})
     @api.response(200, "Success", api_key_list)
-    def get(self, resource_id):
+    def get(self, resource_id: str) -> dict:
         """Get all API keys for an app"""
         return super().get(resource_id)
 
@@ -149,7 +149,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @api.doc(params={"resource_id": "App ID"})
     @api.response(201, "API key created successfully", api_key_fields)
     @api.response(400, "Maximum keys exceeded")
-    def post(self, resource_id):
+    def post(self, resource_id: str) -> tuple[ApiToken, int]:
         """Create a new API key for an app"""
         return super().post(resource_id)
 
@@ -165,7 +165,7 @@ class AppApiKeyResource(BaseApiKeyResource):
     @api.doc(description="Delete an API key for an app")
     @api.doc(params={"resource_id": "App ID", "api_key_id": "API key ID"})
     @api.response(204, "API key deleted successfully")
-    def delete(self, resource_id, api_key_id):
+    def delete(self, resource_id: str, api_key_id: str) -> tuple[dict[str, str], int]:
         """Delete an API key for an app"""
         return super().delete(resource_id, api_key_id)
 
@@ -180,7 +180,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @api.doc(description="Get all API keys for a dataset")
     @api.doc(params={"resource_id": "Dataset ID"})
     @api.response(200, "Success", api_key_list)
-    def get(self, resource_id):
+    def get(self, resource_id: str) -> dict:
         """Get all API keys for a dataset"""
         return super().get(resource_id)
 
@@ -189,7 +189,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @api.doc(params={"resource_id": "Dataset ID"})
     @api.response(201, "API key created successfully", api_key_fields)
     @api.response(400, "Maximum keys exceeded")
-    def post(self, resource_id):
+    def post(self, resource_id: str) -> tuple[ApiToken, int]:
         """Create a new API key for a dataset"""
         return super().post(resource_id)
 
@@ -205,7 +205,7 @@ class DatasetApiKeyResource(BaseApiKeyResource):
     @api.doc(description="Delete an API key for a dataset")
     @api.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})
     @api.response(204, "API key deleted successfully")
-    def delete(self, resource_id, api_key_id):
+    def delete(self, resource_id: str, api_key_id: str) -> tuple[dict[str, str], int]:
         """Delete an API key for a dataset"""
         return super().delete(resource_id, api_key_id)
 
