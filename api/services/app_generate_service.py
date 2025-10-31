@@ -56,13 +56,22 @@ class AppGenerateService:
         max_active_request = cls._get_max_active_requests(app_model)
         rate_limit = RateLimit(app_model.id, max_active_request)
         request_id = RateLimit.gen_request_key()
+        
+        # Extract passthrough parameter from args
+        passthrough = args.get("inputs", {}).get("passthrough") if isinstance(args.get("inputs"), dict) else None
+        
         try:
             request_id = rate_limit.enter(request_id)
             if app_model.mode == AppMode.COMPLETION:
                 return rate_limit.generate(
                     CompletionAppGenerator.convert_to_event_stream(
                         CompletionAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming, passthrough=passthrough
+                            app_model=app_model,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=streaming,
+                            passthrough=passthrough,
                         ),
                     ),
                     request_id=request_id,
@@ -71,7 +80,12 @@ class AppGenerateService:
                 return rate_limit.generate(
                     AgentChatAppGenerator.convert_to_event_stream(
                         AgentChatAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming, passthrough=passthrough
+                            app_model=app_model,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=streaming,
+                            passthrough=passthrough,
                         ),
                     ),
                     request_id,
@@ -80,7 +94,12 @@ class AppGenerateService:
                 return rate_limit.generate(
                     ChatAppGenerator.convert_to_event_stream(
                         ChatAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming, passthrough=passthrough
+                            app_model=app_model,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=streaming,
+                            passthrough=passthrough,
                         ),
                     ),
                     request_id=request_id,

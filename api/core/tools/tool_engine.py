@@ -80,7 +80,9 @@ class ToolEngine:
             # hit the callback handler
             agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
 
-            messages = ToolEngine._invoke(tool, tool_parameters, user_id, conversation_id, app_id, message_id, passthrough=passthrough)
+            messages = ToolEngine._invoke(
+                tool, tool_parameters, user_id, conversation_id, app_id, message_id, passthrough=passthrough
+            )
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
             def message_callback(

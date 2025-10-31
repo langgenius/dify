@@ -30,7 +30,7 @@ class CompletionAppRunner(AppRunner):
         application_generate_entity: CompletionAppGenerateEntity,
         queue_manager: AppQueueManager,
         message: Message,
-        passthrough: str = None,
+        passthrough: str | None = None,
     ):
         """
         Run application
