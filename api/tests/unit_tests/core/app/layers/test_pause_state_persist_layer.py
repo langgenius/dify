@@ -248,16 +248,16 @@ class TestPauseStatePersistenceLayer:
         mock_factory.assert_not_called()
         mock_repo.create_workflow_pause.assert_not_called()
 
-    def test_on_event_raises_attribute_error_when_graph_runtime_state_is_none(self):
+    def test_on_event_raises_runtime_error_when_graph_runtime_state_is_none(self):
         session_factory = Mock(name="session_factory")
         layer = PauseStatePersistenceLayer(session_factory=session_factory, state_owner_user_id="owner-123")
 
         event = TestDataFactory.create_graph_run_paused_event()
 
-        with pytest.raises(AttributeError):
+        with pytest.raises(RuntimeError, match="graph_runtime_state is None"):
             layer.on_event(event)
 
-    def test_on_event_asserts_when_workflow_execution_id_missing(self, monkeypatch: pytest.MonkeyPatch):
+    def test_on_event_raises_value_error_when_workflow_execution_id_missing(self, monkeypatch: pytest.MonkeyPatch):
         session_factory = Mock(name="session_factory")
         layer = PauseStatePersistenceLayer(session_factory=session_factory, state_owner_user_id="owner-123")
 
@@ -271,7 +271,7 @@ class TestPauseStatePersistenceLayer:
 
         event = TestDataFactory.create_graph_run_paused_event()
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError, match="workflow_execution_id is None"):
             layer.on_event(event)
 
         mock_factory.assert_not_called()
