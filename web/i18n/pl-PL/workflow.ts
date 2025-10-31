@@ -949,6 +949,8 @@ const translation = {
       embeddingModelIsRequired: 'Wymagany jest model osadzania',
       chunksVariableIsRequired: 'Wymagana jest zmienna Chunks',
       rerankingModelIsRequired: 'Wymagany jest model ponownego rankingu',
+      embeddingModelIsInvalid: 'Model osadzania jest nieprawidłowy',
+      rerankingModelIsInvalid: 'Model ponownego rankingowania jest nieprawidłowy',
     },
   },
   tracing: {

@@ -173,6 +173,7 @@ const translation = {
     github: 'گیت‌هاب',
     compliance: 'انطباق',
     support: 'پشتیبانی',
+    contactUs: 'با ما تماس بگیرید',
   },
   settings: {
     accountGroup: 'حساب کاربری',

@@ -102,7 +102,7 @@ def batch_create_segment_to_index_task(
         for segment, tokens in zip(content, tokens_list):
             content = segment["content"]
             doc_id = str(uuid.uuid4())
-            segment_hash = helper.generate_text_hash(content)  # type: ignore
+            segment_hash = helper.generate_text_hash(content)
             max_position = (
                 db.session.query(func.max(DocumentSegment.position))
                 .where(DocumentSegment.document_id == dataset_document.id)

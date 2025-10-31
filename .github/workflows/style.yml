@@ -105,6 +105,11 @@ jobs:
         run: |
           pnpm run lint
 
+      - name: Web type check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
+        run: pnpm run type-check
+
   docker-compose-template:
     name: Docker Compose Template
     runs-on: ubuntu-latest

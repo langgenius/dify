@@ -12,6 +12,9 @@ export const vars: VarInInspect[] = [
     value_type: VarType.string,
     value: 'text value...',
     edited: false,
+    visible: true,
+    is_truncated: false,
+    full_content: { size_bytes: 0, download_url: '' },
   },
   {
     id: 'fdklajljgldjglkagjlk',
@@ -22,6 +25,9 @@ export const vars: VarInInspect[] = [
     value_type: VarType.string,
     value: 'made zhizhang',
     edited: false,
+    visible: true,
+    is_truncated: false,
+    full_content: { size_bytes: 0, download_url: '' },
   },
 ]
 
@@ -35,6 +41,9 @@ export const conversationVars: VarInInspect[] = [
     value_type: VarType.string,
     value: 'conversation var value...',
     edited: false,
+    visible: true,
+    is_truncated: false,
+    full_content: { size_bytes: 0, download_url: '' },
   },
   {
     id: 'con2',
@@ -45,6 +54,9 @@ export const conversationVars: VarInInspect[] = [
     value_type: VarType.number,
     value: 456,
     edited: false,
+    visible: true,
+    is_truncated: false,
+    full_content: { size_bytes: 0, download_url: '' },
   },
 ]
 
@@ -58,6 +70,9 @@ export const systemVars: VarInInspect[] = [
     value_type: VarType.string,
     value: 'Hello robot!',
     edited: false,
+    visible: true,
+    is_truncated: false,
+    full_content: { size_bytes: 0, download_url: '' },
   },
   {
     id: 'sys2',
@@ -68,5 +83,8 @@ export const systemVars: VarInInspect[] = [
     value_type: VarType.string,
     value: 'djflakjerlkjdlksfjslakjsdfl',
     edited: false,
+    visible: true,
+    is_truncated: false,
+    full_content: { size_bytes: 0, download_url: '' },
   },
 ]
