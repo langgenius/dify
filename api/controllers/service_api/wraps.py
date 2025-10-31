@@ -98,7 +98,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                     .join(Account, TenantAccountJoin.account_id == Account.id)
                     .filter(
                         Tenant.id == app_model.tenant_id,
-                        TenantAccountJoin.role.in_(["owner"]),
+                        TenantAccountJoin.role == "owner",
                         Tenant.status == TenantStatus.NORMAL,
                     )
                     .first()
