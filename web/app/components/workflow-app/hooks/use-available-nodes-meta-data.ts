@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useGetLanguage } from '@/context/i18n'
+import { useDocLink } from '@/context/i18n'
 import StartDefault from '@/app/components/workflow/nodes/start/default'
 import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webhook/default'
 import TriggerScheduleDefault from '@/app/components/workflow/nodes/trigger-schedule/default'
@@ -15,7 +15,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
-  const language = useGetLanguage()
+  const docLink = useDocLink()
 
   const mergedNodesMetaData = useMemo(() => [
     ...WORKFLOW_COMMON_NODES,
@@ -32,24 +32,18 @@ export const useAvailableNodesMetaData = () => {
     ),
   ], [isChatMode])
 
-  const prefixLink = useMemo(() => {
-    if (language === 'zh_Hans')
-      return 'https://docs.dify.ai/zh-hans/guides/workflow/node/'
-
-    return 'https://docs.dify.ai/guides/workflow/node/'
-  }, [language])
-
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node
     const title = t(`workflow.blocks.${metaData.type}`)
     const description = t(`workflow.blocksAbout.${metaData.type}`)
+    const helpLinkPath = `guides/workflow/node/${metaData.helpLinkUri}`
     return {
       ...node,
       metaData: {
         ...metaData,
         title,
         description,
-        helpLinkUri: `${prefixLink}${metaData.helpLinkUri}`,
+        helpLinkUri: docLink(helpLinkPath),
       },
       defaultValue: {
         ...node.defaultValue,
@@ -57,7 +51,7 @@ export const useAvailableNodesMetaData = () => {
         title,
       },
     }
-  }), [mergedNodesMetaData, t, prefixLink])
+  }), [mergedNodesMetaData, t, docLink])
 
   const availableNodesMetaDataMap = useMemo(() => availableNodesMetaData.reduce((acc, node) => {
     acc![node.metaData.type] = node
