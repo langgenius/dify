@@ -3,7 +3,7 @@ import { RiAddLine, RiDeleteBinLine, RiEditLine, RiMore2Fill, RiSaveLine, RiShar
 import ActionButton, { ActionButtonState } from '.'
 
 const meta = {
-  title: 'Base/Button/ActionButton',
+  title: 'Base/General/ActionButton',
   component: ActionButton,
   parameters: {
     layout: 'centered',

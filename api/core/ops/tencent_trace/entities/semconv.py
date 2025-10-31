@@ -47,6 +47,9 @@ GEN_AI_COMPLETION = "gen_ai.completion"
 
 GEN_AI_RESPONSE_FINISH_REASON = "gen_ai.response.finish_reason"
 
+# Streaming Span Attributes
+GEN_AI_IS_STREAMING_REQUEST = "llm.is_streaming"  # Same as OpenLLMetry semconv
+
 # Tool
 TOOL_NAME = "tool.name"
 
@@ -62,6 +65,19 @@ INSTRUMENTATION_LANGUAGE = "python"
 
 # Metrics
 LLM_OPERATION_DURATION = "gen_ai.client.operation.duration"
+GEN_AI_TOKEN_USAGE = "gen_ai.client.token.usage"
+GEN_AI_SERVER_TIME_TO_FIRST_TOKEN = "gen_ai.server.time_to_first_token"
+GEN_AI_STREAMING_TIME_TO_GENERATE = "gen_ai.streaming.time_to_generate"
+# The LLM trace duration which is exclusive to tencent apm
+GEN_AI_TRACE_DURATION = "gen_ai.trace.duration"
+
+# Token Usage Attributes
+GEN_AI_OPERATION_NAME = "gen_ai.operation.name"
+GEN_AI_REQUEST_MODEL = "gen_ai.request.model"
+GEN_AI_RESPONSE_MODEL = "gen_ai.response.model"
+GEN_AI_SYSTEM = "gen_ai.system"
+GEN_AI_TOKEN_TYPE = "gen_ai.token.type"
+SERVER_ADDRESS = "server.address"
 
 
 class GenAISpanKind(Enum):
