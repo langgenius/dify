@@ -5,7 +5,6 @@ import pytest
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.helper import encrypter
 from core.variables import SecretVariable
 from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
 from core.workflow.enums import WorkflowNodeExecutionStatus

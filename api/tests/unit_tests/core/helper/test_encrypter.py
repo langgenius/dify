@@ -7,10 +7,10 @@ import pytest
 from core.helper.encrypter import (
     batch_decrypt_token,
     decrypt_token,
+    encrypt_secret_keys,
     encrypt_token,
     get_decrypt_decoding,
     obfuscated_token,
-    encrypt_secret_keys,
 )
 from libs.rsa import PrivkeyNotFoundError
 
@@ -38,10 +38,7 @@ class TestObfuscatedToken:
         assert "*" * 12 in obfuscated
 
     def test_encrypt_secret_keys_simple_dict(self):
-        data = {
-            "api_key": "fake-secret-key",
-            "username": "admin"
-        }
+        data = {"api_key": "fake-secret-key", "username": "admin"}
         secret_vars = {"api_key"}
 
         result = encrypt_secret_keys(data, secret_vars)
@@ -52,13 +49,7 @@ class TestObfuscatedToken:
         assert result["username"] == "admin"
 
     def test_encrypt_secret_keys_nested_dict(self):
-        data = {
-            "outer": {
-                "inner_secret": "super-secret",
-                "inner_public": "visible"
-            },
-            "non_secret": "plain"
-        }
+        data = {"outer": {"inner_secret": "super-secret", "inner_public": "visible"}, "non_secret": "plain"}
         secret_vars = {"inner_secret"}
 
         result = encrypt_secret_keys(data, secret_vars)
@@ -68,18 +59,14 @@ class TestObfuscatedToken:
         assert result["non_secret"] == "plain"
 
     def test_encrypt_secret_keys_list_of_dicts(self):
-        data = [
-            {"token1": "abc123", "id": 1},
-            {"token2": "xyz789", "id": 2}
-        ]
-        secret_vars = {"token1","token2"}
+        data = [{"token1": "abc123", "id": 1}, {"token2": "xyz789", "id": 2}]
+        secret_vars = {"token1", "token2"}
 
         result = encrypt_secret_keys(data, secret_vars)
 
         assert result[0]["token1"] == obfuscated_token("abc123")
         assert result[1]["token2"] == obfuscated_token("xyz789")
         assert result[0]["id"] == 1
-
 
     def test_encrypt_secret_keys_non_secret_scalar(self):
         # When the object is just a string, it should remain unchanged
@@ -90,6 +77,7 @@ class TestObfuscatedToken:
         assert encrypt_secret_keys({}, {"secret"}) == {}
         assert encrypt_secret_keys([], {"secret"}) == []
         assert encrypt_secret_keys(None, {"secret"}) is None
+
 
 class TestEncryptToken:
     @patch("models.engine.db.session.query")
