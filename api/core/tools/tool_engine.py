@@ -256,9 +256,10 @@ class ToolEngine:
             else:
                 parts.append(str(response.message))
 
-         # If no TEXT message is present, append JSON parts to avoid duplication.
-        if not saw_text and json_parts:
-            parts.extend(json_parts)
+          # Add JSON parts, avoiding duplicates from text parts.
+        if json_parts:
+            existing_parts = set(parts)
+            parts.extend(p for p in json_parts if p not in existing_parts)
 
         return "".join(parts)
 
