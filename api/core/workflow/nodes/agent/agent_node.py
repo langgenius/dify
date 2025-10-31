@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
+from core.entities.parameter_entities import CommonParameterType
 from core.file import File, FileTransferMethod
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
@@ -241,7 +242,7 @@ class AgentNode(Node):
             else:
                 raise AgentInputTypeError(agent_input.type)
             value = parameter_value
-            if parameter.type == "array[tools]":
+            if parameter.type == CommonParameterType.TOOLS_SELECTOR:
                 value = cast(list[dict[str, Any]], value)
                 value = [tool for tool in value if tool.get("enabled", False)]
                 value = self._filter_mcp_type_tool(strategy, value)
@@ -265,7 +266,7 @@ class AgentNode(Node):
                     tool["parameters"] = parameters
 
             if not for_log:
-                if parameter.type == "array[tools]":
+                if parameter.type == CommonParameterType.TOOLS_SELECTOR:
                     value = cast(list[dict[str, Any]], value)
                     tool_value = []
                     for tool in value:

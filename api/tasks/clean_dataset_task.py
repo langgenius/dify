@@ -61,7 +61,7 @@ def clean_dataset_task(
 
         # Enhanced validation: Check if doc_form is None, empty string, or contains only whitespace
         # This ensures all invalid doc_form values are properly handled
-        if doc_form is None or (isinstance(doc_form, str) and not doc_form.strip()):
+        if not doc_form.strip():
             # Use default paragraph index type for empty/invalid datasets to enable vector database cleanup
             from core.rag.index_processor.constant.index_type import IndexType
 
@@ -83,7 +83,7 @@ def clean_dataset_task(
                 click.style(f"Continuing with document and segment deletion for dataset: {dataset_id}", fg="yellow")
             )
 
-        if documents is None or len(documents) == 0:
+        if not documents:
             logger.info(click.style(f"No documents found for dataset: {dataset_id}", fg="green"))
         else:
             logger.info(click.style(f"Cleaning documents for dataset: {dataset_id}", fg="green"))
