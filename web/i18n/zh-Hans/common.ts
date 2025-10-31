@@ -182,6 +182,7 @@ const translation = {
     community: '社区',
     about: '关于',
     logout: '登出',
+    contactUs: '联系我们',
   },
   compliance: {
     soc2Type1: 'SOC 2 Type I Report',

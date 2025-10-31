@@ -41,7 +41,7 @@ from .template_prompts import (
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.entities import GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 
 class QuestionClassifierNode(Node):
@@ -193,15 +193,19 @@ class QuestionClassifierNode(Node):
                     finish_reason = event.finish_reason
                     break
 
-            category_name = node_data.classes[0].name
-            category_id = node_data.classes[0].id
+            rendered_classes = [
+                c.model_copy(update={"name": variable_pool.convert_template(c.name).text}) for c in node_data.classes
+            ]
+
+            category_name = rendered_classes[0].name
+            category_id = rendered_classes[0].id
             if "<think>" in result_text:
                 result_text = re.sub(r"<think[^>]*>[\s\S]*?</think>", "", result_text, flags=re.IGNORECASE)
             result_text_json = parse_and_check_json_markdown(result_text, [])
             # result_text_json = json.loads(result_text.strip('```JSON\n'))
             if "category_name" in result_text_json and "category_id" in result_text_json:
                 category_id_result = result_text_json["category_id"]
-                classes = node_data.classes
+                classes = rendered_classes
                 classes_map = {class_.id: class_.name for class_ in classes}
                 category_ids = [_class.id for _class in classes]
                 if category_id_result in category_ids:

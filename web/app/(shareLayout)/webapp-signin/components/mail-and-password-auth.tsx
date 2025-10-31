@@ -10,15 +10,14 @@ import { emailRegex } from '@/config'
 import { webAppLogin } from '@/service/common'
 import Input from '@/app/components/base/input'
 import I18NContext from '@/context/i18n'
+import { useWebAppStore } from '@/context/web-app-context'
 import { noop } from 'lodash-es'
-import { setAccessToken } from '@/app/components/share/utils'
 import { fetchAccessToken } from '@/service/share'
+import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 
 type MailAndPasswordAuthProps = {
   isEmailSetup: boolean
 }
-
-const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
@@ -32,6 +31,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
 
   const [isLoading, setIsLoading] = useState(false)
   const redirectUrl = searchParams.get('redirect_url')
+  const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
 
   const getAppCodeFromRedirectUrl = useCallback(() => {
     if (!redirectUrl)
@@ -43,8 +43,8 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
 
     return appCode
   }, [redirectUrl])
+  const appCode = getAppCodeFromRedirectUrl()
   const handleEmailPasswordLogin = async () => {
-    const appCode = getAppCodeFromRedirectUrl()
     if (!email) {
       Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
       return
@@ -60,13 +60,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       Toast.notify({ type: 'error', message: t('login.error.passwordEmpty') })
       return
     }
-    if (!passwordRegex.test(password)) {
-      Toast.notify({
-        type: 'error',
-        message: t('login.error.passwordInvalid'),
-      })
-      return
-    }
+
     if (!redirectUrl || !appCode) {
       Toast.notify({
         type: 'error',
@@ -88,9 +82,13 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         body: loginData,
       })
       if (res.result === 'success') {
-        localStorage.setItem('webapp_access_token', res.data.access_token)
-        const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: res.data.access_token })
-        await setAccessToken(appCode, tokenResp.access_token)
+        setWebAppAccessToken(res.data.access_token)
+
+        const { access_token } = await fetchAccessToken({
+          appCode: appCode!,
+          userId: embeddedUserId || undefined,
+        })
+        setWebAppPassport(appCode!, access_token)
         router.replace(decodeURIComponent(redirectUrl))
       }
       else {
@@ -141,9 +139,9 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       </label>
       <div className="relative mt-1">
         <Input
-          id="password"
           value={password}
           onChange={e => setPassword(e.target.value)}
+          id="password"
           onKeyDown={(e) => {
             if (e.key === 'Enter')
               handleEmailPasswordLogin()

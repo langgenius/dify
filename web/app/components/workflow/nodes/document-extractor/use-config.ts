@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useStoreApi } from 'reactflow'
 import type { ValueSelector, Var } from '../../types'
 import { VarType } from '../../types'

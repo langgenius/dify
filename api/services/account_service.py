@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
-from constants.languages import language_timezone_mapping, languages
+from constants.languages import get_valid_language, language_timezone_mapping
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
@@ -22,6 +22,7 @@ from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
+from libs.token import generate_csrf_token
 from models.account import (
     Account,
     AccountIntegrate,
@@ -76,6 +77,7 @@ logger = logging.getLogger(__name__)
 class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
+    csrf_token: str
 
 
 REFRESH_TOKEN_PREFIX = "refresh_token:"
@@ -403,10 +405,11 @@ class AccountService:
 
         access_token = AccountService.get_account_jwt_token(account=account)
         refresh_token = _generate_refresh_token()
+        csrf_token = generate_csrf_token(account.id)
 
         AccountService._store_refresh_token(refresh_token, account.id)
 
-        return TokenPair(access_token=access_token, refresh_token=refresh_token)
+        return TokenPair(access_token=access_token, refresh_token=refresh_token, csrf_token=csrf_token)
 
     @staticmethod
     def logout(*, account: Account):
@@ -431,8 +434,9 @@ class AccountService:
 
         AccountService._delete_refresh_token(refresh_token, account.id)
         AccountService._store_refresh_token(new_refresh_token, account.id)
+        csrf_token = generate_csrf_token(account.id)
 
-        return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token)
+        return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token, csrf_token=csrf_token)
 
     @staticmethod
     def load_logged_in_account(*, account_id: str):
@@ -1255,7 +1259,7 @@ class RegisterService:
         return f"member_invite:token:{token}"
 
     @classmethod
-    def setup(cls, email: str, name: str, password: str, ip_address: str):
+    def setup(cls, email: str, name: str, password: str, ip_address: str, language: str):
         """
         Setup dify
 
@@ -1265,11 +1269,10 @@ class RegisterService:
         :param ip_address: ip address
         """
         try:
-            # Register
             account = AccountService.create_account(
                 email=email,
                 name=name,
-                interface_language=languages[0],
+                interface_language=get_valid_language(language),
                 password=password,
                 is_setup=True,
             )
@@ -1311,7 +1314,7 @@ class RegisterService:
             account = AccountService.create_account(
                 email=email,
                 name=name,
-                interface_language=language or languages[0],
+                interface_language=get_valid_language(language),
                 password=password,
                 is_setup=is_setup,
             )

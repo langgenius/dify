@@ -337,6 +337,11 @@ class HttpConfig(BaseSettings):
     HTTP-related configurations for the application
     """
 
+    COOKIE_DOMAIN: str = Field(
+        description="Explicit cookie domain for console/service cookies when sharing across subdomains",
+        default="",
+    )
+
     API_COMPRESSION_ENABLED: bool = Field(
         description="Enable or disable gzip compression for HTTP responses",
         default=False,
@@ -548,7 +553,7 @@ class UpdateConfig(BaseSettings):
 
 class WorkflowVariableTruncationConfig(BaseSettings):
     WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE: PositiveInt = Field(
-        # 100KB
+        # 1000 KiB
         1024_000,
         description="Maximum size for variable to trigger final truncation.",
     )

@@ -49,6 +49,6 @@ class TimezoneConversionTool(BuiltinTool):
             datetime_with_tz = input_timezone.localize(local_time)
             # timezone convert
             converted_datetime = datetime_with_tz.astimezone(output_timezone)
-            return converted_datetime.strftime(format=time_format)  # type: ignore
+            return converted_datetime.strftime(time_format)
         except Exception as e:
             raise ToolInvokeError(str(e))
