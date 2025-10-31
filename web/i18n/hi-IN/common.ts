@@ -178,6 +178,7 @@ const translation = {
     compliance: 'अनुपालन',
     github: 'गिटहब',
     support: 'समर्थन',
+    contactUs: 'संपर्क करें',
   },
   settings: {
     accountGroup: 'खाता',

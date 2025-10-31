@@ -1,7 +1,6 @@
 import io
 
 from flask import request, send_file
-from flask_login import current_user
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
@@ -11,7 +10,7 @@ from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_parameter_service import PluginParameterService
@@ -26,7 +25,7 @@ class PluginDebuggingKeyApi(Resource):
     @account_initialization_required
     @plugin_permission_required(debug_required=True)
     def get(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         try:
             return {
@@ -44,10 +43,12 @@ class PluginListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        tenant_id = current_user.current_tenant_id
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=int, required=False, location="args", default=1)
-        parser.add_argument("page_size", type=int, required=False, location="args", default=256)
+        _, tenant_id = current_account_with_tenant()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("page", type=int, required=False, location="args", default=1)
+            .add_argument("page_size", type=int, required=False, location="args", default=256)
+        )
         args = parser.parse_args()
         try:
             plugins_with_total = PluginService.list_with_total(tenant_id, args["page"], args["page_size"])
@@ -63,8 +64,7 @@ class PluginListLatestVersionsApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        req = reqparse.RequestParser()
-        req.add_argument("plugin_ids", type=list, required=True, location="json")
+        req = reqparse.RequestParser().add_argument("plugin_ids", type=list, required=True, location="json")
         args = req.parse_args()
 
         try:
@@ -81,10 +81,9 @@ class PluginListInstallationsFromIdsApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_ids", type=list, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("plugin_ids", type=list, required=True, location="json")
         args = parser.parse_args()
 
         try:
@@ -99,9 +98,11 @@ class PluginListInstallationsFromIdsApi(Resource):
 class PluginIconApi(Resource):
     @setup_required
     def get(self):
-        req = reqparse.RequestParser()
-        req.add_argument("tenant_id", type=str, required=True, location="args")
-        req.add_argument("filename", type=str, required=True, location="args")
+        req = (
+            reqparse.RequestParser()
+            .add_argument("tenant_id", type=str, required=True, location="args")
+            .add_argument("filename", type=str, required=True, location="args")
+        )
         args = req.parse_args()
 
         try:
@@ -120,7 +121,7 @@ class PluginUploadFromPkgApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         file = request.files["pkg"]
 
@@ -144,12 +145,14 @@ class PluginUploadFromGithubApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("repo", type=str, required=True, location="json")
-        parser.add_argument("version", type=str, required=True, location="json")
-        parser.add_argument("package", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("repo", type=str, required=True, location="json")
+            .add_argument("version", type=str, required=True, location="json")
+            .add_argument("package", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         try:
@@ -167,7 +170,7 @@ class PluginUploadFromBundleApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         file = request.files["bundle"]
 
@@ -191,10 +194,11 @@ class PluginInstallFromPkgApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifiers", type=list, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "plugin_unique_identifiers", type=list, required=True, location="json"
+        )
         args = parser.parse_args()
 
         # check if all plugin_unique_identifiers are valid string
@@ -217,13 +221,15 @@ class PluginInstallFromGithubApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("repo", type=str, required=True, location="json")
-        parser.add_argument("version", type=str, required=True, location="json")
-        parser.add_argument("package", type=str, required=True, location="json")
-        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("repo", type=str, required=True, location="json")
+            .add_argument("version", type=str, required=True, location="json")
+            .add_argument("package", type=str, required=True, location="json")
+            .add_argument("plugin_unique_identifier", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         try:
@@ -247,10 +253,11 @@ class PluginInstallFromMarketplaceApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifiers", type=list, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "plugin_unique_identifiers", type=list, required=True, location="json"
+        )
         args = parser.parse_args()
 
         # check if all plugin_unique_identifiers are valid string
@@ -273,10 +280,11 @@ class PluginFetchMarketplacePkgApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def get(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+        parser = reqparse.RequestParser().add_argument(
+            "plugin_unique_identifier", type=str, required=True, location="args"
+        )
         args = parser.parse_args()
 
         try:
@@ -299,10 +307,11 @@ class PluginFetchManifestApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def get(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+        parser = reqparse.RequestParser().add_argument(
+            "plugin_unique_identifier", type=str, required=True, location="args"
+        )
         args = parser.parse_args()
 
         try:
@@ -324,11 +333,13 @@ class PluginFetchInstallTasksApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def get(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=int, required=True, location="args")
-        parser.add_argument("page_size", type=int, required=True, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("page", type=int, required=True, location="args")
+            .add_argument("page_size", type=int, required=True, location="args")
+        )
         args = parser.parse_args()
 
         try:
@@ -346,7 +357,7 @@ class PluginFetchInstallTaskApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def get(self, task_id: str):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         try:
             return jsonable_encoder({"task": PluginService.fetch_install_task(tenant_id, task_id)})
@@ -361,7 +372,7 @@ class PluginDeleteInstallTaskApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self, task_id: str):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         try:
             return {"success": PluginService.delete_install_task(tenant_id, task_id)}
@@ -376,7 +387,7 @@ class PluginDeleteAllInstallTaskItemsApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         try:
             return {"success": PluginService.delete_all_install_task_items(tenant_id)}
@@ -391,7 +402,7 @@ class PluginDeleteInstallTaskItemApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self, task_id: str, identifier: str):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         try:
             return {"success": PluginService.delete_install_task_item(tenant_id, task_id, identifier)}
@@ -406,11 +417,13 @@ class PluginUpgradeFromMarketplaceApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("original_plugin_unique_identifier", type=str, required=True, location="json")
-        parser.add_argument("new_plugin_unique_identifier", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("original_plugin_unique_identifier", type=str, required=True, location="json")
+            .add_argument("new_plugin_unique_identifier", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         try:
@@ -430,14 +443,16 @@ class PluginUpgradeFromGithubApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("original_plugin_unique_identifier", type=str, required=True, location="json")
-        parser.add_argument("new_plugin_unique_identifier", type=str, required=True, location="json")
-        parser.add_argument("repo", type=str, required=True, location="json")
-        parser.add_argument("version", type=str, required=True, location="json")
-        parser.add_argument("package", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("original_plugin_unique_identifier", type=str, required=True, location="json")
+            .add_argument("new_plugin_unique_identifier", type=str, required=True, location="json")
+            .add_argument("repo", type=str, required=True, location="json")
+            .add_argument("version", type=str, required=True, location="json")
+            .add_argument("package", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         try:
@@ -462,11 +477,10 @@ class PluginUninstallApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self):
-        req = reqparse.RequestParser()
-        req.add_argument("plugin_installation_id", type=str, required=True, location="json")
+        req = reqparse.RequestParser().add_argument("plugin_installation_id", type=str, required=True, location="json")
         args = req.parse_args()
 
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         try:
             return {"success": PluginService.uninstall(tenant_id, args["plugin_installation_id"])}
@@ -480,19 +494,22 @@ class PluginChangePermissionApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
+        current_user, current_tenant_id = current_account_with_tenant()
         user = current_user
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        req = reqparse.RequestParser()
-        req.add_argument("install_permission", type=str, required=True, location="json")
-        req.add_argument("debug_permission", type=str, required=True, location="json")
+        req = (
+            reqparse.RequestParser()
+            .add_argument("install_permission", type=str, required=True, location="json")
+            .add_argument("debug_permission", type=str, required=True, location="json")
+        )
         args = req.parse_args()
 
         install_permission = TenantPluginPermission.InstallPermission(args["install_permission"])
         debug_permission = TenantPluginPermission.DebugPermission(args["debug_permission"])
 
-        tenant_id = user.current_tenant_id
+        tenant_id = current_tenant_id
 
         return {"success": PluginPermissionService.change_permission(tenant_id, install_permission, debug_permission)}
 
@@ -503,7 +520,7 @@ class PluginFetchPermissionApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         permission = PluginPermissionService.get_permission(tenant_id)
         if not permission:
@@ -529,18 +546,20 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     @account_initialization_required
     def get(self):
         # check if the user is admin or owner
+        current_user, tenant_id = current_account_with_tenant()
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        tenant_id = current_user.current_tenant_id
         user_id = current_user.id
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_id", type=str, required=True, location="args")
-        parser.add_argument("provider", type=str, required=True, location="args")
-        parser.add_argument("action", type=str, required=True, location="args")
-        parser.add_argument("parameter", type=str, required=True, location="args")
-        parser.add_argument("provider_type", type=str, required=True, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("plugin_id", type=str, required=True, location="args")
+            .add_argument("provider", type=str, required=True, location="args")
+            .add_argument("action", type=str, required=True, location="args")
+            .add_argument("parameter", type=str, required=True, location="args")
+            .add_argument("provider_type", type=str, required=True, location="args")
+        )
         args = parser.parse_args()
 
         try:
@@ -565,16 +584,16 @@ class PluginChangePreferencesApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        user = current_user
+        user, tenant_id = current_account_with_tenant()
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        req = reqparse.RequestParser()
-        req.add_argument("permission", type=dict, required=True, location="json")
-        req.add_argument("auto_upgrade", type=dict, required=True, location="json")
+        req = (
+            reqparse.RequestParser()
+            .add_argument("permission", type=dict, required=True, location="json")
+            .add_argument("auto_upgrade", type=dict, required=True, location="json")
+        )
         args = req.parse_args()
-
-        tenant_id = user.current_tenant_id
 
         permission = args["permission"]
 
@@ -621,7 +640,7 @@ class PluginFetchPreferencesApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
         permission = PluginPermissionService.get_permission(tenant_id)
         permission_dict = {
@@ -661,10 +680,9 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
     @account_initialization_required
     def post(self):
         # exclude one single plugin
-        tenant_id = current_user.current_tenant_id
+        _, tenant_id = current_account_with_tenant()
 
-        req = reqparse.RequestParser()
-        req.add_argument("plugin_id", type=str, required=True, location="json")
+        req = reqparse.RequestParser().add_argument("plugin_id", type=str, required=True, location="json")
         args = req.parse_args()
 
         return jsonable_encoder({"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args["plugin_id"])})

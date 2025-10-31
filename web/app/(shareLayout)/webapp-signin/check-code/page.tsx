@@ -10,8 +10,9 @@ import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
 import I18NContext from '@/context/i18n'
-import { setAccessToken } from '@/app/components/share/utils'
+import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 import { fetchAccessToken } from '@/service/share'
+import { useWebAppStore } from '@/context/web-app-context'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -23,6 +24,7 @@ export default function CheckCode() {
   const [loading, setIsLoading] = useState(false)
   const { locale } = useContext(I18NContext)
   const redirectUrl = searchParams.get('redirect_url')
+  const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
 
   const getAppCodeFromRedirectUrl = useCallback(() => {
     if (!redirectUrl)
@@ -62,9 +64,12 @@ export default function CheckCode() {
       setIsLoading(true)
       const ret = await webAppEmailLoginWithCode({ email, code, token })
       if (ret.result === 'success') {
-        localStorage.setItem('webapp_access_token', ret.data.access_token)
-        const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: ret.data.access_token })
-        await setAccessToken(appCode, tokenResp.access_token)
+        setWebAppAccessToken(ret.data.access_token)
+        const { access_token } = await fetchAccessToken({
+          appCode: appCode!,
+          userId: embeddedUserId || undefined,
+        })
+        setWebAppPassport(appCode!, access_token)
         router.replace(decodeURIComponent(redirectUrl))
       }
     }

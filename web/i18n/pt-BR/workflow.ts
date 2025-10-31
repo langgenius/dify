@@ -328,6 +328,7 @@ const translation = {
     selectNextStep: 'Selecione o próximo passo',
     maximize: 'Maximize Canvas',
     minimize: 'Sair do Modo Tela Cheia',
+    optional_and_hidden: '(opcional & oculto)',
   },
   nodes: {
     common: {
@@ -948,6 +949,8 @@ const translation = {
       chunksVariableIsRequired: 'A variável \'chunks\' é obrigatória',
       embeddingModelIsRequired: 'Modelo de incorporação é necessário',
       rerankingModelIsRequired: 'Um modelo de reclassificação é necessário',
+      embeddingModelIsInvalid: 'O modelo de incorporação é inválido',
+      rerankingModelIsInvalid: 'O modelo de reclassificação é inválido',
     },
   },
   tracing: {

@@ -328,6 +328,7 @@ const translation = {
     addNextStep: 'Thêm bước tiếp theo trong quy trình này',
     maximize: 'Tối đa hóa Canvas',
     minimize: 'Thoát chế độ toàn màn hình',
+    optional_and_hidden: '(tùy chọn & ẩn)',
   },
   nodes: {
     common: {
@@ -948,6 +949,8 @@ const translation = {
       chunksVariableIsRequired: 'Biến Chunks là bắt buộc',
       embeddingModelIsRequired: 'Cần có mô hình nhúng',
       rerankingModelIsRequired: 'Cần có mô hình sắp xếp lại',
+      embeddingModelIsInvalid: 'Mô hình nhúng không hợp lệ',
+      rerankingModelIsInvalid: 'Mô hình xếp hạng lại không hợp lệ',
     },
   },
   tracing: {

@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { IterationFinishedResponse } from '@/types/workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { DEFAULT_ITER_TIMES } from '@/app/components/workflow/constants'

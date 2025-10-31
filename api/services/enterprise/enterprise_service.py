@@ -46,17 +46,17 @@ class EnterpriseService:
 
     class WebAppAuth:
         @classmethod
-        def is_user_allowed_to_access_webapp(cls, user_id: str, app_code: str):
-            params = {"userId": user_id, "appCode": app_code}
+        def is_user_allowed_to_access_webapp(cls, user_id: str, app_id: str):
+            params = {"userId": user_id, "appId": app_id}
             data = EnterpriseRequest.send_request("GET", "/webapp/permission", params=params)
 
             return data.get("result", False)
 
         @classmethod
-        def batch_is_user_allowed_to_access_webapps(cls, user_id: str, app_codes: list[str]):
-            if not app_codes:
+        def batch_is_user_allowed_to_access_webapps(cls, user_id: str, app_ids: list[str]):
+            if not app_ids:
                 return {}
-            body = {"userId": user_id, "appCodes": app_codes}
+            body = {"userId": user_id, "appIds": app_ids}
             data = EnterpriseRequest.send_request("POST", "/webapp/permission/batch", json=body)
             if not data:
                 raise ValueError("No data found.")
@@ -91,16 +91,6 @@ class EnterpriseService:
                 ret[key] = curr
 
             return ret
-
-        @classmethod
-        def get_app_access_mode_by_code(cls, app_code: str) -> WebAppSettings:
-            if not app_code:
-                raise ValueError("app_code must be provided.")
-            params = {"appCode": app_code}
-            data = EnterpriseRequest.send_request("GET", "/webapp/access-mode/code", params=params)
-            if not data:
-                raise ValueError("No data found.")
-            return WebAppSettings.model_validate(data)
 
         @classmethod
         def update_app_access_mode(cls, app_id: str, access_mode: str):

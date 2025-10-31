@@ -328,6 +328,7 @@ const translation = {
     selectNextStep: 'เลือกขั้นตอนถัดไป',
     minimize: 'ออกจากโหมดเต็มหน้าจอ',
     maximize: 'เพิ่มประสิทธิภาพผ้าใบ',
+    optional_and_hidden: '(ตัวเลือก & ซ่อน)',
   },
   nodes: {
     common: {
@@ -948,6 +949,8 @@ const translation = {
       chunksVariableIsRequired: 'ตัวแปร Chunks เป็นสิ่งจำเป็น',
       embeddingModelIsRequired: 'จำเป็นต้องใช้โมเดลฝัง',
       rerankingModelIsRequired: 'จำเป็นต้องมีโมเดลการจัดอันดับใหม่',
+      embeddingModelIsInvalid: 'แบบจำลองการฝังไม่ถูกต้อง',
+      rerankingModelIsInvalid: 'โมเดลการจัดอันดับใหม่ไม่ถูกต้อง',
     },
   },
   tracing: {
