@@ -189,6 +189,11 @@ class PluginConfig(BaseSettings):
         default="plugin-api-key",
     )
 
+    PLUGIN_DAEMON_TIMEOUT: PositiveFloat | None = Field(
+        description="Timeout in seconds for requests to the plugin daemon (set to None to disable)",
+        default=300.0,
+    )
+
     INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
 
     PLUGIN_REMOTE_INSTALL_HOST: str = Field(
@@ -331,6 +336,11 @@ class HttpConfig(BaseSettings):
     """
     HTTP-related configurations for the application
     """
+
+    COOKIE_DOMAIN: str = Field(
+        description="Explicit cookie domain for console/service cookies when sharing across subdomains",
+        default="",
+    )
 
     API_COMPRESSION_ENABLED: bool = Field(
         description="Enable or disable gzip compression for HTTP responses",
@@ -543,7 +553,7 @@ class UpdateConfig(BaseSettings):
 
 class WorkflowVariableTruncationConfig(BaseSettings):
     WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE: PositiveInt = Field(
-        # 100KB
+        # 1000 KiB
         1024_000,
         description="Maximum size for variable to trigger final truncation.",
     )

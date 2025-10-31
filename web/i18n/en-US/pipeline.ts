@@ -33,7 +33,7 @@ const translation = {
   },
   ragToolSuggestions: {
     title: 'Suggestions for RAG',
-    noRecommendationPluginsInstalled: 'No recommended plugins installed, find more in <CustomLink>Marketplace</CustomLink>',
+    noRecommendationPlugins: 'No recommended plugins, find more in <CustomLink>Marketplace</CustomLink>',
   },
 }
 

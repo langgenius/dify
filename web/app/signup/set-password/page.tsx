@@ -52,14 +52,12 @@ const ChangePasswordForm = () => {
         new_password: password,
         password_confirm: confirmPassword,
       })
-      const { result, data } = res as MailRegisterResponse
+      const { result } = res as MailRegisterResponse
       if (result === 'success') {
         Toast.notify({
           type: 'success',
           message: t('common.api.actionSuccess'),
         })
-        localStorage.setItem('console_token', data.access_token)
-        localStorage.setItem('refresh_token', data.refresh_token)
         router.replace('/apps')
       }
     }

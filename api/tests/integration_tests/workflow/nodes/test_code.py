@@ -12,6 +12,7 @@ from core.workflow.graph import Graph
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.node_factory import DifyNodeFactory
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock

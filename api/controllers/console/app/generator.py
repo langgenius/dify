@@ -1,6 +1,5 @@
 from collections.abc import Sequence
 
-from flask_login import current_user
 from flask_restx import Resource, fields, reqparse
 
 from controllers.console import api, console_ns
@@ -17,7 +16,7 @@ from core.helper.code_executor.python3.python3_code_provider import Python3CodeP
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models import App
 from services.workflow_service import WorkflowService
 
@@ -43,16 +42,18 @@ class RuleGenerateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("no_variable", type=bool, required=True, default=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("instruction", type=str, required=True, nullable=False, location="json")
+            .add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+            .add_argument("no_variable", type=bool, required=True, default=False, location="json")
+        )
         args = parser.parse_args()
+        _, current_tenant_id = current_account_with_tenant()
 
-        account = current_user
         try:
             rules = LLMGenerator.generate_rule_config(
-                tenant_id=account.current_tenant_id,
+                tenant_id=current_tenant_id,
                 instruction=args["instruction"],
                 model_config=args["model_config"],
                 no_variable=args["no_variable"],
@@ -93,17 +94,19 @@ class RuleCodeGenerateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("no_variable", type=bool, required=True, default=False, location="json")
-        parser.add_argument("code_language", type=str, required=False, default="javascript", location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("instruction", type=str, required=True, nullable=False, location="json")
+            .add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+            .add_argument("no_variable", type=bool, required=True, default=False, location="json")
+            .add_argument("code_language", type=str, required=False, default="javascript", location="json")
+        )
         args = parser.parse_args()
+        _, current_tenant_id = current_account_with_tenant()
 
-        account = current_user
         try:
             code_result = LLMGenerator.generate_code(
-                tenant_id=account.current_tenant_id,
+                tenant_id=current_tenant_id,
                 instruction=args["instruction"],
                 model_config=args["model_config"],
                 code_language=args["code_language"],
@@ -140,15 +143,17 @@ class RuleStructuredOutputGenerateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("instruction", type=str, required=True, nullable=False, location="json")
+            .add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
+        _, current_tenant_id = current_account_with_tenant()
 
-        account = current_user
         try:
             structured_output = LLMGenerator.generate_structured_output(
-                tenant_id=account.current_tenant_id,
+                tenant_id=current_tenant_id,
                 instruction=args["instruction"],
                 model_config=args["model_config"],
             )
@@ -189,15 +194,18 @@ class InstructionGenerateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("flow_id", type=str, required=True, default="", location="json")
-        parser.add_argument("node_id", type=str, required=False, default="", location="json")
-        parser.add_argument("current", type=str, required=False, default="", location="json")
-        parser.add_argument("language", type=str, required=False, default="javascript", location="json")
-        parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("ideal_output", type=str, required=False, default="", location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("flow_id", type=str, required=True, default="", location="json")
+            .add_argument("node_id", type=str, required=False, default="", location="json")
+            .add_argument("current", type=str, required=False, default="", location="json")
+            .add_argument("language", type=str, required=False, default="javascript", location="json")
+            .add_argument("instruction", type=str, required=True, nullable=False, location="json")
+            .add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+            .add_argument("ideal_output", type=str, required=False, default="", location="json")
+        )
         args = parser.parse_args()
+        _, current_tenant_id = current_account_with_tenant()
         code_template = (
             Python3CodeProvider.get_default_code()
             if args["language"] == "python"
@@ -222,21 +230,21 @@ class InstructionGenerateApi(Resource):
                 match node_type:
                     case "llm":
                         return LLMGenerator.generate_rule_config(
-                            current_user.current_tenant_id,
+                            current_tenant_id,
                             instruction=args["instruction"],
                             model_config=args["model_config"],
                             no_variable=True,
                         )
                     case "agent":
                         return LLMGenerator.generate_rule_config(
-                            current_user.current_tenant_id,
+                            current_tenant_id,
                             instruction=args["instruction"],
                             model_config=args["model_config"],
                             no_variable=True,
                         )
                     case "code":
                         return LLMGenerator.generate_code(
-                            tenant_id=current_user.current_tenant_id,
+                            tenant_id=current_tenant_id,
                             instruction=args["instruction"],
                             model_config=args["model_config"],
                             code_language=args["language"],
@@ -245,7 +253,7 @@ class InstructionGenerateApi(Resource):
                         return {"error": f"invalid node type: {node_type}"}
             if args["node_id"] == "" and args["current"] != "":  # For legacy app without a workflow
                 return LLMGenerator.instruction_modify_legacy(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     flow_id=args["flow_id"],
                     current=args["current"],
                     instruction=args["instruction"],
@@ -254,7 +262,7 @@ class InstructionGenerateApi(Resource):
                 )
             if args["node_id"] != "" and args["current"] != "":  # For workflow node
                 return LLMGenerator.instruction_modify_workflow(
-                    tenant_id=current_user.current_tenant_id,
+                    tenant_id=current_tenant_id,
                     flow_id=args["flow_id"],
                     node_id=args["node_id"],
                     current=args["current"],
@@ -293,8 +301,7 @@ class InstructionGenerationTemplateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, default=False, location="json")
+        parser = reqparse.RequestParser().add_argument("type", type=str, required=True, default=False, location="json")
         args = parser.parse_args()
         match args["type"]:
             case "prompt":

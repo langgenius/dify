@@ -328,6 +328,7 @@ const translation = {
     moveToThisNode: '定位至此節點',
     minimize: '退出全螢幕',
     maximize: '最大化畫布',
+    optional_and_hidden: '（可選且隱藏）',
   },
   nodes: {
     common: {
@@ -948,6 +949,8 @@ const translation = {
       rerankingModelIsRequired: '需要重新排序模型',
       chunksVariableIsRequired: 'Chunks 變數是必需的',
       embeddingModelIsRequired: '需要嵌入模型',
+      rerankingModelIsInvalid: '重排序模型無效',
+      embeddingModelIsInvalid: '嵌入模型無效',
     },
   },
   tracing: {
