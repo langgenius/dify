@@ -230,12 +230,10 @@ class ToolEngine:
         """
         parts: list[str] = []
         json_parts: list[str] = []
-        saw_text = False
 
         for response in tool_response:
             if response.type == ToolInvokeMessage.MessageType.TEXT:
                 parts.append(cast(ToolInvokeMessage.TextMessage, response.message).text)
-                saw_text = True
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 parts.append(
                     f"result link: {cast(ToolInvokeMessage.TextMessage, response.message).text}."
@@ -256,7 +254,7 @@ class ToolEngine:
             else:
                 parts.append(str(response.message))
 
-          # Add JSON parts, avoiding duplicates from text parts.
+        # Add JSON parts, avoiding duplicates from text parts.
         if json_parts:
             existing_parts = set(parts)
             parts.extend(p for p in json_parts if p not in existing_parts)
