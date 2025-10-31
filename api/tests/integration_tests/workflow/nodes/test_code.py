@@ -5,8 +5,7 @@ import pytest
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.variables import SecretVariable
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.node_events import NodeRunResult
@@ -20,7 +19,7 @@ from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_co
 CODE_MAX_STRING_LENGTH = dify_config.CODE_MAX_STRING_LENGTH
 
 
-def init_code_node(code_config: dict, with_defaults=True):
+def init_code_node(code_config: dict):
     graph_config = {
         "edges": [
             {
@@ -47,7 +46,7 @@ def init_code_node(code_config: dict, with_defaults=True):
     variable_pool = VariablePool(
         system_variables=SystemVariable(user_id="aaa", files=[]),
         user_inputs={},
-        environment_variables=[SecretVariable(name="secret_key", value="fake-secret-key")],
+        environment_variables=[],
         conversation_variables=[],
     )
     variable_pool.add(["code", "args1"], 1)
