@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import uuid
 from datetime import datetime, timedelta
 from typing import Any, Union, cast
 from urllib.parse import urlparse
@@ -107,7 +108,7 @@ def string_to_trace_id128(string: str | None) -> int:
     It's suitable for generating consistent, unique identifiers from strings.
     """
     if string is None:
-        string = ""
+        string = str(uuid.uuid4())
     hash_object = hashlib.sha256(string.encode())
 
     # Take the first 16 bytes (128 bits) of the hash digest
@@ -133,7 +134,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
     def trace(self, trace_info: BaseTraceInfo):
-        logger.info("[Arize/Phoenix] Trace: %s", trace_info)
+        logger.info("[Arize/Phoenix] Trace Entity Info: %s", trace_info)
+        logger.info("[Arize/Phoenix] Trace Entity Type: %s", type(trace_info))
         try:
             if isinstance(trace_info, WorkflowTraceInfo):
                 self.workflow_trace(trace_info)
@@ -151,7 +153,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 self.generate_name_trace(trace_info)
 
         except Exception as e:
-            logger.error("[Arize/Phoenix] Error in the trace: %s", str(e), exc_info=True)
+            logger.error("[Arize/Phoenix] Trace Entity Error: %s", str(e), exc_info=True)
             raise
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
@@ -166,10 +168,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         workflow_metadata.update(trace_info.metadata)
 
-        trace_id = string_to_trace_id128(trace_info.trace_id or trace_info.workflow_run_id)
+        dify_trace_id = trace_info.trace_id or trace_info.message_id or trace_info.workflow_run_id
+        custom_trace_id = string_to_trace_id128(dify_trace_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
-            trace_id=trace_id,
+            trace_id=custom_trace_id,
             span_id=span_id,
             is_remote=False,
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
@@ -184,6 +187,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.METADATA: json.dumps(workflow_metadata, ensure_ascii=False),
                 SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
+                "dify_trace_id": dify_trace_id,
+                "custom_trace_id": custom_trace_id,
             },
             start_time=datetime_to_nanos(trace_info.start_time),
             context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
@@ -244,6 +249,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind.value,
                         SpanAttributes.METADATA: json.dumps(node_metadata, ensure_ascii=False),
                         SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
+                        "dify_trace_id": dify_trace_id,
+                        "custom_trace_id": custom_trace_id,
                     },
                     start_time=datetime_to_nanos(created_at),
                     context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
@@ -322,16 +329,21 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
         }
 
-        trace_id = string_to_trace_id128(trace_info.trace_id or trace_info.message_id)
+        dify_trace_id = trace_info.trace_id or trace_info.message_id
+        custom_trace_id = string_to_trace_id128(dify_trace_id)
         message_span_id = RandomIdGenerator().generate_span_id()
         span_context = SpanContext(
-            trace_id=trace_id,
+            trace_id=custom_trace_id,
             span_id=message_span_id,
             is_remote=False,
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
             trace_state=TraceState(),
         )
 
+        attributes.update({
+            "dify_trace_id": dify_trace_id,
+            "custom_trace_id": custom_trace_id,
+        })
         message_span = self.tracer.start_span(
             name=TraceTaskName.MESSAGE_TRACE.value,
             attributes=attributes,
@@ -364,6 +376,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 SpanAttributes.OUTPUT_VALUE: outputs_str,
                 SpanAttributes.METADATA: json.dumps(message_metadata, ensure_ascii=False),
                 SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
+                "dify_trace_id": dify_trace_id,
+                "custom_trace_id": custom_trace_id,
             }
             llm_attributes.update(self._construct_llm_attributes(trace_info.inputs))
             if trace_info.total_tokens is not None and trace_info.total_tokens > 0:
@@ -418,10 +432,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         metadata.update(trace_info.metadata)
 
-        trace_id = string_to_trace_id128(trace_info.message_id)
+        dify_trace_id = trace_info.trace_id or trace_info.message_id
+        custom_trace_id = string_to_trace_id128(dify_trace_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
-            trace_id=trace_id,
+            trace_id=custom_trace_id,
             span_id=span_id,
             is_remote=False,
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
@@ -443,6 +458,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 ),
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
+                "dify_trace_id": dify_trace_id,
+                "custom_trace_id": custom_trace_id,
             },
             start_time=datetime_to_nanos(trace_info.start_time),
             context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
@@ -480,10 +497,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         metadata.update(trace_info.metadata)
 
-        trace_id = string_to_trace_id128(trace_info.message_id)
+        dify_trace_id = trace_info.trace_id or trace_info.message_id
+        custom_trace_id = string_to_trace_id128(dify_trace_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
-            trace_id=trace_id,
+            trace_id=custom_trace_id,
             span_id=span_id,
             is_remote=False,
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
@@ -497,6 +515,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 SpanAttributes.OUTPUT_VALUE: json.dumps(trace_info.suggested_question, ensure_ascii=False),
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
+                "dify_trace_id": dify_trace_id,
+                "custom_trace_id": custom_trace_id,
             },
             start_time=datetime_to_nanos(start_time),
             context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
@@ -533,10 +553,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         metadata.update(trace_info.metadata)
 
-        trace_id = string_to_trace_id128(trace_info.message_id)
+        dify_trace_id = trace_info.trace_id or trace_info.message_id
+        custom_trace_id = string_to_trace_id128(dify_trace_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
-            trace_id=trace_id,
+            trace_id=custom_trace_id,
             span_id=span_id,
             is_remote=False,
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
@@ -552,6 +573,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
                 "start_time": start_time.isoformat() if start_time else "",
                 "end_time": end_time.isoformat() if end_time else "",
+                "dify_trace_id": dify_trace_id,
+                "custom_trace_id": custom_trace_id,
             },
             start_time=datetime_to_nanos(start_time),
             context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
@@ -580,15 +603,16 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             "tool_config": json.dumps(trace_info.tool_config, ensure_ascii=False),
         }
 
-        trace_id = string_to_trace_id128(trace_info.message_id)
+        dify_trace_id = trace_info.trace_id or trace_info.message_id
+        custom_trace_id = string_to_trace_id128(dify_trace_id)
         tool_span_id = RandomIdGenerator().generate_span_id()
-        logger.info("[Arize/Phoenix] Creating tool trace with trace_id: %s, span_id: %s", trace_id, tool_span_id)
+        logger.info("[Arize/Phoenix] Creating tool trace with trace_id: %s, span_id: %s", custom_trace_id, tool_span_id)
 
         # Create span context with the same trace_id as the parent
         # todo: Create with the appropriate parent span context, so that the tool span is
         # a child of the appropriate span (e.g. message span)
         span_context = SpanContext(
-            trace_id=trace_id,
+            trace_id=custom_trace_id,
             span_id=tool_span_id,
             is_remote=False,
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
@@ -610,6 +634,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
                 SpanAttributes.TOOL_NAME: trace_info.tool_name,
                 SpanAttributes.TOOL_PARAMETERS: tool_params_str,
+                "dify_trace_id": dify_trace_id,
+                "custom_trace_id": custom_trace_id,
             },
             start_time=datetime_to_nanos(trace_info.start_time),
             context=trace.set_span_in_context(trace.NonRecordingSpan(span_context)),
@@ -641,10 +667,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         }
         metadata.update(trace_info.metadata)
 
-        trace_id = string_to_trace_id128(trace_info.message_id)
+        dify_trace_id = trace_info.trace_id or trace_info.message_id or trace_info.conversation_id
+        custom_trace_id = string_to_trace_id128(dify_trace_id)
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
-            trace_id=trace_id,
+            trace_id=custom_trace_id,
             span_id=span_id,
             is_remote=False,
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
@@ -661,6 +688,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
                 "start_time": trace_info.start_time.isoformat() if trace_info.start_time else "",
                 "end_time": trace_info.end_time.isoformat() if trace_info.end_time else "",
+                "dify_trace_id": dify_trace_id,
+                "custom_trace_id": custom_trace_id,
             },
             start_time=datetime_to_nanos(trace_info.start_time),
             context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
