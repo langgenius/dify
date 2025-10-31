@@ -109,12 +109,16 @@ class ClientSession(
         self._message_handler = message_handler or _default_message_handler
 
     def initialize(self) -> types.InitializeResult:
-        sampling = types.SamplingCapability()
-        roots = types.RootsCapability(
-            # TODO: Should this be based on whether we
-            # _will_ send notifications, or only whether
-            # they're supported?
-            listChanged=True,
+        # Only set capabilities if non-default callbacks are provided
+        # This prevents servers from attempting callbacks when we don't actually support them
+        sampling = types.SamplingCapability() if self._sampling_callback is not _default_sampling_callback else None
+        roots = (
+            types.RootsCapability(
+                # Only enable listChanged if we have a custom callback
+                listChanged=True,
+            )
+            if self._list_roots_callback is not _default_list_roots_callback
+            else None
         )
 
         result = self.send_request(

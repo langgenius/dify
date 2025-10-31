@@ -10,6 +10,7 @@ import { emailRegex } from '@/config'
 import { webAppLogin } from '@/service/common'
 import Input from '@/app/components/base/input'
 import I18NContext from '@/context/i18n'
+import { useWebAppStore } from '@/context/web-app-context'
 import { noop } from 'lodash-es'
 import { fetchAccessToken } from '@/service/share'
 import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
@@ -30,6 +31,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
 
   const [isLoading, setIsLoading] = useState(false)
   const redirectUrl = searchParams.get('redirect_url')
+  const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
 
   const getAppCodeFromRedirectUrl = useCallback(() => {
     if (!redirectUrl)
@@ -82,7 +84,10 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       if (res.result === 'success') {
         setWebAppAccessToken(res.data.access_token)
 
-        const { access_token } = await fetchAccessToken({ appCode: appCode! })
+        const { access_token } = await fetchAccessToken({
+          appCode: appCode!,
+          userId: embeddedUserId || undefined,
+        })
         setWebAppPassport(appCode!, access_token)
         router.replace(decodeURIComponent(redirectUrl))
       }
