@@ -33,6 +33,7 @@ class ChatAppRunner(AppRunner):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
+        passthrough: str = None,
     ):
         """
         Run application

@@ -247,6 +247,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         app_id=self.application_generate_entity.app_config.app_id,
                         message_id=self.message.id,
                         conversation_id=self.conversation.id,
+                        passthrough=kwargs.get('passthrough'),
                     )
                     # publish files
                     for message_file_id in message_files:

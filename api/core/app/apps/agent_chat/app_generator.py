@@ -73,6 +73,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
+        passthrough: str = None,
     ) -> Union[Mapping, Generator[Mapping | str, None, None]]:
         """
         Generate App response.
@@ -197,6 +198,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 "queue_manager": queue_manager,
                 "conversation_id": conversation.id,
                 "message_id": message.id,
+                "passthrough": passthrough,
             },
         )
 
@@ -222,6 +224,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         queue_manager: AppQueueManager,
         conversation_id: str,
         message_id: str,
+        passthrough: str = None,
     ):
         """
         Generate worker in a new thread.
@@ -246,6 +249,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                     queue_manager=queue_manager,
                     conversation=conversation,
                     message=message,
+                    passthrough=passthrough,
                 )
             except GenerateTaskStoppedError:
                 pass

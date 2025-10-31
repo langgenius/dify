@@ -55,6 +55,7 @@ class ToolEngine:
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        passthrough: str | None = None,
     ) -> tuple[str, list[str], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
@@ -79,7 +80,7 @@ class ToolEngine:
             # hit the callback handler
             agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
 
-            messages = ToolEngine._invoke(tool, tool_parameters, user_id, conversation_id, app_id, message_id)
+            messages = ToolEngine._invoke(tool, tool_parameters, user_id, conversation_id, app_id, message_id, passthrough=passthrough)
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
             def message_callback(

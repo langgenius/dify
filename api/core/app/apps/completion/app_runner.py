@@ -26,7 +26,11 @@ class CompletionAppRunner(AppRunner):
     """
 
     def run(
-        self, application_generate_entity: CompletionAppGenerateEntity, queue_manager: AppQueueManager, message: Message
+        self,
+        application_generate_entity: CompletionAppGenerateEntity,
+        queue_manager: AppQueueManager,
+        message: Message,
+        passthrough: str = None,
     ):
         """
         Run application

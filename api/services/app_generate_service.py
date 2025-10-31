@@ -62,7 +62,7 @@ class AppGenerateService:
                 return rate_limit.generate(
                     CompletionAppGenerator.convert_to_event_stream(
                         CompletionAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming, passthrough=passthrough
                         ),
                     ),
                     request_id=request_id,
@@ -71,7 +71,7 @@ class AppGenerateService:
                 return rate_limit.generate(
                     AgentChatAppGenerator.convert_to_event_stream(
                         AgentChatAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming, passthrough=passthrough
                         ),
                     ),
                     request_id,
@@ -80,7 +80,7 @@ class AppGenerateService:
                 return rate_limit.generate(
                     ChatAppGenerator.convert_to_event_stream(
                         ChatAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming, passthrough=passthrough
                         ),
                     ),
                     request_id=request_id,

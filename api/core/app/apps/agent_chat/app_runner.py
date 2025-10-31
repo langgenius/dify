@@ -20,6 +20,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.moderation.base import ModerationError
 from extensions.ext_database import db
 from models.model import App, Conversation, Message
+from core.tools.tool_engine import ToolEngine
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class AgentChatAppRunner(AppRunner):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
+        passthrough: str = None,
     ):
         """
         Run assistant application
@@ -228,6 +230,7 @@ class AgentChatAppRunner(AppRunner):
             message=message,
             query=query,
             inputs=inputs,
+            passthrough=passthrough,
         )
 
         # handle invoke result
