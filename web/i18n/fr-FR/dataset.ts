@@ -36,10 +36,6 @@ const translation = {
       description: 'Exécutez une recherche en texte intégral et des recherches vectorielles en même temps, réorganisez pour sélectionner la meilleure correspondance pour la requête de l\'utilisateur. La configuration de l\'API du modèle de réorganisation est nécessaire.',
       recommend: 'Recommander',
     },
-    invertedIndex: {
-      title: 'Index inversé',
-      description: 'L\'Index inversé est une structure utilisée pour une récupération efficace. Organisé par termes, chaque terme pointe vers des documents ou des pages web le contenant.',
-    },
     change: 'Changer',
     changeRetrievalMethod: 'Changer la méthode de récupération',
     keyword_search: {
@@ -237,6 +233,10 @@ const translation = {
     title: 'API de service',
     disabled: 'désactivé',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

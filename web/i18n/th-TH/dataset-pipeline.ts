@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'เผยแพร่ไปป์ไลน์ความรู้',
+      tip: '<CustomLink>ไปที่เอกสาร</CustomLink> เพื่อเพิ่มหรือจัดการเอกสาร',
     },
     error: {
       message: 'ไม่สามารถเผยแพร่ไปป์ไลน์ความรู้',
@@ -54,6 +55,7 @@ const translation = {
     errorTip: 'ไม่สามารถส่งออก DSL ไปป์ไลน์ได้',
   },
   details: {
+    createdBy: 'โดย {{author}}',
     structure: 'โครงสร้าง',
     structureTooltip: 'โครงสร้างก้อนกําหนดวิธีการแยกและจัดทําดัชนีเอกสาร โดยเสนอโหมดทั่วไป ผู้ปกครอง-รอง และ Q&A และไม่ซ้ํากันสําหรับแต่ละฐานความรู้',
   },
@@ -109,6 +111,8 @@ const translation = {
     stepThree: {
       learnMore: 'ศึกษาเพิ่มเติม',
     },
+    selectOnlineDocumentTip: 'ประมวลผลได้สูงสุด {{count}} หน้า',
+    selectOnlineDriveTip: 'ประมวลผลได้สูงสุด {{count}} ไฟล์ ขนาดไม่เกินไฟล์ละ {{fileSize}} MB',
     characters: 'อักขระ',
     backToDataSource: 'แหล่งข้อมูล',
     title: 'เพิ่มเอกสาร',
@@ -116,19 +120,26 @@ const translation = {
   documentSettings: {
     title: 'การตั้งค่าเอกสาร',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: 'หน้า {{name}}',
+  },
   onlineDrive: {
     breadcrumbs: {
       searchPlaceholder: 'ค้นหาไฟล์...',
       allFiles: 'ไฟล์ทั้งหมด',
       allBuckets: 'ที่เก็บข้อมูลบนคลาวด์ทั้งหมด',
+      searchResult: 'พบ {{searchResultsLength}} รายการในโฟลเดอร์ "{{folderName}}"',
     },
+    notConnected: '{{name}} ยังไม่ได้เชื่อมต่อ',
+    notConnectedTip: 'หากต้องการซิงค์กับ {{name}} ต้องเชื่อมต่อกับ {{name}} ก่อน',
     resetKeywords: 'รีเซ็ตคีย์เวิร์ด',
     emptySearchResult: 'ไม่พบสิ่งของ',
     notSupportedFileType: 'ไม่รองรับชนิดแฟ้มนี้',
     emptyFolder: 'โฟลเดอร์นี้ว่างเปล่า',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{pluginName}} ของ {{credentialName}}',
+  },
   conversion: {
     confirm: {
       title: 'การยืนยัน',
@@ -149,6 +160,7 @@ const translation = {
   editPipelineInfo: 'แก้ไขข้อมูลไปป์ไลน์',
   pipelineNameAndIcon: 'ชื่อและไอคอนไปป์ไลน์',
   knowledgeDescriptionPlaceholder: 'อธิบายสิ่งที่อยู่ในฐานความรู้นี้ คําอธิบายโดยละเอียดช่วยให้ AI สามารถเข้าถึงเนื้อหาของชุดข้อมูลได้แม่นยํายิ่งขึ้น หากว่างเปล่า Dify จะใช้กลยุทธ์การโจมตีเริ่มต้น (ไม่บังคับ)',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

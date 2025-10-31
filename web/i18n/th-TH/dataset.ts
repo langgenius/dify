@@ -107,10 +107,6 @@ const translation = {
       description: 'ดําเนินการค้นหาข้อความแบบเต็มและการค้นหาแบบเวกเตอร์พร้อมกันจัดอันดับใหม่เพื่อเลือกการจับคู่ที่ดีที่สุดสําหรับคําค้นหาของผู้ใช้ ผู้ใช้สามารถเลือกที่จะตั้งค่าน้ําหนักหรือกําหนดค่าเป็นโมเดล Rerank',
       recommend: 'แนะนำ',
     },
-    invertedIndex: {
-      title: 'ดัชนีกลับด้าน',
-      description: 'Inverted Index เป็นโครงสร้างที่ใช้สําหรับการดึงข้อมูลอย่างมีประสิทธิภาพ จัดเรียงตามคําศัพท์ แต่ละคําชี้ไปที่เอกสารหรือหน้าเว็บที่มีคําดังกล่าว',
-    },
     change: 'เปลี่ยน',
     changeRetrievalMethod: 'วิธีการเรียกดูการเปลี่ยนแปลง',
     keyword_search: {
@@ -236,6 +232,10 @@ const translation = {
     disabled: 'ถูกปิดใช้งาน',
     title: 'บริการ API',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

@@ -44,7 +44,8 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
 
           // Skip template literal placeholders
           if (source === 'TEMPLATE_LITERAL_PLACEHOLDER') {
-            console.log(`⏭️  Skipping template literal key: "${key}"`)
+            if (!global.showSkippedOnly)
+              console.log(`⏭️  Skipping template literal key: "${key}"`)
             skippedKeys.push(`${key}: ${source}`)
             return
           }
@@ -60,33 +61,40 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
 
           const isCodeLike = codePatterns.some(pattern => pattern.test(source))
           if (isCodeLike) {
-            console.log(`⏭️  Skipping code-like content: "${source.substring(0, 50)}..."`)
+            if (!global.showSkippedOnly)
+              console.log(`⏭️  Skipping code-like content: "${source.substring(0, 50)}..."`)
             skippedKeys.push(`${key}: ${source}`)
             return
           }
 
-          console.log(`🔄 Translating: "${source}" to ${toLanguage}`)
+          if (!global.showSkippedOnly)
+            console.log(`🔄 Translating: "${source}" to ${toLanguage}`)
           const { translation } = await translate(sourceObj[key], null, languageKeyMap[toLanguage])
           targetObject[key] = translation
           translatedKeys.push(`${key}: ${translation}`)
-          console.log(`✅ Translated: "${translation}"`)
+          if (!global.showSkippedOnly)
+            console.log(`✅ Translated: "${translation}"`)
         }
         catch (error) {
-          console.error(`❌ Error translating "${sourceObj[key]}" to ${toLanguage}. Key: ${key}`, error.message)
+          if (!global.showSkippedOnly)
+            console.error(`❌ Error translating "${sourceObj[key]}" to ${toLanguage}. Key: ${key}`, error.message)
           skippedKeys.push(`${key}: ${sourceObj[key]} (Error: ${error.message})`)
 
           // Add retry mechanism for network errors
           if (error.message.includes('network') || error.message.includes('timeout')) {
-            console.log(`🔄 Retrying translation for key: ${key}`)
+            if (!global.showSkippedOnly)
+              console.log(`🔄 Retrying translation for key: ${key}`)
             try {
               await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
               const { translation } = await translate(sourceObj[key], null, languageKeyMap[toLanguage])
               targetObject[key] = translation
               translatedKeys.push(`${key}: ${translation}`)
-              console.log(`✅ Retry successful: "${translation}"`)
+              if (!global.showSkippedOnly)
+                console.log(`✅ Retry successful: "${translation}"`)
             }
  catch (retryError) {
-              console.error(`❌ Retry failed for key ${key}:`, retryError.message)
+              if (!global.showSkippedOnly)
+                console.error(`❌ Retry failed for key ${key}:`, retryError.message)
             }
           }
         }
@@ -114,7 +122,8 @@ async function autoGenTrans(fileName, toGenLanguage, isDryRun = false) {
     let processedContent = content
     const templateLiteralPattern = /(resolutionTooltip):\s*`([^`]*)`/g
     processedContent = processedContent.replace(templateLiteralPattern, (match, key, value) => {
-      console.log(`⏭️  Temporarily replacing template literal for key: ${key}`)
+      if (!global.showSkippedOnly)
+        console.log(`⏭️  Temporarily replacing template literal for key: ${key}`)
       return `${key}: "TEMPLATE_LITERAL_PLACEHOLDER"`
     })
 
@@ -152,25 +161,29 @@ export default translation
     // Also handle template literals in target file content
     let processedToGenContent = toGenContent
     processedToGenContent = processedToGenContent.replace(templateLiteralPattern, (match, key, value) => {
-      console.log(`⏭️  Temporarily replacing template literal in target file for key: ${key}`)
+      if (!global.showSkippedOnly)
+        console.log(`⏭️  Temporarily replacing template literal in target file for key: ${key}`)
       return `${key}: "TEMPLATE_LITERAL_PLACEHOLDER"`
     })
     const mod = await parseModule(`export default ${processedToGenContent.replace('export default translation', '').replace('const translation = ', '')}`)
     const toGenOutPut = mod.exports.default
 
-    console.log(`\n🌍 Processing ${fileName} for ${toGenLanguage}...`)
+    if (!global.showSkippedOnly)
+      console.log(`\n🌍 Processing ${fileName} for ${toGenLanguage}...`)
     const result = await translateMissingKeyDeeply(fullKeyContent, toGenOutPut, toGenLanguage)
 
     // Generate summary report
-    console.log(`\n📊 Translation Summary for ${fileName} -> ${toGenLanguage}:`)
-    console.log(`  ✅ Translated: ${result.translated.length} keys`)
-    console.log(`  ⏭️  Skipped: ${result.skipped.length} keys`)
+    if (!global.showSkippedOnly) {
+      console.log(`\n📊 Translation Summary for ${fileName} -> ${toGenLanguage}:`)
+      console.log(`  ✅ Translated: ${result.translated.length} keys`)
+      console.log(`  ⏭️  Skipped: ${result.skipped.length} keys`)
 
-    if (result.skipped.length > 0) {
-      console.log(`\n⚠️  Skipped keys in ${fileName} (${toGenLanguage}):`)
-      result.skipped.slice(0, 5).forEach(item => console.log(`    - ${item}`))
-      if (result.skipped.length > 5)
-        console.log(`    ... and ${result.skipped.length - 5} more`)
+      if (result.skipped.length > 0) {
+        console.log(`\n⚠️  Skipped keys in ${fileName} (${toGenLanguage}):`)
+        result.skipped.slice(0, 5).forEach(item => console.log(`    - ${item}`))
+        if (result.skipped.length > 5)
+          console.log(`    ... and ${result.skipped.length - 5} more`)
+      }
     }
 
     const { code } = generateCode(mod)
@@ -190,28 +203,34 @@ export default translation
           `${key}: "TEMPLATE_LITERAL_PLACEHOLDER"`,
           `${key}: \`${value}\``,
         )
-        console.log(`🔄 Restored original template literal for key: ${key}`)
+        if (!global.showSkippedOnly)
+          console.log(`🔄 Restored original template literal for key: ${key}`)
       }
     }
 
     if (!isDryRun) {
       fs.writeFileSync(toGenLanguageFilePath, res)
-      console.log(`💾 Saved translations to ${toGenLanguageFilePath}`)
+      if (!global.showSkippedOnly)
+        console.log(`💾 Saved translations to ${toGenLanguageFilePath}`)
     }
  else {
-      console.log(`🔍 [DRY RUN] Would save translations to ${toGenLanguageFilePath}`)
+      if (!global.showSkippedOnly)
+        console.log(`🔍 [DRY RUN] Would save translations to ${toGenLanguageFilePath}`)
     }
 
     return result
   }
  catch (error) {
-    console.error(`Error processing file ${fullKeyFilePath}:`, error.message)
+    if (!global.showSkippedOnly)
+      console.error(`Error processing file ${fullKeyFilePath}:`, error.message)
     throw error
   }
 }
 
 // Add command line argument support
 const isDryRun = process.argv.includes('--dry-run')
+const showSkippedOnly = process.argv.includes('--show-skipped')
+global.showSkippedOnly = showSkippedOnly
 const targetFiles = process.argv
   .filter(arg => arg.startsWith('--file='))
   .map(arg => arg.split('=')[1])
@@ -223,8 +242,10 @@ function delay(ms) {
 }
 
 async function main() {
-  console.log('🚀 Starting auto-gen-i18n script...')
-  console.log(`📋 Mode: ${isDryRun ? 'DRY RUN (no files will be modified)' : 'LIVE MODE'}`)
+  if (!showSkippedOnly) {
+    console.log('🚀 Starting auto-gen-i18n script...')
+    console.log(`📋 Mode: ${isDryRun ? 'DRY RUN (no files will be modified)' : 'LIVE MODE'}`)
+  }
 
   const files = fs
     .readdirSync(path.resolve(__dirname, i18nFolder, targetLanguage))
@@ -236,16 +257,20 @@ async function main() {
   const filesToProcess = targetFiles.length > 0 ? files.filter(f => targetFiles.includes(f)) : files
   const languagesToProcess = targetLang ? [targetLang] : Object.keys(languageKeyMap)
 
-  console.log(`📁 Files to process: ${filesToProcess.join(', ')}`)
-  console.log(`🌍 Languages to process: ${languagesToProcess.join(', ')}`)
+  if (!showSkippedOnly) {
+    console.log(`📁 Files to process: ${filesToProcess.join(', ')}`)
+    console.log(`🌍 Languages to process: ${languagesToProcess.join(', ')}`)
+  }
 
   let totalTranslated = 0
   let totalSkipped = 0
   let totalErrors = 0
+  const allSkippedKeys = {} // Structure: { language: { file: [keys] } }
 
   // Process files sequentially to avoid API rate limits
   for (const file of filesToProcess) {
-    console.log(`\n📄 Processing file: ${file}`)
+    if (!showSkippedOnly)
+      console.log(`\n📄 Processing file: ${file}`)
 
     // Process languages with rate limiting
     for (const language of languagesToProcess) {
@@ -254,25 +279,66 @@ async function main() {
         totalTranslated += result.translated.length
         totalSkipped += result.skipped.length
 
+        // Collect skipped keys
+        if (result.skipped.length > 0) {
+          if (!allSkippedKeys[language])
+            allSkippedKeys[language] = {}
+          allSkippedKeys[language][file] = result.skipped
+        }
+
         // Rate limiting: wait 500ms between language processing
-        await delay(500)
+        if (!showSkippedOnly)
+          await delay(500)
       }
       catch (e) {
-        console.error(`❌ Error translating ${file} to ${language}:`, e.message)
+        if (!showSkippedOnly)
+          console.error(`❌ Error translating ${file} to ${language}:`, e.message)
         totalErrors++
       }
     }
   }
 
-  // Final summary
-  console.log('\n🎉 Auto-translation completed!')
-  console.log('📊 Final Summary:')
-  console.log(`  ✅ Total keys translated: ${totalTranslated}`)
-  console.log(`  ⏭️  Total keys skipped: ${totalSkipped}`)
-  console.log(`  ❌ Total errors: ${totalErrors}`)
+  if (showSkippedOnly) {
+    // Output skipped keys in structured format
+    console.log('📋 Skipped Keys Report\n')
+    console.log('=' .repeat(80))
 
-  if (isDryRun)
-    console.log('\n💡 This was a dry run. To actually translate, run without --dry-run flag.')
+    for (const [language, files] of Object.entries(allSkippedKeys)) {
+      console.log(`\n🌍 Language: ${language}`)
+      console.log('-'.repeat(80))
+
+      for (const [file, keys] of Object.entries(files)) {
+        console.log(`\n  📄 File: ${file}`)
+        console.log(`  🔢 Count: ${keys.length} keys`)
+        console.log('  Keys:')
+        keys.forEach((key) => {
+          const [keyName, value] = key.split(': ')
+          console.log(`    • ${keyName}`)
+          if (value)
+            console.log(`      Value: ${value.substring(0, 60)}${value.length > 60 ? '...' : ''}`)
+        })
+      }
+    }
+
+    console.log('\n' + '='.repeat(80))
+    console.log(`\n📊 Summary:`)
+    console.log(`  Total languages with skipped keys: ${Object.keys(allSkippedKeys).length}`)
+    console.log(`  Total skipped keys: ${totalSkipped}`)
+  }
+  else {
+    // Final summary
+    console.log('\n🎉 Auto-translation completed!')
+    console.log('📊 Final Summary:')
+    console.log(`  ✅ Total keys translated: ${totalTranslated}`)
+    console.log(`  ⏭️  Total keys skipped: ${totalSkipped}`)
+    console.log(`  ❌ Total errors: ${totalErrors}`)
+
+    if (isDryRun)
+      console.log('\n💡 This was a dry run. To actually translate, run without --dry-run flag.')
+
+    if (totalSkipped > 0)
+      console.log('\n💡 To see detailed skipped keys, run with --show-skipped flag.')
+  }
 }
 
 main()

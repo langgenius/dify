@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'Paramètres du document',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       searchPlaceholder: 'Rechercher des fichiers...',
@@ -128,7 +128,7 @@ const translation = {
     emptyFolder: 'Ce dossier est vide',
     resetKeywords: 'Réinitialiser les mots-clés',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'Confirmation',
@@ -149,6 +149,7 @@ const translation = {
   knowledgeNameAndIcon: 'Nom et icône de la connaissance',
   inputField: 'Champ de saisie',
   knowledgeDescriptionPlaceholder: 'Décrivez le contenu de cette base de connaissances. Une description détaillée permet à l’IA d’accéder plus précisément au contenu de l’ensemble de données. S’il est vide, Dify utilisera la stratégie d’accès par défaut. (Facultatif)',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

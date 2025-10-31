@@ -312,7 +312,7 @@ export default translation
       expect(keys).toContain('complex.level1.directValue')
       expect(keys).toContain('complex.rootValue')
 
-      // Should not include intermediate objects
+      // Should not include intermediate object keys
       expect(keys).not.toContain('complex.level1')
       expect(keys).not.toContain('complex.level1.level2')
       expect(keys).not.toContain('complex.level1.level2.level3')
@@ -576,7 +576,7 @@ export default translation
         // Find the key line (simplified for single-level keys in test)
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i]
-          const keyPattern = new RegExp(`^\\s*${keyToRemove}\\s*:`)
+          const keyPattern = new RegExp(`^s*${keyToRemove}s*:`)
           if (keyPattern.test(line)) {
             targetLineIndex = i
             break
@@ -591,7 +591,7 @@ export default translation
           const trimmedKeyLine = keyLine.trim()
 
           // If key line ends with ":" (not complete value), it's likely multiline
-          if (trimmedKeyLine.endsWith(':') && !trimmedKeyLine.includes('{') && !trimmedKeyLine.match(/:\s*['"`]/)) {
+          if (trimmedKeyLine.endsWith(':') && !trimmedKeyLine.includes('{') && !trimmedKeyLine.match(/:\s*['"\\]/)) {
             // Find the value lines that belong to this key
             let currentLine = targetLineIndex + 1
             let foundValue = false
@@ -757,6 +757,20 @@ export default translation`
       expect(result).not.toContain('Jaki typ aplikacji')
       expect(result).not.toContain('Zbuduj aplikację opartą na czacie')
       expect(result).not.toContain('Zbuduj inteligentnego agenta')
+    })
+  })
+  describe('Compare all languages with en-US', () => {
+    const languages = ['de-DE', 'es-ES', 'fa-IR', 'fr-FR', 'hi-IN', 'id-ID', 'it-IT', 'ja-JP', 'ko-KR', 'pl-PL', 'pt-BR', 'ro-RO', 'ru-RU', 'sl-SI', 'th-TH', 'tr-TR', 'uk-UA', 'vi-VN', 'zh-Hans', 'zh-Hant']
+
+    it.each(languages)('should have the same keys as en-US in %s', async (lang) => {
+      const enKeys = await getKeysFromLanguage('en-US', path.join(__dirname, '../i18n'))
+      const langKeys = await getKeysFromLanguage(lang, path.join(__dirname, '../i18n'))
+
+      const missingKeys = enKeys.filter(key => !langKeys.includes(key))
+      const extraKeys = langKeys.filter(key => !enKeys.includes(key))
+
+      expect(missingKeys).toEqual([])
+      expect(extraKeys).toEqual([])
     })
   })
 })

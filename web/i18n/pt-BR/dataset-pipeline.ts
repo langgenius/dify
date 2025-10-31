@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'Configurações do documento',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       searchPlaceholder: 'Pesquisar arquivos...',
@@ -128,7 +128,7 @@ const translation = {
     emptyFolder: 'Esta pasta está vazia',
     emptySearchResult: 'Nenhum item foi encontrado',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'Confirmação',
@@ -149,6 +149,7 @@ const translation = {
   knowledgeNameAndIcon: 'Nome e ícone do conhecimento',
   editPipelineInfo: 'Editar informações do pipeline',
   knowledgeDescriptionPlaceholder: 'Descreva o que está nesta Base de Conhecimento. Uma descrição detalhada permite que a IA acesse o conteúdo do conjunto de dados com mais precisão. Se estiver vazio, o Dify usará a estratégia de acerto padrão. (Opcional)',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

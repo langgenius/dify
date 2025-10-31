@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'Nastavitve dokumenta',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Vse datoteke',
@@ -128,7 +128,7 @@ const translation = {
     emptySearchResult: 'Predmeti niso bili najdeni',
     notSupportedFileType: 'Ta vrsta datoteke ni podprta',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'Potrditev',
@@ -149,6 +149,7 @@ const translation = {
   knowledgeNameAndIcon: 'Ime in ikona znanja',
   editPipelineInfo: 'Urejanje informacij o cevovodu',
   knowledgeDescriptionPlaceholder: 'Opišite, kaj je v tej bazi znanja. Podroben opis omogoča umetni inteligenci natančnejši dostop do vsebine nabora podatkov. Če je prazen, bo Dify uporabil privzeto strategijo zadetkov. (Neobvezno)',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation
