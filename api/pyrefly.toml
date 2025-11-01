@@ -3,7 +3,6 @@ project-excludes = [
     "tests/",
     ".venv",
     "migrations/",
-    "core/rag",
     "extensions/storage/",
     "services/",
     "core/",
@@ -14,7 +13,6 @@ project-excludes = [
     "models/",
     "factories/",
     "schedule/queue_monitor_task.py",
-    "factories/variable_factory.py",
 ]
 python-platform = "linux"
 python-version = "3.11.0"
