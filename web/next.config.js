@@ -111,6 +111,7 @@ const nextConfig = {
     })),
   },
   experimental: {
+    turbopackFileSystemCacheForDev: true,
     optimizePackageImports: [
       '@heroicons/react'
     ],
