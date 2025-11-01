@@ -74,6 +74,8 @@ class DatasetMetadataApi(Resource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, name)
+        if metadata is None:
+            raise NotFound("Metadata not found.")
         return metadata, 200
 
     @setup_required
@@ -89,7 +91,9 @@ class DatasetMetadataApi(Resource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
+        result = MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
+        if result is None:
+            raise NotFound("Metadata not found.")
         return {"result": "success"}, 204
 
 
