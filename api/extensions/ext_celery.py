@@ -102,6 +102,7 @@ def init_app(app: DifyApp) -> Celery:
     class BeatTask(TypedDict):
         task: str
         schedule: crontab | timedelta
+
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, BeatTask] = {}
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
