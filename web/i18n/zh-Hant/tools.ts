@@ -143,7 +143,7 @@ const translation = {
   addToolModal: {
     add: '加',
     type: '類型',
-    added: '添加',
+    added: '新增',
     manageInTools: '在工具中管理',
     category: '類別',
     custom: {
@@ -198,7 +198,7 @@ const translation = {
       noHeaders: '沒有配置自定義標頭',
       timeoutPlaceholder: '三十',
       headerValuePlaceholder: '例如，承載者令牌123',
-      addHeader: '添加標題',
+      addHeader: '新增標題',
       headerKeyPlaceholder: '例如，授權',
       headersTip: '與 MCP 伺服器請求一同發送的附加 HTTP 標頭',
       maskedHeadersTip: '標頭值已被遮罩以保障安全。更改將更新實際值。',
@@ -243,7 +243,7 @@ const translation = {
         description: '描述',
         descriptionPlaceholder: '說明此工具的用途及如何被 LLM 使用',
         parameters: '參數',
-        parametersTip: '為每個參數添加描述，以幫助 LLM 理解其目的和約束。',
+        parametersTip: '為每個參數新增描述，以幫助 LLM 理解其目的和約束。',
         parametersPlaceholder: '參數的目的和約束',
         confirm: '啟用 MCP 伺服器',
       },

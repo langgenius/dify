@@ -56,7 +56,7 @@ const translation = {
       agentMode: '代理模式',
       workflow: '工作流',
       llmLoadingBalancing: 'LLM 負載均衡',
-      llmLoadingBalancingTooltip: '向模型添加多個 API 金鑰，從而有效地繞過 API 速率限制。',
+      llmLoadingBalancingTooltip: '向模型新增多個 API 金鑰，從而有效地繞過 API 速率限制。',
     },
     comingSoon: '即將推出',
     member: '成員',
@@ -68,7 +68,7 @@ const translation = {
     },
     annotatedResponse: {
       title: '標註回覆數',
-      tooltip: '標註回覆功能透過人工編輯標註為應用提供了可定製的高質量問答回覆能力',
+      tooltip: '標註回覆功能透過人工編輯標註為應用提供了可定製的高品質問答回覆能力',
     },
     ragAPIRequestTooltip: '指單獨呼叫 Dify 知識庫資料處理能力的 API。',
     receiptInfo: '只有團隊所有者和團隊管理員才能訂閱和檢視賬單資訊',
