@@ -48,7 +48,7 @@ const translation = {
       dislike: '反對',
       addAnnotation: '標記改進回覆',
       editAnnotation: '編輯改進回覆',
-      annotationPlaceholder: '輸入你希望 AI 回覆的預期答案，這在今後可用於模型微調，持續改進文字生成質量。',
+      annotationPlaceholder: '輸入你希望 AI 回覆的預期答案，這在今後可用於模型微調，持續改進文字生成品質。',
     },
     variables: '變數',
     uploadImages: '上傳的圖片',
