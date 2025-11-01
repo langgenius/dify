@@ -1,4 +1,3 @@
-from typing import TypedDict
 import ssl
 from datetime import timedelta
 from typing import Any, TypedDict
