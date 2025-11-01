@@ -43,7 +43,7 @@ function useAppsQueryState() {
   const pathname = usePathname()
   const syncSearchParams = useCallback((params: URLSearchParams) => {
     const search = params.toString()
-    if (searchParams.toString() === search)
+    if (searchParams.size === params.size && searchParams.toString() === search)
       return
     const query = search ? `?${search}` : ''
     router.push(`${pathname}${query}`, { scroll: false })
