@@ -146,6 +146,23 @@ class TestWorkflowToolManageService:
             },
         ]
 
+    def _create_test_workflow_tool_output_schema(self):
+        """Helper method to create valid workflow tool parameters."""
+        return {
+            "type": "object",
+            "properties": {
+                "str_val": {"description": "", "type": "string"},
+                "num_val": {"description": "", "type": "number"},
+                "bool_val": {"description": "", "type": "boolean"},
+                "arr_num_val": {"description": "", "type": "array", "items": {"type": "number"}},
+                "arr_str_val": {"description": "", "type": "array", "items": {"type": "string"}},
+                "arr_bool_val": {"description": "", "type": "array", "items": {"type": "boolean"}},
+                "arr_obj_val": {"description": "", "type": "array", "items": {"type": "object"}},
+                "obj_val": {"description": "", "type": "object"},
+                "file": {"description": "", "type": "array", "items": {"type": "file"}},
+            },
+        }
+
     def test_create_workflow_tool_success(self, db_session_with_containers, mock_external_service_dependencies):
         """
         Test successful workflow tool creation with valid parameters.
@@ -170,6 +187,7 @@ class TestWorkflowToolManageService:
         tool_icon = {"type": "emoji", "emoji": "🔧"}
         tool_description = fake.text(max_nb_chars=200)
         tool_parameters = self._create_test_workflow_tool_parameters()
+        tool_output_schema = self._create_test_workflow_tool_output_schema()
         tool_privacy_policy = fake.text(max_nb_chars=100)
         tool_labels = ["automation", "workflow"]
 
@@ -183,6 +201,7 @@ class TestWorkflowToolManageService:
             icon=tool_icon,
             description=tool_description,
             parameters=tool_parameters,
+            output_schema=tool_output_schema,
             privacy_policy=tool_privacy_policy,
             labels=tool_labels,
         )
@@ -209,6 +228,7 @@ class TestWorkflowToolManageService:
         assert created_tool_provider.icon == json.dumps(tool_icon)
         assert created_tool_provider.description == tool_description
         assert created_tool_provider.parameter_configuration == json.dumps(tool_parameters)
+        assert created_tool_provider.output_schema == json.dumps(tool_output_schema)
         assert created_tool_provider.privacy_policy == tool_privacy_policy
         assert created_tool_provider.version == workflow.version
         assert created_tool_provider.user_id == account.id
@@ -243,6 +263,7 @@ class TestWorkflowToolManageService:
         # Create first workflow tool
         first_tool_name = fake.word()
         first_tool_parameters = self._create_test_workflow_tool_parameters()
+        first_tool_output_schema = self._create_test_workflow_tool_output_schema()
 
         WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
@@ -253,11 +274,12 @@ class TestWorkflowToolManageService:
             icon={"type": "emoji", "emoji": "🔧"},
             description=fake.text(max_nb_chars=200),
             parameters=first_tool_parameters,
+            output_schema=first_tool_output_schema,
         )
 
         # Attempt to create second workflow tool with same name
         second_tool_parameters = self._create_test_workflow_tool_parameters()
-
+        second_tool_output_schema = self._create_test_workflow_tool_output_schema()
         with pytest.raises(ValueError) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
@@ -268,6 +290,7 @@ class TestWorkflowToolManageService:
                 icon={"type": "emoji", "emoji": "⚙️"},
                 description=fake.text(max_nb_chars=200),
                 parameters=second_tool_parameters,
+                output_schema=second_tool_output_schema,
             )
 
         # Verify error message
@@ -309,7 +332,7 @@ class TestWorkflowToolManageService:
 
         # Attempt to create workflow tool with non-existent app
         tool_parameters = self._create_test_workflow_tool_parameters()
-
+        tool_output_schema = self._create_test_workflow_tool_output_schema()
         with pytest.raises(ValueError) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
@@ -320,6 +343,7 @@ class TestWorkflowToolManageService:
                 icon={"type": "emoji", "emoji": "🔧"},
                 description=fake.text(max_nb_chars=200),
                 parameters=tool_parameters,
+                output_schema=tool_output_schema,
             )
 
         # Verify error message
@@ -365,7 +389,10 @@ class TestWorkflowToolManageService:
                 "required": True,
             }
         ]
-
+        invalid_output_schema = {
+            "type": "invalid_type",
+            # Missing properties field
+        }
         # Attempt to create workflow tool with invalid parameters
         with pytest.raises(ValueError) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
@@ -377,6 +404,7 @@ class TestWorkflowToolManageService:
                 icon={"type": "emoji", "emoji": "🔧"},
                 description=fake.text(max_nb_chars=200),
                 parameters=invalid_parameters,
+                output_schema=invalid_output_schema,
             )
 
         # Verify error message contains validation error
@@ -416,7 +444,7 @@ class TestWorkflowToolManageService:
         # Create first workflow tool
         first_tool_name = fake.word()
         first_tool_parameters = self._create_test_workflow_tool_parameters()
-
+        first_tool_output_schema = self._create_test_workflow_tool_output_schema()
         WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
             tenant_id=account.current_tenant.id,
@@ -426,12 +454,13 @@ class TestWorkflowToolManageService:
             icon={"type": "emoji", "emoji": "🔧"},
             description=fake.text(max_nb_chars=200),
             parameters=first_tool_parameters,
+            output_schema=first_tool_output_schema,
         )
 
         # Attempt to create second workflow tool with same app_id but different name
         second_tool_name = fake.word()
         second_tool_parameters = self._create_test_workflow_tool_parameters()
-
+        second_tool_output_schema = self._create_test_workflow_tool_output_schema()
         with pytest.raises(ValueError) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
@@ -442,6 +471,7 @@ class TestWorkflowToolManageService:
                 icon={"type": "emoji", "emoji": "⚙️"},
                 description=fake.text(max_nb_chars=200),
                 parameters=second_tool_parameters,
+                output_schema=second_tool_output_schema,
             )
 
         # Verify error message
@@ -486,7 +516,7 @@ class TestWorkflowToolManageService:
 
         # Attempt to create workflow tool for app without workflow
         tool_parameters = self._create_test_workflow_tool_parameters()
-
+        tool_output_schema = self._create_test_workflow_tool_output_schema()
         with pytest.raises(ValueError) as exc_info:
             WorkflowToolManageService.create_workflow_tool(
                 user_id=account.id,
@@ -497,6 +527,7 @@ class TestWorkflowToolManageService:
                 icon={"type": "emoji", "emoji": "🔧"},
                 description=fake.text(max_nb_chars=200),
                 parameters=tool_parameters,
+                output_schema=tool_output_schema,
             )
 
         # Verify error message
@@ -534,7 +565,7 @@ class TestWorkflowToolManageService:
         # Create initial workflow tool
         initial_tool_name = fake.word()
         initial_tool_parameters = self._create_test_workflow_tool_parameters()
-
+        initial_tool_output_schema = self._create_test_workflow_tool_output_schema()
         WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
             tenant_id=account.current_tenant.id,
@@ -544,6 +575,7 @@ class TestWorkflowToolManageService:
             icon={"type": "emoji", "emoji": "🔧"},
             description=fake.text(max_nb_chars=200),
             parameters=initial_tool_parameters,
+            output_schema=initial_tool_output_schema,
         )
 
         # Get the created tool
@@ -564,6 +596,7 @@ class TestWorkflowToolManageService:
         updated_tool_icon = {"type": "emoji", "emoji": "⚙️"}
         updated_tool_description = fake.text(max_nb_chars=200)
         updated_tool_parameters = self._create_test_workflow_tool_parameters()
+        updated_tool_output_schema = self._create_test_workflow_tool_output_schema()
         updated_tool_privacy_policy = fake.text(max_nb_chars=100)
         updated_tool_labels = ["automation", "updated"]
 
@@ -577,6 +610,7 @@ class TestWorkflowToolManageService:
             icon=updated_tool_icon,
             description=updated_tool_description,
             parameters=updated_tool_parameters,
+            output_schema=updated_tool_output_schema,
             privacy_policy=updated_tool_privacy_policy,
             labels=updated_tool_labels,
         )
@@ -591,6 +625,7 @@ class TestWorkflowToolManageService:
         assert created_tool.icon == json.dumps(updated_tool_icon)
         assert created_tool.description == updated_tool_description
         assert created_tool.parameter_configuration == json.dumps(updated_tool_parameters)
+        assert created_tool.output_schema == json.dumps(updated_tool_output_schema)
         assert created_tool.privacy_policy == updated_tool_privacy_policy
         assert created_tool.version == workflow.version
         assert created_tool.updated_at is not None
@@ -621,7 +656,7 @@ class TestWorkflowToolManageService:
 
         # Attempt to update non-existent workflow tool
         tool_parameters = self._create_test_workflow_tool_parameters()
-
+        tool_output_schema = self._create_test_workflow_tool_output_schema()
         with pytest.raises(ValueError) as exc_info:
             WorkflowToolManageService.update_workflow_tool(
                 user_id=account.id,
@@ -632,6 +667,7 @@ class TestWorkflowToolManageService:
                 icon={"type": "emoji", "emoji": "🔧"},
                 description=fake.text(max_nb_chars=200),
                 parameters=tool_parameters,
+                output_schema=tool_output_schema,
             )
 
         # Verify error message
@@ -671,7 +707,7 @@ class TestWorkflowToolManageService:
         # Create first workflow tool
         first_tool_name = fake.word()
         first_tool_parameters = self._create_test_workflow_tool_parameters()
-
+        first_tool_output_schema = self._create_test_workflow_tool_output_schema()
         WorkflowToolManageService.create_workflow_tool(
             user_id=account.id,
             tenant_id=account.current_tenant.id,
@@ -681,6 +717,7 @@ class TestWorkflowToolManageService:
             icon={"type": "emoji", "emoji": "🔧"},
             description=fake.text(max_nb_chars=200),
             parameters=first_tool_parameters,
+            output_schema=first_tool_output_schema,
         )
 
         # Get the created tool
@@ -705,6 +742,7 @@ class TestWorkflowToolManageService:
             icon={"type": "emoji", "emoji": "⚙️"},
             description=fake.text(max_nb_chars=200),
             parameters=first_tool_parameters,
+            output_schema=first_tool_output_schema,
         )
 
         # Verify update was successful
