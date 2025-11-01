@@ -43,7 +43,7 @@ jobs:
         run: |
           cd api
           uv add --dev pyrefly
-          uv run pyrefly check || true
+          uv run pyrefly check
 
       - name: Run dify config tests
         run: uv run --project api dev/pytest/pytest_config_tests.py

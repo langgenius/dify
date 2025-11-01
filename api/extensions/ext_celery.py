@@ -100,7 +100,7 @@ def init_app(app: DifyApp) -> Celery:
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
-    beat_schedule = {}
+    beat_schedule: dict[str, dict[str, crontab | str | timedelta]] = {}
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
         imports.append("schedule.clean_embedding_cache_task")
         beat_schedule["clean_embedding_cache_task"] = {
