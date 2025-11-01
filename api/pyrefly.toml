@@ -1,0 +1,18 @@
+project-includes = ["."]
+project-excludes = [
+    "tests/",
+    ".venv",
+    "migrations/",
+    "extensions/storage/",
+    "services/",
+    "core/",
+    "controllers/",
+    "extensions/ext_mail.py",
+    "extensions/ext_otel.py",
+    "libs/",
+    "models/",
+    "factories/",
+    "schedule/queue_monitor_task.py",
+]
+python-platform = "linux"
+python-version = "3.11.0"

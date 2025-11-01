@@ -1,6 +1,6 @@
 import ssl
 from datetime import timedelta
-from typing import Any
+from typing import Any, TypedDict
 
 import pytz
 from celery import Celery, Task
@@ -99,8 +99,12 @@ def init_app(app: DifyApp) -> Celery:
     imports = []
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
+    class BeatTask(TypedDict):
+        task: str
+        schedule: crontab | timedelta
+
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
-    beat_schedule = {}
+    beat_schedule: dict[str, BeatTask] = {}
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
         imports.append("schedule.clean_embedding_cache_task")
         beat_schedule["clean_embedding_cache_task"] = {
