@@ -51,6 +51,8 @@ class SystemVariable(BaseModel):
     datasource_type: str | None = None
     datasource_info: Mapping[str, Any] | None = None
     invoke_from: str | None = None
+    # Plugin Integration
+    passthrough: str | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -108,6 +110,8 @@ class SystemVariable(BaseModel):
             d[SystemVariableKey.DATASOURCE_INFO] = self.datasource_info
         if self.invoke_from is not None:
             d[SystemVariableKey.INVOKE_FROM] = self.invoke_from
+        if self.passthrough is not None:
+            d[SystemVariableKey.PASSTHROUGH] = self.passthrough
         return d
 
     def as_view(self) -> "SystemVariableReadOnlyView":

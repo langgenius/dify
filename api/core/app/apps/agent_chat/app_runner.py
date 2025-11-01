@@ -35,6 +35,7 @@ class AgentChatAppRunner(AppRunner):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
+        passthrough: str | None = None,
     ):
         """
         Run assistant application
@@ -228,6 +229,7 @@ class AgentChatAppRunner(AppRunner):
             message=message,
             query=query,
             inputs=inputs,
+            passthrough=passthrough,
         )
 
         # handle invoke result
