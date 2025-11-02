@@ -956,6 +956,8 @@ const translation = {
       chunksVariableIsRequired: 'Spremenljivka Chunks je obvezna',
       embeddingModelIsRequired: 'Zahteva se vgrajevalni model',
       rerankingModelIsRequired: 'Potreben je model za ponovno razvrščanje',
+      rerankingModelIsInvalid: 'Model prerazvrščanja ni veljaven',
+      embeddingModelIsInvalid: 'Vdelovalni model ni veljaven',
     },
   },
   tracing: {
