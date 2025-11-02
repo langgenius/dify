@@ -958,27 +958,6 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh, s
     return queryString ? `${pathname}?${queryString}` : pathname
   }, [pathname, searchParams])
 
-  const handleRowClick = useCallback((log: ConversationListItem) => {
-    if (conversationIdInUrl === log.id) {
-      if (!showDrawer)
-        setShowDrawer(true)
-
-      if (!currentConversation || currentConversation.id !== log.id)
-        setCurrentConversation(log)
-      return
-    }
-
-    pendingConversationIdRef.current = log.id
-    pendingConversationCacheRef.current = log
-    if (!showDrawer)
-      setShowDrawer(true)
-
-    if (currentConversation?.id !== log.id)
-      setCurrentConversation(undefined)
-
-    router.push(buildUrlWithConversation(log.id), { scroll: false })
-  }, [buildUrlWithConversation, conversationIdInUrl, currentConversation, router, showDrawer])
-
   const currentConversationId = currentConversation?.id
 
   useEffect(() => {
