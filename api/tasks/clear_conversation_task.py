@@ -69,9 +69,15 @@ def clear_conversations_task(
 
         with Session() as session:
             # Get conversations to delete
-            conversation_query = session.query(Conversation).filter(
-                Conversation.app_id == app_id, Conversation.mode == conversation_mode
-            )
+            conversation_query = session.query(Conversation).filter(Conversation.app_id == app_id)
+
+            # Filter by conversation mode - handle chat modes which include chat, agent-chat, advanced-chat
+            if conversation_mode == "chat":
+                conversation_query = conversation_query.filter(
+                    Conversation.mode.in_(["chat", "agent-chat", "advanced-chat"])
+                )
+            else:
+                conversation_query = conversation_query.filter(Conversation.mode == conversation_mode)
 
             # Add user filter if provided for security
             if user_type == "account" and user_id:
@@ -164,13 +170,21 @@ def clear_conversations_task(
         }
 
     except Exception as exc:
-        logger.error("Conversation cleanup failed: %s", exc, exc_info=True)
+        logger.error("Conversation cleanup failed for app_id=%s: %s", app_id, exc, exc_info=True)
         # Retry the task with exponential backoff
-        raise self.retry(exc=exc, countdown=60 * (2**self.request.retries))
+        from celery.exceptions import MaxRetriesExceededError
+
+        try:
+            raise self.retry(exc=exc, countdown=60 * (2**self.request.retries))
+        except MaxRetriesExceededError:
+            logger.exception("Max retries exceeded for conversation cleanup, app_id=%s", app_id)
+            raise
 
 
 def _cleanup_message_files(session, message_ids: list[str]) -> list[str]:
     """Clean up files associated with messages and return upload file IDs."""
+    from sqlalchemy.exc import DatabaseError
+
     upload_file_ids = []
 
     try:
@@ -186,8 +200,10 @@ def _cleanup_message_files(session, message_ids: list[str]) -> list[str]:
             for upload_file in upload_files:
                 try:
                     storage.delete(upload_file.key)
+                except OSError as e:
+                    logger.warning("Failed to delete file from storage %s: %s", upload_file.key, e)
                 except Exception as e:
-                    logger.warning("Failed to delete file %s: %s", upload_file.key, e)
+                    logger.error("Unexpected error deleting file %s: %s", upload_file.key, e, exc_info=True)
 
             # Delete upload file records
             session.query(UploadFile).where(UploadFile.id.in_(upload_file_ids)).delete(synchronize_session=False)
@@ -195,17 +211,27 @@ def _cleanup_message_files(session, message_ids: list[str]) -> list[str]:
         # Delete message file records
         session.query(MessageFile).where(MessageFile.message_id.in_(message_ids)).delete(synchronize_session=False)
 
+    except DatabaseError as e:
+        logger.error("Database error cleaning up message files: %s", e, exc_info=True)
     except Exception as e:
-        logger.warning("Error cleaning up message files: %s", e)
+        logger.error("Unexpected error cleaning up message files: %s", e, exc_info=True)
 
     return upload_file_ids
 
 
 def _delete_records_batch(session, model_class, filter_condition) -> int:
     """Delete records in batch with error handling."""
+    from sqlalchemy.exc import DatabaseError, OperationalError
+
     try:
         result = session.query(model_class).where(filter_condition).delete(synchronize_session=False)
         return result or 0
+    except OperationalError as e:
+        logger.warning("Table might not exist for %s: %s", model_class.__name__, e)
+        return 0
+    except DatabaseError as e:
+        logger.error("Database error deleting %s records: %s", model_class.__name__, e, exc_info=True)
+        return 0
     except Exception as e:
-        logger.warning("Error deleting %s records: %s", model_class.__name__, e)
+        logger.error("Unexpected error deleting %s records: %s", model_class.__name__, e, exc_info=True)
         return 0

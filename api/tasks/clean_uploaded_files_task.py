@@ -32,7 +32,7 @@ def clean_uploaded_files_task(upload_file_ids: list[str]):
                 storage.delete(upload_file.key)
                 success_count += 1
 
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to delete upload file %s", upload_file_id)
             failed_count += 1
 
