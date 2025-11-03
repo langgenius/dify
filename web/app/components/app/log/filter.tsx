@@ -14,6 +14,7 @@ import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import { useToastContext } from '@/app/components/base/toast'
 import { clearChatConversations, clearCompletionConversations, fetchAnnotationsCount } from '@/service/log'
+import { notifyConversationListUpdate } from '@/utils/conversation-sync'
 dayjs.extend(quarterOfYear)
 
 const today = dayjs()
@@ -66,13 +67,8 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
         : t('appLog.filter.clearSuccess')
       notify({ type: 'success', message })
 
-      // Notify other tabs/windows to refresh conversation list (for cross-tab sync)
-      localStorage.setItem('conversations_cleared', Date.now().toString())
-
-      // Dispatch custom event for same-page refresh (storage event doesn't fire in same tab)
-      window.dispatchEvent(new CustomEvent('conversationsCleared', {
-        detail: { appId, conversationIds },
-      }))
+      // Notify other pages to refresh conversation list
+      notifyConversationListUpdate()
 
       // Revalidate to sync with backend after async task completes
       await onRefresh?.()

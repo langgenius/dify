@@ -6,7 +6,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { usePathname } from 'next/navigation'
 import useSWR from 'swr'
 import { useLocalStorageState } from 'ahooks'
 import { produce } from 'immer'
@@ -71,7 +70,6 @@ function getFormattedChatList(messages: any[]) {
 
 export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
-  const pathname = usePathname()
   const appInfo = useWebAppStore(s => s.appInfo)
   const appParams = useWebAppStore(s => s.appParams)
   const appMeta = useWebAppStore(s => s.appMeta)
@@ -198,39 +196,53 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   )
 
-  // Refresh conversation list when navigating to configuration page
-  useEffect(() => {
-    if (pathname?.includes('/configuration')) {
-      mutateAppPinnedConversationData()
-      mutateAppConversationData()
-    }
-  }, [pathname, mutateAppPinnedConversationData, mutateAppConversationData])
+  // Track the last time we checked for conversation list updates
+  // Initialize to 0 so we pick up any existing updates on first mount
+  const lastCheckedTimeRef = useRef<number>(0)
 
-  // Listen for conversation deletions from logs page (same tab via CustomEvent)
+  // Listen for conversation list updates from any source (logs page, other tabs, etc.)
   useEffect(() => {
-    const handleConversationsCleared = () => {
-      // Refresh conversation lists when logs are cleared
-      mutateAppPinnedConversationData()
-      mutateAppConversationData()
-    }
+    const checkForConversationUpdates = () => {
+      const updatedTimestamp = localStorage.getItem('conversations_updated')
 
-    window.addEventListener('conversationsCleared', handleConversationsCleared)
-    return () => window.removeEventListener('conversationsCleared', handleConversationsCleared)
-  }, [mutateAppPinnedConversationData, mutateAppConversationData])
-
-  // Listen for conversation deletions from other tabs (via localStorage storage event)
-  useEffect(() => {
-    const handleStorageEvent = (e: StorageEvent) => {
-      if (e.key === 'conversations_cleared' && e.newValue) {
-        // Refresh conversation lists when logs are cleared in another tab
-        mutateAppPinnedConversationData()
-        mutateAppConversationData()
+      if (updatedTimestamp) {
+        const timestamp = Number.parseInt(updatedTimestamp, 10)
+        // If conversations were updated after our last check
+        if (timestamp > lastCheckedTimeRef.current) {
+          lastCheckedTimeRef.current = Date.now()
+          // Clear current conversation ID to prevent 404 errors when conversations are deleted
+          handleConversationIdInfoChange('')
+          // Refresh conversation lists
+          mutateAppPinnedConversationData()
+          mutateAppConversationData()
+        }
       }
     }
 
+    // Check when page becomes visible (tab switching)
+    const handleVisibilityChange = () => {
+      if (!document.hidden)
+        checkForConversationUpdates()
+    }
+
+    // Check immediately on mount
+    checkForConversationUpdates()
+
+    // Listen for visibility changes (when user switches tabs)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // Also listen for storage events (for cross-tab sync)
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === 'conversations_updated')
+        checkForConversationUpdates()
+    }
     window.addEventListener('storage', handleStorageEvent)
-    return () => window.removeEventListener('storage', handleStorageEvent)
-  }, [mutateAppPinnedConversationData, mutateAppConversationData])
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('storage', handleStorageEvent)
+    }
+  }, [mutateAppPinnedConversationData, mutateAppConversationData, handleConversationIdInfoChange])
   const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(
     chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null,
     () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId),
