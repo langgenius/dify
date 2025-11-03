@@ -21,6 +21,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     setup_required,
 )
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
@@ -83,7 +84,7 @@ class TenantListApi(Resource):
                 "name": tenant.name,
                 "status": tenant.status,
                 "created_at": tenant.created_at,
-                "plan": features.billing.subscription.plan if features.billing.enabled else "sandbox",
+                "plan": features.billing.subscription.plan if features.billing.enabled else CloudPlan.SANDBOX,
                 "current": tenant.id == current_tenant_id if current_tenant_id else False,
             }
 

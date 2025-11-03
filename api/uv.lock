@@ -1677,7 +1677,7 @@ vdb = [
     { name = "pymochow", specifier = "==2.2.9" },
     { name = "pyobvector", specifier = "~=0.2.15" },
     { name = "qdrant-client", specifier = "==1.9.0" },
-    { name = "tablestore", specifier = "==6.2.0" },
+    { name = "tablestore", specifier = "==6.3.7" },
     { name = "tcvectordb", specifier = "~=1.6.4" },
     { name = "tidb-vector", specifier = "==0.0.9" },
     { name = "upstash-vector", specifier = "==0.6.0" },
@@ -5836,9 +5836,10 @@ wheels = [
 
 [[package]]
 name = "tablestore"
-version = "6.2.0"
+version = "6.3.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "aiohttp" },
     { name = "certifi" },
     { name = "crc32c" },
     { name = "flatbuffers" },
@@ -5848,9 +5849,9 @@ dependencies = [
     { name = "six" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/58/48d65d181a69f7db19f7cdee01d252168fbfbad2d1bb25abed03e6df3b05/tablestore-6.2.0.tar.gz", hash = "sha256:0773e77c00542be1bfebbc3c7a85f72a881c63e4e7df7c5a9793a54144590e68", size = 85942, upload-time = "2025-04-15T12:11:20.655Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f1/39/47a3ec8e42fe74dd05af1dfed9c3b02b8f8adfdd8656b2c5d4f95f975c9f/tablestore-6.3.7.tar.gz", hash = "sha256:990682dbf6b602f317a2d359b4281dcd054b4326081e7a67b73dbbe95407be51", size = 117440, upload-time = "2025-10-29T02:57:57.415Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9c/da/30451712a769bcf417add8e81163d478a4d668b0e8d489a9d667260d55df/tablestore-6.2.0-py3-none-any.whl", hash = "sha256:6af496d841ab1ff3f78b46abbd87b95a08d89605c51664d2b30933b1d1c5583a", size = 106297, upload-time = "2025-04-15T12:11:17.476Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/55/1b24d8c369204a855ac652712f815e88a4909802094e613fe3742a2d80e3/tablestore-6.3.7-py3-none-any.whl", hash = "sha256:38dcc55085912ab2515e183afd4532a58bb628a763590a99fc1bd2a4aba6855c", size = 139041, upload-time = "2025-10-29T02:57:55.727Z" },
 ]
 
 [[package]]
