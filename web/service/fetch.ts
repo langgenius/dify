@@ -180,6 +180,12 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     },
   })
 
+  // Ensure body is sent for DELETE requests if provided
+  // ky should handle this, but we ensure it's explicitly set
+  let bodyOptions = {}
+  if (body !== undefined && body !== null)
+    bodyOptions = bodyStringify ? { json: body } : { body: body as BodyInit }
+
   const res = await client(fetchPathname, {
     ...init,
     headers,
@@ -189,7 +195,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     retry: {
       methods: [],
     },
-    ...(bodyStringify ? { json: body } : { body: body as BodyInit }),
+    ...bodyOptions,
     searchParams: params,
     fetch(resource: RequestInfo | URL, options?: RequestInit) {
       if (resource instanceof Request && options) {

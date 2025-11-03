@@ -84,30 +84,49 @@ export const fetchAgentLogDetail = ({ appID, params }: { appID: string; params: 
 // Clear chat conversations (all or selected)
 export const clearChatConversations = async ({ appId, conversationIds }: { appId: string; conversationIds?: string[] }) => {
   try {
-    const body = conversationIds ? { conversation_ids: conversationIds } : {}
+    const body = conversationIds && conversationIds.length > 0
+      ? { conversation_ids: conversationIds }
+      : { conversation_ids: [] }
+
     const result = await del<any>(`/apps/${appId}/chat-conversations`, { body })
 
-    // Clear localStorage to prevent 404 errors on explore pages
-    // Only clear conversation IDs for this specific app
-    clearConversationIds(appId, { debug: true })
+    // Clear localStorage to prevent 404 errors
+    clearConversationIds(appId)
 
-    // Clear SWR caches
+    // Clear SWR caches to force reload of conversation lists
     await Promise.all([
-      mutate(`/apps/${appId}/chat-conversations`),
-      mutate(`/apps/${appId}/completion-conversations`),
+      // Clear log list caches (key is an object with url and params)
+      // Force cache invalidation with populateCache: false
+      mutate(
+        key =>
+          typeof key === 'object' && key !== null && 'url' in key
+          && (key.url === `/apps/${appId}/chat-conversations` || key.url === `/apps/${appId}/completion-conversations`),
+        undefined,
+        {
+          revalidate: true,
+          populateCache: false,
+        },
+      ),
+      // Clear explore apps caches
       mutate(
         key =>
           typeof key === 'string' && key.includes('/explore/apps'),
         undefined,
         { revalidate: false },
       ),
+      // Clear conversation list caches to trigger validation in useChatWithHistory
+      mutate(
+        key =>
+          Array.isArray(key) && key[0] === 'appConversationData' && key[2] === appId,
+        undefined,
+        { revalidate: true },
+      ),
     ])
 
-    console.log(`✅ Cleared chat conversations for app: ${appId}`)
     return result
   }
   catch (error) {
-    console.error('Failed to clear chat conversations for app:', appId, error)
+    console.error('Failed to clear chat conversations:', error)
     if (error instanceof Error)
       throw new Error(`Failed to clear chat conversations: ${error.message}`)
 
@@ -118,30 +137,49 @@ export const clearChatConversations = async ({ appId, conversationIds }: { appId
 // Clear completion conversations (all or selected)
 export const clearCompletionConversations = async ({ appId, conversationIds }: { appId: string; conversationIds?: string[] }) => {
   try {
-    const body = conversationIds ? { conversation_ids: conversationIds } : {}
+    const body = conversationIds && conversationIds.length > 0
+      ? { conversation_ids: conversationIds }
+      : { conversation_ids: [] }
+
     const result = await del<any>(`/apps/${appId}/completion-conversations`, { body })
 
-    // Clear localStorage to prevent 404 errors on explore pages
-    // Only clear conversation IDs for this specific app
-    clearConversationIds(appId, { debug: true })
+    // Clear localStorage to prevent 404 errors
+    clearConversationIds(appId)
 
-    // Clear SWR caches
+    // Clear SWR caches to force reload of conversation lists
     await Promise.all([
-      mutate(`/apps/${appId}/chat-conversations`),
-      mutate(`/apps/${appId}/completion-conversations`),
+      // Clear log list caches (key is an object with url and params)
+      // Force cache invalidation with populateCache: false
+      mutate(
+        key =>
+          typeof key === 'object' && key !== null && 'url' in key
+          && (key.url === `/apps/${appId}/chat-conversations` || key.url === `/apps/${appId}/completion-conversations`),
+        undefined,
+        {
+          revalidate: true,
+          populateCache: false,
+        },
+      ),
+      // Clear explore apps caches
       mutate(
         key =>
           typeof key === 'string' && key.includes('/explore/apps'),
         undefined,
         { revalidate: false },
       ),
+      // Clear conversation list caches to trigger validation in useChatWithHistory
+      mutate(
+        key =>
+          Array.isArray(key) && key[0] === 'appConversationData' && key[2] === appId,
+        undefined,
+        { revalidate: true },
+      ),
     ])
 
-    console.log(`✅ Cleared completion conversations for app: ${appId}`)
     return result
   }
   catch (error) {
-    console.error('Failed to clear completion conversations for app:', appId, error)
+    console.error('Failed to clear completion conversations:', error)
     if (error instanceof Error)
       throw new Error(`Failed to clear completion conversations: ${error.message}`)
 

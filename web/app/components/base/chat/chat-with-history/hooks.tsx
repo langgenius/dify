@@ -198,8 +198,35 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(
     chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null,
     () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId),
-    { revalidateOnFocus: false, revalidateOnReconnect: false },
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      onError: (error) => {
+        // Handle 404 errors for deleted conversations
+        if ((error?.status === 404 || error?.message?.includes('Conversation Not Exists')) && appId)
+          handleConversationIdInfoChange('')
+      },
+    },
   )
+
+  // Validate if currentConversationId exists in the conversation list
+  // If not found, clear it from localStorage to prevent 404 errors
+  useEffect(() => {
+    if (!currentConversationId || !appConversationData || !appPinnedConversationData)
+      return
+
+    const allConversations = [
+      ...(appPinnedConversationData?.data || []),
+      ...(appConversationData?.data || []),
+    ]
+
+    const conversationExists = allConversations.some(
+      (conv: ConversationItem) => conv.id === currentConversationId,
+    )
+
+    if (!conversationExists)
+      handleConversationIdInfoChange('')
+  }, [currentConversationId, appConversationData, appPinnedConversationData, handleConversationIdInfoChange])
 
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)

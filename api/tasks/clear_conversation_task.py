@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 BATCH_SIZE = 1000
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=3, queue="conversation")
 def clear_conversations_task(
     self,
     app_id: str,

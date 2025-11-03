@@ -151,10 +151,14 @@ class CompletionConversationApi(Resource):
     def delete(self, app_model):
         current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
-        parser.add_argument("conversation_ids", type=list, location="json", required=False)
+        parser.add_argument("conversation_ids", type=list, location="json", required=False, default=None)
         args = parser.parse_args()
 
-        conversation_ids = [str(id) for id in args["conversation_ids"]] if args.get("conversation_ids") else None
+        # Convert conversation IDs to strings if provided and non-empty
+        conversation_ids_raw = args.get("conversation_ids")
+        conversation_ids = (
+            [str(id) for id in conversation_ids_raw] if conversation_ids_raw and len(conversation_ids_raw) > 0 else None
+        )
 
         result = ConversationService.clear_conversations(
             app_model=app_model, user=current_user, conversation_ids=conversation_ids
@@ -392,10 +396,14 @@ class ChatConversationApi(Resource):
     def delete(self, app_model):
         current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser()
-        parser.add_argument("conversation_ids", type=list, location="json", required=False)
+        parser.add_argument("conversation_ids", type=list, location="json", required=False, default=None)
         args = parser.parse_args()
 
-        conversation_ids = [str(id) for id in args["conversation_ids"]] if args.get("conversation_ids") else None
+        # Convert conversation IDs to strings if provided and non-empty
+        conversation_ids_raw = args.get("conversation_ids")
+        conversation_ids = (
+            [str(id) for id in conversation_ids_raw] if conversation_ids_raw and len(conversation_ids_raw) > 0 else None
+        )
 
         result = ConversationService.clear_conversations(
             app_model=app_model, user=current_user, conversation_ids=conversation_ids

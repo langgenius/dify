@@ -13,7 +13,7 @@ import Sort from '@/app/components/base/sort'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import { useToastContext } from '@/app/components/base/toast'
-import { fetchAnnotationsCount, clearChatConversations, clearCompletionConversations } from '@/service/log'
+import { clearChatConversations, clearCompletionConversations, fetchAnnotationsCount } from '@/service/log'
 dayjs.extend(quarterOfYear)
 
 const today = dayjs()
@@ -50,21 +50,24 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
   const handleClearLogs = async (conversationIds?: string[]) => {
     setIsClearing(true)
     try {
-      if (isChatMode) {
+      if (isChatMode)
         await clearChatConversations({ appId, conversationIds })
-      } else {
+      else
         await clearCompletionConversations({ appId, conversationIds })
-      }
-      const message = conversationIds 
-        ? t('appLog.filter.clearSelectedSuccess') 
+
+      const message = conversationIds
+        ? t('appLog.filter.clearSelectedSuccess')
         : t('appLog.filter.clearSuccess')
       notify({ type: 'success', message })
-      onRefresh?.()
+
+      // Wait for onRefresh to complete before clearing selection
+      await onRefresh?.()
       onClearSelected?.(conversationIds)
-    } catch (error) {
-      console.error('Failed to clear logs:', error)
+    }
+    catch {
       notify({ type: 'error', message: t('appLog.filter.clearFailed') })
-    } finally {
+    }
+    finally {
       setIsClearing(false)
       setShowConfirm(false)
     }
@@ -158,8 +161,8 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
       {/* Confirmation Dialog */}
       {showConfirm && (
         <Confirm
-          title={showConfirm === 'selected' 
-            ? t('appLog.filter.clearSelectedConfirm.title') 
+          title={showConfirm === 'selected'
+            ? t('appLog.filter.clearSelectedConfirm.title')
             : t('appLog.filter.clearConfirm.title')
           }
           content={showConfirm === 'selected'
