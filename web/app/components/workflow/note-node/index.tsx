@@ -1,12 +1,12 @@
 import {
   memo,
-  useCallback,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
 import type { NodeProps } from 'reactflow'
 import NodeResizer from '../nodes/_base/components/node-resizer'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
 import {
   useNodeDataUpdate,
   useNodesInteractions,
@@ -50,13 +50,11 @@ const NoteNode = ({
   } = useNodesInteractions()
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
 
-  const handleDeleteNode = useCallback(() => {
-    handleNodeDelete(id)
-  }, [id, handleNodeDelete])
-
   useClickAway(() => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { selected: false } })
   }, ref)
+
+  const { setShortcutsEnabled } = useWorkflowHistoryStore()
 
   return (
     <div
@@ -74,29 +72,34 @@ const NoteNode = ({
       <NoteEditorContextProvider
         key={controlPromptEditorRerenderKey}
         value={data.text}
+        editable={!data._isTempNode}
       >
         <>
-          <NodeResizer
-            nodeId={id}
-            nodeData={data}
-            icon={<Icon />}
-            minWidth={240}
-            minHeight={88}
-          />
+          {
+            !data._isTempNode && (
+              <NodeResizer
+                nodeId={id}
+                nodeData={data}
+                icon={<Icon />}
+                minWidth={240}
+                minHeight={88}
+              />
+            )
+          }
           <div
             className={cn(
               'h-2 shrink-0 rounded-t-md opacity-50',
               THEME_MAP[theme].title,
             )}></div>
           {
-            data.selected && (
+            data.selected && !data._isTempNode && (
               <div className='absolute left-1/2 top-[-41px] -translate-x-1/2'>
                 <NoteEditorToolbar
                   theme={theme}
                   onThemeChange={handleThemeChange}
-                  onCopy={handleNodesCopy}
-                  onDuplicate={handleNodesDuplicate}
-                  onDelete={handleDeleteNode}
+                  onCopy={() => handleNodesCopy(id)}
+                  onDuplicate={() => handleNodesDuplicate(id)}
+                  onDelete={() => handleNodeDelete(id)}
                   showAuthor={data.showAuthor}
                   onShowAuthorChange={handleShowAuthorChange}
                 />
@@ -111,6 +114,7 @@ const NoteNode = ({
                 containerElement={ref.current}
                 placeholder={t('workflow.nodes.note.editor.placeholder') || ''}
                 onChange={handleEditorChange}
+                setShortcutsEnabled={setShortcutsEnabled}
               />
             </div>
           </div>

@@ -92,7 +92,6 @@ const translation = {
       depthLimit: '평행 중첩 레이어 {{num}}개 레이어의 제한',
       limit: '병렬 처리는 {{num}}개의 분기로 제한됩니다.',
     },
-    parallelRun: '병렬 실행',
     disconnect: '분리하다',
     jumpToNode: '이 노드로 이동',
     addParallelNode: '병렬 노드 추가',
@@ -115,14 +114,15 @@ const translation = {
     exportJPEG: 'JPEG 로 내보내기',
     exitVersions: '종료 버전',
     exportImage: '이미지 내보내기',
-    noExist: '해당 변수가 없습니다.',
     exportSVG: 'SVG 로 내보내기',
     versionHistory: '버전 기록',
     exportPNG: 'PNG 로 내보내기',
-    referenceVar: '참조 변수',
     addBlock: '노드 추가',
     needAnswerNode: '답변 노드를 추가해야 합니다.',
     needEndNode: '종단 노드를 추가해야 합니다.',
+    tagBound: '이 태그를 사용하는 앱 수',
+    currentView: '현재 보기',
+    currentWorkflow: '현재 워크플로',
   },
   env: {
     envPanelTitle: '환경 변수',
@@ -230,11 +230,12 @@ const translation = {
     back: '뒤로',
     iteration: '반복',
     loop: '루프',
+    reRun: '다시 실행',
+    preparingDataSource: '데이터 소스 준비',
   },
   tabs: {
     'tools': '도구',
     'allTool': '전체',
-    'builtInTool': '내장',
     'customTool': '사용자 정의',
     'workflowTool': '워크플로우',
     'question-understand': '질문 이해',
@@ -247,6 +248,10 @@ const translation = {
     'agent': '에이전트 전략',
     'blocks': '노드',
     'searchBlock': '검색 노드',
+    'allAdded': '모두 추가됨',
+    'addAll': '모두 추가',
+    'sources': '소스',
+    'searchDataSource': '데이터 소스 검색',
   },
   blocks: {
     'start': '시작',
@@ -271,6 +276,8 @@ const translation = {
     'loop-start': '루프 시작',
     'loop-end': '루프 종료',
     'loop': '루프',
+    'datasource': '데이터 소스',
+    'knowledge-index': '기술 자료',
   },
   blocksAbout: {
     'start': '워크플로우를 시작하기 위한 초기 매개변수를 정의합니다',
@@ -305,6 +312,8 @@ const translation = {
     'loop': '종료 조건이 충족되거나 최대 반복 횟수에 도달할 때까지 논리 루프를 실행합니다.',
     'loop-end':
       '"break"와 동일합니다. 이 노드는 구성 항목이 없습니다. 루프 본문이 이 노드에 도달하면 루프가 종료됩니다.',
+    'datasource': '데이터 소스 정보',
+    'knowledge-index': '기술 자료 정보',
   },
   operator: {
     zoomIn: '확대',
@@ -312,6 +321,18 @@ const translation = {
     zoomTo50: '50% 로 확대',
     zoomTo100: '100% 로 확대',
     zoomToFit: '화면에 맞게 확대',
+    alignCenter: '중앙',
+    alignRight: '오른쪽',
+    alignLeft: '왼쪽',
+    vertical: '세로',
+    alignTop: '상단',
+    alignMiddle: '중간',
+    alignNodes: '노드 정렬',
+    distributeVertical: '수직 등간격',
+    horizontal: '가로',
+    selectionAlignment: '선택 정렬',
+    alignBottom: '하단',
+    distributeHorizontal: '수평 등간격',
   },
   panel: {
     userInputField: '사용자 입력 필드',
@@ -332,6 +353,7 @@ const translation = {
     addNextStep: '이 워크플로우에 다음 단계를 추가하세요.',
     minimize: '전체 화면 종료',
     maximize: '캔버스 전체 화면',
+    optional_and_hidden: '(선택 사항 및 숨김)',
   },
   nodes: {
     common: {
@@ -392,7 +414,11 @@ const translation = {
         ms: '미에스',
         retries: '{{숫자}} 재시도',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: '입력 값',
+        variable: '변수를 사용하세요',
+      },
+      inputVars: '입력 변수',
     },
     start: {
       required: '필수',
@@ -448,6 +474,7 @@ const translation = {
       },
       outputVars: {
         output: '생성된 내용',
+        reasoning_content: '추론 내용',
         usage: '모델 사용 정보',
       },
       singleRun: {
@@ -483,6 +510,12 @@ const translation = {
         required: '필수',
         doc: '구조화된 출력에 대해 더 알아보세요.',
         import: 'JSON 에서 가져오기',
+      },
+      reasoningFormat: {
+        title: '추론 태그 분리 활성화',
+        separated: '추론 태그 분리',
+        tooltip: '추론 태그에서 내용을 추출하고 이를 reasoning_content 필드에 저장합니다',
+        tagged: '추론 태그 유지',
       },
     },
     knowledgeRetrieval: {
@@ -523,6 +556,7 @@ const translation = {
           conditions: '조건',
         },
         title: '메타데이터 필터링',
+        tip: '메타데이터 필터링은 시스템 내에서 관련 정보를 검색하는 과정을 정제하고 제어하기 위해 메타데이터 속성(예: 태그, 카테고리 또는 접근 권한)을 사용하는 과정입니다.',
       },
     },
     http: {
@@ -584,6 +618,7 @@ const translation = {
       advancedDependenciesTip:
         '더 많은 시간이 소요되거나 기본으로 내장되지 않은 일부 미리 로드된 종속성을 여기에 추가하세요',
       searchDependencies: '종속성 검색',
+      syncFunctionSignature: '코드에 함수 시그니처 동기화하기',
     },
     templateTransform: {
       inputVars: '입력 변수',
@@ -613,7 +648,6 @@ const translation = {
         'not empty': '비어 있지 않음',
         'null': 'null 임',
         'not null': 'null 이 아님',
-        'regex match': '정규식 일치',
         'in': '안으로',
         'exists': '존재',
         'all of': '모두의',
@@ -636,7 +670,6 @@ const translation = {
       },
       select: '고르다',
       addSubVariable: '하위 변수',
-      condition: '조건',
     },
     variableAssigner: {
       title: '변수 할당',
@@ -706,6 +739,9 @@ const translation = {
         json: '도구로 생성된 JSON',
       },
       authorize: '권한 부여',
+      insertPlaceholder1: '타이프하거나 누르세요',
+      settings: '설정',
+      insertPlaceholder2: '변수를 삽입하다',
     },
     questionClassifiers: {
       model: '모델',
@@ -754,8 +790,6 @@ const translation = {
       reasoningMode: '추론 모드',
       reasoningModeTip:
         '모델의 함수 호출 또는 프롬프트에 대한 지시 응답 능력을 기반으로 적절한 추론 모드를 선택할 수 있습니다.',
-      isSuccess: '성공 여부. 성공 시 값은 1 이고, 실패 시 값은 0 입니다.',
-      errorReason: '오류 원인',
     },
     iteration: {
       deleteTitle: '반복 노드를 삭제하시겠습니까?',
@@ -871,6 +905,7 @@ const translation = {
         },
         json: '에이전트 생성 JSON',
         text: '상담원이 생성한 콘텐츠',
+        usage: '모델 사용 정보',
       },
       checkList: {
         strategyNotSelected: '전략이 선택되지 않음',
@@ -906,6 +941,8 @@ const translation = {
       modelNotSelected: '모델이 선택되지 않음',
       toolbox: '도구',
       linkToPlugin: '플러그인에 대한 링크',
+      parameterSchema: '파라미터 스키마',
+      clickToViewParameterSchema: '매개변수 스키마 보려면 클릭하세요.',
     },
     loop: {
       ErrorMethod: {
@@ -941,6 +978,32 @@ const translation = {
       loopNode: '루프 노드',
       inputMode: '입력 모드',
     },
+    dataSource: {
+      add: '데이터 원본 추가',
+      supportedFileFormatsPlaceholder: '파일 확장자, e.g. doc',
+      supportedFileFormats: '지원되는 파일 형식',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: '더 알아보세요',
+        title: '청크 구조를 선택해 주세요',
+        message: 'Dify 기술 자료는 일반, 부모-자식 및 Q&A의 세 가지 청크 구조를 지원합니다. 각 기술 자료는 하나의 구조만 가질 수 있습니다. 이전 노드의 출력은 선택한 청크 구조와 일치해야 합니다. 청크 구조의 선택은 사용 가능한 인덱스 메서드에 영향을 줍니다.',
+      },
+      chunkStructure: '청크 구조',
+      chunkIsRequired: '청크 구조가 필요합니다.',
+      chooseChunkStructure: '청크 구조 선택',
+      aboutRetrieval: '검색 방법에 대해.',
+      changeChunkStructure: '청크 구조 변경',
+      indexMethodIsRequired: '인덱스 메서드가 필요합니다.',
+      retrievalSettingIsRequired: '검색 설정이 필요합니다.',
+      chunksInput: '청크',
+      chunksInputTip: '지식 기반 노드의 입력 변수는 Chunks입니다. 변수 유형은 선택된 청크 구조와 일치해야 하는 특정 JSON 스키마를 가진 객체입니다.',
+      chunksVariableIsRequired: 'Chunks 변수는 필수입니다',
+      embeddingModelIsRequired: '임베딩 모델이 필요합니다',
+      rerankingModelIsRequired: '재순위 모델이 필요합니다',
+      rerankingModelIsInvalid: '재정렬 모델이 유효하지 않습니다',
+      embeddingModelIsInvalid: '임베딩 모델이 유효하지 않습니다',
+    },
   },
   tracing: {
     stopBy: '{{user}}에 의해 중지됨',
@@ -975,6 +1038,7 @@ const translation = {
       restoreFailure: '버전을 복원하지 못했습니다.',
       deleteFailure: '버전을 삭제하지 못했습니다.',
       updateSuccess: '버전이 업데이트되었습니다.',
+      copyIdSuccess: '클립보드에 복사된 ID',
     },
     editVersionInfo: '버전 정보 편집',
     latest: '최신',
@@ -985,6 +1049,7 @@ const translation = {
     title: '버전 기록',
     deletionTip: '삭제는 되돌릴 수 없으니, 확인해 주시기 바랍니다.',
     restorationTip: '버전 복원 후 현재 초안이 덮어쓰여질 것입니다.',
+    copyId: 'ID 복사',
   },
   debug: {
     noData: {
@@ -1012,9 +1077,31 @@ const translation = {
       reset: '마지막 실행 값으로 재설정',
       emptyTip:
         '캔버스에서 노드를 한 단계씩 실행한 후, 변수 검사에서 노드 변수의 현재 값을 볼 수 있습니다.',
+      export: '수출',
+      largeData: '대용량 데이터, 읽기 전용 미리 보기. 모두 보도록 내보내기.',
+      exportToolTip: '변수를 파일로 내보내기',
+      largeDataNoExport: '대용량 데이터 - 부분 미리 보기만',
     },
     settingsTab: '설정',
     lastRunTab: '마지막 실행',
+    relations: {
+      dependencies: '종속성',
+      dependentsDescription: '이 노드에 의존하는 노드',
+      noDependents: '부양가족 없음',
+      noDependencies: '종속성 없음',
+      dependents: '부양 가족',
+      dependenciesDescription: '이 노드가 의존하는 노드',
+    },
+    relationsTab: '관계',
+    copyLastRun: '마지막 실행 복사',
+    noLastRunFound: '이전 실행이 없습니다.',
+    noMatchingInputsFound: '지난 실행에서 일치하는 입력을 찾을 수 없습니다.',
+    copyLastRunError: '마지막 실행 입력을 복사하는 데 실패했습니다.',
+    lastOutput: '마지막 출력',
+  },
+  sidebar: {
+    exportWarning: '현재 저장된 버전 내보내기',
+    exportWarningDesc: '이 작업은 현재 저장된 워크플로우 버전을 내보냅니다. 편집기에서 저장되지 않은 변경 사항이 있는 경우, 먼저 워크플로우 캔버스의 내보내기 옵션을 사용하여 저장해 주세요.',
   },
 }
 

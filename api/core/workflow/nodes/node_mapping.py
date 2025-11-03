@@ -1,15 +1,18 @@
 from collections.abc import Mapping
 
+from core.workflow.enums import NodeType
 from core.workflow.nodes.agent.agent_node import AgentNode
-from core.workflow.nodes.answer import AnswerNode
-from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.answer.answer_node import AnswerNode
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code import CodeNode
+from core.workflow.nodes.datasource.datasource_node import DatasourceNode
 from core.workflow.nodes.document_extractor import DocumentExtractorNode
-from core.workflow.nodes.end import EndNode
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.http_request import HttpRequestNode
+from core.workflow.nodes.human_input import HumanInputNode
 from core.workflow.nodes.if_else import IfElseNode
 from core.workflow.nodes.iteration import IterationNode, IterationStartNode
+from core.workflow.nodes.knowledge_index import KnowledgeIndexNode
 from core.workflow.nodes.knowledge_retrieval import KnowledgeRetrievalNode
 from core.workflow.nodes.list_operator import ListOperatorNode
 from core.workflow.nodes.llm import LLMNode
@@ -30,7 +33,7 @@ LATEST_VERSION = "latest"
 #
 # TODO(QuantumGhost): This could be automated with either metaclass or `__init_subclass__`
 # hook. Try to avoid duplication of node information.
-NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
+NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[Node]]] = {
     NodeType.START: {
         LATEST_VERSION: StartNode,
         "1": StartNode,
@@ -73,6 +76,9 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     },
     NodeType.TOOL: {
         LATEST_VERSION: ToolNode,
+        # This is an issue that caused problems before.
+        # Logically, we shouldn't use two different versions to point to the same class here,
+        # but in order to maintain compatibility with historical data, this approach has been retained.
         "2": ToolNode,
         "1": ToolNode,
     },
@@ -123,7 +129,22 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     },
     NodeType.AGENT: {
         LATEST_VERSION: AgentNode,
+        # This is an issue that caused problems before.
+        # Logically, we shouldn't use two different versions to point to the same class here,
+        # but in order to maintain compatibility with historical data, this approach has been retained.
         "2": AgentNode,
         "1": AgentNode,
+    },
+    NodeType.HUMAN_INPUT: {
+        LATEST_VERSION: HumanInputNode,
+        "1": HumanInputNode,
+    },
+    NodeType.DATASOURCE: {
+        LATEST_VERSION: DatasourceNode,
+        "1": DatasourceNode,
+    },
+    NodeType.KNOWLEDGE_INDEX: {
+        LATEST_VERSION: KnowledgeIndexNode,
+        "1": KnowledgeIndexNode,
     },
 }

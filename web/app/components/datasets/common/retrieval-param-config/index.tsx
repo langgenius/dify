@@ -38,7 +38,7 @@ const RetrievalParamConfig: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
-  const isEconomical = type === RETRIEVE_METHOD.invertedIndex
+  const isEconomical = type === RETRIEVE_METHOD.keywordSearch
   const isHybridSearch = type === RETRIEVE_METHOD.hybrid
   const {
     modelList: rerankModelList,
@@ -54,14 +54,13 @@ const RetrievalParamConfig: FC<Props> = ({
     },
   )
 
-  const handleDisabledSwitchClick = useCallback((enable: boolean) => {
+  const handleToggleRerankEnable = useCallback((enable: boolean) => {
     if (enable && !currentModel)
       Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
     onChange({
       ...value,
       reranking_enable: enable,
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentModel, onChange, value])
 
   const rerankModel = useMemo(() => {
@@ -120,7 +119,7 @@ const RetrievalParamConfig: FC<Props> = ({
               <Switch
                 size='md'
                 defaultValue={value.reranking_enable}
-                onChange={handleDisabledSwitchClick}
+                onChange={handleToggleRerankEnable}
               />
             )}
             <div className='flex items-center'>
@@ -202,7 +201,7 @@ const RetrievalParamConfig: FC<Props> = ({
                       option.value === RerankingModeEnum.WeightedScore
                         ? ProgressIndicator
                         : Reranking
-                    } alt=''/>}
+                    } alt='' />}
                     title={option.label}
                     description={option.tips}
                     className='flex-1'

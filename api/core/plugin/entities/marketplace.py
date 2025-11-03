@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field, model_validator
 
 from core.model_runtime.entities.provider_entities import ProviderEntity
@@ -19,11 +17,11 @@ class MarketplacePluginDeclaration(BaseModel):
     resource: PluginResourceRequirements = Field(
         ..., description="Specification of computational resources needed to run the plugin"
     )
-    endpoint: Optional[EndpointProviderDeclaration] = Field(
+    endpoint: EndpointProviderDeclaration | None = Field(
         None, description="Configuration for the plugin's API endpoint, if applicable"
     )
-    model: Optional[ProviderEntity] = Field(None, description="Details of the AI model used by the plugin, if any")
-    tool: Optional[ToolProviderEntity] = Field(
+    model: ProviderEntity | None = Field(None, description="Details of the AI model used by the plugin, if any")
+    tool: ToolProviderEntity | None = Field(
         None, description="Information about the tool functionality provided by the plugin, if any"
     )
     latest_version: str = Field(
@@ -31,6 +29,13 @@ class MarketplacePluginDeclaration(BaseModel):
     )
     latest_package_identifier: str = Field(
         ..., description="Unique identifier for the latest package release of the plugin"
+    )
+    status: str = Field(..., description="Indicate the status of marketplace plugin, enum from `active` `deleted`")
+    deprecated_reason: str = Field(
+        ..., description="Not empty when status='deleted', indicates the reason why this plugin is deleted(deprecated)"
+    )
+    alternative_plugin_id: str = Field(
+        ..., description="Optional, indicates the alternative plugin for user to switch to"
     )
 
     @model_validator(mode="before")

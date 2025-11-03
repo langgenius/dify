@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   useIsChatMode,
   useNodesReadOnly,
@@ -14,6 +14,13 @@ import type { VarType as VarKindType } from '@/app/components/workflow/nodes/too
 import type { Item } from '@/app/components/base/select'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { isEqual } from 'lodash-es'
+import { useStore } from '../../store'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 
 const useConfig = (id: string, payload: IterationNodeType) => {
   const {
@@ -25,7 +32,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   const { inputs, setInputs } = useNodeCrud<IterationNodeType>(id, payload)
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject, VarType.arrayFile].includes(varPayload.type)
+    return [VarType.array, VarType.arrayString, VarType.arrayBoolean, VarType.arrayNumber, VarType.arrayObject, VarType.arrayFile].includes(varPayload.type)
   }, [])
 
   const handleInputChange = useCallback((input: ValueSelector | string, _varKindType: VarKindType, varInfo?: Var) => {
@@ -39,7 +46,19 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   // output
   const { getIterationNodeChildren } = useWorkflow()
   const iterationChildrenNodes = getIterationNodeChildren(id)
-  const childrenNodeVars = toNodeOutputVars(iterationChildrenNodes, isChatMode)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
+  const dataSourceList = useStore(s => s.dataSourceList)
+  const allPluginInfoList = {
+    buildInTools: buildInTools || [],
+    customTools: customTools || [],
+    workflowTools: workflowTools || [],
+    mcpTools: mcpTools || [],
+    dataSourceList: dataSourceList || [],
+  }
+  const childrenNodeVars = toNodeOutputVars(iterationChildrenNodes, isChatMode, undefined, [], [], [], allPluginInfoList)
 
   const handleOutputVarChange = useCallback((output: ValueSelector | string, _varKindType: VarKindType, varInfo?: Var) => {
     if (isEqual(inputs.output_selector, output as ValueSelector))
@@ -85,6 +104,14 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
+
+  const changeFlattenOutput = useCallback((value: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.flatten_output = value
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     readOnly,
     inputs,
@@ -96,6 +123,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     changeParallel,
     changeErrorResponseMode,
     changeParallelNums,
+    changeFlattenOutput,
   }
 }
 

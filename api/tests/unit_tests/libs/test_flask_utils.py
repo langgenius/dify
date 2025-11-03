@@ -1,6 +1,5 @@
 import contextvars
 import threading
-from typing import Optional
 
 import pytest
 from flask import Flask
@@ -29,7 +28,7 @@ def login_app(app: Flask) -> Flask:
     login_manager.init_app(app)
 
     @login_manager.user_loader
-    def load_user(user_id: str) -> Optional[User]:
+    def load_user(user_id: str) -> User | None:
         if user_id == "test_user":
             return User("test_user")
         return None
@@ -68,7 +67,7 @@ def test_current_user_not_accessible_across_threads(login_app: Flask, test_user:
                     # without preserve_flask_contexts
                     result["user_accessible"] = current_user.is_authenticated
             except Exception as e:
-                result["error"] = str(e)  # type: ignore
+                result["error"] = str(e)
 
         # Run the function in a separate thread
         thread = threading.Thread(target=check_user_in_thread)
@@ -111,7 +110,7 @@ def test_current_user_accessible_with_preserve_flask_contexts(login_app: Flask, 
                     else:
                         result["user_accessible"] = False
             except Exception as e:
-                result["error"] = str(e)  # type: ignore
+                result["error"] = str(e)
 
         # Run the function in a separate thread
         thread = threading.Thread(target=check_user_in_thread_with_manager)

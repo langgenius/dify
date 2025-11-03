@@ -7,15 +7,12 @@ import type { SystemFeatures } from '@/types/feature'
 import { defaultSystemFeatures } from '@/types/feature'
 import { getSystemFeatures } from '@/service/common'
 import Loading from '@/app/components/base/loading'
-import { AccessMode } from '@/models/access-control'
 
 type GlobalPublicStore = {
   isGlobalPending: boolean
   setIsGlobalPending: (isPending: boolean) => void
   systemFeatures: SystemFeatures
   setSystemFeatures: (systemFeatures: SystemFeatures) => void
-  webAppAccessMode: AccessMode,
-  setWebAppAccessMode: (webAppAccessMode: AccessMode) => void
 }
 
 export const useGlobalPublicStore = create<GlobalPublicStore>(set => ({
@@ -23,8 +20,6 @@ export const useGlobalPublicStore = create<GlobalPublicStore>(set => ({
   setIsGlobalPending: (isPending: boolean) => set(() => ({ isGlobalPending: isPending })),
   systemFeatures: defaultSystemFeatures,
   setSystemFeatures: (systemFeatures: SystemFeatures) => set(() => ({ systemFeatures })),
-  webAppAccessMode: AccessMode.PUBLIC,
-  setWebAppAccessMode: (webAppAccessMode: AccessMode) => set(() => ({ webAppAccessMode })),
 }))
 
 const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({

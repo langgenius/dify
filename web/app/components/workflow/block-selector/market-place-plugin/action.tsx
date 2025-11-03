@@ -60,7 +60,6 @@ const OperationDropdown: FC<Props> = ({
       downloadFile({ data: blob, fileName })
       setNeedDownload(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blob])
   return (
     <PortalToFollowElem

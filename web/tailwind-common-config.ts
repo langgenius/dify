@@ -87,8 +87,14 @@ const config = {
         2: '0.02',
         8: '0.08',
       },
+      fontFamily: {
+        instrument: ['var(--font-instrument-serif)', 'serif'],
+      },
       fontSize: {
         '2xs': '0.625rem',
+      },
+      backgroundColor: {
+        'background-gradient-bg-fill-chat-bubble-bg-3': 'var(--color-background-gradient-bg-fill-chat-bubble-bg-3)',
       },
       backgroundImage: {
         'chatbot-bg': 'var(--color-chatbot-bg)',
@@ -121,6 +127,15 @@ const config = {
         'price-premium-text-background': 'var(--color-premium-text-background)',
         'price-enterprise-background': 'var(--color-price-enterprise-background)',
         'grid-mask-background': 'var(--color-grid-mask-background)',
+        'node-data-source-bg': 'var(--color-node-data-source-bg)',
+        'tag-selector-mask-bg': 'var(--color-tag-selector-mask-bg)',
+        'tag-selector-mask-hover-bg': 'var(--color-tag-selector-mask-hover-bg)',
+        'pipeline-template-card-hover-bg': 'var(--color-pipeline-template-card-hover-bg)',
+        'pipeline-add-documents-title-bg': 'var(--color-pipeline-add-documents-title-bg)',
+        'billing-plan-title-bg': 'var(--color-billing-plan-title-bg)',
+        'billing-plan-card-premium-bg': 'var(--color-billing-plan-card-premium-bg)',
+        'billing-plan-card-enterprise-bg': 'var(--color-billing-plan-card-enterprise-bg)',
+        'knowledge-pipeline-creation-footer-bg': 'var(--color-knowledge-pipeline-creation-footer-bg)',
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',

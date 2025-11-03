@@ -9,7 +9,6 @@ const translation = {
   namePlaceholder: 'Kullanıcı adınız',
   forget: 'Şifrenizi mi unuttunuz?',
   signBtn: 'Giriş yap',
-  sso: 'SSO ile devam et',
   installBtn: 'Kurulum',
   setAdminAccount: 'Yönetici hesabı ayarlama',
   setAdminAccountDesc: 'Yönetici hesabı için maksimum ayrıcalıklar, uygulama oluşturma ve LLM sağlayıcılarını yönetme gibi işlemler için kullanılabilir.',
@@ -56,6 +55,7 @@ const translation = {
     passwordLengthInValid: 'Şifre en az 8 karakterden oluşmalıdır',
     passwordInvalid: 'Şifre harf ve rakamlardan oluşmalı ve uzunluğu 8 karakterden fazla olmalıdır',
     registrationNotAllowed: 'Hesap bulunamadı. Kayıt olmak için lütfen sistem yöneticisi ile iletişime geçin.',
+    invalidEmailOrPassword: 'Geçersiz e-posta veya şifre.',
   },
   license: {
     tip: 'Dify Community Edition\'ı başlatmadan önce GitHub\'daki',
@@ -81,8 +81,8 @@ const translation = {
     verificationCodePlaceholder: '6 haneli kodu girin',
     useAnotherMethod: 'Başka bir yöntem kullanın',
     didNotReceiveCode: 'Kodu almadınız mı?',
-    tips: '<strong>{{email}}</strong> adresine bir doğrulama kodu gönderiyoruz',
     resend: 'Tekrar Gönder',
+    tipsPrefix: 'Bir doğrulama kodu gönderiyoruz',
   },
   enterYourName: 'Lütfen kullanıcı adınızı giriniz',
   resetPassword: 'Şifre Sıfırlama',
@@ -109,7 +109,18 @@ const translation = {
     disabled: 'Web uygulaması kimlik doğrulaması devre dışı. Lütfen bu özelliği etkinleştirmesi için sistem yöneticisi ile iletişime geçin. Uygulamayı doğrudan kullanmayı deneyebilirsiniz.',
     noLoginMethod: 'Web uygulaması için kimlik doğrulama yöntemi yapılandırılmamış',
     noLoginMethodTip: 'Lütfen bir kimlik doğrulama yöntemi eklemek için sistem yöneticisi ile iletişime geçin.',
+    login: 'Giriş',
   },
+  signup: {
+    noAccount: 'Hesabınız yok mu?',
+    signIn: 'Giriş Yap',
+    signUp: 'Kaydol',
+    createAccount: 'Hesabınızı oluşturun',
+    verifyMail: 'Doğrulama kodu ile devam et',
+    haveAccount: 'Zaten bir hesabınız var mı?',
+    welcome: '👋 Hoş geldiniz! Başlamak için lütfen detayları doldurun.',
+  },
+  pageTitleForE: 'Hey, haydi başlayalım!',
 }
 
 export default translation

@@ -1,8 +1,7 @@
 import logging
 import queue
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
-from contextlib import ExitStack
+from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
 from datetime import timedelta
 from types import TracebackType
 from typing import Any, Generic, Self, TypeVar
@@ -31,6 +30,9 @@ from core.mcp.types import (
     ServerResult,
     SessionMessage,
 )
+
+logger = logging.getLogger(__name__)
+
 
 SendRequestT = TypeVar("SendRequestT", ClientRequest, ServerRequest)
 SendResultT = TypeVar("SendResultT", ClientResult, ServerResult)
@@ -74,12 +76,12 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
             ReceiveNotificationT
         ]""",
         on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], Any],
-    ) -> None:
+    ):
         self.request_id = request_id
         self.request_meta = request_meta
         self.request = request
         self._session = session
-        self._completed = False
+        self.completed = False
         self._on_complete = on_complete
         self._entered = False  # Track if we're in a context manager
 
@@ -93,15 +95,15 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
-    ) -> None:
+    ):
         """Exit the context manager, performing cleanup and notifying completion."""
         try:
-            if self._completed:
+            if self.completed:
                 self._on_complete(self)
         finally:
             self._entered = False
 
-    def respond(self, response: SendResultT | ErrorData) -> None:
+    def respond(self, response: SendResultT | ErrorData):
         """Send a response for this request.
 
         Must be called within a context manager block.
@@ -111,18 +113,18 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         """
         if not self._entered:
             raise RuntimeError("RequestResponder must be used as a context manager")
-        assert not self._completed, "Request already responded to"
+        assert not self.completed, "Request already responded to"
 
-        self._completed = True
+        self.completed = True
 
         self._session._send_response(request_id=self.request_id, response=response)
 
-    def cancel(self) -> None:
+    def cancel(self):
         """Cancel this request and mark it as completed."""
         if not self._entered:
             raise RuntimeError("RequestResponder must be used as a context manager")
 
-        self._completed = True  # Mark as completed so it's removed from in_flight
+        self.completed = True  # Mark as completed so it's removed from in_flight
         # Send an error response to indicate cancellation
         self._session._send_response(
             request_id=self.request_id,
@@ -161,7 +163,7 @@ class BaseSession(
         receive_notification_type: type[ReceiveNotificationT],
         # If none, reading will never time out
         read_timeout_seconds: timedelta | None = None,
-    ) -> None:
+    ):
         self._read_stream = read_stream
         self._write_stream = write_stream
         self._response_streams = {}
@@ -170,30 +172,50 @@ class BaseSession(
         self._receive_notification_type = receive_notification_type
         self._session_read_timeout_seconds = read_timeout_seconds
         self._in_flight = {}
-        self._exit_stack = ExitStack()
+        # Initialize executor and future to None for proper cleanup checks
+        self._executor: ThreadPoolExecutor | None = None
+        self._receiver_future: Future | None = None
 
     def __enter__(self) -> Self:
-        self._executor = ThreadPoolExecutor()
+        # The thread pool is dedicated to running `_receive_loop`. Setting `max_workers` to 1
+        # ensures no unnecessary threads are created.
+        self._executor = ThreadPoolExecutor(max_workers=1)
         self._receiver_future = self._executor.submit(self._receive_loop)
         return self
 
-    def check_receiver_status(self) -> None:
-        if self._receiver_future.done():
+    def check_receiver_status(self):
+        """`check_receiver_status` ensures that any exceptions raised during the
+        execution of `_receive_loop` are retrieved and propagated."""
+        if self._receiver_future and self._receiver_future.done():
             self._receiver_future.result()
 
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
-    ) -> None:
-        self._exit_stack.close()
+    ):
         self._read_stream.put(None)
         self._write_stream.put(None)
+
+        # Wait for the receiver loop to finish
+        if self._receiver_future:
+            try:
+                self._receiver_future.result(timeout=5.0)  # Wait up to 5 seconds
+            except TimeoutError:
+                # If the receiver loop is still running after timeout, we'll force shutdown
+                # Cancel the future to interrupt the receiver loop
+                self._receiver_future.cancel()
+
+        # Shutdown the executor
+        if self._executor:
+            # Use non-blocking shutdown to prevent hanging
+            # The receiver thread should have already exited due to the None message in the queue
+            self._executor.shutdown(wait=False)
 
     def send_request(
         self,
         request: SendRequestT,
         result_type: type[ReceiveResultT],
         request_read_timeout_seconds: timedelta | None = None,
-        metadata: MessageMetadata = None,
+        metadata: MessageMetadata | None = None,
     ) -> ReceiveResultT:
         """
         Sends a request and wait for a response. Raises an McpError if the
@@ -258,7 +280,7 @@ class BaseSession(
         self,
         notification: SendNotificationT,
         related_request_id: RequestId | None = None,
-    ) -> None:
+    ):
         """
         Emits a notification, which is a one-way message that does not expect
         a response.
@@ -277,7 +299,7 @@ class BaseSession(
         )
         self._write_stream.put(session_message)
 
-    def _send_response(self, request_id: RequestId, response: SendResultT | ErrorData) -> None:
+    def _send_response(self, request_id: RequestId, response: SendResultT | ErrorData):
         if isinstance(response, ErrorData):
             jsonrpc_error = JSONRPCError(jsonrpc="2.0", id=request_id, error=response)
             session_message = SessionMessage(message=JSONRPCMessage(jsonrpc_error))
@@ -291,7 +313,7 @@ class BaseSession(
             session_message = SessionMessage(message=JSONRPCMessage(jsonrpc_response))
             self._write_stream.put(session_message)
 
-    def _receive_loop(self) -> None:
+    def _receive_loop(self):
         """
         Main message processing loop.
         In a real synchronous implementation, this would likely run in a separate thread.
@@ -332,7 +354,7 @@ class BaseSession(
                     self._in_flight[responder.request_id] = responder
                     self._received_request(responder)
 
-                    if not responder._completed:
+                    if not responder.completed:
                         self._handle_incoming(responder)
 
                 elif isinstance(message.message.root, JSONRPCNotification):
@@ -350,7 +372,7 @@ class BaseSession(
                             self._handle_incoming(notification)
                     except Exception as e:
                         # For other validation errors, log and continue
-                        logging.warning(f"Failed to validate notification: {e}. Message was: {message.message.root}")
+                        logger.warning("Failed to validate notification: %s. Message was: %s", e, message.message.root)
                 else:  # Response or error
                     response_queue = self._response_streams.get(message.message.root.id)
                     if response_queue is not None:
@@ -359,11 +381,11 @@ class BaseSession(
                         self._handle_incoming(RuntimeError(f"Server Error: {message}"))
             except queue.Empty:
                 continue
-            except Exception as e:
-                logging.exception("Error in message processing loop")
+            except Exception:
+                logger.exception("Error in message processing loop")
                 raise
 
-    def _received_request(self, responder: RequestResponder[ReceiveRequestT, SendResultT]) -> None:
+    def _received_request(self, responder: RequestResponder[ReceiveRequestT, SendResultT]):
         """
         Can be overridden by subclasses to handle a request without needing to
         listen on the message stream.
@@ -371,27 +393,21 @@ class BaseSession(
         If the request is responded to within this method, it will not be
         forwarded on to the message stream.
         """
-        pass
 
-    def _received_notification(self, notification: ReceiveNotificationT) -> None:
+    def _received_notification(self, notification: ReceiveNotificationT):
         """
         Can be overridden by subclasses to handle a notification without needing
         to listen on the message stream.
         """
-        pass
 
-    def send_progress_notification(
-        self, progress_token: str | int, progress: float, total: float | None = None
-    ) -> None:
+    def send_progress_notification(self, progress_token: str | int, progress: float, total: float | None = None):
         """
         Sends a progress notification for a request that is currently being
         processed.
         """
-        pass
 
     def _handle_incoming(
         self,
         req: RequestResponder[ReceiveRequestT, SendResultT] | ReceiveNotificationT | Exception,
-    ) -> None:
+    ):
         """A generic handler for incoming messages. Overwritten by subclasses."""
-        pass

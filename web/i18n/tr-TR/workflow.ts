@@ -89,7 +89,6 @@ const translation = {
     jumpToNode: 'Bu düğüme atla',
     addParallelNode: 'Paralel Düğüm Ekle',
     disconnect: 'Ayırmak',
-    parallelRun: 'Paralel Koşu',
     parallel: 'PARALEL',
     branch: 'DAL',
     featuresDocLink: 'Daha fazla bilgi edinin',
@@ -109,12 +108,13 @@ const translation = {
     exitVersions: 'Çıkış Sürümleri',
     versionHistory: 'Sürüm Geçmişi',
     exportJPEG: 'JPEG olarak dışa aktar',
-    noExist: 'Böyle bir değişken yok',
     exportSVG: 'SVG olarak dışa aktar',
-    referenceVar: 'Referans Değişken',
     addBlock: 'Düğüm Ekle',
     needAnswerNode: 'Cevap düğümü eklenmelidir.',
     needEndNode: 'Son düğüm eklenmelidir',
+    tagBound: 'Bu etiketi kullanan uygulama sayısı',
+    currentView: 'Geçerli Görünüm',
+    currentWorkflow: 'Mevcut İş Akışı',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
@@ -217,11 +217,12 @@ const translation = {
     back: 'Geri',
     iteration: 'Yineleme',
     loop: 'Döngü',
+    reRun: 'Yeniden çalıştır',
+    preparingDataSource: 'Veri Kaynağını Hazırlama',
   },
   tabs: {
     'tools': 'Araçlar',
     'allTool': 'Hepsi',
-    'builtInTool': 'Yerleşik',
     'customTool': 'Özel',
     'workflowTool': 'Workflow',
     'question-understand': 'Soruyu Anlama',
@@ -234,6 +235,10 @@ const translation = {
     'plugin': 'Eklenti',
     'blocks': 'Düğümler',
     'searchBlock': 'Arama düğümü',
+    'allAdded': 'Hepsi eklendi',
+    'addAll': 'Hepsini ekle',
+    'sources': 'Kaynak',
+    'searchDataSource': 'Veri Kaynağında Arama Yapın',
   },
   blocks: {
     'start': 'Başlat',
@@ -258,6 +263,8 @@ const translation = {
     'loop-start': 'Döngü Başlangıcı',
     'loop-end': 'Döngüden Çık',
     'loop': 'Döngü',
+    'knowledge-index': 'Bilgi bankası',
+    'datasource': 'Veri Kaynağı',
   },
   blocksAbout: {
     'start': 'Bir iş akışını başlatmak için başlangıç parametrelerini tanımlayın',
@@ -280,6 +287,8 @@ const translation = {
     'agent': 'Soruları yanıtlamak veya doğal dili işlemek için büyük dil modellerini çağırma',
     'loop': 'Sonlandırma koşulu karşılanana kadar veya maksimum döngü sayısına ulaşılana kadar bir mantık döngüsü çalıştırın.',
     'loop-end': '"break" ile eşdeğerdir. Bu düğümün yapılandırma öğesi yoktur. Döngü gövdesi bu düğüme ulaştığında, döngü sona erer.',
+    'datasource': 'Veri Kaynağı Hakkında',
+    'knowledge-index': 'Bilgi tabanı hakkında',
   },
   operator: {
     zoomIn: 'Yakınlaştır',
@@ -287,6 +296,18 @@ const translation = {
     zoomTo50: '%50 Yakınlaştır',
     zoomTo100: '%100 Yakınlaştır',
     zoomToFit: 'Sığdıracak Şekilde Yakınlaştır',
+    alignCenter: 'Orta',
+    alignMiddle: 'Orta',
+    alignLeft: 'Sol',
+    alignNodes: 'Düğümleri Hizala',
+    vertical: 'Dikey',
+    alignRight: 'Sağ',
+    alignTop: 'Üst',
+    alignBottom: 'Alt',
+    selectionAlignment: 'Seçim Hizalama',
+    distributeHorizontal: 'Yatay Dağıt',
+    horizontal: 'Yatay',
+    distributeVertical: 'Dikey Dağıt',
   },
   panel: {
     userInputField: 'Kullanıcı Giriş Alanı',
@@ -307,6 +328,7 @@ const translation = {
     selectNextStep: 'Sonraki Adımı Seç',
     minimize: 'Tam Ekrandan Çık',
     maximize: 'Kanvası Maksimize Et',
+    optional_and_hidden: '(isteğe bağlı ve gizli)',
   },
   nodes: {
     common: {
@@ -364,7 +386,11 @@ const translation = {
         retrying: 'Yeniden deneniyor...',
         ms: 'Ms',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        variable: 'Değişken kullan',
+        input: 'Girdi değeri',
+      },
+      inputVars: 'Giriş Değişkenleri',
     },
     start: {
       required: 'gerekli',
@@ -419,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'İçerik Üret',
+        reasoning_content: 'Akıl yürütme içeriği',
         usage: 'Model Kullanım Bilgileri',
       },
       singleRun: {
@@ -452,6 +479,12 @@ const translation = {
         generationTip: 'Doğal dil kullanarak hızlıca bir JSON Şeması oluşturabilirsiniz.',
         addChildField: 'Çocuk Alanı Ekle',
         resultTip: 'İşte oluşturulan sonuç. Eğer memnun değilseniz, geri dönüp isteminizi değiştirebilirsiniz.',
+      },
+      reasoningFormat: {
+        separated: 'Ayrı düşünce etiketleri',
+        title: 'Akıl yürütme etiket ayrımını etkinleştir',
+        tagged: 'Etiketleri düşünmeye devam et',
+        tooltip: 'Düşünce etiketlerinden içeriği çıkarın ve bunu reasoning_content alanında saklayın.',
       },
     },
     knowledgeRetrieval: {
@@ -491,6 +524,7 @@ const translation = {
           datePlaceholder: 'Bir zaman seçin...',
         },
         title: 'Meta Verileri Filtreleme',
+        tip: 'Metadata filtreleme, bir sistem içinde ilgili bilgilerin alınmasını ince ayar ve kontrol etmek için metadata özniteliklerini (etiketler, kategoriler veya erişim izinleri gibi) kullanma sürecidir.',
       },
     },
     http: {
@@ -552,6 +586,7 @@ const translation = {
       advancedDependencies: 'Gelişmiş Bağımlılıklar',
       advancedDependenciesTip: 'Burada daha uzun sürede tüketilen veya varsayılan olarak yerleşik olmayan bazı ön yüklenmiş bağımlılıkları ekleyin',
       searchDependencies: 'Bağımlılıkları Ara',
+      syncFunctionSignature: 'Senkrone işlev imzasını koda eşitle',
     },
     templateTransform: {
       inputVars: 'Giriş Değişkenleri',
@@ -580,7 +615,6 @@ const translation = {
         'not empty': 'boş değil',
         'null': 'null',
         'not null': 'null değil',
-        'regex match': 'normal ifade maçı',
         'in': 'içinde',
         'not exists': 'mevcut değil',
         'all of': 'Tümü',
@@ -603,7 +637,6 @@ const translation = {
       },
       addSubVariable: 'Alt Değişken',
       select: 'Seçmek',
-      condition: 'Koşul',
     },
     variableAssigner: {
       title: 'Değişken ata',
@@ -671,6 +704,9 @@ const translation = {
         json: 'araç tarafından oluşturulan json',
       },
       authorize: 'Yetkilendirmek',
+      settings: 'Ayarlar',
+      insertPlaceholder2: 'değişken ekle',
+      insertPlaceholder1: 'Yazın veya basın',
     },
     questionClassifiers: {
       model: 'model',
@@ -823,6 +859,7 @@ const translation = {
           url: 'Resim url\'si',
         },
         text: 'Temsilci Tarafından Oluşturulan İçerik',
+        usage: 'Model Kullanım Bilgileri',
         json: 'Aracı tarafından oluşturulan JSON',
       },
       checkList: {
@@ -855,6 +892,8 @@ const translation = {
       strategyNotInstallTooltip: '{{strateji}} yüklü değil',
       toolNotAuthorizedTooltip: '{{araç}} Yetkili Değil',
       model: 'model',
+      parameterSchema: 'Parametre Şeması',
+      clickToViewParameterSchema: 'Parametre şemasını görüntülemek için tıklayın',
     },
     loop: {
       ErrorMethod: {
@@ -888,6 +927,32 @@ const translation = {
       loop_one: '{{count}} Döngü',
       loopVariables: 'Döngü Değişkenleri',
     },
+    dataSource: {
+      add: 'Veri kaynağı ekleme',
+      supportedFileFormatsPlaceholder: 'Dosya uzantısı, e.g. doc',
+      supportedFileFormats: 'Desteklenen dosya biçimleri',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'Daha fazla bilgi edinin',
+        title: 'Lütfen bir yığın yapısı seçin',
+        message: 'Dify Bilgi Bankası üç parçalı yapıyı destekler: Genel, Üst-alt ve Soru-Cevap. Her bilgi tabanı yalnızca bir yapıya sahip olabilir. Önceki düğümden gelen çıktı, seçilen öbek yapısıyla hizalanmalıdır. Yığın yapısı seçiminin mevcut dizin yöntemlerini etkilediğini unutmayın.',
+      },
+      chooseChunkStructure: 'Bir yığın yapısı seçin',
+      chunkIsRequired: 'Yığın yapısı gereklidir',
+      chunkStructure: 'Yığın Yapısı',
+      indexMethodIsRequired: 'İndeks yöntemi gereklidir',
+      aboutRetrieval: 'geri alma yöntemi hakkında.',
+      retrievalSettingIsRequired: 'Alma ayarı gereklidir',
+      changeChunkStructure: 'Yığın Yapısını Değiştir',
+      chunksInput: 'Parçalar',
+      chunksInputTip: 'Bilgi tabanı düğümünün girdi değişkeni \'Chunks\'tır. Değişkenin tipi, seçilen parça yapısıyla tutarlı olması gereken belirli bir JSON Şemasına sahip bir nesnedir.',
+      embeddingModelIsRequired: 'Gömme modeli gereklidir',
+      chunksVariableIsRequired: 'Chunks değişkeni gereklidir',
+      rerankingModelIsRequired: 'Yeniden sıralama modeli gereklidir',
+      rerankingModelIsInvalid: 'Yeniden sıralama modeli geçersiz',
+      embeddingModelIsInvalid: 'Gömme modeli geçersiz',
+    },
   },
   tracing: {
     stopBy: '{{user}} tarafından durduruldu',
@@ -920,6 +985,7 @@ const translation = {
       updateFailure: 'Sürüm güncellenemedi',
       updateSuccess: 'Sürüm güncellendi',
       deleteSuccess: 'Sürüm silindi',
+      copyIdSuccess: 'Kimlik panoya kopyalandı',
     },
     latest: 'Sonuncu',
     currentDraft: 'Mevcut Taslak',
@@ -930,6 +996,7 @@ const translation = {
     releaseNotesPlaceholder: 'Değişen şeyleri tanımlayın',
     nameThisVersion: 'Bu versiyona isim ver',
     deletionTip: 'Silme işlemi geri alınamaz, lütfen onaylayın.',
+    copyId: 'ID Kopyala',
   },
   debug: {
     noData: {
@@ -956,9 +1023,31 @@ const translation = {
       reset: 'Son çalıştırma değerine sıfırla',
       view: 'Günlüğü görüntüle',
       emptyTip: 'Bir düğümü kanvas üzerinde geçtikten veya bir düğümü adım adım çalıştırdıktan sonra, Düğüm Değişkeni\'ndeki mevcut değeri Değişken İncele\'de görüntüleyebilirsiniz.',
+      export: 'Ihracat',
+      largeDataNoExport: 'Büyük veri - yalnızca kısmi önizleme',
+      largeData: 'Büyük veri, salt okunur önizleme. Tümünü görüntülemek için dışa aktarın.',
+      exportToolTip: 'Değişkeni Dosya Olarak Dışa Aktar',
     },
     lastRunTab: 'Son Koşu',
     settingsTab: 'Ayarlar',
+    relations: {
+      noDependents: 'Bakmakla yükümlü olunan kişi yok',
+      dependentsDescription: 'Bu düğüme dayanan düğümler',
+      dependenciesDescription: 'Bu düğümün dayandığı düğümler',
+      dependencies: 'Bağımlılık',
+      dependents: 'Bağımlı',
+      noDependencies: 'Bağımlılık yok',
+    },
+    relationsTab: 'Ilişkiler',
+    copyLastRun: 'Son Çalışmayı Kopyala',
+    noLastRunFound: 'Önceki çalışmaya rastlanmadı.',
+    noMatchingInputsFound: 'Son çalışmadan eşleşen giriş bulunamadı.',
+    copyLastRunError: 'Son çalışma girdilerini kopyalamak başarısız oldu.',
+    lastOutput: 'Son Çıktı',
+  },
+  sidebar: {
+    exportWarning: 'Mevcut Kaydedilmiş Versiyonu Dışa Aktar',
+    exportWarningDesc: 'Bu, çalışma akışınızın mevcut kaydedilmiş sürümünü dışa aktaracaktır. Editörde kaydedilmemiş değişiklikleriniz varsa, lütfen önce bunları çalışma akışı alanındaki dışa aktarma seçeneğini kullanarak kaydedin.',
   },
 }
 

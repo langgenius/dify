@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type {
   FormOption,
   ModelProvider,
@@ -10,10 +10,10 @@ import type {
   Dependency,
   GitHubItemAndMarketPlaceDependency,
   InstallPackageResponse,
+  InstallStatusResponse,
   InstalledLatestVersionResponse,
   InstalledPluginListWithTotalResponse,
   PackageDependency,
-  Permissions,
   Plugin,
   PluginDeclaration,
   PluginDetail,
@@ -22,6 +22,7 @@ import type {
   PluginType,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
+  ReferenceSetting,
   VersionInfo,
   VersionListResponse,
   uploadGitHubResponse,
@@ -40,7 +41,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useInvalidateAllBuiltInTools } from './use-tools'
-import usePermission from '@/app/components/plugins/plugin-page/use-permission'
+import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { uninstallPlugin } from '@/service/plugins'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { cloneDeep } from 'lodash-es'
@@ -233,7 +234,7 @@ export const useUploadGitHub = (payload: {
 export const useInstallOrUpdate = ({
   onSuccess,
 }: {
-  onSuccess?: (res: { success: boolean }[]) => void
+  onSuccess?: (res: InstallStatusResponse[]) => void
 }) => {
   const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
 
@@ -251,6 +252,8 @@ export const useInstallOrUpdate = ({
           const installedPayload = installedInfo[orgAndName]
           const isInstalled = !!installedPayload
           let uniqueIdentifier = ''
+          let taskId = ''
+          let isFinishedInstallation = false
 
           if (item.type === 'github') {
             const data = item as GitHubItemAndMarketPlaceDependency
@@ -268,12 +271,14 @@ export const useInstallOrUpdate = ({
               // has the same version, but not installed
               if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
                 return {
-                  success: true,
+                  status: TaskStatus.success,
+                  taskId: '',
+                  uniqueIdentifier: '',
                 }
               }
             }
             if (!isInstalled) {
-              await post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
+              const { task_id, all_installed } = await post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
                 body: {
                   repo: data.value.repo!,
                   version: data.value.release! || data.value.version!,
@@ -281,6 +286,8 @@ export const useInstallOrUpdate = ({
                   plugin_unique_identifier: uniqueIdentifier,
                 },
               })
+              taskId = task_id
+              isFinishedInstallation = all_installed
             }
           }
           if (item.type === 'marketplace') {
@@ -288,15 +295,19 @@ export const useInstallOrUpdate = ({
             uniqueIdentifier = data.value.marketplace_plugin_unique_identifier! || plugin[i]?.plugin_id
             if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
               return {
-                success: true,
+                status: TaskStatus.success,
+                taskId: '',
+                uniqueIdentifier: '',
               }
             }
             if (!isInstalled) {
-              await post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
+              const { task_id, all_installed } = await post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
                 body: {
                   plugin_unique_identifiers: [uniqueIdentifier],
                 },
               })
+              taskId = task_id
+              isFinishedInstallation = all_installed
             }
           }
           if (item.type === 'package') {
@@ -304,38 +315,59 @@ export const useInstallOrUpdate = ({
             uniqueIdentifier = data.value.unique_identifier
             if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
               return {
-                success: true,
+                status: TaskStatus.success,
+                taskId: '',
+                uniqueIdentifier: '',
               }
             }
             if (!isInstalled) {
-              await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
+              const { task_id, all_installed } = await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
                 body: {
                   plugin_unique_identifiers: [uniqueIdentifier],
                 },
               })
+              taskId = task_id
+              isFinishedInstallation = all_installed
             }
           }
           if (isInstalled) {
             if (item.type === 'package') {
               await uninstallPlugin(installedPayload.installedId)
-              await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
+              const { task_id, all_installed } = await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
                 body: {
                   plugin_unique_identifiers: [uniqueIdentifier],
                 },
               })
+              taskId = task_id
+              isFinishedInstallation = all_installed
             }
             else {
-              await updatePackageFromMarketPlace({
+              const { task_id, all_installed } = await updatePackageFromMarketPlace({
                 original_plugin_unique_identifier: installedPayload?.uniqueIdentifier,
                 new_plugin_unique_identifier: uniqueIdentifier,
               })
+              taskId = task_id
+              isFinishedInstallation = all_installed
             }
           }
-          return ({ success: true })
+          if (isFinishedInstallation) {
+            return {
+              status: TaskStatus.success,
+              taskId: '',
+              uniqueIdentifier: '',
+            }
+          }
+          else {
+            return {
+              status: TaskStatus.running,
+              taskId,
+              uniqueIdentifier,
+            }
+          }
         }
         // eslint-disable-next-line unused-imports/no-unused-vars
         catch (e) {
-          return Promise.resolve({ success: false })
+          return Promise.resolve({ status: TaskStatus.failed, taskId: '', uniqueIdentifier: '' })
         }
       }))
     },
@@ -350,34 +382,42 @@ export const useDebugKey = () => {
   })
 }
 
-const usePermissionsKey = [NAME_SPACE, 'permissions']
-export const usePermissions = () => {
+const useReferenceSettingKey = [NAME_SPACE, 'referenceSettings']
+export const useReferenceSettings = () => {
   return useQuery({
-    queryKey: usePermissionsKey,
-    queryFn: () => get<Permissions>('/workspaces/current/plugin/permission/fetch'),
+    queryKey: useReferenceSettingKey,
+    queryFn: () => get<ReferenceSetting>('/workspaces/current/plugin/preferences/fetch'),
   })
 }
 
-export const useInvalidatePermissions = () => {
+export const useInvalidateReferenceSettings = () => {
   const queryClient = useQueryClient()
   return () => {
     queryClient.invalidateQueries(
       {
-        queryKey: usePermissionsKey,
+        queryKey: useReferenceSettingKey,
       })
   }
 }
 
-export const useMutationPermissions = ({
+export const useMutationReferenceSettings = ({
   onSuccess,
 }: {
   onSuccess?: () => void
 }) => {
   return useMutation({
-    mutationFn: (payload: Permissions) => {
-      return post('/workspaces/current/plugin/permission/change', { body: payload })
+    mutationFn: (payload: ReferenceSetting) => {
+      return post('/workspaces/current/plugin/preferences/change', { body: payload })
     },
     onSuccess,
+  })
+}
+
+export const useRemoveAutoUpgrade = () => {
+  return useMutation({
+    mutationFn: (payload: { plugin_id: string }) => {
+      return post('/workspaces/current/plugin/preferences/autoupgrade/exclude', { body: payload })
+    },
   })
 }
 
@@ -427,6 +467,39 @@ export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[], 
   })
 }
 
+export const useFetchPluginListOrBundleList = (pluginsSearchParams: PluginsSearchParams) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'fetchPluginListOrBundleList', pluginsSearchParams],
+    queryFn: () => {
+      const {
+        query,
+        sortBy,
+        sortOrder,
+        category,
+        tags,
+        exclude,
+        type,
+        page = 1,
+        pageSize = 40,
+      } = pluginsSearchParams
+      const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
+      return postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
+        body: {
+          page,
+          page_size: pageSize,
+          query,
+          sort_by: sortBy,
+          sort_order: sortOrder,
+          category: category !== 'all' ? category : '',
+          tags,
+          exclude,
+          type,
+        },
+      })
+    },
+  })
+}
+
 export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[]) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByInfo', infos],
@@ -446,9 +519,10 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[])
 
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 export const usePluginTaskList = (category?: PluginType) => {
+  const [initialized, setInitialized] = useState(false)
   const {
     canManagement,
-  } = usePermission()
+  } = useReferenceSetting()
   const { refreshPluginList } = useRefreshPluginList()
   const {
     data,
@@ -469,7 +543,8 @@ export const usePluginTaskList = (category?: PluginType) => {
 
   useEffect(() => {
     // After first fetch, refresh plugin list each time all tasks are done
-    if (!isRefetching) {
+    // Skip initialization period, because the query cache is not updated yet
+    if (initialized && !isRefetching) {
       const lastData = cloneDeep(data)
       const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
       const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
@@ -478,8 +553,11 @@ export const usePluginTaskList = (category?: PluginType) => {
           refreshPluginList(category ? { category } as any : undefined, !category)
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRefetching])
+
+  useEffect(() => {
+    setInitialized(true)
+  }, [])
 
   const handleRefetch = useCallback(() => {
     refetch()

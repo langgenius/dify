@@ -2,7 +2,6 @@ const translation = {
   title: '검색 테스트',
   desc: '주어진 쿼리 텍스트에 기반하여 지식의 검색 효과를 테스트합니다.',
   dateTimeFormat: 'YYYY/MM/DD HH:mm',
-  recents: '최근 결과',
   table: {
     header: {
       source: '소스',

@@ -4,7 +4,7 @@ import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import copy from 'copy-to-clipboard'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -18,7 +18,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
-import Toast from '@/app/components/base/toast'
 import ConfigContext from '@/context/debug-configuration'
 import type { AgentTool } from '@/types/app'
 import { type Collection, CollectionType } from '@/app/components/tools/types'
@@ -26,8 +25,6 @@ import { MAX_TOOLS_NUM } from '@/config'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Tooltip from '@/app/components/base/tooltip'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
-import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
-import { updateBuiltInToolCredential } from '@/service/tools'
 import cn from '@/utils/classnames'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
@@ -57,13 +54,7 @@ const AgentTools: FC = () => {
 
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
   const [currentTool, setCurrentTool] = useState<AgentToolWithMoreInfo>(null)
-  const currentCollection = useMemo(() => {
-    if (!currentTool) return null
-    const collection = collectionList.find(collection => canFindTool(collection.id, currentTool?.provider_id) && collection.type === currentTool?.provider_type)
-    return collection
-  }, [currentTool, collectionList])
   const [isShowSettingTool, setIsShowSettingTool] = useState(false)
-  const [isShowSettingAuth, setShowSettingAuth] = useState(false)
   const tools = (modelConfig?.agentConfig?.tools as AgentTool[] || []).map((item) => {
     const collection = collectionList.find(
       collection =>
@@ -94,17 +85,6 @@ const AgentTools: FC = () => {
       const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === currentTool?.collection?.id && item.tool_name === currentTool?.tool_name)
       if (tool)
         (tool as AgentTool).tool_parameters = value
-    })
-    setModelConfig(newModelConfig)
-    setIsShowSettingTool(false)
-    formattingChangedDispatcher()
-  }
-
-  const handleToolAuthSetting = (value: AgentToolWithMoreInfo) => {
-    const newModelConfig = produce(modelConfig, (draft) => {
-      const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === value?.collection?.id && item.tool_name === value?.tool_name)
-      if (tool)
-        (tool as AgentTool).notAuthor = false
     })
     setModelConfig(newModelConfig)
     setIsShowSettingTool(false)
@@ -143,6 +123,20 @@ const AgentTools: FC = () => {
       return item.provider_name.split('/').pop()
     return item.provider_name
   }
+
+  const handleAuthorizationItemClick = useCallback((credentialId: string) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === currentTool?.provider_id)
+      if (tool)
+        (tool as AgentTool).credential_id = credentialId
+    })
+    setCurrentTool({
+      ...currentTool,
+      credential_id: credentialId,
+    } as any)
+    setModelConfig(newModelConfig)
+    formattingChangedDispatcher()
+  }, [currentTool, modelConfig, setModelConfig, formattingChangedDispatcher])
 
   return (
     <>
@@ -209,7 +203,6 @@ const AgentTools: FC = () => {
                   <span className='text-text-tertiary'>{item.tool_label}</span>
                   {!item.isDeleted && (
                     <Tooltip
-                      needsDelay
                       popupContent={
                         <div className='w-[180px]'>
                           <div className='mb-1.5 text-text-secondary'>{item.tool_name}</div>
@@ -232,7 +225,6 @@ const AgentTools: FC = () => {
                   <div className='mr-2 flex items-center'>
                     <Tooltip
                       popupContent={t('tools.toolRemoved')}
-                      needsDelay
                     >
                       <div className='mr-1 cursor-pointer rounded-md p-1 hover:bg-black/5'>
                         <AlertTriangle className='h-4 w-4 text-[#F79009]' />
@@ -259,7 +251,6 @@ const AgentTools: FC = () => {
                     {!item.notAuthor && (
                       <Tooltip
                         popupContent={t('tools.setBuiltInTools.infoAndSetting')}
-                        needsDelay
                       >
                         <div className='cursor-pointer rounded-md p-1  hover:bg-black/5' onClick={() => {
                           setCurrentTool(item)
@@ -302,7 +293,7 @@ const AgentTools: FC = () => {
                   {item.notAuthor && (
                     <Button variant='secondary' size='small' onClick={() => {
                       setCurrentTool(item)
-                      setShowSettingAuth(true)
+                      setIsShowSettingTool(true)
                     }}>
                       {t('tools.notAuthorized')}
                       <Indicator className='ml-2' color='orange' />
@@ -322,21 +313,8 @@ const AgentTools: FC = () => {
           isModel={currentTool?.collection?.type === CollectionType.model}
           onSave={handleToolSettingChange}
           onHide={() => setIsShowSettingTool(false)}
-        />
-      )}
-      {isShowSettingAuth && (
-        <ConfigCredential
-          collection={currentCollection as any}
-          onCancel={() => setShowSettingAuth(false)}
-          onSaved={async (value) => {
-            await updateBuiltInToolCredential((currentCollection as any).name, value)
-            Toast.notify({
-              type: 'success',
-              message: t('common.api.actionSuccess'),
-            })
-            handleToolAuthSetting(currentTool)
-            setShowSettingAuth(false)
-          }}
+          credentialId={currentTool?.credential_id}
+          onAuthorizationItemClick={handleAuthorizationItemClick}
         />
       )}
     </>

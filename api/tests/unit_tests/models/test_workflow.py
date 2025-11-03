@@ -9,7 +9,6 @@ from core.file.models import File
 from core.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from core.variables.segments import IntegerSegment, Segment
 from factories.variable_factory import build_segment
-from models.model import EndUser
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
 
 
@@ -43,14 +42,9 @@ def test_environment_variables():
         {"name": "var4", "value": 3.14, "id": str(uuid4()), "selector": ["env", "var4"]}
     )
 
-    # Mock current_user as an EndUser
-    mock_user = mock.Mock(spec=EndUser)
-    mock_user.tenant_id = "tenant_id"
-
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
         mock.patch("core.helper.encrypter.decrypt_token", return_value="secret"),
-        mock.patch("models.workflow.current_user", mock_user),
     ):
         # Set the environment_variables property of the Workflow instance
         variables = [variable1, variable2, variable3, variable4]
@@ -90,14 +84,9 @@ def test_update_environment_variables():
         {"name": "var4", "value": 3.14, "id": str(uuid4()), "selector": ["env", "var4"]}
     )
 
-    # Mock current_user as an EndUser
-    mock_user = mock.Mock(spec=EndUser)
-    mock_user.tenant_id = "tenant_id"
-
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
         mock.patch("core.helper.encrypter.decrypt_token", return_value="secret"),
-        mock.patch("models.workflow.current_user", mock_user),
     ):
         variables = [variable1, variable2, variable3, variable4]
 
@@ -136,14 +125,9 @@ def test_to_dict():
 
     # Create some EnvironmentVariable instances
 
-    # Mock current_user as an EndUser
-    mock_user = mock.Mock(spec=EndUser)
-    mock_user.tenant_id = "tenant_id"
-
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
         mock.patch("core.helper.encrypter.decrypt_token", return_value="secret"),
-        mock.patch("models.workflow.current_user", mock_user),
     ):
         # Set the environment_variables property of the Workflow instance
         workflow.environment_variables = [

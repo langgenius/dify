@@ -209,9 +209,9 @@ function MCPServiceCard({
             >
 
               <div className="flex items-center justify-center gap-[1px]">
-                    <RiEditLine className="h-3.5 w-3.5" />
-                    <div className="system-xs-medium px-[3px] text-text-tertiary">{serverPublished ? t('tools.mcp.server.edit') : t('tools.mcp.server.addDescription')}</div>
-                  </div>
+                <RiEditLine className="h-3.5 w-3.5" />
+                <div className="system-xs-medium px-[3px] text-text-tertiary">{serverPublished ? t('tools.mcp.server.edit') : t('tools.mcp.server.addDescription')}</div>
+              </div>
             </Button>
           </div>
         </div>
@@ -223,6 +223,7 @@ function MCPServiceCard({
           data={serverPublished ? detail : undefined}
           latestParams={latestParams}
           onHide={handleServerModalHide}
+          appInfo={appInfo}
         />
       )}
       {/* button copy link/ button regenerate */}

@@ -34,6 +34,7 @@ const ToolItem: FC<Props> = ({
     <Tooltip
       key={payload.name}
       position='right'
+      needsDelay={false}
       popupClassName='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
       popupContent={(
         <div>
@@ -68,7 +69,6 @@ const ToolItem: FC<Props> = ({
             tool_description: payload.description[language],
             title: payload.label[language],
             is_team_authorization: provider.is_team_authorization,
-            output_schema: payload.output_schema,
             paramSchemas: payload.parameters,
             params,
             meta: provider.meta,

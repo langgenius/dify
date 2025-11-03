@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
 import type { ModelConfig, PromptItem, ValueSelector, Var, Variable } from '../../../types'
@@ -182,12 +182,14 @@ const ConfigPrompt: FC<Props> = ({
                       <div key={item.id || index} className='group relative'>
                         {canDrag && <DragHandle className='absolute left-[-14px] top-2 hidden h-3.5 w-3.5 text-text-quaternary group-hover:block' />}
                         <ConfigPromptItem
+                          instanceId={item.role === PromptRole.system ? `${nodeId}-chat-workflow-llm-prompt-editor` : `${nodeId}-chat-workflow-llm-prompt-editor-${index}`}
                           className={cn(canDrag && 'handle')}
                           headerClassName={cn(canDrag && 'cursor-grab')}
                           canNotChooseSystemRole={!canChooseSystemRole}
                           canRemove={payload.length > 1 && !(index === 0 && item.role === PromptRole.system)}
                           readOnly={readOnly}
                           id={item.id!}
+                          nodeId={nodeId}
                           handleChatModeMessageRoleChange={handleChatModeMessageRoleChange(index)}
                           isChatModel={isChatModel}
                           isChatApp={isChatApp}

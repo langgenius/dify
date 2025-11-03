@@ -5,7 +5,7 @@ import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiDeleteBinLine,
   RiErrorWarningFill,
@@ -17,8 +17,8 @@ import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import cn from '@/utils/classnames'
 import type { PromptRole, PromptVariable } from '@/models/debug'
 import {
-  Clipboard,
-  ClipboardCheck,
+  Copy,
+  CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
@@ -78,7 +78,9 @@ const AdvancedPromptInput: FC<Props> = ({
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({
       payload: {},
-      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+      onSaveCallback: (newExternalDataTool?: ExternalDataTool) => {
+        if (!newExternalDataTool)
+          return
         eventEmitter?.emit({
           type: ADD_EXTERNAL_DATA_TOOL,
           payload: newExternalDataTool,
@@ -188,13 +190,13 @@ const AdvancedPromptInput: FC<Props> = ({
                 )}
                 {!isCopied
                   ? (
-                    <Clipboard className='h-6 w-6 cursor-pointer p-1 text-text-tertiary' onClick={() => {
+                    <Copy className='h-6 w-6 cursor-pointer p-1 text-text-tertiary' onClick={() => {
                       copy(value)
                       setIsCopied(true)
                     }} />
                   )
                   : (
-                    <ClipboardCheck className='h-6 w-6 p-1 text-text-tertiary' />
+                    <CopyCheck className='h-6 w-6 p-1 text-text-tertiary' />
                   )}
               </div>
             </div>

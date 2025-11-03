@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -x
+
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+cd "$SCRIPT_DIR/.."
+
+# Get the path argument if provided
+PATH_TO_CHECK="$1"
+
+# run basedpyright checks
+if [ -n "$PATH_TO_CHECK" ]; then
+    uv run --directory api --dev -- basedpyright --threads $(nproc) "$PATH_TO_CHECK"
+else
+    uv run --directory api --dev -- basedpyright --threads $(nproc)
+fi

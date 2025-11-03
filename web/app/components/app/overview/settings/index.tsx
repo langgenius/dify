@@ -18,7 +18,7 @@ import { SimpleSelect } from '@/app/components/base/select'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppIconType, AppSSO, Language } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
-import { languages } from '@/i18n/language'
+import { languages } from '@/i18n-config/language'
 import Tooltip from '@/app/components/base/tooltip'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
@@ -240,7 +240,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             <Link href={docLink('/guides/application-publishing/launch-your-webapp-quickly/README', {
               'zh-Hans': '/guides/application-publishing/launch-your-webapp-quickly/readme',
             })}
-              target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
+            target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
           </div>
         </div>
         {/* form body */}

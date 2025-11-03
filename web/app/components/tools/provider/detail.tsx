@@ -11,7 +11,7 @@ import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderReq
 import ToolItem from './tool-item'
 import cn from '@/utils/classnames'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { getLanguage } from '@/i18n-config/language'
 import Confirm from '@/app/components/base/confirm'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
@@ -244,9 +244,8 @@ const ProviderDetail = ({
               <div className="flex h-5 items-center">
                 <Title title={collection.label[language]} />
               </div>
-              <div className='mb-1 flex h-4 items-center justify-between'>
+              <div className='mb-1 mt-0.5 flex h-4 items-center justify-between'>
                 <OrgInfo
-                  className="mt-0.5"
                   packageNameClassName='w-auto'
                   orgName={collection.author}
                   packageName={collection.name}

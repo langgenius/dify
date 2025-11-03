@@ -46,6 +46,7 @@ const translation = {
     setVarValuePlaceholder: 'Set variable',
     needConnectTip: 'This step is not connected to anything',
     maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
+    needAdd: '{{node}} node must be added',
     needEndNode: 'The End node must be added',
     needAnswerNode: 'The Answer node must be added',
     workflowProcess: 'Workflow Process',
@@ -78,6 +79,8 @@ const translation = {
     exportPNG: 'Export as PNG',
     exportJPEG: 'Export as JPEG',
     exportSVG: 'Export as SVG',
+    currentView: 'Current View',
+    currentWorkflow: 'Current Workflow',
     model: 'Model',
     workflowAsTool: 'Workflow as Tool',
     configureRequired: 'Configure Required',
@@ -95,7 +98,6 @@ const translation = {
     importWarning: 'Caution',
     importWarningDetails: 'DSL version difference may affect certain features',
     importSuccess: 'Import Successfully',
-    parallelRun: 'Parallel Run',
     parallelTip: {
       click: {
         title: 'Click',
@@ -117,6 +119,7 @@ const translation = {
     addFailureBranch: 'Add Fail Branch',
     loadMore: 'Load More',
     noHistory: 'No History',
+    tagBound: 'Number of apps using this tag',
   },
   env: {
     envPanelTitle: 'Environment Variables',
@@ -140,6 +143,10 @@ const translation = {
       ignore: 'Export DSL',
       export: 'Export DSL with secret values ',
     },
+  },
+  sidebar: {
+    exportWarning: 'Export Current Saved Version',
+    exportWarningDesc: 'This will export the current saved version of your workflow. If you have unsaved changes in the editor, please save them first by using the export option in the workflow canvas.',
   },
   chatVariable: {
     panelTitle: 'Conversation Variables',
@@ -212,8 +219,10 @@ const translation = {
     toolParameterRequired: '{{field}}: parameter [{{param}}] is required',
   },
   singleRun: {
-    testRun: 'Test Run ',
+    testRun: 'Test Run',
     startRun: 'Start Run',
+    preparingDataSource: 'Preparing Data Source',
+    reRun: 'Re-run',
     running: 'Running',
     testRunIteration: 'Test Run Iteration',
     back: 'Back',
@@ -237,6 +246,8 @@ const translation = {
     'agent': 'Agent Strategy',
     'allAdded': 'All added',
     'addAll': 'Add all',
+    'sources': 'Sources',
+    'searchDataSource': 'Search Data Source',
   },
   blocks: {
     'start': 'Start',
@@ -261,6 +272,8 @@ const translation = {
     'loop-start': 'Loop Start',
     'loop': 'Loop',
     'loop-end': 'Exit Loop',
+    'knowledge-index': 'Knowledge Base',
+    'datasource': 'Data Source',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -283,6 +296,8 @@ const translation = {
     'document-extractor': 'Used to parse uploaded documents into text content that is easily understandable by LLM.',
     'list-operator': 'Used to filter or sort array content.',
     'agent': 'Invoking large language models to answer questions or process natural language',
+    'knowledge-index': 'Knowledge Base About',
+    'datasource': 'Data Source About',
   },
   operator: {
     zoomIn: 'Zoom In',
@@ -290,6 +305,18 @@ const translation = {
     zoomTo50: 'Zoom to 50%',
     zoomTo100: 'Zoom to 100%',
     zoomToFit: 'Zoom to Fit',
+    alignNodes: 'Align Nodes',
+    alignLeft: 'Left',
+    alignCenter: 'Center',
+    alignRight: 'Right',
+    alignTop: 'Top',
+    alignMiddle: 'Middle',
+    alignBottom: 'Bottom',
+    vertical: 'Vertical',
+    horizontal: 'Horizontal',
+    distributeHorizontal: 'Space Horizontally',
+    distributeVertical: 'Space Vertically',
+    selectionAlignment: 'Selection Alignment',
   },
   variableReference: {
     noAvailableVars: 'No available variables',
@@ -317,6 +344,7 @@ const translation = {
     optional: '(optional)',
     maximize: 'Maximize Canvas',
     minimize: 'Exit Full Screen',
+    optional_and_hidden: '(optional & hidden)',
   },
   nodes: {
     common: {
@@ -378,6 +406,7 @@ const translation = {
         input: 'Input value',
         variable: 'Use variable',
       },
+      inputVars: 'Input Variables',
     },
     start: {
       required: 'required',
@@ -432,12 +461,19 @@ const translation = {
       },
       outputVars: {
         output: 'Generate content',
+        reasoning_content: 'Reasoning Content',
         usage: 'Model Usage Information',
       },
       singleRun: {
         variable: 'Variable',
       },
       sysQueryInUser: 'sys.query in user message is required',
+      reasoningFormat: {
+        title: 'Enable reasoning tag separation',
+        tagged: 'Keep think tags',
+        separated: 'Separate think tags',
+        tooltip: 'Extract content from think tags and store it in the reasoning_content field.',
+      },
       jsonSchema: {
         title: 'Structured Output Schema',
         instruction: 'Instruction',
@@ -756,6 +792,8 @@ const translation = {
         removeAbnormalOutput: 'Remove Abnormal Output',
       },
       answerNodeWarningDesc: 'Parallel mode warning: Answer nodes, conversation variable assignments, and persistent read/write operations within iterations may cause exceptions.',
+      flattenOutput: 'Flatten Output',
+      flattenOutputDesc: 'When enabled, if all iteration outputs are arrays, they will be flattened into a single array. When disabled, outputs will maintain a nested array structure.',
     },
     loop: {
       deleteTitle: 'Delete Loop Node?',
@@ -883,6 +921,7 @@ const translation = {
       },
       outputVars: {
         text: 'agent generated content',
+        usage: 'Model Usage Information',
         files: {
           title: 'agent generated files',
           type: 'Support type. Now only support image',
@@ -905,6 +944,32 @@ const translation = {
       clickToViewParameterSchema: 'Click to view parameter schema',
       parameterSchema: 'Parameter Schema',
     },
+    dataSource: {
+      supportedFileFormats: 'Supported file formats',
+      supportedFileFormatsPlaceholder: 'File extension, e.g. doc',
+      add: 'Add data source',
+    },
+    knowledgeBase: {
+      chunkStructure: 'Chunk Structure',
+      chooseChunkStructure: 'Choose a chunk structure',
+      chunkStructureTip: {
+        title: 'Please choose a chunk structure',
+        message: 'The Dify Knowledge Base supports three chunking structures: General, Parent-child, and Q&A. Each knowledge base can have only one structure. The output from the preceding node must align with the selected chunk structure. Note that the choice of chunking structure affects the available index methods.',
+        learnMore: 'Learn more',
+      },
+      changeChunkStructure: 'Change Chunk Structure',
+      chunksInput: 'Chunks',
+      chunksInputTip: 'The input variable of the knowledge base node is Chunks. The variable type is an object with a specific JSON Schema which must be consistent with the selected chunk structure.',
+      aboutRetrieval: 'about retrieval method.',
+      chunkIsRequired: 'Chunk structure is required',
+      indexMethodIsRequired: 'Index method is required',
+      chunksVariableIsRequired: 'Chunks variable is required',
+      embeddingModelIsRequired: 'Embedding model is required',
+      embeddingModelIsInvalid: 'Embedding model is invalid',
+      retrievalSettingIsRequired: 'Retrieval setting is required',
+      rerankingModelIsRequired: 'Reranking model is required',
+      rerankingModelIsInvalid: 'Reranking model is invalid',
+    },
   },
   tracing: {
     stopBy: 'Stop by {{user}}',
@@ -923,6 +988,7 @@ const translation = {
     defaultName: 'Untitled Version',
     nameThisVersion: 'Name this version',
     editVersionInfo: 'Edit version info',
+    copyId: 'Copy ID',
     editField: {
       title: 'Title',
       releaseNotes: 'Release Notes',
@@ -939,11 +1005,18 @@ const translation = {
       deleteFailure: 'Failed to delete version',
       updateSuccess: 'Version updated',
       updateFailure: 'Failed to update version',
+      copyIdSuccess: 'ID copied to clipboard',
     },
   },
   debug: {
     settingsTab: 'Settings',
     lastRunTab: 'Last Run',
+    relationsTab: 'Relations',
+    copyLastRun: 'Copy Last Run',
+    noLastRunFound: 'No previous run found',
+    noMatchingInputsFound: 'No matching inputs found from last run',
+    lastRunInputsCopied: '{{count}} input(s) copied from last run',
+    copyLastRunError: 'Failed to copy last run inputs',
     noData: {
       description: 'The results of the last run will be displayed here',
       runThisNode: 'Run this node',
@@ -968,6 +1041,19 @@ const translation = {
       envNode: 'Environment',
       chatNode: 'Conversation',
       systemNode: 'System',
+      exportToolTip: 'Export Variable as File',
+      largeData: 'Large data, read-only preview. Export to view all.',
+      largeDataNoExport: 'Large data - partial preview only',
+      export: 'export',
+    },
+    lastOutput: 'Last Output',
+    relations: {
+      dependencies: 'Dependencies',
+      dependents: 'Dependents',
+      dependenciesDescription: 'Nodes that this node relies on',
+      dependentsDescription: 'Nodes that rely on this node',
+      noDependencies: 'No dependencies',
+      noDependents: 'No dependents',
     },
   },
 }

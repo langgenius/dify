@@ -45,7 +45,7 @@ const MultipleToolSelector = ({
   canChooseMCPTool,
 }: Props) => {
   const { t } = useTranslation()
-    const { data: mcpTools } = useAllMCPTools()
+  const { data: mcpTools } = useAllMCPTools()
   const enabledCount = value.filter((item) => {
     const isMCPTool = mcpTools?.find(tool => tool.id === item.provider_name)
     if(isMCPTool)
@@ -114,7 +114,6 @@ const MultipleToolSelector = ({
           {tooltip && (
             <Tooltip
               popupContent={tooltip}
-              needsDelay
             >
               <div><RiQuestionLine className='h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary' /></div>
             </Tooltip>

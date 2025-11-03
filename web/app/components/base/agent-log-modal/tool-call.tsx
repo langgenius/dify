@@ -33,7 +33,7 @@ const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, obs
     if (time < 1)
       return `${(time * 1000).toFixed(3)} ms`
     if (time > 60)
-      return `${Number.parseInt(Math.round(time / 60).toString())} m ${(time % 60).toFixed(3)} s`
+      return `${Math.floor(time / 60)} m ${(time % 60).toFixed(3)} s`
     return `${time.toFixed(3)} s`
   }
 

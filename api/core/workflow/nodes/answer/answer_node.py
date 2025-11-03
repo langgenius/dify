@@ -1,58 +1,70 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
-from core.variables import ArrayFileSegment, FileSegment
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
-from core.workflow.nodes.answer.entities import (
-    AnswerNodeData,
-    GenerateRouteChunk,
-    TextGenerateRouteChunk,
-    VarGenerateRouteChunk,
-)
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.enums import NodeType
-from core.workflow.utils.variable_template_parser import VariableTemplateParser
+from core.variables import ArrayFileSegment, FileSegment, Segment
+from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.node_events import NodeRunResult
+from core.workflow.nodes.answer.entities import AnswerNodeData
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.base.template import Template
+from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 
 
-class AnswerNode(BaseNode[AnswerNodeData]):
-    _node_data_cls = AnswerNodeData
-    _node_type = NodeType.ANSWER
+class AnswerNode(Node):
+    node_type = NodeType.ANSWER
+    execution_type = NodeExecutionType.RESPONSE
+
+    _node_data: AnswerNodeData
+
+    def init_node_data(self, data: Mapping[str, Any]):
+        self._node_data = AnswerNodeData.model_validate(data)
+
+    def _get_error_strategy(self) -> ErrorStrategy | None:
+        return self._node_data.error_strategy
+
+    def _get_retry_config(self) -> RetryConfig:
+        return self._node_data.retry_config
+
+    def _get_title(self) -> str:
+        return self._node_data.title
+
+    def _get_description(self) -> str | None:
+        return self._node_data.desc
+
+    def _get_default_value_dict(self) -> dict[str, Any]:
+        return self._node_data.default_value_dict
+
+    def get_base_node_data(self) -> BaseNodeData:
+        return self._node_data
 
     @classmethod
     def version(cls) -> str:
         return "1"
 
     def _run(self) -> NodeRunResult:
-        """
-        Run node
-        :return:
-        """
-        # generate routes
-        generate_routes = AnswerStreamGeneratorRouter.extract_generate_route_from_node_data(self.node_data)
-
-        answer = ""
-        files = []
-        for part in generate_routes:
-            if part.type == GenerateRouteChunk.ChunkType.VAR:
-                part = cast(VarGenerateRouteChunk, part)
-                value_selector = part.value_selector
-                variable = self.graph_runtime_state.variable_pool.get(value_selector)
-                if variable:
-                    if isinstance(variable, FileSegment):
-                        files.append(variable.value)
-                    elif isinstance(variable, ArrayFileSegment):
-                        files.extend(variable.value)
-                    answer += variable.markdown
-            else:
-                part = cast(TextGenerateRouteChunk, part)
-                answer += part.text
-
+        segments = self.graph_runtime_state.variable_pool.convert_template(self._node_data.answer)
+        files = self._extract_files_from_segments(segments.value)
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            outputs={"answer": answer, "files": ArrayFileSegment(value=files)},
+            outputs={"answer": segments.markdown, "files": ArrayFileSegment(value=files)},
         )
+
+    def _extract_files_from_segments(self, segments: Sequence[Segment]):
+        """Extract all files from segments containing FileSegment or ArrayFileSegment instances.
+
+        FileSegment contains a single file, while ArrayFileSegment contains multiple files.
+        This method flattens all files into a single list.
+        """
+        files = []
+        for segment in segments:
+            if isinstance(segment, FileSegment):
+                # Single file - wrap in list for consistency
+                files.append(segment.value)
+            elif isinstance(segment, ArrayFileSegment):
+                # Multiple files - extend the list
+                files.extend(segment.value)
+        return files
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
@@ -60,16 +72,12 @@ class AnswerNode(BaseNode[AnswerNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: AnswerNodeData,
+        node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
-        variable_template_parser = VariableTemplateParser(template=node_data.answer)
+        # Create typed NodeData from dict
+        typed_node_data = AnswerNodeData.model_validate(node_data)
+
+        variable_template_parser = VariableTemplateParser(template=typed_node_data.answer)
         variable_selectors = variable_template_parser.extract_variable_selectors()
 
         variable_mapping = {}
@@ -77,3 +85,12 @@ class AnswerNode(BaseNode[AnswerNodeData]):
             variable_mapping[node_id + "." + variable_selector.variable] = variable_selector.value_selector
 
         return variable_mapping
+
+    def get_streaming_template(self) -> Template:
+        """
+        Get the template for streaming.
+
+        Returns:
+            Template instance for this Answer node
+        """
+        return Template.from_answer_template(self._node_data.answer)

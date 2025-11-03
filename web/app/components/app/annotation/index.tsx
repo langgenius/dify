@@ -26,6 +26,7 @@ import { useProviderContext } from '@/context/provider-context'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import type { App } from '@/types/app'
 import cn from '@/utils/classnames'
+import { delAnnotations } from '@/service/annotation'
 
 type Props = {
   appDetail: App
@@ -37,7 +38,7 @@ const Annotation: FC<Props> = (props) => {
   const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
   const [isChatApp] = useState(appDetail.mode !== 'completion')
-  const [controlRefreshSwitch, setControlRefreshSwitch] = useState(Date.now())
+  const [controlRefreshSwitch, setControlRefreshSwitch] = useState(() => Date.now())
   const { plan, enableBilling } = useProviderContext()
   const isAnnotationFull = enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse
   const [isShowAnnotationFullModal, setIsShowAnnotationFullModal] = useState(false)
@@ -47,9 +48,10 @@ const Annotation: FC<Props> = (props) => {
   const [list, setList] = useState<AnnotationItem[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
-  const [controlUpdateList, setControlUpdateList] = useState(Date.now())
+  const [controlUpdateList, setControlUpdateList] = useState(() => Date.now())
   const [currItem, setCurrItem] = useState<AnnotationItem | null>(null)
   const [isShowViewModal, setIsShowViewModal] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
 
   const fetchAnnotationConfig = async () => {
@@ -60,7 +62,6 @@ const Annotation: FC<Props> = (props) => {
 
   useEffect(() => {
     if (isChatApp) fetchAnnotationConfig()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
@@ -82,14 +83,13 @@ const Annotation: FC<Props> = (props) => {
       setList(data as AnnotationItem[])
       setTotal(total)
     }
- finally {
+    finally {
       setIsLoading(false)
     }
   }
 
   useEffect(() => {
     fetchList(currPage + 1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currPage, limit, debouncedQueryParams])
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
@@ -104,6 +104,19 @@ const Annotation: FC<Props> = (props) => {
     Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
     fetchList()
     setControlUpdateList(Date.now())
+  }
+
+  const handleBatchDelete = async () => {
+    try {
+      await delAnnotations(appDetail.id, selectedIds)
+      Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
+      fetchList()
+      setControlUpdateList(Date.now())
+      setSelectedIds([])
+    }
+    catch (e: any) {
+      Toast.notify({ type: 'error', message: e.message || t('common.api.actionFailed') })
+    }
   }
 
   const handleView = (item: AnnotationItem) => {
@@ -126,7 +139,7 @@ const Annotation: FC<Props> = (props) => {
   return (
     <div className='flex h-full flex-col'>
       <p className='system-sm-regular text-text-tertiary'>{t('appLog.description')}</p>
-      <div className='flex flex-1 flex-col py-4'>
+      <div className='flex h-full flex-1 flex-col py-4'>
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div className='flex items-center space-x-2'>
             {isChatApp && (
@@ -189,6 +202,10 @@ const Annotation: FC<Props> = (props) => {
               list={list}
               onRemove={handleRemove}
               onView={handleView}
+              selectedIds={selectedIds}
+              onSelectedIdsChange={setSelectedIds}
+              onBatchDelete={handleBatchDelete}
+              onCancel={() => setSelectedIds([])}
             />
             : <div className='flex h-full grow items-center justify-center'><EmptyElement /></div>
         }

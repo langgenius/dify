@@ -26,8 +26,15 @@ redis_mock.hgetall = MagicMock(return_value={})
 redis_mock.hdel = MagicMock()
 redis_mock.incr = MagicMock(return_value=1)
 
+# Add the API directory to Python path to ensure proper imports
+import sys
+
+sys.path.insert(0, PROJECT_DIR)
+
 # apply the mock to the Redis client in the Flask app
-redis_patcher = patch("extensions.ext_redis.redis_client", redis_mock)
+from extensions import ext_redis
+
+redis_patcher = patch.object(ext_redis, "redis_client", redis_mock)
 redis_patcher.start()
 
 

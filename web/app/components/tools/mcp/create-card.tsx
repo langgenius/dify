@@ -9,7 +9,7 @@ import {
 } from '@remixicon/react'
 import MCPModal from './modal'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { getLanguage } from '@/i18n-config/language'
 import { useAppContext } from '@/context/app-context'
 import { useCreateMCP } from '@/service/use-tools'
 import type { ToolWithProvider } from '@/app/components/workflow/types'

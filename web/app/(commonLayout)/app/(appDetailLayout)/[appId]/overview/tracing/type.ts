@@ -6,6 +6,7 @@ export enum TracingProvider {
   opik = 'opik',
   weave = 'weave',
   aliyun = 'aliyun',
+  tencent = 'tencent',
 }
 
 export type ArizeConfig = {
@@ -52,4 +53,10 @@ export type AliyunConfig = {
   app_name: string
   license_key: string
   endpoint: string
+}
+
+export type TencentConfig = {
+  token: string
+  endpoint: string
+  service_name: string
 }

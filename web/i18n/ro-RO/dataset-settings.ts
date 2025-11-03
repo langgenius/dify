@@ -37,6 +37,14 @@ const translation = {
     upgradeHighQualityTip: 'După ce faceți upgrade la modul Înaltă calitate, revenirea la modul Economic nu este disponibilă',
     helpText: 'Aflați cum să scrieți o descriere bună a setului de date.',
     searchModel: 'Căutare model',
+    chunkStructure: {
+      learnMore: 'Află mai multe',
+      title: 'Structura bucății',
+      description: 'despre Chunk Structure.',
+    },
+    nameAndIcon: 'Nume și pictogramă',
+    onSearchResults: 'Niciun membru nu corespunde interogării de căutare.\nÎncercați din nou căutarea.',
+    numberOfKeywords: 'Număr de cuvinte cheie',
   },
 }
 

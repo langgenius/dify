@@ -80,7 +80,6 @@ const translation = {
     importWarning: 'ความระมัดระวัง',
     importWarningDetails: 'ความแตกต่างของเวอร์ชัน DSL อาจส่งผลต่อคุณสมบัติบางอย่าง',
     importSuccess: 'นําเข้าสําเร็จ',
-    parallelRun: 'วิ่งแบบขนาน',
     parallelTip: {
       click: {
         title: 'คลิก',
@@ -105,9 +104,7 @@ const translation = {
     noHistory: 'ไม่มีประวัติ',
     versionHistory: 'ประวัติรุ่น',
     exportPNG: 'ส่งออกเป็น PNG',
-    noExist: 'ไม่มีตัวแปรดังกล่าว',
     exportJPEG: 'ส่งออกเป็น JPEG',
-    referenceVar: 'ตัวแปรอ้างอิง',
     publishUpdate: 'เผยแพร่การอัปเดต',
     exitVersions: 'ออกเวอร์ชัน',
     exportImage: 'ส่งออกภาพ',
@@ -115,6 +112,9 @@ const translation = {
     needAnswerNode: 'ต้องเพิ่มโหนดคำตอบ',
     addBlock: 'เพิ่มโนด',
     needEndNode: 'ต้องเพิ่มโหนดจบ',
+    tagBound: 'จำนวนแอปพลิเคชันที่ใช้แท็กนี้',
+    currentWorkflow: 'เวิร์กโฟลว์ปัจจุบัน',
+    currentView: 'ปัจจุบัน View',
   },
   env: {
     envPanelTitle: 'ตัวแปรสภาพแวดล้อม',
@@ -217,12 +217,13 @@ const translation = {
     back: 'ย้อนกลับ',
     iteration: 'เกิด ซ้ำ',
     loop: 'ลูป',
+    reRun: 'เรียกใช้ซ้ํา',
+    preparingDataSource: 'การเตรียมแหล่งข้อมูล',
   },
   tabs: {
     'searchTool': 'เครื่องมือค้นหา',
     'tools': 'เครื่อง มือ',
     'allTool': 'ทั้งหมด',
-    'builtInTool': 'ในตัว',
     'customTool': 'ธรรมเนียม',
     'workflowTool': 'เวิร์กโฟลว์',
     'question-understand': 'คําถาม: เข้าใจ',
@@ -234,6 +235,10 @@ const translation = {
     'plugin': 'ปลั๊กอิน',
     'searchBlock': 'ค้นหาโหนด',
     'blocks': 'โหนด',
+    'allAdded': 'ทั้งหมดที่เพิ่มเข้ามา',
+    'addAll': 'เพิ่มทั้งหมด',
+    'searchDataSource': 'ค้นหาแหล่งข้อมูล',
+    'sources': 'แหล่ง',
   },
   blocks: {
     'start': 'เริ่ม',
@@ -258,6 +263,8 @@ const translation = {
     'loop': 'ลูป',
     'loop-start': 'เริ่มลูป',
     'loop-end': 'ออกจากลูป',
+    'knowledge-index': 'ฐานความรู้',
+    'datasource': 'แหล่งข้อมูล',
   },
   blocksAbout: {
     'start': 'กําหนดพารามิเตอร์เริ่มต้นสําหรับการเปิดใช้เวิร์กโฟลว์',
@@ -280,6 +287,8 @@ const translation = {
     'agent': 'การเรียกใช้โมเดลภาษาขนาดใหญ่เพื่อตอบคําถามหรือประมวลผลภาษาธรรมชาติ',
     'loop': 'ดำเนินการลูปของตรรกะจนกว่าจะถึงเงื่อนไขการสิ้นสุดหรือตรงตามจำนวนลูปสูงสุดที่กำหนด.',
     'loop-end': 'เทียบเท่ากับ "break" โหนดนี้ไม่มีรายการการกำหนดค่า เมื่อร่างกายของลูปถึงโหนดนี้ ลูปจะสิ้นสุดลง.',
+    'knowledge-index': 'ฐานความรู้เกี่ยวกับ',
+    'datasource': 'แหล่งข้อมูลเกี่ยวกับ',
   },
   operator: {
     zoomIn: 'ซูมเข้า',
@@ -287,6 +296,18 @@ const translation = {
     zoomTo50: 'ซูมไปที่ 50%',
     zoomTo100: 'ซูมไปที่ 100%',
     zoomToFit: 'ซูมให้พอดี',
+    alignBottom: 'ด้านล่าง',
+    alignCenter: 'ศูนย์กลาง',
+    alignMiddle: 'กลาง',
+    horizontal: 'แนวนอน',
+    vertical: 'แนวตั้ง',
+    alignTop: 'ด้านบน',
+    distributeVertical: 'ระยะห่างแนวตั้ง',
+    alignLeft: 'ซ้าย',
+    selectionAlignment: 'การจัดตําแหน่งการเลือก',
+    distributeHorizontal: 'ระยะห่างแนวนอน',
+    alignRight: 'ขวา',
+    alignNodes: 'จัดตําแหน่งโหนด',
   },
   panel: {
     userInputField: 'ฟิลด์ป้อนข้อมูลของผู้ใช้',
@@ -307,6 +328,7 @@ const translation = {
     selectNextStep: 'เลือกขั้นตอนถัดไป',
     minimize: 'ออกจากโหมดเต็มหน้าจอ',
     maximize: 'เพิ่มประสิทธิภาพผ้าใบ',
+    optional_and_hidden: '(ตัวเลือก & ซ่อน)',
   },
   nodes: {
     common: {
@@ -364,7 +386,11 @@ const translation = {
         retries: '{{num}} ลอง',
         ms: 'นางสาว',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'ค่าป้อนข้อมูล',
+        variable: 'ใช้ตัวแปร',
+      },
+      inputVars: 'ตัวแปรอินพุต',
     },
     start: {
       required: 'ต้องระบุ',
@@ -419,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'สร้างเนื้อหา',
+        reasoning_content: 'เนื้อหาการให้เหตุผล',
         usage: 'ข้อมูลการใช้งานรุ่น',
       },
       singleRun: {
@@ -452,6 +479,12 @@ const translation = {
         addChildField: 'เพิ่มฟิลด์เด็ก',
         stringValidations: 'การตรวจสอบสตริง',
         required: 'จำเป็นต้องใช้',
+      },
+      reasoningFormat: {
+        tagged: 'รักษาความคิดเกี่ยวกับแท็ก',
+        separated: 'แยกแท็กความคิดเห็น',
+        tooltip: 'ดึงเนื้อหาจากแท็กคิดและเก็บไว้ในฟิลด์ reasoning_content.',
+        title: 'เปิดใช้งานการแยกแท็กการเหตุผล',
       },
     },
     knowledgeRetrieval: {
@@ -491,6 +524,7 @@ const translation = {
           placeholder: 'ใส่ค่า',
         },
         title: 'การกรองข้อมูลเมตา',
+        tip: 'การกรองข้อมูลเมตาดาต้าเป็นกระบวนการที่ใช้คุณลักษณะของเมตาดาต้า (เช่น แท็ก หมวดหมู่ หรือสิทธิการเข้าถึง) เพื่อปรับแต่งและควบคุมการดึงข้อมูลที่เกี่ยวข้องภายในระบบ.',
       },
     },
     http: {
@@ -551,6 +585,7 @@ const translation = {
       advancedDependencies: 'การพึ่งพาขั้นสูง',
       advancedDependenciesTip: 'เพิ่มการพึ่งพาที่โหลดไว้ล่วงหน้าซึ่งใช้เวลามากขึ้นในการใช้หรือไม่ใช่ค่าเริ่มต้นในตัวที่นี่',
       searchDependencies: 'การพึ่งพาการค้นหา',
+      syncFunctionSignature: 'ซิงก์ลายเซ็นฟังก์ชันให้ตรงกับโค้ด',
     },
     templateTransform: {
       inputVars: 'ตัวแปรอินพุต',
@@ -601,7 +636,6 @@ const translation = {
       selectVariable: 'เลือกตัวแปร...',
       addSubVariable: 'ตัวแปรย่อย',
       select: 'เลือก',
-      condition: 'เงื่อนไข',
     },
     variableAssigner: {
       title: 'กําหนดตัวแปร',
@@ -669,6 +703,9 @@ const translation = {
         json: 'เครื่องมือสร้าง JSON',
       },
       authorize: 'อนุญาต',
+      insertPlaceholder2: 'แทรกตัวแปร',
+      insertPlaceholder1: 'พิมพ์หรือลงทะเบียน',
+      settings: 'การตั้งค่า',
     },
     questionClassifiers: {
       model: 'แบบ',
@@ -821,6 +858,7 @@ const translation = {
           type: 'ประเภทการสนับสนุน ตอนนี้รองรับเฉพาะรูปภาพ',
         },
         text: 'เนื้อหาที่สร้างตัวแทน',
+        usage: 'ข้อมูลการใช้งานรุ่น',
         json: 'ตัวแทนสร้าง JSON',
       },
       checkList: {
@@ -853,6 +891,8 @@ const translation = {
       tools: 'เครื่อง มือ',
       modelNotSelected: 'ไม่ได้เลือกรุ่น',
       linkToPlugin: 'ลิงก์ไปยังปลั๊กอิน',
+      parameterSchema: 'แบบจำลองพารามิเตอร์',
+      clickToViewParameterSchema: 'คลิกเพื่อดูโครงร่างพารามิเตอร์',
     },
     loop: {
       ErrorMethod: {
@@ -886,6 +926,32 @@ const translation = {
       exitConditionTip: 'โหนดลูปต้องมีเงื่อนไขการออกอย่างน้อยหนึ่งเงื่อนไข',
       breakConditionTip: 'แค่ตัวแปรภายในลูปที่มีเงื่อนไขการสิ้นสุดและตัวแปรสำหรับการสนทนาเท่านั้นที่สามารถอ้างอิงได้.',
     },
+    dataSource: {
+      add: 'เพิ่มแหล่งข้อมูล',
+      supportedFileFormats: 'รูปแบบไฟล์ที่รองรับ',
+      supportedFileFormatsPlaceholder: 'นามสกุลไฟล์ e.g. doc',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'ศึกษาเพิ่มเติม',
+        title: 'โปรดเลือกโครงสร้างก้อน',
+        message: 'ฐานความรู้ Dify รองรับโครงสร้างการแบ่งกลุ่มสามแบบ ได้แก่ ทั่วไป ผู้ปกครอง-ลูก และถาม & ตอบ ฐานความรู้แต่ละฐานข้อมูลสามารถมีโครงสร้างได้เพียงโครงสร้างเดียว ผลลัพธ์จากโหนดก่อนหน้าต้องสอดคล้องกับโครงสร้างก้อนที่เลือก โปรดทราบว่าการเลือกโครงสร้างการแบ่งกลุ่มมีผลต่อวิธีการดัชนีที่ใช้ได้',
+      },
+      chunkStructure: 'โครงสร้างก้อน',
+      chooseChunkStructure: 'เลือกโครงสร้างก้อน',
+      changeChunkStructure: 'เปลี่ยนโครงสร้างก้อน',
+      aboutRetrieval: 'เกี่ยวกับวิธีการดึงข้อมูล',
+      indexMethodIsRequired: 'ต้องใช้วิธีการจัดทําดัชนี',
+      retrievalSettingIsRequired: 'จําเป็นต้องมีการตั้งค่าการดึงข้อมูล',
+      chunkIsRequired: 'จําเป็นต้องมีโครงสร้างก้อน',
+      chunksInput: 'ชิ้นส่วน',
+      chunksInputTip: 'ตัวแปรนำเข้าของโหนดฐานความรู้คือ Chunks ตัวแปรประเภทเป็นอ็อบเจ็กต์ที่มี JSON Schema เฉพาะซึ่งต้องสอดคล้องกับโครงสร้างชิ้นส่วนที่เลือกไว้.',
+      chunksVariableIsRequired: 'ตัวแปร Chunks เป็นสิ่งจำเป็น',
+      embeddingModelIsRequired: 'จำเป็นต้องใช้โมเดลฝัง',
+      rerankingModelIsRequired: 'จำเป็นต้องมีโมเดลการจัดอันดับใหม่',
+      embeddingModelIsInvalid: 'แบบจำลองการฝังไม่ถูกต้อง',
+      rerankingModelIsInvalid: 'โมเดลการจัดอันดับใหม่ไม่ถูกต้อง',
+    },
   },
   tracing: {
     stopBy: 'แวะที่ {{user}}',
@@ -918,6 +984,7 @@ const translation = {
       restoreSuccess: 'เวอร์ชันที่กู้คืน',
       restoreFailure: 'ไม่สามารถกู้คืนเวอร์ชันได้',
       updateSuccess: 'อัปเดตเวอร์ชัน',
+      copyIdSuccess: 'คัดลอกรหัสไปยังคลิปบอร์ด',
     },
     releaseNotesPlaceholder: 'อธิบายว่าสิ่งที่เปลี่ยนแปลงไปคืออะไร',
     currentDraft: 'ร่างปัจจุบัน',
@@ -928,6 +995,7 @@ const translation = {
     nameThisVersion: 'ชื่อเวอร์ชันนี้',
     title: 'เวอร์ชัน',
     latest: 'ล่าสุด',
+    copyId: 'คัดลอก ID',
   },
   debug: {
     noData: {
@@ -954,9 +1022,31 @@ const translation = {
       resetConversationVar: 'รีเซ็ตตัวแปรการสนทนาไปยังค่าตั้งต้น',
       emptyTip: 'หลังจากก้าวผ่านโหนดบนผืนผ้าใบหรือเรียกใช้โหนดทีละขั้นตอน คุณสามารถดูค่าปัจจุบันของตัวแปรโหนดใน Variable Inspect ได้',
       clearNode: 'ล้างตัวแปรที่เก็บไว้ในแคช',
+      export: 'ส่งออก',
+      exportToolTip: 'ส่งออกตัวแปรเป็นไฟล์',
+      largeDataNoExport: 'ข้อมูลขนาดใหญ่ - แสดงตัวอย่างบางส่วนเท่านั้น',
+      largeData: 'ข้อมูลขนาดใหญ่ ตัวอย่างแบบอ่านอย่างเดียว ส่งออกเพื่อดูทั้งหมด',
     },
     settingsTab: 'การตั้งค่า',
     lastRunTab: 'รอบสุดท้าย',
+    relations: {
+      dependents: 'ผู้อยู่ในอุปการะ',
+      dependencies: 'อ้าง อิง',
+      dependenciesDescription: 'โหนดที่โหนดนี้อาศัย',
+      noDependencies: 'ไม่มีการพึ่งพา',
+      noDependents: 'ไม่มีผู้อยู่ในอุปการะ',
+      dependentsDescription: 'โหนดที่อาศัยโหนดนี้',
+    },
+    relationsTab: 'สัมพันธ์',
+    copyLastRun: 'คัดลอกการทำงานล่าสุด',
+    noLastRunFound: 'ไม่พบการทำงานก่อนหน้า',
+    copyLastRunError: 'ไม่สามารถคัดลอกข้อมูลการทำงานครั้งสุดท้ายได้',
+    noMatchingInputsFound: 'ไม่พบข้อมูลที่ตรงกันจากการรันครั้งล่าสุด',
+    lastOutput: 'ผลลัพธ์สุดท้าย',
+  },
+  sidebar: {
+    exportWarning: 'ส่งออกเวอร์ชันที่บันทึกปัจจุบัน',
+    exportWarningDesc: 'นี่จะส่งออกเวอร์ชันที่บันทึกไว้ปัจจุบันของเวิร์กโฟลว์ของคุณ หากคุณมีการเปลี่ยนแปลงที่ยังไม่ได้บันทึกในแก้ไข กรุณาบันทึกมันก่อนโดยใช้ตัวเลือกส่งออกในผืนผ้าใบเวิร์กโฟลว์',
   },
 }
 

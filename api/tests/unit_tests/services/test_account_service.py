@@ -10,7 +10,6 @@ from services.account_service import AccountService, RegisterService, TenantServ
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
-    AccountNotFoundError,
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
@@ -195,7 +194,7 @@ class TestAccountService:
 
         # Execute test and verify exception
         self._assert_exception_raised(
-            AccountNotFoundError, AccountService.authenticate, "notfound@example.com", "password"
+            AccountPasswordError, AccountService.authenticate, "notfound@example.com", "password"
         )
 
     def test_authenticate_account_banned(self, mock_db_dependencies):
@@ -708,9 +707,9 @@ class TestTenantService:
         with patch("services.account_service.db") as mock_db:
             # Mock the join query that returns the tenant_account_join
             mock_query = MagicMock()
-            mock_filter = MagicMock()
-            mock_filter.first.return_value = mock_tenant_join
-            mock_query.filter.return_value = mock_filter
+            mock_where = MagicMock()
+            mock_where.first.return_value = mock_tenant_join
+            mock_query.where.return_value = mock_where
             mock_query.join.return_value = mock_query
             mock_db.session.query.return_value = mock_query
 
@@ -894,7 +893,7 @@ class TestRegisterService:
                     mock_dify_setup.return_value = mock_dify_setup_instance
 
                     # Execute test
-                    RegisterService.setup("admin@example.com", "Admin User", "password123", "192.168.1.1")
+                    RegisterService.setup("admin@example.com", "Admin User", "password123", "192.168.1.1", "en-US")
 
                     # Verify results
                     mock_create_account.assert_called_once_with(
@@ -926,6 +925,7 @@ class TestRegisterService:
                 "Admin User",
                 "password123",
                 "192.168.1.1",
+                "en-US",
             )
 
             # Verify rollback operations were called
@@ -1370,8 +1370,8 @@ class TestRegisterService:
             account_id="user-123", email="test@example.com"
         )
 
-        with patch("services.account_service.RegisterService._get_invitation_by_token") as mock_get_invitation_by_token:
-            # Mock the invitation data returned by _get_invitation_by_token
+        with patch("services.account_service.RegisterService.get_invitation_by_token") as mock_get_invitation_by_token:
+            # Mock the invitation data returned by get_invitation_by_token
             invitation_data = {
                 "account_id": "user-123",
                 "email": "test@example.com",
@@ -1381,10 +1381,10 @@ class TestRegisterService:
 
             # Mock database queries - complex query mocking
             mock_query1 = MagicMock()
-            mock_query1.filter.return_value.first.return_value = mock_tenant
+            mock_query1.where.return_value.first.return_value = mock_tenant
 
             mock_query2 = MagicMock()
-            mock_query2.join.return_value.filter.return_value.first.return_value = (mock_account, "normal")
+            mock_query2.join.return_value.where.return_value.first.return_value = (mock_account, "normal")
 
             mock_db_dependencies["db"].session.query.side_effect = [mock_query1, mock_query2]
 
@@ -1449,7 +1449,7 @@ class TestRegisterService:
         mock_query1.filter.return_value.first.return_value = mock_tenant
 
         mock_query2 = MagicMock()
-        mock_query2.join.return_value.filter.return_value.first.return_value = None  # No account found
+        mock_query2.join.return_value.where.return_value.first.return_value = None  # No account found
 
         mock_db_dependencies["db"].session.query.side_effect = [mock_query1, mock_query2]
 
@@ -1482,7 +1482,7 @@ class TestRegisterService:
         mock_query1.filter.return_value.first.return_value = mock_tenant
 
         mock_query2 = MagicMock()
-        mock_query2.join.return_value.filter.return_value.first.return_value = (mock_account, "normal")
+        mock_query2.join.return_value.where.return_value.first.return_value = (mock_account, "normal")
 
         mock_db_dependencies["db"].session.query.side_effect = [mock_query1, mock_query2]
 
@@ -1503,12 +1503,12 @@ class TestRegisterService:
         assert result == "member_invite:token:test-token"
 
     def test_get_invitation_by_token_with_workspace_and_email(self, mock_redis_dependencies):
-        """Test _get_invitation_by_token with workspace ID and email."""
+        """Test get_invitation_by_token with workspace ID and email."""
         # Setup mock
         mock_redis_dependencies.get.return_value = b"user-123"
 
         # Execute test
-        result = RegisterService._get_invitation_by_token("token-123", "workspace-456", "test@example.com")
+        result = RegisterService.get_invitation_by_token("token-123", "workspace-456", "test@example.com")
 
         # Verify results
         assert result is not None
@@ -1517,7 +1517,7 @@ class TestRegisterService:
         assert result["workspace_id"] == "workspace-456"
 
     def test_get_invitation_by_token_without_workspace_and_email(self, mock_redis_dependencies):
-        """Test _get_invitation_by_token without workspace ID and email."""
+        """Test get_invitation_by_token without workspace ID and email."""
         # Setup mock
         invitation_data = {
             "account_id": "user-123",
@@ -1527,19 +1527,19 @@ class TestRegisterService:
         mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
 
         # Execute test
-        result = RegisterService._get_invitation_by_token("token-123")
+        result = RegisterService.get_invitation_by_token("token-123")
 
         # Verify results
         assert result is not None
         assert result == invitation_data
 
     def test_get_invitation_by_token_no_data(self, mock_redis_dependencies):
-        """Test _get_invitation_by_token with no data."""
+        """Test get_invitation_by_token with no data."""
         # Setup mock
         mock_redis_dependencies.get.return_value = None
 
         # Execute test
-        result = RegisterService._get_invitation_by_token("token-123")
+        result = RegisterService.get_invitation_by_token("token-123")
 
         # Verify results
         assert result is None

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { TextToAudio } from '@/app/components/base/icons/src/vender/features'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
@@ -9,7 +9,7 @@ import VoiceSettings from '@/app/components/base/features/new-feature-panel/text
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { languages } from '@/i18n/language'
+import { languages } from '@/i18n-config/language'
 import { TtsAutoPlay } from '@/types/app'
 
 type Props = {

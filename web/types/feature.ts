@@ -35,6 +35,7 @@ export type SystemFeatures = {
   sso_enforced_for_web: boolean
   sso_enforced_for_web_protocol: SSOProtocol | ''
   enable_marketplace: boolean
+  enable_change_email: boolean
   enable_email_code_login: boolean
   enable_email_password_login: boolean
   enable_social_oauth_login: boolean
@@ -70,6 +71,7 @@ export const defaultSystemFeatures: SystemFeatures = {
   sso_enforced_for_web: false,
   sso_enforced_for_web_protocol: '',
   enable_marketplace: false,
+  enable_change_email: false,
   enable_email_code_login: false,
   enable_email_password_login: false,
   enable_social_oauth_login: false,
@@ -120,4 +122,11 @@ export enum DatasetAttr {
   DATA_PUBLIC_ENABLE_WEBSITE_JINAREADER = 'data-public-enable-website-jinareader',
   DATA_PUBLIC_ENABLE_WEBSITE_FIRECRAWL = 'data-public-enable-website-firecrawl',
   DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL = 'data-public-enable-website-watercrawl',
+  DATA_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX = 'data-public-enable-single-dollar-latex',
+  NEXT_PUBLIC_ZENDESK_WIDGET_KEY = 'next-public-zendesk-widget-key',
+  NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT = 'next-public-zendesk-field-id-environment',
+  NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION = 'next-public-zendesk-field-id-version',
+  NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL = 'next-public-zendesk-field-id-email',
+  NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID = 'next-public-zendesk-field-id-workspace-id',
+  NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN = 'next-public-zendesk-field-id-plan',
 }

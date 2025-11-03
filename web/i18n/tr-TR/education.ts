@@ -42,6 +42,34 @@ const translation = {
   learn: 'Eğitim doğrulamasının nasıl yapılacağını öğrenin',
   successContent: 'Hesabınıza Dify Profesyonel planı için %100 indirim kuponu verdik. Kuponun geçerlilik süresi bir yıldır, lütfen bu süre içinde kullanın.',
   successTitle: 'Dify Eğitim Onayınız Var',
+  notice: {
+    expired: {
+      summary: {
+        line2: 'Ancak, artık yeni eğitim indirim kuponları için uygun değilsiniz.',
+        line1: 'Dify\'e hala erişebilir ve kullanabilirsiniz.',
+      },
+      title: 'Eğitim durumunuzun süresi dolmuştur',
+    },
+    isAboutToExpire: {
+      summary: 'Endişelenmeyin — bu mevcut aboneliğinizi etkilemeyecek, ancak durumunuzu tekrar doğrulamazsanız yenilendiğinde eğitim indirimi almayacaksınız.',
+    },
+    stillInEducation: {
+      title: 'Hala eğitimde misin?',
+      isAboutToExpire: 'Şimdi yeniden doğrulayın ve gelecek akademik yıl için yeni bir kupon alın. Bu, hesabınıza kaydedilecek ve bir sonraki yenilemenizde kullanıma hazır olacak.',
+      expired: 'Şimdi yeniden doğrulayın, böylece yaklaşan akademik yıl için yeni bir kupon alın. Bu kuponu hesabınıza ekleyeceğiz ve sonraki yükseltme için kullanabilirsiniz.',
+    },
+    alreadyGraduated: {
+      title: 'Zaten mezun oldun mu?',
+      expired: 'Tam erişim için dilediğiniz zaman ücretli özelliklere yükseltebilirsiniz.',
+      isAboutToExpire: 'Mevcut aboneliğiniz hâlâ aktif kalacaktır. Bittiğinde, Sandbox planına geçeceksiniz veya isterseniz her zaman tam erişimi geri kazanmak için yükseltebilirsiniz.',
+    },
+    action: {
+      reVerify: 'Yeniden doğrula',
+      upgrade: 'Yükseltme',
+      dismiss: 'Reddet',
+    },
+    dateFormat: 'GG/AA/YYYY',
+  },
 }
 
 export default translation

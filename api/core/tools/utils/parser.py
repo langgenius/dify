@@ -1,13 +1,12 @@
 import re
-import uuid
 from json import dumps as json_dumps
 from json import loads as json_loads
 from json.decoder import JSONDecodeError
-from typing import Optional
+from typing import Any
 
+import httpx
 from flask import request
-from requests import get
-from yaml import YAMLError, safe_load  # type: ignore
+from yaml import YAMLError, safe_load
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
@@ -63,6 +62,11 @@ class ApiBasedToolSchemaParser:
                             root = root[ref]
                         interface["operation"]["parameters"][i] = root
                 for parameter in interface["operation"]["parameters"]:
+                    # Handle complex type defaults that are not supported by PluginParameter
+                    default_value = None
+                    if "schema" in parameter and "default" in parameter["schema"]:
+                        default_value = ApiBasedToolSchemaParser._sanitize_default_value(parameter["schema"]["default"])
+
                     tool_parameter = ToolParameter(
                         name=parameter["name"],
                         label=I18nObject(en_US=parameter["name"], zh_Hans=parameter["name"]),
@@ -73,9 +77,7 @@ class ApiBasedToolSchemaParser:
                         required=parameter.get("required", False),
                         form=ToolParameter.ToolParameterForm.LLM,
                         llm_description=parameter.get("description"),
-                        default=parameter["schema"]["default"]
-                        if "schema" in parameter and "default" in parameter["schema"]
-                        else None,
+                        default=default_value,
                         placeholder=I18nObject(
                             en_US=parameter.get("description", ""), zh_Hans=parameter.get("description", "")
                         ),
@@ -106,34 +108,61 @@ class ApiBasedToolSchemaParser:
                             # overwrite the content
                             interface["operation"]["requestBody"]["content"][content_type]["schema"] = root
 
-                    # parse body parameters
-                    if "schema" in interface["operation"]["requestBody"]["content"][content_type]:
-                        body_schema = interface["operation"]["requestBody"]["content"][content_type]["schema"]
-                        required = body_schema.get("required", [])
-                        properties = body_schema.get("properties", {})
-                        for name, property in properties.items():
-                            tool = ToolParameter(
-                                name=name,
-                                label=I18nObject(en_US=name, zh_Hans=name),
-                                human_description=I18nObject(
-                                    en_US=property.get("description", ""), zh_Hans=property.get("description", "")
-                                ),
-                                type=ToolParameter.ToolParameterType.STRING,
-                                required=name in required,
-                                form=ToolParameter.ToolParameterForm.LLM,
-                                llm_description=property.get("description", ""),
-                                default=property.get("default", None),
-                                placeholder=I18nObject(
-                                    en_US=property.get("description", ""), zh_Hans=property.get("description", "")
-                                ),
-                            )
+                            # handle allOf reference in schema properties
+                            for prop_dict in root.get("properties", {}).values():
+                                for item in prop_dict.get("allOf", []):
+                                    if "$ref" in item:
+                                        ref_schema = openapi
+                                        reference = item["$ref"].split("/")[1:]
+                                        for ref in reference:
+                                            ref_schema = ref_schema[ref]
+                                    else:
+                                        ref_schema = item
+                                    for key, value in ref_schema.items():
+                                        if isinstance(value, list):
+                                            if key not in prop_dict:
+                                                prop_dict[key] = []
+                                            # extends list field
+                                            if isinstance(prop_dict[key], list):
+                                                prop_dict[key].extend(value)
+                                        elif key not in prop_dict:
+                                            # add new field
+                                            prop_dict[key] = value
+                                if "allOf" in prop_dict:
+                                    del prop_dict["allOf"]
 
-                            # check if there is a type
-                            typ = ApiBasedToolSchemaParser._get_tool_parameter_type(property)
-                            if typ:
-                                tool.type = typ
+                        # parse body parameters
+                        if "schema" in interface["operation"]["requestBody"]["content"][content_type]:
+                            body_schema = interface["operation"]["requestBody"]["content"][content_type]["schema"]
+                            required = body_schema.get("required", [])
+                            properties = body_schema.get("properties", {})
+                            for name, property in properties.items():
+                                # Handle complex type defaults that are not supported by PluginParameter
+                                default_value = ApiBasedToolSchemaParser._sanitize_default_value(
+                                    property.get("default", None)
+                                )
 
-                            parameters.append(tool)
+                                tool = ToolParameter(
+                                    name=name,
+                                    label=I18nObject(en_US=name, zh_Hans=name),
+                                    human_description=I18nObject(
+                                        en_US=property.get("description", ""), zh_Hans=property.get("description", "")
+                                    ),
+                                    type=ToolParameter.ToolParameterType.STRING,
+                                    required=name in required,
+                                    form=ToolParameter.ToolParameterForm.LLM,
+                                    llm_description=property.get("description", ""),
+                                    default=default_value,
+                                    placeholder=I18nObject(
+                                        en_US=property.get("description", ""), zh_Hans=property.get("description", "")
+                                    ),
+                                )
+                                # check if there is a type
+                                typ = ApiBasedToolSchemaParser._get_tool_parameter_type(property)
+                                if typ:
+                                    tool.type = typ
+
+                                parameters.append(tool)
 
             # check if parameters is duplicated
             parameters_count = {}
@@ -154,7 +183,7 @@ class ApiBasedToolSchemaParser:
                 # remove special characters like / to ensure the operation id is valid ^[a-zA-Z0-9_-]{1,64}$
                 path = re.sub(r"[^a-zA-Z0-9_-]", "", path)
                 if not path:
-                    path = str(uuid.uuid4())
+                    path = "<root>"
 
                 interface["operation"]["operationId"] = f"{path}_{interface['method']}"
 
@@ -176,9 +205,25 @@ class ApiBasedToolSchemaParser:
         return bundles
 
     @staticmethod
-    def _get_tool_parameter_type(parameter: dict) -> Optional[ToolParameter.ToolParameterType]:
+    def _sanitize_default_value(value):
+        """
+        Sanitize default values for PluginParameter compatibility.
+        Complex types (list, dict) are converted to None to avoid validation errors.
+
+        Args:
+            value: The default value from OpenAPI schema
+
+        Returns:
+            None for complex types (list, dict), otherwise the original value
+        """
+        if isinstance(value, (list, dict)):
+            return None
+        return value
+
+    @staticmethod
+    def _get_tool_parameter_type(parameter: dict) -> ToolParameter.ToolParameterType | None:
         parameter = parameter or {}
-        typ: Optional[str] = None
+        typ: str | None = None
         if parameter.get("format") == "binary":
             return ToolParameter.ToolParameterType.FILE
 
@@ -195,7 +240,11 @@ class ApiBasedToolSchemaParser:
             return ToolParameter.ToolParameterType.STRING
         elif typ == "array":
             items = parameter.get("items") or parameter.get("schema", {}).get("items")
-            return ToolParameter.ToolParameterType.FILES if items and items.get("format") == "binary" else None
+            if items and items.get("format") == "binary":
+                return ToolParameter.ToolParameterType.FILES
+            else:
+                # For regular arrays, return ARRAY type instead of None
+                return ToolParameter.ToolParameterType.ARRAY
         else:
             return None
 
@@ -220,7 +269,9 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
-    def parse_swagger_to_openapi(swagger: dict, extra_info: dict | None = None, warning: dict | None = None) -> dict:
+    def parse_swagger_to_openapi(
+        swagger: dict, extra_info: dict | None = None, warning: dict | None = None
+    ) -> dict[str, Any]:
         warning = warning or {}
         """
         parse swagger to openapi
@@ -236,7 +287,7 @@ class ApiBasedToolSchemaParser:
         if len(servers) == 0:
             raise ToolApiSchemaError("No server found in the swagger yaml.")
 
-        openapi = {
+        converted_openapi: dict[str, Any] = {
             "openapi": "3.0.0",
             "info": {
                 "title": info.get("title", "Swagger"),
@@ -254,7 +305,7 @@ class ApiBasedToolSchemaParser:
 
         # convert paths
         for path, path_item in swagger["paths"].items():
-            openapi["paths"][path] = {}
+            converted_openapi["paths"][path] = {}
             for method, operation in path_item.items():
                 if "operationId" not in operation:
                     raise ToolApiSchemaError(f"No operationId found in operation {method} {path}.")
@@ -265,7 +316,7 @@ class ApiBasedToolSchemaParser:
                     if warning is not None:
                         warning["missing_summary"] = f"No summary or description found in operation {method} {path}."
 
-                openapi["paths"][path][method] = {
+                converted_openapi["paths"][path][method] = {
                     "operationId": operation["operationId"],
                     "summary": operation.get("summary", ""),
                     "description": operation.get("description", ""),
@@ -274,13 +325,14 @@ class ApiBasedToolSchemaParser:
                 }
 
                 if "requestBody" in operation:
-                    openapi["paths"][path][method]["requestBody"] = operation["requestBody"]
+                    converted_openapi["paths"][path][method]["requestBody"] = operation["requestBody"]
 
         # convert definitions
-        for name, definition in swagger["definitions"].items():
-            openapi["components"]["schemas"][name] = definition
+        if "definitions" in swagger:
+            for name, definition in swagger["definitions"].items():
+                converted_openapi["components"]["schemas"][name] = definition
 
-        return openapi
+        return converted_openapi
 
     @staticmethod
     def parse_openai_plugin_json_to_tool_bundle(
@@ -309,14 +361,19 @@ class ApiBasedToolSchemaParser:
             raise ToolNotSupportedError("Only openapi is supported now.")
 
         # get openapi yaml
-        response = get(api_url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "}, timeout=5)
-
-        if response.status_code != 200:
-            raise ToolProviderNotFoundError("cannot get openapi yaml from url.")
-
-        return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(
-            response.text, extra_info=extra_info, warning=warning
+        response = httpx.get(
+            api_url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "}, timeout=5
         )
+
+        try:
+            if response.status_code != 200:
+                raise ToolProviderNotFoundError("cannot get openapi yaml from url.")
+
+            return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(
+                response.text, extra_info=extra_info, warning=warning
+            )
+        finally:
+            response.close()
 
     @staticmethod
     def auto_parse_to_tool_bundle(
@@ -363,7 +420,7 @@ class ApiBasedToolSchemaParser:
             openapi = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(
                 loaded_content, extra_info=extra_info, warning=warning
             )
-            schema_type = ApiProviderSchemaType.OPENAPI.value
+            schema_type = ApiProviderSchemaType.OPENAPI
             return openapi, schema_type
         except ToolApiSchemaError as e:
             openapi_error = e
@@ -373,7 +430,7 @@ class ApiBasedToolSchemaParser:
             converted_swagger = ApiBasedToolSchemaParser.parse_swagger_to_openapi(
                 loaded_content, extra_info=extra_info, warning=warning
             )
-            schema_type = ApiProviderSchemaType.SWAGGER.value
+            schema_type = ApiProviderSchemaType.SWAGGER
             return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(
                 converted_swagger, extra_info=extra_info, warning=warning
             ), schema_type
@@ -385,7 +442,7 @@ class ApiBasedToolSchemaParser:
             openapi_plugin = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(
                 json_dumps(loaded_content), extra_info=extra_info, warning=warning
             )
-            return openapi_plugin, ApiProviderSchemaType.OPENAI_PLUGIN.value
+            return openapi_plugin, ApiProviderSchemaType.OPENAI_PLUGIN
         except ToolNotSupportedError as e:
             # maybe it's not plugin at all
             openapi_plugin_error = e

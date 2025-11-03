@@ -42,6 +42,10 @@ const translation = {
     },
     change: 'Cambiar',
     changeRetrievalMethod: 'Cambiar método de recuperación',
+    keyword_search: {
+      title: 'Índice invertido',
+      description: 'El índice invertido es una estructura utilizada para una recuperación eficiente. Organizado por términos, cada término apunta a documentos o páginas web que lo contienen.',
+    },
   },
   docsFailedNotice: 'no se pudieron indexar los documentos',
   retry: 'Reintentar',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     parentChild: 'Padre-hijo',
     general: 'General',
+    graph: 'gráfico',
+    qa: 'Preguntas y respuestas',
   },
   parentMode: {
     fullDoc: 'Documento completo',
@@ -204,6 +210,7 @@ const translation = {
       name: 'Nombre',
       description: 'Puedes gestionar todos los metadatos en este conocimiento aquí. Las modificaciones se sincronizarán en todos los documentos.',
       disabled: 'desactivar',
+      builtIn: 'Integrado',
     },
     documentMetadata: {
       technicalParameters: 'Parámetros técnicos',
@@ -216,6 +223,20 @@ const translation = {
     addMetadata: 'Agregar Metadatos',
   },
   embeddingModelNotAvailable: 'El modelo de embeddings no está disponible.',
+  externalKnowledgeBase: 'Base de conocimientos externa',
+  createFromPipeline: 'Crear desde Knowledge Pipeline',
+  updated: 'Actualizado',
+  serviceApi: {
+    card: {
+      apiReference: 'Referencia de la API',
+      apiKey: 'Clave API',
+      endpoint: 'Punto de enlace de la API de servicio',
+      title: 'API del servicio de backend',
+    },
+    enabled: 'En servicio',
+    title: 'API de servicios',
+    disabled: 'Discapacitado',
+  },
 }
 
 export default translation

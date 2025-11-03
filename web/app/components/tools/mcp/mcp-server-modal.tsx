@@ -23,6 +23,7 @@ export type ModalProps = {
   data?: MCPServerDetail
   show: boolean
   onHide: () => void
+  appInfo?: any
 }
 
 const MCPServerModal = ({
@@ -31,13 +32,15 @@ const MCPServerModal = ({
   data,
   show,
   onHide,
+  appInfo,
 }: ModalProps) => {
   const { t } = useTranslation()
   const { mutateAsync: createMCPServer, isPending: creating } = useCreateMCPServer()
   const { mutateAsync: updateMCPServer, isPending: updating } = useUpdateMCPServer()
   const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
 
-  const [description, setDescription] = React.useState(data?.description || '')
+  const defaultDescription = data?.description || appInfo?.description || ''
+  const [description, setDescription] = React.useState(defaultDescription)
   const [params, setParams] = React.useState(data?.parameters || {})
 
   const handleParamChange = (variable: string, value: string) => {
@@ -58,21 +61,27 @@ const MCPServerModal = ({
 
   const submit = async () => {
     if (!data) {
-      await createMCPServer({
+      const payload: any = {
         appID,
-        description,
         parameters: getParamValue(),
-      })
+      }
+
+      if (description.trim())
+        payload.description = description
+
+      await createMCPServer(payload)
       invalidateMCPServerDetail(appID)
       onHide()
     }
     else {
-      await updateMCPServer({
+      const payload: any = {
         appID,
         id: data.id,
-        description,
         parameters: getParamValue(),
-      })
+      }
+
+      payload.description = description
+      await updateMCPServer(payload)
       invalidateMCPServerDetail(appID)
       onHide()
     }

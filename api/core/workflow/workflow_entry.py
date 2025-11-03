@@ -2,32 +2,30 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any
 
 from configs import dify_config
-from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
-from core.workflow.callbacks import WorkflowCallback
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent, InNodeEvent
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.graph_engine.graph_engine import GraphEngine
+from core.workflow.graph import Graph
+from core.workflow.graph_engine import GraphEngine
+from core.workflow.graph_engine.command_channels import InMemoryChannel
+from core.workflow.graph_engine.layers import DebugLoggingLayer, ExecutionLimitsLayer
+from core.workflow.graph_engine.protocols.command_channel import CommandChannel
+from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunFailedEvent
 from core.workflow.nodes import NodeType
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.event import NodeEvent
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.runtime import GraphRuntimeState, VariablePool
+from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from factories import file_factory
 from models.enums import UserFrom
-from models.workflow import (
-    Workflow,
-    WorkflowType,
-)
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +36,6 @@ class WorkflowEntry:
         tenant_id: str,
         app_id: str,
         workflow_id: str,
-        workflow_type: WorkflowType,
         graph_config: Mapping[str, Any],
         graph: Graph,
         user_id: str,
@@ -46,7 +43,8 @@ class WorkflowEntry:
         invoke_from: InvokeFrom,
         call_depth: int,
         variable_pool: VariablePool,
-        thread_pool_id: Optional[str] = None,
+        graph_runtime_state: GraphRuntimeState,
+        command_channel: CommandChannel | None = None,
     ) -> None:
         """
         Init workflow entry
@@ -61,57 +59,57 @@ class WorkflowEntry:
         :param invoke_from: invoke from
         :param call_depth: call depth
         :param variable_pool: variable pool
+        :param graph_runtime_state: pre-created graph runtime state
+        :param command_channel: command channel for external control (optional, defaults to InMemoryChannel)
         :param thread_pool_id: thread pool id
         """
         # check call depth
         workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
         if call_depth > workflow_call_max_depth:
-            raise ValueError("Max workflow call depth {} reached.".format(workflow_call_max_depth))
+            raise ValueError(f"Max workflow call depth {workflow_call_max_depth} reached.")
 
-        # init workflow run state
-        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+        # Use provided command channel or default to InMemoryChannel
+        if command_channel is None:
+            command_channel = InMemoryChannel()
+
+        self.command_channel = command_channel
         self.graph_engine = GraphEngine(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            workflow_type=workflow_type,
             workflow_id=workflow_id,
-            user_id=user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
-            call_depth=call_depth,
             graph=graph,
-            graph_config=graph_config,
             graph_runtime_state=graph_runtime_state,
-            max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
-            max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
-            thread_pool_id=thread_pool_id,
+            command_channel=command_channel,
         )
 
-    def run(
-        self,
-        *,
-        callbacks: Sequence[WorkflowCallback],
-    ) -> Generator[GraphEngineEvent, None, None]:
-        """
-        :param callbacks: workflow callbacks
-        """
+        # Add debug logging layer when in debug mode
+        if dify_config.DEBUG:
+            logger.info("Debug mode enabled - adding DebugLoggingLayer to GraphEngine")
+            debug_layer = DebugLoggingLayer(
+                level="DEBUG",
+                include_inputs=True,
+                include_outputs=True,
+                include_process_data=False,  # Process data can be very verbose
+                logger_name=f"GraphEngine.Debug.{workflow_id[:8]}",  # Use workflow ID prefix for unique logger
+            )
+            self.graph_engine.layer(debug_layer)
+
+        # Add execution limits layer
+        limits_layer = ExecutionLimitsLayer(
+            max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
+        )
+        self.graph_engine.layer(limits_layer)
+
+    def run(self) -> Generator[GraphEngineEvent, None, None]:
         graph_engine = self.graph_engine
 
         try:
             # run workflow
             generator = graph_engine.run()
-            for event in generator:
-                if callbacks:
-                    for callback in callbacks:
-                        callback.on_event(event=event)
-                yield event
+            yield from generator
         except GenerateTaskStoppedError:
             pass
         except Exception as e:
             logger.exception("Unknown Error when workflow entry running")
-            if callbacks:
-                for callback in callbacks:
-                    callback.on_event(event=GraphRunFailedEvent(error=str(e)))
+            yield GraphRunFailedEvent(error=str(e))
             return
 
     @classmethod
@@ -124,7 +122,7 @@ class WorkflowEntry:
         user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
-    ) -> tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]:
+    ) -> tuple[Node, Generator[GraphNodeEventBase, None, None]]:
         """
         Single step run workflow node
         :param workflow: Workflow instance
@@ -141,27 +139,27 @@ class WorkflowEntry:
         node_version = node_config_data.get("version", "1")
         node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
-        # init graph
-        graph = Graph.init(graph_config=workflow.graph_dict)
+        # init graph init params and runtime state
+        graph_init_params = GraphInitParams(
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            workflow_id=workflow.id,
+            graph_config=workflow.graph_dict,
+            user_id=user_id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            call_depth=0,
+        )
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         # init workflow run state
-        node_instance = node_cls(
+        node = node_cls(
             id=str(uuid.uuid4()),
             config=node_config,
-            graph_init_params=GraphInitParams(
-                tenant_id=workflow.tenant_id,
-                app_id=workflow.app_id,
-                workflow_type=WorkflowType.value_of(workflow.type),
-                workflow_id=workflow.id,
-                graph_config=workflow.graph_dict,
-                user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-                call_depth=0,
-            ),
-            graph=graph,
-            graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
         )
+        node.init_node_data(node_config_data)
 
         try:
             # variable selector to variable mapping
@@ -179,32 +177,78 @@ class WorkflowEntry:
             variable_mapping=variable_mapping,
             user_inputs=user_inputs,
         )
-
-        cls.mapping_user_inputs_to_variable_pool(
-            variable_mapping=variable_mapping,
-            user_inputs=user_inputs,
-            variable_pool=variable_pool,
-            tenant_id=workflow.tenant_id,
-        )
+        if node_type != NodeType.DATASOURCE:
+            cls.mapping_user_inputs_to_variable_pool(
+                variable_mapping=variable_mapping,
+                user_inputs=user_inputs,
+                variable_pool=variable_pool,
+                tenant_id=workflow.tenant_id,
+            )
 
         try:
             # run node
-            generator = node_instance.run()
+            generator = node.run()
         except Exception as e:
             logger.exception(
-                "error while running node_instance, workflow_id=%s, node_id=%s, type=%s, version=%s",
+                "error while running node, workflow_id=%s, node_id=%s, node_type=%s, node_version=%s",
                 workflow.id,
-                node_instance.id,
-                node_instance.node_type,
-                node_instance.version(),
+                node.id,
+                node.node_type,
+                node.version(),
             )
-            raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
-        return node_instance, generator
+            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
+        return node, generator
+
+    @staticmethod
+    def _create_single_node_graph(
+        node_id: str,
+        node_data: dict[str, Any],
+        node_width: int = 114,
+        node_height: int = 514,
+    ) -> dict[str, Any]:
+        """
+        Create a minimal graph structure for testing a single node in isolation.
+
+        :param node_id: ID of the target node
+        :param node_data: configuration data for the target node
+        :param node_width: width for UI layout (default: 200)
+        :param node_height: height for UI layout (default: 100)
+        :return: graph dictionary with start node and target node
+        """
+        node_config = {
+            "id": node_id,
+            "width": node_width,
+            "height": node_height,
+            "type": "custom",
+            "data": node_data,
+        }
+        start_node_config = {
+            "id": "start",
+            "width": node_width,
+            "height": node_height,
+            "type": "custom",
+            "data": {
+                "type": NodeType.START,
+                "title": "Start",
+                "desc": "Start",
+            },
+        }
+        return {
+            "nodes": [start_node_config, node_config],
+            "edges": [
+                {
+                    "source": "start",
+                    "target": node_id,
+                    "sourceHandle": "source",
+                    "targetHandle": "target",
+                }
+            ],
+        }
 
     @classmethod
     def run_free_node(
         cls, node_data: dict, node_id: str, tenant_id: str, user_id: str, user_inputs: dict[str, Any]
-    ) -> tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]:
+    ) -> tuple[Node, Generator[GraphNodeEventBase, None, None]]:
         """
         Run free node
 
@@ -217,30 +261,8 @@ class WorkflowEntry:
         :param user_inputs: user inputs
         :return:
         """
-        # generate a fake graph
-        node_config = {"id": node_id, "width": 114, "height": 514, "type": "custom", "data": node_data}
-        start_node_config = {
-            "id": "start",
-            "width": 114,
-            "height": 514,
-            "type": "custom",
-            "data": {
-                "type": NodeType.START.value,
-                "title": "Start",
-                "desc": "Start",
-            },
-        }
-        graph_dict = {
-            "nodes": [start_node_config, node_config],
-            "edges": [
-                {
-                    "source": "start",
-                    "target": node_id,
-                    "sourceHandle": "source",
-                    "targetHandle": "target",
-                }
-            ],
-        }
+        # Create a minimal graph for single node execution
+        graph_dict = cls._create_single_node_graph(node_id, node_data)
 
         node_type = NodeType(node_data.get("type", ""))
         if node_type not in {NodeType.PARAMETER_EXTRACTOR, NodeType.QUESTION_CLASSIFIER}:
@@ -250,34 +272,38 @@ class WorkflowEntry:
         if not node_cls:
             raise ValueError(f"Node class not found for node type {node_type}")
 
-        graph = Graph.init(graph_config=graph_dict)
-
         # init variable pool
         variable_pool = VariablePool(
-            system_variables={},
+            system_variables=SystemVariable.empty(),
             user_inputs={},
             environment_variables=[],
         )
 
-        node_cls = cast(type[BaseNode], node_cls)
+        # init graph init params and runtime state
+        graph_init_params = GraphInitParams(
+            tenant_id=tenant_id,
+            app_id="",
+            workflow_id="",
+            graph_config=graph_dict,
+            user_id=user_id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            call_depth=0,
+        )
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+
         # init workflow run state
-        node_instance: BaseNode = node_cls(
+        node_config = {
+            "id": node_id,
+            "data": node_data,
+        }
+        node: Node = node_cls(
             id=str(uuid.uuid4()),
             config=node_config,
-            graph_init_params=GraphInitParams(
-                tenant_id=tenant_id,
-                app_id="",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="",
-                graph_config=graph_dict,
-                user_id=user_id,
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
-                call_depth=0,
-            ),
-            graph=graph,
-            graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
         )
+        node.init_node_data(node_data)
 
         try:
             # variable selector to variable mapping
@@ -296,20 +322,20 @@ class WorkflowEntry:
             )
 
             # run node
-            generator = node_instance.run()
+            generator = node.run()
 
-            return node_instance, generator
+            return node, generator
         except Exception as e:
             logger.exception(
-                "error while running node_instance, node_id=%s, type=%s, version=%s",
-                node_instance.id,
-                node_instance.node_type,
-                node_instance.version(),
+                "error while running node, node_id=%s, node_type=%s, node_version=%s",
+                node.id,
+                node.node_type,
+                node.version(),
             )
-            raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
+            raise WorkflowNodeRunFailedError(node=node, err_msg=str(e))
 
     @staticmethod
-    def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+    def handle_special_values(value: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
         # NOTE(QuantumGhost): Avoid using this function in new code.
         # Keep values structured as long as possible and only convert to dict
         # immediately before serialization (e.g., JSON serialization) to maintain
@@ -318,7 +344,7 @@ class WorkflowEntry:
         return result if isinstance(result, Mapping) or result is None else dict(result)
 
     @staticmethod
-    def _handle_special_values(value: Any) -> Any:
+    def _handle_special_values(value: Any):
         if value is None:
             return value
         if isinstance(value, dict):
@@ -343,7 +369,7 @@ class WorkflowEntry:
         user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         tenant_id: str,
-    ) -> None:
+    ):
         # NOTE(QuantumGhost): This logic should remain synchronized with
         # the implementation of `load_into_variable_pool`, specifically the logic about
         # variable existence checking.
@@ -365,7 +391,7 @@ class WorkflowEntry:
                 raise ValueError(f"Variable key {node_variable} not found in user inputs.")
 
             # environment variable already exist in variable pool, not from user inputs
-            if variable_pool.get(variable_selector):
+            if variable_pool.get(variable_selector) and variable_selector[0] == ENVIRONMENT_VARIABLE_NODE_ID:
                 continue
 
             # fetch variable node id from variable selector
@@ -377,6 +403,8 @@ class WorkflowEntry:
             input_value = user_inputs.get(node_variable)
             if not input_value:
                 input_value = user_inputs.get(node_variable_key)
+            if input_value is None:
+                continue
 
             if isinstance(input_value, dict) and "type" in input_value and "transfer_method" in input_value:
                 input_value = file_factory.build_from_mapping(mapping=input_value, tenant_id=tenant_id)
@@ -389,4 +417,8 @@ class WorkflowEntry:
 
             # append variable and value to variable pool
             if variable_node_id != ENVIRONMENT_VARIABLE_NODE_ID:
+                # In single run, the input_value is set as the LLM's structured output value within the variable_pool.
+                if len(variable_key_list) == 2 and variable_key_list[0] == "structured_output":
+                    input_value = {variable_key_list[1]: input_value}
+                    variable_key_list = variable_key_list[0:1]
                 variable_pool.add([variable_node_id] + variable_key_list, input_value)

@@ -28,8 +28,9 @@ type ToolsProps = {
   indexBarClassName?: string
   selectedTools?: ToolValue[]
   canChooseMCPTool?: boolean
+  isShowRAGRecommendations?: boolean
 }
-const Blocks = ({
+const Tools = ({
   onSelect,
   canNotSelectMultiple,
   onSelectMultiple,
@@ -42,6 +43,7 @@ const Blocks = ({
   indexBarClassName,
   selectedTools,
   canChooseMCPTool,
+  isShowRAGRecommendations = false,
 }: ToolsProps) => {
   // const tools: any = []
   const { t } = useTranslation()
@@ -105,7 +107,12 @@ const Blocks = ({
       }
       {!tools.length && !hasSearchText && (
         <div className='py-10'>
-          <Empty type={toolType!} isAgent={isAgent}/>
+          <Empty type={toolType!} isAgent={isAgent} />
+        </div>
+      )}
+      {!!tools.length && isShowRAGRecommendations && (
+        <div className='system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary'>
+          {t('tools.allTools')}
         </div>
       )}
       {!!tools.length && (
@@ -139,4 +146,4 @@ const Blocks = ({
   )
 }
 
-export default memo(Blocks)
+export default memo(Tools)

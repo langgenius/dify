@@ -7,6 +7,7 @@ export enum LOC {
 
 export enum AuthType {
   none = 'none',
+  apiKey = 'api_key', // backward compatibility
   apiKeyHeader = 'api_key_header',
   apiKeyQuery = 'api_key_query',
 }
@@ -32,6 +33,7 @@ export enum CollectionType {
   model = 'model',
   workflow = 'workflow',
   mcp = 'mcp',
+  datasource = 'datasource',
 }
 
 export type Emoji = {
@@ -46,7 +48,7 @@ export type Collection = {
   description: TypeWithI18N
   icon: string | Emoji
   label: TypeWithI18N
-  type: CollectionType
+  type: CollectionType | string
   team_credentials: Record<string, any>
   is_team_authorization: boolean
   allow_delete: boolean
@@ -57,6 +59,21 @@ export type Collection = {
   server_url?: string
   updated_at?: number
   server_identifier?: string
+  timeout?: number
+  sse_read_timeout?: number
+  headers?: Record<string, string>
+  masked_headers?: Record<string, string>
+  is_authorized?: boolean
+  provider?: string
+  is_dynamic_registration?: boolean
+  authentication?: {
+    client_id?: string
+    client_secret?: string
+  }
+  configuration?: {
+    timeout?: number
+    sse_read_timeout?: number
+  }
 }
 
 export type ToolParameter = {
@@ -182,4 +199,11 @@ export type MCPServerDetail = {
   description: string
   status: string
   parameters?: Record<string, string>
+  headers?: Record<string, string>
+}
+
+export enum MCPAuthMethod {
+  authentication = 'authentication',
+  headers = 'headers',
+  configurations = 'configurations',
 }

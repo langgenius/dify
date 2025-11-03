@@ -44,7 +44,7 @@ class TestEncryptToken:
         """Test successful token encryption"""
         mock_tenant = MagicMock()
         mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_query.return_value.filter.return_value.first.return_value = mock_tenant
+        mock_query.return_value.where.return_value.first.return_value = mock_tenant
         mock_encrypt.return_value = b"encrypted_data"
 
         result = encrypt_token("tenant-123", "test_token")
@@ -55,7 +55,7 @@ class TestEncryptToken:
     @patch("models.engine.db.session.query")
     def test_tenant_not_found(self, mock_query):
         """Test error when tenant doesn't exist"""
-        mock_query.return_value.filter.return_value.first.return_value = None
+        mock_query.return_value.where.return_value.first.return_value = None
 
         with pytest.raises(ValueError) as exc_info:
             encrypt_token("invalid-tenant", "test_token")
@@ -127,7 +127,7 @@ class TestEncryptDecryptIntegration:
         # Setup mock tenant
         mock_tenant = MagicMock()
         mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_query.return_value.filter.return_value.first.return_value = mock_tenant
+        mock_query.return_value.where.return_value.first.return_value = mock_tenant
 
         # Setup mock encryption/decryption
         original_token = "test_token_123"
@@ -153,7 +153,7 @@ class TestSecurity:
         # Setup mock tenant
         mock_tenant = MagicMock()
         mock_tenant.encrypt_public_key = "tenant1_public_key"
-        mock_query.return_value.filter.return_value.first.return_value = mock_tenant
+        mock_query.return_value.where.return_value.first.return_value = mock_tenant
         mock_encrypt.return_value = b"encrypted_for_tenant1"
 
         # Encrypt token for tenant1
@@ -186,7 +186,7 @@ class TestSecurity:
     def test_encryption_randomness(self, mock_encrypt, mock_query):
         """Ensure same plaintext produces different ciphertext"""
         mock_tenant = MagicMock(encrypt_public_key="key")
-        mock_query.return_value.filter.return_value.first.return_value = mock_tenant
+        mock_query.return_value.where.return_value.first.return_value = mock_tenant
 
         # Different outputs for same input
         mock_encrypt.side_effect = [b"enc1", b"enc2", b"enc3"]
@@ -211,7 +211,7 @@ class TestEdgeCases:
         """Test encryption of empty token"""
         mock_tenant = MagicMock()
         mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_query.return_value.filter.return_value.first.return_value = mock_tenant
+        mock_query.return_value.where.return_value.first.return_value = mock_tenant
         mock_encrypt.return_value = b"encrypted_empty"
 
         result = encrypt_token("tenant-123", "")
@@ -225,7 +225,7 @@ class TestEdgeCases:
         """Test tokens containing special/unicode characters"""
         mock_tenant = MagicMock()
         mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_query.return_value.filter.return_value.first.return_value = mock_tenant
+        mock_query.return_value.where.return_value.first.return_value = mock_tenant
         mock_encrypt.return_value = b"encrypted_special"
 
         # Test various special characters
@@ -248,7 +248,7 @@ class TestEdgeCases:
         """Test behavior when token exceeds RSA encryption limits"""
         mock_tenant = MagicMock()
         mock_tenant.encrypt_public_key = "mock_public_key"
-        mock_query.return_value.filter.return_value.first.return_value = mock_tenant
+        mock_query.return_value.where.return_value.first.return_value = mock_tenant
 
         # RSA 2048-bit can only encrypt ~245 bytes
         # The actual limit depends on padding scheme

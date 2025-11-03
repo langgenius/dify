@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useParams } from 'next/navigation'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiRobot2Fill,
   RiRobot2Line,
@@ -57,7 +57,7 @@ const AppNav = () => {
     { revalidateFirstPage: false },
   )
 
-  const handleLoadmore = useCallback(() => {
+  const handleLoadMore = useCallback(() => {
     setSize(size => size + 1)
   }, [setSize])
 
@@ -122,11 +122,11 @@ const AppNav = () => {
         text={t('common.menus.apps')}
         activeSegment={['apps', 'app']}
         link='/apps'
-        curNav={appDetail as any}
-        navs={navItems}
+        curNav={appDetail}
+        navigationItems={navItems}
         createText={t('common.menus.newApp')}
         onCreate={openModal}
-        onLoadmore={handleLoadmore}
+        onLoadMore={handleLoadMore}
       />
       <CreateAppModal
         show={showNewAppDialog}

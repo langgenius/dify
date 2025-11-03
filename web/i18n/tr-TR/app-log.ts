@@ -82,6 +82,7 @@ const translation = {
     workflowTitle: 'Günlük Detayı',
     fileListDetail: 'Ayrıntı',
     fileListLabel: 'Dosya Detayları',
+    testWithParams: 'Parametrelerle Test',
   },
   promptLog: 'Prompt Günlüğü',
   agentLog: 'Agent Günlüğü',
@@ -93,6 +94,7 @@ const translation = {
     iteration: 'Yineleme',
     finalProcessing: 'Son İşleme',
   },
+  dateFormat: 'GG/AA/YYYY',
 }
 
 export default translation

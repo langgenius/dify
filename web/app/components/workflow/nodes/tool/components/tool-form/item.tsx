@@ -24,6 +24,8 @@ type Props = {
   inPanel?: boolean
   currentTool?: Tool
   currentProvider?: ToolWithProvider
+  showManageInputField?: boolean
+  onManageInputField?: () => void
 }
 
 const ToolFormItem: FC<Props> = ({
@@ -35,6 +37,8 @@ const ToolFormItem: FC<Props> = ({
   inPanel,
   currentTool,
   currentProvider,
+  showManageInputField,
+  onManageInputField,
 }) => {
   const language = useLanguage()
   const { name, label, type, required, tooltip, input_schema } = schema
@@ -89,6 +93,8 @@ const ToolFormItem: FC<Props> = ({
         inPanel={inPanel}
         currentTool={currentTool}
         currentProvider={currentProvider}
+        showManageInputField={showManageInputField}
+        onManageInputField={onManageInputField}
       />
 
       {isShowSchema && (

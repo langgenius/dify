@@ -12,7 +12,7 @@ import ConversationVariableModal from './conversation-variable-modal'
 import { useChat } from './hooks'
 import type { ChatWrapperRefType } from './index'
 import Chat from '@/app/components/base/chat/chat'
-import type { ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
+import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import {
   fetchSuggestedQuestions,
@@ -47,7 +47,22 @@ const ChatWrapper = (
   const startVariables = startNode?.data.variables
   const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()
-  const inputs = useStore(s => s.inputs)
+  const { inputs, setInputs } = useStore(s => ({
+    inputs: s.inputs,
+    setInputs: s.setInputs,
+  }))
+
+  const initialInputs = useMemo(() => {
+    const initInputs: Record<string, any> = {}
+    if (startVariables) {
+      startVariables.forEach((variable) => {
+        if (variable.default)
+          initInputs[variable.variable] = variable.default
+      })
+    }
+    return initInputs
+  }, [startVariables])
+
   const features = useFeatures(s => s.features)
   const config = useMemo(() => {
     return {
@@ -82,6 +97,11 @@ const ChatWrapper = (
     taskId => stopChatMessageResponding(appDetail!.id, taskId),
   )
 
+  const handleRestartChat = useCallback(() => {
+    handleRestart()
+    setInputs(initialInputs)
+  }, [handleRestart, setInputs, initialInputs])
+
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     handleSend(
       {
@@ -97,7 +117,7 @@ const ChatWrapper = (
     )
   }, [handleSend, workflowStore, conversationId, chatList, appDetail])
 
-  const doRegenerate = useCallback((chatItem: ChatItemInTree, editedQuestion?: { message: string, files?: FileEntity[] }) => {
+  const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
     doSend(editedQuestion ? editedQuestion.message : question.content,
@@ -115,9 +135,18 @@ const ChatWrapper = (
 
   useImperativeHandle(ref, () => {
     return {
-      handleRestart,
+      handleRestart: handleRestartChat,
     }
-  }, [handleRestart])
+  }, [handleRestartChat])
+
+  useEffect(() => {
+    if (Object.keys(initialInputs).length > 0) {
+      setInputs({
+        ...initialInputs,
+        ...inputs,
+      })
+    }
+  }, [initialInputs])
 
   useEffect(() => {
     if (isResponding)

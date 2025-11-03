@@ -31,6 +31,8 @@ type Props = {
   inPanel?: boolean
   currentTool?: Tool
   currentProvider?: ToolWithProvider
+  showManageInputField?: boolean
+  onManageInputField?: () => void
 }
 
 const FormInputItem: FC<Props> = ({
@@ -42,6 +44,8 @@ const FormInputItem: FC<Props> = ({
   inPanel,
   currentTool,
   currentProvider,
+  showManageInputField,
+  onManageInputField,
 }) => {
   const language = useLanguage()
 
@@ -64,7 +68,7 @@ const FormInputItem: FC<Props> = ({
   const isSelect = type === FormTypeEnum.select || type === FormTypeEnum.dynamicSelect
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
-  const showTypeSwitch = isNumber || isObject || isArray
+  const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
 
@@ -84,14 +88,14 @@ const FormInputItem: FC<Props> = ({
       return VarType.arrayFile
     else if (type === FormTypeEnum.file)
       return VarType.file
-    // else if (isSelect)
-    //   return VarType.select
+    else if (isSelect)
+      return VarType.string
     // else if (isAppSelector)
     //   return VarType.appSelector
     // else if (isModelSelector)
     //   return VarType.modelSelector
-    // else if (isBoolean)
-    //   return VarType.boolean
+    else if (isBoolean)
+      return VarType.boolean
     else if (isObject)
       return VarType.object
     else if (isArray)
@@ -164,7 +168,7 @@ const FormInputItem: FC<Props> = ({
       ...value,
       [variable]: {
         ...varInput,
-        ...newValue,
+        value: newValue,
       },
     })
   }
@@ -183,7 +187,7 @@ const FormInputItem: FC<Props> = ({
   return (
     <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
       {showTypeSwitch && (
-        <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange}/>
+        <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange} />
       )}
       {isString && (
         <MixedVariableTextInput
@@ -192,24 +196,26 @@ const FormInputItem: FC<Props> = ({
           onChange={handleValueChange}
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
+          showManageInputField={showManageInputField}
+          onManageInputField={onManageInputField}
         />
       )}
       {isNumber && isConstant && (
         <Input
           className='h-8 grow'
           type='number'
-          value={varInput?.value || ''}
+          value={Number.isNaN(varInput?.value) ? '' : varInput?.value}
           onChange={e => handleValueChange(e.target.value)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
         />
       )}
-      {isBoolean && (
+      {isBoolean && isConstant && (
         <FormInputBoolean
           value={varInput?.value as boolean}
           onChange={handleValueChange}
         />
       )}
-      {isSelect && (
+      {isSelect && isConstant && (
         <SimpleSelect
           wrapperClassName='h-8 grow'
           disabled={readOnly}
@@ -242,7 +248,7 @@ const FormInputItem: FC<Props> = ({
         <AppSelector
           disabled={readOnly}
           scope={scope || 'all'}
-          value={varInput as any}
+          value={varInput?.value}
           onSelect={handleAppOrModelSelect}
         />
       )}
@@ -251,7 +257,7 @@ const FormInputItem: FC<Props> = ({
           popupClassName='!w-[387px]'
           isAdvancedMode
           isInWorkflow
-          value={varInput}
+          value={varInput?.value}
           setModel={handleAppOrModelSelect}
           readonly={readOnly}
           scope={scope}
@@ -271,6 +277,7 @@ const FormInputItem: FC<Props> = ({
           valueTypePlaceHolder={targetVarType()}
           currentTool={currentTool}
           currentProvider={currentProvider}
+          isFilterFileVar={isBoolean}
         />
       )}
     </div>

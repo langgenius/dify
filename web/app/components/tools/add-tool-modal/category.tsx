@@ -6,9 +6,10 @@ import { useMount } from 'ahooks'
 import cn from '@/utils/classnames'
 import { Apps02 } from '@/app/components/base/icons/src/vender/line/others'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { getLanguage } from '@/i18n-config/language'
 import { useStore as useLabelStore } from '@/app/components/tools/labels/store'
 import { fetchLabelList } from '@/service/tools'
+import { renderI18nObject } from '@/i18n-config'
 
 type Props = {
   value: string
@@ -55,14 +56,24 @@ const Category = ({
         <Apps02 className='mr-2 h-4 w-4 shrink-0' />
         {t('tools.type.all')}
       </div>
-      {labelList.map(label => (
-        <div key={label.name} title={label.label[language]} className={cn('mb-0.5 flex cursor-pointer items-center overflow-hidden truncate rounded-lg p-1 pl-3 text-sm leading-5 text-gray-700 hover:bg-white', value === label.name && '!bg-white font-medium !text-primary-600')} onClick={() => onSelect(label.name)}>
-          <div className='mr-2 h-4 w-4 shrink-0'>
-            <Icon active={value === label.name} svgString={label.icon} />
+      {labelList.map((label) => {
+        const labelText = typeof label.label === 'string'
+          ? label.label
+          : (label.label ? renderI18nObject(label.label, language) : '')
+        return (
+          <div
+            key={label.name}
+            title={labelText}
+            className={cn('mb-0.5 flex cursor-pointer items-center overflow-hidden truncate rounded-lg p-1 pl-3 text-sm leading-5 text-gray-700 hover:bg-white', value === label.name && '!bg-white font-medium !text-primary-600')}
+            onClick={() => onSelect(label.name)}
+          >
+            <div className='mr-2 h-4 w-4 shrink-0'>
+              <Icon active={value === label.name} svgString={label.icon || ''} />
+            </div>
+            {labelText}
           </div>
-          {label.label[language]}
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

@@ -46,9 +46,15 @@ import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { ToolTypeEnum } from '../../block-selector/types'
+
+type NodeChildProps = {
+  id: string
+  data: NodeProps['data']
+}
 
 type BaseNodeProps = {
-  children: ReactElement
+  children: ReactElement<Partial<NodeChildProps>>
   id: NodeProps['id']
   data: NodeProps['data']
 }
@@ -138,10 +144,10 @@ const BaseNode: FC<BaseNodeProps> = ({
   return (
     <div
       className={cn(
-        'flex rounded-2xl border-[2px]',
+        'relative flex rounded-2xl border',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
-        !showSelectedBorder && data._inParallelHovering && 'border-workflow-block-border-highlight',
         data._waitingRun && 'opacity-70',
+        data._dimmed && 'opacity-30',
       )}
       ref={nodeRef}
       style={{
@@ -149,6 +155,15 @@ const BaseNode: FC<BaseNodeProps> = ({
         height: (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) ? data.height : 'auto',
       }}
     >
+      {
+        data.type === BlockEnum.DataSource && (
+          <div className='absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]'>
+            <div className='system-2xs-semibold-uppercase flex h-5 items-center px-2.5 text-text-tertiary'>
+              {t('workflow.blocks.datasource')}
+            </div>
+          </div>
+        )
+      }
       <div
         className={cn(
           'group relative pb-1 shadow-xs',
@@ -163,13 +178,6 @@ const BaseNode: FC<BaseNodeProps> = ({
           data._isBundled && '!shadow-lg',
         )}
       >
-        {
-          data._inParallelHovering && (
-            <div className='top system-2xs-medium-uppercase absolute -top-2.5 left-2 z-10 text-text-tertiary'>
-              {t('workflow.common.parallelRun')}
-            </div>
-          )
-        }
         {
           data._showAddVariablePopup && (
             <AddVariablePopupWithPosition
@@ -322,7 +330,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             </div>
           )
         }
-        {data.type === BlockEnum.Tool && (
+        {data.type === BlockEnum.Tool && data.provider_type === ToolTypeEnum.MCP && (
           <div className='px-3 pb-2'>
             <CopyID content={data.provider_id || ''} />
           </div>

@@ -2,7 +2,6 @@ from collections.abc import Sequence
 
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
-    GenericProviderID,
     MissingPluginDependency,
     PluginDeclaration,
     PluginEntity,
@@ -16,6 +15,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginListResponse,
 )
 from core.plugin.impl.base import BasePluginClient
+from models.provider_ids import GenericProviderID
 
 
 class PluginInstaller(BasePluginClient):
@@ -36,7 +36,7 @@ class PluginInstaller(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/management/list",
             PluginListResponse,
-            params={"page": 1, "page_size": 256},
+            params={"page": 1, "page_size": 256, "response_type": "paged"},
         )
         return result.list
 
@@ -45,7 +45,7 @@ class PluginInstaller(BasePluginClient):
             "GET",
             f"plugin/{tenant_id}/management/list",
             PluginListResponse,
-            params={"page": page, "page_size": page_size},
+            params={"page": page, "page_size": page_size, "response_type": "paged"},
         )
 
     def upload_pkg(

@@ -25,6 +25,8 @@ export const useShortcuts = (): void => {
     handleNodesDelete,
     handleHistoryBack,
     handleHistoryForward,
+    dimOtherNodes,
+    undimAllNodes,
   } = useNodesInteractions()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
   const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
@@ -105,7 +107,8 @@ export const useShortcuts = (): void => {
     const { showDebugAndPreviewPanel } = workflowStore.getState()
     if (shouldHandleShortcut(e) && !showDebugAndPreviewPanel) {
       e.preventDefault()
-      workflowHistoryShortcutsEnabled && handleHistoryBack()
+      if (workflowHistoryShortcutsEnabled)
+        handleHistoryBack()
     }
   }, { exactMatch: true, useCapture: true })
 
@@ -114,7 +117,8 @@ export const useShortcuts = (): void => {
     (e) => {
       if (shouldHandleShortcut(e)) {
         e.preventDefault()
-        workflowHistoryShortcutsEnabled && handleHistoryForward()
+        if (workflowHistoryShortcutsEnabled)
+          handleHistoryForward()
       }
     },
     { exactMatch: true, useCapture: true },
@@ -211,4 +215,34 @@ export const useShortcuts = (): void => {
     exactMatch: true,
     useCapture: true,
   })
+
+  // Shift ↓
+  useKeyPress(
+    'shift',
+    (e) => {
+      if (shouldHandleShortcut(e))
+        dimOtherNodes()
+    },
+    {
+      exactMatch: true,
+      useCapture: true,
+      events: ['keydown'],
+    },
+  )
+
+  // Shift ↑
+  useKeyPress(
+    (e) => {
+      return e.key === 'Shift'
+    },
+    (e) => {
+      if (shouldHandleShortcut(e))
+        undimAllNodes()
+    },
+    {
+      exactMatch: true,
+      useCapture: true,
+      events: ['keyup'],
+    },
+  )
 }

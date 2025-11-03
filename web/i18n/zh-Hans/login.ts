@@ -1,6 +1,7 @@
 const translation = {
-  pageTitle: '嗨，近来可好',
-  welcome: '👋 欢迎来到 Dify, 登录以继续',
+  pageTitle: '登录 Dify',
+  pageTitleForE: '嗨，近来可好',
+  welcome: '👋 欢迎！请登录以开始使用。',
   email: '邮箱',
   emailPlaceholder: '输入邮箱地址',
   password: '密码',
@@ -62,6 +63,7 @@ const translation = {
     passwordInvalid: '密码必须包含字母和数字，且长度不小于 8 位',
     passwordLengthInValid: '密码必须至少为 8 个字符',
     registrationNotAllowed: '账户不存在，请联系系统管理员注册账户',
+    invalidEmailOrPassword: '邮箱或密码错误',
   },
   license: {
     tip: '启动 Dify 社区版之前，请阅读 GitHub 上的',
@@ -77,10 +79,8 @@ const translation = {
   activated: '现在登录',
   adminInitPassword: '管理员初始化密码',
   validate: '验证',
-  sso: '使用 SSO 继续',
   checkCode: {
     checkYourEmail: '验证您的电子邮件',
-    tips: '验证码已经发送到您的邮箱 <strong>{{email}}</strong>',
     validTime: '请注意验证码 5 分钟内有效',
     verificationCode: '验证码',
     verificationCodePlaceholder: '输入 6 位验证码',
@@ -90,6 +90,7 @@ const translation = {
     useAnotherMethod: '使用其他方式登录',
     emptyCode: '验证码不能为空',
     invalidCode: '验证码无效',
+    tipsPrefix: '我们发送一个验证码到',
   },
   resetPassword: '重置密码',
   resetPasswordDesc: '请输入您的电子邮件地址以重置密码。我们将向您发送一封电子邮件。',
@@ -106,9 +107,19 @@ const translation = {
   licenseInactive: '许可证未激活',
   licenseInactiveTip: '您所在空间的 Dify Enterprise 许可证尚未激活，请联系管理员以继续使用 Dify。',
   webapp: {
+    login: '登录',
     noLoginMethod: 'Web 应用未配置身份认证方式',
     noLoginMethodTip: '请联系系统管理员添加身份认证方式',
     disabled: 'Web 应用身份认证已禁用，请联系系统管理员启用。您也可以尝试直接使用应用。',
+  },
+  signup: {
+    noAccount: '没有账户？',
+    signUp: '立即注册',
+    createAccount: '创建您的账户',
+    welcome: '👋 欢迎！请填写信息以开始使用。',
+    verifyMail: '发送验证码',
+    haveAccount: '已有账户？',
+    signIn: '立即登录',
   },
 }
 

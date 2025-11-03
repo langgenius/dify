@@ -1,4 +1,4 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar, PromptItem, Var, Variable } from '@/app/components/workflow/types'
@@ -18,7 +18,7 @@ type Params = {
   id: string,
   payload: LLMNodeType,
   runInputData: Record<string, any>
-  runInputDataRef: MutableRefObject<Record<string, any>>
+  runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
   setRunInputData: (data: Record<string, any>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
@@ -168,7 +168,13 @@ const useSingleRunFormParams = ({
   })()
 
   const getDependentVars = () => {
-    const promptVars = varInputs.map(item => item.variable.slice(1, -1).split('.'))
+    const promptVars = varInputs.map((item) => {
+      // Guard against null/undefined variable to prevent app crash
+      if (!item.variable || typeof item.variable !== 'string')
+        return []
+
+      return item.variable.slice(1, -1).split('.')
+    }).filter(arr => arr.length > 0)
     const contextVar = payload.context.variable_selector
     const vars = [...promptVars, contextVar]
     if (isVisionModel && payload.vision?.enabled && payload.vision?.configs?.variable_selector) {

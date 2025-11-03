@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiArrowRightUpLine,
   RiBracesLine,
@@ -222,12 +222,12 @@ const ReasoningConfigForm: React.FC<Props> = ({
                   {t('workflow.nodes.agent.clickToViewParameterSchema')}
                 </div>}
                 asChild={false}>
-                  <div
-                    className='ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
-                    onClick={() => showSchema(input_schema as SchemaRoot, label[language] || label.en_US)}
-                  >
-                    <RiBracesLine className='size-3.5'/>
-                  </div>
+                <div
+                  className='ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+                  onClick={() => showSchema(input_schema as SchemaRoot, label[language] || label.en_US)}
+                >
+                  <RiBracesLine className='size-3.5'/>
+                </div>
               </Tooltip>
             )}
 
@@ -259,7 +259,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 className='h-8 grow'
                 type='number'
                 value={varInput?.value || ''}
-                onChange={handleValueChange(variable, type)}
+                onChange={e => handleValueChange(variable, type)(e.target.value)}
                 placeholder={placeholder?.[language] || placeholder?.en_US}
               />
             )}

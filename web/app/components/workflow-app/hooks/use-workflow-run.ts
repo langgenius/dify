@@ -3,7 +3,7 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import produce from 'immer'
+import { produce } from 'immer'
 import { v4 as uuidV4 } from 'uuid'
 import { usePathname } from 'next/navigation'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -31,11 +31,11 @@ export const useWorkflowRun = () => {
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const pathname = usePathname()
-  const appId = useAppStore.getState().appDetail?.id
-  const invalidAllLastRun = useInvalidAllLastRun(appId as string)
   const configsMap = useConfigsMap()
+  const { flowId, flowType } = configsMap
+  const invalidAllLastRun = useInvalidAllLastRun(flowType, flowId)
+
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    flowId: appId as string,
     ...configsMap,
   })
 
@@ -164,6 +164,9 @@ export const useWorkflowRun = () => {
     } = workflowStore.getState()
     setWorkflowRunningData({
       result: {
+        inputs_truncated: false,
+        process_data_truncated: false,
+        outputs_truncated: false,
         status: WorkflowRunningStatus.Running,
       },
       tracing: [],
@@ -202,7 +205,7 @@ export const useWorkflowRun = () => {
           if (onWorkflowFinished)
             onWorkflowFinished(params)
           if (isInWorkflowDebug) {
-            fetchInspectVars()
+            fetchInspectVars({})
             invalidAllLastRun()
           }
         },

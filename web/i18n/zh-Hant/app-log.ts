@@ -1,7 +1,7 @@
 const translation = {
   title: '日誌',
   description: '日誌記錄了應用的執行情況，包括使用者的輸入和 AI 的回覆。',
-  dateTimeFormat: 'YYYY-MM-DD HH:mm',
+  dateTimeFormat: 'YYYY-MM-DD HH:mm:ss',
   table: {
     header: {
       updatedTime: '更新時間',
@@ -82,6 +82,7 @@ const translation = {
     workflowTitle: '日誌詳情',
     fileListDetail: '細節',
     fileListLabel: '檔詳細資訊',
+    testWithParams: '使用參數測試',
   },
   promptLog: 'Prompt 日誌',
   agentLog: 'Agent 日誌',
@@ -93,6 +94,7 @@ const translation = {
     iteration: '迭代',
     finalProcessing: '最終處理',
   },
+  dateFormat: '月/日/年',
 }
 
 export default translation

@@ -86,7 +86,6 @@ const translation = {
       limit: 'Song song được giới hạn trong các nhánh {{num}}.',
       depthLimit: 'Giới hạn lớp lồng song song của {{num}} layer',
     },
-    parallelRun: 'Chạy song song',
     disconnect: 'Ngắt kết nối',
     jumpToNode: 'Chuyển đến nút này',
     addParallelNode: 'Thêm nút song song',
@@ -109,12 +108,13 @@ const translation = {
     exitVersions: 'Phiên bản thoát',
     exportImage: 'Xuất hình ảnh',
     exportPNG: 'Xuất dưới dạng PNG',
-    noExist: 'Không có biến như vậy',
     exportJPEG: 'Xuất dưới dạng JPEG',
-    referenceVar: 'Biến tham chiếu',
     needAnswerNode: 'Nút Trả lời phải được thêm vào',
     addBlock: 'Thêm Node',
     needEndNode: 'Nút Kết thúc phải được thêm vào',
+    tagBound: 'Số lượng ứng dụng sử dụng thẻ này',
+    currentWorkflow: 'Quy trình làm việc hiện tại',
+    currentView: 'Hiện tại View',
   },
   env: {
     envPanelTitle: 'Biến Môi Trường',
@@ -217,11 +217,12 @@ const translation = {
     back: 'Quay lại',
     iteration: 'Lặp',
     loop: 'Vòng',
+    reRun: 'Chạy lại',
+    preparingDataSource: 'Chuẩn bị nguồn dữ liệu',
   },
   tabs: {
     'tools': 'Công cụ',
     'allTool': 'Tất cả',
-    'builtInTool': 'Tích hợp sẵn',
     'customTool': 'Tùy chỉnh',
     'workflowTool': 'Quy trình làm việc',
     'question-understand': 'Hiểu câu hỏi',
@@ -234,6 +235,10 @@ const translation = {
     'plugin': 'Plugin',
     'blocks': 'Nút',
     'searchBlock': 'Tìm kiếm nút',
+    'allAdded': 'Tất cả đã được thêm vào',
+    'addAll': 'Thêm tất cả',
+    'sources': 'Nguồn',
+    'searchDataSource': 'Tìm kiếm nguồn dữ liệu',
   },
   blocks: {
     'start': 'Bắt đầu',
@@ -258,6 +263,8 @@ const translation = {
     'loop': 'Vòng',
     'loop-end': 'Thoát vòng lặp',
     'loop-start': 'Bắt đầu vòng lặp',
+    'datasource': 'Nguồn dữ liệu',
+    'knowledge-index': 'Cơ sở kiến thức',
   },
   blocksAbout: {
     'start': 'Định nghĩa các tham số ban đầu để khởi chạy quy trình làm việc',
@@ -280,6 +287,8 @@ const translation = {
     'agent': 'Gọi các mô hình ngôn ngữ lớn để trả lời câu hỏi hoặc xử lý ngôn ngữ tự nhiên',
     'loop': 'Thực hiện một vòng lặp logic cho đến khi điều kiện dừng được đáp ứng hoặc số lần lặp tối đa được đạt.',
     'loop-end': 'Tương đương với "dừng lại". Nút này không có các mục cấu hình. Khi thân vòng lặp đến nút này, vòng lặp sẽ kết thúc.',
+    'datasource': 'Nguồn dữ liệu Giới thiệu',
+    'knowledge-index': 'Cơ sở kiến thức về',
   },
   operator: {
     zoomIn: 'Phóng to',
@@ -287,6 +296,18 @@ const translation = {
     zoomTo50: 'Phóng to 50%',
     zoomTo100: 'Phóng to 100%',
     zoomToFit: 'Phóng to vừa màn hình',
+    alignBottom: 'Dưới',
+    alignMiddle: 'Giữa',
+    alignRight: 'Phải',
+    alignNodes: 'Căn chỉnh các nút',
+    alignLeft: 'Trái',
+    horizontal: 'Ngang',
+    alignCenter: 'Giữa',
+    alignTop: 'Trên',
+    distributeVertical: 'Phân bố theo chiều dọc',
+    selectionAlignment: 'Căn chỉnh lựa chọn',
+    distributeHorizontal: 'Phân bố theo chiều ngang',
+    vertical: 'Dọc',
   },
   panel: {
     userInputField: 'Trường đầu vào của người dùng',
@@ -307,6 +328,7 @@ const translation = {
     addNextStep: 'Thêm bước tiếp theo trong quy trình này',
     maximize: 'Tối đa hóa Canvas',
     minimize: 'Thoát chế độ toàn màn hình',
+    optional_and_hidden: '(tùy chọn & ẩn)',
   },
   nodes: {
     common: {
@@ -364,7 +386,11 @@ const translation = {
         times: 'lần',
         ms: 'Ms',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Giá trị đầu vào',
+        variable: 'Sử dụng biến',
+      },
+      inputVars: 'Biến đầu vào',
     },
     start: {
       required: 'bắt buộc',
@@ -419,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'Nội dung được tạo',
+        reasoning_content: 'Nội dung lập luận',
         usage: 'Thông tin sử dụng mô hình',
       },
       singleRun: {
@@ -452,6 +479,12 @@ const translation = {
         apply: 'Áp dụng',
         addChildField: 'Thêm trường trẻ em',
         title: 'Sơ đồ đầu ra có cấu trúc',
+      },
+      reasoningFormat: {
+        tagged: 'Giữ lại thẻ suy nghĩ',
+        tooltip: 'Trích xuất nội dung từ các thẻ think và lưu nó vào trường reasoning_content.',
+        separated: 'Tách biệt các thẻ suy nghĩ',
+        title: 'Bật chế độ phân tách nhãn lý luận',
       },
     },
     knowledgeRetrieval: {
@@ -491,6 +524,7 @@ const translation = {
           search: 'Tìm kiếm siêu dữ liệu',
         },
         title: 'Lọc siêu dữ liệu',
+        tip: 'Lọc siêu dữ liệu là quá trình sử dụng các thuộc tính siêu dữ liệu (chẳng hạn như thẻ, danh mục hoặc quyền truy cập) để tinh chỉnh và kiểm soát việc truy xuất thông tin liên quan trong một hệ thống.',
       },
     },
     http: {
@@ -551,6 +585,7 @@ const translation = {
       advancedDependencies: 'Phụ thuộc nâng cao',
       advancedDependenciesTip: 'Thêm một số phụ thuộc được tải trước mà tốn nhiều thời gian hoặc không phải là mặc định tại đây',
       searchDependencies: 'Tìm kiếm phụ thuộc',
+      syncFunctionSignature: 'Đồng bộ chữ ký hàm với mã',
     },
     templateTransform: {
       inputVars: 'Biến đầu vào',
@@ -579,7 +614,6 @@ const translation = {
         'not empty': 'không trống',
         'null': 'là null',
         'not null': 'không là null',
-        'regex match': 'Trận đấu Regex',
         'exists': 'Tồn tại',
         'not exists': 'không tồn tại',
         'not in': 'không có trong',
@@ -602,7 +636,6 @@ const translation = {
       },
       addSubVariable: 'Biến phụ',
       select: 'Lựa',
-      condition: 'Điều kiện',
     },
     variableAssigner: {
       title: 'Gán biến',
@@ -670,6 +703,9 @@ const translation = {
         json: 'JSON được tạo bởi công cụ',
       },
       authorize: 'Ủy quyền',
+      settings: 'Cài đặt',
+      insertPlaceholder2: 'Chèn biến vào',
+      insertPlaceholder1: 'Gõ hoặc nhấn',
     },
     questionClassifiers: {
       model: 'mô hình',
@@ -823,6 +859,7 @@ const translation = {
         },
         json: 'JSON do tác nhân tạo',
         text: 'Nội dung do tác nhân tạo',
+        usage: 'Thông tin sử dụng mô hình',
       },
       checkList: {
         strategyNotSelected: 'Chiến lược không được chọn',
@@ -854,6 +891,8 @@ const translation = {
       notAuthorized: 'Không được ủy quyền',
       strategyNotFoundDesc: 'Phiên bản plugin đã cài đặt không cung cấp chiến lược này.',
       toolbox: 'hộp công cụ',
+      clickToViewParameterSchema: 'Nhấp để xem sơ đồ tham số',
+      parameterSchema: 'Sơ đồ Tham số',
     },
     loop: {
       ErrorMethod: {
@@ -887,6 +926,32 @@ const translation = {
       error_one: '{{count}} Lỗi',
       loopNode: 'Nút Lặp',
     },
+    dataSource: {
+      supportedFileFormats: 'Các định dạng tệp được hỗ trợ',
+      supportedFileFormatsPlaceholder: 'Phần mở rộng tệp, e.g. doc',
+      add: 'Thêm nguồn dữ liệu',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'Tìm hiểu thêm',
+        message: 'Cơ sở kiến thức Dify hỗ trợ ba cấu trúc phân đoạn: General, Parent-child và Q&A. Mỗi cơ sở tri thức chỉ có thể có một cấu trúc. Đầu ra từ nút trước đó phải phù hợp với cấu trúc chunk đã chọn. Lưu ý rằng việc lựa chọn cấu trúc chunking ảnh hưởng đến các phương thức index có sẵn.',
+        title: 'Vui lòng chọn cấu trúc chunk',
+      },
+      chunkIsRequired: 'Cấu trúc chunk là bắt buộc',
+      chunkStructure: 'Cấu trúc Chunk',
+      aboutRetrieval: 'về phương pháp truy xuất.',
+      retrievalSettingIsRequired: 'Cài đặt truy xuất là bắt buộc',
+      changeChunkStructure: 'Thay đổi cấu trúc chunk',
+      chooseChunkStructure: 'Chọn cấu trúc chunk',
+      indexMethodIsRequired: 'Phương pháp chỉ mục là bắt buộc',
+      chunksInput: 'Mảnh',
+      chunksInputTip: 'Biến đầu vào của nút cơ sở tri thức là Chunks. Loại biến là một đối tượng với một JSON Schema cụ thể mà phải nhất quán với cấu trúc chunk đã chọn.',
+      chunksVariableIsRequired: 'Biến Chunks là bắt buộc',
+      embeddingModelIsRequired: 'Cần có mô hình nhúng',
+      rerankingModelIsRequired: 'Cần có mô hình sắp xếp lại',
+      embeddingModelIsInvalid: 'Mô hình nhúng không hợp lệ',
+      rerankingModelIsInvalid: 'Mô hình xếp hạng lại không hợp lệ',
+    },
   },
   tracing: {
     stopBy: 'Dừng bởi {{user}}',
@@ -919,6 +984,7 @@ const translation = {
       updateSuccess: 'Phiên bản đã được cập nhật',
       restoreSuccess: 'Phiên bản đã được khôi phục',
       restoreFailure: 'Không thể khôi phục phiên bản',
+      copyIdSuccess: 'ID được sao chép vào khay nhớ tạm',
     },
     defaultName: 'Phiên bản không được đặt tên',
     releaseNotesPlaceholder: 'Mô tả những gì đã thay đổi',
@@ -929,6 +995,7 @@ const translation = {
     nameThisVersion: 'Đặt tên cho phiên bản này',
     restorationTip: 'Sau khi phục hồi phiên bản, bản nháp hiện tại sẽ bị ghi đè.',
     title: 'Các phiên bản',
+    copyId: 'Sao chép ID',
   },
   debug: {
     noData: {
@@ -955,9 +1022,31 @@ const translation = {
       clearNode: 'Xóa biến đã được lưu trong bộ nhớ cache',
       emptyLink: 'Tìm hiểu thêm',
       emptyTip: 'Sau khi bước qua một nút trên canvas hoặc chạy một nút từng bước, bạn có thể xem giá trị hiện tại của biến nút trong Variable Inspect.',
+      export: 'xuất khẩu',
+      exportToolTip: 'Xuất biến dưới dạng tệp',
+      largeData: 'Dữ liệu lớn, xem trước chỉ đọc. Xuất để xem tất cả.',
+      largeDataNoExport: 'Dữ liệu lớn - chỉ xem trước một phần',
     },
     settingsTab: 'Cài đặt',
     lastRunTab: 'Chạy Lần Cuối',
+    relations: {
+      noDependencies: 'Không phụ thuộc',
+      dependenciesDescription: 'Các nút mà nút này dựa vào',
+      dependents: 'Người phụ thuộc',
+      dependencies: 'Phụ thuộc',
+      noDependents: 'Không có người phụ thuộc',
+      dependentsDescription: 'Các nút dựa vào nút này',
+    },
+    relationsTab: 'Mối quan hệ',
+    noLastRunFound: 'Không tìm thấy lần chạy trước',
+    noMatchingInputsFound: 'Không tìm thấy đầu vào nào khớp từ lần chạy trước',
+    copyLastRun: 'Sao chép lần chạy cuối',
+    copyLastRunError: 'Không thể sao chép đầu vào của lần chạy trước',
+    lastOutput: 'Đầu ra cuối cùng',
+  },
+  sidebar: {
+    exportWarning: 'Xuất Phiên Bản Đã Lưu Hiện Tại',
+    exportWarningDesc: 'Điều này sẽ xuất phiên bản hiện tại đã được lưu của quy trình làm việc của bạn. Nếu bạn có những thay đổi chưa được lưu trong trình soạn thảo, vui lòng lưu chúng trước bằng cách sử dụng tùy chọn xuất trong bản vẽ quy trình.',
   },
 }
 

@@ -87,7 +87,6 @@ const translation = {
       depthLimit: 'Обмеження рівня паралельного вкладеності шарів {{num}}',
     },
     disconnect: 'Відключити',
-    parallelRun: 'Паралельний біг',
     jumpToNode: 'Перейти до цього вузла',
     addParallelNode: 'Додати паралельний вузол',
     parallel: 'ПАРАЛЕЛЬНИЙ',
@@ -103,9 +102,7 @@ const translation = {
     addFailureBranch: 'Додано гілку помилки',
     noHistory: 'Без історії',
     loadMore: 'Завантажте більше робочих процесів',
-    referenceVar: 'Посилальна змінна',
     exportPNG: 'Експортувати як PNG',
-    noExist: 'Такої змінної не існує',
     exitVersions: 'Вихідні версії',
     versionHistory: 'Історія версій',
     publishUpdate: 'Опублікувати оновлення',
@@ -115,6 +112,9 @@ const translation = {
     addBlock: 'Додати вузол',
     needEndNode: 'Необхідно додати кінцевий вузол',
     needAnswerNode: 'Вузол Відповіді повинен бути доданий',
+    tagBound: 'Кількість додатків, що використовують цей тег',
+    currentView: 'Поточний вигляд',
+    currentWorkflow: 'Поточний робочий процес',
   },
   env: {
     envPanelTitle: 'Змінні середовища',
@@ -217,11 +217,12 @@ const translation = {
     back: 'Назад',
     iteration: 'Ітерація',
     loop: 'Петля',
+    reRun: 'Повторний запуск',
+    preparingDataSource: 'Підготовка джерела даних',
   },
   tabs: {
     'tools': 'Інструменти',
     'allTool': 'Усі',
-    'builtInTool': 'Вбудовані',
     'customTool': 'Користувацькі',
     'workflowTool': 'Робочий потік',
     'question-understand': 'Розуміння питань',
@@ -234,6 +235,10 @@ const translation = {
     'agent': 'Стратегія агента',
     'blocks': 'Вузли',
     'searchBlock': 'Пошуковий вузол',
+    'addAll': 'Додати все',
+    'allAdded': 'Всі додані',
+    'sources': 'Джерел',
+    'searchDataSource': 'Пошук у джерелі даних',
   },
   blocks: {
     'start': 'Початок',
@@ -258,6 +263,8 @@ const translation = {
     'loop-start': 'Початок циклу',
     'loop': 'Петля',
     'loop-end': 'Вихід з циклу',
+    'datasource': 'Джерело даних',
+    'knowledge-index': 'База знань',
   },
   blocksAbout: {
     'start': 'Визначте початкові параметри для запуску робочого потоку',
@@ -280,6 +287,8 @@ const translation = {
     'agent': 'Виклик великих мовних моделей для відповідей на запитання або обробки природної мови',
     'loop': 'Виконуйте цикл логіки, поки не буде виконано умову завершення або досягнуто максимальну кількість ітерацій.',
     'loop-end': 'Еквівалентно "перерві". Цей вузол не має елементів конфігурації. Коли тіло циклу досягає цього вузла, цикл завершується.',
+    'datasource': 'Джерело даних про',
+    'knowledge-index': 'База знань про нас',
   },
   operator: {
     zoomIn: 'Збільшити',
@@ -287,6 +296,18 @@ const translation = {
     zoomTo50: 'Збільшити до 50%',
     zoomTo100: 'Збільшити до 100%',
     zoomToFit: 'Збільшити для підгонки',
+    alignCenter: 'Центр',
+    alignRight: 'Праворуч',
+    vertical: 'Вертикальний',
+    alignBottom: 'Низ',
+    alignLeft: 'Ліворуч',
+    alignTop: 'Верх',
+    horizontal: 'Горизонтальний',
+    alignMiddle: 'По центру',
+    distributeVertical: 'Розподілити по вертикалі',
+    distributeHorizontal: 'Розподілити по горизонталі',
+    selectionAlignment: 'Вирівнювання вибору',
+    alignNodes: 'Вирівнювання вузлів',
   },
   panel: {
     userInputField: 'Поле введення користувача',
@@ -307,6 +328,7 @@ const translation = {
     addNextStep: 'Додайте наступний крок у цей робочий процес',
     minimize: 'Вийти з повноекранного режиму',
     maximize: 'Максимізувати полотно',
+    optional_and_hidden: '(необов\'язково & приховано)',
   },
   nodes: {
     common: {
@@ -364,7 +386,11 @@ const translation = {
         retryFailedTimes: '{{times}} повторні спроби не вдалися',
         retryTimes: 'Повторіть спробу {{times}} у разі невдачі',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Вхідне значення',
+        variable: 'Використовуйте змінну',
+      },
+      inputVars: 'Вхідні змінні',
     },
     start: {
       required: 'обов\'язковий',
@@ -419,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'Генерований вміст',
+        reasoning_content: 'Зміст міркування',
         usage: 'Інформація про використання моделі',
       },
       singleRun: {
@@ -452,6 +479,12 @@ const translation = {
         generate: 'Генерувати',
         title: 'Структурована схема виходу',
         doc: 'Дізнайтеся більше про структурований вихід',
+      },
+      reasoningFormat: {
+        separated: 'Окремі теги для думок',
+        tagged: 'Продовжуйте думати про мітки',
+        title: 'Увімкніть розділення тегів для міркування',
+        tooltip: 'Витягніть вміст з тегів think і зберігайте його в полі reasoning_content.',
       },
     },
     knowledgeRetrieval: {
@@ -491,6 +524,7 @@ const translation = {
           add: 'Додати умову',
         },
         title: 'Фільтрація метаданих',
+        tip: 'Фільтрація метаданих — це процес використання атрибутів метаданих (таких як теги, категорії або права доступу) для уточнення та контролю отримання відповідної інформації в системі.',
       },
     },
     http: {
@@ -551,6 +585,7 @@ const translation = {
       advancedDependencies: 'Розширені залежності',
       advancedDependenciesTip: 'Додайте тут деякі попередньо завантажені залежності, які потребують більше часу для споживання або не є за замовчуванням вбудованими',
       searchDependencies: 'Шукати залежності',
+      syncFunctionSignature: 'Синхронізувати підпис функції з кодом',
     },
     templateTransform: {
       inputVars: 'Вхідні змінні',
@@ -579,7 +614,6 @@ const translation = {
         'not empty': 'не порожній',
         'null': 'є null',
         'not null': 'не є null',
-        'regex match': 'Регулярний вираз збігу',
         'in': 'В',
         'all of': 'Всі з',
         'exists': 'Існує',
@@ -602,7 +636,6 @@ const translation = {
       },
       select: 'Виберіть',
       addSubVariable: 'Підзмінна',
-      condition: 'Умова',
     },
     variableAssigner: {
       title: 'Присвоєння змінних',
@@ -670,6 +703,9 @@ const translation = {
         json: 'JSON, згенерований інструментом',
       },
       authorize: 'Уповноважити',
+      settings: 'Налаштування',
+      insertPlaceholder2: 'вставте змінну',
+      insertPlaceholder1: 'Введіть або натисніть',
     },
     questionClassifiers: {
       model: 'модель',
@@ -822,6 +858,7 @@ const translation = {
           title: 'Файли, створені агентом',
         },
         text: 'Контент, створений агентом',
+        usage: 'Інформація про використання моделі',
         json: 'Агент згенерував JSON',
       },
       checkList: {
@@ -854,6 +891,8 @@ const translation = {
       pluginNotInstalledDesc: 'Цей плагін встановлюється з GitHub. Будь ласка, перейдіть до Плагіни для перевстановлення',
       modelNotSelected: 'Модель не обрана',
       strategyNotFoundDescAndSwitchVersion: 'Встановлена версія плагіна не забезпечує цю стратегію. Натисніть, щоб змінити версію.',
+      parameterSchema: 'Схема параметрів',
+      clickToViewParameterSchema: 'Натисніть, щоб переглянути схему параметрів',
     },
     loop: {
       ErrorMethod: {
@@ -887,6 +926,32 @@ const translation = {
       deleteTitle: 'Видалити вузол циклу?',
       loopMaxCount: 'Максимальна кількість циклів',
     },
+    dataSource: {
+      supportedFileFormatsPlaceholder: 'Розширення файлу, e.g. doc',
+      add: 'Додати джерело даних',
+      supportedFileFormats: 'Підтримувані формати файлів',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'Дізнатися більше',
+        title: 'Будь ласка, виберіть структуру шматків',
+        message: 'База знань Dify підтримує три структури, що розділяються: Загальні, Батьки-дочірні та Запитання та відповіді. Кожна база знань може мати тільки одну структуру. Вихідні дані з попереднього вузла повинні співпадати з обраною структурою фрагментів. Зауважимо, що вибір структури фрагментації впливає на доступні методи індексування.',
+      },
+      changeChunkStructure: 'Зміна структури фрагментів',
+      aboutRetrieval: 'про метод пошуку.',
+      chunkStructure: 'Структура шматків',
+      chunkIsRequired: 'Потрібна структура шматків',
+      indexMethodIsRequired: 'Обов\'язковий індексний метод',
+      chooseChunkStructure: 'Виберіть структуру шматків',
+      retrievalSettingIsRequired: 'Потрібне налаштування для отримання',
+      chunksInput: 'Частини',
+      chunksInputTip: 'Вхідна змінна вузла бази знань - це Частини. Тип змінної - об\'єкт з певною JSON-схемою, яка повинна відповідати вибраній структурі частин.',
+      chunksVariableIsRequired: 'Змінна chunks є обов\'язковою',
+      embeddingModelIsRequired: 'Потрібна модель вбудовування',
+      rerankingModelIsRequired: 'Потрібна модель повторного ранжування',
+      embeddingModelIsInvalid: 'Модель вбудовування недійсна',
+      rerankingModelIsInvalid: 'Модель переналаштування недійсна',
+    },
   },
   tracing: {
     stopBy: 'Зупинено користувачем {{user}}',
@@ -919,6 +984,7 @@ const translation = {
       deleteSuccess: 'Версія видалена',
       restoreSuccess: 'Версія відновлена',
       updateFailure: 'Не вдалося оновити версію',
+      copyIdSuccess: 'ID скопійовано в буфер обміну',
     },
     defaultName: 'Без назви версія',
     restorationTip: 'Після відновлення версії нинішній проект буде перезаписано.',
@@ -929,6 +995,7 @@ const translation = {
     editVersionInfo: 'Редагувати інформацію про версію',
     nameThisVersion: 'Назвіть цю версію',
     latest: 'Останні новини',
+    copyId: 'Копіювати ідентифікатор',
   },
   debug: {
     noData: {
@@ -955,9 +1022,31 @@ const translation = {
       chatNode: 'Розмова',
       resetConversationVar: 'Скинути змінну розмови на значення за замовчуванням',
       emptyTip: 'Після переходу через вузол на полотні або виконання вузла поетапно, ви можете переглянути поточне значення змінної вузла у Перевірці змінних.',
+      export: 'експорт',
+      exportToolTip: 'Експортувати змінну як файл',
+      largeDataNoExport: 'Великі дані - лише частковий попередній перегляд',
+      largeData: 'Великий обсяг даних, попередній перегляд лише для читання. Експортуйте, щоб переглянути всі.',
     },
     lastRunTab: 'Останній запуск',
     settingsTab: 'Налаштування',
+    relations: {
+      noDependents: 'Без утриманців',
+      dependents: 'Утриманців',
+      dependencies: 'Залежностей',
+      noDependencies: 'Відсутність залежностей',
+      dependenciesDescription: 'Вузли, на які спирається цей вузол',
+      dependentsDescription: 'Вузли, які спираються на цей вузол',
+    },
+    relationsTab: 'Відносин',
+    copyLastRun: 'Копіювати останній запуск',
+    noLastRunFound: 'Жодного попереднього запуску не знайдено.',
+    copyLastRunError: 'Не вдалося скопіювати вхідні дані останнього виконання',
+    noMatchingInputsFound: 'Не знайдено відповідних вхідних даних з останнього запуску',
+    lastOutput: 'Останній вихід',
+  },
+  sidebar: {
+    exportWarning: 'Експортувати поточну збережену версію',
+    exportWarningDesc: 'Це експортує поточну збережену версію вашого робочого процесу. Якщо у вас є незбережені зміни в редакторі, будь ласка, спочатку збережіть їх, використовуючи опцію експорту на полотні робочого процесу.',
   },
 }
 

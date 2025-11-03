@@ -24,7 +24,7 @@ const JsonImporter: FC<JsonImporterProps> = ({
   const [open, setOpen] = useState(false)
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<any>(null)
-  const importBtnRef = useRef<HTMLButtonElement>(null)
+  const importBtnRef = useRef<HTMLElement>(null)
   const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
   const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
   const { emit } = useMittContext()
@@ -34,7 +34,6 @@ const JsonImporter: FC<JsonImporterProps> = ({
       const rect = importBtnRef.current.getBoundingClientRect()
       updateBtnWidth(rect.width)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleTrigger = useCallback((e: React.MouseEvent<HTMLElement, MouseEvent>) => {

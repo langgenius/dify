@@ -2,7 +2,6 @@ const translation = {
   title: 'पुनर्प्राप्ति परीक्षण',
   desc: 'दिए गए प्रश्न पाठ के आधार पर ज्ञान की प्रभावशीलता का परीक्षण करें।',
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
-  recents: 'हाल के',
   table: {
     header: {
       source: 'स्रोत',

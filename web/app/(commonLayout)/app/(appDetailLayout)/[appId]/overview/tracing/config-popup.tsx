@@ -1,11 +1,11 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, JSX } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import TracingIcon from './tracing-icon'
 import ProviderPanel from './provider-panel'
-import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import ProviderConfigModal from './provider-config-modal'
 import Indicator from '@/app/components/header/indicator'
@@ -30,7 +30,8 @@ export type PopupProps = {
   opikConfig: OpikConfig | null
   weaveConfig: WeaveConfig | null
   aliyunConfig: AliyunConfig | null
-  onConfigUpdated: (provider: TracingProvider, payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig) => void
+  tencentConfig: TencentConfig | null
+  onConfigUpdated: (provider: TracingProvider, payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig) => void
   onConfigRemoved: (provider: TracingProvider) => void
 }
 
@@ -48,6 +49,7 @@ const ConfigPopup: FC<PopupProps> = ({
   opikConfig,
   weaveConfig,
   aliyunConfig,
+  tencentConfig,
   onConfigUpdated,
   onConfigRemoved,
 }) => {
@@ -71,7 +73,7 @@ const ConfigPopup: FC<PopupProps> = ({
     }
   }, [onChooseProvider])
 
-  const handleConfigUpdated = useCallback((payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig) => {
+  const handleConfigUpdated = useCallback((payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig) => {
     onConfigUpdated(currentProvider!, payload)
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigUpdated])
@@ -81,8 +83,8 @@ const ConfigPopup: FC<PopupProps> = ({
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigRemoved])
 
-  const providerAllConfigured = arizeConfig && phoenixConfig && langSmithConfig && langFuseConfig && opikConfig && weaveConfig && aliyunConfig
-  const providerAllNotConfigured = !arizeConfig && !phoenixConfig && !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig && !aliyunConfig
+  const providerAllConfigured = arizeConfig && phoenixConfig && langSmithConfig && langFuseConfig && opikConfig && weaveConfig && aliyunConfig && tencentConfig
+  const providerAllNotConfigured = !arizeConfig && !phoenixConfig && !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig && !aliyunConfig && !tencentConfig
 
   const switchContent = (
     <Switch
@@ -182,6 +184,19 @@ const ConfigPopup: FC<PopupProps> = ({
       key="aliyun-provider-panel"
     />
   )
+
+  const tencentPanel = (
+    <ProviderPanel
+      type={TracingProvider.tencent}
+      readOnly={readOnly}
+      config={tencentConfig}
+      hasConfigured={!!tencentConfig}
+      onConfig={handleOnConfig(TracingProvider.tencent)}
+      isChosen={chosenProvider === TracingProvider.tencent}
+      onChoose={handleOnChoose(TracingProvider.tencent)}
+      key="tencent-provider-panel"
+    />
+  )
   const configuredProviderPanel = () => {
     const configuredPanels: JSX.Element[] = []
 
@@ -205,6 +220,9 @@ const ConfigPopup: FC<PopupProps> = ({
 
     if (aliyunConfig)
       configuredPanels.push(aliyunPanel)
+
+    if (tencentConfig)
+      configuredPanels.push(tencentPanel)
 
     return configuredPanels
   }
@@ -233,6 +251,9 @@ const ConfigPopup: FC<PopupProps> = ({
     if (!aliyunConfig)
       notConfiguredPanels.push(aliyunPanel)
 
+    if (!tencentConfig)
+      notConfiguredPanels.push(tencentPanel)
+
     return notConfiguredPanels
   }
 
@@ -249,6 +270,8 @@ const ConfigPopup: FC<PopupProps> = ({
       return opikConfig
     if (currentProvider === TracingProvider.aliyun)
       return aliyunConfig
+    if (currentProvider === TracingProvider.tencent)
+      return tencentConfig
     return weaveConfig
   }
 
@@ -297,6 +320,7 @@ const ConfigPopup: FC<PopupProps> = ({
                 {arizePanel}
                 {phoenixPanel}
                 {aliyunPanel}
+                {tencentPanel}
               </div>
             </>
           )

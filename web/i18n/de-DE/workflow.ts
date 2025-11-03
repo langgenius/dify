@@ -90,7 +90,6 @@ const translation = {
       limit: 'Die Parallelität ist auf {{num}} Zweige beschränkt.',
       depthLimit: 'Begrenzung der parallelen Verschachtelungsschicht von {{num}} Schichten',
     },
-    parallelRun: 'Paralleler Lauf',
     disconnect: 'Trennen',
     jumpToNode: 'Zu diesem Knoten springen',
     addParallelNode: 'Parallelen Knoten hinzufügen',
@@ -108,10 +107,8 @@ const translation = {
     loadMore: 'Weitere Workflows laden',
     noHistory: 'Keine Geschichte',
     exportSVG: 'Als SVG exportieren',
-    noExist: 'Keine solche Variable',
     versionHistory: 'Versionsverlauf',
     publishUpdate: 'Update veröffentlichen',
-    referenceVar: 'Referenzvariable',
     exportImage: 'Bild exportieren',
     exportJPEG: 'Als JPEG exportieren',
     exitVersions: 'Ausgangsversionen',
@@ -119,6 +116,9 @@ const translation = {
     addBlock: 'Knoten hinzufügen',
     needEndNode: 'Der Endknoten muss hinzugefügt werden.',
     needAnswerNode: 'Der Antwortknoten muss hinzugefügt werden.',
+    tagBound: 'Anzahl der Apps, die dieses Tag verwenden',
+    currentWorkflow: 'Aktueller Arbeitsablauf',
+    currentView: 'Aktuelle Ansicht',
   },
   env: {
     envPanelTitle: 'Umgebungsvariablen',
@@ -221,11 +221,12 @@ const translation = {
     back: 'Zurück',
     iteration: 'Iteration',
     loop: 'Schleife',
+    reRun: 'Erneuter Lauf',
+    preparingDataSource: 'Vorbereiten der Datenquelle',
   },
   tabs: {
     'tools': 'Werkzeuge',
     'allTool': 'Alle',
-    'builtInTool': 'Eingebaut',
     'customTool': 'Benutzerdefiniert',
     'workflowTool': 'Arbeitsablauf',
     'question-understand': 'Fragen verstehen',
@@ -238,6 +239,10 @@ const translation = {
     'agent': 'Agenten-Strategie',
     'searchBlock': 'Suchknoten',
     'blocks': 'Knoten',
+    'allAdded': 'Alle hinzugefügt',
+    'addAll': 'Alles hinzufügen',
+    'sources': 'Quellen',
+    'searchDataSource': 'Datenquelle durchsuchen',
   },
   blocks: {
     'start': 'Start',
@@ -262,6 +267,8 @@ const translation = {
     'loop': 'Schleife',
     'loop-start': 'Schleifenbeginn',
     'loop-end': 'Schleife beenden',
+    'datasource': 'Datenquelle',
+    'knowledge-index': 'Wissensdatenbank',
   },
   blocksAbout: {
     'start': 'Definieren Sie die Anfangsparameter zum Starten eines Workflows',
@@ -284,6 +291,8 @@ const translation = {
     'agent': 'Aufruf großer Sprachmodelle zur Beantwortung von Fragen oder zur Verarbeitung natürlicher Sprache',
     'loop': 'Führen Sie eine Schleife aus, bis die Abschlussbedingungen erfüllt sind oder die maximalen Schleifenanzahl erreicht ist.',
     'loop-end': 'Entspricht "break". Dieser Knoten hat keine Konfigurationselemente. Wenn der Schleifenrumpf diesen Knoten erreicht, wird die Schleife beendet.',
+    'datasource': 'Datenquelle Über',
+    'knowledge-index': 'Wissensdatenbank Über',
   },
   operator: {
     zoomIn: 'Vergrößern',
@@ -291,6 +300,18 @@ const translation = {
     zoomTo50: 'Auf 50% vergrößern',
     zoomTo100: 'Auf 100% vergrößern',
     zoomToFit: 'An Bildschirm anpassen',
+    selectionAlignment: 'Ausrichtung der Auswahl',
+    alignLeft: 'Links',
+    alignTop: 'Nach oben',
+    distributeVertical: 'Vertikal verteilen',
+    alignBottom: 'Nach unten',
+    distributeHorizontal: 'Horizontal verteilen',
+    vertical: 'Vertikal',
+    alignMiddle: 'Mitte',
+    alignCenter: 'Mitte',
+    alignRight: 'Rechts',
+    alignNodes: 'Knoten ausrichten',
+    horizontal: 'Horizontal',
   },
   panel: {
     userInputField: 'Benutzereingabefeld',
@@ -311,6 +332,7 @@ const translation = {
     changeBlock: 'Knoten ändern',
     maximize: 'Maximiere die Leinwand',
     minimize: 'Vollbildmodus beenden',
+    optional_and_hidden: '(optional & hidden)',
   },
   nodes: {
     common: {
@@ -368,7 +390,11 @@ const translation = {
         ms: 'Frau',
         retries: '{{num}} Wiederholungen',
       },
-      typeSwitch: {},
+      typeSwitch: {
+        input: 'Eingabewert',
+        variable: 'Verwende die Variable',
+      },
+      inputVars: 'Eingabevariablen',
     },
     start: {
       required: 'erforderlich',
@@ -423,6 +449,7 @@ const translation = {
       },
       outputVars: {
         output: 'Generierter Inhalt',
+        reasoning_content: 'Reasoning-Inhalt',
         usage: 'Nutzungsinformationen des Modells',
       },
       singleRun: {
@@ -456,6 +483,12 @@ const translation = {
         generating: 'Generiere JSON-Schema...',
         instruction: 'Anleitung',
         regenerate: 'Regenerieren',
+      },
+      reasoningFormat: {
+        tooltip: 'Inhalte aus Denk-Tags extrahieren und im Feld reasoning_content speichern.',
+        separated: 'Separate Denk tags',
+        title: 'Aktivieren Sie die Trennung von Argumentations-Tags',
+        tagged: 'Behalte die Denk-Tags',
       },
     },
     knowledgeRetrieval: {
@@ -495,6 +528,7 @@ const translation = {
           search: 'Suchmetadaten',
         },
         title: 'Metadatenfilterung',
+        tip: 'Metadatenfilterung ist der Prozess, Metadatenattribute (wie Tags, Kategorien oder Zugriffsberechtigungen) zu verwenden, um die Abfrage und Kontrolle der relevanten Informationen innerhalb eines Systems zu verfeinern.',
       },
     },
     http: {
@@ -555,6 +589,7 @@ const translation = {
       advancedDependencies: 'Erweiterte Abhängigkeiten',
       advancedDependenciesTip: 'Fügen Sie hier einige vorinstallierte Abhängigkeiten hinzu, die mehr Zeit in Anspruch nehmen oder nicht standardmäßig eingebaut sind',
       searchDependencies: 'Abhängigkeiten suchen',
+      syncFunctionSignature: 'Synchronisiere die Funktionssignatur mit dem Code',
     },
     templateTransform: {
       inputVars: 'Eingabevariablen',
@@ -583,7 +618,6 @@ const translation = {
         'not empty': 'ist nicht leer',
         'null': 'ist null',
         'not null': 'ist nicht null',
-        'regex match': 'Regex-Übereinstimmung',
         'not exists': 'existiert nicht',
         'in': 'in',
         'all of': 'alle',
@@ -606,7 +640,6 @@ const translation = {
       },
       select: 'Auswählen',
       addSubVariable: 'Untervariable',
-      condition: 'Bedingung',
     },
     variableAssigner: {
       title: 'Variablen zuweisen',
@@ -674,6 +707,9 @@ const translation = {
         json: 'von einem Tool generiertes JSON',
       },
       authorize: 'Autorisieren',
+      insertPlaceholder2: 'Fügen Sie die Variable ein.',
+      insertPlaceholder1: 'Tippen oder drücken',
+      settings: 'Einstellungen',
     },
     questionClassifiers: {
       model: 'Modell',
@@ -826,6 +862,7 @@ const translation = {
           transfer_method: 'Übertragungsmethode. Wert ist remote_url oder local_file',
         },
         text: 'Von Agenten generierte Inhalte',
+        usage: 'Nutzungsinformationen des Modells',
         json: 'Vom Agenten generiertes JSON',
       },
       checkList: {
@@ -858,6 +895,8 @@ const translation = {
       learnMore: 'Weitere Informationen',
       configureModel: 'Modell konfigurieren',
       linkToPlugin: 'Link zu Plugins',
+      parameterSchema: 'Parameter-Schema',
+      clickToViewParameterSchema: 'Klicken Sie hier, um das Parameterschema anzuzeigen.',
     },
     loop: {
       ErrorMethod: {
@@ -891,6 +930,32 @@ const translation = {
       output: 'Ausgabewert',
       input: 'Eingabe',
     },
+    dataSource: {
+      add: 'Hinzufügen einer Datenquelle',
+      supportedFileFormats: 'Unterstützte Dateiformate',
+      supportedFileFormatsPlaceholder: 'Dateiendung, e.g. doc',
+    },
+    knowledgeBase: {
+      chunkStructureTip: {
+        learnMore: 'Weitere Informationen',
+        title: 'Bitte wählen Sie eine Chunk-Struktur',
+        message: 'Die Dify-Wissensdatenbank unterstützt drei Chunking-Strukturen: Allgemein, Über- und Untergeordnetes Element und Q&A. Jede Wissensdatenbank kann nur eine Struktur haben. Die Ausgabe des vorherigen Knotens muss an der ausgewählten Blockstruktur ausgerichtet sein. Beachten Sie, dass sich die Wahl der Chunking-Struktur auf die verfügbaren Indexmethoden auswirkt.',
+      },
+      changeChunkStructure: 'Chunk-Struktur ändern',
+      retrievalSettingIsRequired: 'Abrufeinstellung ist erforderlich',
+      chunkStructure: 'Chunk-Struktur',
+      indexMethodIsRequired: 'Index-Methode ist erforderlich',
+      aboutRetrieval: 'Über die Abrufmethode.',
+      chooseChunkStructure: 'Auswählen einer Chunk-Struktur',
+      chunkIsRequired: 'Chunk-Struktur ist erforderlich',
+      chunksInput: 'Stücke',
+      chunksInputTip: 'Die Eingangsvariable des Wissensbasis-Knotens sind Chunks. Der Variablentyp ist ein Objekt mit einem spezifischen JSON-Schema, das konsistent mit der ausgewählten Chunk-Struktur sein muss.',
+      embeddingModelIsRequired: 'Ein Einbettungsmodell ist erforderlich',
+      chunksVariableIsRequired: 'Die Variable \'Chunks\' ist erforderlich',
+      rerankingModelIsRequired: 'Ein Reranking-Modell ist erforderlich',
+      embeddingModelIsInvalid: 'Einbettungsmodell ist ungültig',
+      rerankingModelIsInvalid: 'Das Reranking-Modell ist ungültig',
+    },
   },
   tracing: {
     stopBy: 'Gestoppt von {{user}}',
@@ -923,6 +988,7 @@ const translation = {
       deleteFailure: 'Version löschen fehlgeschlagen',
       restoreSuccess: 'Version wiederhergestellt',
       updateFailure: 'Aktualisierung der Version fehlgeschlagen',
+      copyIdSuccess: 'ID in die Zwischenablage kopiert',
     },
     latest: 'Neueste',
     nameThisVersion: 'Nennen Sie diese Version',
@@ -933,6 +999,7 @@ const translation = {
     editVersionInfo: 'Versionsinformationen bearbeiten',
     deletionTip: 'Die Löschung ist unumkehrbar, bitte bestätigen Sie.',
     restorationTip: 'Nach der Wiederherstellung der Version wird der aktuelle Entwurf überschrieben.',
+    copyId: 'ID kopieren',
   },
   debug: {
     noData: {
@@ -959,9 +1026,31 @@ const translation = {
       resetConversationVar: 'Setze die Gesprächsvariable auf den Standardwert zurück',
       reset: 'Auf den letzten Ausführungswert zurücksetzen',
       emptyTip: 'Nachdem Sie einen Knoten auf der Leinwand durchlaufen oder einen Knoten Schritt für Schritt ausgeführt haben, können Sie den aktuellen Wert der Knotenvariable in der Variableninspektion anzeigen.',
+      largeData: 'Große Datenmengen, schreibgeschützte Vorschau. Exportieren, um alle anzuzeigen.',
+      export: 'exportieren',
+      exportToolTip: 'Variable als Datei exportieren',
+      largeDataNoExport: 'Große Datenmengen – nur teilweise Vorschau',
     },
     settingsTab: 'Einstellungen',
     lastRunTab: 'Letzte Ausführung',
+    relations: {
+      dependents: 'Angehörige',
+      dependenciesDescription: 'Knoten, auf die sich dieser Knoten stützt',
+      dependencies: 'Abhängigkeiten',
+      noDependencies: 'Keine Abhängigkeiten',
+      dependentsDescription: 'Knoten, die auf diesem Knoten basieren',
+      noDependents: 'Keine Angehörigen',
+    },
+    relationsTab: 'Beziehungen',
+    copyLastRun: 'Letzte Ausführung kopieren',
+    copyLastRunError: 'Fehler beim Kopieren der letzten Lauf-Eingaben',
+    noMatchingInputsFound: 'Keine übereinstimmenden Eingaben aus dem letzten Lauf gefunden.',
+    noLastRunFound: 'Kein vorheriger Lauf gefunden',
+    lastOutput: 'Letzte Ausgabe',
+  },
+  sidebar: {
+    exportWarning: 'Aktuelle gespeicherte Version exportieren',
+    exportWarningDesc: 'Dies wird die derzeit gespeicherte Version Ihres Workflows exportieren. Wenn Sie ungespeicherte Änderungen im Editor haben, speichern Sie diese bitte zuerst, indem Sie die Exportoption im Workflow-Canvas verwenden.',
   },
 }
 

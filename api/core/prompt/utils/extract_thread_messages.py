@@ -1,10 +1,11 @@
-from typing import Any
+from collections.abc import Sequence
 
 from constants import UUID_NIL
+from models import Message
 
 
-def extract_thread_messages(messages: list[Any]):
-    thread_messages = []
+def extract_thread_messages(messages: Sequence[Message]):
+    thread_messages: list[Message] = []
     next_message = None
 
     for message in messages:

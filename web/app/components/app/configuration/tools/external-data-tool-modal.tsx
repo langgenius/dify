@@ -12,7 +12,7 @@ import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/educatio
 import { fetchCodeBasedExtensionList } from '@/service/common'
 import { SimpleSelect } from '@/app/components/base/select'
 import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
+import { LanguagesSupported } from '@/i18n-config/language'
 import type {
   CodeBasedExtensionItem,
   ExternalDataTool,
@@ -153,7 +153,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       return
     }
 
-    if (localeData.variable && !/[a-zA-Z_]\w{0,29}/g.test(localeData.variable)) {
+    if (localeData.variable && !/^[a-zA-Z_]\w{0,29}$/.test(localeData.variable)) {
       notify({ type: 'error', message: t('appDebug.varKeyError.notValid', { key: t('appDebug.feature.tools.modal.variableName.title') }) })
       return
     }

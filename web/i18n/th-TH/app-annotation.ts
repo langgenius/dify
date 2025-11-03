@@ -17,6 +17,7 @@ const translation = {
       bulkImport: 'นําเข้าจํานวนมาก',
       bulkExport: 'ส่งออกจํานวนมาก',
       clearAll: 'ล้างคําอธิบายประกอบทั้งหมด',
+      clearAllConfirm: 'ลบหมายเหตุต่างๆ ทั้งหมดหรือไม่?',
     },
   },
   editModal: {
@@ -82,6 +83,16 @@ const translation = {
     configConfirmBtn: 'ประหยัด',
   },
   embeddingModelSwitchTip: 'โมเดลเวกเตอร์ข้อความคําอธิบายประกอบ โมเดลการสลับจะถูกฝังใหม่ส่งผลให้มีค่าใช้จ่ายเพิ่มเติม',
+  list: {
+    delete: {
+      title: 'คุณแน่ใจหรือว่าต้องการลบ?',
+    },
+  },
+  batchAction: {
+    delete: 'ลบ',
+    selected: 'เลือกไว้',
+    cancel: 'ยกเลิก',
+  },
 }
 
 export default translation

@@ -21,7 +21,6 @@ const translation = {
   resultEmpty: {
     title: 'Dieser Lauf gibt nur das JSON-Format aus',
     tipLeft: 'Bitte gehen Sie zum ',
-    Link: 'Detailpanel',
     tipRight: 'ansehen.',
     link: 'Gruppe Detail',
   },

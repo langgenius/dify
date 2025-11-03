@@ -55,7 +55,6 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   useEffect(() => {
     if (isDraft)
       onClick(item)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleClickItem = () => {

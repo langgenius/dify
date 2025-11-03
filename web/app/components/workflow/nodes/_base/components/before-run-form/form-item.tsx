@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
@@ -17,7 +17,6 @@ import Textarea from '@/app/components/base/textarea'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { Resolution, TransferMethod } from '@/types/app'
-import { useFeatures } from '@/app/components/base/features/hooks'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -25,6 +24,8 @@ import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import cn from '@/utils/classnames'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import BoolInput from './bool-input'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 
 type Props = {
   payload: InputVar
@@ -45,7 +46,8 @@ const FormItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { type } = payload
-  const fileSettings = useFeatures(s => s.features.file)
+  const fileSettings = useHooksStore(s => s.configsMap?.fileSettings)
+
   const handleArrayItemChange = useCallback((index: number) => {
     return (newValue: any) => {
       const newValues = produce(value, (draft: any) => {
@@ -92,6 +94,7 @@ const FormItem: FC<Props> = ({
     return ''
   })()
 
+  const isBooleanType = type === InputVarType.checkbox
   const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(type)
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator
@@ -113,10 +116,22 @@ const FormItem: FC<Props> = ({
 
   return (
     <div className={cn(className)}>
-      {!isArrayLikeType && (
+      {!isArrayLikeType && !isBooleanType && (
         <div className='system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary'>
-          <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
-          {!payload.required && <span className='system-xs-regular text-text-tertiary'>{t('workflow.panel.optional')}</span>}
+          <div className='truncate'>
+            {typeof payload.label === 'object' ? nodeKey : payload.label}
+          </div>
+          {payload.hide === true ? (
+            <span className='system-xs-regular text-text-tertiary'>
+              {t('workflow.panel.optional_and_hidden')}
+            </span>
+          ) : (
+            !payload.required && (
+              <span className='system-xs-regular text-text-tertiary'>
+                {t('workflow.panel.optional')}
+              </span>
+            )
+          )}
         </div>
       )}
       <div className='grow'>
@@ -158,13 +173,22 @@ const FormItem: FC<Props> = ({
           type === InputVarType.select && (
             <Select
               className="w-full"
-              defaultValue={value || ''}
+              defaultValue={value || payload.default || ''}
               items={payload.options?.map(option => ({ name: option, value: option })) || []}
               onSelect={i => onChange(i.value)}
               allowSearch={false}
             />
           )
         }
+
+        {isBooleanType && (
+          <BoolInput
+            name={payload.label as string}
+            value={!!value}
+            required={payload.required}
+            onChange={onChange}
+          />
+        )}
 
         {
           type === InputVarType.json && (
@@ -176,12 +200,24 @@ const FormItem: FC<Props> = ({
             />
           )
         }
+        {type === InputVarType.jsonObject && (
+          <CodeEditor
+            value={value}
+            language={CodeLanguage.json}
+            onChange={onChange}
+            noWrapper
+            className='bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1'
+            placeholder={
+              <div className='whitespace-pre'>{payload.json_schema}</div>
+            }
+          />
+        )}
         {(type === InputVarType.singleFile) && (
           <FileUploaderInAttachmentWrapper
             value={singleFileValue}
             onChange={handleSingleFileChange}
             fileConfig={{
-              allowed_file_types: inStepRun
+              allowed_file_types: inStepRun && (!payload.allowed_file_types || payload.allowed_file_types.length === 0)
                 ? [
                   SupportUploadFileTypes.image,
                   SupportUploadFileTypes.document,
@@ -189,7 +225,7 @@ const FormItem: FC<Props> = ({
                   SupportUploadFileTypes.video,
                 ]
                 : payload.allowed_file_types,
-              allowed_file_extensions: inStepRun
+              allowed_file_extensions: inStepRun && (!payload.allowed_file_extensions || payload.allowed_file_extensions.length === 0)
                 ? [
                   ...FILE_EXTS[SupportUploadFileTypes.image],
                   ...FILE_EXTS[SupportUploadFileTypes.document],
@@ -208,7 +244,7 @@ const FormItem: FC<Props> = ({
             value={value}
             onChange={files => onChange(files)}
             fileConfig={{
-              allowed_file_types: (inStepRun || isIteratorItemFile)
+              allowed_file_types: (inStepRun || isIteratorItemFile) && (!payload.allowed_file_types || payload.allowed_file_types.length === 0)
                 ? [
                   SupportUploadFileTypes.image,
                   SupportUploadFileTypes.document,
@@ -216,7 +252,7 @@ const FormItem: FC<Props> = ({
                   SupportUploadFileTypes.video,
                 ]
                 : payload.allowed_file_types,
-              allowed_file_extensions: (inStepRun || isIteratorItemFile)
+              allowed_file_extensions: (inStepRun || isIteratorItemFile) && (!payload.allowed_file_extensions || payload.allowed_file_extensions.length === 0)
                 ? [
                   ...FILE_EXTS[SupportUploadFileTypes.image],
                   ...FILE_EXTS[SupportUploadFileTypes.document],

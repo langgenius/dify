@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: 'Criar Conhecimento',
-      update: 'Adicionar dados',
       fallbackRoute: 'Conhecimento',
     },
     one: 'Escolher fonte de dados',
@@ -23,6 +21,7 @@ const translation = {
     uploader: {
       title: 'Enviar arquivo de texto',
       button: 'Arraste e solte arquivos ou pastas, ou',
+      buttonSingleFile: 'Arraste e solte um arquivo, ou',
       browse: 'Navegar',
       tip: 'Suporta {{supportTypes}}. Máximo de {{size}}MB cada.',
       validation: {
@@ -88,6 +87,7 @@ const translation = {
       waterCrawlNotConfiguredDescription: 'Configure o Watercrawl com a chave da API para usá-lo.',
       watercrawlDoc: 'Documentos do Watercrawl',
       configureWatercrawl: 'Configurar Watercrawl',
+      running: 'Executando',
     },
     cancel: 'Cancelar',
   },
@@ -173,6 +173,7 @@ const translation = {
     fullDocTip: 'O documento inteiro é usado como parte pai e recuperado diretamente. Observe que, por motivos de desempenho, o texto que exceder 10000 tokens será truncado automaticamente.',
     paragraphTip: 'Esse modo divide o texto em parágrafos com base em delimitadores e no comprimento máximo da parte, usando o texto dividido como a parte pai para recuperação.',
     previewChunkCount: '{{contagem}} Partes estimadas',
+    qaTip: 'Ao usar dados estruturados de perguntas e respostas, você pode criar documentos que combinam perguntas com respostas. Esses documentos são indexados com base na parte da pergunta, permitindo que o sistema recupere respostas relevantes com base na similaridade da consulta.',
   },
   stepThree: {
     creationTitle: '🎉 Conhecimento criado',

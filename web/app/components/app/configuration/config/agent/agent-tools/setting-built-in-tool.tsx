@@ -14,7 +14,6 @@ import Icon from '@/app/components/plugins/card/base/card-icon'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import Description from '@/app/components/plugins/card/base/description'
 import TabSlider from '@/app/components/base/tab-slider-plain'
-
 import Button from '@/app/components/base/button'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
@@ -22,9 +21,13 @@ import type { Collection, Tool } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { getLanguage } from '@/i18n-config/language'
 import cn from '@/utils/classnames'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import {
+  AuthCategory,
+  PluginAuthInAgent,
+} from '@/app/components/plugins/plugin-auth'
 
 type Props = {
   showBackButton?: boolean
@@ -36,6 +39,8 @@ type Props = {
   readonly?: boolean
   onHide: () => void
   onSave?: (value: Record<string, any>) => void
+  credentialId?: string
+  onAuthorizationItemClick?: (id: string) => void
 }
 
 const SettingBuiltInTool: FC<Props> = ({
@@ -48,6 +53,8 @@ const SettingBuiltInTool: FC<Props> = ({
   readonly,
   onHide,
   onSave,
+  credentialId,
+  onAuthorizationItemClick,
 }) => {
   const { locale } = useContext(I18n)
   const language = getLanguage(locale)
@@ -113,6 +120,8 @@ const SettingBuiltInTool: FC<Props> = ({
       return t('tools.setBuiltInTools.number')
     if (type === 'text-input')
       return t('tools.setBuiltInTools.string')
+    if (type === 'checkbox')
+      return 'boolean'
     if (type === 'file')
       return t('tools.setBuiltInTools.file')
     return type
@@ -197,8 +206,21 @@ const SettingBuiltInTool: FC<Props> = ({
               </div>
               <div className='system-md-semibold mt-1 text-text-primary'>{currTool?.label[language]}</div>
               {!!currTool?.description[language] && (
-                <Description className='mt-3' text={currTool.description[language]} descriptionLineRows={2}></Description>
+                <Description className='mb-2 mt-3 h-auto' text={currTool.description[language]} descriptionLineRows={2}></Description>
               )}
+              {
+                collection.allow_delete && collection.type === CollectionType.builtIn && (
+                  <PluginAuthInAgent
+                    pluginPayload={{
+                      provider: collection.name,
+                      category: AuthCategory.tool,
+                      providerType: collection.type,
+                    }}
+                    credentialId={credentialId}
+                    onAuthorizationItemClick={onAuthorizationItemClick}
+                  />
+                )
+              }
             </div>
             {/* form */}
             <div className='h-full'>

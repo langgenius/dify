@@ -21,6 +21,7 @@ import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/mo
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import RadioE from '@/app/components/base/radio/ui'
 import type {
   NodeOutPutVar,
@@ -47,8 +48,8 @@ type FormProps<
   fieldMoreInfo?: (payload: CredentialFormSchema | CustomFormSchema) => ReactNode
   customRenderField?: (
     formSchema: CustomFormSchema,
-    props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>
-  ) => ReactNode
+    props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>,
+  ) => ReactNode,
   // If return falsy value, this field will fallback to default render
   override?: [Array<FormTypeEnum>, (formSchema: CredentialFormSchema, props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>) => ReactNode]
   nodeId?: string
@@ -275,7 +276,7 @@ function Form<
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div className='system-sm-semibold flex items-center justify-between py-2 text-text-secondary'>
             <div className='flex items-center space-x-2'>
-              <span className={cn(fieldLabelClassName, 'system-sm-regular flex items-center py-2 text-text-secondary')}>{label[language] || label.en_US}</span>
+              <span className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>{label[language] || label.en_US}</span>
               {required && (
                 <span className='ml-1 text-red-500'>*</span>
               )}
@@ -283,11 +284,11 @@ function Form<
             </div>
             <Radio.Group
               className='flex items-center'
-              value={value[variable] === null ? undefined : (value[variable] ? 1 : 0)}
-              onChange={val => handleFormChange(variable, val === 1)}
+              value={value[variable]}
+              onChange={val => handleFormChange(variable, val)}
             >
-              <Radio value={1} className='!mr-1'>True</Radio>
-              <Radio value={0}>False</Radio>
+              <Radio value={true} className='!mr-1'>True</Radio>
+              <Radio value={false}>False</Radio>
             </Radio.Group>
           </div>
           {fieldMoreInfo?.(formSchema)}
@@ -406,6 +407,38 @@ function Form<
             scope={scope}
             value={value[variable]}
             onSelect={item => handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector } as any)} />
+          {fieldMoreInfo?.(formSchema)}
+          {validating && changeKey === variable && <ValidatingTip />}
+        </div>
+      )
+    }
+
+    if (formSchema.type === FormTypeEnum.any) {
+      const {
+        variable, label, required, scope,
+      } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
+
+      return (
+        <div key={variable} className={cn(itemClassName, 'py-3')}>
+          <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
+            {label[language] || label.en_US}
+            {required && (
+              <span className='ml-1 text-red-500'>*</span>
+            )}
+            {tooltipContent}
+          </div>
+          <VarReferencePicker
+            zIndex={1001}
+            readonly={false}
+            isShowNodeName
+            nodeId={nodeId || ''}
+            value={value[variable] || []}
+            onChange={item => handleFormChange(variable, item as any)}
+            filterVar={(varPayload) => {
+              if (!scope) return true
+              return scope.split('&').includes(varPayload.type)
+            }}
+          />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
