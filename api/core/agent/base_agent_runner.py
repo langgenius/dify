@@ -346,7 +346,8 @@ class BaseAgentRunner(AppRunner):
             raise ValueError("agent thought not found")
 
         if thought:
-            agent_thought.thought += thought
+            existing_thought = agent_thought.thought or ""
+            agent_thought.thought = f"{existing_thought}{thought}"
 
         if tool_name:
             agent_thought.tool = tool_name
@@ -449,14 +450,23 @@ class BaseAgentRunner(AppRunner):
                         tools = tools.split(";")
                         tool_calls: list[AssistantPromptMessage.ToolCall] = []
                         tool_call_response: list[ToolPromptMessage] = []
-                        try:
-                            tool_inputs = json.loads(agent_thought.tool_input)
-                        except Exception:
+                        tool_input_payload = agent_thought.tool_input
+                        if tool_input_payload:
+                            try:
+                                tool_inputs = json.loads(tool_input_payload)
+                            except Exception:
+                                tool_inputs = {tool: {} for tool in tools}
+                        else:
                             tool_inputs = {tool: {} for tool in tools}
-                        try:
-                            tool_responses = json.loads(agent_thought.observation)
-                        except Exception:
-                            tool_responses = dict.fromkeys(tools, agent_thought.observation)
+
+                        observation_payload = agent_thought.observation
+                        if observation_payload:
+                            try:
+                                tool_responses = json.loads(observation_payload)
+                            except Exception:
+                                tool_responses = dict.fromkeys(tools, observation_payload)
+                        else:
+                            tool_responses = dict.fromkeys(tools, observation_payload)
 
                         for tool in tools:
                             # generate a uuid for tool call
