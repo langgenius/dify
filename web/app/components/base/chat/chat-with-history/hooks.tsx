@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { usePathname } from 'next/navigation'
 import useSWR from 'swr'
 import { useLocalStorageState } from 'ahooks'
 import { produce } from 'immer'
@@ -70,6 +71,7 @@ function getFormattedChatList(messages: any[]) {
 
 export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
+  const pathname = usePathname()
   const appInfo = useWebAppStore(s => s.appInfo)
   const appParams = useWebAppStore(s => s.appParams)
   const appMeta = useWebAppStore(s => s.appMeta)
@@ -195,6 +197,14 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     () => fetchConversations(isInstalledApp, appId, undefined, false, 100),
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   )
+
+  // Refresh conversation list when navigating to configuration page
+  useEffect(() => {
+    if (pathname?.includes('/configuration')) {
+      mutateAppPinnedConversationData()
+      mutateAppConversationData()
+    }
+  }, [pathname, mutateAppPinnedConversationData, mutateAppConversationData])
   const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(
     chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null,
     () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId),
