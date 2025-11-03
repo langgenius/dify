@@ -8,6 +8,18 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 
 
+class StubCoordinator:
+    def __init__(self) -> None:
+        self.state = "initial"
+
+    def dumps(self) -> str:
+        return json.dumps({"state": self.state})
+
+    def loads(self, data: str) -> None:
+        payload = json.loads(data)
+        self.state = payload["state"]
+
+
 class TestGraphRuntimeState:
     def test_property_getters_and_setters(self):
         # FIXME(-LAN-): Mock VariablePool if needed
@@ -191,17 +203,6 @@ class TestGraphRuntimeState:
         graph_execution.exceptions_count = 4
         graph_execution.started = True
 
-        class StubCoordinator:
-            def __init__(self) -> None:
-                self.state = "initial"
-
-            def dumps(self) -> str:
-                return json.dumps({"state": self.state})
-
-            def loads(self, data: str) -> None:
-                payload = json.loads(data)
-                self.state = payload["state"]
-
         mock_graph = MagicMock()
         stub = StubCoordinator()
         with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=stub):
@@ -211,8 +212,7 @@ class TestGraphRuntimeState:
 
         snapshot = state.dumps()
 
-        restored = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
-        restored.loads(snapshot)
+        restored = GraphRuntimeState.from_snapshot(snapshot)
 
         assert restored.total_tokens == 10
         assert restored.node_run_steps == 3
@@ -233,5 +233,49 @@ class TestGraphRuntimeState:
         new_stub = StubCoordinator()
         with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=new_stub):
             restored.attach_graph(mock_graph)
+
+        assert new_stub.state == "configured"
+
+    def test_loads_rehydrates_existing_instance(self):
+        variable_pool = VariablePool()
+        variable_pool.add(("node", "key"), "value")
+
+        state = GraphRuntimeState(variable_pool=variable_pool, start_at=time())
+        state.total_tokens = 7
+        state.node_run_steps = 2
+        state.set_output("foo", "bar")
+        state.ready_queue.put("node-1")
+
+        execution = state.graph_execution
+        execution.workflow_id = "wf-456"
+        execution.started = True
+
+        mock_graph = MagicMock()
+        original_stub = StubCoordinator()
+        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=original_stub):
+            state.attach_graph(mock_graph)
+
+        original_stub.state = "configured"
+        snapshot = state.dumps()
+
+        new_stub = StubCoordinator()
+        with patch.object(GraphRuntimeState, "_build_response_coordinator", return_value=new_stub):
+            restored = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+            restored.attach_graph(mock_graph)
+            restored.loads(snapshot)
+
+        assert restored.total_tokens == 7
+        assert restored.node_run_steps == 2
+        assert restored.get_output("foo") == "bar"
+        assert restored.ready_queue.qsize() == 1
+        assert restored.ready_queue.get(timeout=0.01) == "node-1"
+
+        restored_segment = restored.variable_pool.get(("node", "key"))
+        assert restored_segment is not None
+        assert restored_segment.value == "value"
+
+        restored_execution = restored.graph_execution
+        assert restored_execution.workflow_id == "wf-456"
+        assert restored_execution.started is True
 
         assert new_stub.state == "configured"

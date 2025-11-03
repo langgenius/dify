@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { WorkflowFinishedResponse } from '@/types/workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'

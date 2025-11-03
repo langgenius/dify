@@ -1,4 +1,4 @@
-import produce from 'immer'
+import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useIsChatMode } from './use-workflow'
 import type { ModelConfig, VisionSetting } from '@/app/components/workflow/types'

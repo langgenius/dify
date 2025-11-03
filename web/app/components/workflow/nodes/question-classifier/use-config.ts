@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { BlockEnum, VarType } from '../../types'
 import type { Memory, ValueSelector, Var } from '../../types'
 import {

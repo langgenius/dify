@@ -15,15 +15,15 @@ const ActionList = ({
   detail,
 }: Props) => {
   const { t } = useTranslation()
-  const providerBriefInfo = detail.declaration.tool.identity
-  const providerKey = `${detail.plugin_id}/${providerBriefInfo.name}`
+  const providerBriefInfo = detail.declaration?.tool?.identity
+  const providerKey = providerBriefInfo ? `${detail.plugin_id}/${providerBriefInfo.name}` : ''
   const { data: collectionList = [] } = useAllToolProviders()
   const provider = useMemo(() => {
     return collectionList.find(collection => collection.name === providerKey)
   }, [collectionList, providerKey])
   const { data } = useBuiltinTools(providerKey)
 
-  if (!data || !provider)
+  if (!providerKey || !data || !provider)
     return null
 
   return (

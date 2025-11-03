@@ -56,10 +56,10 @@ const SwrInitializer = ({
         }
 
         const redirectUrl = resolvePostLoginRedirect(searchParams)
-        if (redirectUrl)
+        if (redirectUrl) {
           location.replace(redirectUrl)
-        else
-          router.replace(pathname)
+          return
+        }
 
         setInit(true)
       }

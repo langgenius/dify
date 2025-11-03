@@ -3,11 +3,12 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Protocol, cast, final
 
-from core.workflow.enums import NodeExecutionType, NodeState, NodeType
+from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType
 from core.workflow.nodes.base.node import Node
 from libs.typing import is_str, is_str_dict
 
 from .edge import Edge
+from .validation import get_graph_validator
 
 logger = logging.getLogger(__name__)
 
@@ -202,6 +203,17 @@ class Graph:
         return GraphBuilder(graph_cls=cls)
 
     @classmethod
+    def _promote_fail_branch_nodes(cls, nodes: dict[str, Node]) -> None:
+        """
+        Promote nodes configured with FAIL_BRANCH error strategy to branch execution type.
+
+        :param nodes: mapping of node ID to node instance
+        """
+        for node in nodes.values():
+            if node.error_strategy == ErrorStrategy.FAIL_BRANCH:
+                node.execution_type = NodeExecutionType.BRANCH
+
+    @classmethod
     def _mark_inactive_root_branches(
         cls,
         nodes: dict[str, Node],
@@ -307,6 +319,9 @@ class Graph:
         # Create node instances
         nodes = cls._create_node_instances(node_configs_map, node_factory)
 
+        # Promote fail-branch nodes to branch execution type at graph level
+        cls._promote_fail_branch_nodes(nodes)
+
         # Get root node instance
         root_node = nodes[root_node_id]
 
@@ -314,13 +329,18 @@ class Graph:
         cls._mark_inactive_root_branches(nodes, edges, in_edges, out_edges, root_node_id)
 
         # Create and return the graph
-        return cls(
+        graph = cls(
             nodes=nodes,
             edges=edges,
             in_edges=in_edges,
             out_edges=out_edges,
             root_node=root_node,
         )
+
+        # Validate the graph structure using built-in validators
+        get_graph_validator().validate(graph)
+
+        return graph
 
     @property
     def node_ids(self) -> list[str]:

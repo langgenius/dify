@@ -1,13 +1,12 @@
-import type { Meta, StoryObj } from '@storybook/react'
-
+import type { Meta, StoryObj } from '@storybook/nextjs'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import type { ChatItem } from '../../types'
-import { mockedWorkflowProcess } from './__mocks__/workflowProcess'
 import { markdownContent } from './__mocks__/markdownContent'
 import { markdownContentSVG } from './__mocks__/markdownContentSVG'
 import Answer from '.'
 
 const meta = {
-  title: 'Base/Chat Answer',
+  title: 'Base/Other/Chat Answer',
   component: Answer,
   parameters: {
     layout: 'fullscreen',
@@ -33,6 +32,11 @@ const mockedBaseChatItem = {
   isAnswer: true,
   content: 'Hello, how can I assist you today?',
 } satisfies ChatItem
+
+const mockedWorkflowProcess = {
+  status: WorkflowRunningStatus.Succeeded,
+  tracing: [],
+}
 
 export const Basic: Story = {
   args: {

@@ -13,6 +13,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -138,7 +139,7 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
             features = FeatureService.get_features(api_token.tenant_id)
             if features.billing.enabled:
                 if resource == "add_segment":
-                    if features.billing.subscription.plan == "sandbox":
+                    if features.billing.subscription.plan == CloudPlan.SANDBOX:
                         raise Forbidden(
                             "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."
                         )

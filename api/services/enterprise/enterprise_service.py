@@ -93,16 +93,6 @@ class EnterpriseService:
             return ret
 
         @classmethod
-        def get_app_access_mode_by_code(cls, app_code: str) -> WebAppSettings:
-            if not app_code:
-                raise ValueError("app_code must be provided.")
-            params = {"appCode": app_code}
-            data = EnterpriseRequest.send_request("GET", "/webapp/access-mode/code", params=params)
-            if not data:
-                raise ValueError("No data found.")
-            return WebAppSettings.model_validate(data)
-
-        @classmethod
         def update_app_access_mode(cls, app_id: str, access_mode: str):
             if not app_id:
                 raise ValueError("app_id must be provided.")

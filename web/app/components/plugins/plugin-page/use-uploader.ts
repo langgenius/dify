@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import type { RefObject } from 'react'
 
 type UploaderHookProps = {
   onFileChange: (file: File | null) => void
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef: RefObject<HTMLDivElement | null>
   enabled?: boolean
 }
 

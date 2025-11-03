@@ -314,6 +314,7 @@ const ToolSelector: FC<Props> = ({
                       pluginPayload={{
                         provider: currentProvider.name,
                         category: AuthCategory.tool,
+                        providerType: currentProvider.type,
                       }}
                       credentialId={value?.credential_id}
                       onAuthorizationItemClick={handleAuthorizationItemClick}

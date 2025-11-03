@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useContext } from 'use-context-selector'
 
 import { Document } from '@/app/components/base/icons/src/vender/features'

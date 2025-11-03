@@ -32,15 +32,15 @@ export type CommonHooksFnMap = {
     callback?: {
       onSuccess?: () => void
       onError?: () => void
-      onSettled?: () => void
-    }
+      onSettled?: () => void,
+    },
   ) => Promise<void>
   syncWorkflowDraftWhenPageClose: () => void
   handleRefreshWorkflowDraft: () => void
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
-  handleRun: (params: any, callback?: IOtherOptions,) => void
+  handleRun: (params: any, callback?: IOtherOptions) => void
   handleStopRun: (...args: any[]) => void
   handleStartWorkflowRun: () => void
   handleWorkflowStartRunInWorkflow: () => void

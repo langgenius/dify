@@ -100,6 +100,7 @@ class WeaviateVector(BaseVector):
             grpc_port=grpc_port,
             grpc_secure=grpc_secure,
             auth_credentials=Auth.api_key(config.api_key) if config.api_key else None,
+            skip_init_checks=True,  # Skip PyPI version check to avoid unnecessary HTTP requests
         )
 
         if not client.is_ready():

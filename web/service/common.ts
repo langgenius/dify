@@ -345,7 +345,7 @@ export const uploadRemoteFileInfo = (url: string, isPublic?: boolean, silent?: b
 export const sendEMailLoginCode = (email: string, language = 'en-US') =>
   post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } })
 
-export const emailLoginWithCode = (data: { email: string; code: string; token: string }) =>
+export const emailLoginWithCode = (data: { email: string; code: string; token: string; language: string }) =>
   post<LoginResponse>('/email-code-login/validity', { body: data })
 
 export const sendResetPasswordCode = (email: string, language = 'en-US') =>

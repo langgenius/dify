@@ -5,7 +5,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine } from '@remixicon/react'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { VarType as NumberVarType } from '../../../tool/types'
 import type {
   Condition,

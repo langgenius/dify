@@ -214,6 +214,7 @@ const SettingBuiltInTool: FC<Props> = ({
                     pluginPayload={{
                       provider: collection.name,
                       category: AuthCategory.tool,
+                      providerType: collection.type,
                     }}
                     credentialId={credentialId}
                     onAuthorizationItemClick={onAuthorizationItemClick}

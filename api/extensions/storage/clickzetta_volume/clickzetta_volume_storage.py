@@ -11,7 +11,7 @@ from collections.abc import Generator
 from io import BytesIO
 from pathlib import Path
 
-import clickzetta  # type: ignore[import]
+import clickzetta
 from pydantic import BaseModel, model_validator
 
 from extensions.storage.base_storage import BaseStorage

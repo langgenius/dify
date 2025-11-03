@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, NewType, Union
 
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueIterationCompletedEvent,
@@ -51,7 +51,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
-from services.variable_truncator import VariableTruncator
+from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 
 NodeExecutionId = NewType("NodeExecutionId", str)
 
@@ -70,6 +70,8 @@ class _NodeSnapshot:
 
 
 class WorkflowResponseConverter:
+    _truncator: BaseTruncator
+
     def __init__(
         self,
         *,
@@ -81,7 +83,13 @@ class WorkflowResponseConverter:
         self._user = user
         self._system_variables = system_variables
         self._workflow_inputs = self._prepare_workflow_inputs()
-        self._truncator = VariableTruncator.default()
+
+        # Disable truncation for SERVICE_API calls to keep backward compatibility.
+        if application_generate_entity.invoke_from == InvokeFrom.SERVICE_API:
+            self._truncator = DummyVariableTruncator()
+        else:
+            self._truncator = VariableTruncator.default()
+
         self._node_snapshots: dict[NodeExecutionId, _NodeSnapshot] = {}
         self._workflow_execution_id: str | None = None
         self._workflow_started_at: datetime | None = None

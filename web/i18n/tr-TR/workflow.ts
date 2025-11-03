@@ -950,6 +950,8 @@ const translation = {
       embeddingModelIsRequired: 'Gömme modeli gereklidir',
       chunksVariableIsRequired: 'Chunks değişkeni gereklidir',
       rerankingModelIsRequired: 'Yeniden sıralama modeli gereklidir',
+      rerankingModelIsInvalid: 'Yeniden sıralama modeli geçersiz',
+      embeddingModelIsInvalid: 'Gömme modeli geçersiz',
     },
   },
   tracing: {

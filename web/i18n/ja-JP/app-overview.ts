@@ -113,7 +113,7 @@ const translation = {
           operation: 'ドキュメント',
         },
       },
-      launch: '発射',
+      launch: '公開',
     },
     apiInfo: {
       title: 'バックエンドサービス API',

@@ -15,7 +15,7 @@ type ISegmentListProps = {
   selectedSegmentIds: string[]
   onSelected: (segId: string) => void
   onClick: (detail: SegmentDetailModel, isEditMode?: boolean) => void
-  onChangeSwitch: (enabled: boolean, segId?: string,) => Promise<void>
+  onChangeSwitch: (enabled: boolean, segId?: string) => Promise<void>
   onDelete: (segId: string) => Promise<void>
   onDeleteChildChunk: (sgId: string, childChunkId: string) => Promise<void>
   handleAddNewChildChunk: (parentChunkId: string) => void

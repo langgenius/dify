@@ -8,3 +8,7 @@ class MCPConnectionError(MCPError):
 
 class MCPAuthError(MCPConnectionError):
     pass
+
+
+class MCPRefreshTokenError(MCPError):
+    pass

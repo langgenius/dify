@@ -33,7 +33,7 @@ const translation = {
   },
   ragToolSuggestions: {
     title: 'RAGのための提案',
-    noRecommendationPluginsInstalled: '推奨プラグインがインストールされていません。<CustomLink>マーケットプレイス</CustomLink>で詳細をご確認ください',
+    noRecommendationPlugins: '推奨プラグインがありません。<CustomLink>マーケットプレイス</CustomLink>で詳細をご確認ください',
   },
 }
 

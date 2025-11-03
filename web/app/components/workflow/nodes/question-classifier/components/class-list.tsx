@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useTranslation } from 'react-i18next'
 import { useEdgesInteractions } from '../../../hooks'
 import AddButton from '../../_base/components/add-button'

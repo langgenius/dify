@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'

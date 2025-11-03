@@ -3,7 +3,7 @@ import React, { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import useStickyScroll, { ScrollPosition } from '../use-sticky-scroll'
 import Item from './item'
-import type { Plugin } from '@/app/components/plugins/types.ts'
+import type { Plugin } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
 import Link from 'next/link'
 import { RiArrowRightUpLine, RiSearchLine } from '@remixicon/react'
@@ -11,7 +11,7 @@ import { noop } from 'lodash-es'
 import { getMarketplaceUrl } from '@/utils/var'
 
 export type ListProps = {
-  wrapElemRef: React.RefObject<HTMLElement>
+  wrapElemRef: React.RefObject<HTMLElement | null>
   list: Plugin[]
   searchText: string
   tags: string[]

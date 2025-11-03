@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import select
@@ -25,6 +25,7 @@ from core.moderation.input_moderation import InputModeration
 from core.variables.variables import VariableUnion
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
+from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
@@ -61,11 +62,13 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         app: App,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ):
         super().__init__(
             queue_manager=queue_manager,
             variable_loader=variable_loader,
             app_id=application_generate_entity.app_config.app_id,
+            graph_engine_layers=graph_engine_layers,
         )
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation
@@ -195,6 +198,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
+        for layer in self._graph_engine_layers:
+            workflow_entry.graph_engine.layer(layer)
 
         generator = workflow_entry.run()
 

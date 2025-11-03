@@ -39,6 +39,7 @@ class FileApi(Resource):
         return {
             "file_size_limit": dify_config.UPLOAD_FILE_SIZE_LIMIT,
             "batch_count_limit": dify_config.UPLOAD_FILE_BATCH_LIMIT,
+            "file_upload_limit": dify_config.BATCH_UPLOAD_LIMIT,
             "image_file_size_limit": dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
             "video_file_size_limit": dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
             "audio_file_size_limit": dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,

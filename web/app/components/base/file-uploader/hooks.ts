@@ -4,7 +4,7 @@ import {
   useState,
 } from 'react'
 import { useParams } from 'next/navigation'
-import produce from 'immer'
+import { produce } from 'immer'
 import { v4 as uuid4 } from 'uuid'
 import { useTranslation } from 'react-i18next'
 import type { FileEntity } from './types'

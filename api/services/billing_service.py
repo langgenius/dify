@@ -5,6 +5,7 @@ import httpx
 from sqlalchemy import select
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
@@ -32,7 +33,7 @@ class BillingService:
 
         return {
             "limit": knowledge_rate_limit.get("limit", 10),
-            "subscription_plan": knowledge_rate_limit.get("subscription_plan", "sandbox"),
+            "subscription_plan": knowledge_rate_limit.get("subscription_plan", CloudPlan.SANDBOX),
         }
 
     @classmethod

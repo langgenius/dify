@@ -12,6 +12,7 @@ import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/co
 import I18NContext from '@/context/i18n'
 import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 import { fetchAccessToken } from '@/service/share'
+import { useWebAppStore } from '@/context/web-app-context'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -23,6 +24,7 @@ export default function CheckCode() {
   const [loading, setIsLoading] = useState(false)
   const { locale } = useContext(I18NContext)
   const redirectUrl = searchParams.get('redirect_url')
+  const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
 
   const getAppCodeFromRedirectUrl = useCallback(() => {
     if (!redirectUrl)
@@ -63,7 +65,10 @@ export default function CheckCode() {
       const ret = await webAppEmailLoginWithCode({ email, code, token })
       if (ret.result === 'success') {
         setWebAppAccessToken(ret.data.access_token)
-        const { access_token } = await fetchAccessToken({ appCode: appCode! })
+        const { access_token } = await fetchAccessToken({
+          appCode: appCode!,
+          userId: embeddedUserId || undefined,
+        })
         setWebAppPassport(appCode!, access_token)
         router.replace(decodeURIComponent(redirectUrl))
       }

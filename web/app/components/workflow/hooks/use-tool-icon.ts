@@ -14,12 +14,18 @@ import {
 } from '../store'
 import { CollectionType } from '@/app/components/tools/types'
 import { canFindTool } from '@/utils'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 
 export const useToolIcon = (data?: Node['data']) => {
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
-  const mcpTools = useStore(s => s.mcpTools)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
   const dataSourceList = useStore(s => s.dataSourceList)
   // const a = useStore(s => s.data)
   const toolIcon = useMemo(() => {
@@ -27,15 +33,15 @@ export const useToolIcon = (data?: Node['data']) => {
       return ''
     if (data.type === BlockEnum.Tool) {
       // eslint-disable-next-line sonarjs/no-dead-store
-      let targetTools = buildInTools
+      let targetTools = buildInTools || []
       if (data.provider_type === CollectionType.builtIn)
-        targetTools = buildInTools
+        targetTools = buildInTools || []
       else if (data.provider_type === CollectionType.custom)
-        targetTools = customTools
+        targetTools = customTools || []
       else if (data.provider_type === CollectionType.mcp)
-        targetTools = mcpTools
+        targetTools = mcpTools || []
       else
-        targetTools = workflowTools
+        targetTools = workflowTools || []
       return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
     }
     if (data.type === BlockEnum.DataSource)
@@ -46,24 +52,24 @@ export const useToolIcon = (data?: Node['data']) => {
 }
 
 export const useGetToolIcon = () => {
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
   const workflowStore = useWorkflowStore()
   const getToolIcon = useCallback((data: Node['data']) => {
     const {
-      buildInTools,
-      customTools,
-      workflowTools,
       dataSourceList,
     } = workflowStore.getState()
 
     if (data.type === BlockEnum.Tool) {
       // eslint-disable-next-line sonarjs/no-dead-store
-      let targetTools = buildInTools
+      let targetTools = buildInTools || []
       if (data.provider_type === CollectionType.builtIn)
-        targetTools = buildInTools
+        targetTools = buildInTools || []
       else if (data.provider_type === CollectionType.custom)
-        targetTools = customTools
+        targetTools = customTools || []
       else
-        targetTools = workflowTools
+        targetTools = workflowTools || []
       return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
     }
 

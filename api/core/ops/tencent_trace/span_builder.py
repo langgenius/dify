@@ -14,10 +14,11 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from core.ops.tencent_trace.entities.tencent_semconv import (
+from core.ops.tencent_trace.entities.semconv import (
     GEN_AI_COMPLETION,
     GEN_AI_FRAMEWORK,
     GEN_AI_IS_ENTRY,
+    GEN_AI_IS_STREAMING_REQUEST,
     GEN_AI_MODEL_NAME,
     GEN_AI_PROMPT,
     GEN_AI_PROVIDER,
@@ -156,6 +157,25 @@ class TencentSpanBuilder:
         outputs = node_execution.outputs or {}
         usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
 
+        attributes = {
+            GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
+            GEN_AI_SPAN_KIND: GenAISpanKind.GENERATION.value,
+            GEN_AI_FRAMEWORK: "dify",
+            GEN_AI_MODEL_NAME: process_data.get("model_name", ""),
+            GEN_AI_PROVIDER: process_data.get("model_provider", ""),
+            GEN_AI_USAGE_INPUT_TOKENS: str(usage_data.get("prompt_tokens", 0)),
+            GEN_AI_USAGE_OUTPUT_TOKENS: str(usage_data.get("completion_tokens", 0)),
+            GEN_AI_USAGE_TOTAL_TOKENS: str(usage_data.get("total_tokens", 0)),
+            GEN_AI_PROMPT: json.dumps(process_data.get("prompts", []), ensure_ascii=False),
+            GEN_AI_COMPLETION: str(outputs.get("text", "")),
+            GEN_AI_RESPONSE_FINISH_REASON: outputs.get("finish_reason", ""),
+            INPUT_VALUE: json.dumps(process_data.get("prompts", []), ensure_ascii=False),
+            OUTPUT_VALUE: str(outputs.get("text", "")),
+        }
+
+        if usage_data.get("time_to_first_token") is not None:
+            attributes[GEN_AI_IS_STREAMING_REQUEST] = "true"
+
         return SpanData(
             trace_id=trace_id,
             parent_span_id=workflow_span_id,
@@ -163,21 +183,7 @@ class TencentSpanBuilder:
             name="GENERATION",
             start_time=TencentSpanBuilder._get_time_nanoseconds(node_execution.created_at),
             end_time=TencentSpanBuilder._get_time_nanoseconds(node_execution.finished_at),
-            attributes={
-                GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
-                GEN_AI_SPAN_KIND: GenAISpanKind.GENERATION.value,
-                GEN_AI_FRAMEWORK: "dify",
-                GEN_AI_MODEL_NAME: process_data.get("model_name", ""),
-                GEN_AI_PROVIDER: process_data.get("model_provider", ""),
-                GEN_AI_USAGE_INPUT_TOKENS: str(usage_data.get("prompt_tokens", 0)),
-                GEN_AI_USAGE_OUTPUT_TOKENS: str(usage_data.get("completion_tokens", 0)),
-                GEN_AI_USAGE_TOTAL_TOKENS: str(usage_data.get("total_tokens", 0)),
-                GEN_AI_PROMPT: json.dumps(process_data.get("prompts", []), ensure_ascii=False),
-                GEN_AI_COMPLETION: str(outputs.get("text", "")),
-                GEN_AI_RESPONSE_FINISH_REASON: outputs.get("finish_reason", ""),
-                INPUT_VALUE: json.dumps(process_data.get("prompts", []), ensure_ascii=False),
-                OUTPUT_VALUE: str(outputs.get("text", "")),
-            },
+            attributes=attributes,
             status=TencentSpanBuilder._get_workflow_node_status(node_execution),
         )
 
@@ -191,6 +197,19 @@ class TencentSpanBuilder:
         if trace_info.error:
             status = Status(StatusCode.ERROR, trace_info.error)
 
+        attributes = {
+            GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
+            GEN_AI_USER_ID: str(user_id),
+            GEN_AI_SPAN_KIND: GenAISpanKind.WORKFLOW.value,
+            GEN_AI_FRAMEWORK: "dify",
+            GEN_AI_IS_ENTRY: "true",
+            INPUT_VALUE: str(trace_info.inputs or ""),
+            OUTPUT_VALUE: str(trace_info.outputs or ""),
+        }
+
+        if trace_info.is_streaming_request:
+            attributes[GEN_AI_IS_STREAMING_REQUEST] = "true"
+
         return SpanData(
             trace_id=trace_id,
             parent_span_id=None,
@@ -198,15 +217,7 @@ class TencentSpanBuilder:
             name="message",
             start_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.start_time),
             end_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.end_time),
-            attributes={
-                GEN_AI_SESSION_ID: trace_info.metadata.get("conversation_id", ""),
-                GEN_AI_USER_ID: str(user_id),
-                GEN_AI_SPAN_KIND: GenAISpanKind.WORKFLOW.value,
-                GEN_AI_FRAMEWORK: "dify",
-                GEN_AI_IS_ENTRY: "true",
-                INPUT_VALUE: str(trace_info.inputs or ""),
-                OUTPUT_VALUE: str(trace_info.outputs or ""),
-            },
+            attributes=attributes,
             status=status,
             links=links,
         )

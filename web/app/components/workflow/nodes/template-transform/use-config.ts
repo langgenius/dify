@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
 import type { Var, Variable } from '../../types'
 import { VarType } from '../../types'

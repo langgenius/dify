@@ -2302,6 +2302,7 @@ class TestRegisterService:
             name=admin_name,
             password=admin_password,
             ip_address=ip_address,
+            language="en-US",
         )
 
         # Verify account was created
@@ -2351,6 +2352,7 @@ class TestRegisterService:
                     name=admin_name,
                     password=admin_password,
                     ip_address=ip_address,
+                    language="en-US",
                 )
 
             # Verify no entities were created (rollback worked)

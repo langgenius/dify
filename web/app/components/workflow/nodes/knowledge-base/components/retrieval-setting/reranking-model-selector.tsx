@@ -44,6 +44,7 @@ const RerankingModelSelector = ({
       modelList={rerankModelList}
       onSelect={handleRerankingModelChange}
       readonly={readonly}
+      showDeprecatedWarnIcon
     />
   )
 }

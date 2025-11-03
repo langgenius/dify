@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useParams } from 'next/navigation'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiRobot2Fill,
   RiRobot2Line,

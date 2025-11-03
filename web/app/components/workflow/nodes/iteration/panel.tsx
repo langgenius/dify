@@ -46,6 +46,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
     changeParallel,
     changeErrorResponseMode,
     changeParallelNums,
+    changeFlattenOutput,
   } = useConfig(id, data)
 
   return (
@@ -115,6 +116,18 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
       <div className='px-4 py-2'>
         <Field title={t(`${i18nPrefix}.errorResponseMethod`)} >
           <Select items={responseMethod} defaultValue={inputs.error_handle_mode} onSelect={changeErrorResponseMode} allowSearch={false} />
+        </Field>
+      </div>
+
+      <Split />
+
+      <div className='px-4 py-2'>
+        <Field
+          title={t(`${i18nPrefix}.flattenOutput`)}
+          tooltip={<div className='w-[230px]'>{t(`${i18nPrefix}.flattenOutputDesc`)}</div>}
+          inline
+        >
+          <Switch defaultValue={inputs.flatten_output} onChange={changeFlattenOutput} />
         </Field>
       </div>
     </div>

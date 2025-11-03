@@ -33,7 +33,7 @@ const translation = {
   },
   ragToolSuggestions: {
     title: 'RAG 工具推荐',
-    noRecommendationPluginsInstalled: '暂无已安装的推荐插件，更多插件请在 <CustomLink>Marketplace</CustomLink> 中查找',
+    noRecommendationPlugins: '暂无推荐插件，更多插件请在 <CustomLink>Marketplace</CustomLink> 中查找',
   },
 }
 

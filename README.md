@@ -63,7 +63,7 @@ Dify is an open-source platform for developing LLM applications. Its intuitive i
 > - CPU >= 2 Core
 > - RAM >= 4 GiB
 
-</br>
+<br/>
 
 The easiest way to start the Dify server is through [Docker Compose](docker/docker-compose.yaml). Before running Dify with the following commands, make sure that [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) are installed on your machine:
 
@@ -109,15 +109,15 @@ All of Dify's offerings come with corresponding APIs, so you could effortlessly 
 
 ## Using Dify
 
-- **Cloud </br>**
+- **Cloud <br/>**
   We host a [Dify Cloud](https://dify.ai) service for anyone to try with zero setup. It provides all the capabilities of the self-deployed version, and includes 200 free GPT-4 calls in the sandbox plan.
 
-- **Self-hosting Dify Community Edition</br>**
+- **Self-hosting Dify Community Edition<br/>**
   Quickly get Dify running in your environment with this [starter guide](#quick-start).
   Use our [documentation](https://docs.dify.ai) for further references and more in-depth instructions.
 
-- **Dify for enterprise / organizations</br>**
-  We provide additional enterprise-centric features. [Log your questions for us through this chatbot](https://udify.app/chat/22L1zSxg6yW1cWQg) or [send us an email](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) to discuss enterprise needs. </br>
+- **Dify for enterprise / organizations<br/>**
+  We provide additional enterprise-centric features. [Log your questions for us through this chatbot](https://udify.app/chat/22L1zSxg6yW1cWQg) or [send us an email](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) to discuss enterprise needs. <br/>
 
   > For startups and small businesses using AWS, check out [Dify Premium on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) and deploy it to your own AWS VPC with one click. It's an affordable AMI offering with the option to create apps with custom logo and branding.
 

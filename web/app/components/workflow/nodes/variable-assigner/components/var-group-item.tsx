@@ -2,7 +2,7 @@
 import React, { useCallback } from 'react'
 import type { ChangeEvent, FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useBoolean } from 'ahooks'
 import {
   RiDeleteBinLine,

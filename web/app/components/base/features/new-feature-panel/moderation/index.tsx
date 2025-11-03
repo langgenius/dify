@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useContext } from 'use-context-selector'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { ContentModeration } from '@/app/components/base/icons/src/vender/features'

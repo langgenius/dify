@@ -17,11 +17,11 @@ export type FeedbackType = {
 
 export type FeedbackFunc = (
   messageId: string,
-  feedback: FeedbackType
+  feedback: FeedbackType,
 ) => Promise<any>
 export type SubmitAnnotationFunc = (
   messageId: string,
-  content: string
+  content: string,
 ) => Promise<any>
 
 export type DisplayScene = 'web' | 'console'

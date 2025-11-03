@@ -201,11 +201,14 @@ class BaseSession(
                 self._receiver_future.result(timeout=5.0)  # Wait up to 5 seconds
             except TimeoutError:
                 # If the receiver loop is still running after timeout, we'll force shutdown
-                pass
+                # Cancel the future to interrupt the receiver loop
+                self._receiver_future.cancel()
 
         # Shutdown the executor
         if self._executor:
-            self._executor.shutdown(wait=True)
+            # Use non-blocking shutdown to prevent hanging
+            # The receiver thread should have already exited due to the None message in the queue
+            self._executor.shutdown(wait=False)
 
     def send_request(
         self,

@@ -288,9 +288,10 @@ class MessageService:
         )
 
         with measure_time() as timer:
-            questions: list[str] = LLMGenerator.generate_suggested_questions_after_answer(
+            questions_sequence = LLMGenerator.generate_suggested_questions_after_answer(
                 tenant_id=app_model.tenant_id, histories=histories
             )
+            questions: list[str] = list(questions_sequence)
 
         # get tracing instance
         trace_manager = TraceQueueManager(app_id=app_model.id)

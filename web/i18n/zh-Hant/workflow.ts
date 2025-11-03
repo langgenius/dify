@@ -949,6 +949,8 @@ const translation = {
       rerankingModelIsRequired: '需要重新排序模型',
       chunksVariableIsRequired: 'Chunks 變數是必需的',
       embeddingModelIsRequired: '需要嵌入模型',
+      rerankingModelIsInvalid: '重排序模型無效',
+      embeddingModelIsInvalid: '嵌入模型無效',
     },
   },
   tracing: {
