@@ -23,6 +23,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities.metadata_entities import Condition, MetadataCondition
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.variables import (
@@ -520,14 +521,38 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node):
             metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore
         return metadata_filter_document_ids, metadata_condition, usage
 
+    def _get_all_metadata_fields(self, dataset_ids: list) -> list[str]:
+        """
+        Get all metadata field names for the given datasets, including both custom and built-in fields.
+
+        :param dataset_ids: list of dataset IDs
+        :return: list of metadata field names
+        """
+        # Get custom metadata fields
+        stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
+        metadata_fields = db.session.scalars(stmt).all()
+        all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
+
+        # Check if any dataset has built-in fields enabled
+        datasets_stmt = select(Dataset).where(Dataset.id.in_(dataset_ids))
+        datasets = db.session.scalars(datasets_stmt).all()
+        built_in_enabled = any(dataset.built_in_field_enabled for dataset in datasets)
+
+        # Add built-in fields if enabled
+        if built_in_enabled:
+            built_in_fields = [field.value for field in BuiltInField]
+            all_metadata_fields.extend(built_in_fields)
+
+        return all_metadata_fields
+
     def _automatic_metadata_filter_func(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
     ) -> tuple[list[dict[str, Any]], LLMUsage]:
         usage = LLMUsage.empty_usage()
-        # get all metadata field
-        stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
-        metadata_fields = db.session.scalars(stmt).all()
-        all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
+
+        # Get all metadata fields (custom + built-in if enabled)
+        all_metadata_fields = self._get_all_metadata_fields(dataset_ids)
+
         if node_data.metadata_model_config is None:
             raise ValueError("metadata_model_config is required")
         # get metadata model instance and fetch model config
