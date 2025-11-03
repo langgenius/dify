@@ -91,14 +91,20 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       url: `/apps/${appDetail.id}/chat-conversations`,
       params: query,
     }
-    : null, fetchChatConversations)
+    : null, fetchChatConversations, {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+  })
 
   const { data: completionConversations, mutate: mutateCompletionList } = useSWR(() => !isChatMode
     ? {
       url: `/apps/${appDetail.id}/completion-conversations`,
       params: query,
     }
-    : null, fetchCompletionConversations)
+    : null, fetchCompletionConversations, {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+  })
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
 
