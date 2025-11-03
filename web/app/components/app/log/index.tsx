@@ -1,6 +1,6 @@
 'use client'
 import type { FC, SVGProps } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -53,6 +53,7 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
+  const pathname = usePathname()
   const [queryParams, setQueryParams] = useState<QueryParam>({
     period: '2',
     annotation_status: 'all',
@@ -105,6 +106,16 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
   })
+
+  // Refresh data when navigating to logs page
+  useEffect(() => {
+    if (pathname?.includes('/logs')) {
+      if (isChatMode)
+        mutateChatList()
+      else
+        mutateCompletionList()
+    }
+  }, [pathname, isChatMode, mutateChatList, mutateCompletionList])
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
 
