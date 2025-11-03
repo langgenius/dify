@@ -120,6 +120,32 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     }
   }
 
+  // Optimistic update: remove items from list immediately
+  const handleOptimisticDelete = (conversationIds?: string[]) => {
+    if (isChatMode && chatConversations) {
+      mutateChatList({
+        ...chatConversations,
+        data: conversationIds
+          ? chatConversations.data.filter(item => !conversationIds.includes(item.id))
+          : [],
+        total: conversationIds
+          ? chatConversations.total - conversationIds.length
+          : 0,
+      }, false) // false means don't revalidate immediately
+    }
+    else if (!isChatMode && completionConversations) {
+      mutateCompletionList({
+        ...completionConversations,
+        data: conversationIds
+          ? completionConversations.data.filter(item => !conversationIds.includes(item.id))
+          : [],
+        total: conversationIds
+          ? completionConversations.total - conversationIds.length
+          : 0,
+      }, false)
+    }
+  }
+
   return (
     <div className='flex h-full grow flex-col'>
       <p className='system-sm-regular shrink-0 text-text-tertiary'>{t('appLog.description')}</p>
@@ -132,6 +158,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           onRefresh={isChatMode ? mutateChatList : mutateCompletionList}
           selectedItems={selectedItems}
           onClearSelected={handleClearSelected}
+          onOptimisticDelete={handleOptimisticDelete}
         />
         {total === undefined
           ? <Loading type='app' />

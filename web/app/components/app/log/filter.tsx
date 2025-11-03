@@ -38,9 +38,10 @@ type IFilterProps = {
   onRefresh?: () => void
   selectedItems?: string[]
   onClearSelected?: (conversationIds?: string[]) => void
+  onOptimisticDelete?: (conversationIds?: string[]) => void
 }
 
-const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryParams, onRefresh, selectedItems, onClearSelected }: IFilterProps) => {
+const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryParams, onRefresh, selectedItems, onClearSelected, onOptimisticDelete }: IFilterProps) => {
   const { data } = useSWR({ url: `/apps/${appId}/annotations/count` }, fetchAnnotationsCount)
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -49,6 +50,11 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
 
   const handleClearLogs = async (conversationIds?: string[]) => {
     setIsClearing(true)
+
+    // Optimistically remove items from UI immediately
+    onOptimisticDelete?.(conversationIds)
+    onClearSelected?.(conversationIds)
+
     try {
       if (isChatMode)
         await clearChatConversations({ appId, conversationIds })
@@ -60,12 +66,13 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
         : t('appLog.filter.clearSuccess')
       notify({ type: 'success', message })
 
-      // Wait for onRefresh to complete before clearing selection
+      // Revalidate to sync with backend after async task completes
       await onRefresh?.()
-      onClearSelected?.(conversationIds)
     }
     catch {
       notify({ type: 'error', message: t('appLog.filter.clearFailed') })
+      // Revalidate on error to restore correct state
+      await onRefresh?.()
     }
     finally {
       setIsClearing(false)
