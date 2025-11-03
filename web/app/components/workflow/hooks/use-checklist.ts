@@ -54,6 +54,8 @@ import {
   useAllCustomTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { AppModeEnum } from '@/types/app'
 
 export type ChecklistItem = {
   id: string
@@ -84,6 +86,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
   const getToolIcon = useGetToolIcon()
+  const appMode = useAppStore.getState().appDetail?.mode
+  const shouldCheckStartNode = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
 
   const map = useNodesAvailableVarList(nodes)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -175,10 +179,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
         // Start nodes and Trigger nodes should not show unConnected error if they have validation errors
         // or if they are valid start nodes (even without incoming connections)
-        const isStartNode = nodesExtraData?.[node.data.type as BlockEnum]?.metaData.isStart || false
+        const isStartNodeMeta = nodesExtraData?.[node.data.type as BlockEnum]?.metaData.isStart ?? false
+        const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta : true
 
         const isUnconnected = !validNodes.find(n => n.id === node.id)
-        const shouldShowError = errorMessage || (isUnconnected && !isStartNode)
+        const shouldShowError = errorMessage || (isUnconnected && !canSkipConnectionCheck)
 
         if (shouldShowError) {
           list.push({
@@ -186,7 +191,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
             type: node.data.type,
             title: node.data.title,
             toolIcon,
-            unConnected: isUnconnected && !isStartNode,
+            unConnected: isUnconnected && !canSkipConnectionCheck,
             errorMessage,
             canNavigate: true,
           })
@@ -195,16 +200,17 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     }
 
     // Check for start nodes (including triggers)
-    const startNodesFiltered = nodes.filter(node => START_NODE_TYPES.includes(node.data.type as BlockEnum))
-
-    if (startNodesFiltered.length === 0) {
-      list.push({
-        id: 'start-node-required',
-        type: BlockEnum.Start,
-        title: t('workflow.panel.startNode'),
-        errorMessage: t('workflow.common.needStartNode'),
-        canNavigate: false,
-      })
+    if (shouldCheckStartNode) {
+      const startNodesFiltered = nodes.filter(node => START_NODE_TYPES.includes(node.data.type as BlockEnum))
+      if (startNodesFiltered.length === 0) {
+        list.push({
+          id: 'start-node-required',
+          type: BlockEnum.Start,
+          title: t('workflow.panel.startNode'),
+          errorMessage: t('workflow.common.needStartNode'),
+          canNavigate: false,
+        })
+      }
     }
 
     const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
@@ -222,7 +228,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     })
 
     return list
-  }, [nodes, nodesExtraData, edges, buildInTools, customTools, workflowTools, language, dataSourceList, getToolIcon, strategyProviders, getCheckData, t, map])
+  }, [nodes, nodesExtraData, edges, buildInTools, customTools, workflowTools, language, dataSourceList, getToolIcon, strategyProviders, getCheckData, t, map, shouldCheckStartNode])
 
   return needWarningNodes
 }
