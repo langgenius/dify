@@ -1063,7 +1063,8 @@ export const getVarType = ({
     if (valueSelector[1] === 'index') return VarType.number
   }
 
-  const isInStartNodeSysVar = isSystemVar(valueSelector) && !isGlobalVar(valueSelector)
+  const isGlobal = isGlobalVar(valueSelector)
+  const isInStartNodeSysVar = isSystemVar(valueSelector) && !isGlobal
   const isEnv = isENV(valueSelector)
   const isChatVar = isConversationVar(valueSelector)
   const isSharedRagVariable
@@ -1077,6 +1078,7 @@ export const getVarType = ({
 
   const targetVarNodeId = (() => {
     if (isInStartNodeSysVar) return startNode?.id
+    if (isGlobal) return 'global'
     if (isInNodeRagVariable) return valueSelector[1]
     return valueSelector[0]
   })()
@@ -1089,7 +1091,7 @@ export const getVarType = ({
   let type: VarType = VarType.string
   let curr: any = targetVar.vars
 
-  if (isInStartNodeSysVar || isEnv || isChatVar || isSharedRagVariable) {
+  if (isInStartNodeSysVar || isEnv || isChatVar || isSharedRagVariable || isGlobal) {
     return curr.find(
       (v: any) => v.variable === (valueSelector as ValueSelector).join('.'),
     )?.type
