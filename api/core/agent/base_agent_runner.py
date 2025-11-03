@@ -1,6 +1,7 @@
 import json
 import logging
 import uuid
+from decimal import Decimal
 from typing import Union, cast
 
 from sqlalchemy import select
@@ -41,6 +42,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_database import db
 from factories import file_factory
+from models.enums import CreatorUserRole
 from models.model import Conversation, Message, MessageAgentThought, MessageFile
 
 logger = logging.getLogger(__name__)
@@ -287,8 +289,10 @@ class BaseAgentRunner(AppRunner):
         Create agent thought
         """
         thought = MessageAgentThought(
+            id=str(uuid.uuid4()),
             message_id=message_id,
             message_chain_id=None,
+            tool_process_data=None,
             thought="",
             tool=tool_name,
             tool_labels_str="{}",
@@ -296,20 +300,20 @@ class BaseAgentRunner(AppRunner):
             tool_input=tool_input,
             message=message,
             message_token=0,
-            message_unit_price=0,
-            message_price_unit=0,
+            message_unit_price=Decimal(0),
+            message_price_unit=Decimal("0.001"),
             message_files=json.dumps(messages_ids) if messages_ids else "",
             answer="",
             observation="",
             answer_token=0,
-            answer_unit_price=0,
-            answer_price_unit=0,
+            answer_unit_price=Decimal(0),
+            answer_price_unit=Decimal("0.001"),
             tokens=0,
-            total_price=0,
+            total_price=Decimal(0),
             position=self.agent_thought_count + 1,
             currency="USD",
             latency=0,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=self.user_id,
         )
 
