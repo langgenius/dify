@@ -16,7 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: 'Dify로 앱 탐색',
+    title: 'Dify 로 앱 탐색',
     description: '이 템플릿 앱을 즉시 사용하거나 템플릿을 기반으로 고유한 앱을 사용자 정의하세요.',
     allCategories: '모든 카테고리',
   },

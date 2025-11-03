@@ -31,7 +31,7 @@ export const extractReturnType = (code: string, language: CodeLanguage): OutputV
   if (returnIndex === -1)
     return {}
 
-  // returnから始まる部分文字列を取得
+  // return から始まる部分文字列を取得
   const codeAfterReturn = codeWithoutComments.slice(returnIndex)
 
   let bracketCount = 0

@@ -1,7 +1,6 @@
 import json
 from copy import deepcopy
-from datetime import UTC, datetime
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 from urllib.parse import urlparse
 
 import httpx
@@ -10,7 +9,9 @@ from sqlalchemy import select
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
 from core.rag.entities.metadata_entities import MetadataCondition
+from core.workflow.nodes.http_request.exc import InvalidHttpMethodError
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 from models.dataset import (
     Dataset,
     ExternalKnowledgeApis,
@@ -30,11 +31,11 @@ class ExternalDatasetService:
     ) -> tuple[list[ExternalKnowledgeApis], int | None]:
         query = (
             select(ExternalKnowledgeApis)
-            .filter(ExternalKnowledgeApis.tenant_id == tenant_id)
+            .where(ExternalKnowledgeApis.tenant_id == tenant_id)
             .order_by(ExternalKnowledgeApis.created_at.desc())
         )
         if search:
-            query = query.filter(ExternalKnowledgeApis.name.ilike(f"%{search}%"))
+            query = query.where(ExternalKnowledgeApis.name.ilike(f"%{search}%"))
 
         external_knowledge_apis = db.paginate(
             select=query, page=page, per_page=per_page, max_per_page=100, error_out=False
@@ -46,9 +47,9 @@ class ExternalDatasetService:
     def validate_api_list(cls, api_settings: dict):
         if not api_settings:
             raise ValueError("api list is empty")
-        if "endpoint" not in api_settings and not api_settings["endpoint"]:
+        if not api_settings.get("endpoint"):
             raise ValueError("endpoint is required")
-        if "api_key" not in api_settings and not api_settings["api_key"]:
+        if not api_settings.get("api_key"):
             raise ValueError("api_key is required")
 
     @staticmethod
@@ -87,9 +88,9 @@ class ExternalDatasetService:
             else:
                 raise ValueError(f"invalid endpoint: {endpoint}")
         try:
-            response = httpx.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
+            response = ssrf_proxy.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
         except Exception as e:
-            raise ValueError(f"failed to connect to the endpoint: {endpoint}")
+            raise ValueError(f"failed to connect to the endpoint: {endpoint}") from e
         if response.status_code == 502:
             raise ValueError(f"Bad Gateway: failed to connect to the endpoint: {endpoint}")
         if response.status_code == 404:
@@ -99,7 +100,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_api(external_knowledge_api_id: str) -> ExternalKnowledgeApis:
-        external_knowledge_api: Optional[ExternalKnowledgeApis] = (
+        external_knowledge_api: ExternalKnowledgeApis | None = (
             db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id).first()
         )
         if external_knowledge_api is None:
@@ -108,19 +109,20 @@ class ExternalDatasetService:
 
     @staticmethod
     def update_external_knowledge_api(tenant_id, user_id, external_knowledge_api_id, args) -> ExternalKnowledgeApis:
-        external_knowledge_api: Optional[ExternalKnowledgeApis] = (
+        external_knowledge_api: ExternalKnowledgeApis | None = (
             db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
         )
         if external_knowledge_api is None:
             raise ValueError("api template not found")
-        if args.get("settings") and args.get("settings").get("api_key") == HIDDEN_VALUE:
-            args.get("settings")["api_key"] = external_knowledge_api.settings_dict.get("api_key")
+        settings = args.get("settings")
+        if settings and settings.get("api_key") == HIDDEN_VALUE and external_knowledge_api.settings_dict:
+            settings["api_key"] = external_knowledge_api.settings_dict.get("api_key")
 
         external_knowledge_api.name = args.get("name")
         external_knowledge_api.description = args.get("description", "")
         external_knowledge_api.settings = json.dumps(args.get("settings"), ensure_ascii=False)
         external_knowledge_api.updated_by = user_id
-        external_knowledge_api.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        external_knowledge_api.updated_at = naive_utc_now()
         db.session.commit()
 
         return external_knowledge_api
@@ -149,7 +151,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_binding_with_dataset_id(tenant_id: str, dataset_id: str) -> ExternalKnowledgeBindings:
-        external_knowledge_binding: Optional[ExternalKnowledgeBindings] = (
+        external_knowledge_binding: ExternalKnowledgeBindings | None = (
             db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
         )
         if not external_knowledge_binding:
@@ -179,19 +181,29 @@ class ExternalDatasetService:
         do http request depending on api bundle
         """
 
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "url": settings.url,
             "headers": settings.headers,
             "follow_redirects": True,
         }
 
-        response: httpx.Response = getattr(ssrf_proxy, settings.request_method)(
-            data=json.dumps(settings.params), files=files, **kwargs
-        )
+        _METHOD_MAP = {
+            "get": ssrf_proxy.get,
+            "head": ssrf_proxy.head,
+            "post": ssrf_proxy.post,
+            "put": ssrf_proxy.put,
+            "delete": ssrf_proxy.delete,
+            "patch": ssrf_proxy.patch,
+        }
+        method_lc = settings.request_method.lower()
+        if method_lc not in _METHOD_MAP:
+            raise InvalidHttpMethodError(f"Invalid http method {settings.request_method}")
+
+        response: httpx.Response = _METHOD_MAP[method_lc](data=json.dumps(settings.params), files=files, **kwargs)
         return response
 
     @staticmethod
-    def assembling_headers(authorization: Authorization, headers: Optional[dict] = None) -> dict[str, Any]:
+    def assembling_headers(authorization: Authorization, headers: dict | None = None) -> dict[str, Any]:
         authorization = deepcopy(authorization)
         if headers:
             headers = deepcopy(headers)
@@ -218,7 +230,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_api_settings(settings: dict) -> ExternalKnowledgeApiSetting:
-        return ExternalKnowledgeApiSetting.parse_obj(settings)
+        return ExternalKnowledgeApiSetting.model_validate(settings)
 
     @staticmethod
     def create_external_dataset(tenant_id: str, user_id: str, args: dict) -> Dataset:
@@ -265,8 +277,8 @@ class ExternalDatasetService:
         dataset_id: str,
         query: str,
         external_retrieval_parameters: dict,
-        metadata_condition: Optional[MetadataCondition] = None,
-    ) -> list:
+        metadata_condition: MetadataCondition | None = None,
+    ):
         external_knowledge_binding = (
             db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
         )

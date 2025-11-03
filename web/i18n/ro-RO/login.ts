@@ -9,7 +9,6 @@ const translation = {
   namePlaceholder: 'Numele tău de utilizator',
   forget: 'Ai uitat parola?',
   signBtn: 'Autentificare',
-  sso: 'Continuă cu SSO',
   installBtn: 'Configurare',
   setAdminAccount: 'Configurare cont de administrator',
   setAdminAccountDesc: 'Privilegii maxime pentru contul de administrator, care poate fi utilizat pentru crearea de aplicații și gestionarea furnizorilor LLM, etc.',
@@ -56,6 +55,7 @@ const translation = {
     passwordInvalid: 'Parola trebuie să conțină litere și cifre, iar lungimea trebuie să fie mai mare de 8 caractere',
     passwordLengthInValid: 'Parola trebuie să aibă cel puțin 8 caractere',
     registrationNotAllowed: 'Contul nu a fost găsit. Vă rugăm să contactați administratorul de sistem pentru a vă înregistra.',
+    invalidEmailOrPassword: 'Email sau parolă invalidă.',
   },
   license: {
     tip: 'Înainte de a începe Dify Community Edition, citește',
@@ -80,9 +80,9 @@ const translation = {
     verificationCodePlaceholder: 'Introduceți codul din 6 cifre',
     emptyCode: 'Codul este necesar',
     verify: 'Verifica',
-    tips: 'Trimitem un cod de verificare la <strong>{{email}}</strong>',
     useAnotherMethod: 'Utilizați o altă metodă',
     resend: 'Retrimite',
+    tipsPrefix: 'Trimitem un cod de verificare la',
   },
   usePassword: 'Utilizați parola',
   useVerificationCode: 'Utilizarea codului de verificare',
@@ -105,6 +105,22 @@ const translation = {
   licenseExpired: 'Licență expirată',
   licenseLost: 'Licență pierdută',
   licenseExpiredTip: 'Licența Dify Enterprise pentru spațiul de lucru a expirat. Contactați administratorul pentru a continua să utilizați Dify.',
+  webapp: {
+    noLoginMethod: 'Metoda de autentificare nu este configurată pentru aplicația web',
+    noLoginMethodTip: 'Vă rugăm să contactați administratorul sistemului pentru a adăuga o metodă de autentificare.',
+    disabled: 'Autentificarea webapp-ului este dezactivată. Vă rugăm să contactați administratorul sistemului pentru a o activa. Puteți încerca să folosiți aplicația direct.',
+    login: 'Conectare',
+  },
+  signup: {
+    haveAccount: 'Ai deja un cont?',
+    signIn: 'Autentificare',
+    noAccount: 'Nu ai un cont?',
+    verifyMail: 'Continuați cu codul de verificare',
+    signUp: 'Înscriere',
+    createAccount: 'Creează-ți contul',
+    welcome: '👋 Buna! Te rugăm să completezi detaliile pentru a începe.',
+  },
+  pageTitleForE: 'Hei, hai să începem!',
 }
 
 export default translation

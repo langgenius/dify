@@ -22,6 +22,7 @@ const Explore: FC<IExploreProps> = ({
   const { userProfile, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [hasEditPermission, setHasEditPermission] = useState(false)
   const [installedApps, setInstalledApps] = useState<InstalledApp[]>([])
+  const [isFetchingInstalledApps, setIsFetchingInstalledApps] = useState(false)
   const { t } = useTranslation()
 
   useDocumentTitle(t('common.menus.explore'))
@@ -51,6 +52,8 @@ const Explore: FC<IExploreProps> = ({
             hasEditPermission,
             installedApps,
             setInstalledApps,
+            isFetchingInstalledApps,
+            setIsFetchingInstalledApps,
           }
         }
       >

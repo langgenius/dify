@@ -21,7 +21,7 @@ const DocumentList: FC<Props> = ({
   }, [onChange])
 
   return (
-    <div className={cn(className)}>
+    <div className={cn('max-h-[calc(100vh-120px)] overflow-auto', className)}>
       {list.map((item) => {
         const { id, name, extension } = item
         return (
@@ -30,7 +30,7 @@ const DocumentList: FC<Props> = ({
             className='flex h-8 cursor-pointer items-center space-x-2 rounded-lg px-2 hover:bg-state-base-hover'
             onClick={handleChange(item)}
           >
-            <FileIcon name={item.name} extension={extension} size='md' />
+            <FileIcon name={item.name} extension={extension} size='lg' />
             <div className='truncate text-sm text-text-secondary'>{name}</div>
           </div>
         )

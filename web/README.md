@@ -7,6 +7,7 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 ### Run by source code
 
 Before starting the web frontend service, please make sure the following environment is ready.
+
 - [Node.js](https://nodejs.org) >= v22.11.x
 - [pnpm](https://pnpm.io) v10.x
 
@@ -103,11 +104,9 @@ pnpm run test
 ```
 
 If you are not familiar with writing tests, here is some code to refer to:
-* [classnames.spec.ts](./utils/classnames.spec.ts)
-* [index.spec.tsx](./app/components/base/button/index.spec.tsx)
 
-
-
+- [classnames.spec.ts](./utils/classnames.spec.ts)
+- [index.spec.tsx](./app/components/base/button/index.spec.tsx)
 
 ## Documentation
 

@@ -5,6 +5,7 @@ import Input from '@/app/components/base/input'
 import { VarType } from '@/app/components/workflow/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { useDocLink } from '@/context/i18n'
 
 type DefaultValueProps = {
   forms: DefaultValueForm[]
@@ -15,6 +16,7 @@ const DefaultValue = ({
   onFormChange,
 }: DefaultValueProps) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const getFormChangeHandler = useCallback(({ key, type }: DefaultValueForm) => {
     return (payload: any) => {
       let value
@@ -34,7 +36,9 @@ const DefaultValue = ({
         {t('workflow.nodes.common.errorHandle.defaultValue.desc')}
         &nbsp;
         <a
-          href='https://docs.dify.ai/en/guides/workflow/error-handling/README'
+          href={docLink('/guides/workflow/error-handling/README', {
+            'zh-Hans': '/guides/workflow/error-handling/readme',
+          })}
           target='_blank'
           className='text-text-accent'
         >

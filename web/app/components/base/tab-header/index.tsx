@@ -9,30 +9,34 @@ type Item = {
   isRight?: boolean
   icon?: React.ReactNode
   extra?: React.ReactNode
+  disabled?: boolean
 }
 
 export type ITabHeaderProps = {
   items: Item[]
   value: string
+  itemClassName?: string
   onChange: (value: string) => void
 }
 
 const TabHeader: FC<ITabHeaderProps> = ({
   items,
   value,
+  itemClassName,
   onChange,
 }) => {
-  const renderItem = ({ id, name, icon, extra }: Item) => (
+  const renderItem = ({ id, name, icon, extra, disabled }: Item) => (
     <div
       key={id}
       className={cn(
         'system-md-semibold relative flex cursor-pointer items-center border-b-2 border-transparent pb-2 pt-2.5',
         id === value ? 'border-components-tab-active text-text-primary' : 'text-text-tertiary',
+        disabled && 'cursor-not-allowed opacity-30',
       )}
-      onClick={() => onChange(id)}
+      onClick={() => !disabled && onChange(id)}
     >
       {icon || ''}
-      <div className='ml-2'>{name}</div>
+      <div className={cn('ml-2', itemClassName)}>{name}</div>
       {extra || ''}
     </div>
   )

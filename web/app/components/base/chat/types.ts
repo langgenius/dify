@@ -49,6 +49,16 @@ export type ChatConfig = Omit<ModelConfig, 'model'> & {
   questionEditEnable?: boolean
   supportFeedback?: boolean
   supportCitationHitInfo?: boolean
+  system_parameters: {
+    audio_file_size_limit: number
+    file_size_limit: number
+    image_file_size_limit: number
+    video_file_size_limit: number
+    workflow_file_upload_limit: number
+  }
+  more_like_this: {
+    enabled: boolean
+  }
 }
 
 export type WorkflowProcess = {
@@ -75,7 +85,7 @@ export type OnSend = {
   (message: string, files: FileEntity[] | undefined, isRegenerate: boolean, lastAnswer?: ChatItem | null): void
 }
 
-export type OnRegenerate = (chatItem: ChatItem) => void
+export type OnRegenerate = (chatItem: ChatItem, editedQuestion?: { message: string; files?: FileEntity[] }) => void
 
 export type Callback = {
   onSuccess: () => void
@@ -83,4 +93,5 @@ export type Callback = {
 
 export type Feedback = {
   rating: 'like' | 'dislike' | null
+  content?: string | null
 }

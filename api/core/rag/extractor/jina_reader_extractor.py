@@ -8,7 +8,14 @@ class JinaReaderWebExtractor(BaseExtractor):
     Crawl and scrape websites and return content in clean llm-ready markdown.
     """
 
-    def __init__(self, url: str, job_id: str, tenant_id: str, mode: str = "crawl", only_main_content: bool = False):
+    def __init__(
+        self,
+        url: str,
+        job_id: str,
+        tenant_id: str,
+        mode: str = "crawl",
+        only_main_content: bool = False,
+    ):
         """Initialize with url, api_key, base_url and mode."""
         self._url = url
         self.job_id = job_id

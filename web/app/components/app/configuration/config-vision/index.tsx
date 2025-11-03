@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useContext } from 'use-context-selector'
 import ParamConfig from './param-config'
 import { Vision } from '@/app/components/base/icons/src/vender/features'
@@ -45,7 +45,7 @@ const ConfigVision: FC = () => {
       if (draft.file) {
         draft.file.enabled = (draft.file.allowed_file_types?.length ?? 0) > 0
         draft.file.image = {
-          ...(draft.file.image || {}),
+          ...draft.file.image,
           enabled: value,
         }
       }

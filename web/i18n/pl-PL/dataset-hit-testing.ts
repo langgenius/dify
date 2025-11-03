@@ -2,7 +2,6 @@ const translation = {
   title: 'Testowanie odzyskiwania',
   desc: 'Przetestuj efekt uderzenia wiedzy na podstawie podanego tekstu zapytania.',
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
-  recents: 'Ostatnie',
   table: {
     header: {
       source: 'Źródło',

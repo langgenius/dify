@@ -1,3 +1,4 @@
+import collections
 import json
 import logging
 import os
@@ -5,15 +6,15 @@ import queue
 import threading
 import time
 from datetime import timedelta
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
 from flask import current_app
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
+from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
     OPS_FILE_PATH,
     TracingProviderEnum,
@@ -30,15 +31,20 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import get_message_data
-from core.workflow.entities.workflow_execution_entities import WorkflowExecution
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
-from models.workflow import WorkflowAppLog, WorkflowRun
+from models.workflow import WorkflowAppLog
+from repositories.factory import DifyAPIRepositoryFactory
 from tasks.ops_trace_task import process_trace_tasks
 
+if TYPE_CHECKING:
+    from core.workflow.entities import WorkflowExecution
 
-class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
+logger = logging.getLogger(__name__)
+
+
+class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
     def __getitem__(self, provider: str) -> dict[str, Any]:
         match provider:
             case TracingProviderEnum.LANGFUSE:
@@ -81,19 +87,62 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
                 return {
                     "config_class": WeaveConfig,
                     "secret_keys": ["api_key"],
-                    "other_keys": ["project", "entity", "endpoint"],
+                    "other_keys": ["project", "entity", "endpoint", "host"],
                     "trace_instance": WeaveDataTrace,
+                }
+            case TracingProviderEnum.ARIZE:
+                from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
+                from core.ops.entities.config_entity import ArizeConfig
+
+                return {
+                    "config_class": ArizeConfig,
+                    "secret_keys": ["api_key", "space_id"],
+                    "other_keys": ["project", "endpoint"],
+                    "trace_instance": ArizePhoenixDataTrace,
+                }
+            case TracingProviderEnum.PHOENIX:
+                from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
+                from core.ops.entities.config_entity import PhoenixConfig
+
+                return {
+                    "config_class": PhoenixConfig,
+                    "secret_keys": ["api_key"],
+                    "other_keys": ["project", "endpoint"],
+                    "trace_instance": ArizePhoenixDataTrace,
+                }
+            case TracingProviderEnum.ALIYUN:
+                from core.ops.aliyun_trace.aliyun_trace import AliyunDataTrace
+                from core.ops.entities.config_entity import AliyunConfig
+
+                return {
+                    "config_class": AliyunConfig,
+                    "secret_keys": ["license_key"],
+                    "other_keys": ["endpoint", "app_name"],
+                    "trace_instance": AliyunDataTrace,
+                }
+
+            case TracingProviderEnum.TENCENT:
+                from core.ops.entities.config_entity import TencentConfig
+                from core.ops.tencent_trace.tencent_trace import TencentDataTrace
+
+                return {
+                    "config_class": TencentConfig,
+                    "secret_keys": ["token"],
+                    "other_keys": ["endpoint", "service_name"],
+                    "trace_instance": TencentDataTrace,
                 }
 
             case _:
                 raise KeyError(f"Unsupported tracing provider: {provider}")
 
 
-provider_config_map: dict[str, dict[str, Any]] = OpsTraceProviderConfigMap()
+provider_config_map = OpsTraceProviderConfigMap()
 
 
 class OpsTraceManager:
     ops_trace_instances_cache: LRUCache = LRUCache(maxsize=128)
+    decrypted_configs_cache: LRUCache = LRUCache(maxsize=128)
+    _decryption_cache_lock = threading.RLock()
 
     @classmethod
     def encrypt_tracing_config(
@@ -114,13 +163,16 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["other_keys"],
         )
 
-        new_config = {}
+        new_config: dict[str, Any] = {}
         # Encrypt necessary keys
         for key in secret_keys:
             if key in tracing_config:
                 if "*" in tracing_config[key]:
                     # If the key contains '*', retain the original value from the current config
-                    new_config[key] = current_trace_config.get(key, tracing_config[key])
+                    if current_trace_config:
+                        new_config[key] = current_trace_config.get(key, tracing_config[key])
+                    else:
+                        new_config[key] = tracing_config[key]
                 else:
                     # Otherwise, encrypt the key
                     new_config[key] = encrypt_token(tenant_id, tracing_config[key])
@@ -141,20 +193,41 @@ class OpsTraceManager:
         :param tracing_config: tracing config
         :return:
         """
-        config_class, secret_keys, other_keys = (
-            provider_config_map[tracing_provider]["config_class"],
-            provider_config_map[tracing_provider]["secret_keys"],
-            provider_config_map[tracing_provider]["other_keys"],
+        config_json = json.dumps(tracing_config, sort_keys=True)
+        decrypted_config_key = (
+            tenant_id,
+            tracing_provider,
+            config_json,
         )
-        new_config = {}
-        for key in secret_keys:
-            if key in tracing_config:
-                new_config[key] = decrypt_token(tenant_id, tracing_config[key])
 
-        for key in other_keys:
-            new_config[key] = tracing_config.get(key, "")
+        # First check without lock for performance
+        cached_config = cls.decrypted_configs_cache.get(decrypted_config_key)
+        if cached_config is not None:
+            return dict(cached_config)
 
-        return config_class(**new_config).model_dump()
+        with cls._decryption_cache_lock:
+            # Second check (double-checked locking) to prevent race conditions
+            cached_config = cls.decrypted_configs_cache.get(decrypted_config_key)
+            if cached_config is not None:
+                return dict(cached_config)
+
+            config_class, secret_keys, other_keys = (
+                provider_config_map[tracing_provider]["config_class"],
+                provider_config_map[tracing_provider]["secret_keys"],
+                provider_config_map[tracing_provider]["other_keys"],
+            )
+            new_config: dict[str, Any] = {}
+            keys_to_decrypt = [key for key in secret_keys if key in tracing_config]
+            if keys_to_decrypt:
+                decrypted_values = batch_decrypt_token(tenant_id, [tracing_config[key] for key in keys_to_decrypt])
+                new_config.update(zip(keys_to_decrypt, decrypted_values))
+
+            for key in other_keys:
+                new_config[key] = tracing_config.get(key, "")
+
+            decrypted_config = config_class(**new_config).model_dump()
+            cls.decrypted_configs_cache[decrypted_config_key] = decrypted_config
+            return dict(decrypted_config)
 
     @classmethod
     def obfuscated_decrypt_token(cls, tracing_provider: str, decrypt_tracing_config: dict):
@@ -169,7 +242,7 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["secret_keys"],
             provider_config_map[tracing_provider]["other_keys"],
         )
-        new_config = {}
+        new_config: dict[str, Any] = {}
         for key in secret_keys:
             if key in decrypt_tracing_config:
                 new_config[key] = obfuscated_token(decrypt_tracing_config[key])
@@ -186,17 +259,17 @@ class OpsTraceManager:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: Optional[TraceAppConfig] = (
+        trace_config_data: TraceAppConfig | None = (
             db.session.query(TraceAppConfig)
-            .filter(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
+            .where(TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider)
             .first()
         )
 
         if not trace_config_data:
             return None
-
         # decrypt_token
-        app = db.session.query(App).filter(App.id == app_id).first()
+        stmt = select(App).where(App.id == app_id)
+        app = db.session.scalar(stmt)
         if not app:
             raise ValueError("App not found")
 
@@ -210,7 +283,7 @@ class OpsTraceManager:
     @classmethod
     def get_ops_trace_instance(
         cls,
-        app_id: Optional[Union[UUID, str]] = None,
+        app_id: Union[UUID, str] | None = None,
     ):
         """
         Get ops trace through model config
@@ -223,7 +296,7 @@ class OpsTraceManager:
         if app_id is None:
             return None
 
-        app: Optional[App] = db.session.query(App).filter(App.id == app_id).first()
+        app: App | None = db.session.query(App).where(App.id == app_id).first()
 
         if app is None:
             return None
@@ -251,32 +324,31 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["trace_instance"],
             provider_config_map[tracing_provider]["config_class"],
         )
-        decrypt_trace_config_key = str(decrypt_trace_config)
+        decrypt_trace_config_key = json.dumps(decrypt_trace_config, sort_keys=True)
         tracing_instance = cls.ops_trace_instances_cache.get(decrypt_trace_config_key)
         if tracing_instance is None:
             # create new tracing_instance and update the cache if it absent
             tracing_instance = trace_instance(config_class(**decrypt_trace_config))
             cls.ops_trace_instances_cache[decrypt_trace_config_key] = tracing_instance
-            logging.info(f"new tracing_instance for app_id: {app_id}")
+            logger.info("new tracing_instance for app_id: %s", app_id)
         return tracing_instance
 
     @classmethod
     def get_app_config_through_message_id(cls, message_id: str):
         app_model_config = None
-        message_data = db.session.query(Message).filter(Message.id == message_id).first()
+        message_stmt = select(Message).where(Message.id == message_id)
+        message_data = db.session.scalar(message_stmt)
         if not message_data:
             return None
         conversation_id = message_data.conversation_id
-        conversation_data = db.session.query(Conversation).filter(Conversation.id == conversation_id).first()
+        conversation_stmt = select(Conversation).where(Conversation.id == conversation_id)
+        conversation_data = db.session.scalar(conversation_stmt)
         if not conversation_data:
             return None
 
         if conversation_data.app_model_config_id:
-            app_model_config = (
-                db.session.query(AppModelConfig)
-                .filter(AppModelConfig.id == conversation_data.app_model_config_id)
-                .first()
-            )
+            config_stmt = select(AppModelConfig).where(AppModelConfig.id == conversation_data.app_model_config_id)
+            app_model_config = db.session.scalar(config_stmt)
         elif conversation_data.app_model_config_id is None and conversation_data.override_model_configs:
             app_model_config = conversation_data.override_model_configs
 
@@ -292,16 +364,13 @@ class OpsTraceManager:
         :return:
         """
         # auth check
-        if enabled == True:
-            try:
+        try:
+            if enabled or tracing_provider is not None:
                 provider_config_map[tracing_provider]
-            except KeyError:
-                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
-        else:
-            if tracing_provider is not None:
-                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
+        except KeyError:
+            raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
-        app_config: Optional[App] = db.session.query(App).filter(App.id == app_id).first()
+        app_config: App | None = db.session.query(App).where(App.id == app_id).first()
         if not app_config:
             raise ValueError("App not found")
         app_config.tracing = json.dumps(
@@ -319,7 +388,7 @@ class OpsTraceManager:
         :param app_id: app id
         :return:
         """
-        app: Optional[App] = db.session.query(App).filter(App.id == app_id).first()
+        app: App | None = db.session.query(App).where(App.id == app_id).first()
         if not app:
             raise ValueError("App not found")
         if not app.tracing:
@@ -374,26 +443,41 @@ class OpsTraceManager:
 
 
 class TraceTask:
+    _workflow_run_repo = None
+    _repo_lock = threading.Lock()
+
+    @classmethod
+    def _get_workflow_run_repo(cls):
+        if cls._workflow_run_repo is None:
+            with cls._repo_lock:
+                if cls._workflow_run_repo is None:
+                    session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+                    cls._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        return cls._workflow_run_repo
+
     def __init__(
         self,
         trace_type: Any,
-        message_id: Optional[str] = None,
-        workflow_execution: Optional[WorkflowExecution] = None,
-        conversation_id: Optional[str] = None,
-        user_id: Optional[str] = None,
-        timer: Optional[Any] = None,
+        message_id: str | None = None,
+        workflow_execution: Optional["WorkflowExecution"] = None,
+        conversation_id: str | None = None,
+        user_id: str | None = None,
+        timer: Any | None = None,
         **kwargs,
     ):
         self.trace_type = trace_type
         self.message_id = message_id
-        self.workflow_run_id = workflow_execution.id if workflow_execution else None
+        self.workflow_run_id = workflow_execution.id_ if workflow_execution else None
         self.conversation_id = conversation_id
         self.user_id = user_id
         self.timer = timer
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
         self.app_id = None
-
+        self.trace_id = None
         self.kwargs = kwargs
+        external_trace_id = kwargs.get("external_trace_id")
+        if external_trace_id:
+            self.trace_id = external_trace_id
 
     def execute(self):
         return self.preprocess()
@@ -438,27 +522,27 @@ class TraceTask:
         if not workflow_run_id:
             return {}
 
+        workflow_run_repo = self._get_workflow_run_repo()
+        workflow_run = workflow_run_repo.get_workflow_run_by_id_without_tenant(run_id=workflow_run_id)
+        if not workflow_run:
+            raise ValueError("Workflow run not found")
+
+        workflow_id = workflow_run.workflow_id
+        tenant_id = workflow_run.tenant_id
+        workflow_run_id = workflow_run.id
+        workflow_run_elapsed_time = workflow_run.elapsed_time
+        workflow_run_status = workflow_run.status
+        workflow_run_inputs = workflow_run.inputs_dict
+        workflow_run_outputs = workflow_run.outputs_dict
+        workflow_run_version = workflow_run.version
+        error = workflow_run.error or ""
+
+        total_tokens = workflow_run.total_tokens
+
+        file_list = workflow_run_inputs.get("sys.file") or []
+        query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
+
         with Session(db.engine) as session:
-            workflow_run_stmt = select(WorkflowRun).where(WorkflowRun.id == workflow_run_id)
-            workflow_run = session.scalars(workflow_run_stmt).first()
-            if not workflow_run:
-                raise ValueError("Workflow run not found")
-
-            workflow_id = workflow_run.workflow_id
-            tenant_id = workflow_run.tenant_id
-            workflow_run_id = workflow_run.id
-            workflow_run_elapsed_time = workflow_run.elapsed_time
-            workflow_run_status = workflow_run.status
-            workflow_run_inputs = workflow_run.inputs_dict
-            workflow_run_outputs = workflow_run.outputs_dict
-            workflow_run_version = workflow_run.version
-            error = workflow_run.error or ""
-
-            total_tokens = workflow_run.total_tokens
-
-            file_list = workflow_run_inputs.get("sys.file") or []
-            query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
-
             # get workflow_app_log_id
             workflow_app_log_data_stmt = select(WorkflowAppLog.id).where(
                 WorkflowAppLog.tenant_id == tenant_id,
@@ -475,41 +559,43 @@ class TraceTask:
                 )
                 message_id = session.scalar(message_data_stmt)
 
-            metadata = {
-                "workflow_id": workflow_id,
-                "conversation_id": conversation_id,
-                "workflow_run_id": workflow_run_id,
-                "tenant_id": tenant_id,
-                "elapsed_time": workflow_run_elapsed_time,
-                "status": workflow_run_status,
-                "version": workflow_run_version,
-                "total_tokens": total_tokens,
-                "file_list": file_list,
-                "triggered_from": workflow_run.triggered_from,
-                "user_id": user_id,
-            }
+        metadata = {
+            "workflow_id": workflow_id,
+            "conversation_id": conversation_id,
+            "workflow_run_id": workflow_run_id,
+            "tenant_id": tenant_id,
+            "elapsed_time": workflow_run_elapsed_time,
+            "status": workflow_run_status,
+            "version": workflow_run_version,
+            "total_tokens": total_tokens,
+            "file_list": file_list,
+            "triggered_from": workflow_run.triggered_from,
+            "user_id": user_id,
+            "app_id": workflow_run.app_id,
+        }
 
-            workflow_trace_info = WorkflowTraceInfo(
-                workflow_data=workflow_run.to_dict(),
-                conversation_id=conversation_id,
-                workflow_id=workflow_id,
-                tenant_id=tenant_id,
-                workflow_run_id=workflow_run_id,
-                workflow_run_elapsed_time=workflow_run_elapsed_time,
-                workflow_run_status=workflow_run_status,
-                workflow_run_inputs=workflow_run_inputs,
-                workflow_run_outputs=workflow_run_outputs,
-                workflow_run_version=workflow_run_version,
-                error=error,
-                total_tokens=total_tokens,
-                file_list=file_list,
-                query=query,
-                metadata=metadata,
-                workflow_app_log_id=workflow_app_log_id,
-                message_id=message_id,
-                start_time=workflow_run.created_at,
-                end_time=workflow_run.finished_at,
-            )
+        workflow_trace_info = WorkflowTraceInfo(
+            trace_id=self.trace_id,
+            workflow_data=workflow_run.to_dict(),
+            conversation_id=conversation_id,
+            workflow_id=workflow_id,
+            tenant_id=tenant_id,
+            workflow_run_id=workflow_run_id,
+            workflow_run_elapsed_time=workflow_run_elapsed_time,
+            workflow_run_status=workflow_run_status,
+            workflow_run_inputs=workflow_run_inputs,
+            workflow_run_outputs=workflow_run_outputs,
+            workflow_run_version=workflow_run_version,
+            error=error,
+            total_tokens=total_tokens,
+            file_list=file_list,
+            query=query,
+            metadata=metadata,
+            workflow_app_log_id=workflow_app_log_id,
+            message_id=message_id,
+            start_time=workflow_run.created_at,
+            end_time=workflow_run.finished_at,
+        )
         return workflow_trace_info
 
     def message_trace(self, message_id: str | None):
@@ -533,6 +619,8 @@ class TraceTask:
             file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
             file_list.append(file_url)
 
+        streaming_metrics = self._extract_streaming_metrics(message_data)
+
         metadata = {
             "conversation_id": message_data.conversation_id,
             "ls_provider": message_data.model_provider,
@@ -549,6 +637,7 @@ class TraceTask:
         message_tokens = message_data.message_tokens
 
         message_trace_info = MessageTraceInfo(
+            trace_id=self.trace_id,
             message_id=message_id,
             message_data=message_data.to_dict(),
             conversation_model=conversation_mode,
@@ -564,6 +653,9 @@ class TraceTask:
             metadata=metadata,
             message_file_data=message_file_data,
             conversation_mode=conversation_mode,
+            gen_ai_server_time_to_first_token=streaming_metrics.get("gen_ai_server_time_to_first_token"),
+            llm_streaming_time_to_generate=streaming_metrics.get("llm_streaming_time_to_generate"),
+            is_streaming_request=streaming_metrics.get("is_streaming_request", False),
         )
 
         return message_trace_info
@@ -592,6 +684,7 @@ class TraceTask:
             workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
 
         moderation_trace_info = ModerationTraceInfo(
+            trace_id=self.trace_id,
             message_id=workflow_app_log_id or message_id,
             inputs=inputs,
             message_data=message_data.to_dict(),
@@ -632,6 +725,7 @@ class TraceTask:
             workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
 
         suggested_question_trace_info = SuggestedQuestionTraceInfo(
+            trace_id=self.trace_id,
             message_id=workflow_app_log_id or message_id,
             message_data=message_data.to_dict(),
             inputs=message_data.message,
@@ -673,6 +767,7 @@ class TraceTask:
         }
 
         dataset_retrieval_trace_info = DatasetRetrievalTraceInfo(
+            trace_id=self.trace_id,
             message_id=message_id,
             inputs=message_data.query or message_data.inputs,
             documents=[doc.model_dump() for doc in documents] if documents else [],
@@ -680,6 +775,7 @@ class TraceTask:
             end_time=timer.get("end"),
             metadata=metadata,
             message_data=message_data.to_dict(),
+            error=kwargs.get("error"),
         )
 
         return dataset_retrieval_trace_info
@@ -737,6 +833,7 @@ class TraceTask:
             )
 
         tool_trace_info = ToolTraceInfo(
+            trace_id=self.trace_id,
             message_id=message_id,
             message_data=message_data.to_dict(),
             tool_name=tool_name,
@@ -772,6 +869,7 @@ class TraceTask:
         }
 
         generate_name_trace_info = GenerateNameTraceInfo(
+            trace_id=self.trace_id,
             conversation_id=conversation_id,
             inputs=inputs,
             outputs=generate_conversation_name,
@@ -783,8 +881,26 @@ class TraceTask:
 
         return generate_name_trace_info
 
+    def _extract_streaming_metrics(self, message_data) -> dict:
+        if not message_data.message_metadata:
+            return {}
 
-trace_manager_timer: Optional[threading.Timer] = None
+        try:
+            metadata = json.loads(message_data.message_metadata)
+            usage = metadata.get("usage", {})
+            time_to_first_token = usage.get("time_to_first_token")
+            time_to_generate = usage.get("time_to_generate")
+
+            return {
+                "gen_ai_server_time_to_first_token": time_to_first_token,
+                "llm_streaming_time_to_generate": time_to_generate,
+                "is_streaming_request": time_to_first_token is not None,
+            }
+        except (json.JSONDecodeError, AttributeError):
+            return {}
+
+
+trace_manager_timer: threading.Timer | None = None
 trace_manager_queue: queue.Queue = queue.Queue()
 trace_manager_interval = int(os.getenv("TRACE_QUEUE_MANAGER_INTERVAL", 5))
 trace_manager_batch_size = int(os.getenv("TRACE_QUEUE_MANAGER_BATCH_SIZE", 100))
@@ -807,8 +923,8 @@ class TraceQueueManager:
             if self.trace_instance:
                 trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
-        except Exception as e:
-            logging.exception(f"Error adding trace task, trace_type {trace_task.trace_type}")
+        except Exception:
+            logger.exception("Error adding trace task, trace_type %s", trace_task.trace_type)
         finally:
             self.start_timer()
 
@@ -826,8 +942,8 @@ class TraceQueueManager:
             tasks = self.collect_tasks()
             if tasks:
                 self.send_to_celery(tasks)
-        except Exception as e:
-            logging.exception("Error processing trace tasks")
+        except Exception:
+            logger.exception("Error processing trace tasks")
 
     def start_timer(self):
         global trace_manager_timer
@@ -844,6 +960,7 @@ class TraceQueueManager:
                     continue
                 file_id = uuid4().hex
                 trace_info = task.execute()
+
                 task_data = TaskData(
                     app_id=task.app_id,
                     trace_info_type=type(trace_info).__name__,
@@ -855,4 +972,4 @@ class TraceQueueManager:
                     "file_id": file_id,
                     "app_id": task.app_id,
                 }
-                process_trace_tasks.delay(file_info)
+                process_trace_tasks.delay(file_info)  # type: ignore

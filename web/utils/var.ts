@@ -1,10 +1,11 @@
-import { MAX_VAR_KEY_LENGTH, VAR_ITEM_TEMPLATE, VAR_ITEM_TEMPLATE_IN_WORKFLOW, getMaxVarNameLength } from '@/config'
+import { MARKETPLACE_URL_PREFIX, MAX_VAR_KEY_LENGTH, VAR_ITEM_TEMPLATE, VAR_ITEM_TEMPLATE_IN_WORKFLOW, getMaxVarNameLength } from '@/config'
 import {
   CONTEXT_PLACEHOLDER_TEXT,
   HISTORY_PLACEHOLDER_TEXT,
   PRE_PROMPT_PLACEHOLDER_TEXT,
   QUERY_PLACEHOLDER_TEXT,
 } from '@/app/components/base/prompt-editor/constants'
+import type { InputVar } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
 
 const otherAllowedRegex = /^\w+$/
@@ -27,8 +28,8 @@ export const getNewVar = (key: string, type: string) => {
   }
 }
 
-export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput) => {
-  const { max_length, ...rest } = VAR_ITEM_TEMPLATE_IN_WORKFLOW
+export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput): InputVar => {
+  const { max_length: _maxLength, ...rest } = VAR_ITEM_TEMPLATE_IN_WORKFLOW
   if (type !== InputVarType.textInput) {
     return {
       ...rest,
@@ -42,10 +43,13 @@ export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput) 
     type,
     variable: key,
     label: key.slice(0, getMaxVarNameLength(key)),
+    placeholder: '',
+    default: '',
+    hint: '',
   }
 }
 
-export const checkKey = (key: string, canBeEmpty?: boolean) => {
+export const checkKey = (key: string, canBeEmpty?: boolean, _keys?: string[]) => {
   if (key.length === 0 && !canBeEmpty)
     return 'canNoBeEmpty'
 
@@ -82,6 +86,17 @@ export const checkKeys = (keys: string[], canBeEmpty?: boolean) => {
   return { isValid, errorKey, errorMessageKey }
 }
 
+export const hasDuplicateStr = (strArr: string[]) => {
+  const strObj: Record<string, number> = {}
+  strArr.forEach((str) => {
+    if (strObj[str])
+      strObj[str] += 1
+    else
+      strObj[str] = 1
+  })
+  return !!Object.keys(strObj).find(key => strObj[key] > 1)
+}
+
 const varRegex = /\{\{([a-zA-Z_]\w*)\}\}/g
 export const getVars = (value: string) => {
   if (!value)
@@ -107,4 +122,26 @@ export const getVars = (value: string) => {
 
 // Set the value of basePath
 // example: /dify
-export const basePath = ''
+export const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+
+export function getMarketplaceUrl(path: string, params?: Record<string, string | undefined>) {
+  const searchParams = new URLSearchParams({ source: encodeURIComponent(window.location.origin) })
+  if (params) {
+    Object.keys(params).forEach((key) => {
+      const value = params[key]
+      if (value !== undefined && value !== null)
+        searchParams.append(key, value)
+    })
+  }
+  return `${MARKETPLACE_URL_PREFIX}${path}?${searchParams.toString()}`
+}
+
+export const replaceSpaceWithUnderscoreInVarNameInput = (input: HTMLInputElement) => {
+  const start = input.selectionStart
+  const end = input.selectionEnd
+
+  input.value = input.value.replaceAll(' ', '_')
+
+  if (start !== null && end !== null)
+    input.setSelectionRange(start, end)
+}

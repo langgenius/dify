@@ -8,6 +8,7 @@ import useGetIcon from '../../base/use-get-icon'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import Version from '../../base/version'
 import type { VersionProps } from '../../../types'
+import usePluginInstallLimit from '../../hooks/use-install-plugin-limit'
 
 type Props = {
   checked: boolean
@@ -29,9 +30,11 @@ const LoadedItem: FC<Props> = ({
     ...particleVersionInfo,
     toInstallVersion: payload.version,
   }
+  const { canInstall } = usePluginInstallLimit(payload)
   return (
     <div className='flex items-center space-x-2'>
       <Checkbox
+        disabled={!canInstall}
         className='shrink-0'
         checked={checked}
         onCheck={() => onCheckedChange(payload)}
@@ -43,6 +46,7 @@ const LoadedItem: FC<Props> = ({
           icon: isFromMarketPlace ? `${MARKETPLACE_API_PREFIX}/plugins/${payload.org}/${payload.name}/icon` : getIconUrl(payload.icon),
         }}
         titleLeft={payload.version ? <Version {...versionInfo} /> : null}
+        limitedInstall={!canInstall}
       />
     </div>
   )

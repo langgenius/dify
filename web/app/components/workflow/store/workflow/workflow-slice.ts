@@ -3,6 +3,7 @@ import type {
   Node,
   WorkflowRunningData,
 } from '@/app/components/workflow/types'
+import type { FileUploadConfigResponse } from '@/models/common'
 
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
@@ -28,10 +29,8 @@ export type WorkflowSliceShape = {
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
   showImportDSLModal: boolean
   setShowImportDSLModal: (showImportDSLModal: boolean) => void
-  showTips: string
-  setShowTips: (showTips: string) => void
-  workflowConfig?: Record<string, any>
-  setWorkflowConfig: (workflowConfig: Record<string, any>) => void
+  fileUploadConfig?: FileUploadConfigResponse
+  setFileUploadConfig: (fileUploadConfig: FileUploadConfigResponse) => void
 }
 
 export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
@@ -62,8 +61,6 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setControlPromptEditorRerenderKey: controlPromptEditorRerenderKey => set(() => ({ controlPromptEditorRerenderKey })),
   showImportDSLModal: false,
   setShowImportDSLModal: showImportDSLModal => set(() => ({ showImportDSLModal })),
-  showTips: '',
-  setShowTips: showTips => set(() => ({ showTips })),
-  workflowConfig: undefined,
-  setWorkflowConfig: workflowConfig => set(() => ({ workflowConfig })),
+  fileUploadConfig: undefined,
+  setFileUploadConfig: fileUploadConfig => set(() => ({ fileUploadConfig })),
 })

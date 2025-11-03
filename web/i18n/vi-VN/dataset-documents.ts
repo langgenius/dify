@@ -28,6 +28,8 @@ const translation = {
       delete: 'Xóa',
       enableWarning: 'Tệp đã lưu trữ không thể được kích hoạt',
       sync: 'Đồng bộ',
+      pause: 'Tạm dừng',
+      resume: 'Tiếp tục',
     },
     index: {
       enable: 'Kích hoạt',
@@ -96,6 +98,9 @@ const translation = {
       upload_file: 'Tải lên tệp',
       notion: 'Đồng bộ từ Notion',
       github: 'Đồng bộ từ Github',
+      online_document: 'Tài liệu trực tuyến',
+      website_crawl: 'Thu thập dữ liệu trang web',
+      local_file: 'Tệp cục bộ',
     },
     type: {
       book: 'Sách',
@@ -333,13 +338,13 @@ const translation = {
     pause: 'Tạm dừng',
     childMaxTokens: 'Con',
     hierarchical: 'Cha mẹ-con cái',
+    waiting: 'Đang chờ nhúng...',
   },
   segment: {
     paragraphs: 'Đoạn văn',
     keywords: 'Từ khóa',
     addKeyWord: 'Thêm từ khóa',
     keywordError: 'Độ dài tối đa của từ khóa là 20',
-    characters: 'ký tự',
     hitCount: 'Số lần truy vấn',
     vectorHash: 'Mã băm vector: ',
     questionPlaceholder: 'thêm câu hỏi ở đây',
@@ -367,6 +372,7 @@ const translation = {
     expandChunks: 'Mở rộng các đoạn',
     chunks_other: 'KHỐI',
     editedAt: 'Chỉnh sửa tại',
+    dateTimeFormat: 'DD/MM/YYYY HH:mm',
     addAnother: 'Thêm một cái khác',
     regenerationConfirmTitle: 'Bạn có muốn tái tạo các chunk con không?',
     searchResults_one: 'KẾT QUẢ',
@@ -388,6 +394,8 @@ const translation = {
     clearFilter: 'Bộ lọc rõ ràng',
     chunk: 'Khúc',
     edited: 'EDITED',
+    keywordDuplicate: 'Từ khóa đã tồn tại',
+    keywordEmpty: 'Từ khóa không được để trống',
   },
 }
 

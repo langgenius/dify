@@ -1,26 +1,48 @@
 from urllib.parse import quote
 
 from flask import Response
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.files import api
-from controllers.files.error import UnsupportedFileTypeError
+from controllers.common.errors import UnsupportedFileTypeError
+from controllers.files import files_ns
 from core.tools.signature import verify_tool_file_signature
 from core.tools.tool_file_manager import ToolFileManager
-from models import db as global_db
+from extensions.ext_database import db as global_db
 
 
-class ToolFilePreviewApi(Resource):
+@files_ns.route("/tools/<uuid:file_id>.<string:extension>")
+class ToolFileApi(Resource):
+    @files_ns.doc("get_tool_file")
+    @files_ns.doc(description="Download a tool file by ID using signed parameters")
+    @files_ns.doc(
+        params={
+            "file_id": "Tool file identifier",
+            "extension": "Expected file extension",
+            "timestamp": "Unix timestamp used in the signature",
+            "nonce": "Random string used in the signature",
+            "sign": "HMAC signature verifying the request",
+            "as_attachment": "Whether to download the file as an attachment",
+        }
+    )
+    @files_ns.doc(
+        responses={
+            200: "Tool file stream returned successfully",
+            403: "Forbidden - invalid signature",
+            404: "File not found",
+            415: "Unsupported file type",
+        }
+    )
     def get(self, file_id, extension):
         file_id = str(file_id)
 
-        parser = reqparse.RequestParser()
-
-        parser.add_argument("timestamp", type=str, required=True, location="args")
-        parser.add_argument("nonce", type=str, required=True, location="args")
-        parser.add_argument("sign", type=str, required=True, location="args")
-        parser.add_argument("as_attachment", type=bool, required=False, default=False, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("timestamp", type=str, required=True, location="args")
+            .add_argument("nonce", type=str, required=True, location="args")
+            .add_argument("sign", type=str, required=True, location="args")
+            .add_argument("as_attachment", type=bool, required=False, default=False, location="args")
+        )
 
         args = parser.parse_args()
         if not verify_tool_file_signature(
@@ -52,6 +74,3 @@ class ToolFilePreviewApi(Resource):
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
         return response
-
-
-api.add_resource(ToolFilePreviewApi, "/files/tools/<uuid:file_id>.<string:extension>")

@@ -24,7 +24,7 @@ const DialogWrapper = ({
       <Dialog as="div" className="relative z-40" onClose={close}>
         <TransitionChild>
           <div className={cn(
-            'fixed inset-0 bg-black bg-opacity-25',
+            'fixed inset-0 bg-black/25',
             'data-[closed]:opacity-0',
             'data-[enter]:opacity-100 data-[enter]:duration-300 data-[enter]:ease-out',
             'data-[leave]:opacity-0 data-[leave]:duration-200 data-[leave]:ease-in',

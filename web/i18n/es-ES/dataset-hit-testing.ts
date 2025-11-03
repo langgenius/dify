@@ -2,7 +2,6 @@ const translation = {
   title: 'Prueba de recuperación',
   desc: 'Prueba del efecto de impacto del conocimiento basado en el texto de consulta proporcionado.',
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
-  recents: 'Recientes',
   table: {
     header: {
       source: 'Fuente',

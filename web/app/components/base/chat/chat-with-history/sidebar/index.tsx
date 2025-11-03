@@ -19,18 +19,17 @@ import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/re
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import type { ConversationItem } from '@/models/share'
 import cn from '@/utils/classnames'
-import { AccessMode } from '@/models/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {
   isPanel?: boolean
+  panelVisible?: boolean
 }
 
-const Sidebar = ({ isPanel }: Props) => {
+const Sidebar = ({ isPanel, panelVisible }: Props) => {
   const { t } = useTranslation()
   const {
     isInstalledApp,
-    accessMode,
     appData,
     handleNewConversation,
     pinnedConversationList,
@@ -140,7 +139,12 @@ const Sidebar = ({ isPanel }: Props) => {
         )}
       </div>
       <div className='flex shrink-0 items-center justify-between p-3'>
-        <MenuDropdown hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC} placement='top-start' data={appData?.site} />
+        <MenuDropdown
+          hideLogout={isInstalledApp}
+          placement='top-start'
+          data={appData?.site}
+          forceClose={isPanel && !panelVisible}
+        />
         {/* powered by */}
         <div className='shrink-0'>
           {!appData?.custom_config?.remove_webapp_brand && (
@@ -148,10 +152,12 @@ const Sidebar = ({ isPanel }: Props) => {
               'flex shrink-0 items-center gap-1.5 px-1',
             )}>
               <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
-              {systemFeatures.branding.enabled ? (
-                <img src={systemFeatures.branding.login_page_logo} alt='logo' className='block h-5 w-auto' />
-              ) : (
-                <DifyLogo size='small' />)
+              {
+                systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+                  ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
+                  : appData?.custom_config?.replace_webapp_logo
+                    ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />
+                    : <DifyLogo size='small' />
               }
             </div>
           )}

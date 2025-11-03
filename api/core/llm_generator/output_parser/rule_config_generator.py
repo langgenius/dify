@@ -1,5 +1,3 @@
-from typing import Any
-
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.prompts import (
     RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE,
@@ -17,7 +15,7 @@ class RuleConfigGeneratorOutputParser:
             RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE,
         )
 
-    def parse(self, text: str) -> Any:
+    def parse(self, text: str):
         try:
             expected_keys = ["prompt", "variables", "opening_statement"]
             parsed = parse_and_check_json_markdown(text, expected_keys)

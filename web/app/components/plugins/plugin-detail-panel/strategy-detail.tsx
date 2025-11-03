@@ -14,7 +14,7 @@ import Divider from '@/app/components/base/divider'
 import type {
   StrategyDetail as StrategyDetailType,
 } from '@/app/components/plugins/types'
-import type { Locale } from '@/i18n'
+import type { Locale } from '@/i18n-config'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { API_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
@@ -43,15 +43,15 @@ const StrategyDetail: FC<Props> = ({
 
   const outputSchema = useMemo(() => {
     const res: any[] = []
-    if (!detail.output_schema)
+    if (!detail.output_schema || !detail.output_schema.properties)
       return []
     Object.keys(detail.output_schema.properties).forEach((outputKey) => {
       const output = detail.output_schema.properties[outputKey]
       res.push({
         name: outputKey,
         type: output.type === 'array'
-          ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
-          : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
+          ? `Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]`
+          : `${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}`,
         description: output.description,
       })
     })
@@ -63,6 +63,8 @@ const StrategyDetail: FC<Props> = ({
       return t('tools.setBuiltInTools.number')
     if (type === 'text-input')
       return t('tools.setBuiltInTools.string')
+    if (type === 'checkbox')
+      return 'boolean'
     if (type === 'file')
       return t('tools.setBuiltInTools.file')
     if (type === 'array[tools]')

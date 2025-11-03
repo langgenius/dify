@@ -10,14 +10,13 @@ import type { HttpNodeType } from './types'
 import Timeout from './components/timeout'
 import CurlPanel from './components/curl-panel'
 import cn from '@/utils/classnames'
+import Switch from '@/app/components/base/switch'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import { FileArrow01 } from '@/app/components/base/icons/src/vender/line/files'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
 
 const i18nPrefix = 'workflow.nodes.http'
 
@@ -45,20 +44,11 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     hideAuthorization,
     setAuthorization,
     setTimeout,
-    // single run
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    varInputs,
-    inputVarValues,
-    setInputVarValues,
-    runResult,
     isShowCurlPanel,
     showCurlPanel,
     hideCurlPanel,
     handleCurlImport,
+    handleSSLVerifyChange,
   } = useConfig(id, data)
   // To prevent prompt editor in body not update data.
   if (!isDataReady)
@@ -136,6 +126,18 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             onChange={setBody}
           />
         </Field>
+        <Field
+          title={t(`${i18nPrefix}.verifySSL.title`)}
+          tooltip={t(`${i18nPrefix}.verifySSL.warningTooltip`)}
+          operations={
+            <Switch
+              defaultValue={!!inputs.ssl_verify}
+              onChange={handleSSLVerifyChange}
+              size='md'
+              disabled={readOnly}
+            />
+          }>
+        </Field>
       </div>
       <Split />
       <Timeout
@@ -180,24 +182,6 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           </>
         </OutputVars>
       </div>
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          nodeType={inputs.type}
-          onHide={hideSingleRun}
-          forms={[
-            {
-              inputs: varInputs,
-              values: inputVarValues,
-              onChange: setInputVarValues,
-            },
-          ]}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
-        />
-      )}
       {(isShowCurlPanel && !readOnly) && (
         <CurlPanel
           nodeId={id}

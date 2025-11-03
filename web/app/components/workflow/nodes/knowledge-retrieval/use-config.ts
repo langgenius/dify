@@ -4,7 +4,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { isEqual } from 'lodash-es'
 import { v4 as uuid4 } from 'uuid'
 import type { ValueSelector, Var } from '../../types'
@@ -37,7 +37,6 @@ import { DATASET_DEFAULT } from '@/config'
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
@@ -173,7 +172,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       }
     })
     setInputs(newInput)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentProvider?.provider, currentModel, currentRerankModel, rerankDefaultModel])
   const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
   const [rerankModelOpen, setRerankModelOpen] = useState(false)
@@ -206,10 +204,11 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
   const handleMultipleRetrievalConfigChange = useCallback((newConfig: MultipleRetrievalConfig) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.multiple_retrieval_config = getMultipleRetrievalConfig(newConfig!, selectedDatasets, selectedDatasets, {
+      const newMultipleRetrievalConfig = getMultipleRetrievalConfig(newConfig!, selectedDatasets, selectedDatasets, {
         provider: currentRerankProvider?.provider,
         model: currentRerankModel?.model,
       })
+      draft.multiple_retrieval_config = newMultipleRetrievalConfig
     })
     setInputs(newInputs)
   }, [inputs, setInputs, selectedDatasets, currentRerankModel, currentRerankProvider])
@@ -230,7 +229,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       setInputs(newInputs)
       setSelectedDatasetsLoaded(true)
     })()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -242,7 +240,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(produce(inputs, (draft) => {
       draft.query_variable_selector = query_variable_selector
     }))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleOnDatasetsChange = useCallback((newDatasets: DataSet[]) => {
@@ -258,10 +255,11 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
       if (payload.retrieval_mode === RETRIEVE_TYPE.multiWay && newDatasets.length > 0) {
         const multipleRetrievalConfig = draft.multiple_retrieval_config
-        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, newDatasets, selectedDatasets, {
+        const newMultipleRetrievalConfig = getMultipleRetrievalConfig(multipleRetrievalConfig!, newDatasets, selectedDatasets, {
           provider: currentRerankProvider?.provider,
           model: currentRerankModel?.model,
         })
+        draft.multiple_retrieval_config = newMultipleRetrievalConfig
       }
     })
     updateDatasetsDetail(newDatasets)
@@ -279,32 +277,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string
   }, [])
-
-  // single run
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    setRunInputData,
-    runResult,
-  } = useOneStepRun<KnowledgeRetrievalNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {
-      query: '',
-    },
-  })
-
-  const query = runInputData.query
-  const setQuery = useCallback((newQuery: string) => {
-    setRunInputData({
-      ...runInputData,
-      query: newQuery,
-    })
-  }, [runInputData, setRunInputData])
 
   const handleMetadataFilterModeChange = useCallback((newMode: MetadataFilteringModeEnum) => {
     setInputs(produce(inputRef.current, (draft) => {
@@ -425,14 +397,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     selectedDatasets: selectedDatasets.filter(d => d.name),
     selectedDatasetsLoaded,
     handleOnDatasetsChange,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    query,
-    setQuery,
-    runResult,
     rerankModelOpen,
     setRerankModelOpen,
     handleMetadataFilterModeChange,

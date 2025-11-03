@@ -102,6 +102,7 @@ type IDebugConfiguration = {
   setVisionConfig: (visionConfig: VisionSettings, noNotice?: boolean) => void
   isAllowVideoUpload: boolean
   isShowDocumentConfig: boolean
+  isShowAudioConfig: boolean
   rerankSettingModalOpen: boolean
   setRerankSettingModalOpen: (rerankSettingModalOpen: boolean) => void
 }
@@ -209,6 +210,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
       prompt_template: '',
       prompt_variables: [],
     },
+    chat_prompt_config: DEFAULT_CHAT_PROMPT_CONFIG,
+    completion_prompt_config: DEFAULT_COMPLETION_PROMPT_CONFIG,
     more_like_this: null,
     opening_statement: '',
     suggested_questions: [],
@@ -219,6 +222,14 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     suggested_questions_after_answer: null,
     retriever_resource: null,
     annotation_reply: null,
+    external_data_tools: [],
+    system_parameters: {
+      audio_file_size_limit: 0,
+      file_size_limit: 0,
+      image_file_size_limit: 0,
+      video_file_size_limit: 0,
+      workflow_file_upload_limit: 0,
+    },
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   },
@@ -232,7 +243,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
       reranking_provider_name: '',
       reranking_model_name: '',
     },
-    top_k: 2,
+    top_k: 4,
     score_threshold_enabled: false,
     score_threshold: 0.7,
     datasets: {
@@ -241,7 +252,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   },
   datasetConfigsRef: {
     current: null,
-  },
+  } as unknown as RefObject<DatasetConfigs>,
   setDatasetConfigs: noop,
   hasSetContextVar: false,
   isShowVisionConfig: false,
@@ -254,6 +265,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setVisionConfig: noop,
   isAllowVideoUpload: false,
   isShowDocumentConfig: false,
+  isShowAudioConfig: false,
   rerankSettingModalOpen: false,
   setRerankSettingModalOpen: noop,
 })

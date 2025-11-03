@@ -4,18 +4,16 @@ SQLAlchemy implementation of the WorkflowExecutionRepository.
 
 import json
 import logging
-from typing import Optional, Union
+from typing import Union
 
-from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.workflow.entities.workflow_execution_entities import (
-    WorkflowExecution,
-    WorkflowExecutionStatus,
-    WorkflowType,
-)
-from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.entities import WorkflowExecution
+from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
+from libs.helper import extract_tenant_id
 from models import (
     Account,
     CreatorUserRole,
@@ -43,8 +41,8 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         self,
         session_factory: sessionmaker | Engine,
         user: Union[Account, EndUser],
-        app_id: Optional[str],
-        triggered_from: Optional[WorkflowRunTriggeredFrom],
+        app_id: str | None,
+        triggered_from: WorkflowRunTriggeredFrom | None,
     ):
         """
         Initialize the repository with a SQLAlchemy sessionmaker or engine and context information.
@@ -66,7 +64,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             )
 
         # Extract tenant_id from user
-        tenant_id: str | None = user.tenant_id if isinstance(user, EndUser) else user.current_tenant_id
+        tenant_id = extract_tenant_id(user)
         if not tenant_id:
             raise ValueError("User must have a tenant_id or current_tenant_id")
         self._tenant_id = tenant_id
@@ -104,10 +102,9 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         status = WorkflowExecutionStatus(db_model.status)
 
         return WorkflowExecution(
-            id=db_model.id,
+            id_=db_model.id,
             workflow_id=db_model.workflow_id,
-            sequence_number=db_model.sequence_number,
-            type=WorkflowType(db_model.type),
+            workflow_type=WorkflowType(db_model.type),
             workflow_version=db_model.version,
             graph=graph,
             inputs=inputs,
@@ -140,20 +137,26 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             raise ValueError("created_by_role is required in repository constructor")
 
         db_model = WorkflowRun()
-        db_model.id = domain_model.id
+        db_model.id = domain_model.id_
         db_model.tenant_id = self._tenant_id
         if self._app_id is not None:
             db_model.app_id = self._app_id
         db_model.workflow_id = domain_model.workflow_id
         db_model.triggered_from = self._triggered_from
-        db_model.sequence_number = domain_model.sequence_number
-        db_model.type = domain_model.type
+
+        # No sequence number generation needed anymore
+
+        db_model.type = domain_model.workflow_type
         db_model.version = domain_model.workflow_version
         db_model.graph = json.dumps(domain_model.graph) if domain_model.graph else None
         db_model.inputs = json.dumps(domain_model.inputs) if domain_model.inputs else None
-        db_model.outputs = json.dumps(domain_model.outputs) if domain_model.outputs else None
+        db_model.outputs = (
+            json.dumps(WorkflowRuntimeTypeConverter().to_json_encodable(domain_model.outputs))
+            if domain_model.outputs
+            else None
+        )
         db_model.status = domain_model.status
-        db_model.error = domain_model.error_message if domain_model.error_message else None
+        db_model.error = domain_model.error_message or None
         db_model.total_tokens = domain_model.total_tokens
         db_model.total_steps = domain_model.total_steps
         db_model.exceptions_count = domain_model.exceptions_count
@@ -170,7 +173,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         return db_model
 
-    def save(self, execution: WorkflowExecution) -> None:
+    def save(self, execution: WorkflowExecution):
         """
         Save or update a WorkflowExecution domain entity to the database.
 
@@ -197,46 +200,4 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             session.commit()
 
             # Update the in-memory cache for faster subsequent lookups
-            logger.debug(f"Updating cache for execution_id: {db_model.id}")
             self._execution_cache[db_model.id] = db_model
-
-    def get(self, execution_id: str) -> Optional[WorkflowExecution]:
-        """
-        Retrieve a WorkflowExecution by its ID.
-
-        First checks the in-memory cache, and if not found, queries the database.
-        If found in the database, adds it to the cache for future lookups.
-
-        Args:
-            execution_id: The workflow execution ID
-
-        Returns:
-            The WorkflowExecution instance if found, None otherwise
-        """
-        # First check the cache
-        if execution_id in self._execution_cache:
-            logger.debug(f"Cache hit for execution_id: {execution_id}")
-            # Convert cached DB model to domain model
-            cached_db_model = self._execution_cache[execution_id]
-            return self._to_domain_model(cached_db_model)
-
-        # If not in cache, query the database
-        logger.debug(f"Cache miss for execution_id: {execution_id}, querying database")
-        with self._session_factory() as session:
-            stmt = select(WorkflowRun).where(
-                WorkflowRun.id == execution_id,
-                WorkflowRun.tenant_id == self._tenant_id,
-            )
-
-            if self._app_id:
-                stmt = stmt.where(WorkflowRun.app_id == self._app_id)
-
-            db_model = session.scalar(stmt)
-            if db_model:
-                # Add DB model to cache
-                self._execution_cache[execution_id] = db_model
-
-                # Convert to domain model and return
-                return self._to_domain_model(db_model)
-
-            return None

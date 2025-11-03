@@ -97,6 +97,7 @@ __pypackages__/
 
 # Celery stuff
 celerybeat-schedule
+celerybeat-schedule.db
 celerybeat.pid
 
 # SageMath parsed files
@@ -123,10 +124,12 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# mypy
+# type checking
 .mypy_cache/
 .dmypy.json
 dmypy.json
+pyrightconfig.json
+!api/pyrightconfig.json
 
 # Pyre type checker
 .pyre/
@@ -179,6 +182,7 @@ docker/volumes/pgvecto_rs/data/*
 docker/volumes/couchbase/*
 docker/volumes/oceanbase/*
 docker/volumes/plugin_daemon/*
+docker/volumes/matrixone/*
 !docker/volumes/oceanbase/init.d
 
 docker/nginx/conf.d/default.conf
@@ -192,12 +196,14 @@ sdks/python-client/dist
 sdks/python-client/dify_client.egg-info
 
 .vscode/*
-!.vscode/launch.json
-pyrightconfig.json
+!.vscode/launch.json.template
+!.vscode/README.md
 api/.vscode
+web/.vscode
+# vscode Code History Extension
+.history
 
 .idea/
-.vscode
 
 # pnpm
 /.pnpm-store
@@ -207,3 +213,26 @@ plugins.jsonl
 
 # mise
 mise.toml
+
+# Next.js build output
+.next/
+
+# PWA generated files
+web/public/sw.js
+web/public/sw.js.map
+web/public/workbox-*.js
+web/public/workbox-*.js.map
+web/public/fallback-*.js
+
+# AI Assistant
+.roo/
+api/.env.backup
+/clickzetta
+
+# Benchmark
+scripts/stress-test/setup/config/
+scripts/stress-test/reports/
+
+# mcp
+.playwright-mcp/
+.serena/

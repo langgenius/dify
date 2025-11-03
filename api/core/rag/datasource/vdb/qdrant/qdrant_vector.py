@@ -3,7 +3,7 @@ import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
 from itertools import islice
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Union
 
 import qdrant_client
 from flask import current_app
@@ -18,6 +18,7 @@ from qdrant_client.http.models import (
     TokenizerType,
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
+from sqlalchemy import select
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -39,15 +40,30 @@ if TYPE_CHECKING:
     MetadataFilter = Union[DictFilter, common_types.Filter]
 
 
+class PathQdrantParams(BaseModel):
+    path: str
+
+
+class UrlQdrantParams(BaseModel):
+    url: str
+    api_key: str | None
+    timeout: float
+    verify: bool
+    grpc_port: int
+    prefer_grpc: bool
+
+
 class QdrantConfig(BaseModel):
     endpoint: str
-    api_key: Optional[str] = None
+    api_key: str | None = None
     timeout: float = 20
-    root_path: Optional[str] = None
+    root_path: str | None = None
     grpc_port: int = 6334
     prefer_grpc: bool = False
+    replication_factor: int = 1
+    write_consistency_factor: int = 1
 
-    def to_qdrant_params(self):
+    def to_qdrant_params(self) -> PathQdrantParams | UrlQdrantParams:
         if self.endpoint and self.endpoint.startswith("path:"):
             path = self.endpoint.replace("path:", "")
             if not os.path.isabs(path):
@@ -55,30 +71,30 @@ class QdrantConfig(BaseModel):
                     raise ValueError("Root path is not set")
                 path = os.path.join(self.root_path, path)
 
-            return {"path": path}
+            return PathQdrantParams(path=path)
         else:
-            return {
-                "url": self.endpoint,
-                "api_key": self.api_key,
-                "timeout": self.timeout,
-                "verify": self.endpoint.startswith("https"),
-                "grpc_port": self.grpc_port,
-                "prefer_grpc": self.prefer_grpc,
-            }
+            return UrlQdrantParams(
+                url=self.endpoint,
+                api_key=self.api_key,
+                timeout=self.timeout,
+                verify=self.endpoint.startswith("https"),
+                grpc_port=self.grpc_port,
+                prefer_grpc=self.prefer_grpc,
+            )
 
 
 class QdrantVector(BaseVector):
     def __init__(self, collection_name: str, group_id: str, config: QdrantConfig, distance_func: str = "Cosine"):
         super().__init__(collection_name)
         self._client_config = config
-        self._client = qdrant_client.QdrantClient(**self._client_config.to_qdrant_params())
+        self._client = qdrant_client.QdrantClient(**self._client_config.to_qdrant_params().model_dump())
         self._distance_func = distance_func.upper()
         self._group_id = group_id
 
     def get_type(self) -> str:
         return VectorType.QDRANT
 
-    def to_index_struct(self) -> dict:
+    def to_index_struct(self):
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
@@ -93,9 +109,9 @@ class QdrantVector(BaseVector):
             self.add_texts(texts, embeddings, **kwargs)
 
     def create_collection(self, collection_name: str, vector_size: int):
-        lock_name = "vector_indexing_lock_{}".format(collection_name)
+        lock_name = f"vector_indexing_lock_{collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
                 return
             collection_name = collection_name or uuid.uuid4().hex
@@ -119,24 +135,25 @@ class QdrantVector(BaseVector):
                     max_indexing_threads=0,
                     on_disk=False,
                 )
+
                 self._client.create_collection(
                     collection_name=collection_name,
                     vectors_config=vectors_config,
                     hnsw_config=hnsw_config,
                     timeout=int(self._client_config.timeout),
+                    replication_factor=self._client_config.replication_factor,
+                    write_consistency_factor=self._client_config.write_consistency_factor,
                 )
 
                 # create group_id payload index
                 self._client.create_payload_index(
-                    collection_name, Field.GROUP_KEY.value, field_schema=PayloadSchemaType.KEYWORD
+                    collection_name, Field.GROUP_KEY, field_schema=PayloadSchemaType.KEYWORD
                 )
                 # create doc_id payload index
-                self._client.create_payload_index(
-                    collection_name, Field.DOC_ID.value, field_schema=PayloadSchemaType.KEYWORD
-                )
+                self._client.create_payload_index(collection_name, Field.DOC_ID, field_schema=PayloadSchemaType.KEYWORD)
                 # create document_id payload index
                 self._client.create_payload_index(
-                    collection_name, Field.DOCUMENT_ID.value, field_schema=PayloadSchemaType.KEYWORD
+                    collection_name, Field.DOCUMENT_ID, field_schema=PayloadSchemaType.KEYWORD
                 )
                 # create full text index
                 text_index_params = TextIndexParams(
@@ -146,9 +163,7 @@ class QdrantVector(BaseVector):
                     max_token_len=20,
                     lowercase=True,
                 )
-                self._client.create_payload_index(
-                    collection_name, Field.CONTENT_KEY.value, field_schema=text_index_params
-                )
+                self._client.create_payload_index(collection_name, Field.CONTENT_KEY, field_schema=text_index_params)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
@@ -170,10 +185,10 @@ class QdrantVector(BaseVector):
         self,
         texts: Iterable[str],
         embeddings: list[list[float]],
-        metadatas: Optional[list[dict]] = None,
-        ids: Optional[Sequence[str]] = None,
+        metadatas: list[dict] | None = None,
+        ids: Sequence[str] | None = None,
         batch_size: int = 64,
-        group_id: Optional[str] = None,
+        group_id: str | None = None,
     ) -> Generator[tuple[list[str], list[rest.PointStruct]], None, None]:
         from qdrant_client.http import models as rest
 
@@ -201,10 +216,10 @@ class QdrantVector(BaseVector):
                     self._build_payloads(
                         batch_texts,
                         batch_metadatas,
-                        Field.CONTENT_KEY.value,
-                        Field.METADATA_KEY.value,
+                        Field.CONTENT_KEY,
+                        Field.METADATA_KEY,
                         group_id or "",  # Ensure group_id is never None
-                        Field.GROUP_KEY.value,
+                        Field.GROUP_KEY,
                     ),
                 )
             ]
@@ -215,7 +230,7 @@ class QdrantVector(BaseVector):
     def _build_payloads(
         cls,
         texts: Iterable[str],
-        metadatas: Optional[list[dict]],
+        metadatas: list[dict] | None,
         content_payload_key: str,
         metadata_payload_key: str,
         group_id: str,
@@ -286,7 +301,7 @@ class QdrantVector(BaseVector):
             else:
                 raise e
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
 
@@ -326,6 +341,12 @@ class QdrantVector(BaseVector):
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         from qdrant_client.http import models
 
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
+        if score_threshold >= 1:
+            # return empty list because some versions of qdrant may response with 400 bad request，
+            # and at the same time, the score_threshold with value 1 may be valid for other vector stores
+            return []
+
         filter = models.Filter(
             must=[
                 models.FieldCondition(
@@ -350,19 +371,18 @@ class QdrantVector(BaseVector):
             limit=kwargs.get("top_k", 4),
             with_payload=True,
             with_vectors=True,
-            score_threshold=float(kwargs.get("score_threshold") or 0.0),
+            score_threshold=score_threshold,
         )
         docs = []
         for result in results:
             if result.payload is None:
                 continue
-            metadata = result.payload.get(Field.METADATA_KEY.value) or {}
+            metadata = result.payload.get(Field.METADATA_KEY) or {}
             # duplicate check score threshold
-            score_threshold = float(kwargs.get("score_threshold") or 0.0)
-            if result.score > score_threshold:
+            if result.score >= score_threshold:
                 metadata["score"] = result.score
                 doc = Document(
-                    page_content=result.payload.get(Field.CONTENT_KEY.value, ""),
+                    page_content=result.payload.get(Field.CONTENT_KEY, ""),
                     metadata=metadata,
                 )
                 docs.append(doc)
@@ -409,14 +429,13 @@ class QdrantVector(BaseVector):
         documents = []
         for result in results:
             if result:
-                document = self._document_from_scored_point(result, Field.CONTENT_KEY.value, Field.METADATA_KEY.value)
+                document = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
                 documents.append(document)
 
         return documents
 
     def _reload_if_needed(self):
         if isinstance(self._client, QdrantLocal):
-            self._client = cast(QdrantLocal, self._client)
             self._client._load()
 
     @classmethod
@@ -436,11 +455,8 @@ class QdrantVector(BaseVector):
 class QdrantVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> QdrantVector:
         if dataset.collection_binding_id:
-            dataset_collection_binding = (
-                db.session.query(DatasetCollectionBinding)
-                .filter(DatasetCollectionBinding.id == dataset.collection_binding_id)
-                .one_or_none()
-            )
+            stmt = select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == dataset.collection_binding_id)
+            dataset_collection_binding = db.session.scalars(stmt).one_or_none()
             if dataset_collection_binding:
                 collection_name = dataset_collection_binding.collection_name
             else:
@@ -466,5 +482,6 @@ class QdrantVectorFactory(AbstractVectorFactory):
                 timeout=dify_config.QDRANT_CLIENT_TIMEOUT,
                 grpc_port=dify_config.QDRANT_GRPC_PORT,
                 prefer_grpc=dify_config.QDRANT_GRPC_ENABLED,
+                replication_factor=dify_config.QDRANT_REPLICATION_FACTOR,
             ),
         )

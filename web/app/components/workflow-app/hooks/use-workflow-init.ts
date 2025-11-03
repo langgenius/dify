@@ -17,6 +17,7 @@ import {
 } from '@/service/workflow'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useWorkflowConfig } from '@/service/use-workflow'
+import type { FileUploadConfigResponse } from '@/models/common'
 
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
@@ -29,15 +30,17 @@ export const useWorkflowInit = () => {
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
-    workflowStore.setState({ appId: appDetail.id })
+    workflowStore.setState({ appId: appDetail.id, appName: appDetail.name })
   }, [appDetail.id, workflowStore])
 
-  const handleUpdateWorkflowConfig = useCallback((config: Record<string, any>) => {
-    const { setWorkflowConfig } = workflowStore.getState()
-
-    setWorkflowConfig(config)
+  const handleUpdateWorkflowFileUploadConfig = useCallback((config: FileUploadConfigResponse) => {
+    const { setFileUploadConfig } = workflowStore.getState()
+    setFileUploadConfig(config)
   }, [workflowStore])
-  useWorkflowConfig(appDetail.id, handleUpdateWorkflowConfig)
+  const {
+    data: fileUploadConfigResponse,
+    isLoading: isFileUploadConfigLoading,
+  } = useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
 
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
@@ -84,7 +87,6 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     handleGetInitialWorkflowData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
@@ -118,6 +120,7 @@ export const useWorkflowInit = () => {
 
   return {
     data,
-    isLoading,
+    isLoading: isLoading || isFileUploadConfigLoading,
+    fileUploadConfigResponse,
   }
 }

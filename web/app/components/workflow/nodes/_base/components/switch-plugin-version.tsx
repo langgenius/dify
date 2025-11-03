@@ -15,7 +15,7 @@ import { pluginManifestToCardPluginProps } from '@/app/components/plugins/instal
 import { Badge as Badge2, BadgeState } from '@/app/components/base/badge/index'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
-import { marketplaceUrlPrefix } from '@/config'
+import { getMarketplaceUrl } from '@/utils/var'
 
 export type SwitchPluginVersionProps = {
   uniqueIdentifier: string
@@ -26,7 +26,8 @@ export type SwitchPluginVersionProps = {
 
 export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const { uniqueIdentifier, tooltip, onChange, className } = props
-  const [pluginId] = uniqueIdentifier.split(':')
+
+  const [pluginId] = uniqueIdentifier?.split(':') || ['']
   const [isShow, setIsShow] = useState(false)
   const [isShowUpdateModal, { setTrue: showUpdateModal, setFalse: hideUpdateModal }] = useBoolean(false)
   const [target, setTarget] = useState<{
@@ -60,6 +61,11 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
       })
   }
   const { t } = useTranslation()
+
+  // Guard against null/undefined uniqueIdentifier to prevent app crash
+  if (!uniqueIdentifier || !pluginId)
+    return null
+
   return <Tooltip popupContent={!isShow && !isShowUpdateModal && tooltip} triggerMethod='hover'>
     <div className={cn('flex w-fit items-center justify-center', className)} onClick={e => e.stopPropagation()}>
       {isShowUpdateModal && pluginDetail && <PluginMutationModel
@@ -82,7 +88,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         modalBottomLeft={
           <Link
             className='flex items-center justify-center gap-1'
-            href={`${marketplaceUrlPrefix}/plugins/${pluginDetail.declaration.author}/${pluginDetail.declaration.name}`}
+            href={getMarketplaceUrl(`/plugins/${pluginDetail.declaration.author}/${pluginDetail.declaration.name}`)}
             target='_blank'
           >
             <span className='system-xs-regular text-xs text-text-accent'>

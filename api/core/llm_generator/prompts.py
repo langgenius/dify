@@ -1,61 +1,20 @@
-# Written by YORKI MINAKO🤡, Edited by Xiaoyi
-CONVERSATION_TITLE_PROMPT = """You need to decompose the user's input into "subject" and "intention" in order to accurately figure out what the user's input language actually is.
-Notice: the language type user uses could be diverse, which can be English, Chinese, Italian, Español, Arabic, Japanese, French, and etc.
-ENSURE your output is in the SAME language as the user's input!
-Your output is restricted only to: (Input language) Intention + Subject(short as possible)
-Your output MUST be a valid JSON.
+# Written by YORKI MINAKO🤡, Edited by Xiaoyi, Edited by yasu-oh
+CONVERSATION_TITLE_PROMPT = """You are asked to generate a concise chat title by decomposing the user’s input into two parts: “Intention” and “Subject”.
 
-Tip: When the user's question is directed at you (the language model), you can add an emoji to make it more fun.
+1. Detect Input Language
+Automatically identify the language of the user’s input (e.g. English, Chinese, Italian, Español, Arabic, Japanese, French, and etc.).
 
+2. Generate Title
+- Combine Intention + Subject into a single, as-short-as-possible phrase.
+- The title must be natural, friendly, and in the same language as the input.
+- If the input is a direct question to the model, you may add an emoji at the end.
 
-example 1:
-User Input: hi, yesterday i had some burgers.
+3. Output Format
+Return **only** a valid JSON object with these exact keys and no additional text:
 {
-  "Language Type": "The user's input is pure English",
-  "Your Reasoning": "The language of my output must be pure English.",
-  "Your Output": "sharing yesterday's food"
-}
-
-example 2:
-User Input: hello
-{
-  "Language Type": "The user's input is pure English",
-  "Your Reasoning": "The language of my output must be pure English.",
-  "Your Output": "Greeting myself☺️"
-}
-
-
-example 3:
-User Input: why mmap file: oom
-{
-  "Language Type": "The user's input is written in pure English",
-  "Your Reasoning": "The language of my output must be pure English.",
-  "Your Output": "Asking about the reason for mmap file: oom"
-}
-
-
-example 4:
-User Input: www.convinceme.yesterday-you-ate-seafood.tv讲了什么？
-{
-  "Language Type": "The user's input English-Chinese mixed",
-  "Your Reasoning": "The English-part is an URL, the main intention is still written in Chinese, so the language of my output must be using Chinese.",
-  "Your Output": "询问网站www.convinceme.yesterday-you-ate-seafood.tv"
-}
-
-example 5:
-User Input: why小红的年龄is老than小明？
-{
-  "Language Type": "The user's input is English-Chinese mixed",
-  "Your Reasoning": "The English parts are filler words, the main intention is written in Chinese, besides, Chinese occupies a greater \"actual meaning\" than English, so the language of my output must be using Chinese.",
-  "Your Output": "询问小红和小明的年龄"
-}
-
-example 6:
-User Input: yo, 你今天咋样？
-{
-  "Language Type": "The user's input is English-Chinese mixed",
-  "Your Reasoning": "The English-part is a subjective particle, the main intention is written in Chinese, so the language of my output must be using Chinese.",
-  "Your Output": "查询今日我的状态☺️"
+  "Language Type": "<Detected language>",
+  "Your Reasoning": "<Brief explanation in that language>",
+  "Your Output": "<Intention + Subject>"
 }
 
 User Input:
@@ -332,3 +291,134 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
 
 Now, generate a JSON Schema based on my description
 """  # noqa: E501
+
+STRUCTURED_OUTPUT_PROMPT = """You’re a helpful AI assistant. You could answer questions and output in JSON format.
+constraints:
+    - You must output in JSON format.
+    - Do not output boolean value, use string type instead.
+    - Do not output integer or float value, use number type instead.
+eg:
+    Here is the JSON schema:
+    {"additionalProperties": false, "properties": {"age": {"type": "number"}, "name": {"type": "string"}}, "required": ["name", "age"], "type": "object"}
+
+    Here is the user's question:
+    My name is John Doe and I am 30 years old.
+
+    output:
+    {"name": "John Doe", "age": 30}
+Here is the JSON schema:
+{{schema}}
+"""  # noqa: E501
+
+LLM_MODIFY_PROMPT_SYSTEM = """
+Both your input and output should be in JSON format.
+
+! Below is the schema for input content !
+{
+    "type": "object",
+    "description": "The user is trying to process some content with a prompt, but the output is not as expected. They hope to achieve their goal by modifying the prompt.",
+    "properties": {
+        "current": {
+            "type": "string",
+            "description": "The prompt before modification, where placeholders {{}} will be replaced with actual values for the large language model. The content in the placeholders should not be changed."
+        },
+        "last_run": {
+            "type": "object",
+            "description": "The output result from the large language model after receiving the prompt.",
+        },
+        "instruction": {
+            "type": "string",
+            "description": "User's instruction to edit the current prompt"
+        },
+        "ideal_output": {
+            "type": "string",
+            "description": "The ideal output that the user expects from the large language model after modifying the prompt. You should compare the last output with the ideal output and make changes to the prompt to achieve the goal."
+        }
+    }
+}
+! Above is the schema for input content !
+
+! Below is the schema for output content !
+{
+    "type": "object",
+    "description": "Your feedback to the user after they provide modification suggestions.",
+    "properties": {
+        "modified": {
+            "type": "string",
+            "description": "Your modified prompt. You should change the original prompt as little as possible to achieve the goal. Keep the language of prompt if not asked to change"
+        },
+        "message": {
+            "type": "string",
+            "description": "Your feedback to the user, in the user's language, explaining what you did and your thought process in text, providing sufficient emotional value to the user."
+        }
+    },
+    "required": [
+        "modified",
+        "message"
+    ]
+}
+! Above is the schema for output content !
+
+Your output must strictly follow the schema format, do not output any content outside of the JSON body.
+"""  # noqa: E501
+
+LLM_MODIFY_CODE_SYSTEM = """
+Both your input and output should be in JSON format.
+
+! Below is the schema for input content !
+{
+    "type": "object",
+    "description": "The user is trying to process some data with a code snippet, but the result is not as expected. They hope to achieve their goal by modifying the code.",
+    "properties": {
+        "current": {
+            "type": "string",
+            "description": "The code before modification."
+        },
+        "last_run": {
+            "type": "object",
+            "description": "The result of the code.",
+        },
+        "message": {
+            "type": "string",
+            "description": "User's instruction to edit the current code"
+        }
+    }
+}
+! Above is the schema for input content !
+
+! Below is the schema for output content !
+{
+    "type": "object",
+    "description": "Your feedback to the user after they provide modification suggestions.",
+    "properties": {
+        "modified": {
+            "type": "string",
+            "description": "Your modified code. You should change the original code as little as possible to achieve the goal. Keep the programming language of code if not asked to change"
+        },
+        "message": {
+            "type": "string",
+            "description": "Your feedback to the user, in the user's language, explaining what you did and your thought process in text, providing sufficient emotional value to the user."
+        }
+    },
+    "required": [
+        "modified",
+        "message"
+    ]
+}
+! Above is the schema for output content !
+
+When you are modifying the code, you should remember:
+- Do not use print, this not work in dify sandbox.
+- Do not try dangerous call like deleting files. It's PROHIBITED.
+- Do not use any library that is not built-in in with Python.
+- Get inputs from the parameters of the function and have explicit type annotations.
+- Write proper imports at the top of the code.
+- Use return statement to return the result.
+- You should return a `dict`. If you need to return a `result: str`, you should `return {"result": result}`.
+Your output must strictly follow the schema format, do not output any content outside of the JSON body.
+"""  # noqa: E501
+
+INSTRUCTION_GENERATE_TEMPLATE_PROMPT = """The output of this prompt is not as expected: {{#last_run#}}.
+You should edit the prompt according to the IDEAL OUTPUT."""
+
+INSTRUCTION_GENERATE_TEMPLATE_CODE = """Please fix the errors in the {{#error_message#}}."""

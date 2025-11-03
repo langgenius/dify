@@ -1,5 +1,6 @@
-import enum
-from typing import Any, Optional, Union
+import json
+from enum import StrEnum, auto
+from typing import Any, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -10,6 +11,7 @@ from core.tools.entities.common_entities import I18nObject
 class PluginParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
+    icon: str | None = Field(default=None, description="The icon of the option, can be a url or a base64 encoded image")
 
     @field_validator("value", mode="before")
     @classmethod
@@ -20,29 +22,44 @@ class PluginParameterOption(BaseModel):
             return value
 
 
-class PluginParameterType(enum.StrEnum):
+class PluginParameterType(StrEnum):
     """
     all available parameter types
     """
 
-    STRING = CommonParameterType.STRING.value
-    NUMBER = CommonParameterType.NUMBER.value
-    BOOLEAN = CommonParameterType.BOOLEAN.value
-    SELECT = CommonParameterType.SELECT.value
-    SECRET_INPUT = CommonParameterType.SECRET_INPUT.value
-    FILE = CommonParameterType.FILE.value
-    FILES = CommonParameterType.FILES.value
-    APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
-    MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
-    TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR.value
+    STRING = CommonParameterType.STRING
+    NUMBER = CommonParameterType.NUMBER
+    BOOLEAN = CommonParameterType.BOOLEAN
+    SELECT = CommonParameterType.SELECT
+    SECRET_INPUT = CommonParameterType.SECRET_INPUT
+    FILE = CommonParameterType.FILE
+    FILES = CommonParameterType.FILES
+    APP_SELECTOR = CommonParameterType.APP_SELECTOR
+    MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR
+    TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
+    ANY = CommonParameterType.ANY
+    DYNAMIC_SELECT = CommonParameterType.DYNAMIC_SELECT
 
     # deprecated, should not use.
-    SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
+    SYSTEM_FILES = CommonParameterType.SYSTEM_FILES
+
+    # MCP object and array type parameters
+    ARRAY = CommonParameterType.ARRAY
+    OBJECT = CommonParameterType.OBJECT
+
+
+class MCPServerParameterType(StrEnum):
+    """
+    MCP server got complex parameter types
+    """
+
+    ARRAY = auto()
+    OBJECT = auto()
 
 
 class PluginParameterAutoGenerate(BaseModel):
-    class Type(enum.StrEnum):
-        PROMPT_INSTRUCTION = "prompt_instruction"
+    class Type(StrEnum):
+        PROMPT_INSTRUCTION = auto()
 
     type: Type
 
@@ -54,15 +71,15 @@ class PluginParameterTemplate(BaseModel):
 class PluginParameter(BaseModel):
     name: str = Field(..., description="The name of the parameter")
     label: I18nObject = Field(..., description="The label presented to the user")
-    placeholder: Optional[I18nObject] = Field(default=None, description="The placeholder presented to the user")
+    placeholder: I18nObject | None = Field(default=None, description="The placeholder presented to the user")
     scope: str | None = None
-    auto_generate: Optional[PluginParameterAutoGenerate] = None
-    template: Optional[PluginParameterTemplate] = None
+    auto_generate: PluginParameterAutoGenerate | None = None
+    template: PluginParameterTemplate | None = None
     required: bool = False
-    default: Optional[Union[float, int, str]] = None
-    min: Optional[Union[float, int]] = None
-    max: Optional[Union[float, int]] = None
-    precision: Optional[int] = None
+    default: Union[float, int, str, bool] | None = None
+    min: Union[float, int] | None = None
+    max: Union[float, int] | None = None
+    precision: int | None = None
     options: list[PluginParameterOption] = Field(default_factory=list)
 
     @field_validator("options", mode="before")
@@ -73,7 +90,7 @@ class PluginParameter(BaseModel):
         return v
 
 
-def as_normal_type(typ: enum.StrEnum):
+def as_normal_type(typ: StrEnum):
     if typ.value in {
         PluginParameterType.SECRET_INPUT,
         PluginParameterType.SELECT,
@@ -82,7 +99,7 @@ def as_normal_type(typ: enum.StrEnum):
     return typ.value
 
 
-def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
+def cast_parameter_value(typ: StrEnum, value: Any, /):
     try:
         match typ.value:
             case PluginParameterType.STRING | PluginParameterType.SECRET_INPUT | PluginParameterType.SELECT:
@@ -134,6 +151,34 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
                 if value and not isinstance(value, list):
                     raise ValueError("The tools selector must be a list.")
                 return value
+            case PluginParameterType.ANY:
+                if value and not isinstance(value, str | dict | list | int | float):
+                    raise ValueError("The var selector must be a string, dictionary, list or number.")
+                return value
+            case PluginParameterType.ARRAY:
+                if not isinstance(value, list):
+                    # Try to parse JSON string for arrays
+                    if isinstance(value, str):
+                        try:
+                            parsed_value = json.loads(value)
+                            if isinstance(parsed_value, list):
+                                return parsed_value
+                        except (json.JSONDecodeError, ValueError):
+                            pass
+                    return [value]
+                return value
+            case PluginParameterType.OBJECT:
+                if not isinstance(value, dict):
+                    # Try to parse JSON string for objects
+                    if isinstance(value, str):
+                        try:
+                            parsed_value = json.loads(value)
+                            if isinstance(parsed_value, dict):
+                                return parsed_value
+                        except (json.JSONDecodeError, ValueError):
+                            pass
+                    return {}
+                return value
             case _:
                 return str(value)
     except ValueError:
@@ -142,7 +187,7 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
         raise ValueError(f"The tool parameter value {value} is not in correct type of {as_normal_type(typ)}.")
 
 
-def init_frontend_parameter(rule: PluginParameter, type: enum.StrEnum, value: Any):
+def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
     """
     init frontend parameter by rule
     """

@@ -1,11 +1,10 @@
-from flask_login import current_user
-from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal_with, reqparse
 
 from constants.languages import languages
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required
 from libs.helper import AppIconUrlField
-from libs.login import login_required
+from libs.login import current_user, login_required
 from services.recommended_app_service import RecommendedAppService
 
 app_fields = {
@@ -36,18 +35,19 @@ recommended_app_list_fields = {
 }
 
 
+@console_ns.route("/explore/apps")
 class RecommendedAppListApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(recommended_app_list_fields)
     def get(self):
         # language args
-        parser = reqparse.RequestParser()
-        parser.add_argument("language", type=str, location="args")
+        parser = reqparse.RequestParser().add_argument("language", type=str, location="args")
         args = parser.parse_args()
 
-        if args.get("language") and args.get("language") in languages:
-            language_prefix = args.get("language")
+        language = args.get("language")
+        if language and language in languages:
+            language_prefix = language
         elif current_user and current_user.interface_language:
             language_prefix = current_user.interface_language
         else:
@@ -56,13 +56,10 @@ class RecommendedAppListApi(Resource):
         return RecommendedAppService.get_recommended_apps_and_categories(language_prefix)
 
 
+@console_ns.route("/explore/apps/<uuid:app_id>")
 class RecommendedAppApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
         app_id = str(app_id)
         return RecommendedAppService.get_recommend_app_detail(app_id)
-
-
-api.add_resource(RecommendedAppListApi, "/explore/apps")
-api.add_resource(RecommendedAppApi, "/explore/apps/<uuid:app_id>")

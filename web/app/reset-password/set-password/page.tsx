@@ -9,8 +9,7 @@ import Button from '@/app/components/base/button'
 import { changePasswordWithToken } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import Input from '@/app/components/base/input'
-
-const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
+import { validPassword } from '@/config'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
@@ -105,7 +104,7 @@ const ChangePasswordForm = () => {
           </div>
 
           <div className="mx-auto mt-6 w-full">
-            <div className="bg-white">
+            <div>
               {/* Password */}
               <div className='mb-5'>
                 <label htmlFor="password" className="system-md-semibold my-2 text-text-secondary">

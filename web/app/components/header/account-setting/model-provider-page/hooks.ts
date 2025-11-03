@@ -7,10 +7,13 @@ import {
 import useSWR, { useSWRConfig } from 'swr'
 import { useContext } from 'use-context-selector'
 import type {
+  Credential,
   CustomConfigurationModelFixedFields,
+  CustomModel,
   DefaultModel,
   DefaultModelResponse,
   Model,
+  ModelModalModeEnum,
   ModelProvider,
   ModelTypeEnum,
 } from './declarations'
@@ -77,16 +80,17 @@ export const useProviderCredentialsAndLoadBalancing = (
   configurationMethod: ConfigurationMethodEnum,
   configured?: boolean,
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+  credentialId?: string,
 ) => {
-  const { data: predefinedFormSchemasValue, mutate: mutatePredefined } = useSWR(
-    (configurationMethod === ConfigurationMethodEnum.predefinedModel && configured)
-      ? `/workspaces/current/model-providers/${provider}/credentials`
+  const { data: predefinedFormSchemasValue, mutate: mutatePredefined, isLoading: isPredefinedLoading } = useSWR(
+    (configurationMethod === ConfigurationMethodEnum.predefinedModel && configured && credentialId)
+      ? `/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`
       : null,
     fetchModelProviderCredentials,
   )
-  const { data: customFormSchemasValue, mutate: mutateCustomized } = useSWR(
-    (configurationMethod === ConfigurationMethodEnum.customizableModel && currentCustomConfigurationModelFixedFields)
-      ? `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}`
+  const { data: customFormSchemasValue, mutate: mutateCustomized, isLoading: isCustomizedLoading } = useSWR(
+    (configurationMethod === ConfigurationMethodEnum.customizableModel && currentCustomConfigurationModelFixedFields && credentialId)
+      ? `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}${credentialId ? `&credential_id=${credentialId}` : ''}`
       : null,
     fetchModelProviderCredentials,
   )
@@ -102,6 +106,7 @@ export const useProviderCredentialsAndLoadBalancing = (
         : undefined
   }, [
     configurationMethod,
+    credentialId,
     currentCustomConfigurationModelFixedFields,
     customFormSchemasValue?.credentials,
     predefinedFormSchemasValue?.credentials,
@@ -119,6 +124,7 @@ export const useProviderCredentialsAndLoadBalancing = (
       : customFormSchemasValue
     )?.load_balancing,
     mutate,
+    isLoading: isPredefinedLoading || isCustomizedLoading,
   }
   // as ([Record<string, string | boolean | undefined> | undefined, ModelLoadBalancingConfig | undefined])
 }
@@ -293,7 +299,7 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
   }, [queryPlugins, queryPluginsWithDebounced, searchText, exclude])
 
   const allPlugins = useMemo(() => {
-    const allPlugins = [...collectionPlugins.filter(plugin => !exclude.includes(plugin.plugin_id))]
+    const allPlugins = collectionPlugins.filter(plugin => !exclude.includes(plugin.plugin_id))
 
     if (plugins?.length) {
       for (let i = 0; i < plugins.length; i++) {
@@ -313,40 +319,64 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
   }
 }
 
-export const useModelModalHandler = () => {
-  const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
+export const useRefreshModel = () => {
+  const { eventEmitter } = useEventEmitterContextContext()
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
-  const { eventEmitter } = useEventEmitterContextContext()
+  const handleRefreshModel = useCallback((
+    provider: ModelProvider,
+    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+    refreshModelList?: boolean,
+  ) => {
+    updateModelProviders()
+
+    provider.supported_model_types.forEach((type) => {
+      updateModelList(type)
+    })
+
+    if (refreshModelList && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+      eventEmitter?.emit({
+        type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
+        payload: provider.provider,
+      } as any)
+
+      if (CustomConfigurationModelFixedFields?.__model_type)
+        updateModelList(CustomConfigurationModelFixedFields.__model_type)
+    }
+  }, [eventEmitter, updateModelList, updateModelProviders])
+
+  return {
+    handleRefreshModel,
+  }
+}
+
+export const useModelModalHandler = () => {
+  const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
 
   return (
     provider: ModelProvider,
     configurationMethod: ConfigurationMethodEnum,
     CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+    extra: {
+      isModelCredential?: boolean,
+      credential?: Credential,
+      model?: CustomModel,
+      onUpdate?: (newPayload: any, formValues?: Record<string, any>) => void,
+      mode?: ModelModalModeEnum,
+    } = {},
   ) => {
     setShowModelModal({
       payload: {
         currentProvider: provider,
         currentConfigurationMethod: configurationMethod,
         currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
+        isModelCredential: extra.isModelCredential,
+        credential: extra.credential,
+        model: extra.model,
+        mode: extra.mode,
       },
-      onSaveCallback: () => {
-        updateModelProviders()
-
-        provider.supported_model_types.forEach((type) => {
-          updateModelList(type)
-        })
-
-        if (configurationMethod === ConfigurationMethodEnum.customizableModel
-            && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
-          eventEmitter?.emit({
-            type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-            payload: provider.provider,
-          } as any)
-
-          if (CustomConfigurationModelFixedFields?.__model_type)
-            updateModelList(CustomConfigurationModelFixedFields.__model_type)
-        }
+      onSaveCallback: (newPayload, formValues) => {
+        extra.onUpdate?.(newPayload, formValues)
       },
     })
   }

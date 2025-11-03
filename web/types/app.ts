@@ -1,6 +1,6 @@
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 import type { CollectionType } from '@/app/components/tools/types'
-import type { LanguagesSupported } from '@/i18n/language'
+import type { LanguagesSupported } from '@/i18n-config/language'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type {
   RerankingModeEnum,
@@ -8,6 +8,7 @@ import type {
 } from '@/models/datasets'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
 import type { AccessMode } from '@/models/access-control'
+import type { ExternalDataTool } from '@/models/common'
 
 export enum Theme {
   light = 'light',
@@ -90,6 +91,7 @@ export type TextTypeFormItem = {
   variable: string
   required: boolean
   max_length: number
+  hide: boolean
 }
 
 export type SelectTypeFormItem = {
@@ -98,13 +100,7 @@ export type SelectTypeFormItem = {
   variable: string
   required: boolean
   options: string[]
-}
-
-export type ParagraphTypeFormItem = {
-  default: string
-  label: string
-  variable: string
-  required: boolean
+  hide: boolean
 }
 /**
  * User Input Form Item
@@ -127,6 +123,7 @@ export type AgentTool = {
   enabled: boolean
   isDeleted?: boolean
   notAuthor?: boolean
+  credential_id?: string
 }
 
 export type ToolItem = {
@@ -210,12 +207,12 @@ export type ModelConfig = {
   suggested_questions?: string[]
   pre_prompt: string
   prompt_type: PromptMode
-  chat_prompt_config: ChatPromptConfig | {}
-  completion_prompt_config: CompletionPromptConfig | {}
+  chat_prompt_config?: ChatPromptConfig | null
+  completion_prompt_config?: CompletionPromptConfig | null
   user_input_form: UserInputFormItem[]
   dataset_query_variable?: string
   more_like_this: {
-    enabled?: boolean
+    enabled: boolean
   }
   suggested_questions_after_answer: {
     enabled: boolean
@@ -241,12 +238,20 @@ export type ModelConfig = {
     strategy?: AgentStrategy
     tools: ToolItem[]
   }
+  external_data_tools?: ExternalDataTool[]
   model: Model
   dataset_configs: DatasetConfigs
   file_upload?: {
     image: VisionSettings
   } & UploadFileSetting
   files?: VisionFile[]
+  system_parameters: {
+    audio_file_size_limit: number
+    file_size_limit: number
+    image_file_size_limit: number
+    video_file_size_limit: number
+    workflow_file_upload_limit: number
+  }
   created_at?: number
   updated_at?: number
 }
@@ -316,6 +321,8 @@ export type App = {
   name: string
   /** Description */
   description: string
+  /** Author Name */
+  author_name: string;
 
   /**
    * Icon Type
@@ -348,6 +355,8 @@ export type App = {
   app_model_config: ModelConfig
   /** Timestamp of creation */
   created_at: number
+  /** Timestamp of update */
+  updated_at: number
   /** Web Application Configuration */
   site: SiteConfig
   /** api site url */
@@ -360,8 +369,10 @@ export type App = {
     updated_at: number
     updated_by?: string
   }
+  deleted_tools?: Array<{ id: string; tool_name: string }>
   /** access control */
   access_mode: AccessMode
+  max_active_requests?: number | null
 }
 
 export type AppSSO = {

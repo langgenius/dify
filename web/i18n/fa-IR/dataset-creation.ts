@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: 'ایجاد دانش',
-      update: 'افزودن داده',
       fallbackRoute: 'دانش',
     },
     one: 'انتخاب منبع داده',
@@ -28,6 +26,7 @@ const translation = {
     uploader: {
       title: 'بارگذاری فایل',
       button: 'فایل ها یا پوشه ها را بکشید و رها کنید یا',
+      buttonSingleFile: 'فایل را بکشید و رها کنید یا',
       browse: 'مرور',
       tip: 'پشتیبانی از {{supportTypes}}. حداکثر {{size}}MB هر کدام.',
       validation: {
@@ -63,7 +62,6 @@ const translation = {
       run: 'اجرا',
       firecrawlTitle: 'استخراج محتوای وب با fireFirecrawl',
       firecrawlDoc: 'مستندات Firecrawl',
-      firecrawlDocLink: '<a href="https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website">https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website</a>',
       options: 'گزینهها',
       crawlSubPage: 'خزش صفحات فرعی',
       limit: 'محدودیت',
@@ -92,9 +90,9 @@ const translation = {
       waterCrawlNotConfiguredDescription: 'برای استفاده از Watercrawl، آن را با کلید API پیکربندی کنید.',
       waterCrawlNotConfigured: 'Watercrawl پیکربندی نشده است',
       configureJinaReader: 'پیکربندی خواننده جینا',
-      watercrawlDocLink: 'https://docs.dify.ai/fa/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       watercrawlTitle: 'محتوای وب را با واترکرال استخراج کنید',
       configureWatercrawl: 'تنظیم واترکراول',
+      running: 'اجرا',
     },
     cancel: 'لغو',
   },
@@ -180,6 +178,7 @@ const translation = {
     fullDocTip: 'کل سند به عنوان تکه والد استفاده می شود و مستقیما بازیابی می شود. لطفا توجه داشته باشید که به دلایل عملکردی، متن بیش از 10000 توکن به طور خودکار کوتاه می شود.',
     qaSwitchHighQualityTipTitle: 'فرمت پرسش و پاسخ به روش نمایه سازی با کیفیت بالا نیاز دارد',
     useQALanguage: 'تکه با استفاده از فرمت پرسش و پاسخ در',
+    qaTip: 'هنگام استفاده از داده های پرسش و پاسخ ساختاریافته، می توانید اسنادی ایجاد کنید که سوالات را با پاسخ جفت می کند. این اسناد بر اساس بخش سؤال نمایه می شوند و به سیستم اجازه می دهند پاسخ های مربوطه را بر اساس شباهت پرس و جو بازیابی کند.',
   },
   stepThree: {
     creationTitle: ' دانش ایجاد شد',

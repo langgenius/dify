@@ -39,15 +39,12 @@ const Item: FC<Props> = ({
         plugin_id: data.unique_identifier,
       }
       onFetchedPayload(payload)
-      setPayload(payload)
+      setPayload({ ...payload, from: dependency.type })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
   useEffect(() => {
     if (error)
       onFetchError()
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error])
   if (!payload) return <Loading />
   return (

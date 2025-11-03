@@ -20,6 +20,8 @@ const ConditionInput = ({
 }: ConditionInputProps) => {
   const { t } = useTranslation()
   const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
+  const pipelineId = useStore(s => s.pipelineId)
+  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
 
   return (
     <PromptEditor
@@ -43,6 +45,8 @@ const ConditionInput = ({
           }
           return acc
         }, {} as any),
+        showManageInputField: !!pipelineId,
+        onManageInputField: () => setShowInputFieldPanel?.(true),
       }}
       onChange={onChange}
       editable={!disabled}
