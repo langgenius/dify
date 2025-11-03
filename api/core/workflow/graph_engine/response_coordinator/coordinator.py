@@ -516,7 +516,7 @@ class ResponseStreamCoordinator:
         Check if there are any pending response sessions.
 
         Returns:
-            True if there are active, waiting, or未激活的 response sessions
+            True if there are active, waiting, or inactive response sessions
         """
         with self._lock:
             return (
