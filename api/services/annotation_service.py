@@ -253,7 +253,7 @@ class AppAnnotationService:
         if app_annotation_setting:
             update_annotation_to_index_task.delay(
                 annotation.id,
-                annotation.question,
+                annotation.question_text,
                 current_tenant_id,
                 app_id,
                 app_annotation_setting.collection_binding_id,
