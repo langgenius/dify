@@ -1,4 +1,5 @@
 import contextlib
+import hashlib
 import logging
 from collections.abc import Callable, Sequence
 from typing import Any, Union
@@ -11,12 +12,14 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.variables.types import SegmentType
 from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
 from models.model import App, Conversation, EndUser, Message
 from services.errors.conversation import (
+    ConversationClearInProgressError,
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
     ConversationVariableTypeMismatchError,
@@ -232,6 +235,9 @@ class ConversationService:
 
         Returns:
             dict with task info and estimated counts
+
+        Raises:
+            ConversationClearInProgressError: If a clearing task is already in progress
         """
         # Validate conversation ownership if specific IDs provided
         if conversation_ids:
@@ -244,39 +250,62 @@ class ConversationService:
         else:
             mode = "chat"  # covers chat, agent-chat, advanced-chat
 
-        # Queue the Celery task
-        task = clear_conversations_task.delay(
-            app_id=app_model.id,
-            conversation_mode=mode,
-            conversation_ids=conversation_ids,
-            user_id=user.id if user else None,
-            user_type="account" if isinstance(user, Account) else "end_user" if isinstance(user, EndUser) else None,
-        )
-
-        # Get estimated counts for response
+        # Generate unique lock key to prevent duplicate tasks
+        # Key format: clear_conversations:{app_id}:{mode}[:{conversation_ids_hash}]
+        lock_key = f"clear_conversations:{app_model.id}:{mode}"
         if conversation_ids:
-            conversation_count = len(conversation_ids)
-        else:
-            # Estimate total conversations for this app
-            conversation_count = (
-                db.session.query(Conversation)
-                .filter(
-                    Conversation.app_id == app_model.id,
-                    Conversation.mode == mode,
-                    Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
-                    Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-                    Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
-                    Conversation.is_deleted == False,
-                )
-                .count()
+            # For selective deletion, include hash of conversation IDs
+            ids_hash = hashlib.md5(",".join(sorted(conversation_ids)).encode()).hexdigest()[:8]
+            lock_key += f":{ids_hash}"
+
+        # Try to acquire lock (expires in 10 minutes)
+        # nx=True means set only if key doesn't exist
+        lock_acquired = redis_client.set(lock_key, "1", ex=600, nx=True)
+        if not lock_acquired:
+            # Another clearing task is already in progress
+            raise ConversationClearInProgressError(
+                "A conversation clearing task is already in progress for this app. Please wait for it to complete."
             )
 
-        return {
-            "task_id": task.id,
-            "status": "queued",
-            "estimated_conversations": conversation_count,
-            "mode": "selective" if conversation_ids else "all",
-        }
+        try:
+            # Queue the Celery task with lock_key for cleanup
+            task = clear_conversations_task.delay(
+                app_id=app_model.id,
+                conversation_mode=mode,
+                conversation_ids=conversation_ids,
+                user_id=user.id if user else None,
+                user_type="account" if isinstance(user, Account) else "end_user" if isinstance(user, EndUser) else None,
+                lock_key=lock_key,
+            )
+
+            # Get estimated counts for response
+            if conversation_ids:
+                conversation_count = len(conversation_ids)
+            else:
+                # Estimate total conversations for this app
+                conversation_count = (
+                    db.session.query(Conversation)
+                    .filter(
+                        Conversation.app_id == app_model.id,
+                        Conversation.mode == mode,
+                        Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
+                        Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+                        Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
+                        Conversation.is_deleted == False,
+                    )
+                    .count()
+                )
+
+            return {
+                "task_id": task.id,
+                "status": "queued",
+                "estimated_conversations": conversation_count,
+                "mode": "selective" if conversation_ids else "all",
+            }
+        except Exception:
+            # Release lock if task queueing failed
+            redis_client.delete(lock_key)
+            raise
 
     @classmethod
     def get_conversational_variable(

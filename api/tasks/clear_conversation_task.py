@@ -5,6 +5,7 @@ from celery import shared_task  # type: ignore
 from sqlalchemy.orm import sessionmaker
 
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from models import (
     Conversation,
@@ -32,6 +33,7 @@ def clear_conversations_task(
     conversation_ids: list[str] | None = None,
     user_id: str | None = None,
     user_type: str | None = None,
+    lock_key: str | None = None,
 ):
     """
     Celery task to clear conversations and related data.
@@ -42,6 +44,7 @@ def clear_conversations_task(
         conversation_ids: Optional list of specific conversation IDs to clear
         user_id: The user ID for permission validation
         user_type: 'account' or 'end_user'
+        lock_key: Redis lock key to release after completion
     """
     start_time = time.time()
     total_deleted = {
@@ -160,6 +163,14 @@ def clear_conversations_task(
         execution_time = time.time() - start_time
         logger.info("Conversation cleanup completed in %.2fs. Deleted: %s", execution_time, total_deleted)
 
+        # Release Redis lock on successful completion
+        if lock_key:
+            try:
+                redis_client.delete(lock_key)
+                logger.info("Released lock: %s", lock_key)
+            except Exception as e:
+                logger.warning("Failed to release lock %s: %s", lock_key, e)
+
         return {
             "status": "completed",
             "execution_time": execution_time,
@@ -178,6 +189,13 @@ def clear_conversations_task(
             raise self.retry(exc=exc, countdown=60 * (2**self.request.retries))
         except MaxRetriesExceededError:
             logger.exception("Max retries exceeded for conversation cleanup, app_id=%s", app_id)
+            # Release lock after max retries
+            if lock_key:
+                try:
+                    redis_client.delete(lock_key)
+                    logger.info("Released lock after max retries: %s", lock_key)
+                except Exception as e:
+                    logger.warning("Failed to release lock %s: %s", lock_key, e)
             raise
 
 

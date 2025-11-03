@@ -88,6 +88,29 @@ export const clearChatConversations = async ({ appId, conversationIds }: { appId
       ? { conversation_ids: conversationIds }
       : { conversation_ids: [] }
 
+    // Optimistic update: immediately clear the list from UI
+    // This prevents users from thinking the operation failed and clicking again
+    mutate(
+      key =>
+        typeof key === 'object' && key !== null && 'url' in key
+        && key.url === `/apps/${appId}/chat-conversations`,
+      (data: any) => {
+        if (!data)
+          return { data: [], total: 0 }
+        // For selective deletion, filter out deleted conversations
+        if (conversationIds && conversationIds.length > 0) {
+          return {
+            ...data,
+            data: data.data?.filter((conv: any) => !conversationIds.includes(conv.id)) || [],
+            total: Math.max(0, (data.total || 0) - conversationIds.length),
+          }
+        }
+        // For "clear all", return empty list
+        return { data: [], total: 0 }
+      },
+      { revalidate: false },
+    )
+
     const result = await del<any>(`/apps/${appId}/chat-conversations`, { body })
 
     // Clear localStorage to prevent 404 errors
@@ -96,7 +119,7 @@ export const clearChatConversations = async ({ appId, conversationIds }: { appId
     // Clear SWR caches to force reload of conversation lists
     await Promise.all([
       // Clear log list caches (key is an object with url and params)
-      // Force cache invalidation with populateCache: false
+      // Now revalidate after the deletion is confirmed
       mutate(
         key =>
           typeof key === 'object' && key !== null && 'url' in key
@@ -141,6 +164,29 @@ export const clearCompletionConversations = async ({ appId, conversationIds }: {
       ? { conversation_ids: conversationIds }
       : { conversation_ids: [] }
 
+    // Optimistic update: immediately clear the list from UI
+    // This prevents users from thinking the operation failed and clicking again
+    mutate(
+      key =>
+        typeof key === 'object' && key !== null && 'url' in key
+        && key.url === `/apps/${appId}/completion-conversations`,
+      (data: any) => {
+        if (!data)
+          return { data: [], total: 0 }
+        // For selective deletion, filter out deleted conversations
+        if (conversationIds && conversationIds.length > 0) {
+          return {
+            ...data,
+            data: data.data?.filter((conv: any) => !conversationIds.includes(conv.id)) || [],
+            total: Math.max(0, (data.total || 0) - conversationIds.length),
+          }
+        }
+        // For "clear all", return empty list
+        return { data: [], total: 0 }
+      },
+      { revalidate: false },
+    )
+
     const result = await del<any>(`/apps/${appId}/completion-conversations`, { body })
 
     // Clear localStorage to prevent 404 errors
@@ -149,7 +195,7 @@ export const clearCompletionConversations = async ({ appId, conversationIds }: {
     // Clear SWR caches to force reload of conversation lists
     await Promise.all([
       // Clear log list caches (key is an object with url and params)
-      // Force cache invalidation with populateCache: false
+      // Now revalidate after the deletion is confirmed
       mutate(
         key =>
           typeof key === 'object' && key !== null && 'url' in key

@@ -107,7 +107,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     if (conversationIds) {
       // Remove specific conversation IDs from selection
       setSelectedItems(prev => prev.filter(id => !conversationIds.includes(id)))
-    } else {
+    }
+    else {
       // Clear all selections
       setSelectedItems([])
     }
@@ -129,13 +130,13 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         {total === undefined
           ? <Loading type='app' />
           : total > 0
-            ? <List 
-                logs={isChatMode ? chatConversations : completionConversations} 
-                appDetail={appDetail} 
-                onRefresh={isChatMode ? mutateChatList : mutateCompletionList}
-                selectedItems={selectedItems}
-                onSelectionChange={setSelectedItems}
-              />
+            ? <List
+              logs={isChatMode ? chatConversations : completionConversations}
+              appDetail={appDetail}
+              onRefresh={isChatMode ? mutateChatList : mutateCompletionList}
+              selectedItems={selectedItems}
+              onSelectionChange={setSelectedItems}
+            />
             : <EmptyElement appUrl={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
         }
         {/* Show Pagination only if the total is more than the limit */}
