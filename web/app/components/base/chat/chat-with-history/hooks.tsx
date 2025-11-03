@@ -205,6 +205,32 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       mutateAppConversationData()
     }
   }, [pathname, mutateAppPinnedConversationData, mutateAppConversationData])
+
+  // Listen for conversation deletions from logs page (same tab via CustomEvent)
+  useEffect(() => {
+    const handleConversationsCleared = () => {
+      // Refresh conversation lists when logs are cleared
+      mutateAppPinnedConversationData()
+      mutateAppConversationData()
+    }
+
+    window.addEventListener('conversationsCleared', handleConversationsCleared)
+    return () => window.removeEventListener('conversationsCleared', handleConversationsCleared)
+  }, [mutateAppPinnedConversationData, mutateAppConversationData])
+
+  // Listen for conversation deletions from other tabs (via localStorage storage event)
+  useEffect(() => {
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === 'conversations_cleared' && e.newValue) {
+        // Refresh conversation lists when logs are cleared in another tab
+        mutateAppPinnedConversationData()
+        mutateAppConversationData()
+      }
+    }
+
+    window.addEventListener('storage', handleStorageEvent)
+    return () => window.removeEventListener('storage', handleStorageEvent)
+  }, [mutateAppPinnedConversationData, mutateAppConversationData])
   const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(
     chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null,
     () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId),
