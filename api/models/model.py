@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
-from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
+from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
