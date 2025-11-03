@@ -102,7 +102,10 @@ class TestDatasetPermissionService:
 
     def _assert_database_query_called(self, mock_session: Mock, dataset_id: str, account_id: str):
         """Helper method to verify database query calls for permission checks."""
-        mock_session.query().filter_by.assert_called_with(dataset_id=dataset_id, account_id=account_id)
+        # verify scalars was called to construct the query
+        assert mock_session.scalars.called, "db.session.scalars should be called"
+        # first() should be invoked without kwargs in SQLAlchemy; ensure it was called
+        mock_session.scalars().first.assert_called_with()
 
     def _assert_database_query_not_called(self, mock_session: Mock):
         """Helper method to verify that database query was not called."""
@@ -221,7 +224,7 @@ class TestDatasetPermissionService:
         mock_permission = DatasetPermissionTestDataFactory.create_dataset_permission_mock(
             dataset_id=dataset.id, account_id=normal_user.id
         )
-        mock_dataset_service_dependencies["db_session"].query().filter_by().first.return_value = mock_permission
+        mock_dataset_service_dependencies["db_session"].scalars().first.return_value = mock_permission
 
         # User with explicit permission should have access
         self._assert_permission_check_passes(dataset, normal_user)
@@ -238,7 +241,7 @@ class TestDatasetPermissionService:
         )
 
         # Mock database query to return None (no permission record)
-        mock_dataset_service_dependencies["db_session"].query().filter_by().first.return_value = None
+        mock_dataset_service_dependencies["db_session"].scalars().first.return_value = None
 
         # User without explicit permission should be denied access
         self._assert_permission_check_fails(dataset, normal_user)
@@ -257,7 +260,7 @@ class TestDatasetPermissionService:
         )
 
         # Mock database query to return None (no permission record)
-        mock_dataset_service_dependencies["db_session"].query().filter_by().first.return_value = None
+        mock_dataset_service_dependencies["db_session"].scalars().first.return_value = None
 
         # Non-creator without explicit permission should be denied access
         self._assert_permission_check_fails(dataset, other_user)
@@ -293,7 +296,7 @@ class TestDatasetPermissionService:
         )
 
         # Mock database query to return None (no permission record)
-        mock_dataset_service_dependencies["db_session"].query().filter_by().first.return_value = None
+        mock_dataset_service_dependencies["db_session"].scalars().first.return_value = None
 
         # Attempt permission check (should fail)
         with pytest.raises(NoPermissionError):

@@ -265,7 +265,7 @@ class IndexingRunner:
 
         embedding_model_instance = None
         if dataset_id:
-            dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
+            dataset = db.session.scalars(select(Dataset).filter_by(id=dataset_id).limit(1)).first()
             if not dataset:
                 raise ValueError("Dataset not found.")
             if dataset.indexing_technique == "high_quality" or indexing_technique == "high_quality":
@@ -612,7 +612,7 @@ class IndexingRunner:
     @staticmethod
     def _process_keyword_index(flask_app, dataset_id, document_id, documents):
         with flask_app.app_context():
-            dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
+            dataset = db.session.scalars(select(Dataset).filter_by(id=dataset_id).limit(1)).first()
             if not dataset:
                 raise ValueError("no dataset found")
             keyword = Keyword(dataset)
@@ -684,7 +684,7 @@ class IndexingRunner:
         count = db.session.query(DatasetDocument).filter_by(id=document_id, is_paused=True).count()
         if count > 0:
             raise DocumentIsPausedError()
-        document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
+        document = db.session.scalars(select(DatasetDocument).filter_by(id=document_id).limit(1)).first()
         if not document:
             raise DocumentIsDeletedPausedError()
 
