@@ -2,7 +2,7 @@ import logging
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from functools import singledispatchmethod
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Generic, TypeVar, cast, get_args, get_origin
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -49,12 +49,39 @@ from models.enums import UserFrom
 
 from .entities import BaseNodeData, RetryConfig
 
+NodeDataT = TypeVar("NodeDataT", bound=BaseNodeData)
+
 logger = logging.getLogger(__name__)
 
 
-class Node:
+class Node(Generic[NodeDataT]):
     node_type: ClassVar["NodeType"]
     execution_type: NodeExecutionType = NodeExecutionType.EXECUTABLE
+    _node_data_type: ClassVar[type[BaseNodeData]] = BaseNodeData
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+
+        node_data_type: type[BaseNodeData] | None = None
+        for base in getattr(cls, "__orig_bases__", ()):  # type: ignore[attr-defined]
+            origin = get_origin(base)
+            if origin is Node:
+                args = get_args(base)
+                if len(args) != 1:
+                    raise TypeError(f"{cls.__name__} must specify exactly one node data generic argument")
+                candidate = args[0]
+                if not isinstance(candidate, type) or not issubclass(candidate, BaseNodeData):
+                    raise TypeError(f"{cls.__name__} must parameterize Node with a BaseNodeData subtype")
+                node_data_type = candidate
+                break
+
+        if node_data_type is None:
+            # Allow abstract intermediary classes to defer specification only if they
+            # explicitly override `_node_data_type`.
+            if cls is not Node and "_node_data_type" not in cls.__dict__:
+                raise TypeError(f"{cls.__name__} must inherit from Node[T] with a BaseNodeData subtype")
+        else:
+            cls._node_data_type = node_data_type
 
     def __init__(
         self,
@@ -63,6 +90,7 @@ class Node:
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
     ) -> None:
+        self._graph_init_params = graph_init_params
         self.id = id
         self.tenant_id = graph_init_params.tenant_id
         self.app_id = graph_init_params.app_id
@@ -83,8 +111,29 @@ class Node:
         self._node_execution_id: str = ""
         self._start_at = naive_utc_now()
 
-    @abstractmethod
-    def init_node_data(self, data: Mapping[str, Any]) -> None: ...
+        raw_node_data = config.get("data") or {}
+        if not isinstance(raw_node_data, Mapping):
+            raise ValueError("Node config data must be a mapping.")
+
+        self._node_data: NodeDataT = self._hydrate_node_data(raw_node_data)
+
+        self.post_init()
+
+    def post_init(self) -> None:
+        """Optional hook for subclasses requiring extra initialization."""
+        return
+
+    @property
+    def graph_init_params(self) -> "GraphInitParams":
+        return self._graph_init_params
+
+    def _hydrate_node_data(self, data: Mapping[str, Any]) -> NodeDataT:
+        return cast(NodeDataT, self._node_data_type.model_validate(data))
+
+    def init_node_data(self, data: Mapping[str, Any]) -> None:
+        """Backward-compatible explicit initialization for legacy callers."""
+        self._node_data = self._hydrate_node_data(data)
+        self.post_init()
 
     @abstractmethod
     def _run(self) -> NodeRunResult | Generator[NodeEventBase, None, None]:
@@ -267,38 +316,29 @@ class Node:
     def retry(self) -> bool:
         return False
 
-    # Abstract methods that subclasses must implement to provide access
-    # to BaseNodeData properties in a type-safe way
-
-    @abstractmethod
     def _get_error_strategy(self) -> ErrorStrategy | None:
         """Get the error strategy for this node."""
-        ...
+        return self._node_data.error_strategy
 
-    @abstractmethod
     def _get_retry_config(self) -> RetryConfig:
         """Get the retry configuration for this node."""
-        ...
+        return self._node_data.retry_config
 
-    @abstractmethod
     def _get_title(self) -> str:
         """Get the node title."""
-        ...
+        return self._node_data.title
 
-    @abstractmethod
     def _get_description(self) -> str | None:
         """Get the node description."""
-        ...
+        return self._node_data.desc
 
-    @abstractmethod
     def _get_default_value_dict(self) -> dict[str, Any]:
         """Get the default values dictionary for this node."""
-        ...
+        return self._node_data.default_value_dict
 
-    @abstractmethod
     def get_base_node_data(self) -> BaseNodeData:
         """Get the BaseNodeData object for this node."""
-        ...
+        return self._node_data
 
     # Public interface properties that delegate to abstract methods
     @property
@@ -325,6 +365,11 @@ class Node:
     def default_value_dict(self) -> dict[str, Any]:
         """Get the default values dictionary for this node."""
         return self._get_default_value_dict()
+
+    @property
+    def node_data(self) -> NodeDataT:
+        """Typed access to this node's configuration data."""
+        return self._node_data
 
     def _convert_node_run_result_to_graph_node_event(self, result: NodeRunResult) -> GraphNodeEventBase:
         match result.status:
