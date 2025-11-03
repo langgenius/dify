@@ -37,6 +37,7 @@ dependencies = [
     "numpy~=1.26.4",
     "openpyxl~=3.1.5",
     "opik~=1.8.72",
+    "litellm==1.77.1",  # Pinned to avoid madoka dependency issue
     "opentelemetry-api==1.27.0",
     "opentelemetry-distro==0.48b0",
     "opentelemetry-exporter-otlp==1.27.0",
