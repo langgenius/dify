@@ -100,45 +100,30 @@ const IterationLogTrigger = ({
     if (!details || details.length === 0)
       return 0
 
-    let errorCount = 0
+    // Use Set to track failed iteration indices to avoid duplicate counting
+    const failedIterationIndices = new Set<number>()
 
-    // Count errors from details (this includes all iterations, including failed ones)
-    errorCount = details.reduce((acc, iteration) => {
-      if (iteration.some(item => item.status === NodeRunningStatus.Failed))
-        acc++
-      return acc
-    }, 0)
+    // Collect failed iteration indices from details
+    details.forEach((iteration, index) => {
+      if (iteration.some(item => item.status === NodeRunningStatus.Failed)) {
+        // Try to get iteration index from first node, fallback to array index
+        const iterationIndex = iteration[0]?.execution_metadata?.iteration_index ?? index
+        failedIterationIndices.add(iterationIndex)
+      }
+    })
 
-    // If we have iteration_duration_map, we need to also check for failed iterations
-    // that might not be in the duration map but are in allExecutions
+    // If allExecutions exists, check for additional failed iterations
     if (iterationNodeMeta?.iteration_duration_map && allExecutions) {
-      const instanceKeys = Object.keys(iterationNodeMeta.iteration_duration_map)
-      const coveredIterationIndices = new Set<number>()
-
-      instanceKeys.forEach((key) => {
-        const nodes = filterNodesForInstance(key)
-        nodes.forEach((node) => {
-          if (node.execution_metadata?.iteration_index !== undefined)
-            coveredIterationIndices.add(node.execution_metadata.iteration_index)
-        })
+      // Find all failed iteration nodes
+      allExecutions.forEach((exec) => {
+        if (exec.execution_metadata?.iteration_id === nodeInfo.node_id
+            && exec.status === NodeRunningStatus.Failed
+            && exec.execution_metadata?.iteration_index !== undefined)
+          failedIterationIndices.add(exec.execution_metadata.iteration_index)
       })
-
-      // Check for additional failed iterations not covered by duration map
-      const additionalFailedIterations = allExecutions.filter(exec =>
-        exec.execution_metadata?.iteration_id === nodeInfo.node_id
-        && exec.status === NodeRunningStatus.Failed
-        && exec.execution_metadata?.iteration_index !== undefined
-        && !coveredIterationIndices.has(exec.execution_metadata.iteration_index),
-      )
-
-      const additionalFailedIterationIndices = new Set(
-        additionalFailedIterations.map(exec => exec.execution_metadata?.iteration_index),
-      )
-
-      errorCount += additionalFailedIterationIndices.size
     }
 
-    return errorCount
+    return failedIterationIndices.size
   }
   const errorCount = getErrorCount(nodeInfo.details, nodeInfo.execution_metadata)
 
