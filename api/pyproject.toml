@@ -211,7 +211,7 @@ vdb = [
     "pymochow==2.2.9",
     "pyobvector~=0.2.15",
     "qdrant-client==1.9.0",
-    "tablestore==6.2.0",
+    "tablestore==6.3.7",
     "tcvectordb~=1.6.4",
     "tidb-vector==0.0.9",
     "upstash-vector==0.6.0",
