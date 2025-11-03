@@ -445,9 +445,9 @@ class BaseAgentRunner(AppRunner):
             agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
             if agent_thoughts:
                 for agent_thought in agent_thoughts:
-                    tools = agent_thought.tool
-                    if tools:
-                        tools = tools.split(";")
+                    tool_names_raw = agent_thought.tool
+                    if tool_names_raw:
+                        tool_names = tool_names_raw.split(";")
                         tool_calls: list[AssistantPromptMessage.ToolCall] = []
                         tool_call_response: list[ToolPromptMessage] = []
                         tool_input_payload = agent_thought.tool_input
@@ -455,20 +455,20 @@ class BaseAgentRunner(AppRunner):
                             try:
                                 tool_inputs = json.loads(tool_input_payload)
                             except Exception:
-                                tool_inputs = {tool: {} for tool in tools}
+                                tool_inputs = {tool: {} for tool in tool_names}
                         else:
-                            tool_inputs = {tool: {} for tool in tools}
+                            tool_inputs = {tool: {} for tool in tool_names}
 
                         observation_payload = agent_thought.observation
                         if observation_payload:
                             try:
                                 tool_responses = json.loads(observation_payload)
                             except Exception:
-                                tool_responses = dict.fromkeys(tools, observation_payload)
+                                tool_responses = dict.fromkeys(tool_names, observation_payload)
                         else:
-                            tool_responses = dict.fromkeys(tools, observation_payload)
+                            tool_responses = dict.fromkeys(tool_names, observation_payload)
 
-                        for tool in tools:
+                        for tool in tool_names:
                             # generate a uuid for tool call
                             tool_call_id = str(uuid.uuid4())
                             tool_calls.append(
@@ -498,7 +498,7 @@ class BaseAgentRunner(AppRunner):
                                 *tool_call_response,
                             ]
                         )
-                    if not tools:
+                    if not tool_names_raw:
                         result.append(AssistantPromptMessage(content=agent_thought.thought))
             else:
                 if message.answer:
