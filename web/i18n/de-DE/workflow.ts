@@ -40,6 +40,10 @@ const translation = {
     maxTreeDepth: 'Maximales Limit von {{depth}} Knoten pro Ast',
     workflowProcess: 'Arbeitsablauf',
     notRunning: 'Noch nicht ausgeführt',
+    searchNodes: 'Knoten, Typen, Eingaben, Ausgaben suchen...',
+    noSearchResults: 'Keine Suchergebnisse',
+    searchResults: '{{matched}} von {{total}} Knoten',
+    searchHint: 'Versuchen Sie andere Schlüsselwörter für "{{query}}"',
     previewPlaceholder: 'Geben Sie den Inhalt in das Feld unten ein, um das Debuggen des Chatbots zu starten',
     effectVarConfirm: {
       title: 'Variable entfernen',

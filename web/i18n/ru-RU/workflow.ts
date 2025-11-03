@@ -40,6 +40,10 @@ const translation = {
     maxTreeDepth: 'Максимальный предел {{depth}} узлов на ветку',
     workflowProcess: 'Процесс рабочего процесса',
     notRunning: 'Еще не запущено',
+    searchNodes: 'Поиск узлов, типов, входов, выходов...',
+    noSearchResults: 'Нет результатов поиска',
+    searchResults: '{{matched}} из {{total}} узлов',
+    searchHint: 'Попробуйте другие ключевые слова для "{{query}}"',
     previewPlaceholder: 'Введите текст в поле ниже, чтобы начать отладку чат-бота',
     effectVarConfirm: {
       title: 'Удалить переменную',

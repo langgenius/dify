@@ -51,6 +51,10 @@ const translation = {
     needAnswerNode: 'The Answer node must be added',
     workflowProcess: 'Workflow Process',
     notRunning: 'Not running yet',
+    searchNodes: 'Search nodes, types, inputs, outputs...',
+    noSearchResults: 'No search results',
+    searchResults: '{{matched}} of {{total}} nodes',
+    searchHint: 'Try different keywords for "{{query}}"',
     previewPlaceholder: 'Enter content in the box below to start debugging the Chatbot',
     effectVarConfirm: {
       title: 'Remove Variable',

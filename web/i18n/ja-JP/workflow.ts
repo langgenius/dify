@@ -51,6 +51,10 @@ const translation = {
     needAnswerNode: '回答ブロックを追加する必要があります',
     workflowProcess: 'ワークフロー処理',
     notRunning: 'まだ実行されていません',
+    searchNodes: 'ノード、タイプ、入力、出力を検索...',
+    noSearchResults: '検索結果がありません',
+    searchResults: '{{total}}件中{{matched}}件のノード',
+    searchHint: '"{{query}}"について別のキーワードを試してください',
     previewPlaceholder: '入力欄にテキストを入力してチャットボットのデバッグを開始',
     effectVarConfirm: {
       title: '変数の削除',

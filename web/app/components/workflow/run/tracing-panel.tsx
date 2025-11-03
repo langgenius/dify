@@ -9,7 +9,9 @@ React,
 import cn from 'classnames'
 import {
   RiArrowDownSLine,
+  RiCloseLine,
   RiMenu4Line,
+  RiSearchLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useLogs } from './hooks'
@@ -17,12 +19,14 @@ import NodePanel from './node'
 import SpecialResultPanel from './special-result-panel'
 import type { NodeTracing } from '@/types/workflow'
 import formatNodeList from '@/app/components/workflow/run/utils/format-log'
+import { useTracingSearch } from './hooks/useTracingSearch'
 
 type TracingPanelProps = {
   list: NodeTracing[]
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
+  enableSearch?: boolean
 }
 
 const TracingPanel: FC<TracingPanelProps> = ({
@@ -30,9 +34,21 @@ const TracingPanel: FC<TracingPanelProps> = ({
   className,
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
+  enableSearch = false,
 }) => {
   const { t } = useTranslation()
+
   const treeNodes = formatNodeList(list, t)
+  
+  // Search functionality using custom hook
+  const {
+    searchQuery,
+    setSearchQuery,
+    filteredNodes,
+    clearSearch,
+    searchStats,
+  } = useTracingSearch({ treeNodes })
+  
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(() => new Set())
   const [hoveredParallel, setHoveredParallel] = useState<string | null>(null)
 
@@ -185,13 +201,62 @@ const TracingPanel: FC<TracingPanelProps> = ({
 
   return (
     <div
-      className={cn('py-2', className)}
+      className={cn('flex h-full flex-col', className)}
       onClick={(e) => {
         e.stopPropagation()
         e.nativeEvent.stopImmediatePropagation()
       }}
     >
-      {treeNodes.map(renderNode)}
+      {/* Search input */}
+      {enableSearch && (
+        <div className="border-b border-divider-subtle px-4 py-3">
+          <div className="flex h-8 items-center rounded-lg bg-components-input-bg-normal px-2 hover:bg-components-input-bg-hover">
+            <RiSearchLine className="mr-1.5 h-4 w-4 shrink-0 text-components-input-text-placeholder" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={t('workflow.common.searchNodes')}
+              className="system-sm-regular block h-[18px] grow appearance-none border-0 bg-transparent text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder"
+              autoComplete="off"
+            />
+            {searchQuery && (
+              <div className="ml-1 cursor-pointer" onClick={clearSearch}>
+                <RiCloseLine className="h-4 w-4 text-components-input-text-placeholder hover:text-text-tertiary" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Search results statistics */}
+      {enableSearch && searchQuery && (
+        <div className="border-b border-divider-subtle px-4 py-2">
+          <div className="system-xs-regular text-text-tertiary">
+            {filteredNodes.length === 0
+              ? t('workflow.common.noSearchResults')
+              : t('workflow.common.searchResults', {
+                matched: searchStats.matched,
+                total: searchStats.total,
+              })}
+          </div>
+        </div>
+      )}
+
+      {/* Empty search results hint */}
+      {enableSearch && searchQuery && filteredNodes.length === 0 && (
+        <div className="flex flex-1 flex-col items-center justify-center text-text-tertiary">
+          <div className="system-sm-medium mb-2">{t('workflow.common.noSearchResults')}</div>
+          <div className="system-xs-regular">
+            {t('workflow.common.searchHint', { query: searchQuery })}
+          </div>
+        </div>
+      )}
+
+      {/* Tracing content */}
+      <div className={cn('flex-1 overflow-y-auto py-2', { 'py-0': enableSearch })}>
+        {filteredNodes.length > 0 && filteredNodes.map(renderNode)}
+      </div>
     </div>
   )
 }

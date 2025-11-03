@@ -170,6 +170,7 @@ const RunPanel: FC<RunProps> = ({
           <TracingPanel
             className='bg-background-section-burn'
             list={list}
+            enableSearch={true}
           />
         )}
       </div>

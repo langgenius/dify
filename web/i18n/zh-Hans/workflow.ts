@@ -50,6 +50,10 @@ const translation = {
     needAnswerNode: '必须添加直接回复节点',
     workflowProcess: '工作流',
     notRunning: '尚未运行',
+    searchNodes: '搜索节点、类型、输入、输出...',
+    noSearchResults: '无搜索结果',
+    searchResults: '{{matched}} / {{total}} 个节点',
+    searchHint: '尝试使用不同的关键词搜索 "{{query}}"',
     previewPlaceholder: '在下面的框中输入内容开始调试聊天机器人',
     effectVarConfirm: {
       title: '移除变量',

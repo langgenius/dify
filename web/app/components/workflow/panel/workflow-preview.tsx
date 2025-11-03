@@ -209,6 +209,7 @@ const WorkflowPreview = () => {
             <TracingPanel
               className='bg-background-section-burn'
               list={workflowRunningData?.tracing || []}
+              enableSearch={true}
             />
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (

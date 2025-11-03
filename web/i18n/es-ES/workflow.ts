@@ -40,6 +40,10 @@ const translation = {
     maxTreeDepth: 'Límite máximo de {{depth}} nodos por rama',
     workflowProcess: 'Proceso de flujo de trabajo',
     notRunning: 'Aún no se está ejecutando',
+    searchNodes: 'Buscar nodos, tipos, entradas, salidas...',
+    noSearchResults: 'Sin resultados de búsqueda',
+    searchResults: '{{matched}} de {{total}} nodos',
+    searchHint: 'Prueba con diferentes palabras clave para "{{query}}"',
     previewPlaceholder: 'Ingrese contenido en el cuadro de abajo para comenzar a depurar el Chatbot',
     effectVarConfirm: {
       title: 'Eliminar variable',
