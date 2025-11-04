@@ -218,7 +218,7 @@ class TestRagPipelineTaskProxy:
         # Act
         proxy._send_to_direct_queue(upload_file_id, mock_task)
 
-        # If sent to direct queue, tenant_self_pipeline_task_queue should not be called
+        # If sent to direct queue, tenant_isolated_task_queue should not be called
         proxy._tenant_isolated_task_queue.push_tasks.assert_not_called()
 
         # Celery should be called directly

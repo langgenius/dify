@@ -118,11 +118,11 @@ def _document_indexing_with_tenant_queue(
     except Exception:
         logger.exception("Error processing document indexing %s for tenant %s: %s", dataset_id, tenant_id)
     finally:
-        tenant_self_task_queue = TenantIsolatedTaskQueue(tenant_id, "document_indexing")
+        tenant_isolated_task_queue = TenantIsolatedTaskQueue(tenant_id, "document_indexing")
 
         # Check if there are waiting tasks in the queue
         # Use rpop to get the next task from the queue (FIFO order)
-        next_tasks = tenant_self_task_queue.pull_tasks(
+        next_tasks = tenant_isolated_task_queue.pull_tasks(
             count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY
         )
 
@@ -133,7 +133,7 @@ def _document_indexing_with_tenant_queue(
                 document_task = DocumentTask(**next_task)
                 # Process the next waiting task
                 # Keep the flag set to indicate a task is running
-                tenant_self_task_queue.set_task_waiting_time()
+                tenant_isolated_task_queue.set_task_waiting_time()
                 task_func.delay(  # type: ignore
                     tenant_id=document_task.tenant_id,
                     dataset_id=document_task.dataset_id,
@@ -141,7 +141,7 @@ def _document_indexing_with_tenant_queue(
                 )
         else:
             # No more waiting tasks, clear the flag
-            tenant_self_task_queue.delete_task_key()
+            tenant_isolated_task_queue.delete_task_key()
 
 
 @shared_task(queue="dataset")
