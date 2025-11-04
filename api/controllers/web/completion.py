@@ -30,6 +30,7 @@ from libs import helper
 from libs.helper import uuid_value
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -65,7 +66,7 @@ class CompletionApi(WebApiResource):
         }
     )
     def post(self, app_model, end_user):
-        if app_model.mode != "completion":
+        if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
         parser = reqparse.RequestParser()
@@ -124,10 +125,15 @@ class CompletionStopApi(WebApiResource):
         }
     )
     def post(self, app_model, end_user, task_id):
-        if app_model.mode != "completion":
+        if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.WEB_APP,
+            user_id=end_user.id,
+            app_mode=app_model.mode,
+        )
 
         return {"result": "success"}, 200
 
@@ -231,9 +237,11 @@ class ChatStopApi(WebApiResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
-
-        if app_mode == AppMode.ADVANCED_CHAT:
-            GraphEngineManager.send_stop_command(task_id)
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.WEB_APP,
+            user_id=end_user.id,
+            app_mode=app_mode,
+        )
 
         return {"result": "success"}, 200

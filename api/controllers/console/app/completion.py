@@ -17,7 +17,6 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -26,13 +25,13 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import current_user, login_required
 from models import Account
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -120,7 +119,13 @@ class CompletionMessageStopApi(Resource):
     def post(self, app_model, task_id):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.DEBUGGER,
+            user_id=current_user.id,
+            app_mode=app_model.mode,
+        )
 
         return {"result": "success"}, 200
 
@@ -222,9 +227,12 @@ class ChatMessageStopApi(Resource):
     def post(self, app_model, task_id):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
 
-        if app_model.mode == AppMode.ADVANCED_CHAT:
-            GraphEngineManager.send_stop_command(task_id)
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.DEBUGGER,
+            user_id=current_user.id,
+            app_mode=app_model.mode,
+        )
 
         return {"result": "success"}, 200

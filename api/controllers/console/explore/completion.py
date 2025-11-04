@@ -15,7 +15,6 @@ from controllers.console.app.error import (
 from controllers.console.explore.error import NotChatAppError, NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -23,7 +22,6 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from libs import helper
 from libs.datetime_utils import naive_utc_now
@@ -32,6 +30,7 @@ from libs.login import current_user
 from models import Account
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 from .. import console_ns
@@ -47,7 +46,7 @@ logger = logging.getLogger(__name__)
 class CompletionApi(InstalledAppResource):
     def post(self, installed_app):
         app_model = installed_app.app
-        if app_model.mode != "completion":
+        if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
         parser = reqparse.RequestParser()
@@ -101,12 +100,18 @@ class CompletionApi(InstalledAppResource):
 class CompletionStopApi(InstalledAppResource):
     def post(self, installed_app, task_id):
         app_model = installed_app.app
-        if app_model.mode != "completion":
+        if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
+
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.EXPLORE,
+            user_id=current_user.id,
+            app_mode=app_model.mode,
+        )
 
         return {"result": "success"}, 200
 
@@ -181,8 +186,12 @@ class ChatStopApi(InstalledAppResource):
 
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
-        if app_mode == AppMode.ADVANCED_CHAT:
-            GraphEngineManager.send_stop_command(task_id)
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.EXPLORE,
+            user_id=current_user.id,
+            app_mode=app_mode,
+        )
+
         return {"result": "success"}, 200

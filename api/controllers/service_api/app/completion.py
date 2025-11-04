@@ -17,7 +17,6 @@ from controllers.service_api.app.error import (
 )
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -26,11 +25,11 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 
@@ -95,7 +94,7 @@ class CompletionApi(Resource):
         This endpoint generates a completion based on the provided inputs and query.
         Supports both blocking and streaming response modes.
         """
-        if app_model.mode != "completion":
+        if app_model.mode != AppMode.COMPLETION:
             raise AppUnavailableError()
 
         args = completion_parser.parse_args()
@@ -154,10 +153,15 @@ class CompletionStopApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """Stop a running completion task."""
-        if app_model.mode != "completion":
+        if app_model.mode != AppMode.COMPLETION:
             raise AppUnavailableError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.SERVICE_API,
+            user_id=end_user.id,
+            app_mode=app_model.mode,
+        )
 
         return {"result": "success"}, 200
 
@@ -251,9 +255,11 @@ class ChatStopApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
-
-        if app_mode == AppMode.ADVANCED_CHAT:
-            GraphEngineManager.send_stop_command(task_id)
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.SERVICE_API,
+            user_id=end_user.id,
+            app_mode=app_mode,
+        )
 
         return {"result": "success"}, 200
