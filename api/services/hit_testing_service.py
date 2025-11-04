@@ -30,7 +30,7 @@ class HitTestingService:
         dataset: Dataset,
         query: str,
         account: Account,
-        retrieval_model: Any,  # FIXME drop this any
+        retrieval_model: dict[str, Any] | None,
         external_retrieval_model: dict,
         limit: int = 10,
     ):
@@ -127,7 +127,7 @@ class HitTestingService:
         return dict(cls.compact_external_retrieve_response(dataset, query, all_documents))
 
     @classmethod
-    def compact_retrieve_response(cls, query: str, documents: list[Document]) -> dict[Any, Any]:
+    def compact_retrieve_response(cls, query: str, documents: list[Document]) -> dict[str, Any]:
         records = RetrievalService.format_retrieval_documents(documents)
 
         return {
@@ -138,7 +138,7 @@ class HitTestingService:
         }
 
     @classmethod
-    def compact_external_retrieve_response(cls, dataset: Dataset, query: str, documents: list) -> dict[Any, Any]:
+    def compact_external_retrieve_response(cls, dataset: Dataset, query: str, documents: list) -> dict[str, Any]:
         records = []
         if dataset.provider == "external":
             for document in documents:
