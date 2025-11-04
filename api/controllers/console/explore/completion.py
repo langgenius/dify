@@ -23,6 +23,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.model_runtime.errors.invoke import InvokeError
+from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from libs import helper
 from libs.datetime_utils import naive_utc_now
@@ -182,4 +183,6 @@ class ChatStopApi(InstalledAppResource):
             raise ValueError("current_user must be an Account instance")
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
+        if app_mode == AppMode.ADVANCED_CHAT:
+            GraphEngineManager.send_stop_command(task_id)
         return {"result": "success"}, 200

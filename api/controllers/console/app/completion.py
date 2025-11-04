@@ -26,6 +26,7 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
+from core.workflow.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import current_user, login_required
@@ -222,5 +223,8 @@ class ChatMessageStopApi(Resource):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+
+        if app_model.mode == AppMode.ADVANCED_CHAT:
+            GraphEngineManager.send_stop_command(task_id)
 
         return {"result": "success"}, 200

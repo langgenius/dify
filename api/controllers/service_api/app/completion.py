@@ -26,6 +26,7 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
+from core.workflow.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
@@ -251,5 +252,8 @@ class ChatStopApi(Resource):
             raise NotChatAppError()
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
+
+        if app_mode == AppMode.ADVANCED_CHAT:
+            GraphEngineManager.send_stop_command(task_id)
 
         return {"result": "success"}, 200
