@@ -99,7 +99,11 @@ class TriggerProviderService:
                 controller=provider_controller,
                 subscription=subscription,
             )
-            subscription.credentials = dict(encrypter.mask_credentials(dict(subscription.credentials)))
+            subscription.credentials = dict(
+                encrypter.mask_credentials(dict(encrypter.decrypt(subscription.credentials)))
+            )
+            subscription.properties = dict(encrypter.mask_credentials(dict(encrypter.decrypt(subscription.properties))))
+            subscription.parameters = dict(encrypter.mask_credentials(dict(encrypter.decrypt(subscription.parameters))))
             count = workflows_in_use_map.get(subscription.id)
             subscription.workflows_in_use = count if count is not None else 0
 
