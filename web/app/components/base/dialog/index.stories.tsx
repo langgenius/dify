@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import Dialog from '.'
 
 const meta = {
-  title: 'Base/Dialog/Dialog',
+  title: 'Base/Feedback/Dialog',
   component: Dialog,
   parameters: {
     layout: 'fullscreen',
@@ -103,7 +103,6 @@ export const Default: Story = {
         </button>
       </>
     ),
-    children: null,
   },
 }
 
@@ -112,7 +111,6 @@ export const WithoutFooter: Story = {
   args: {
     footer: undefined,
     title: 'Read-only summary',
-    children: null,
   },
   parameters: {
     docs: {
@@ -143,7 +141,6 @@ export const CustomStyling: Story = {
         </div>
       </>
     ),
-    children: null,
   },
   parameters: {
     docs: {
