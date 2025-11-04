@@ -32,10 +32,6 @@ export function isPrivateOrLocalAddress(url: string): boolean {
     const urlObj = new URL(url)
     const hostname = urlObj.hostname.toLowerCase()
 
-    // Check for Dify cloud trigger debug URLs
-    if (hostname === 'cloud-trigger.dify.dev')
-      return true
-
     // Check for localhost
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1')
       return true
