@@ -1144,6 +1144,7 @@ const translation = {
       debugUrlTitle: 'For test runs, always use this URL',
       debugUrlCopy: 'Click to copy',
       debugUrlCopied: 'Copied!',
+      debugUrlPrivateAddressWarning: 'This URL appears to be an internal address, which may cause webhook requests to fail. You may change TRIGGER_URL to a public address.',
       errorHandling: 'Error Handling',
       errorStrategy: 'Error Handling',
       responseConfiguration: 'Response',

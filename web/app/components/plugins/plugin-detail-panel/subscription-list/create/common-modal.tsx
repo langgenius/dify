@@ -18,6 +18,7 @@ import {
   useVerifyTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
+import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 import { RiLoader2Line } from '@remixicon/react'
 import { debounce } from 'lodash-es'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -63,43 +64,6 @@ const normalizeFormType = (type: FormTypeEnum | string): FormTypeEnum => {
       return FormTypeEnum.boolean
     default:
       return FormTypeEnum.textInput
-  }
-}
-
-// Check if URL is a private/local network address
-const isPrivateOrLocalAddress = (url: string): boolean => {
-  try {
-    const urlObj = new URL(url)
-    const hostname = urlObj.hostname.toLowerCase()
-
-    // Check for localhost
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1')
-      return true
-
-    // Check for private IP ranges
-    const ipv4Regex = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/
-    const ipv4Match = hostname.match(ipv4Regex)
-    if (ipv4Match) {
-      const [, a, b] = ipv4Match.map(Number)
-      // 10.0.0.0/8
-      if (a === 10)
-        return true
-      // 172.16.0.0/12
-      if (a === 172 && b >= 16 && b <= 31)
-        return true
-      // 192.168.0.0/16
-      if (a === 192 && b === 168)
-        return true
-      // 169.254.0.0/16 (link-local)
-      if (a === 169 && b === 254)
-        return true
-    }
-
-    // Check for .local domains
-    return hostname.endsWith('.local')
-  }
-  catch {
-    return false
   }
 }
 
@@ -193,6 +157,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
       if (form)
         form.setFieldValue('callback_url', subscriptionBuilder.endpoint)
       if (isPrivateOrLocalAddress(subscriptionBuilder.endpoint)) {
+        console.log('isPrivateOrLocalAddress', isPrivateOrLocalAddress(subscriptionBuilder.endpoint))
         subscriptionFormRef.current?.setFields([{
           name: 'callback_url',
           warnings: [t('pluginTrigger.modal.form.callbackUrl.privateAddressWarning')],
