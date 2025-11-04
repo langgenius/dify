@@ -3,8 +3,8 @@ language: python
 rule:
   pattern: $X = mapped_column($$$ARGS)
   any:
-    - pattern: $X = mapped_column($$$BEFORE, String, $$$MID, nullable=True, $$$AFTER)
-    - pattern: $X = mapped_column($$$BEFORE, String, $$$MID, nullable=True)
+    - pattern: $X = mapped_column($$$BEFORE, sa.String, $$$MID, nullable=True, $$$AFTER)
+    - pattern: $X = mapped_column($$$BEFORE, sa.String, $$$MID, nullable=True)
 rewriters:
 - id: filter-string-nullable
   rule:
