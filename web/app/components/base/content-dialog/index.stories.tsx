@@ -5,7 +5,7 @@ import ContentDialog from '.'
 type Props = React.ComponentProps<typeof ContentDialog>
 
 const meta = {
-  title: 'Base/Dialog/ContentDialog',
+  title: 'Base/Feedback/ContentDialog',
   component: ContentDialog,
   parameters: {
     layout: 'fullscreen',
@@ -28,6 +28,10 @@ const meta = {
     onClose: {
       control: false,
       description: 'Invoked when the overlay/backdrop is clicked.',
+    },
+    children: {
+      control: false,
+      table: { disable: true },
     },
   },
   args: {
