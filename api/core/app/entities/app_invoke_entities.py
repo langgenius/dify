@@ -129,7 +129,7 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     app_config: EasyUIBasedAppConfig = None  # type: ignore
     model_conf: ModelConfigWithCredentialsEntity
 
-    query: str | None = None
+    query: str = ""
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
