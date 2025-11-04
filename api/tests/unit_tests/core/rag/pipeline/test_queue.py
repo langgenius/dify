@@ -288,7 +288,7 @@ class TestTenantIsolatedTaskQueue:
         wrapped_task = call_args[0][1]
         # Verify it's a valid TaskWrapper JSON (starts with {"data":)
         assert wrapped_task.startswith('{"data":')
-        
+
         # Verify it can be deserialized
         wrapper = TaskWrapper.deserialize(wrapped_task)
         assert wrapper.data == complex_task

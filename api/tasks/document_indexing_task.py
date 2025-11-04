@@ -109,10 +109,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
 
 
 def _document_indexing_with_tenant_queue(
-    tenant_id: str,
-    dataset_id: str,
-    document_ids: Sequence[str],
-    task_func: Callable[[str, str, Sequence[str]], None]
+    tenant_id: str, dataset_id: str, document_ids: Sequence[str], task_func: Callable[[str, str, Sequence[str]], None]
 ):
     try:
         _document_indexing(dataset_id, document_ids)
@@ -123,9 +120,7 @@ def _document_indexing_with_tenant_queue(
 
         # Check if there are waiting tasks in the queue
         # Use rpop to get the next task from the queue (FIFO order)
-        next_tasks = tenant_self_task_queue.pull_tasks(
-            count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY
-        )
+        next_tasks = tenant_self_task_queue.pull_tasks(count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY)
 
         logger.info("document indexing tenant isolation queue next tasks: %s", next_tasks)
 
