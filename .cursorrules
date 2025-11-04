@@ -2,12 +2,5 @@
 
 ## Automated Test Generation
 
-- Use `web/testing/TESTING.md` as the canonical instruction set for generating frontend automated tests.
+- Use `web/testing/testing.md` as the canonical instruction set for generating frontend automated tests.
 - When proposing or saving tests, re-read that document and follow every requirement.
-- Quick reference:
-  - Tech stack: Next.js 15, React 19, TypeScript, Jest 29.7, React Testing Library 16.0, `@happy-dom/jest-environment`
-  - Test files: `ComponentName.spec.tsx` in the same directory as the component
-  - Style: Arrange → Act → Assert, descriptive names (`"should [behavior] when [condition]"`), use `fireEvent`, clear mocks in `afterEach`
-  - Baseline coverage: rendering, all prop permutations, `null`/`undefined`/empty edge cases
-  - Conditional coverage: hook state/effects, event handlers, async flows, routing, performance hooks, and domain-specific workflows/configuration/dataset behaviors
-  - Target coverage: line & branch >95%, function & statement 100%

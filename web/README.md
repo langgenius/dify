@@ -101,7 +101,7 @@ If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscod
 
 We use [Jest](https://jestjs.io/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
 
-**📖 Complete Testing Guide**: See [scripts/TESTING.md](./scripts/TESTING.md) for detailed testing specifications, best practices, and examples.
+**📖 Complete Testing Guide**: See [web/testing/testing.md](./testing/testing.md) for detailed testing specifications, best practices, and examples.
 
 ### Example Code
 
@@ -118,7 +118,7 @@ Before writing tests, use the script to analyze component complexity:
 pnpm analyze-component app/components/your-component/index.tsx
 ```
 
-This will help you determine the testing strategy. See [scripts/TESTING.md](./scripts/TESTING.md) for details.
+This will help you determine the testing strategy. See [web/testing/testing.md](./testing/testing.md) for details.
 
 ## Documentation
 

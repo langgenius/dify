@@ -1,6 +1,8 @@
 # Frontend Testing Guide
 
 This document is the complete testing specification for the Dify frontend project.
+Goal: Readable, change-friendly, reusable, and debuggable tests.
+When I ask you to write/refactor/fix tests, follow these rules by default.
 
 ## Tech Stack
 
@@ -43,6 +45,7 @@ pnpm test -- path/to/file.spec.tsx
 - **Reusable test data**: Prefer test data builders or factories over hard-coded masses of data.
 - **De-flake**: Control time, randomness, network, concurrency, and ordering.
 - **Fast & stable**: Keep unit tests running in milliseconds; reserve integration tests for cross-module behavior with isolation.
+- **Structured describe blocks**: Organize tests with `describe` sections and add a brief comment before each block to explain the scenario it covers so readers can quickly understand the scope.
 
 ## Component Complexity Guidelines
 
@@ -66,6 +69,50 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
 - **Consider refactoring**: Split into smaller components if possible
 - **Section testing**: Test major sections separately
 - **Helper functions**: Reduce test complexity with utilities
+
+## Basic Guidelines
+
+- ✅ AAA pattern: Arrange (setup) → Act (execute) → Assert (verify)
+- ✅ Descriptive test names: `"should [behavior] when [condition]"`
+- ✅ TypeScript: No `any` types
+- ✅ **Cleanup**: `jest.clearAllMocks()` should be in `beforeEach()`, not `afterEach()`. This ensures mock call history is reset before each test, preventing test pollution when using assertions like `toHaveBeenCalledWith()` or `toHaveBeenCalledTimes()`.
+
+**⚠️ Mock components must accurately reflect actual component behavior**, especially conditional rendering based on props or state.
+
+**Rules**:
+
+1. **Match actual conditional rendering**: If the real component returns `null` or doesn't render under certain conditions, the mock must do the same. Always check the actual component implementation before creating mocks.
+2. **Use shared state variables when needed**: When mocking components that depend on shared context or state (e.g., `PortalToFollowElem` with `PortalToFollowElemContent`), use module-level variables to track state and reset them in `beforeEach`.
+3. **Always reset shared mock state in beforeEach**: Module-level variables used in mocks must be reset in `beforeEach` to ensure test isolation, even if you set default values elsewhere.
+4. **Use fake timers only when needed**: Only use `jest.useFakeTimers()` if:
+   - Testing components that use real `setTimeout`/`setInterval` (not mocked)
+   - Testing time-based behavior (delays, animations)
+   - If you mock all time-dependent functions, fake timers are unnecessary
+
+**Why this matters**: Mocks that don't match actual behavior can lead to:
+
+- **False positives**: Tests pass but code would fail in production
+- **Missed bugs**: Tests don't catch real conditional rendering issues
+- **Maintenance burden**: Tests become misleading documentation
+- **State leakage**: Tests interfere with each other when shared state isn't reset
+
+## Testing Components with Dedicated Dependencies
+
+When a component has dedicated dependencies (custom hooks, managers, utilities) that are **only used by that component**, use the following strategy to balance integration testing and unit testing.
+
+### Summary Checklist
+
+When testing components with dedicated dependencies:
+
+- **Identify** which dependencies are dedicated vs. reusable
+- **Write integration tests** for component + dedicated dependencies together
+- **Write unit tests** for complex edge cases in dependencies
+- **Avoid mocking** dedicated dependencies in integration tests
+- **Use fake timers** if timing logic is involved
+- **Test user behavior**, not implementation details
+- **Document** the testing strategy in code comments
+- **Ensure** integration tests cover 100% of user-facing scenarios
+- **Reserve** unit tests for edge cases not practical in integration tests
 
 ## Test Scenarios
 
@@ -101,8 +148,6 @@ Cover memoized callbacks or values only when they influence observable behavior�
 
 Simulate the interactions that matter to users—primary clicks, change events, submits, and relevant keyboard shortcuts—and confirm the resulting behavior. When handlers prevent defaults or rely on bubbling, cover the scenarios where that choice affects the UI or downstream flows.
 
-**Note**: Use `fireEvent` (not `userEvent`)
-
 ### 6. API Calls and Async Operations
 
 **Must Test**:
@@ -131,29 +176,25 @@ Mock the specific Next.js navigation hooks your component consumes (`useRouter`,
 - ✅ Error states
 - ✅ Loading states
 - ✅ Unexpected inputs
+  
+### 9. Test Data Builders (Anti-hardcoding)
 
-### 9. Accessibility Testing (Optional)
+For complex inputs/entities, use Builders with solid defaults and chainable overrides.
+
+### 10. Accessibility Testing (Optional)
 
 - Test keyboard navigation
 - Verify ARIA attributes
 - Test focus management
 - Ensure screen reader compatibility
 
-### 10. Snapshot Testing (Use Sparingly)
+### 11. Snapshot Testing (Use Sparingly)
 
 Reserve snapshots for static, deterministic fragments (icons, badges, layout chrome). Keep them tight, prefer explicit assertions for behavior, and review any snapshot updates deliberately instead of accepting them wholesale.
 
 **Note**: Dify is a desktop application. **No need for** responsive/mobile testing.
 
 ## Code Style
-
-### Basic Guidelines
-
-- ✅ Use `fireEvent` instead of `userEvent`
-- ✅ AAA pattern: Arrange (setup) → Act (execute) → Assert (verify)
-- ✅ Descriptive test names: `"should [behavior] when [condition]"`
-- ✅ TypeScript: No `any` types
-- ✅ Cleanup: `afterEach(() => jest.clearAllMocks())`
 
 ### Example Structure
 
@@ -164,10 +205,13 @@ import Component from './index'
 // Mock dependencies
 jest.mock('@/service/api')
 
+// Shared state for mocks (if needed)
+let mockSharedState = false
+
 describe('ComponentName', () => {
-  // Cleanup after each test
-  afterEach(() => {
-    jest.clearAllMocks()
+  beforeEach(() => {
+    jest.clearAllMocks()  // ✅ Reset mocks before each test
+    mockSharedState = false  // ✅ Reset shared state if used in mocks
   })
 
   describe('Rendering', () => {
@@ -216,14 +260,32 @@ describe('ComponentName', () => {
    }))
    ```
 
-2. **Toast**: Mock toast component
-   ```typescript
-   jest.mock('@/app/components/base/toast', () => ({
-     notify: jest.fn(),
-   }))
-   ```
+2. **Forms**: Test validation logic thoroughly
+3. **Example - Correct mock with conditional rendering**:
 
-3. **Forms**: Test validation logic thoroughly
+```typescript
+// ✅ CORRECT: Matches actual component behavior
+let mockPortalOpenState = false
+
+jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
+  PortalToFollowElem: ({ children, open, ...props }: any) => {
+    mockPortalOpenState = open || false  // Update shared state
+    return <div data-open={open}>{children}</div>
+  },
+  PortalToFollowElemContent: ({ children }: any) => {
+    // ✅ Matches actual: returns null when open is false
+    if (!mockPortalOpenState) return null
+    return <div>{children}</div>
+  },
+}))
+
+describe('Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()  // ✅ Reset mock call history
+    mockPortalOpenState = false  // ✅ Reset shared state
+  })
+})
+```
 
 ### Workflow Components (`workflow/`)
 
@@ -283,64 +345,16 @@ describe('ComponentName', () => {
 
 ## Coverage Goals
 
-Aim for 100% coverage:
-- **Line coverage**: >95%
-- **Branch coverage**: >95%
-- **Function coverage**: 100%
-- **Statement coverage**: 100%
+### ⚠️ MANDATORY: Complete Coverage in Single Generation
+  
+  Aim for 100% coverage:
+
+- ✅ 100% function coverage (every exported function/method tested)
+- ✅ 100% statement coverage (every line executed)
+- ✅ >95% branch coverage (every if/else, switch case, ternary tested)
+- ✅ >95% line coverage
 
 Generate comprehensive tests covering **all** code paths and scenarios.
-
-## Common Mock Patterns
-
-### Mock Hooks
-
-```typescript
-// Mock useState
-const mockSetState = jest.fn()
-jest.spyOn(React, 'useState').mockImplementation((init) => [init, mockSetState])
-
-// Mock useContext
-const mockUser = { name: 'Test User' };
-jest.spyOn(React, 'useContext').mockReturnValue({ user: mockUser })
-```
-
-### Mock Modules
-
-```typescript
-// Mock entire module
-jest.mock('@/utils/api', () => ({
-  get: jest.fn(),
-  post: jest.fn(),
-}))
-
-// Mock partial module
-jest.mock('@/utils/helpers', () => ({
-  ...jest.requireActual('@/utils/helpers'),
-  specificFunction: jest.fn(),
-}))
-```
-
-### Mock Next.js
-
-```typescript
-// useRouter
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn(),
-  }),
-  usePathname: () => '/current-path',
-  useSearchParams: () => new URLSearchParams(),
-}))
-
-// next/image
-jest.mock('next/image', () => ({
-  __esModule: true,
-  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
-}))
-```
 
 ## Debugging Tips
 
@@ -398,42 +412,6 @@ Test examples in the project:
 - [Testing Library Best Practices](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
 - [Jest Mock Functions](https://jestjs.io/docs/mock-functions)
 
-## FAQ
-
-### Q: When to use `getBy` vs `queryBy` vs `findBy`?
-
-- `getBy*`: Expect element to exist, throws error if not found
-- `queryBy*`: Element may not exist, returns null if not found
-- `findBy*`: Async query, returns Promise
-
-### Q: How to test conditional rendering?
-
-```typescript
-it('should conditionally render content', () => {
-  const { rerender } = render(<Component show={false} />)
-  expect(screen.queryByText('Content')).not.toBeInTheDocument()
-  
-  rerender(<Component show={true} />)
-  expect(screen.getByText('Content')).toBeInTheDocument()
-})
-```
-
-### Q: How to test custom hooks?
-
-```typescript
-import { renderHook, act } from '@testing-library/react'
-
-it('should update counter', () => {
-  const { result } = renderHook(() => useCounter())
-  
-  act(() => {
-    result.current.increment()
-  })
-  
-  expect(result.current.count).toBe(1)
-})
-```
-
----
+______________________________________________________________________
 
 **Remember**: Writing tests is not just about coverage, but ensuring code quality and maintainability. Good tests should be clear, concise, and meaningful.

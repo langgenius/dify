@@ -738,7 +738,7 @@ Copy the output and use it with:
   - GitHub Copilot Chat (Cmd+I)
   - Claude, ChatGPT, or any other AI coding tool
 
-For complete testing guidelines, see: web/testing/TESTING.md
+For complete testing guidelines, see: web/testing/testing.md
     `)
     process.exit(1)
   }
