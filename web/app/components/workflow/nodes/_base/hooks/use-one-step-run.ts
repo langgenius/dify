@@ -1040,12 +1040,18 @@ const useOneStepRun = <T>({
     const {
       workflowRunningData,
       setWorkflowRunningData,
+      nodesWithInspectVars,
+      deleteNodeInspectVars,
     } = workflowStore.getState()
     if (workflowRunningData) {
       setWorkflowRunningData(produce(workflowRunningData, (draft) => {
         draft.result.status = WorkflowRunningStatus.Stopped
       }))
     }
+
+    const inspectNode = nodesWithInspectVars.find(node => node.nodeId === id)
+    if (inspectNode && !inspectNode.isValueFetched && (!inspectNode.vars || inspectNode.vars.length === 0))
+      deleteNodeInspectVars(id)
   }, [
     isTriggerNode,
     runningStatus,
