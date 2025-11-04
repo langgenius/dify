@@ -376,6 +376,8 @@ describe('Navigation Utilities', () => {
       expect(params.page).toBe('1')
       expect(params.limit).toBe('10')
       // Malformed params should be handled by URLSearchParams
+      expect(params.invalid).toBe('') // for `&invalid`
+      expect(params.key).toBe('') // for `&key=`
     })
   })
 

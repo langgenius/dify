@@ -2,30 +2,6 @@ import { validateRedirectUrl } from './urlValidation'
 
 describe('URL Validation', () => {
   describe('validateRedirectUrl', () => {
-    /*
-    TODO: How can we enable this test case? I commented this test case because eslint triggers an error
-    Error msg: "Using http protocol is insecure. Use https instead"
-    */
-    // it('should accept valid HTTP URLs', () => {
-    //   expect(() => validateRedirectUrl('http://example.com')).not.toThrow()
-    //   expect(() => validateRedirectUrl('http://localhost:3000')).not.toThrow()
-    //   expect(() => validateRedirectUrl('http://192.168.1.1')).not.toThrow()
-    // })
-
-    // it('should accept valid HTTPS URLs', () => {
-    //   expect(() => validateRedirectUrl('https://example.com')).not.toThrow()
-    //   expect(() => validateRedirectUrl('https://sub.example.com')).not.toThrow()
-    //   expect(() => validateRedirectUrl('https://example.com:8080')).not.toThrow()
-    // })
-
-    /*
-    TODO: How can we enable this test case? I commented this test case because eslint triggers an error
-    Error msg: "Make sure that 'javascript:' code is safe as it's form of eval()"
-    */
-    // it('should reject javascript: protocol (XSS)', () => {
-    //   expect(() => validateRedirectUrl('javascript:alert(1)')).toThrow('Authorization URL must be HTTP or HTTPS')
-    // })
-
     it('should reject data: protocol', () => {
       expect(() => validateRedirectUrl('data:text/html,<script>alert(1)</script>')).toThrow('Authorization URL must be HTTP or HTTPS')
     })
