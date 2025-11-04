@@ -9,6 +9,7 @@ from configs import dify_config
 from core.entities.document_task import DocumentTask
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document
@@ -57,7 +58,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
             vector_space = features.vector_space
             count = len(document_ids)
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
-            if features.billing.subscription.plan == "sandbox" and count > 1:
+            if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
                 raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")

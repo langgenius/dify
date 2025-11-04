@@ -73,7 +73,7 @@
     "classnames": "^2.5.1",
     "cmdk": "^1.1.1",
     "copy-to-clipboard": "^3.3.3",
-    "dayjs": "^1.11.18",
+    "dayjs": "^1.11.19",
     "decimal.js": "^10.6.0",
     "dompurify": "^3.3.0",
     "echarts": "^5.6.0",
