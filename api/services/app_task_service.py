@@ -19,7 +19,7 @@ class AppTaskService:
         task_id: str,
         invoke_from: InvokeFrom,
         user_id: str,
-        app_mode: AppMode | str,
+        app_mode: AppMode,
     ) -> None:
         """Stop a running task.
 
@@ -41,5 +41,5 @@ class AppTaskService:
 
         # New mechanism: Send stop command via GraphEngine for advanced-chat workflows
         # This ensures proper workflow status recording in the persistence layer
-        if app_mode == AppMode.ADVANCED_CHAT:
+        if app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
             GraphEngineManager.send_stop_command(task_id)

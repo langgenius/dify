@@ -110,7 +110,7 @@ class CompletionStopApi(InstalledAppResource):
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
             user_id=current_user.id,
-            app_mode=app_model.mode,
+            app_mode=AppMode.value_of(app_model.mode),
         )
 
         return {"result": "success"}, 200

@@ -124,7 +124,7 @@ class CompletionMessageStopApi(Resource):
             task_id=task_id,
             invoke_from=InvokeFrom.DEBUGGER,
             user_id=current_user.id,
-            app_mode=app_model.mode,
+            app_mode=AppMode.value_of(app_model.mode),
         )
 
         return {"result": "success"}, 200
@@ -232,7 +232,7 @@ class ChatMessageStopApi(Resource):
             task_id=task_id,
             invoke_from=InvokeFrom.DEBUGGER,
             user_id=current_user.id,
-            app_mode=app_model.mode,
+            app_mode=AppMode.value_of(app_model.mode),
         )
 
         return {"result": "success"}, 200

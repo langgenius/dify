@@ -160,7 +160,7 @@ class CompletionStopApi(Resource):
             task_id=task_id,
             invoke_from=InvokeFrom.SERVICE_API,
             user_id=end_user.id,
-            app_mode=app_model.mode,
+            app_mode=AppMode.value_of(app_model.mode),
         )
 
         return {"result": "success"}, 200

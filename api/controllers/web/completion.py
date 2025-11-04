@@ -130,7 +130,7 @@ class CompletionStopApi(WebApiResource):
             task_id=task_id,
             invoke_from=InvokeFrom.WEB_APP,
             user_id=end_user.id,
-            app_mode=app_model.mode,
+            app_mode=AppMode.value_of(app_model.mode),
         )
 
         return {"result": "success"}, 200
@@ -239,7 +239,7 @@ class ChatStopApi(WebApiResource):
             task_id=task_id,
             invoke_from=InvokeFrom.WEB_APP,
             user_id=end_user.id,
-            app_mode=app_mode,
+            app_mode=AppMode.value_of(app_model.mode),
         )
 
         return {"result": "success"}, 200
