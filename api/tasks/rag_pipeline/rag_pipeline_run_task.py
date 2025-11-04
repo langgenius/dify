@@ -77,9 +77,7 @@ def rag_pipeline_run_task(
 
         # Check if there are waiting tasks in the queue
         # Use rpop to get the next task from the queue (FIFO order)
-        next_file_ids = tenant_isolated_task_queue.pull_tasks(
-            count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY
-        )
+        next_file_ids = tenant_isolated_task_queue.pull_tasks(count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY)
         logger.info("rag pipeline tenant isolation queue next files: %s", next_file_ids)
 
         if next_file_ids:
