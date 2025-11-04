@@ -25,7 +25,7 @@ class AppTaskService:
 
         This method handles stopping tasks using both mechanisms:
         1. Legacy Redis flag mechanism (for backward compatibility)
-        2. New GraphEngine command channel (for advanced-chat workflows)
+        2. New GraphEngine command channel (for workflow-based apps)
 
         Args:
             task_id: The task ID to stop
@@ -39,7 +39,7 @@ class AppTaskService:
         # Legacy mechanism: Set stop flag in Redis
         AppQueueManager.set_stop_flag(task_id, invoke_from, user_id)
 
-        # New mechanism: Send stop command via GraphEngine for advanced-chat workflows
+        # New mechanism: Send stop command via GraphEngine for workflow-based apps
         # This ensures proper workflow status recording in the persistence layer
         if app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
             GraphEngineManager.send_stop_command(task_id)
