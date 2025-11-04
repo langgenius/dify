@@ -1,5 +1,5 @@
 """
-Integration tests for TenantSelfTaskQueue using testcontainers.
+Integration tests for TenantIsolatedTaskQueue using testcontainers.
 
 These tests verify the Redis-based task queue functionality with real Redis instances,
 testing tenant isolation, task serialization, and queue operations in a realistic environment.
@@ -16,7 +16,7 @@ from uuid import uuid4
 import pytest
 from faker import Faker
 
-from core.rag.pipeline.queue import TASK_WRAPPER_PREFIX, TaskWrapper, TenantSelfTaskQueue
+from core.rag.pipeline.queue import TaskWrapper, TenantIsolatedTaskQueue
 from extensions.ext_redis import redis_client
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 
@@ -31,8 +31,8 @@ class TestTask:
     metadata: dict[str, Any]
 
 
-class TestTenantSelfTaskQueueIntegration:
-    """Integration tests for TenantSelfTaskQueue using testcontainers."""
+class TestTenantIsolatedTaskQueueIntegration:
+    """Integration tests for TenantIsolatedTaskQueue using testcontainers."""
 
     @pytest.fixture
     def fake(self):
@@ -76,24 +76,23 @@ class TestTenantSelfTaskQueueIntegration:
     def test_queue(self, test_tenant_and_account):
         """Create a generic test queue for testing."""
         tenant, _ = test_tenant_and_account
-        return TenantSelfTaskQueue(tenant.id, "test_queue")
+        return TenantIsolatedTaskQueue(tenant.id, "test_queue")
 
     @pytest.fixture
     def secondary_queue(self, test_tenant_and_account):
         """Create a secondary test queue for testing isolation."""
         tenant, _ = test_tenant_and_account
-        return TenantSelfTaskQueue(tenant.id, "secondary_queue")
+        return TenantIsolatedTaskQueue(tenant.id, "secondary_queue")
 
     def test_queue_initialization(self, test_tenant_and_account):
         """Test queue initialization with correct key generation."""
         tenant, _ = test_tenant_and_account
-        queue = TenantSelfTaskQueue(tenant.id, "test-key")
+        queue = TenantIsolatedTaskQueue(tenant.id, "test-key")
 
-        assert queue.tenant_id == tenant.id
-        assert queue.unique_key == "test-key"
-        assert queue.queue == f"tenant_self_test-key_task_queue:{tenant.id}"
-        assert queue.task_key == f"tenant_test-key_task:{tenant.id}"
-        assert queue.DEFAULT_TASK_TTL == 60 * 60
+        assert queue._tenant_id == tenant.id
+        assert queue._unique_key == "test-key"
+        assert queue._queue == f"tenant_self_test-key_task_queue:{tenant.id}"
+        assert queue._task_key == f"tenant_test-key_task:{tenant.id}"
 
     def test_tenant_isolation(self, test_tenant_and_account, db_session_with_containers, fake):
         """Test that different tenants have isolated queues."""
@@ -107,24 +106,24 @@ class TestTenantSelfTaskQueueIntegration:
         db_session_with_containers.add(tenant2)
         db_session_with_containers.commit()
 
-        queue1 = TenantSelfTaskQueue(tenant1.id, "same-key")
-        queue2 = TenantSelfTaskQueue(tenant2.id, "same-key")
+        queue1 = TenantIsolatedTaskQueue(tenant1.id, "same-key")
+        queue2 = TenantIsolatedTaskQueue(tenant2.id, "same-key")
 
-        assert queue1.queue != queue2.queue
-        assert queue1.task_key != queue2.task_key
-        assert queue1.queue == f"tenant_self_same-key_task_queue:{tenant1.id}"
-        assert queue2.queue == f"tenant_self_same-key_task_queue:{tenant2.id}"
+        assert queue1._queue != queue2._queue
+        assert queue1._task_key != queue2._task_key
+        assert queue1._queue == f"tenant_self_same-key_task_queue:{tenant1.id}"
+        assert queue2._queue == f"tenant_self_same-key_task_queue:{tenant2.id}"
 
     def test_key_isolation(self, test_tenant_and_account):
         """Test that different keys have isolated queues."""
         tenant, _ = test_tenant_and_account
-        queue1 = TenantSelfTaskQueue(tenant.id, "key1")
-        queue2 = TenantSelfTaskQueue(tenant.id, "key2")
+        queue1 = TenantIsolatedTaskQueue(tenant.id, "key1")
+        queue2 = TenantIsolatedTaskQueue(tenant.id, "key2")
 
-        assert queue1.queue != queue2.queue
-        assert queue1.task_key != queue2.task_key
-        assert queue1.queue == f"tenant_self_key1_task_queue:{tenant.id}"
-        assert queue2.queue == f"tenant_self_key2_task_queue:{tenant.id}"
+        assert queue1._queue != queue2._queue
+        assert queue1._task_key != queue2._task_key
+        assert queue1._queue == f"tenant_self_key1_task_queue:{tenant.id}"
+        assert queue2._queue == f"tenant_self_key2_task_queue:{tenant.id}"
 
     def test_task_key_operations(self, test_queue):
         """Test task key operations (get, set, delete)."""
@@ -154,12 +153,8 @@ class TestTenantSelfTaskQueueIntegration:
         # Push tasks
         test_queue.push_tasks(tasks)
 
-        # Pull tasks one by one (FIFO order)
-        pulled_tasks = []
-        for _ in range(3):
-            task = test_queue.get_next_task()
-            if task:
-                pulled_tasks.append(task)
+        # Pull tasks (FIFO order)
+        pulled_tasks = test_queue.pull_tasks(3)
 
         # Should get tasks in FIFO order (lpush + rpop = FIFO)
         assert pulled_tasks == ["task1", "task2", "task3"]
@@ -187,7 +182,7 @@ class TestTenantSelfTaskQueueIntegration:
         tasks = [
             {
                 "task_id": str(uuid4()),
-                "tenant_id": test_queue.tenant_id,
+                "tenant_id": test_queue._tenant_id,
                 "data": {
                     "file_id": str(uuid4()),
                     "content": fake.text(),
@@ -197,7 +192,7 @@ class TestTenantSelfTaskQueueIntegration:
             },
             {
                 "task_id": str(uuid4()),
-                "tenant_id": test_queue.tenant_id,
+                "tenant_id": test_queue._tenant_id,
                 "data": {
                     "file_id": str(uuid4()),
                     "content": "测试中文内容",
@@ -253,10 +248,6 @@ class TestTenantSelfTaskQueueIntegration:
         tasks = test_queue.pull_tasks(5)
         assert tasks == []
 
-        # Get next task from empty queue
-        task = test_queue.get_next_task()
-        assert task is None
-
         # Pull zero or negative count
         assert test_queue.pull_tasks(0) == []
         assert test_queue.pull_tasks(-1) == []
@@ -306,8 +297,8 @@ class TestTenantSelfTaskQueueIntegration:
         tenant, _ = test_tenant_and_account
 
         # Create multiple queues for the same tenant
-        queue1 = TenantSelfTaskQueue(tenant.id, "queue1")
-        queue2 = TenantSelfTaskQueue(tenant.id, "queue2")
+        queue1 = TenantIsolatedTaskQueue(tenant.id, "queue1")
+        queue2 = TenantIsolatedTaskQueue(tenant.id, "queue2")
 
         # Push tasks to different queues
         queue1.push_tasks(["task1_queue1", "task2_queue1"])
@@ -331,7 +322,7 @@ class TestTenantSelfTaskQueueIntegration:
         }
 
         # Create wrapper and serialize
-        wrapper = TaskWrapper(complex_data)
+        wrapper = TaskWrapper(data=complex_data)
         serialized = wrapper.serialize()
 
         # Verify serialization
@@ -345,53 +336,15 @@ class TestTenantSelfTaskQueueIntegration:
 
     def test_error_handling_invalid_json(self, test_queue):
         """Test error handling for invalid JSON in wrapped tasks."""
-        # Manually create invalid wrapped task
-        invalid_wrapped_task = f"{TASK_WRAPPER_PREFIX}invalid json data"
+        # Manually create invalid JSON task (not a valid TaskWrapper JSON)
+        invalid_json_task = "invalid json data"
 
         # Push invalid task directly to Redis
-        redis_client.lpush(test_queue.queue, invalid_wrapped_task)
+        redis_client.lpush(test_queue._queue, invalid_json_task)
 
-        # Pull task - should fall back to string
-        task = test_queue.get_next_task()
-        assert task == invalid_wrapped_task
-
-    def test_real_world_processing_scenario(self, test_queue, fake):
-        """Test realistic task processing scenario."""
-        # Simulate various task types
-        tasks = []
-        for i in range(5):
-            task = {
-                "tenant_id": test_queue.tenant_id,
-                "resource_id": str(uuid4()),
-                "resource_ids": [str(uuid4()) for _ in range(fake.random_int(1, 5))],
-            }
-            tasks.append(task)
-
-        # Push all tasks
-        test_queue.push_tasks(tasks)
-
-        # Simulate processing tasks one by one
-        processed_tasks = []
-        while True:
-            task = test_queue.get_next_task()
-            if task is None:
-                break
-
-            processed_tasks.append(task)
-
-            # Simulate task processing time
-            time.sleep(0.01)
-
-        # Verify all tasks were processed
-        assert len(processed_tasks) == 5
-
-        # Verify task content
-        for task in processed_tasks:
-            assert isinstance(task, dict)
-            assert "tenant_id" in task
-            assert "resource_id" in task
-            assert "resource_ids" in task
-            assert task["tenant_id"] == test_queue.tenant_id
+        # Pull task - should fall back to string since it's not valid JSON
+        task = test_queue.pull_tasks(1)
+        assert task[0] == invalid_json_task
 
     def test_real_world_batch_processing_scenario(self, test_queue, fake):
         """Test realistic batch processing scenario."""
@@ -400,7 +353,7 @@ class TestTenantSelfTaskQueueIntegration:
         for i in range(3):
             task = {
                 "file_id": str(uuid4()),
-                "tenant_id": test_queue.tenant_id,
+                "tenant_id": test_queue._tenant_id,
                 "user_id": str(uuid4()),
                 "processing_config": {
                     "model": fake.random_element(["model_a", "model_b", "model_c"]),
@@ -438,10 +391,10 @@ class TestTenantSelfTaskQueueIntegration:
             assert "tenant_id" in task
             assert "processing_config" in task
             assert "metadata" in task
-            assert task["tenant_id"] == test_queue.tenant_id
+            assert task["tenant_id"] == test_queue._tenant_id
 
 
-class TestTenantSelfTaskQueueCompatibility:
+class TestTenantIsolatedTaskQueueCompatibility:
     """Compatibility tests for migrating from legacy string-only queues."""
 
     @pytest.fixture
@@ -490,14 +443,14 @@ class TestTenantSelfTaskQueueCompatibility:
         from the old architecture, and we need to ensure the new code can read them.
         """
         tenant, _ = test_tenant_and_account
-        queue = TenantSelfTaskQueue(tenant.id, "legacy_queue")
+        queue = TenantIsolatedTaskQueue(tenant.id, "legacy_queue")
 
         # Simulate legacy string data in Redis queue (using old format)
         legacy_strings = ["legacy_task_1", "legacy_task_2", "legacy_task_3", "legacy_task_4", "legacy_task_5"]
 
         # Manually push legacy strings directly to Redis (simulating old system)
         for legacy_string in legacy_strings:
-            redis_client.lpush(queue.queue, legacy_string)
+            redis_client.lpush(queue._queue, legacy_string)
 
         # Verify new code can read legacy string data
         pulled_tasks = queue.pull_tasks(5)
@@ -523,19 +476,19 @@ class TestTenantSelfTaskQueueCompatibility:
         4. New system can handle both formats seamlessly
         """
         tenant, _ = test_tenant_and_account
-        queue = TenantSelfTaskQueue(tenant.id, "migration_queue")
+        queue = TenantIsolatedTaskQueue(tenant.id, "migration_queue")
 
         # Phase 1: Legacy system has data
         legacy_tasks = [f"legacy_resource_{i}" for i in range(1, 6)]
-        redis_client.lpush(queue.queue, *legacy_tasks)
+        redis_client.lpush(queue._queue, *legacy_tasks)
 
         # Phase 2: New system starts processing legacy data
         processed_legacy = []
         while True:
-            task = queue.get_next_task()
-            if task is None:
+            tasks = queue.pull_tasks(1)
+            if not tasks:
                 break
-            processed_legacy.append(task)
+            processed_legacy.extend(tasks)
 
         # Verify legacy data was processed correctly
         assert len(processed_legacy) == 5
@@ -567,10 +520,10 @@ class TestTenantSelfTaskQueueCompatibility:
         # Phase 4: Process all new tasks
         processed_new = []
         while True:
-            task = queue.get_next_task()
-            if task is None:
+            tasks = queue.pull_tasks(1)
+            if not tasks:
                 break
-            processed_new.append(task)
+            processed_new.extend(tasks)
 
         # Verify new tasks were processed correctly
         assert len(processed_new) == 4
@@ -601,28 +554,28 @@ class TestTenantSelfTaskQueueCompatibility:
         malformed legacy data without crashing.
         """
         tenant, _ = test_tenant_and_account
-        queue = TenantSelfTaskQueue(tenant.id, "error_recovery_queue")
+        queue = TenantIsolatedTaskQueue(tenant.id, "error_recovery_queue")
 
         # Create mix of valid and malformed legacy data
         mixed_legacy_data = [
             "valid_legacy_task_1",
             "valid_legacy_task_2",
-            "malformed_data_without_prefix",  # This should be treated as string
+            "malformed_data_string",  # This should be treated as string
             "valid_legacy_task_3",
-            f"{TASK_WRAPPER_PREFIX}invalid_json_data",  # This should fall back to string
+            "invalid_json_not_taskwrapper_format",  # This should fall back to string (not valid TaskWrapper JSON)
             "valid_legacy_task_4",
         ]
 
         # Manually push mixed data directly to Redis
-        redis_client.lpush(queue.queue, *mixed_legacy_data)
+        redis_client.lpush(queue._queue, *mixed_legacy_data)
 
         # Process all tasks
         processed_tasks = []
         while True:
-            task = queue.get_next_task()
-            if task is None:
+            tasks = queue.pull_tasks(1)
+            if not tasks:
                 break
-            processed_tasks.append(task)
+            processed_tasks.extend(tasks)
 
         # Verify all tasks were processed (no crashes)
         assert len(processed_tasks) == 6
@@ -638,5 +591,5 @@ class TestTenantSelfTaskQueueCompatibility:
         # Verify malformed data is handled gracefully
         malformed_tasks = [task for task in processed_tasks if not task.startswith("valid_legacy_task_")]
         assert len(malformed_tasks) == 2
-        assert "malformed_data_without_prefix" in malformed_tasks
-        assert f"{TASK_WRAPPER_PREFIX}invalid_json_data" in malformed_tasks
+        assert "malformed_data_string" in malformed_tasks
+        assert "invalid_json_not_taskwrapper_format" in malformed_tasks

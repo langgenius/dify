@@ -1,7 +1,7 @@
 from unittest.mock import Mock, patch
 
 from core.entities.document_task import DocumentTask
-from core.rag.pipeline.queue import TenantSelfTaskQueue
+from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from services.document_indexing_task_proxy import DocumentIndexingTaskProxy
 
 
@@ -20,8 +20,8 @@ class DocumentIndexingTaskProxyTestDataFactory:
 
     @staticmethod
     def create_mock_tenant_queue(has_task_key: bool = False) -> Mock:
-        """Create mock TenantSelfTaskQueue."""
-        queue = Mock(spec=TenantSelfTaskQueue)
+        """Create mock TenantIsolatedTaskQueue."""
+        queue = Mock(spec=TenantIsolatedTaskQueue)
         queue.get_task_key.return_value = "task_key" if has_task_key else None
         queue.push_tasks = Mock()
         queue.set_task_waiting_time = Mock()
@@ -51,12 +51,12 @@ class TestDocumentIndexingTaskProxy:
         proxy = DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids)
 
         # Assert
-        assert proxy.tenant_id == tenant_id
-        assert proxy.dataset_id == dataset_id
-        assert proxy.document_ids == document_ids
-        assert isinstance(proxy.tenant_self_task_queue, TenantSelfTaskQueue)
-        assert proxy.tenant_self_task_queue.tenant_id == tenant_id
-        assert proxy.tenant_self_task_queue.unique_key == "document_indexing"
+        assert proxy._tenant_id == tenant_id
+        assert proxy._dataset_id == dataset_id
+        assert proxy._document_ids == document_ids
+        assert isinstance(proxy._tenant_isolated_task_queue, TenantIsolatedTaskQueue)
+        assert proxy._tenant_isolated_task_queue._tenant_id == tenant_id
+        assert proxy._tenant_isolated_task_queue._unique_key == "document_indexing"
 
     @patch("services.document_indexing_task_proxy.FeatureService")
     def test_features_property(self, mock_feature_service):
@@ -96,7 +96,7 @@ class TestDocumentIndexingTaskProxy:
         """Test _send_to_tenant_queue when task key exists."""
         # Arrange
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
-        proxy.tenant_self_task_queue = DocumentIndexingTaskProxyTestDataFactory.create_mock_tenant_queue(
+        proxy._tenant_isolated_task_queue = DocumentIndexingTaskProxyTestDataFactory.create_mock_tenant_queue(
             has_task_key=True
         )
         mock_task.delay = Mock()
@@ -105,8 +105,8 @@ class TestDocumentIndexingTaskProxy:
         proxy._send_to_tenant_queue(mock_task)
 
         # Assert
-        proxy.tenant_self_task_queue.push_tasks.assert_called_once()
-        pushed_tasks = proxy.tenant_self_task_queue.push_tasks.call_args[0][0]
+        proxy._tenant_isolated_task_queue.push_tasks.assert_called_once()
+        pushed_tasks = proxy._tenant_isolated_task_queue.push_tasks.call_args[0][0]
         assert len(pushed_tasks) == 1
         assert isinstance(DocumentTask(**pushed_tasks[0]), DocumentTask)
         assert pushed_tasks[0]["tenant_id"] == "tenant-123"
@@ -119,7 +119,7 @@ class TestDocumentIndexingTaskProxy:
         """Test _send_to_tenant_queue when no task key exists."""
         # Arrange
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
-        proxy.tenant_self_task_queue = DocumentIndexingTaskProxyTestDataFactory.create_mock_tenant_queue(
+        proxy._tenant_isolated_task_queue = DocumentIndexingTaskProxyTestDataFactory.create_mock_tenant_queue(
             has_task_key=False
         )
         mock_task.delay = Mock()
@@ -128,11 +128,11 @@ class TestDocumentIndexingTaskProxy:
         proxy._send_to_tenant_queue(mock_task)
 
         # Assert
-        proxy.tenant_self_task_queue.set_task_waiting_time.assert_called_once()
+        proxy._tenant_isolated_task_queue.set_task_waiting_time.assert_called_once()
         mock_task.delay.assert_called_once_with(
             tenant_id="tenant-123", dataset_id="dataset-456", document_ids=["doc-1", "doc-2", "doc-3"]
         )
-        proxy.tenant_self_task_queue.push_tasks.assert_not_called()
+        proxy._tenant_isolated_task_queue.push_tasks.assert_not_called()
 
     @patch("services.document_indexing_task_proxy.normal_document_indexing_task")
     def test_send_to_default_tenant_queue(self, mock_task):
@@ -294,9 +294,9 @@ class TestDocumentIndexingTaskProxy:
         proxy = DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids)
 
         # Assert
-        assert proxy.tenant_id == tenant_id
-        assert proxy.dataset_id == dataset_id
-        assert proxy.document_ids == document_ids
+        assert proxy._tenant_id == tenant_id
+        assert proxy._dataset_id == dataset_id
+        assert proxy._document_ids == document_ids
 
     def test_initialization_with_single_document_id(self):
         """Test initialization with single document_id."""
@@ -309,6 +309,6 @@ class TestDocumentIndexingTaskProxy:
         proxy = DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids)
 
         # Assert
-        assert proxy.tenant_id == tenant_id
-        assert proxy.dataset_id == dataset_id
-        assert proxy.document_ids == document_ids
+        assert proxy._tenant_id == tenant_id
+        assert proxy._dataset_id == dataset_id
+        assert proxy._document_ids == document_ids

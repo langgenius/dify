@@ -718,11 +718,11 @@ class TestDocumentIndexingTasks:
 
         mock_task_func = MagicMock()
 
-        # Use real Redis for TenantSelfTaskQueue
-        from core.rag.pipeline.queue import TenantSelfTaskQueue
+        # Use real Redis for TenantIsolatedTaskQueue
+        from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 
         # Create real queue instance
-        queue = TenantSelfTaskQueue(tenant_id, "document_indexing")
+        queue = TenantIsolatedTaskQueue(tenant_id, "document_indexing")
 
         # Add waiting tasks to the real Redis queue
         waiting_tasks = [
@@ -780,11 +780,11 @@ class TestDocumentIndexingTasks:
 
         mock_task_func = MagicMock()
 
-        # Use real Redis for TenantSelfTaskQueue
-        from core.rag.pipeline.queue import TenantSelfTaskQueue
+        # Use real Redis for TenantIsolatedTaskQueue
+        from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 
         # Create real queue instance
-        queue = TenantSelfTaskQueue(tenant_id, "document_indexing")
+        queue = TenantIsolatedTaskQueue(tenant_id, "document_indexing")
 
         # Add waiting task to the real Redis queue
         waiting_task = DocumentTask(tenant_id=tenant_id, dataset_id=dataset.id, document_ids=["waiting-doc-1"])
@@ -847,12 +847,12 @@ class TestDocumentIndexingTasks:
 
         mock_task_func = MagicMock()
 
-        # Use real Redis for TenantSelfTaskQueue
-        from core.rag.pipeline.queue import TenantSelfTaskQueue
+        # Use real Redis for TenantIsolatedTaskQueue
+        from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 
         # Create queue instances for both tenants
-        queue1 = TenantSelfTaskQueue(tenant1_id, "document_indexing")
-        queue2 = TenantSelfTaskQueue(tenant2_id, "document_indexing")
+        queue1 = TenantIsolatedTaskQueue(tenant1_id, "document_indexing")
+        queue2 = TenantIsolatedTaskQueue(tenant2_id, "document_indexing")
 
         # Add waiting tasks to both queues
         waiting_task1 = DocumentTask(tenant_id=tenant1_id, dataset_id=dataset1.id, document_ids=["tenant1-doc-1"])
@@ -882,5 +882,5 @@ class TestDocumentIndexingTasks:
         assert len(remaining_tasks2) == 1
 
         # Verify queue keys are different
-        assert queue1.queue != queue2.queue
-        assert queue1.task_key != queue2.task_key
+        assert queue1._queue != queue2._queue
+        assert queue1._task_key != queue2._task_key

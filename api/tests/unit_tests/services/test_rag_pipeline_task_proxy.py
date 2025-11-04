@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
-from core.rag.pipeline.queue import TenantSelfTaskQueue
+from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 
 
@@ -23,8 +23,8 @@ class RagPipelineTaskProxyTestDataFactory:
 
     @staticmethod
     def create_mock_tenant_queue(has_task_key: bool = False) -> Mock:
-        """Create mock TenantSelfTaskQueue."""
-        queue = Mock(spec=TenantSelfTaskQueue)
+        """Create mock TenantIsolatedTaskQueue."""
+        queue = Mock(spec=TenantIsolatedTaskQueue)
         queue.get_task_key.return_value = "task_key" if has_task_key else None
         queue.push_tasks = Mock()
         queue.set_task_waiting_time = Mock()
@@ -85,12 +85,12 @@ class TestRagPipelineTaskProxy:
         proxy = RagPipelineTaskProxy(dataset_tenant_id, user_id, rag_pipeline_invoke_entities)
 
         # Assert
-        assert proxy.dataset_tenant_id == dataset_tenant_id
-        assert proxy.user_id == user_id
-        assert proxy.rag_pipeline_invoke_entities == rag_pipeline_invoke_entities
-        assert isinstance(proxy.tenant_self_pipeline_task_queue, TenantSelfTaskQueue)
-        assert proxy.tenant_self_pipeline_task_queue.tenant_id == dataset_tenant_id
-        assert proxy.tenant_self_pipeline_task_queue.unique_key == "pipeline"
+        assert proxy._dataset_tenant_id == dataset_tenant_id
+        assert proxy._user_id == user_id
+        assert proxy._rag_pipeline_invoke_entities == rag_pipeline_invoke_entities
+        assert isinstance(proxy._tenant_isolated_task_queue, TenantIsolatedTaskQueue)
+        assert proxy._tenant_isolated_task_queue._tenant_id == dataset_tenant_id
+        assert proxy._tenant_isolated_task_queue._unique_key == "pipeline"
 
     def test_initialization_with_empty_entities(self):
         """Test initialization with empty rag_pipeline_invoke_entities."""
@@ -103,9 +103,9 @@ class TestRagPipelineTaskProxy:
         proxy = RagPipelineTaskProxy(dataset_tenant_id, user_id, rag_pipeline_invoke_entities)
 
         # Assert
-        assert proxy.dataset_tenant_id == dataset_tenant_id
-        assert proxy.user_id == user_id
-        assert proxy.rag_pipeline_invoke_entities == []
+        assert proxy._dataset_tenant_id == dataset_tenant_id
+        assert proxy._user_id == user_id
+        assert proxy._rag_pipeline_invoke_entities == []
 
     def test_initialization_with_multiple_entities(self):
         """Test initialization with multiple rag_pipeline_invoke_entities."""
@@ -122,10 +122,10 @@ class TestRagPipelineTaskProxy:
         proxy = RagPipelineTaskProxy(dataset_tenant_id, user_id, rag_pipeline_invoke_entities)
 
         # Assert
-        assert len(proxy.rag_pipeline_invoke_entities) == 3
-        assert proxy.rag_pipeline_invoke_entities[0].pipeline_id == "pipeline-1"
-        assert proxy.rag_pipeline_invoke_entities[1].pipeline_id == "pipeline-2"
-        assert proxy.rag_pipeline_invoke_entities[2].pipeline_id == "pipeline-3"
+        assert len(proxy._rag_pipeline_invoke_entities) == 3
+        assert proxy._rag_pipeline_invoke_entities[0].pipeline_id == "pipeline-1"
+        assert proxy._rag_pipeline_invoke_entities[1].pipeline_id == "pipeline-2"
+        assert proxy._rag_pipeline_invoke_entities[2].pipeline_id == "pipeline-3"
 
     @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
     def test_features_property(self, mock_feature_service):
@@ -211,7 +211,7 @@ class TestRagPipelineTaskProxy:
         """Test _send_to_direct_queue method."""
         # Arrange
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-        proxy.tenant_self_pipeline_task_queue = RagPipelineTaskProxyTestDataFactory.create_mock_tenant_queue()
+        proxy._tenant_isolated_task_queue = RagPipelineTaskProxyTestDataFactory.create_mock_tenant_queue()
         upload_file_id = "file-123"
         mock_task.delay = Mock()
 
@@ -219,7 +219,7 @@ class TestRagPipelineTaskProxy:
         proxy._send_to_direct_queue(upload_file_id, mock_task)
 
         # If sent to direct queue, tenant_self_pipeline_task_queue should not be called
-        proxy.tenant_self_pipeline_task_queue.push_tasks.assert_not_called()
+        proxy._tenant_isolated_task_queue.push_tasks.assert_not_called()
 
         # Celery should be called directly
         mock_task.delay.assert_called_once_with(
@@ -231,7 +231,7 @@ class TestRagPipelineTaskProxy:
         """Test _send_to_tenant_queue when task key exists."""
         # Arrange
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-        proxy.tenant_self_pipeline_task_queue = RagPipelineTaskProxyTestDataFactory.create_mock_tenant_queue(
+        proxy._tenant_isolated_task_queue = RagPipelineTaskProxyTestDataFactory.create_mock_tenant_queue(
             has_task_key=True
         )
         upload_file_id = "file-123"
@@ -241,7 +241,7 @@ class TestRagPipelineTaskProxy:
         proxy._send_to_tenant_queue(upload_file_id, mock_task)
 
         # If task key exists, should push tasks to the queue
-        proxy.tenant_self_pipeline_task_queue.push_tasks.assert_called_once_with([upload_file_id])
+        proxy._tenant_isolated_task_queue.push_tasks.assert_called_once_with([upload_file_id])
         # Celery should not be called directly
         mock_task.delay.assert_not_called()
 
@@ -250,7 +250,7 @@ class TestRagPipelineTaskProxy:
         """Test _send_to_tenant_queue when no task key exists."""
         # Arrange
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-        proxy.tenant_self_pipeline_task_queue = RagPipelineTaskProxyTestDataFactory.create_mock_tenant_queue(
+        proxy._tenant_isolated_task_queue = RagPipelineTaskProxyTestDataFactory.create_mock_tenant_queue(
             has_task_key=False
         )
         upload_file_id = "file-123"
@@ -260,13 +260,13 @@ class TestRagPipelineTaskProxy:
         proxy._send_to_tenant_queue(upload_file_id, mock_task)
 
         # If no task key, should set task waiting time key first
-        proxy.tenant_self_pipeline_task_queue.set_task_waiting_time.assert_called_once()
+        proxy._tenant_isolated_task_queue.set_task_waiting_time.assert_called_once()
         mock_task.delay.assert_called_once_with(
             rag_pipeline_invoke_entities_file_id=upload_file_id, tenant_id="tenant-123"
         )
 
         # The first task should be sent to celery directly, so push tasks should not be called
-        proxy.tenant_self_pipeline_task_queue.push_tasks.assert_not_called()
+        proxy._tenant_isolated_task_queue.push_tasks.assert_not_called()
 
     @patch("services.rag_pipeline.rag_pipeline_task_proxy.rag_pipeline_run_task")
     def test_send_to_default_tenant_queue(self, mock_task):

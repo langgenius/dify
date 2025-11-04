@@ -1,90 +1,81 @@
 import json
-from dataclasses import dataclass
-from typing import Any
+from collections.abc import Sequence
+from typing import Any, TypeVar
+
+from pydantic import BaseModel, ValidationError
 
 from extensions.ext_redis import redis_client
 
-TASK_WRAPPER_PREFIX = "__WRAPPER__:"
+T = TypeVar("T")
+
+_DEFAULT_TASK_TTL = 60 * 60  # 1 hour
 
 
-@dataclass
-class TaskWrapper:
+class TaskWrapper(BaseModel):
     data: Any
 
     def serialize(self) -> str:
-        return json.dumps(self.data, ensure_ascii=False)
+        return self.model_dump_json()
 
     @classmethod
     def deserialize(cls, serialized_data: str) -> "TaskWrapper":
-        data = json.loads(serialized_data)
-        return cls(data)
+        return cls.model_validate_json(serialized_data)
 
 
-class TenantSelfTaskQueue:
+class TenantIsolatedTaskQueue:
     """
-    Simple queue for tenant self tasks, used for tenant self task isolation.
+    Simple queue for tenant isolated tasks, used for rag related tenant tasks isolation.
     It uses Redis list to store tasks, and Redis key to store task waiting flag.
     Support tasks that can be serialized by json.
     """
 
-    DEFAULT_TASK_TTL = 60 * 60  # 1 hour
-
     def __init__(self, tenant_id: str, unique_key: str):
-        self.tenant_id = tenant_id
-        self.unique_key = unique_key
-        self.queue = f"tenant_self_{unique_key}_task_queue:{tenant_id}"
-        self.task_key = f"tenant_{unique_key}_task:{tenant_id}"
+        self._tenant_id = tenant_id
+        self._unique_key = unique_key
+        self._queue = f"tenant_self_{unique_key}_task_queue:{tenant_id}"
+        self._task_key = f"tenant_{unique_key}_task:{tenant_id}"
 
     def get_task_key(self):
-        return redis_client.get(self.task_key)
+        return redis_client.get(self._task_key)
 
-    def set_task_waiting_time(self, ttl: int | None = None):
-        ttl = ttl or self.DEFAULT_TASK_TTL
-        redis_client.setex(self.task_key, ttl, 1)
+    def set_task_waiting_time(self, ttl: int = _DEFAULT_TASK_TTL):
+        redis_client.setex(self._task_key, ttl, 1)
 
     def delete_task_key(self):
-        redis_client.delete(self.task_key)
+        redis_client.delete(self._task_key)
 
-    def push_tasks(self, tasks: list):
+    def push_tasks(self, tasks: Sequence[T]):
         serialized_tasks = []
         for task in tasks:
             # Store str list directly, maintaining full compatibility for pipeline scenarios
             if isinstance(task, str):
                 serialized_tasks.append(task)
             else:
-                # Use TaskWrapper to do JSON serialization, add prefix for identification
-                wrapper = TaskWrapper(task)
+                # Use TaskWrapper to do JSON serialization for non-string tasks
+                wrapper = TaskWrapper(data=task)
                 serialized_data = wrapper.serialize()
-                serialized_tasks.append(f"{TASK_WRAPPER_PREFIX}{serialized_data}")
+                serialized_tasks.append(serialized_data)
 
-        redis_client.lpush(self.queue, *serialized_tasks)
+        redis_client.lpush(self._queue, *serialized_tasks)
 
-    def pull_tasks(self, count: int = 1) -> list:
+    def pull_tasks(self, count: int = 1) -> Sequence[T]:
         if count <= 0:
             return []
 
         tasks = []
         for _ in range(count):
-            serialized_task = redis_client.rpop(self.queue)
+            serialized_task = redis_client.rpop(self._queue)
             if not serialized_task:
                 break
 
             if isinstance(serialized_task, bytes):
                 serialized_task = serialized_task.decode("utf-8")
 
-            # Check if use TaskWrapper or not
-            if serialized_task.startswith(TASK_WRAPPER_PREFIX):
-                try:
-                    wrapper_data = serialized_task[len(TASK_WRAPPER_PREFIX) :]
-                    wrapper = TaskWrapper.deserialize(wrapper_data)
-                    tasks.append(wrapper.data)
-                except (json.JSONDecodeError, TypeError, ValueError):
-                    tasks.append(serialized_task)
-            else:
+            try:
+                wrapper = TaskWrapper.deserialize(serialized_task)
+                tasks.append(wrapper.data)
+            except (json.JSONDecodeError, ValidationError, TypeError, ValueError):
+                # Fall back to raw string for legacy format or invalid JSON
                 tasks.append(serialized_task)
 
         return tasks
-
-    def get_next_task(self):
-        tasks = self.pull_tasks(1)
-        return tasks[0] if tasks else None

@@ -7,7 +7,7 @@ from faker import Faker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
-from core.rag.pipeline.queue import TenantSelfTaskQueue
+from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from extensions.ext_database import db
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Pipeline
@@ -26,7 +26,7 @@ class TestRagPipelineRunTasks:
     - priority_rag_pipeline_run_task function
     - rag_pipeline_run_task function
     - run_single_rag_pipeline_task function
-    - Real Redis-based TenantSelfTaskQueue operations
+    - Real Redis-based TenantIsolatedTaskQueue operations
     - PipelineGenerator._generate method mocking and parameter validation
     - File operations and cleanup
     - Error handling and queue management
@@ -319,8 +319,8 @@ class TestRagPipelineRunTasks:
         file_id = str(uuid.uuid4())
         mock_file_service["get_content"].return_value = file_content
 
-        # Use real Redis for TenantSelfTaskQueue
-        queue = TenantSelfTaskQueue(tenant.id, "pipeline")
+        # Use real Redis for TenantIsolatedTaskQueue
+        queue = TenantIsolatedTaskQueue(tenant.id, "pipeline")
 
         # Add waiting tasks to the real Redis queue
         waiting_file_ids = [str(uuid.uuid4()) for _ in range(2)]
@@ -362,7 +362,7 @@ class TestRagPipelineRunTasks:
         - Ensures backward compatibility during deployment transition
 
         Legacy format: redis_client.lpush(tenant_self_pipeline_task_queue, upload_file.id)
-        New format: TenantSelfTaskQueue.push_tasks([file_id])
+        New format: TenantIsolatedTaskQueue.push_tasks([file_id])
         """
         # Arrange: Create test data
         account, tenant, pipeline, workflow = self._create_test_pipeline_and_workflow(db_session_with_containers)
@@ -407,8 +407,8 @@ class TestRagPipelineRunTasks:
             assert call_kwargs.get("tenant_id") == tenant.id
 
             # Verify that new code can process legacy queue entries
-            # The new TenantSelfTaskQueue should be able to read from the legacy format
-            queue = TenantSelfTaskQueue(tenant.id, "pipeline")
+            # The new TenantIsolatedTaskQueue should be able to read from the legacy format
+            queue = TenantIsolatedTaskQueue(tenant.id, "pipeline")
 
             # Verify queue still has remaining tasks (only 1 was pulled)
             remaining_tasks = queue.pull_tasks(count=10)
@@ -439,8 +439,8 @@ class TestRagPipelineRunTasks:
         file_id = str(uuid.uuid4())
         mock_file_service["get_content"].return_value = file_content
 
-        # Use real Redis for TenantSelfTaskQueue
-        queue = TenantSelfTaskQueue(tenant.id, "pipeline")
+        # Use real Redis for TenantIsolatedTaskQueue
+        queue = TenantIsolatedTaskQueue(tenant.id, "pipeline")
 
         # Add waiting tasks to the real Redis queue
         waiting_file_ids = [str(uuid.uuid4()) for _ in range(3)]
@@ -493,8 +493,8 @@ class TestRagPipelineRunTasks:
         # Mock PipelineGenerator to raise an exception
         mock_pipeline_generator.side_effect = Exception("Pipeline generation failed")
 
-        # Use real Redis for TenantSelfTaskQueue
-        queue = TenantSelfTaskQueue(tenant.id, "pipeline")
+        # Use real Redis for TenantIsolatedTaskQueue
+        queue = TenantIsolatedTaskQueue(tenant.id, "pipeline")
 
         # Add waiting task to the real Redis queue
         waiting_file_id = str(uuid.uuid4())
@@ -550,8 +550,8 @@ class TestRagPipelineRunTasks:
         # Mock PipelineGenerator to raise an exception
         mock_pipeline_generator.side_effect = Exception("Pipeline generation failed")
 
-        # Use real Redis for TenantSelfTaskQueue
-        queue = TenantSelfTaskQueue(tenant.id, "pipeline")
+        # Use real Redis for TenantIsolatedTaskQueue
+        queue = TenantIsolatedTaskQueue(tenant.id, "pipeline")
 
         # Add waiting task to the real Redis queue
         waiting_file_id = str(uuid.uuid4())
@@ -606,9 +606,9 @@ class TestRagPipelineRunTasks:
         file_id2 = str(uuid.uuid4())
         mock_file_service["get_content"].side_effect = [file_content1, file_content2]
 
-        # Use real Redis for TenantSelfTaskQueue
-        queue1 = TenantSelfTaskQueue(tenant1.id, "pipeline")
-        queue2 = TenantSelfTaskQueue(tenant2.id, "pipeline")
+        # Use real Redis for TenantIsolatedTaskQueue
+        queue1 = TenantIsolatedTaskQueue(tenant1.id, "pipeline")
+        queue2 = TenantIsolatedTaskQueue(tenant2.id, "pipeline")
 
         # Add waiting tasks to both queues
         waiting_file_id1 = str(uuid.uuid4())
@@ -644,8 +644,8 @@ class TestRagPipelineRunTasks:
             assert len(remaining_tasks2) == 1
 
             # Verify queue keys are different
-            assert queue1.queue != queue2.queue
-            assert queue1.task_key != queue2.task_key
+            assert queue1._queue != queue2._queue
+            assert queue1._task_key != queue2._task_key
 
     def test_rag_pipeline_run_task_tenant_isolation(
         self, db_session_with_containers, mock_pipeline_generator, mock_file_service
@@ -673,9 +673,9 @@ class TestRagPipelineRunTasks:
         file_id2 = str(uuid.uuid4())
         mock_file_service["get_content"].side_effect = [file_content1, file_content2]
 
-        # Use real Redis for TenantSelfTaskQueue
-        queue1 = TenantSelfTaskQueue(tenant1.id, "pipeline")
-        queue2 = TenantSelfTaskQueue(tenant2.id, "pipeline")
+        # Use real Redis for TenantIsolatedTaskQueue
+        queue1 = TenantIsolatedTaskQueue(tenant1.id, "pipeline")
+        queue2 = TenantIsolatedTaskQueue(tenant2.id, "pipeline")
 
         # Add waiting tasks to both queues
         waiting_file_id1 = str(uuid.uuid4())
@@ -709,8 +709,8 @@ class TestRagPipelineRunTasks:
             assert len(remaining_tasks2) == 1
 
             # Verify queue keys are different
-            assert queue1.queue != queue2.queue
-            assert queue1.task_key != queue2.task_key
+            assert queue1._queue != queue2._queue
+            assert queue1._task_key != queue2._task_key
 
     def test_run_single_rag_pipeline_task_success(
         self, db_session_with_containers, mock_pipeline_generator, flask_app_with_containers
@@ -856,8 +856,8 @@ class TestRagPipelineRunTasks:
         file_id = str(uuid.uuid4())
         mock_file_service["get_content"].side_effect = Exception("File not found")
 
-        # Use real Redis for TenantSelfTaskQueue
-        queue = TenantSelfTaskQueue(tenant.id, "pipeline")
+        # Use real Redis for TenantIsolatedTaskQueue
+        queue = TenantIsolatedTaskQueue(tenant.id, "pipeline")
 
         # Add waiting task to the real Redis queue
         waiting_file_id = str(uuid.uuid4())
@@ -906,8 +906,8 @@ class TestRagPipelineRunTasks:
         file_id = str(uuid.uuid4())
         mock_file_service["get_content"].side_effect = Exception("File not found")
 
-        # Use real Redis for TenantSelfTaskQueue
-        queue = TenantSelfTaskQueue(tenant.id, "pipeline")
+        # Use real Redis for TenantIsolatedTaskQueue
+        queue = TenantIsolatedTaskQueue(tenant.id, "pipeline")
 
         # Add waiting task to the real Redis queue
         waiting_file_id = str(uuid.uuid4())

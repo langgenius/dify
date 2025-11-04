@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
-from core.rag.pipeline.queue import TenantSelfTaskQueue
+from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from core.repositories.factory import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from models import Account, Tenant
@@ -73,11 +73,13 @@ def rag_pipeline_run_task(
         logging.exception(click.style(f"Error running rag pipeline, tenant_id: {tenant_id}", fg="red"))
         raise
     finally:
-        tenant_self_pipeline_task_queue = TenantSelfTaskQueue(tenant_id, "pipeline")
+        tenant_self_pipeline_task_queue = TenantIsolatedTaskQueue(tenant_id, "pipeline")
 
         # Check if there are waiting tasks in the queue
         # Use rpop to get the next task from the queue (FIFO order)
-        next_file_ids = tenant_self_pipeline_task_queue.pull_tasks(count=dify_config.TENANT_SELF_TASK_QUEUE_PULL_SIZE)
+        next_file_ids = tenant_self_pipeline_task_queue.pull_tasks(
+            count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY
+        )
         logger.info("rag pipeline tenant isolation queue next files: %s", next_file_ids)
 
         if next_file_ids:

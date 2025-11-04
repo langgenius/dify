@@ -1,10 +1,10 @@
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import asdict
 from functools import cached_property
 
 from core.entities.document_task import DocumentTask
-from core.rag.pipeline.queue import TenantSelfTaskQueue
+from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from services.feature_service import FeatureService
 from tasks.document_indexing_task import normal_document_indexing_task, priority_document_indexing_task
 
@@ -12,43 +12,49 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentIndexingTaskProxy:
-    def __init__(self, tenant_id: str, dataset_id: str, document_ids: list[str]):
-        self.tenant_id = tenant_id
-        self.dataset_id = dataset_id
-        self.document_ids = document_ids
-        self.tenant_self_task_queue = TenantSelfTaskQueue(tenant_id, "document_indexing")
+    def __init__(self, tenant_id: str, dataset_id: str, document_ids: Sequence[str]):
+        self._tenant_id = tenant_id
+        self._dataset_id = dataset_id
+        self._document_ids = document_ids
+        self._tenant_isolated_task_queue = TenantIsolatedTaskQueue(tenant_id, "document_indexing")
 
     @cached_property
     def features(self):
-        return FeatureService.get_features(self.tenant_id)
+        return FeatureService.get_features(self._tenant_id)
 
-    def _send_to_direct_queue(self, task_func: Callable):
-        logger.info("send dataset %s to direct queue", self.dataset_id)
+    def _send_to_direct_queue(self, task_func: Callable[[str, str, Sequence[str]], None]):
+        logger.info("send dataset %s to direct queue", self._dataset_id)
         task_func.delay(  # type: ignore
-            tenant_id=self.tenant_id, dataset_id=self.dataset_id, document_ids=self.document_ids
+            tenant_id=self._tenant_id,
+            dataset_id=self._dataset_id,
+            document_ids=self._document_ids
         )
 
-    def _send_to_tenant_queue(self, task_func: Callable):
-        logger.info("send dataset %s to tenant queue", self.dataset_id)
-        if self.tenant_self_task_queue.get_task_key():
+    def _send_to_tenant_queue(self, task_func: Callable[[str, str, Sequence[str]], None]):
+        logger.info("send dataset %s to tenant queue", self._dataset_id)
+        if self._tenant_isolated_task_queue.get_task_key():
             # Add to waiting queue using List operations (lpush)
-            self.tenant_self_task_queue.push_tasks(
+            self._tenant_isolated_task_queue.push_tasks(
                 [
                     asdict(
                         DocumentTask(
-                            tenant_id=self.tenant_id, dataset_id=self.dataset_id, document_ids=self.document_ids
+                            tenant_id=self._tenant_id,
+                            dataset_id=self._dataset_id,
+                            document_ids=self._document_ids
                         )
                     )
                 ]
             )
-            logger.info("push tasks: %s - %s", self.dataset_id, self.document_ids)
+            logger.info("push tasks: %s - %s", self._dataset_id, self._document_ids)
         else:
             # Set flag and execute task
-            self.tenant_self_task_queue.set_task_waiting_time()
+            self._tenant_isolated_task_queue.set_task_waiting_time()
             task_func.delay(  # type: ignore
-                tenant_id=self.tenant_id, dataset_id=self.dataset_id, document_ids=self.document_ids
+                tenant_id=self._tenant_id,
+                dataset_id=self._dataset_id,
+                document_ids=self._document_ids
             )
-            logger.info("init tasks: %s - %s", self.dataset_id, self.document_ids)
+            logger.info("init tasks: %s - %s", self._dataset_id, self._document_ids)
 
     def _send_to_default_tenant_queue(self):
         self._send_to_tenant_queue(normal_document_indexing_task)
@@ -62,7 +68,7 @@ class DocumentIndexingTaskProxy:
     def _dispatch(self):
         logger.info(
             "dispatch args: %s - %s - %s",
-            self.tenant_id,
+            self._tenant_id,
             self.features.billing.enabled,
             self.features.billing.subscription.plan,
         )
