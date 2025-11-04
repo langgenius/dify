@@ -1,12 +1,10 @@
 import json
 from collections.abc import Sequence
-from typing import Any, TypeVar
+from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
 from extensions.ext_redis import redis_client
-
-T = TypeVar("T")
 
 _DEFAULT_TASK_TTL = 60 * 60  # 1 hour
 
@@ -44,7 +42,7 @@ class TenantIsolatedTaskQueue:
     def delete_task_key(self):
         redis_client.delete(self._task_key)
 
-    def push_tasks(self, tasks: Sequence[T]):
+    def push_tasks(self, tasks: Sequence[Any]):
         serialized_tasks = []
         for task in tasks:
             # Store str list directly, maintaining full compatibility for pipeline scenarios
@@ -58,7 +56,7 @@ class TenantIsolatedTaskQueue:
 
         redis_client.lpush(self._queue, *serialized_tasks)
 
-    def pull_tasks(self, count: int = 1) -> Sequence[T]:
+    def pull_tasks(self, count: int = 1) -> Sequence[Any]:
         if count <= 0:
             return []
 
