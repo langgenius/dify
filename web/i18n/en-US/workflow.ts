@@ -501,6 +501,8 @@ const translation = {
     },
     knowledgeRetrieval: {
       queryVariable: 'Query Variable',
+      queryText: 'Query Text',
+      queryAttachment: 'Query Images',
       knowledge: 'Knowledge',
       outputVars: {
         output: 'Retrieval segmented data',

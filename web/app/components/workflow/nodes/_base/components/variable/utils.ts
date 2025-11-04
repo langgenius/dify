@@ -582,16 +582,8 @@ const formatItem = (
             variable: outputKey,
             type:
               output.type === 'array'
-                ? (`Array[${output.items?.type
-                  ? output.items.type.slice(0, 1).toLocaleUpperCase()
-                  + output.items.type.slice(1)
-                  : 'Unknown'
-                }]` as VarType)
-                : (`${output.type
-                  ? output.type.slice(0, 1).toLocaleUpperCase()
-                  + output.type.slice(1)
-                  : 'Unknown'
-                }` as VarType),
+                ? (`Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]` as VarType)
+                : (`${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}` as VarType),
           })
         },
       )
@@ -821,13 +813,14 @@ export const toNodeOutputVars = (
           filterVar,
           allPluginInfoList,
           ragVariablesInDataSource.map(
-            (ragVariable: RAGPipelineVariable) =>
-              ({
+            (ragVariable: RAGPipelineVariable) => {
+              return {
                 variable: `rag.${node.id}.${ragVariable.variable}`,
                 type: inputVarTypeToVarType(ragVariable.type as any),
                 description: ragVariable.label,
                 isRagVariable: true,
-              } as Var),
+              } as Var
+            },
           ),
           schemaTypeDefinitions,
         ),
@@ -1262,7 +1255,11 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.KnowledgeRetrieval: {
-      res = [(data as KnowledgeRetrievalNodeType).query_variable_selector]
+      const {
+        query_variable_selector,
+        query_attachment_selector,
+      } = data as KnowledgeRetrievalNodeType
+      res = [query_variable_selector, query_attachment_selector]
       break
     }
     case BlockEnum.IfElse: {
@@ -1591,6 +1588,10 @@ export const updateNodeVars = (
           payload.query_variable_selector.join('.') === oldVarSelector.join('.')
         )
           payload.query_variable_selector = newVarSelector
+        if (
+          payload.query_attachment_selector.join('.') === oldVarSelector.join('.')
+        )
+          payload.query_attachment_selector = newVarSelector
         break
       }
       case BlockEnum.IfElse: {

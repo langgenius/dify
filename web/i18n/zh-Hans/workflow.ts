@@ -501,6 +501,8 @@ const translation = {
     },
     knowledgeRetrieval: {
       queryVariable: '查询变量',
+      queryText: '查询文本',
+      queryAttachment: '查询图片',
       knowledge: '知识库',
       outputVars: {
         output: '召回的分段',

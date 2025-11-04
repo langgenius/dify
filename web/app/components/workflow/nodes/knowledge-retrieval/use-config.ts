@@ -72,6 +72,13 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleQueryAttachmentChange = useCallback((newVar: ValueSelector | string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.query_attachment_selector = newVar as ValueSelector
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const {
     currentProvider,
     currentModel,
@@ -274,8 +281,12 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       setRerankModelOpen(true)
   }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel, currentRerankProvider, updateDatasetsDetail])
 
-  const filterVar = useCallback((varPayload: Var) => {
+  const filterStringVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string
+  }, [])
+
+  const filterFileVar = useCallback((varPayload: Var) => {
+    return varPayload.type === VarType.file
   }, [])
 
   const handleMetadataFilterModeChange = useCallback((newMode: MetadataFilteringModeEnum) => {
@@ -361,7 +372,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
-  const filterStringVar = useCallback((varPayload: Var) => {
+  const filterVar = useCallback((varPayload: Var) => {
     return [VarType.string].includes(varPayload.type)
   }, [])
 
@@ -370,7 +381,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     availableNodesWithParent: availableStringNodesWithParent,
   } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
-    filterVar: filterStringVar,
+    filterVar,
   })
 
   const filterNumberVar = useCallback((varPayload: Var) => {
@@ -389,7 +400,9 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     readOnly,
     inputs,
     handleQueryVarChange,
-    filterVar,
+    handleQueryAttachmentChange,
+    filterStringVar,
+    filterFileVar,
     handleRetrievalModeChange,
     handleMultipleRetrievalConfigChange,
     handleModelChanged,
