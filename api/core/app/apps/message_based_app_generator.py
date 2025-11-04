@@ -190,7 +190,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
             conversation_id=conversation.id,
             inputs=application_generate_entity.inputs,
-            query=application_generate_entity.query or "",
+            query=application_generate_entity.query,
             message="",
             message_tokens=0,
             message_unit_price=0,

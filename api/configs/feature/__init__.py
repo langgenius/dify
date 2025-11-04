@@ -920,6 +920,11 @@ class DataSetConfig(BaseSettings):
         default=True,
     )
 
+    DATASET_MAX_SEGMENTS_PER_REQUEST: NonNegativeInt = Field(
+        description="Maximum number of segments for dataset segments API (0 for unlimited)",
+        default=0,
+    )
+
 
 class WorkspaceConfig(BaseSettings):
     """
