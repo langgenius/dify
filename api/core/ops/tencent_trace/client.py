@@ -111,7 +111,7 @@ class TencentTraceClient:
         self.span_contexts: dict[int, trace_api.SpanContext] = {}
 
         self.meter: Meter | None = None
-        self.meter_provider: "MeterProvider" | None = None
+        self.meter_provider: MeterProvider | None = None
         self.hist_llm_duration: Histogram | None = None
         self.hist_token_usage: Histogram | None = None
         self.hist_time_to_first_token: Histogram | None = None
