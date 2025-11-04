@@ -4,7 +4,7 @@ import Confirm from '.'
 import Button from '../button'
 
 const meta = {
-  title: 'Base/Confirm',
+  title: 'Base/Feedback/Confirm',
   component: Confirm,
   parameters: {
     layout: 'centered',
@@ -62,6 +62,14 @@ const meta = {
       description: 'Whether clicking mask closes dialog',
     },
   },
+  args: {
+    onConfirm: () => {
+      console.log('✅ User clicked confirm')
+    },
+    onCancel: () => {
+      console.log('❌ User clicked cancel')
+    },
+  },
 } satisfies Meta<typeof Confirm>
 
 export default meta
@@ -99,6 +107,7 @@ export const WarningDialog: Story = {
     type: 'warning',
     title: 'Delete Confirmation',
     content: 'Are you sure you want to delete this project? This action cannot be undone.',
+    isShow: false,
   },
 }
 
@@ -109,6 +118,7 @@ export const InfoDialog: Story = {
     type: 'info',
     title: 'Notice',
     content: 'Your changes have been saved. Do you want to proceed to the next step?',
+    isShow: false,
   },
 }
 
@@ -121,6 +131,7 @@ export const CustomButtonText: Story = {
     content: 'You have unsaved changes. Are you sure you want to exit?',
     confirmText: 'Discard Changes',
     cancelText: 'Continue Editing',
+    isShow: false,
   },
 }
 
@@ -132,6 +143,7 @@ export const LoadingState: Story = {
     title: 'Deleting...',
     content: 'Please wait while we delete the file...',
     isLoading: true,
+    isShow: false,
   },
 }
 
@@ -143,6 +155,7 @@ export const DisabledState: Story = {
     title: 'Verification Required',
     content: 'Please complete email verification before proceeding.',
     isDisabled: true,
+    isShow: false,
   },
 }
 
@@ -155,6 +168,7 @@ export const AlertStyle: Story = {
     content: 'Your settings have been updated!',
     showCancel: false,
     confirmText: 'Got it',
+    isShow: false,
   },
 }
 
@@ -167,6 +181,7 @@ export const DangerousAction: Story = {
     content: 'This action will permanently delete your account and all associated data, including: all projects and files, collaboration history, and personal settings. This action cannot be reversed!',
     confirmText: 'Delete My Account',
     cancelText: 'Keep My Account',
+    isShow: false,
   },
 }
 
@@ -178,6 +193,7 @@ export const NotMaskClosable: Story = {
     title: 'Important Action',
     content: 'This action requires your explicit choice. Clicking outside will not close this dialog.',
     maskClosable: false,
+    isShow: false,
   },
 }
 
@@ -195,5 +211,6 @@ export const Playground: Story = {
     showConfirm: true,
     showCancel: true,
     maskClosable: true,
+    isShow: false,
   },
 }

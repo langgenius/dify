@@ -19,11 +19,11 @@ import {
 } from '@remixicon/react'
 import dayjs from 'dayjs'
 import { useIsLogin } from '@/service/use-common'
-
-export const OAUTH_AUTHORIZE_PENDING_KEY = 'oauth_authorize_pending'
-export const REDIRECT_URL_KEY = 'oauth_redirect_url'
-
-const OAUTH_AUTHORIZE_PENDING_TTL = 60 * 3
+import {
+  OAUTH_AUTHORIZE_PENDING_KEY,
+  OAUTH_AUTHORIZE_PENDING_TTL,
+  REDIRECT_URL_KEY,
+} from './constants'
 
 function setItemWithExpiry(key: string, value: string, ttl: number) {
   const item = {

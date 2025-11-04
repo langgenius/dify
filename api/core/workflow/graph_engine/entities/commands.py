@@ -36,4 +36,4 @@ class PauseCommand(GraphEngineCommand):
     """Command to pause a running workflow execution."""
 
     command_type: CommandType = Field(default=CommandType.PAUSE, description="Type of command")
-    reason: str | None = Field(default=None, description="Optional reason for pause")
+    reason: str = Field(default="unknown reason", description="reason for pause")
