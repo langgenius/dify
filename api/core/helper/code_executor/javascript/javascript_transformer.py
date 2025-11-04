@@ -6,10 +6,7 @@ from core.helper.code_executor.template_transformer import TemplateTransformer
 class NodeJsTemplateTransformer(TemplateTransformer):
     @classmethod
     def get_runner_script(cls) -> str:
-        runner_script = dedent(
-            f"""
-            // declare main function
-            {cls._code_placeholder}
+        runner_script = dedent(f"""            {cls._code_placeholder}
 
             // decode and prepare input object
             var inputs_obj = JSON.parse(Buffer.from('{cls._inputs_placeholder}', 'base64').toString('utf-8'))
