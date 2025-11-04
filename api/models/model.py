@@ -1282,20 +1282,20 @@ class MessageFeedback(Base):
         sa.Index("message_feedback_conversation_idx", "conversation_id", "from_source", "rating"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    app_id = mapped_column(StringUUID, nullable=False)
-    conversation_id = mapped_column(StringUUID, nullable=False)
-    message_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     rating: Mapped[str] = mapped_column(String(255), nullable=False)
-    content = mapped_column(sa.Text)
+    content: Mapped[str | None] = mapped_column(sa.Text)
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
-    from_end_user_id = mapped_column(StringUUID)
-    from_account_id = mapped_column(StringUUID)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
+    from_account_id: Mapped[str | None] = mapped_column(StringUUID)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
-    def from_account(self):
+    def from_account(self) -> Account | None:
         account = db.session.query(Account).where(Account.id == self.from_account_id).first()
         return account
 
