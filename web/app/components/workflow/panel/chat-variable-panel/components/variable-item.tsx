@@ -8,17 +8,24 @@ import {
 import type { ConversationVariable, MemoryVariable } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 import { ChatVarType } from '../type'
+import Badge from '@/app/components/base/badge'
 
 type VariableItemProps = {
   item: ConversationVariable | MemoryVariable
   onEdit: (item: ConversationVariable | MemoryVariable) => void
   onDelete: (item: ConversationVariable | MemoryVariable) => void
+  scope?: string
+  term?: string
+  currentVarId?: string
 }
 
 const VariableItem = ({
   item,
   onEdit,
   onDelete,
+  scope,
+  term,
+  currentVarId,
 }: VariableItemProps) => {
   const [destructive, setDestructive] = useState(false)
   return (
@@ -26,7 +33,7 @@ const VariableItem = ({
       'radius-md mb-1 border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
       destructive && 'border-state-destructive-border hover:bg-state-destructive-hover',
     )}>
-      <div className='flex items-center justify-between'>
+      <div className='group flex items-center justify-between'>
         <div className='flex grow items-center gap-1'>
           {
             item.value_type === ChatVarType.Memory && (
@@ -42,15 +49,19 @@ const VariableItem = ({
           <div className='system-xs-medium text-text-tertiary'>{capitalize(item.value_type)}</div>
         </div>
         <div className='flex shrink-0 items-center gap-1 text-text-tertiary'>
-          <div className='radius-md cursor-pointer p-1 hover:bg-state-base-hover hover:text-text-secondary'>
+          <div className={cn('radius-md hidden cursor-pointer p-1 hover:bg-state-base-hover hover:text-text-secondary group-hover:block', currentVarId === item.id && 'block bg-state-base-hover text-text-secondary')}>
             <RiEditLine className='h-4 w-4' onClick={() => onEdit(item)}/>
           </div>
           <div
-            className='radius-md cursor-pointer p-1 hover:bg-state-destructive-hover hover:text-text-destructive'
+            className={cn('radius-md hidden cursor-pointer p-1 hover:bg-state-destructive-hover hover:text-text-destructive group-hover:block', currentVarId === item.id && 'block')}
             onMouseOver={() => setDestructive(true)}
             onMouseOut={() => setDestructive(false)}
           >
             <RiDeleteBinLine className='h-4 w-4' onClick={() => onDelete(item)}/>
+          </div>
+          <div className={cn('flex h-6 items-center gap-0.5 group-hover:hidden', currentVarId === item.id && 'hidden')}>
+            {scope && <Badge text={scope} />}
+            {term && <Badge text={term} />}
           </div>
         </div>
       </div>

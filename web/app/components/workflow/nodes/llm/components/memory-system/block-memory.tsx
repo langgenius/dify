@@ -14,6 +14,7 @@ import { useMemoryVariables } from './hooks/use-memory-variables'
 import Confirm from '@/app/components/base/confirm'
 import { Memory as MemoryIcon } from '@/app/components/base/icons/src/vender/line/others'
 import VariableModal from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal'
+import cn from '@/utils/classnames'
 
 type BlockMemoryProps = {
   id: string
@@ -21,6 +22,7 @@ type BlockMemoryProps = {
 }
 const BlockMemory = ({ id }: BlockMemoryProps) => {
   const { t } = useTranslation()
+  const [destructiveItemId, setDestructiveItemId] = useState<string | undefined>(undefined)
   const {
     memoryVariablesInUsed,
     editMemoryVariable,
@@ -55,7 +57,10 @@ const BlockMemory = ({ id }: BlockMemoryProps) => {
           memoryVariablesInUsed.map(memoryVariable => (
             <div
               key={memoryVariable.id}
-              className='group flex h-8 items-center space-x-1 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-2 pr-1 shadow-xs hover:border hover:border-state-destructive-solid hover:bg-state-destructive-hover'>
+              className={cn(
+                'group flex h-8 items-center space-x-1 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pl-2 pr-1 shadow-xs',
+                destructiveItemId === memoryVariable.id && 'border border-state-destructive-solid bg-state-destructive-hover',
+              )}>
               <MemoryIcon className='h-4 w-4 text-util-colors-teal-teal-700' />
               <div
                 title={memoryVariable.name}
@@ -63,22 +68,30 @@ const BlockMemory = ({ id }: BlockMemoryProps) => {
               >
                 {memoryVariable.name}
               </div>
-              <Badge className='shrink-0'>
+              <Badge className={cn('shrink-0 group-hover:hidden', editMemoryVariable?.id === memoryVariable.id && 'hidden')}>
                 {memoryVariable.term}
               </Badge>
               <ActionButton
-                className='hidden shrink-0 group-hover:block'
+                className={cn(
+                  'hidden shrink-0 group-hover:inline-flex',
+                  editMemoryVariable?.id === memoryVariable.id && 'inline-flex bg-state-base-hover text-text-secondary',
+                )}
                 size='m'
                 onClick={() => handleSetEditMemoryVariable(memoryVariable.id)}
               >
                 <RiEditLine className='h-4 w-4 text-text-tertiary' />
               </ActionButton>
               <ActionButton
-                className='hidden shrink-0 group-hover:block'
+                className={cn(
+                  'hidden shrink-0 bg-transparent hover:bg-transparent hover:text-text-destructive group-hover:inline-flex',
+                  editMemoryVariable?.id === memoryVariable.id && 'inline-flex',
+                )}
                 size='m'
                 onClick={() => handleDelete(memoryVariable.id)}
+                onMouseOver={() => setDestructiveItemId(memoryVariable.id)}
+                onMouseOut={() => setDestructiveItemId(undefined)}
               >
-                <RiDeleteBinLine className='h-4 w-4 text-text-destructive' />
+                <RiDeleteBinLine className={cn('h-4 w-4', destructiveItemId === memoryVariable.id && 'text-text-destructive')} />
               </ActionButton>
             </div>
           ))

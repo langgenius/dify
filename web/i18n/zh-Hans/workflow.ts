@@ -149,6 +149,7 @@ const translation = {
     panelDescription: '会话变量用于存储 LLM 需要的上下文信息，如用户偏好、对话历史等。它是可读写的。',
     docLink: '查看文档了解更多。',
     button: '添加变量',
+    nodeScopeMemory: '节点范围记忆',
     modal: {
       title: '添加会话变量',
       editTitle: '编辑会话变量',

@@ -3,6 +3,7 @@ import {
   useCallback,
   useState,
 } from 'react'
+import { groupBy } from 'lodash-es'
 import {
   useStoreApi,
 } from 'reactflow'
@@ -30,16 +31,24 @@ import cn from '@/utils/classnames'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { ChatVarType } from './type'
 import { useMemoryVariable } from '@/app/components/workflow/hooks'
+import VariableItemWithNode from './components/variable-item-with-node'
 
 const ChatVariablePanel = () => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
-  const { handleAddMemoryVariable, handleUpdateMemoryVariable, handleDeleteMemoryVariable } = useMemoryVariable()
+  const appScopeMemoryVariables = useStore(s => s.memoryVariables.filter(v => v.scope === 'app'))
+  const nodeScopeMemoryVariables = useStore((s) => {
+    return groupBy(s.memoryVariables.filter(v => v.scope === 'node'), 'node_id')
+  })
+  const {
+    handleAddMemoryVariable,
+    handleUpdateMemoryVariable,
+    handleDeleteMemoryVariable,
+  } = useMemoryVariable()
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
-  const memoryVariables = useStore(s => s.memoryVariables) as MemoryVariable[]
   const updateChatVarList = useStore(s => s.setConversationVariables)
   const setMemoryVariables = useStore(s => s.setMemoryVariables)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
@@ -220,12 +229,15 @@ const ChatVariablePanel = () => {
       </div>
       <div className='grow overflow-y-auto rounded-b-2xl px-4'>
         {
-          memoryVariables.map(memoryVariable => (
+          appScopeMemoryVariables.map(memoryVariable => (
             <VariableItem
               key={memoryVariable.id}
               item={memoryVariable}
               onEdit={handleEdit}
               onDelete={deleteCheck}
+              term={memoryVariable.term}
+              scope='conv'
+              currentVarId={currentVar?.id}
             />
           ))
         }
@@ -235,8 +247,31 @@ const ChatVariablePanel = () => {
             item={chatVar}
             onEdit={handleEdit}
             onDelete={deleteCheck}
+            currentVarId={currentVar?.id}
           />
         ))}
+        {
+          !!Object.keys(nodeScopeMemoryVariables).length && (
+            <div className='pb-1 pt-4'>
+              <div className='system-xs-medium-uppercase mb-1 flex items-center space-x-2 text-text-tertiary'>
+                {t('workflow.chatVariable.nodeScopeMemory')}
+                <div className='ml-2 h-px grow bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent'></div>
+              </div>
+              {
+                Object.keys(nodeScopeMemoryVariables).map(nodeId => (
+                  <VariableItemWithNode
+                    key={nodeId}
+                    nodeId={nodeId}
+                    memoryVariables={nodeScopeMemoryVariables[nodeId]}
+                    onEdit={handleEdit}
+                    onDelete={deleteCheck}
+                    currentVarId={currentVar?.id}
+                  />
+                ))
+              }
+            </div>
+          )
+        }
       </div>
       <RemoveEffectVarConfirm
         isShow={showRemoveVarConfirm}
