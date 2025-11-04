@@ -19,10 +19,7 @@ class RagPipelineTaskProxy:
     _RAG_PIPELINE_INVOKE_ENTITIES_FILE_NAME = "rag_pipeline_invoke_entities.json"
 
     def __init__(
-        self,
-        dataset_tenant_id: str,
-        user_id: str,
-        rag_pipeline_invoke_entities: Sequence[RagPipelineInvokeEntity]
+        self, dataset_tenant_id: str, user_id: str, rag_pipeline_invoke_entities: Sequence[RagPipelineInvokeEntity]
     ):
         self._dataset_tenant_id = dataset_tenant_id
         self._user_id = user_id
@@ -38,10 +35,7 @@ class RagPipelineTaskProxy:
         # Convert list to proper JSON string
         json_text = json.dumps(text)
         upload_file = FileService(db.engine).upload_text(
-            json_text,
-            self._RAG_PIPELINE_INVOKE_ENTITIES_FILE_NAME,
-            self._user_id,
-            self._dataset_tenant_id
+            json_text, self._RAG_PIPELINE_INVOKE_ENTITIES_FILE_NAME, self._user_id, self._dataset_tenant_id
         )
         return upload_file.id
 
