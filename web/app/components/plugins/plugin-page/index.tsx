@@ -72,7 +72,7 @@ const PluginPage = ({
     }
   }, [searchParams])
 
-  const [uniqueIdentifier, setUniqueIdentifier] = useState<string>('')
+  const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
 
   const [dependencies, setDependencies] = useState<Dependency[]>([])
   const bundleInfo = useMemo(() => {
