@@ -140,7 +140,7 @@ const FormItem: FC<Props> = ({
             <Input
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              placeholder={payload.label}
               autoFocus={autoFocus}
             />
           )
@@ -152,7 +152,7 @@ const FormItem: FC<Props> = ({
               type="number"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              placeholder={payload.label}
               autoFocus={autoFocus}
             />
           )
@@ -163,7 +163,7 @@ const FormItem: FC<Props> = ({
             <Textarea
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              placeholder={payload.label}
               autoFocus={autoFocus}
             />
           )
