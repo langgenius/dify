@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import traceback
 import uuid
 from datetime import datetime, timedelta
 from typing import Any, Union, cast
@@ -15,7 +16,8 @@ from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
-from opentelemetry.trace import SpanContext, TraceFlags, TraceState, use_span
+from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
+from opentelemetry.trace import Span, Status, StatusCode, SpanContext, TraceFlags, TraceState, use_span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from sqlalchemy import select
 
@@ -119,6 +121,39 @@ def string_to_trace_id128(string: str | None) -> int:
     return int.from_bytes(digest, byteorder="big")
 
 
+def error_to_string(error: Exception | None) -> str:
+    """Convert an error to a string with traceback information."""
+    error_message = "Empty Stack Trace"
+    if error:
+        string_stacktrace = traceback.format_exception(error)
+        error_message = f"{error.__class__.__name__}: {error}\n\n{string_stacktrace}"
+    return error_message
+
+
+def set_span_status(current_span: Span, error: Exception | None = None):
+    """Set the status of the current span based on the presence of an error."""
+    if error:
+        error_string = error_to_string(error)
+        current_span.set_status(Status(StatusCode.ERROR, error_string))
+
+        if isinstance(error, Exception):
+            current_span.record_exception(error)
+        else:
+            exception_type = error.__class__.__name__
+            exception_message = str(error)
+            if not exception_message:
+                exception_message = repr(error)
+            attributes: dict[str, AttributeValue] = {
+                OTELSpanAttributes.EXCEPTION_TYPE: exception_type,
+                OTELSpanAttributes.EXCEPTION_MESSAGE: exception_message,
+                OTELSpanAttributes.EXCEPTION_ESCAPED: False,
+                OTELSpanAttributes.EXCEPTION_STACKTRACE: error_string,
+            }
+            current_span.add_event(name="exception", attributes=attributes)
+    else:
+        current_span.set_status(Status(StatusCode.OK))
+
+
 class ArizePhoenixDataTrace(BaseTraceInstance):
     def __init__(
         self,
@@ -144,7 +179,10 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         with use_span(self.root_span, end_on_exit=False):
             self.propagator.inject(carrier=self.carrier)
 
+        set_span_status(self.root_span)
         self.root_span.end()
+
+        self.child_spans: dict[str, Span] = {}
 
     def trace(self, trace_info: BaseTraceInfo):
         logger.info("[Arize/Phoenix] Trace Entity Info: %s", trace_info)
@@ -298,8 +336,10 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         llm_attributes.update(self._construct_llm_attributes(process_data.get("prompts", [])))
                         node_span.set_attributes(llm_attributes)
                 finally:
+                    set_span_status(node_span)
                     node_span.end(end_time=datetime_to_nanos(finished_at))
         finally:
+            set_span_status(workflow_span)
             workflow_span.end(end_time=datetime_to_nanos(trace_info.end_time))
 
     def message_trace(self, trace_info: MessageTraceInfo):
@@ -425,17 +465,13 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
             try:
                 if trace_info.error:
-                    llm_span.add_event(
-                        "exception",
-                        attributes={
-                            "exception.message": trace_info.error,
-                            "exception.type": "Error",
-                            "exception.stacktrace": trace_info.error,
-                        },
-                    )
+                    set_span_status(llm_span, trace_info.error)
+                else:
+                    set_span_status(llm_span)
             finally:
                 llm_span.end(end_time=datetime_to_nanos(trace_info.end_time))
         finally:
+            set_span_status(message_span)
             message_span.end(end_time=datetime_to_nanos(trace_info.end_time))
 
     def moderation_trace(self, trace_info: ModerationTraceInfo):
@@ -488,14 +524,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         try:
             if trace_info.message_data.error:
-                span.add_event(
-                    "exception",
-                    attributes={
-                        "exception.message": trace_info.message_data.error,
-                        "exception.type": "Error",
-                        "exception.stacktrace": trace_info.message_data.error,
-                    },
-                )
+                set_span_status(span, trace_info.message_data.error)
+            else:
+                set_span_status(span)
         finally:
             span.end(end_time=datetime_to_nanos(trace_info.end_time))
 
@@ -547,14 +578,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         try:
             if trace_info.error:
-                span.add_event(
-                    "exception",
-                    attributes={
-                        "exception.message": trace_info.error,
-                        "exception.type": "Error",
-                        "exception.stacktrace": trace_info.error,
-                    },
-                )
+                set_span_status(span, trace_info.error)
+            else:
+                set_span_status(span)
         finally:
             span.end(end_time=datetime_to_nanos(end_time))
 
@@ -607,14 +633,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         try:
             if trace_info.message_data.error:
-                span.add_event(
-                    "exception",
-                    attributes={
-                        "exception.message": trace_info.message_data.error,
-                        "exception.type": "Error",
-                        "exception.stacktrace": trace_info.message_data.error,
-                    },
-                )
+                set_span_status(span, trace_info.message_data.error)
+            else:
+                set_span_status(span)
         finally:
             span.end(end_time=datetime_to_nanos(end_time))
 
@@ -670,14 +691,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         try:
             if trace_info.error:
-                span.add_event(
-                    "exception",
-                    attributes={
-                        "exception.message": trace_info.error,
-                        "exception.type": "Error",
-                        "exception.stacktrace": trace_info.error,
-                    },
-                )
+                set_span_status(span, trace_info.error)
+            else:
+                set_span_status(span)
         finally:
             span.end(end_time=datetime_to_nanos(trace_info.end_time))
 
@@ -726,14 +742,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         try:
             if trace_info.message_data.error:
-                span.add_event(
-                    "exception",
-                    attributes={
-                        "exception.message": trace_info.message_data.error,
-                        "exception.type": "Error",
-                        "exception.stacktrace": trace_info.message_data.error,
-                    },
-                )
+                set_span_status(span, trace_info.message_data.error)
+            else:
+                set_span_status(span)
         finally:
             span.end(end_time=datetime_to_nanos(trace_info.end_time))
 
