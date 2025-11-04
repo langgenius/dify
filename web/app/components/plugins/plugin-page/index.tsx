@@ -101,7 +101,7 @@ const PluginPage = ({
 
   useEffect(() => {
     (async () => {
-      setUniqueIdentifier('')
+      setUniqueIdentifier(null)
       await sleep(100)
       if (packageId) {
         const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
