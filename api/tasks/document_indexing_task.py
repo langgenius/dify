@@ -120,9 +120,7 @@ def _document_indexing_with_tenant_queue(
 
         # Check if there are waiting tasks in the queue
         # Use rpop to get the next task from the queue (FIFO order)
-        next_tasks = tenant_isolated_task_queue.pull_tasks(
-            count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY
-        )
+        next_tasks = tenant_isolated_task_queue.pull_tasks(count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY)
 
         logger.info("document indexing tenant isolation queue next tasks: %s", next_tasks)
 
