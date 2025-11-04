@@ -237,6 +237,11 @@ const translation = {
       apiReference: 'API Reference',
     },
   },
+  cornerLabel: {
+    unavailable: 'Unavailable',
+    pipeline: 'Pipeline',
+  },
+  multimodal: 'Multimodal',
 }
 
 export default translation

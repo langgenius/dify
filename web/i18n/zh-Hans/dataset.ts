@@ -237,6 +237,11 @@ const translation = {
       apiReference: 'API 文档',
     },
   },
+  cornerLabel: {
+    unavailable: '不可用',
+    pipeline: '流水线',
+  },
+  multimodal: '多模态',
 }
 
 export default translation

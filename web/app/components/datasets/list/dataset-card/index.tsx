@@ -167,7 +167,13 @@ const DatasetCard = ({
       >
         {!dataset.embedding_available && (
           <CornerLabel
-            label='Unavailable'
+            label={t('dataset.cornerLabel.unavailable')}
+            className='absolute right-0 top-0 z-10'
+            labelClassName='rounded-tr-xl' />
+        )}
+        {dataset.embedding_available && dataset.runtime_mode === 'rag_pipeline' && (
+          <CornerLabel
+            label={t('dataset.cornerLabel.pipeline')}
             className='absolute right-0 top-0 z-10'
             labelClassName='rounded-tr-xl' />
         )}
@@ -198,7 +204,12 @@ const DatasetCard = ({
               {!isExternalProvider && isShowDocModeInfo && (
                 <>
                   {dataset.doc_form && <span>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</span>}
-                  {dataset.indexing_technique && <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>}
+                  {dataset.indexing_technique && (
+                    <span>
+                      {formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}
+                    </span>
+                  )}
+                  {dataset.is_multimodal && <span>{t('dataset.multimodal')}</span>}
                 </>
               )}
             </div>
@@ -265,7 +276,7 @@ const DatasetCard = ({
           <span className='system-xs-regular text-divider-deep'>/</span>
           <span className='system-xs-regular'>{`${t('dataset.updated')} ${formatTimeFromNow(dataset.updated_at * 1000)}`}</span>
         </div>
-        <div className='absolute right-2 top-2 z-[5] hidden group-hover:block'>
+        <div className='absolute right-2 top-2 z-[15] hidden group-hover:block'>
           <CustomPopover
             htmlContent={
               <Operations
