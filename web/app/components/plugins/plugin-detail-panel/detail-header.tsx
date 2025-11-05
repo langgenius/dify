@@ -73,7 +73,7 @@ const DetailHeader = ({
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   const {
-    installation_id,
+    id,
     source,
     tenant_id,
     version,
@@ -197,7 +197,7 @@ const DetailHeader = ({
 
   const handleDelete = useCallback(async () => {
     showDeleting()
-    const res = await uninstallPlugin(installation_id)
+    const res = await uninstallPlugin(id)
     hideDeleting()
     if (res.success) {
       hideDeleteConfirm()
@@ -207,7 +207,7 @@ const DetailHeader = ({
       if (PluginType.tool.includes(category))
         invalidateAllToolProviders()
     }
-  }, [showDeleting, installation_id, hideDeleting, hideDeleteConfirm, onUpdate, category, refreshModelProviders, invalidateAllToolProviders])
+  }, [showDeleting, id, hideDeleting, hideDeleteConfirm, onUpdate, category, refreshModelProviders, invalidateAllToolProviders])
 
   return (
     <div className={cn('shrink-0 border-b border-divider-subtle bg-components-panel-bg p-4 pb-3')}>
@@ -351,7 +351,6 @@ const DetailHeader = ({
           content={
             <div>
               {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{label[locale]}</span>{t(`${i18nPrefix}.deleteContentRight`)}<br />
-              {/* {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })} */}
             </div>
           }
           onCancel={hideDeleteConfirm}
