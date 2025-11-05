@@ -177,7 +177,7 @@ const translation = {
     helpCenter: 'Docs',
     support: 'Support',
     compliance: 'Compliance',
-    communityFeedback: 'Feedback',
+    forum: 'Forum',
     roadmap: 'Roadmap',
     github: 'GitHub',
     community: 'Community',

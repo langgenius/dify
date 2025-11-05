@@ -161,7 +161,6 @@ const translation = {
     workspace: 'Không gian làm việc',
     createWorkspace: 'Tạo Không gian làm việc',
     helpCenter: 'Trung tâm trợ giúp',
-    communityFeedback: 'Phản hồi',
     roadmap: 'Lộ trình',
     community: 'Cộng đồng',
     about: 'Về chúng tôi',
