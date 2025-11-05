@@ -12,7 +12,7 @@ from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.rerank_entities import RerankResult
-from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
+from core.model_runtime.entities.text_embedding_entities import EmbeddingResult, TextEmbeddingResult
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeConnectionError, InvokeRateLimitError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.__base.moderation_model import ModerationModel
@@ -200,7 +200,7 @@ class ModelInstance:
 
     def invoke_text_embedding(
         self, texts: list[str], user: str | None = None, input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
-    ) -> TextEmbeddingResult:
+    ) -> EmbeddingResult:
         """
         Invoke large language model
 
@@ -218,6 +218,34 @@ class ModelInstance:
                 model=self.model,
                 credentials=self.credentials,
                 texts=texts,
+                user=user,
+                input_type=input_type,
+            ),
+        )
+    
+    def invoke_file_embedding(
+        self, 
+        file_documents: list[dict], 
+        user: str | None = None, 
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
+    ) -> EmbeddingResult:
+        """
+        Invoke large language model
+
+        :param file_documents: file documents to embed
+        :param user: unique user id
+        :param input_type: input type
+        :return: embeddings result
+        """
+        if not isinstance(self.model_type_instance, TextEmbeddingModel):
+            raise Exception("Model type instance is not TextEmbeddingModel")
+        return cast(
+            EmbeddingResult,
+            self._round_robin_invoke(
+                function=self.model_type_instance.invoke,
+                model=self.model,
+                credentials=self.credentials,
+                files=file_documents,
                 user=user,
                 input_type=input_type,
             ),

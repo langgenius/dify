@@ -104,7 +104,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
         return all_documents
 
-    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True, **kwargs):
+    def load(self, dataset: Dataset, documents: list[Document], multimodel_documents: list[Document] | None = None, 
+    with_keywords: bool = True, **kwargs):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             for document in documents:
@@ -114,6 +115,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                         Document.model_validate(child_document.model_dump()) for child_document in child_documents
                     ]
                     vector.create(formatted_child_documents)
+            if multimodel_documents:
+                vector.create_multimodel(multimodel_documents)
 
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         # node_ids is segment's node_ids

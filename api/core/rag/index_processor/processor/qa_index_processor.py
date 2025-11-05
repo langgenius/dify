@@ -128,11 +128,14 @@ class QAIndexProcessor(BaseIndexProcessor):
             raise ValueError(str(e))
         return text_docs
 
-    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True, **kwargs):
+    def load(self, dataset: Dataset, documents: list[Document], multimodel_documents: list[Document] | None = None, 
+    with_keywords: bool = True, **kwargs):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
-
+            if multimodel_documents:
+                vector.create_multimodel(multimodel_documents)
+                
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         vector = Vector(dataset)
         if node_ids:

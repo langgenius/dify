@@ -8,6 +8,11 @@ class Embeddings(ABC):
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed search docs."""
         raise NotImplementedError
+    
+    @abstractmethod
+    def embed_file_documents(self, file_documents: list[dict]) -> list[list[float]]:
+        """Embed file documents."""
+        raise NotImplementedError
 
     @abstractmethod
     def embed_query(self, text: str) -> list[float]:

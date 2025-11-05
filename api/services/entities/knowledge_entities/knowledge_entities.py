@@ -126,12 +126,20 @@ class KnowledgeConfig(BaseModel):
     name: str | None = None
 
 
+class SegmentCreateArgs(BaseModel):
+    content: str | None = None
+    answer: str | None = None
+    keywords: list[str] | None = None
+    attachment_ids: list[str] | None = None
+    
+
 class SegmentUpdateArgs(BaseModel):
     content: str | None = None
     answer: str | None = None
     keywords: list[str] | None = None
     regenerate_child_chunks: bool = False
     enabled: bool | None = None
+    attachment_ids: list[str] | None = None
 
 
 class ChildChunkUpdateArgs(BaseModel):

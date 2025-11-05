@@ -884,6 +884,7 @@ class DocumentSegment(Base):
             base_url = f"/files/{upload_file_id}/image-preview"
             source_url = f"{base_url}?{params}"
             attachment_list.append({
+                "id": attachment.id,
                 "name": attachment.name,
                 "size": attachment.size,
                 "extension": attachment.extension,

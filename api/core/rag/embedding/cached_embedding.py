@@ -103,6 +103,85 @@ class CacheEmbedding(Embeddings):
 
         return text_embeddings
 
+    def embed_file_documents(self, file_documents: list[dict]) -> list[list[float]]:
+        """Embed file documents."""
+        # use doc embedding cache or store if not exists
+        file_embeddings: list[Any] = [None for _ in range(len(file_documents))]
+        embedding_queue_indices = []
+        for i, file_document in enumerate(file_documents):
+            file_id = file_document["file_id"]
+            embedding = (
+                db.session.query(Embedding)
+                .filter_by(
+                    model_name=self._model_instance.model, hash=file_id, provider_name=self._model_instance.provider
+                )
+                .first()
+            )
+            if embedding:
+                file_embeddings[i] = embedding.get_embedding()
+            else:
+                embedding_queue_indices.append(i)
+
+        # NOTE: avoid closing the shared scoped session here; downstream code may still have pending work
+
+        if embedding_queue_indices:
+            embedding_queue_files = [file_documents[i] for i in embedding_queue_indices]
+            embedding_queue_embeddings = []
+            try:
+                model_type_instance = cast(TextEmbeddingModel, self._model_instance.model_type_instance)
+                model_schema = model_type_instance.get_model_schema(
+                    self._model_instance.model, self._model_instance.credentials
+                )
+                max_chunks = (
+                    model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS]
+                    if model_schema and ModelPropertyKey.MAX_CHUNKS in model_schema.model_properties
+                    else 1
+                )
+                for i in range(0, len(embedding_queue_files), max_chunks):
+                    batch_files = embedding_queue_files[i : i + max_chunks]
+
+                    embedding_result = self._model_instance.invoke_file_embedding(
+                        file_documents=batch_files, user=self._user, input_type=EmbeddingInputType.DOCUMENT
+                    )
+
+                    for vector in embedding_result.embeddings:
+                        try:
+                            # FIXME: type ignore for numpy here
+                            normalized_embedding = (vector / np.linalg.norm(vector)).tolist()  # type: ignore
+                            # stackoverflow best way: https://stackoverflow.com/questions/20319813/how-to-check-list-containing-nan
+                            if np.isnan(normalized_embedding).any():
+                                # for issue #11827  float values are not json compliant
+                                logger.warning("Normalized embedding is nan: %s", normalized_embedding)
+                                continue
+                            embedding_queue_embeddings.append(normalized_embedding)
+                        except IntegrityError:
+                            db.session.rollback()
+                        except Exception:
+                            logger.exception("Failed transform embedding")
+                cache_embeddings = []
+                try:
+                    for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
+                        file_embeddings[i] = n_embedding
+                        file_id = file_documents[i]["file_id"]
+                        if file_id not in cache_embeddings:
+                            embedding_cache = Embedding(
+                                model_name=self._model_instance.model,
+                                hash=file_id,
+                                provider_name=self._model_instance.provider,
+                            )
+                            embedding_cache.set_embedding(n_embedding)
+                            db.session.add(embedding_cache)
+                            cache_embeddings.append(file_id)
+                    db.session.commit()
+                except IntegrityError:
+                    db.session.rollback()
+            except Exception as ex:
+                db.session.rollback()
+                logger.exception("Failed to embed documents")
+                raise ex
+
+        return file_embeddings
+
     def embed_query(self, text: str) -> list[float]:
         """Embed query text."""
         # use doc embedding cache or store if not exists

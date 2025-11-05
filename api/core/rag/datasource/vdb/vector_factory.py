@@ -1,3 +1,4 @@
+import base64
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -15,7 +16,9 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from extensions.ext_storage import storage
 from models.dataset import Dataset, Whitelist
+from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
 
@@ -203,6 +206,40 @@ class Vector:
                 self._vector_processor.create(texts=batch, embeddings=batch_embeddings, **kwargs)
             logger.info("Embedding %s texts took %s s", len(texts), time.time() - start)
 
+    def create_multimodel(self, file_documents: list | None = None, **kwargs):
+        if file_documents:
+            start = time.time()
+            logger.info("start embedding %s files %s", len(file_documents), start)
+            batch_size = 1000
+            total_batches = len(file_documents) + batch_size - 1
+            for i in range(0, len(file_documents), batch_size):
+                batch = file_documents[i : i + batch_size]
+                batch_start = time.time()
+                logger.info("Processing batch %s/%s (%s files)", i // batch_size + 1, total_batches, len(batch))
+                file_base64_list = []
+                real_batch = []
+                for document in batch:
+                    attachment_id = document.metadata["doc_id"]
+                    doc_type = document.metadata["doc_type"]
+                    upload_file: UploadFile | None = db.session.query(UploadFile).where(UploadFile.id == attachment_id).first()
+
+                    if not upload_file:
+                        continue
+                    blob = storage.load_once(upload_file.key)
+                    file_base64_str = base64.b64encode(blob).decode()
+                    file_base64_list.append({
+                        "file": file_base64_str,
+                        "file_type": doc_type,
+                        "file_id": attachment_id,
+                    })
+                    real_batch.append(document)
+                batch_embeddings = self._embeddings.embed_file_documents(file_base64_list)
+                logger.info(
+                    "Embedding batch %s/%s took %s s", i // batch_size + 1, total_batches, time.time() - batch_start
+                )
+                self._vector_processor.create(texts=real_batch, embeddings=batch_embeddings, **kwargs)
+            logger.info("Embedding %s files took %s s", len(file_documents), time.time() - start)
+
     def add_texts(self, documents: list[Document], **kwargs):
         if kwargs.get("duplicate_check", False):
             documents = self._filter_duplicate_texts(documents)
@@ -220,8 +257,12 @@ class Vector:
         self._vector_processor.delete_by_metadata_field(key, value)
 
     def search_by_vector(self, query: str, **kwargs: Any) -> list[Document]:
-        query_vector = self._embeddings.embed_query(query)
+        query_vector = self._embeddings.embed_file_documents(query)
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
+
+    def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
+        file_vector = self._embeddings.embed_file(file_id)
+        return self._vector_processor.search_by_vector(file_ids, **kwargs)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)

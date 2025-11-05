@@ -50,7 +50,8 @@ class DatasetsHitTestingBase:
     def parse_args():
         parser = (
             reqparse.RequestParser()
-            .add_argument("query", type=str, location="json")
+            .add_argument("query", type=str, required=False, location="json")
+            .add_argument("attachment_ids", type=list, required=False, location="json")
             .add_argument("retrieval_model", type=dict, required=False, location="json")
             .add_argument("external_retrieval_model", type=dict, required=False, location="json")
         )
@@ -66,6 +67,7 @@ class DatasetsHitTestingBase:
                 account=current_user,
                 retrieval_model=args["retrieval_model"],
                 external_retrieval_model=args["external_retrieval_model"],
+                attachment_ids=args["attachment_ids"],
                 limit=10,
             )
             return {"query": response["query"], "records": marshal(response["records"], hit_testing_record_fields)}

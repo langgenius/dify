@@ -322,6 +322,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             .add_argument(
                 "regenerate_child_chunks", type=bool, required=False, nullable=True, default=False, location="json"
             )
+            .add_argument("attachment_ids", type=list, required=False, nullable=True, location="json")
         )
         args = parser.parse_args()
         SegmentService.segment_create_args_validate(args, document)

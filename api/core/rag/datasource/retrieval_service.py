@@ -37,14 +37,15 @@ class RetrievalService:
         retrieval_method: RetrievalMethod,
         dataset_id: str,
         query: str,
-        top_k: int,
+        top_k: int = 4,
         score_threshold: float | None = 0.0,
         reranking_model: dict | None = None,
         reranking_mode: str = "reranking_model",
         weights: dict | None = None,
         document_ids_filter: list[str] | None = None,
+        attachment_ids: list | None = None,
     ):
-        if not query:
+        if not query and not attachment_ids:
             return []
         dataset = cls._get_dataset(dataset_id)
         if not dataset:
@@ -83,6 +84,7 @@ class RetrievalService:
                         retrieval_method=retrieval_method,
                         exceptions=exceptions,
                         document_ids_filter=document_ids_filter,
+                        attachment_ids=attachment_ids
                     )
                 )
             if RetrievalMethod.is_support_fulltext_search(retrieval_method):
@@ -223,6 +225,7 @@ class RetrievalService:
         retrieval_method: RetrievalMethod,
         exceptions: list,
         document_ids_filter: list[str] | None = None,
+        attachment_ids: list | None = None,
     ):
         with flask_app.app_context():
             try:

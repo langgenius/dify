@@ -2880,11 +2880,10 @@ class SegmentService:
                         .where(DatasetProcessRule.id == document.dataset_process_rule_id)
                         .first()
                     )
-                    if not processing_rule:
-                        raise ValueError("No processing rule found.")
-                    VectorService.generate_child_chunks(
-                        segment, document, dataset, embedding_model_instance, processing_rule, True
-                    )
+                    if processing_rule:
+                        VectorService.generate_child_chunks(
+                            segment, document, dataset, embedding_model_instance, processing_rule, True
+                        )
                 elif document.doc_form in (IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX):
                     if args.enabled or keyword_changed:
                         # update segment vector index
@@ -2956,15 +2955,16 @@ class SegmentService:
                         .where(DatasetProcessRule.id == document.dataset_process_rule_id)
                         .first()
                     )
-                    if not processing_rule:
-                        raise ValueError("No processing rule found.")
-                    VectorService.generate_child_chunks(
-                        segment, document, dataset, embedding_model_instance, processing_rule, True
-                    )
+                    if processing_rule:
+                        VectorService.generate_child_chunks(
+                            segment, document, dataset, embedding_model_instance, processing_rule, True
+                        )
                 elif document.doc_form in (IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX):
                     # update segment vector index
                     VectorService.update_segment_vector(args.keywords, segment, dataset)
-
+            if dataset.is_multimodal:
+                # update multimodel vector index
+                VectorService.update_multimodel_vector(segment, args.attachment_ids or [], dataset)
         except Exception as e:
             logger.exception("update segment index failed")
             segment.enabled = False
@@ -3002,7 +3002,7 @@ class SegmentService:
                 )
                 child_node_ids = [chunk[0] for chunk in child_chunks if chunk[0]]
 
-            delete_segment_from_index_task.delay([segment.index_node_id], dataset.id, document.id, child_node_ids)
+            delete_segment_from_index_task.delay([segment.index_node_id], dataset.id, document.id, [segment.id], child_node_ids)
 
         db.session.delete(segment)
         # update document word count
@@ -3051,7 +3051,7 @@ class SegmentService:
 
         # Start async cleanup with both parent and child node IDs
         if index_node_ids or child_node_ids:
-            delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id, child_node_ids)
+            delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id, segment_db_ids, child_node_ids)
 
         if document.word_count is None:
             document.word_count = 0

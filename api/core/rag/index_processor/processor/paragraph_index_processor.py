@@ -77,10 +77,13 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             all_documents.extend(split_documents)
         return all_documents
 
-    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True, **kwargs):
+    def load(self, dataset: Dataset, documents: list[Document], multimodel_documents: list[Document] | None = None, 
+    with_keywords: bool = True, **kwargs):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
+            if multimodel_documents:
+                vector.create_multimodel(multimodel_documents)
             with_keywords = False
         if with_keywords:
             keywords_list = kwargs.get("keywords_list")
