@@ -96,7 +96,7 @@ class WeaviateVector(BaseVector):
             # see https://bugs.python.org/issue27657
             grpc_endpoint_with_scheme = config.grpc_endpoint if "://" in config.grpc_endpoint else f"grpc://{config.grpc_endpoint}"
             grpc_p = urlparse(grpc_endpoint_with_scheme)
-            grpc_host = grpc_p.hostname or grpc_endpoint_with_scheme.replace("grpc://", "").replace("grpcs://", "")
+            grpc_host = grpc_p.hostname or "localhost"
             grpc_port = grpc_p.port or (443 if grpc_p.scheme == "grpcs" else 50051)
             grpc_secure = grpc_p.scheme == "grpcs"
         else:
