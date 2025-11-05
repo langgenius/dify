@@ -1,8 +1,4 @@
-import {
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { produce } from 'immer'
@@ -24,9 +20,9 @@ import type {
 } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import Input from '@/app/components/base/input'
-import { SimpleSelect as Select } from '@/app/components/base/select'
 import ConditionInput from './condition-input'
 import cn from '@/utils/classnames'
+import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 
 type Props = {
   className?: string
@@ -51,10 +47,6 @@ const ConditionItem = ({
   const [open, setOpen] = useState(false)
 
   const needsValue = operatorNeedsValue(condition.comparison_operator)
-  const booleanOptions = useMemo(() => ([
-    { name: t('common.operation.yes'), value: 'true' },
-    { name: t('common.operation.no'), value: 'false' },
-  ]), [t])
 
   const handleSelectVar = useCallback((valueSelector: ValueSelector, varItem: Var) => {
     const operators = getConditionOperators(varItem.type)
@@ -91,29 +83,44 @@ const ConditionItem = ({
   }, [handleValueChange])
 
   const handleBooleanValueChange = useCallback((value: boolean) => {
+    if (disabled)
+      return
     handleValueChange(value)
-  }, [handleValueChange])
+  }, [disabled, handleValueChange])
 
   const renderValueInput = () => {
     if (!needsValue)
       return <div className='system-xs-regular text-text-tertiary'>{t('workflow.nodes.agent.toolCondition.noValueNeeded')}</div>
 
     if (condition.varType === VarType.boolean) {
-      const currentBooleanValue = typeof condition.value === 'boolean'
-        ? String(condition.value)
-        : undefined
+      if (typeof condition.value === 'string' && condition.value !== 'true' && condition.value !== 'false') {
+        return (
+          <ConditionInput
+            value={condition.value}
+            onChange={handleTextValueChange}
+            disabled={disabled}
+            availableNodes={availableNodes}
+          />
+        )
+      }
+
+      const booleanValue = (() => {
+        if (typeof condition.value === 'boolean')
+          return condition.value
+        if (condition.value === 'false')
+          return false
+        if (condition.value === 'true')
+          return true
+        return true
+      })()
 
       return (
-        <Select
-          className='h-8'
-          optionWrapClassName='w-32'
-          defaultValue={currentBooleanValue}
-          items={booleanOptions}
-          onSelect={item => handleBooleanValueChange(item.value === 'true')}
-          disabled={disabled}
-          hideChecked
-          notClearable
-        />
+        <div className='p-1'>
+          <BoolValue
+            value={booleanValue}
+            onChange={handleBooleanValueChange}
+          />
+        </div>
       )
     }
 
