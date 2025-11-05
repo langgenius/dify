@@ -165,7 +165,6 @@ const translation = {
     workspace: 'Рабочее пространство',
     createWorkspace: 'Создать рабочее пространство',
     helpCenter: 'Помощь',
-    communityFeedback: 'Обратная связь',
     roadmap: 'План развития',
     community: 'Сообщество',
     about: 'О нас',
@@ -174,6 +173,7 @@ const translation = {
     compliance: 'Соблюдение',
     support: 'Поддержка',
     contactUs: 'Свяжитесь с нами',
+    forum: 'Форум',
   },
   settings: {
     accountGroup: 'АККАУНТ',
@@ -726,6 +726,7 @@ const translation = {
     pasteFileLinkInvalid: 'Неверная ссылка на файл',
     uploadFromComputerLimit: 'Файл загрузки не может превышать {{size}}',
     uploadFromComputerUploadError: 'Загрузка файла не удалась, пожалуйста, загрузите еще раз.',
+    fileExtensionBlocked: 'Этот тип файла заблокирован по соображениям безопасности',
   },
   license: {
     expiring: 'Срок действия истекает за один день',
