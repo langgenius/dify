@@ -193,7 +193,7 @@ class TriggerManager:
             return TriggerInvokeEventResponse(variables={}, cancelled=True)
         except Exception as e:
             raise e
-        
+
     @classmethod
     def subscribe_trigger(
         cls,
