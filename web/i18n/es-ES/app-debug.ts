@@ -255,7 +255,6 @@ const translation = {
   variableTable: {
     key: 'Clave de Variable',
     name: 'Nombre del Campo de Entrada del Usuario',
-    optional: 'Opcional',
     type: 'Tipo de Entrada',
     action: 'Acciones',
     typeString: 'Cadena',
