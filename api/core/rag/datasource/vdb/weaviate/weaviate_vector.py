@@ -100,7 +100,7 @@ class WeaviateVector(BaseVector):
             grpc_port = grpc_p.port or (443 if grpc_p.scheme == "grpcs" else 50051)
             grpc_secure = grpc_p.scheme == "grpcs"
         else:
-            # Otherwise, infer from HTTP endpoint
+            # Infer from HTTP endpoint as fallback
             grpc_host = host
             grpc_secure = http_secure
             grpc_port = 443 if grpc_secure else 50051
