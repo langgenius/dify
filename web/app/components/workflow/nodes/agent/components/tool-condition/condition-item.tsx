@@ -52,8 +52,8 @@ const ConditionItem = ({
 
   const needsValue = operatorNeedsValue(condition.comparison_operator)
   const booleanOptions = useMemo(() => ([
-    { name: t('common.operation.yes'), value: true },
-    { name: t('common.operation.no'), value: false },
+    { name: t('common.operation.yes'), value: 'true' },
+    { name: t('common.operation.no'), value: 'false' },
   ]), [t])
 
   const handleSelectVar = useCallback((valueSelector: ValueSelector, varItem: Var) => {
@@ -99,13 +99,17 @@ const ConditionItem = ({
       return <div className='system-xs-regular text-text-tertiary'>{t('workflow.nodes.agent.toolCondition.noValueNeeded')}</div>
 
     if (condition.varType === VarType.boolean) {
+      const currentBooleanValue = typeof condition.value === 'boolean'
+        ? String(condition.value)
+        : undefined
+
       return (
         <Select
           className='h-8'
           optionWrapClassName='w-32'
-          value={condition.value as boolean | undefined}
+          defaultValue={currentBooleanValue}
           items={booleanOptions}
-          onSelect={item => handleBooleanValueChange(Boolean(item.value))}
+          onSelect={item => handleBooleanValueChange(item.value === 'true')}
           disabled={disabled}
           hideChecked
           notClearable
