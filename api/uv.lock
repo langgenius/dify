@@ -99,14 +99,14 @@ wheels = [
 
 [[package]]
 name = "aiomysql"
-version = "0.2.0"
+version = "0.3.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pymysql" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/67/76/2c5b55e4406a1957ffdfd933a94c2517455291c97d2b81cec6813754791a/aiomysql-0.2.0.tar.gz", hash = "sha256:558b9c26d580d08b8c5fd1be23c5231ce3aeff2dadad989540fee740253deb67", size = 114706 }
+sdist = { url = "https://files.pythonhosted.org/packages/29/e0/302aeffe8d90853556f47f3106b89c16cc2ec2a4d269bdfd82e3f4ae12cc/aiomysql-0.3.2.tar.gz", hash = "sha256:72d15ef5cfc34c03468eb41e1b90adb9fd9347b0b589114bd23ead569a02ac1a", size = 108311 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/42/87/c982ee8b333c85b8ae16306387d703a1fcdfc81a2f3f15a24820ab1a512d/aiomysql-0.2.0-py3-none-any.whl", hash = "sha256:b7c26da0daf23a5ec5e0b133c03d20657276e4eae9b73e040b72787f6f6ade0a", size = 44215 },
+    { url = "https://files.pythonhosted.org/packages/4c/af/aae0153c3e28712adaf462328f6c7a3c196a1c1c27b491de4377dd3e6b52/aiomysql-0.3.2-py3-none-any.whl", hash = "sha256:c82c5ba04137d7afd5c693a258bea8ead2aad77101668044143a991e04632eb2", size = 71834 },
 ]
 
 [[package]]
@@ -1335,6 +1335,7 @@ dependencies = [
     { name = "json-repair" },
     { name = "langfuse" },
     { name = "langsmith" },
+    { name = "litellm" },
     { name = "markdown" },
     { name = "numpy" },
     { name = "openpyxl" },
@@ -1526,6 +1527,7 @@ requires-dist = [
     { name = "json-repair", specifier = ">=0.41.1" },
     { name = "langfuse", specifier = "~=2.51.3" },
     { name = "langsmith", specifier = "~=0.1.77" },
+    { name = "litellm", specifier = "==1.77.1" },
     { name = "markdown", specifier = "~=3.5.1" },
     { name = "numpy", specifier = "~=1.26.4" },
     { name = "openpyxl", specifier = "~=3.1.5" },
@@ -1673,9 +1675,9 @@ vdb = [
     { name = "pgvector", specifier = "==0.2.5" },
     { name = "pymilvus", specifier = "~=2.5.0" },
     { name = "pymochow", specifier = "==2.2.9" },
-    { name = "pyobvector", specifier = "~=0.2.15" },
+    { name = "pyobvector", specifier = "~=0.2.17" },
     { name = "qdrant-client", specifier = "==1.9.0" },
-    { name = "tablestore", specifier = "==6.2.0" },
+    { name = "tablestore", specifier = "==6.3.7" },
     { name = "tcvectordb", specifier = "~=1.6.4" },
     { name = "tidb-vector", specifier = "==0.0.9" },
     { name = "upstash-vector", specifier = "==0.6.0" },
@@ -3094,7 +3096,7 @@ wheels = [
 
 [[package]]
 name = "litellm"
-version = "1.77.4"
+version = "1.77.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -3105,15 +3107,14 @@ dependencies = [
     { name = "jinja2" },
     { name = "jsonschema" },
     { name = "openai" },
-    { name = "pondpond" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "tiktoken" },
     { name = "tokenizers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ab/b7/0d3c6dbcff3064238d123f90ae96764a85352f3f5caab6695a55007fd019/litellm-1.77.4.tar.gz", hash = "sha256:ce652e10ecf5b36767bfdf58e53b2802e22c3de383b03554e6ee1a4a66fa743d", size = 10330773 }
+sdist = { url = "https://files.pythonhosted.org/packages/8c/65/71fe4851709fa4a612e41b80001a9ad803fea979d21b90970093fd65eded/litellm-1.77.1.tar.gz", hash = "sha256:76bab5203115efb9588244e5bafbfc07a800a239be75d8dc6b1b9d17394c6418", size = 10275745 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3c/32/90f8587818d146d604ed6eec95f96378363fda06b14817399cc68853383e/litellm-1.77.4-py3-none-any.whl", hash = "sha256:66c2bb776f1e19ceddfa977a2bbf7f05e6f26c4b1fec8b2093bd171d842701b8", size = 9138493 },
+    { url = "https://files.pythonhosted.org/packages/bb/dc/ff4f119cd4d783742c9648a03e0ba5c2b52fc385b2ae9f0d32acf3a78241/litellm-1.77.1-py3-none-any.whl", hash = "sha256:407761dc3c35fbcd41462d3fe65dd3ed70aac705f37cde318006c18940f695a0", size = 9067070 },
 ]
 
 [[package]]
@@ -3214,12 +3215,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/40/b8/243430cb62319175070e06e3a94c4c7bd186a812e474e22148ae1290d47d/lz4-4.4.4-cp312-cp312-win_amd64.whl", hash = "sha256:d21d1a2892a2dcc193163dd13eaadabb2c1b803807a5117d8f8588b22eaf9f12", size = 99918 },
     { url = "https://files.pythonhosted.org/packages/6c/e1/0686c91738f3e6c2e1a243e0fdd4371667c4d2e5009b0a3605806c2aa020/lz4-4.4.4-cp312-cp312-win_arm64.whl", hash = "sha256:2f4f2965c98ab254feddf6b5072854a6935adab7bc81412ec4fe238f07b85f62", size = 89736 },
 ]
-
-[[package]]
-name = "madoka"
-version = "0.7.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/da/eb/95288b1c4aa541eb296a6271e3f8c7ece03b78923ac47dbe95d2287d9f5e/madoka-0.7.1.tar.gz", hash = "sha256:e258baa84fc0a3764365993b8bf5e1b065383a6ca8c9f862fb3e3e709843fae7", size = 81413 }
 
 [[package]]
 name = "mako"
@@ -4416,18 +4411,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pondpond"
-version = "1.4.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "madoka" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/a6/9b/8411458ca8ce8b5b9b135e4a19823f1caf958ca9985883db104323492982/pondpond-1.4.1.tar.gz", hash = "sha256:8afa34b869d1434d21dd2ec12644abc3b1733fcda8fcf355300338a13a79bb7b", size = 15237 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c4/d4/f18d6985157cc68f76469480182cbee2a03a45858456955acf57f9dcbb4c/pondpond-1.4.1-py3-none-any.whl", hash = "sha256:641028ead4e8018ca6de1220c660ddd6d6fbf62a60e72f410655dd0451d82880", size = 14498 },
-]
-
-[[package]]
 name = "portalocker"
 version = "2.10.1"
 source = { registry = "https://pypi.org/simple" }
@@ -4846,7 +4829,7 @@ wheels = [
 
 [[package]]
 name = "pyobvector"
-version = "0.2.16"
+version = "0.2.17"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiomysql" },
@@ -4856,9 +4839,9 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "sqlglot" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b4/c1/a418b1e10627d3b9d54c7bed460d90bd44c9e9c20be801d6606e9fa3fe01/pyobvector-0.2.16.tar.gz", hash = "sha256:de44588e75de616dee7a9cc5d5c016aeb3390a90fe52f99d9b8ad2476294f6c2", size = 39602 }
+sdist = { url = "https://files.pythonhosted.org/packages/fa/a5/88bd908c6fb9c42544f4d114cbb65eeba4424077c2b0a4255b9052a622c9/pyobvector-0.2.17.tar.gz", hash = "sha256:9af080bbd9593aff86bb3d65db2869c548fcbcededefa6efbe7ce66252815f8c", size = 42476 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/7b/c103cca858de87476db5e7c7f0f386b429c3057a7291155c70560b15d951/pyobvector-0.2.16-py3-none-any.whl", hash = "sha256:0710272e5c807a6d0bdeee96972cdc9fdca04fc4b40c2d1260b08ff8b79190ef", size = 52664 },
+    { url = "https://files.pythonhosted.org/packages/ce/89/293a0511300398ee526a82e9e3f935cc1cc700ed29a7d66688ce4f4af6f2/pyobvector-0.2.17-py3-none-any.whl", hash = "sha256:2fac85d7b02a34ef41806496b0db731b05979a7dceba41855e67c10a93a25bff", size = 57046 },
 ]
 
 [[package]]
@@ -5852,9 +5835,10 @@ wheels = [
 
 [[package]]
 name = "tablestore"
-version = "6.2.0"
+version = "6.3.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "aiohttp" },
     { name = "certifi" },
     { name = "crc32c" },
     { name = "flatbuffers" },
@@ -5864,9 +5848,9 @@ dependencies = [
     { name = "six" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/58/48d65d181a69f7db19f7cdee01d252168fbfbad2d1bb25abed03e6df3b05/tablestore-6.2.0.tar.gz", hash = "sha256:0773e77c00542be1bfebbc3c7a85f72a881c63e4e7df7c5a9793a54144590e68", size = 85942 }
+sdist = { url = "https://files.pythonhosted.org/packages/f1/39/47a3ec8e42fe74dd05af1dfed9c3b02b8f8adfdd8656b2c5d4f95f975c9f/tablestore-6.3.7.tar.gz", hash = "sha256:990682dbf6b602f317a2d359b4281dcd054b4326081e7a67b73dbbe95407be51", size = 117440 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9c/da/30451712a769bcf417add8e81163d478a4d668b0e8d489a9d667260d55df/tablestore-6.2.0-py3-none-any.whl", hash = "sha256:6af496d841ab1ff3f78b46abbd87b95a08d89605c51664d2b30933b1d1c5583a", size = 106297 },
+    { url = "https://files.pythonhosted.org/packages/fe/55/1b24d8c369204a855ac652712f815e88a4909802094e613fe3742a2d80e3/tablestore-6.3.7-py3-none-any.whl", hash = "sha256:38dcc55085912ab2515e183afd4532a58bb628a763590a99fc1bd2a4aba6855c", size = 139041 },
 ]
 
 [[package]]

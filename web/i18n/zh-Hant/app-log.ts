@@ -29,7 +29,7 @@ const translation = {
       noOutput: '無輸出',
       element: {
         title: '這裡有人嗎',
-        content: '在這裡觀測和標註終端使用者和 AI 應用程式之間的互動，以不斷提高 AI 的準確性。您可以<testLink>試試</testLink> web app 或<shareLink>分享</shareLink>出去，然後返回此頁面。',
+        content: '在這裡觀測和標註終端使用者和 AI 應用程式之間的互動，以不斷提高 AI 的準確性。您可以嘗試<shareLink>分享</shareLink>或<testLink>測試</testLink>此Web應用程序，然後返回此頁面。',
       },
     },
   },
@@ -48,7 +48,7 @@ const translation = {
       dislike: '反對',
       addAnnotation: '標記改進回覆',
       editAnnotation: '編輯改進回覆',
-      annotationPlaceholder: '輸入你希望 AI 回覆的預期答案，這在今後可用於模型微調，持續改進文字生成質量。',
+      annotationPlaceholder: '輸入你希望 AI 回覆的預期答案，這在今後可用於模型微調，持續改進文字生成品質。',
     },
     variables: '變數',
     uploadImages: '上傳的圖片',
