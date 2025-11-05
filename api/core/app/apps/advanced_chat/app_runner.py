@@ -464,7 +464,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 if not node_id:
                     logger.warning("Memory block %s has no node_id, skip.", memory.spec.id)
                     continue
-                key = f"{node_id}.{memory.spec.id}"
+                key = f"{node_id}_{memory.spec.id}"
                 memory_blocks_dict[key] = memory.value
 
         return memory_blocks_dict

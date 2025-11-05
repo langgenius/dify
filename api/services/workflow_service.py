@@ -1086,6 +1086,6 @@ def _fetch_memory_blocks(
         if memory.spec.scope == MemoryScope.APP:
             memory_blocks[memory.spec.id] = memory.value
         else:  # NODE scope
-            memory_blocks[f"{memory.node_id}.{memory.spec.id}"] = memory.value
+            memory_blocks[f"{memory.node_id}_{memory.spec.id}"] = memory.value
 
     return memory_blocks

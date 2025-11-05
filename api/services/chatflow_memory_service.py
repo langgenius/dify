@@ -105,7 +105,7 @@ class ChatflowMemoryService:
 
     @staticmethod
     def save_memory(memory: MemoryBlock, variable_pool: VariablePool, is_draft: bool) -> None:
-        key = f"{memory.node_id}.{memory.spec.id}" if memory.node_id else memory.spec.id
+        key = f"{memory.node_id}_{memory.spec.id}" if memory.node_id else memory.spec.id
         variable_pool.add([MEMORY_BLOCK_VARIABLE_NODE_ID, key], memory.value)
         if memory.created_by.account_id:
             created_by_role = CreatorUserRole.ACCOUNT
@@ -139,7 +139,7 @@ class ChatflowMemoryService:
         if is_draft:
             with Session(bind=db.engine) as session:
                 draft_var_service = WorkflowDraftVariableService(session)
-                memory_selector = memory.spec.id if not memory.node_id else f"{memory.node_id}.{memory.spec.id}"
+                memory_selector = memory.spec.id if not memory.node_id else f"{memory.node_id}_{memory.spec.id}"
                 existing_vars = draft_var_service.get_draft_variables_by_selectors(
                     app_id=memory.app_id,
                     selectors=[[MEMORY_BLOCK_VARIABLE_NODE_ID, memory_selector]]
