@@ -4,10 +4,10 @@ import { useWorkflowComment } from './hooks/use-workflow-comment'
 
 const CommentManager = () => {
   const workflowStore = useWorkflowStore()
-  const { handleCreateComment } = useWorkflowComment()
+  const { handleCreateComment, handleCommentCancel } = useWorkflowComment()
 
   useEventListener('click', (e) => {
-    const { controlMode, mousePosition } = workflowStore.getState()
+    const { controlMode, mousePosition, pendingComment } = workflowStore.getState()
 
     if (controlMode === 'comment') {
       const target = e.target as HTMLElement
@@ -20,7 +20,10 @@ const CommentManager = () => {
       if (!isInDropdown && !isInCommentInput && isOnCanvasPane) {
         e.preventDefault()
         e.stopPropagation()
-        handleCreateComment(mousePosition)
+        if (pendingComment)
+          handleCommentCancel()
+        else
+          handleCreateComment(mousePosition)
       }
     }
   })
