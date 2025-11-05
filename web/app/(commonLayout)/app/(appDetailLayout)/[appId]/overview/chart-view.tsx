@@ -40,13 +40,11 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
       <div className='mb-4'>
         <div className='system-xl-semibold mb-2 text-text-primary'>{t('common.appMenus.overview')}</div>
         <div className='flex items-center justify-between'>
-          <div className='flex flex-row items-center'>
-            <TimeRangePicker
-              ranges={TIME_PERIOD_MAPPING}
-              onSelect={setPeriod}
-              queryDateFormat={queryDateFormat}
-            />
-          </div>
+          <TimeRangePicker
+            ranges={TIME_PERIOD_MAPPING}
+            onSelect={setPeriod}
+            queryDateFormat={queryDateFormat}
+          />
           {headerRight}
         </div>
       </div>
