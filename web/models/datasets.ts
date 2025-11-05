@@ -541,6 +541,14 @@ export type SegmentsQuery = {
   enabled?: boolean | 'all'
 }
 
+export type Attachment = {
+  name: string
+  size: number
+  extension: string
+  mime_type: string
+  source_url: string
+}
+
 export type SegmentDetailModel = {
   id: string
   position: number
@@ -566,6 +574,7 @@ export type SegmentDetailModel = {
   answer?: string
   child_chunks?: ChildChunkDetail[]
   updated_at: number
+  attachments: Attachment[]
 }
 
 export type SegmentsResponse = {
@@ -680,6 +689,7 @@ export type SegmentUpdater = {
   answer?: string
   keywords?: string[]
   regenerate_child_chunks?: boolean
+  attachment_ids?: string[]
 }
 
 export type ErrorDocsResponse = {

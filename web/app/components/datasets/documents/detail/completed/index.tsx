@@ -319,7 +319,7 @@ const Completed: FC<ICompletedProps> = ({
     keywords: string[],
     needRegenerate = false,
   ) => {
-    const params: SegmentUpdater = { content: '' }
+    const params: SegmentUpdater = { content: '', attachment_ids: [] }
     if (docForm === ChunkingMode.qa) {
       if (!question.trim())
         return notify({ type: 'error', message: t('datasetDocuments.segment.questionEmpty') })

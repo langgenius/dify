@@ -74,7 +74,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   const { mutateAsync: addSegment } = useAddSegment()
 
   const handleSave = useCallback(async () => {
-    const params: SegmentUpdater = { content: '' }
+    const params: SegmentUpdater = { content: '', attachment_ids: [] }
     if (docForm === ChunkingMode.qa) {
       if (!question.trim()) {
         return notify({

@@ -18,6 +18,7 @@ import Badge from '@/app/components/base/badge'
 import { isAfter } from '@/utils/time'
 import Tooltip from '@/app/components/base/tooltip'
 import ChunkContent from './chunk-content'
+import ImageList from '@/app/components/datasets/common/image-list'
 
 type ISegmentCardProps = {
   loading: boolean
@@ -67,6 +68,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     child_chunks = [],
     created_at,
     updated_at,
+    attachments = [],
   } = detail as Required<ISegmentCardProps>['detail']
   const [showModal, setShowModal] = useState(false)
   const docForm = useDocumentContext(s => s.docForm)
@@ -111,6 +113,16 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   const labelPrefix = useMemo(() => {
     return isParentChildMode ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
   }, [isParentChildMode, t])
+
+  const images = useMemo(() => {
+    return attachments.map(attachment => ({
+      name: attachment.name,
+      mimeType: attachment.mime_type,
+      sourceUrl: attachment.source_url,
+      size: attachment.size,
+      extension: attachment.extension,
+    }))
+  }, [attachments])
 
   if (loading)
     return <ParentChunkCardSkeleton />
@@ -214,6 +226,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         isFullDocMode={isFullDocMode}
         className={contentOpacity}
       />
+      {images.length > 0 && <ImageList images={images} size='md' className='py-1' />}
       {isGeneralMode && <div className={cn('flex flex-wrap items-center gap-2 py-1.5', contentOpacity)}>
         {keywords?.map(keyword => <Tag key={keyword} text={keyword} />)}
       </div>}
