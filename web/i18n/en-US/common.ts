@@ -742,6 +742,7 @@ const translation = {
     uploadFromComputerLimit: 'Upload {{type}} cannot exceed {{size}}',
     pasteFileLinkInvalid: 'Invalid file link',
     fileExtensionNotSupport: 'File extension not supported',
+    fileExtensionBlocked: 'This file type is blocked for security reasons',
   },
   tag: {
     placeholder: 'All Tags',

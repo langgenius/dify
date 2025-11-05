@@ -5,6 +5,7 @@ Tencent APM Trace Client - handles network operations, metrics, and API communic
 from __future__ import annotations
 
 import importlib
+import json
 import logging
 import os
 import socket
@@ -110,6 +111,7 @@ class TencentTraceClient:
         self.span_contexts: dict[int, trace_api.SpanContext] = {}
 
         self.meter: Meter | None = None
+        self.meter_provider: MeterProvider | None = None
         self.hist_llm_duration: Histogram | None = None
         self.hist_token_usage: Histogram | None = None
         self.hist_time_to_first_token: Histogram | None = None
@@ -119,7 +121,6 @@ class TencentTraceClient:
 
         # Metrics exporter and instruments
         try:
-            from opentelemetry import metrics
             from opentelemetry.sdk.metrics import Histogram, MeterProvider
             from opentelemetry.sdk.metrics.export import AggregationTemporality, PeriodicExportingMetricReader
 
@@ -202,9 +203,11 @@ class TencentTraceClient:
                 )
 
             if metric_reader is not None:
+                # Use instance-level MeterProvider instead of global to support config changes
+                # without worker restart. Each TencentTraceClient manages its own MeterProvider.
                 provider = MeterProvider(resource=self.resource, metric_readers=[metric_reader])
-                metrics.set_meter_provider(provider)
-                self.meter = metrics.get_meter("dify-sdk", dify_config.project.version)
+                self.meter_provider = provider
+                self.meter = provider.get_meter("dify-sdk", dify_config.project.version)
 
                 # LLM operation duration histogram
                 self.hist_llm_duration = self.meter.create_histogram(
@@ -244,6 +247,7 @@ class TencentTraceClient:
                 self.metric_reader = metric_reader
             else:
                 self.meter = None
+                self.meter_provider = None
                 self.hist_llm_duration = None
                 self.hist_token_usage = None
                 self.hist_time_to_first_token = None
@@ -253,6 +257,7 @@ class TencentTraceClient:
         except Exception:
             logger.exception("[Tencent APM] Metrics initialization failed; metrics disabled")
             self.meter = None
+            self.meter_provider = None
             self.hist_llm_duration = None
             self.hist_token_usage = None
             self.hist_time_to_first_token = None
@@ -279,6 +284,14 @@ class TencentTraceClient:
             if attributes:
                 for k, v in attributes.items():
                     attrs[k] = str(v) if not isinstance(v, (str, int, float, bool)) else v  # type: ignore[assignment]
+
+            logger.info(
+                "[Tencent Metrics] Metric: %s | Value: %.4f | Attributes: %s",
+                LLM_OPERATION_DURATION,
+                latency_seconds,
+                json.dumps(attrs, ensure_ascii=False),
+            )
+
             self.hist_llm_duration.record(latency_seconds, attrs)  # type: ignore[attr-defined]
         except Exception:
             logger.debug("[Tencent APM] Failed to record LLM duration", exc_info=True)
@@ -317,6 +330,13 @@ class TencentTraceClient:
                 "server.address": server_address,
             }
 
+            logger.info(
+                "[Tencent Metrics] Metric: %s | Value: %d | Attributes: %s",
+                GEN_AI_TOKEN_USAGE,
+                token_count,
+                json.dumps(attributes, ensure_ascii=False),
+            )
+
             self.hist_token_usage.record(token_count, attributes)  # type: ignore[attr-defined]
         except Exception:
             logger.debug("[Tencent APM] Failed to record token usage", exc_info=True)
@@ -343,6 +363,13 @@ class TencentTraceClient:
                 "gen_ai.response.model": model,
                 "stream": "true",
             }
+
+            logger.info(
+                "[Tencent Metrics] Metric: %s | Value: %.4f | Attributes: %s",
+                GEN_AI_SERVER_TIME_TO_FIRST_TOKEN,
+                ttft_seconds,
+                json.dumps(attributes, ensure_ascii=False),
+            )
 
             self.hist_time_to_first_token.record(ttft_seconds, attributes)  # type: ignore[attr-defined]
         except Exception:
@@ -371,6 +398,13 @@ class TencentTraceClient:
                 "stream": "true",
             }
 
+            logger.info(
+                "[Tencent Metrics] Metric: %s | Value: %.4f | Attributes: %s",
+                GEN_AI_STREAMING_TIME_TO_GENERATE,
+                ttg_seconds,
+                json.dumps(attributes, ensure_ascii=False),
+            )
+
             self.hist_time_to_generate.record(ttg_seconds, attributes)  # type: ignore[attr-defined]
         except Exception:
             logger.debug("[Tencent APM] Failed to record time to generate", exc_info=True)
@@ -390,6 +424,14 @@ class TencentTraceClient:
             if attributes:
                 for k, v in attributes.items():
                     attrs[k] = str(v) if not isinstance(v, (str, int, float, bool)) else v  # type: ignore[assignment]
+
+            logger.info(
+                "[Tencent Metrics] Metric: %s | Value: %.4f | Attributes: %s",
+                GEN_AI_TRACE_DURATION,
+                duration_seconds,
+                json.dumps(attrs, ensure_ascii=False),
+            )
+
             self.hist_trace_duration.record(duration_seconds, attrs)  # type: ignore[attr-defined]
         except Exception:
             logger.debug("[Tencent APM] Failed to record trace duration", exc_info=True)
@@ -474,11 +516,19 @@ class TencentTraceClient:
 
             if self.tracer_provider:
                 self.tracer_provider.shutdown()
+
+            # Shutdown instance-level meter provider
+            if self.meter_provider is not None:
+                try:
+                    self.meter_provider.shutdown()  # type: ignore[attr-defined]
+                except Exception:
+                    logger.debug("[Tencent APM] Error shutting down meter provider", exc_info=True)
+
             if self.metric_reader is not None:
                 try:
                     self.metric_reader.shutdown()  # type: ignore[attr-defined]
                 except Exception:
-                    pass
+                    logger.debug("[Tencent APM] Error shutting down metric reader", exc_info=True)
 
         except Exception:
             logger.exception("[Tencent APM] Error during client shutdown")
