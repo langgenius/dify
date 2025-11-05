@@ -227,20 +227,6 @@ class TestRedisSubscription:
 
     # ==================== Message Processing Tests ====================
 
-    # def test_message_iterator_empty_queue(self, started_subscription: _RedisSubscription):
-    #     """Test message iterator behavior with empty queue."""
-
-    #     iterator = iter(started_subscription)
-
-    #     # Should not block indefinitely, but continue until timeout
-    #     start_time = time.time()
-    #     with pytest.raises(StopIteration):
-    #         next(iterator)
-    #     elapsed = time.time() - start_time
-
-    #     # Should timeout quickly (less than 1 second)
-    #     assert elapsed < 1.0
-
     def test_message_iterator_with_messages(self, started_subscription: _RedisSubscription):
         """Test message iterator behavior with messages in queue."""
         test_messages = [b"msg1", b"msg2", b"msg3"]
