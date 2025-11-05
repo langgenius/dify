@@ -53,14 +53,6 @@ class Topic:
         )
 
 
-@dataclasses.dataclass(frozen=True)
-class _Stop:
-    pass
-
-
-_STOP = _Stop()
-
-
 class _RedisSubscription(Subscription):
     def __init__(
         self,
