@@ -22,6 +22,11 @@ class WeaviateConfig(BaseSettings):
         default=True,
     )
 
+    WEAVIATE_GRPC_ENDPOINT: str | None = Field(
+        description="URL of the Weaviate gRPC server (e.g., 'localhost:50051' or 'grpc.weaviate.example.com:443'). If not provided, will be inferred from WEAVIATE_ENDPOINT",
+        default=None,
+    )
+
     WEAVIATE_BATCH_SIZE: PositiveInt = Field(
         description="Number of objects to be processed in a single batch operation (default is 100)",
         default=100,

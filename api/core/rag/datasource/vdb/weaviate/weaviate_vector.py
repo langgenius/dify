@@ -39,11 +39,13 @@ class WeaviateConfig(BaseModel):
 
     Attributes:
         endpoint: Weaviate server endpoint URL
+        grpc_endpoint: Optional Weaviate gRPC server endpoint URL
         api_key: Optional API key for authentication
         batch_size: Number of objects to batch per insert operation
     """
 
     endpoint: str
+    grpc_endpoint: str = None
     api_key: str | None = None
     batch_size: int = 100
 
@@ -88,9 +90,20 @@ class WeaviateVector(BaseVector):
         http_secure = p.scheme == "https"
         http_port = p.port or (443 if http_secure else 80)
 
-        grpc_host = host
-        grpc_secure = http_secure
-        grpc_port = 443 if grpc_secure else 50051
+        # Parse gRPC configuration
+        if config.grpc_endpoint:
+            # Urls without scheme won't be parsed correctly in some python verions,
+            # see https://bugs.python.org/issue27657
+            grpc_endpoint_with_scheme = config.grpc_endpoint if "://" in config.grpc_endpoint else f"grpc://{config.grpc_endpoint}"
+            grpc_p = urlparse(grpc_endpoint_with_scheme)
+            grpc_host = grpc_p.hostname or grpc_endpoint_with_scheme.replace("grpc://", "").replace("grpcs://", "")
+            grpc_port = grpc_p.port or (443 if grpc_p.scheme == "grpcs" else 50051)
+            grpc_secure = grpc_p.scheme == "grpcs"
+        else:
+            # Otherwise, infer from HTTP endpoint
+            grpc_host = host
+            grpc_secure = http_secure
+            grpc_port = 443 if grpc_secure else 50051
 
         client = weaviate.connect_to_custom(
             http_host=host,
@@ -432,6 +445,7 @@ class WeaviateVectorFactory(AbstractVectorFactory):
             collection_name=collection_name,
             config=WeaviateConfig(
                 endpoint=dify_config.WEAVIATE_ENDPOINT or "",
+                grpc_endpoint=dify_config.WEAVIATE_GRPC_ENDPOINT or "",
                 api_key=dify_config.WEAVIATE_API_KEY,
                 batch_size=dify_config.WEAVIATE_BATCH_SIZE,
             ),
