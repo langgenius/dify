@@ -1,7 +1,6 @@
 #!/bin/bash
 WORKSPACE_ROOT=$(pwd)
 
-npm add -g pnpm@10.15.0
 corepack enable
 cd web && pnpm install
 pipx install uv
