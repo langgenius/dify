@@ -247,6 +247,15 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
       y: comment.position_y,
     })
   }, [comment.position_x, comment.position_y, viewport.x, viewport.y, viewport.zoom, flowToScreenPosition])
+  const workflowContainerRect = typeof document !== 'undefined'
+    ? document.getElementById('workflow-container')?.getBoundingClientRect()
+    : null
+  const containerLeft = workflowContainerRect?.left ?? 0
+  const containerTop = workflowContainerRect?.top ?? 0
+  const canvasPosition = useMemo(() => ({
+    x: screenPosition.x - containerLeft,
+    y: screenPosition.y - containerTop,
+  }), [screenPosition.x, screenPosition.y, containerLeft, containerTop])
 
   const handleStartEdit = useCallback((reply: WorkflowCommentDetailReply) => {
     setEditingReply({ id: reply.id, content: reply.content })
@@ -331,8 +340,8 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     <div
       className='absolute z-50 w-[360px] max-w-[360px]'
       style={{
-        left: screenPosition.x + 40,
-        top: screenPosition.y,
+        left: canvasPosition.x + 40,
+        top: canvasPosition.y,
         transform: 'translateY(-20%)',
       }}
     >

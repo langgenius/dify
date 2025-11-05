@@ -10,6 +10,13 @@ type PreviewRunningData = WorkflowRunningData & {
   resultText?: string
 }
 
+type MousePosition = {
+  pageX: number
+  pageY: number
+  elementX: number
+  elementY: number
+}
+
 export type WorkflowSliceShape = {
   workflowRunningData?: PreviewRunningData
   setWorkflowRunningData: (workflowData: PreviewRunningData) => void
@@ -21,9 +28,9 @@ export type WorkflowSliceShape = {
   setBundleNodeSize: (bundleNodeSize: WorkflowSliceShape['bundleNodeSize']) => void
   controlMode: 'pointer' | 'hand' | 'comment'
   setControlMode: (controlMode: WorkflowSliceShape['controlMode']) => void
-  pendingComment: { x: number; y: number } | null
+  pendingComment: MousePosition | null
   setPendingComment: (pendingComment: WorkflowSliceShape['pendingComment']) => void
-  mousePosition: { pageX: number; pageY: number; elementX: number; elementY: number }
+  mousePosition: MousePosition
   setMousePosition: (mousePosition: WorkflowSliceShape['mousePosition']) => void
   showConfirm?: { title: string; desc?: string; onConfirm: () => void }
   setShowConfirm: (showConfirm: WorkflowSliceShape['showConfirm']) => void
