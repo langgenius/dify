@@ -17,7 +17,7 @@ import {
 } from 'reactflow'
 import type { DataSourceDefaultValue, ToolDefaultValue } from '../block-selector/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
-import { BlockEnum } from '../types'
+import { BlockEnum, ControlMode } from '../types'
 import { useWorkflowStore } from '../store'
 import {
   CUSTOM_EDGE,
@@ -339,12 +339,14 @@ export const useNodesInteractions = () => {
 
   const handleNodeClick = useCallback<NodeMouseHandler>(
     (_, node) => {
+      const { controlMode } = workflowStore.getState()
+      if (controlMode === ControlMode.Comment) return
       if (node.type === CUSTOM_ITERATION_START_NODE) return
       if (node.type === CUSTOM_LOOP_START_NODE) return
       if (node.data.type === BlockEnum.DataSourceEmpty) return
       handleNodeSelect(node.id)
     },
-    [handleNodeSelect],
+    [handleNodeSelect, workflowStore],
   )
 
   const handleNodeConnect = useCallback<OnConnect>(
