@@ -107,7 +107,10 @@ export const useWorkflowComment = () => {
     try {
       // Convert screen position to flow position when submitting
       const { screenToFlowPosition } = reactflow
-      const flowPosition = screenToFlowPosition({ x: pendingComment.x, y: pendingComment.y })
+      const flowPosition = screenToFlowPosition({
+        x: pendingComment.pageX,
+        y: pendingComment.pageY,
+      })
 
       const newComment = await createWorkflowComment(appId, {
         position_x: flowPosition.x,
@@ -452,10 +455,15 @@ export const useWorkflowComment = () => {
     activeCommentIdRef.current = null
   }, [setActiveComment, setActiveCommentId, setActiveCommentLoading])
 
-  const handleCreateComment = useCallback((mousePosition: { elementX: number; elementY: number }) => {
+  const handleCreateComment = useCallback((mousePosition: {
+    pageX: number
+    pageY: number
+    elementX: number
+    elementY: number
+  }) => {
     if (controlMode === ControlMode.Comment) {
       console.log('Setting pending comment at screen position:', mousePosition)
-      setPendingComment({ x: mousePosition.elementX, y: mousePosition.elementY })
+      setPendingComment(mousePosition)
     }
     else {
       console.log('Control mode is not Comment:', controlMode)

@@ -444,7 +444,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
       )}
       {pendingComment && (
         <CommentInput
-          position={pendingComment}
+          position={{
+            x: pendingComment.elementX,
+            y: pendingComment.elementY,
+          }}
           onSubmit={handleCommentSubmit}
           onCancel={handleCommentCancel}
         />

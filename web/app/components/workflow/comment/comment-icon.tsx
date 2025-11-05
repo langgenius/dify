@@ -31,6 +31,12 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
     hasMoved: boolean
   } | null>(null)
 
+  const workflowContainerRect = typeof document !== 'undefined'
+    ? document.getElementById('workflow-container')?.getBoundingClientRect()
+    : null
+  const containerLeft = workflowContainerRect?.left ?? 0
+  const containerTop = workflowContainerRect?.top ?? 0
+
   const screenPosition = useMemo(() => {
     return flowToScreenPosition({
       x: comment.position_x,
@@ -38,7 +44,11 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
     })
   }, [comment.position_x, comment.position_y, viewport.x, viewport.y, viewport.zoom, flowToScreenPosition])
 
-  const effectivePosition = dragPosition ?? screenPosition
+  const effectiveScreenPosition = dragPosition ?? screenPosition
+  const canvasPosition = useMemo(() => ({
+    x: effectiveScreenPosition.x - containerLeft,
+    y: effectiveScreenPosition.y - containerTop,
+  }), [effectiveScreenPosition.x, effectiveScreenPosition.y, containerLeft, containerTop])
   const cursorClass = useMemo(() => {
     if (!isAuthor)
       return 'cursor-pointer'
@@ -186,8 +196,8 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
       <div
         className="absolute z-10"
         style={{
-          left: effectivePosition.x,
-          top: effectivePosition.y,
+          left: canvasPosition.x,
+          top: canvasPosition.y,
           transform: 'translate(-50%, -50%)',
         }}
         data-role='comment-marker'
@@ -224,8 +234,8 @@ export const CommentIcon: FC<CommentIconProps> = memo(({ comment, onClick, isAct
         <div
           className="absolute z-20"
           style={{
-            left: (dragPosition ?? screenPosition).x - dynamicWidth / 2,
-            top: (dragPosition ?? screenPosition).y + 20,
+            left: (effectiveScreenPosition.x - containerLeft) - dynamicWidth / 2,
+            top: (effectiveScreenPosition.y - containerTop) + 20,
             transform: 'translateY(-100%)',
           }}
           data-role='comment-preview'
