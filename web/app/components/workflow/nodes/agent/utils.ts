@@ -12,6 +12,7 @@ const COMPARISON_OPERATOR_WITHOUT_VALUE = new Set([
 export const getConditionOperators = (varType?: VarType): string[] => {
   switch (varType) {
     case VarType.number:
+    case VarType.integer:
       return ['=', '≠', '>', '<', '≥', '≤']
     case VarType.boolean:
       return ['is', 'is not']
