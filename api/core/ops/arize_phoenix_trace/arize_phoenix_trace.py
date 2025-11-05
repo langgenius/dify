@@ -17,7 +17,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.id_generator import RandomIdGenerator
 from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
-from opentelemetry.trace import Span, Status, StatusCode, SpanContext, TraceFlags, TraceState, use_span
+from opentelemetry.trace import Span, Status, StatusCode, SpanContext, TraceFlags, TraceState, set_span_in_context, use_span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from sqlalchemy import select
 
@@ -229,7 +229,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
             trace_state=TraceState(),
         )
-        span_context = self.propagator.extract(carrier=self.carrier)
+
+        root_span_context = self.propagator.extract(carrier=self.carrier)
 
         workflow_span = self.tracer.start_span(
             name=TraceTaskName.WORKFLOW_TRACE.value,
@@ -243,8 +244,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 "custom_trace_id": str(custom_trace_id),
             },
             start_time=datetime_to_nanos(trace_info.start_time),
-            # context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
-            context=span_context,
+            context=root_span_context,
         )
 
         try:
@@ -264,7 +264,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     "app_id": node_execution.app_id,
                     "app_name": node_execution.title,
                     "status": node_execution.status,
-                    "level": "ERROR" if node_execution.status != "succeeded" else "DEFAULT",
+                    "level": "ERROR" if node_execution.status == "failed" else "DEFAULT",
                 }
 
                 if node_execution.execution_metadata:
@@ -294,6 +294,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 else:
                     span_kind = OpenInferenceSpanKindValues.CHAIN
 
+                workflow_span_context = set_span_in_context(workflow_span)
                 node_span = self.tracer.start_span(
                     name=node_execution.node_type,
                     attributes={
@@ -306,8 +307,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         "custom_trace_id": str(custom_trace_id),
                     },
                     start_time=datetime_to_nanos(created_at),
-                    # context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
-                    context=span_context,
+                    context=workflow_span_context,
                 )
 
                 try:
@@ -336,10 +336,16 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         llm_attributes.update(self._construct_llm_attributes(process_data.get("prompts", [])))
                         node_span.set_attributes(llm_attributes)
                 finally:
-                    set_span_status(node_span)
+                    if node_execution.status == "failed":
+                        set_span_status(node_span, node_execution.error)
+                    else:
+                        set_span_status(node_span)
                     node_span.end(end_time=datetime_to_nanos(finished_at))
         finally:
-            set_span_status(workflow_span)
+            if trace_info.error:
+                set_span_status(workflow_span, trace_info.error)
+            else:
+                set_span_status(workflow_span)
             workflow_span.end(end_time=datetime_to_nanos(trace_info.end_time))
 
     def message_trace(self, trace_info: MessageTraceInfo):
@@ -395,7 +401,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
             trace_state=TraceState(),
         )
-        span_context = self.propagator.extract(carrier=self.carrier)
+
+        root_span_context = self.propagator.extract(carrier=self.carrier)
 
         attributes.update({
             "dify_trace_id": str(dify_trace_id),
@@ -405,21 +412,10 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             name=TraceTaskName.MESSAGE_TRACE.value,
             attributes=attributes,
             start_time=datetime_to_nanos(trace_info.start_time),
-            # context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
-            context=span_context,
+            context=root_span_context,
         )
 
         try:
-            if trace_info.error:
-                message_span.add_event(
-                    "exception",
-                    attributes={
-                        "exception.message": trace_info.error,
-                        "exception.type": "Error",
-                        "exception.stacktrace": trace_info.error,
-                    },
-                )
-
             # Convert outputs to string based on type
             if isinstance(trace_info.outputs, dict | list):
                 outputs_str = json.dumps(trace_info.outputs, ensure_ascii=False)
@@ -455,23 +451,26 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 if model_params := metadata_dict.get("model_parameters"):
                     llm_attributes[SpanAttributes.LLM_INVOCATION_PARAMETERS] = json.dumps(model_params)
 
+            message_span_context = set_span_in_context(message_span)
             llm_span = self.tracer.start_span(
                 name="llm",
                 attributes=llm_attributes,
                 start_time=datetime_to_nanos(trace_info.start_time),
-                # context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
-                context=span_context,
+                context=message_span_context,
             )
 
             try:
-                if trace_info.error:
-                    set_span_status(llm_span, trace_info.error)
+                if trace_info.message_data.error:
+                    set_span_status(llm_span, trace_info.message_data.error)
                 else:
                     set_span_status(llm_span)
             finally:
                 llm_span.end(end_time=datetime_to_nanos(trace_info.end_time))
         finally:
-            set_span_status(message_span)
+            if trace_info.error:
+                set_span_status(message_span, trace_info.error)
+            else:
+                set_span_status(message_span)
             message_span.end(end_time=datetime_to_nanos(trace_info.end_time))
 
     def moderation_trace(self, trace_info: ModerationTraceInfo):
@@ -497,7 +496,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
             trace_state=TraceState(),
         )
-        span_context = self.propagator.extract(carrier=self.carrier)
+
+        root_span_context = self.propagator.extract(carrier=self.carrier)
 
         span = self.tracer.start_span(
             name=TraceTaskName.MODERATION_TRACE.value,
@@ -518,8 +518,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 "custom_trace_id": str(custom_trace_id),
             },
             start_time=datetime_to_nanos(trace_info.start_time),
-            # context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
-            context=span_context,
+            context=root_span_context,
         )
 
         try:
@@ -559,7 +558,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
             trace_state=TraceState(),
         )
-        span_context = self.propagator.extract(carrier=self.carrier)
+
+        root_span_context = self.propagator.extract(carrier=self.carrier)
 
         span = self.tracer.start_span(
             name=TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
@@ -572,8 +572,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 "custom_trace_id": str(custom_trace_id),
             },
             start_time=datetime_to_nanos(start_time),
-            # context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
-            context=span_context,
+            context=root_span_context,
         )
 
         try:
@@ -612,7 +611,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
             trace_state=TraceState(),
         )
-        span_context = self.propagator.extract(carrier=self.carrier)
+
+        root_span_context = self.propagator.extract(carrier=self.carrier)
 
         span = self.tracer.start_span(
             name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
@@ -627,8 +627,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 "custom_trace_id": str(custom_trace_id),
             },
             start_time=datetime_to_nanos(start_time),
-            # context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
-            context=span_context,
+            context=root_span_context,
         )
 
         try:
@@ -664,7 +663,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
             trace_state=TraceState(),
         )
-        span_context = self.propagator.extract(carrier=self.carrier)
+
+        root_span_context = self.propagator.extract(carrier=self.carrier)
 
         tool_params_str = (
             json.dumps(trace_info.tool_parameters, ensure_ascii=False)
@@ -685,8 +685,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 "custom_trace_id": str(custom_trace_id),
             },
             start_time=datetime_to_nanos(trace_info.start_time),
-            # context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
-            context=span_context,
+            context=root_span_context,
         )
 
         try:
@@ -720,7 +719,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
             trace_state=TraceState(),
         )
-        span_context = self.propagator.extract(carrier=self.carrier)
+
+        root_span_context = self.propagator.extract(carrier=self.carrier)
 
         span = self.tracer.start_span(
             name=TraceTaskName.GENERATE_NAME_TRACE.value,
@@ -736,8 +736,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 "custom_trace_id": str(custom_trace_id),
             },
             start_time=datetime_to_nanos(trace_info.start_time),
-            # context=trace.set_span_in_context(trace.NonRecordingSpan(context)),
-            context=span_context,
+            context=root_span_context,
         )
 
         try:
@@ -777,6 +776,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 WorkflowNodeExecutionModel.title,
                 WorkflowNodeExecutionModel.node_type,
                 WorkflowNodeExecutionModel.status,
+                WorkflowNodeExecutionModel.error,
                 WorkflowNodeExecutionModel.inputs,
                 WorkflowNodeExecutionModel.outputs,
                 WorkflowNodeExecutionModel.created_at,
