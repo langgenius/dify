@@ -130,5 +130,5 @@ class BroadcastChannel(Protocol):
 
     @abstractmethod
     def topic(self, topic: str) -> "Topic":
-        """topic return"""
+        """topic returns a `Topic` instance for the given topic name."""
         ...
