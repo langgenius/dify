@@ -160,7 +160,6 @@ const translation = {
     workspace: 'พื้นที่',
     createWorkspace: 'สร้างพื้นที่ทํางาน',
     helpCenter: 'วิธีใช้',
-    communityFeedback: 'การตอบสนอง',
     roadmap: 'แผนงาน',
     community: 'ชุมชน',
     about: 'ประมาณ',

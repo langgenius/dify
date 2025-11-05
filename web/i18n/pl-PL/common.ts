@@ -166,7 +166,6 @@ const translation = {
     workspace: 'Przestrzeń robocza',
     createWorkspace: 'Utwórz przestrzeń roboczą',
     helpCenter: 'Pomoc',
-    communityFeedback: 'Opinie',
     roadmap: 'Plan działania',
     community: 'Społeczność',
     about: 'O',

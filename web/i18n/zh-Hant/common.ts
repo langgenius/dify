@@ -161,7 +161,6 @@ const translation = {
     workspace: '工作空間',
     createWorkspace: '建立工作空間',
     helpCenter: '幫助文件',
-    communityFeedback: '使用者反饋',
     roadmap: '路線圖',
     community: '社群',
     about: '關於',

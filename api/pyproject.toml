@@ -210,7 +210,7 @@ vdb = [
     "pgvector==0.2.5",
     "pymilvus~=2.5.0",
     "pymochow==2.2.9",
-    "pyobvector~=0.2.15",
+    "pyobvector~=0.2.17",
     "qdrant-client==1.9.0",
     "tablestore==6.3.7",
     "tcvectordb~=1.6.4",

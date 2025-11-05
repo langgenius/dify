@@ -163,7 +163,6 @@ const translation = {
     helpCenter: 'Docs',
     compliance: 'Kepatuhan',
     community: 'Masyarakat',
-    communityFeedback: 'Umpan balik',
     roadmap: 'Peta jalan',
     logout: 'Keluar',
     settings: 'Pengaturan',
