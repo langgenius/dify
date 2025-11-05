@@ -23,7 +23,7 @@ class WeaviateConfig(BaseSettings):
     )
 
     WEAVIATE_GRPC_ENDPOINT: str | None = Field(
-        description="URL of the Weaviate gRPC server (e.g., 'localhost:50051' or 'grpc.weaviate.example.com:443'). If not provided, will be inferred from WEAVIATE_ENDPOINT",
+        description="URL of the Weaviate gRPC server (e.g., 'grpc://localhost:50051' or 'grpcs://weaviate.example.com:443')",
         default=None,
     )
 
