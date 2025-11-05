@@ -30,10 +30,9 @@ const TimeRangePicker: FC<Props> = ({
   const isCustom = false
 
   const renderRangeTrigger = useCallback((item: Item | null, isOpen: boolean) => {
-    // todo: custom i18n and last 30days i18n
     return (
       <div className={cn('flex h-8 cursor-pointer items-center space-x-1.5 rounded-lg bg-components-input-bg-normal pl-3 pr-2', isOpen && 'bg-state-base-hover-alt')}>
-        <div className='system-sm-regular text-components-input-text-filled'>{isCustom ? 'Custom' : item?.name}</div>
+        <div className='system-sm-regular text-components-input-text-filled'>{isCustom ? t('appLog.filter.period.custom') : item?.name}</div>
         <RiArrowDownSLine className={cn('size-4 text-text-quaternary', isOpen && 'text-text-secondary')} />
       </div>
     )

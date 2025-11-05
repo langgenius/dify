@@ -59,6 +59,7 @@ const translation = {
     period: {
       today: '今天',
       last7days: '过去 7 天',
+      last30days: '过去 30 天',
       last4weeks: '过去 4 周',
       last3months: '过去 3 月',
       last12months: '过去 12 月',
@@ -66,6 +67,7 @@ const translation = {
       quarterToDate: '本季度至今',
       yearToDate: '本年至今',
       allTime: '所有时间',
+      custom: '自定义',
     },
     annotation: {
       all: '全部',

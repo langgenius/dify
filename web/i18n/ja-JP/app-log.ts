@@ -59,6 +59,7 @@ const translation = {
     period: {
       today: '今日',
       last7days: '過去 7 日間',
+      last30days: '過去 30 日間',
       last4weeks: '過去 4 週間',
       last3months: '過去 3 ヶ月',
       last12months: '過去 12 ヶ月',
