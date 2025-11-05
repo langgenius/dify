@@ -1,5 +1,5 @@
 class BroadcastChannelError(Exception):
-    """`ChannelError` is the base class for all exceptions related
+    """`BroadcastChannelError` is the base class for all exceptions related
     to `BroadcastChannel`."""
 
     pass
