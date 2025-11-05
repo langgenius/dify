@@ -37,7 +37,6 @@ export const useWorkflowVariables = () => {
     hideEnv,
     hideChatVar,
     conversationVariablesFirst,
-    memoryVarSortFn,
   }: {
     parentNode?: Node | null
     beforeNodes: Node[]
@@ -46,11 +45,11 @@ export const useWorkflowVariables = () => {
     hideEnv?: boolean
     hideChatVar?: boolean
     conversationVariablesFirst?: boolean
-    memoryVarSortFn?: (a: string, b: string) => number
   }): NodeOutPutVar[] => {
     const {
       conversationVariables,
       environmentVariables,
+      memoryVariables,
       ragPipelineVariables,
       dataSourceList,
     } = workflowStore.getState()
@@ -61,6 +60,7 @@ export const useWorkflowVariables = () => {
       isChatMode,
       environmentVariables: hideEnv ? [] : environmentVariables,
       conversationVariables: (isChatMode && !hideChatVar) ? conversationVariables : [],
+      memoryVariables: isChatMode ? memoryVariables : [],
       ragVariables: ragPipelineVariables,
       filterVar,
       allPluginInfoList: {
@@ -72,7 +72,6 @@ export const useWorkflowVariables = () => {
       },
       schemaTypeDefinitions,
       conversationVariablesFirst,
-      memoryVarSortFn,
     })
   }, [t, workflowStore, schemaTypeDefinitions, buildInTools, customTools, workflowTools, mcpTools])
 

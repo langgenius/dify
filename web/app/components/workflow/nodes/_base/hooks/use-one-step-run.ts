@@ -131,6 +131,7 @@ const useOneStepRun = <T>({
   const { t } = useTranslation()
   const { getBeforeNodesInSameBranch, getBeforeNodesInSameBranchIncludeParent } = useWorkflow() as any
   const conversationVariables = useStore(s => s.conversationVariables)
+  const memoryVariables = useStore(s => s.memoryVariables)
   const isChatMode = useIsChatMode()
   const isIteration = data.type === BlockEnum.Iteration
   const isLoop = data.type === BlockEnum.Loop
@@ -159,7 +160,7 @@ const useOneStepRun = <T>({
       dataSourceList: dataSourceList || [],
     }
 
-    const allOutputVars = toNodeOutputVars(availableNodes, isChatMode, undefined, undefined, conversationVariables, [], allPluginInfoList, schemaTypeDefinitions)
+    const allOutputVars = toNodeOutputVars(availableNodes, isChatMode, undefined, undefined, conversationVariables, memoryVariables, [], allPluginInfoList, schemaTypeDefinitions)
     const targetVar = allOutputVars.find(item => isSystem ? !!item.isStartNode : item.nodeId === valueSelector[0])
     if (!targetVar)
       return undefined

@@ -80,9 +80,6 @@ import {
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import type {
-  MemoryVariable,
-} from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 export type PromptEditorProps = {
@@ -109,8 +106,6 @@ export type PromptEditorProps = {
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
   isMemorySupported?: boolean
-  memoryVarInNode?: MemoryVariable[]
-  memoryVarInApp?: MemoryVariable[]
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -137,8 +132,6 @@ const PromptEditor: FC<PromptEditorProps> = ({
   lastRunBlock,
   isSupportFileVar,
   isMemorySupported,
-  memoryVarInNode = [],
-  memoryVarInApp = [],
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -209,11 +202,10 @@ const PromptEditor: FC<PromptEditorProps> = ({
           }
           ErrorBoundary={LexicalErrorBoundary}
         />
-        {isMemorySupported && (
+        {isMemorySupported && workflowVariableBlock?.show && (
           <MemoryPopupPlugin
             instanceId={instanceId}
-            memoryVarInNode={memoryVarInNode}
-            memoryVarInApp={memoryVarInApp}
+            memoryVariables={workflowVariableBlock?.variables?.find(v => v.nodeId === 'memory_block')?.vars || []}
           />
         )}
         <ComponentPickerBlock

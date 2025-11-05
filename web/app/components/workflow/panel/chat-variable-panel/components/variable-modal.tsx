@@ -1,7 +1,6 @@
 import React, { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { v4 as uuid4 } from 'uuid'
 import {
   useForm as useTanstackForm,
   useStore as useTanstackStore,
@@ -84,7 +83,7 @@ const ChatVariableModal = ({
       return notify({ type: 'error', message: 'object key can not be empty' })
 
     onSave({
-      id: chatVar ? chatVar.id : uuid4(),
+      id: chatVar ? chatVar.id : `${Date.now()}`,
       name,
       value_type,
       value: editInJSON ? JSON.parse(value) : value,

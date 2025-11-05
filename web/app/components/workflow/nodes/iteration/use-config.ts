@@ -58,7 +58,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     mcpTools: mcpTools || [],
     dataSourceList: dataSourceList || [],
   }
-  const childrenNodeVars = toNodeOutputVars(iterationChildrenNodes, isChatMode, undefined, [], [], [], allPluginInfoList)
+  const childrenNodeVars = toNodeOutputVars(iterationChildrenNodes, isChatMode, undefined, [], [], [], [], allPluginInfoList)
 
   const handleOutputVarChange = useCallback((output: ValueSelector | string, _varKindType: VarKindType, varInfo?: Var) => {
     if (isEqual(inputs.output_selector, output as ValueSelector))

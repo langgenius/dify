@@ -29,7 +29,7 @@ import { MEMORY_POPUP_SHOW_BY_EVENT_EMITTER, MEMORY_VAR_CREATED_BY_MODAL_BY_EVEN
 import Divider from '@/app/components/base/divider'
 import VariableIcon from '@/app/components/workflow/nodes/_base/components/variable/variable-label/base/variable-icon'
 import type {
-  MemoryVariable,
+  Var,
 } from '@/app/components/workflow/types'
 import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../workflow-variable-block'
 
@@ -39,16 +39,14 @@ export type MemoryPopupProps = {
   className?: string
   container?: Element | null
   instanceId?: string
-  memoryVarInNode: MemoryVariable[]
-  memoryVarInApp: MemoryVariable[]
+  memoryVariables: Var[]
 }
 
 export default function MemoryPopupPlugin({
   className,
   container,
   instanceId,
-  memoryVarInNode,
-  memoryVarInApp,
+  memoryVariables,
 }: MemoryPopupProps) {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -61,6 +59,8 @@ export default function MemoryPopupPlugin({
   const containerEl = useMemo(() => container ?? (typeof document !== 'undefined' ? document.body : null), [container])
 
   const useContainer = !!containerEl && containerEl !== document.body
+  const memoryVarInNode = memoryVariables.filter(memoryVariable => memoryVariable.memoryVariableNodeId)
+  const memoryVarInApp = memoryVariables.filter(memoryVariable => !memoryVariable.memoryVariableNodeId)
 
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'bottom-start',
@@ -213,15 +213,15 @@ export default function MemoryPopupPlugin({
               <div className='p-1'>
                 {memoryVarInNode.map(variable => (
                   <div
-                    key={variable.id}
+                    key={variable.variable}
                     className='flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover'
-                    onClick={() => handleSelectVariable(['memory_block', variable.id])}
+                    onClick={() => handleSelectVariable(['memory_block', variable.variable])}
                   >
                     <VariableIcon
-                      variables={['memory_block', variable.id]}
+                      variables={['memory_block', '']}
                       className='text-util-colors-teal-teal-700'
                     />
-                    <div title={variable.name} className='system-sm-medium shrink-0 truncate text-text-secondary'>{variable.name}</div>
+                    <div title={variable.memoryVariableName} className='system-sm-medium shrink-0 truncate text-text-secondary'>{variable.memoryVariableName}</div>
                   </div>
                 ))}
               </div>
@@ -237,15 +237,15 @@ export default function MemoryPopupPlugin({
               <div className='p-1'>
                 {memoryVarInApp.map(variable => (
                   <div
-                    key={variable.id}
+                    key={variable.variable}
                     className='flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover'
-                    onClick={() => handleSelectVariable(['memory_block', variable.id])}
+                    onClick={() => handleSelectVariable(['memory_block', variable.variable])}
                   >
                     <VariableIcon
-                      variables={['memory_block', variable.id]}
+                      variables={['memory_block', '']}
                       className='text-util-colors-teal-teal-700'
                     />
-                    <div title={variable.name} className='system-sm-medium shrink-0 truncate text-text-secondary'>{variable.name}</div>
+                    <div title={variable.variable} className='system-sm-medium shrink-0 truncate text-text-secondary'>{variable.memoryVariableName}</div>
                   </div>
                 ))}
               </div>

@@ -7,7 +7,7 @@ export enum ChatVarType {
   ArrayNumber = 'array[number]',
   ArrayBoolean = 'array[boolean]',
   ArrayObject = 'array[object]',
-  Memory = 'memory',
+  Memory = 'memory_block',
 }
 
 export type ObjectValueItem = {

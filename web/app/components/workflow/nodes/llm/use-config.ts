@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import produce from 'immer'
 import { EditionType, VarType } from '../../types'
 import type { Memory, PromptItem, ValueSelector, Var, Variable } from '../../types'
@@ -22,7 +22,6 @@ import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
-  const memoryVariables = useStore(s => s.memoryVariables)
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
@@ -308,11 +307,11 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   }, [setInputs, deleteNodeInspectorVars, id])
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile].includes(varPayload.type)
+    return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile, VarType.memory].includes(varPayload.type)
   }, [])
 
   const filterJinja2InputVar = useCallback((varPayload: Var) => {
-    return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.arrayBoolean, VarType.arrayObject, VarType.object, VarType.array, VarType.boolean].includes(varPayload.type)
+    return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.arrayBoolean, VarType.arrayObject, VarType.object, VarType.array, VarType.boolean, VarType.memory].includes(varPayload.type)
   }, [])
 
   const filterMemoryPromptVar = useCallback((varPayload: Var) => {
@@ -334,29 +333,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     onlyLeafNodeVar: false,
     filterVar: filterMemoryPromptVar,
   })
-
-  const memoryVarSortFn = useCallback((a: string, b: string) => {
-    const idsInNode = inputs.memory?.block_id || []
-    const aInNode = idsInNode.includes(a)
-    const bInNode = idsInNode.includes(b)
-
-    if (aInNode && !bInNode) return -1
-    if (!aInNode && bInNode) return 1
-
-    return a.localeCompare(b)
-  }, [inputs.memory?.block_id])
-
-  const memoryVarInNode = useMemo(() => {
-    const idsInNode = inputs.memory?.block_id || []
-    return memoryVariables
-      .filter(varItem => idsInNode.includes(varItem.id))
-  }, [inputs.memory?.block_id, memoryVariables])
-
-  const memoryVarInApp = useMemo(() => {
-    const idsInApp = inputs.memory?.block_id || []
-    return memoryVariables
-      .filter(varItem => !idsInApp.includes(varItem.id))
-  }, [inputs.memory?.block_id, memoryVariables])
 
   return {
     readOnly,
@@ -391,9 +367,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleStructureOutputEnableChange,
     filterJinja2InputVar,
     handleReasoningFormatChange,
-    memoryVarSortFn,
-    memoryVarInNode,
-    memoryVarInApp,
   }
 }
 

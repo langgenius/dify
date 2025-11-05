@@ -44,7 +44,7 @@ export const useTypeSchema = () => {
     label: t('workflow.chatVariable.modal.type'),
     type: 'select',
     options: typeList.map(type => ({
-      label: type,
+      label: type === ChatVarType.Memory ? 'memory' : type,
       value: type,
     })),
     onChange: handleTypeChange,

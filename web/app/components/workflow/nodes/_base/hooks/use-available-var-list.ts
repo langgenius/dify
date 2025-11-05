@@ -16,7 +16,6 @@ type Params = {
   filterVar: (payload: Var, selector: ValueSelector) => boolean
   passedInAvailableNodes?: Node[]
   conversationVariablesFirst?: boolean
-  memoryVarSortFn?: (a: string, b: string) => number
 }
 
 // TODO: loop type?
@@ -27,7 +26,6 @@ const useAvailableVarList = (nodeId: string, {
   hideChatVar,
   passedInAvailableNodes,
   conversationVariablesFirst,
-  memoryVarSortFn,
 }: Params = {
   onlyLeafNodeVar: false,
   filterVar: () => true,
@@ -67,7 +65,7 @@ const useAvailableVarList = (nodeId: string, {
       })
     }
   }
-  const availableVars = [...getNodeAvailableVars({
+  const nodeAvailableVars = getNodeAvailableVars({
     parentNode: iterationNode,
     beforeNodes: availableNodes,
     isChatMode,
@@ -75,7 +73,22 @@ const useAvailableVarList = (nodeId: string, {
     hideEnv,
     hideChatVar,
     conversationVariablesFirst,
-    memoryVarSortFn,
+  })
+
+  const availableVars = [...nodeAvailableVars.map((availableVar) => {
+    if (availableVar.nodeId === 'conversation') {
+      return {
+        ...availableVar,
+        vars: availableVar.vars.filter((v) => {
+          if (!v.memoryVariableNodeId)
+            return true
+
+          return v.memoryVariableNodeId === nodeId
+        }),
+      }
+    }
+
+    return availableVar
   }), ...dataSourceRagVars]
 
   return {

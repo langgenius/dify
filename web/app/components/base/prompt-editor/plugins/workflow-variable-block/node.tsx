@@ -13,6 +13,7 @@ export type SerializedNode = SerializedLexicalNode & {
   getVarType?: GetVarType
   environmentVariables?: Var[]
   conversationVariables?: Var[]
+  memoryVariables?: Var[]
   ragVariables?: Var[]
 }
 
@@ -98,6 +99,7 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
       getVarType: this.getVarType(),
       environmentVariables: this.getEnvironmentVariables(),
       conversationVariables: this.getConversationVariables(),
+      memoryVariables: this.getMemoryVariables(),
       ragVariables: this.getRagVariables(),
     }
   }

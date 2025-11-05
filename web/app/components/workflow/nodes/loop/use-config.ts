@@ -38,7 +38,7 @@ const useConfig = (id: string, payload: LoopNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
   const conversationVariables = useStore(s => s.conversationVariables)
-
+  const memoryVariables = useStore(s => s.memoryVariables)
   const { inputs, setInputs } = useNodeCrud<LoopNodeType>(id, payload)
   const inputsRef = useRef(inputs)
   const handleInputsChange = useCallback((newInputs: LoopNodeType) => {
@@ -65,7 +65,7 @@ const useConfig = (id: string, payload: LoopNodeType) => {
     mcpTools: mcpTools || [],
     dataSourceList: dataSourceList || [],
   }
-  const childrenNodeVars = toNodeOutputVars(loopChildrenNodes, isChatMode, undefined, [], conversationVariables, [], allPluginInfoList)
+  const childrenNodeVars = toNodeOutputVars(loopChildrenNodes, isChatMode, undefined, [], conversationVariables, memoryVariables, [], allPluginInfoList)
 
   const {
     getIsVarFileAttribute,

@@ -28,6 +28,7 @@ const WorkflowVariableBlockReplacementBlock = ({
       acc.push(...curr.vars.filter(v => v.isRagVariable))
     return acc
   }, [])
+  const memoryVariables = variables?.find(variable => variable.nodeId === 'memory_block')?.vars || []
 
   useEffect(() => {
     if (!editor.hasNodes([WorkflowVariableBlockNode]))
@@ -39,7 +40,7 @@ const WorkflowVariableBlockReplacementBlock = ({
       onInsert()
 
     const nodePathString = textNode.getTextContent().slice(3, -3)
-    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap, getVarType, variables?.find(o => o.nodeId === 'env')?.vars || [], variables?.find(o => o.nodeId === 'conversation')?.vars || [], ragVariables))
+    return $applyNodeReplacement($createWorkflowVariableBlockNode(nodePathString.split('.'), workflowNodesMap, getVarType, variables?.find(o => o.nodeId === 'env')?.vars || [], variables?.find(o => o.nodeId === 'conversation')?.vars || [], memoryVariables, ragVariables))
   }, [onInsert, workflowNodesMap, getVarType, variables])
 
   const getMatch = useCallback((text: string) => {

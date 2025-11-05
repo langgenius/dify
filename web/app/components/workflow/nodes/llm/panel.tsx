@@ -64,9 +64,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleStructureOutputChange,
     filterJinja2InputVar,
     handleReasoningFormatChange,
-    memoryVarSortFn,
-    memoryVarInNode,
-    memoryVarInApp,
   } = useConfig(id, data)
   const { memoryType } = useMemory(id, data)
 
@@ -158,9 +155,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             varList={inputs.prompt_config?.jinja2_variables || []}
             handleAddVariable={handleAddVariable}
             modelConfig={model}
-            memoryVarSortFn={memoryVarSortFn}
-            memoryVarInNode={memoryVarInNode}
-            memoryVarInApp={memoryVarInApp}
           />
         )}
 

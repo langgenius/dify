@@ -39,7 +39,7 @@ import type {
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
 import type { RAGPipelineVariable } from '@/models/pipeline'
-
+import type { MemoryVariable } from '@/app/components/workflow/types'
 import {
   AGENT_OUTPUT_STRUCT,
   FILE_STRUCT,
@@ -82,7 +82,7 @@ export const isRagVariableVar = (valueSelector: ValueSelector) => {
 }
 
 export const isSpecialVar = (prefix: string): boolean => {
-  return ['sys', 'env', 'conversation', 'rag'].includes(prefix)
+  return ['sys', 'env', 'conversation', 'memory_block', 'rag'].includes(prefix)
 }
 
 export const hasValidChildren = (children: any): boolean => {
@@ -313,7 +313,6 @@ const formatItem = (
   allPluginInfoList: Record<string, ToolWithProvider[]>,
   ragVars?: Var[],
   schemaTypeDefinitions: SchemaTypeDefinition[] = [],
-  memoryVarSortFn?: (a: string, b: string) => number,
 ): NodeOutPutVar => {
   const { id, data } = item
 
@@ -629,15 +628,25 @@ const formatItem = (
     }
 
     case 'conversation': {
-      if (memoryVarSortFn)
-        data.chatVarList.sort(memoryVarSortFn)
-      res.vars = data.chatVarList.map((chatVar: ConversationVariable) => {
-        return {
-          variable: `conversation.${chatVar.name}`,
-          type: chatVar.value_type,
-          description: chatVar.description,
-        }
-      }) as Var[]
+      res.vars = [
+        ...data.memoryVarList.map((memoryVar: MemoryVariable) => {
+          return {
+            variable: `memory_block.${memoryVar.node_id ? `${memoryVar.node_id}_` : ''}${memoryVar.id}`,
+            type: 'memory_block',
+            description: '',
+            isMemoryVariable: true,
+            memoryVariableName: memoryVar.name,
+            memoryVariableNodeId: memoryVar.node_id,
+          }
+        }) as Var[],
+        ...data.chatVarList.map((chatVar: ConversationVariable) => {
+          return {
+            variable: `conversation.${chatVar.name}`,
+            type: chatVar.value_type,
+            description: chatVar.description,
+          }
+        }) as Var[],
+      ]
       break
     }
 
@@ -680,11 +689,13 @@ const formatItem = (
         (() => {
           const variableArr = v.variable.split('.')
           const [first] = variableArr
+
           if (isSpecialVar(first)) return variableArr
 
           return [...selector, ...variableArr]
         })(),
       )
+
       if (isCurrentMatched) return true
 
       const isFile = v.type === VarType.file
@@ -759,11 +770,11 @@ export const toNodeOutputVars = (
   filterVar = (_payload: Var, _selector: ValueSelector) => true,
   environmentVariables: EnvironmentVariable[] = [],
   conversationVariables: ConversationVariable[] = [],
+  memoryVariables: MemoryVariable[] = [],
   ragVariables: RAGPipelineVariable[] = [],
   allPluginInfoList: Record<string, ToolWithProvider[]>,
   schemaTypeDefinitions?: SchemaTypeDefinition[],
   conversationVariablesFirst: boolean = false,
-  memoryVarSortFn?: (a: string, b: string) => number,
 ): NodeOutPutVar[] => {
   // ENV_NODE data format
   const ENV_NODE = {
@@ -780,6 +791,7 @@ export const toNodeOutputVars = (
     data: {
       title: 'CONVERSATION',
       type: 'conversation',
+      memoryVarList: memoryVariables,
       chatVarList: conversationVariables,
     },
   }
@@ -802,6 +814,8 @@ export const toNodeOutputVars = (
     if (b.data.type === 'env') return -1
     if (a.data.type === 'conversation') return 1
     if (b.data.type === 'conversation') return -1
+    if (a.data.type === 'memory_block') return 1
+    if (b.data.type === 'memory_block') return -1
     // sort nodes by x position
     return (b.position?.x || 0) - (a.position?.x || 0)
   })
@@ -851,7 +865,6 @@ export const toNodeOutputVars = (
             } as Var),
         ),
         schemaTypeDefinitions,
-        memoryVarSortFn,
       ),
       isStartNode: node.data.type === BlockEnum.Start,
     }
@@ -979,6 +992,7 @@ export const getVarType = ({
   isConstant,
   environmentVariables = [],
   conversationVariables = [],
+  memoryVariables = [],
   ragVariables = [],
   allPluginInfoList,
   schemaTypeDefinitions,
@@ -993,6 +1007,7 @@ export const getVarType = ({
   isConstant?: boolean;
   environmentVariables?: EnvironmentVariable[];
   conversationVariables?: ConversationVariable[];
+  memoryVariables?: MemoryVariable[];
   ragVariables?: RAGPipelineVariable[];
   allPluginInfoList: Record<string, ToolWithProvider[]>;
   schemaTypeDefinitions?: SchemaTypeDefinition[];
@@ -1006,6 +1021,7 @@ export const getVarType = ({
     undefined,
     environmentVariables,
     conversationVariables,
+    memoryVariables,
     ragVariables,
     allPluginInfoList,
     schemaTypeDefinitions,
@@ -1132,12 +1148,12 @@ export const toNodeAvailableVars = ({
   isChatMode,
   environmentVariables,
   conversationVariables,
+  memoryVariables,
   ragVariables,
   filterVar,
   allPluginInfoList,
   schemaTypeDefinitions,
   conversationVariablesFirst,
-  memoryVarSortFn,
 }: {
   parentNode?: Node | null;
   t?: any;
@@ -1148,13 +1164,14 @@ export const toNodeAvailableVars = ({
   environmentVariables?: EnvironmentVariable[];
   // chat var
   conversationVariables?: ConversationVariable[];
+  // memory variables
+  memoryVariables?: MemoryVariable[];
   // rag variables
   ragVariables?: RAGPipelineVariable[];
   filterVar: (payload: Var, selector: ValueSelector) => boolean;
   allPluginInfoList: Record<string, ToolWithProvider[]>;
   schemaTypeDefinitions?: SchemaTypeDefinition[];
   conversationVariablesFirst?: boolean
-  memoryVarSortFn?: (a: string, b: string) => number
 }): NodeOutPutVar[] => {
   const beforeNodesOutputVars = toNodeOutputVars(
     beforeNodes,
@@ -1162,11 +1179,11 @@ export const toNodeAvailableVars = ({
     filterVar,
     environmentVariables,
     conversationVariables,
+    memoryVariables,
     ragVariables,
     allPluginInfoList,
     schemaTypeDefinitions,
     conversationVariablesFirst,
-    memoryVarSortFn,
   )
   const isInIteration = parentNode?.data.type === BlockEnum.Iteration
   if (isInIteration) {
@@ -1179,6 +1196,7 @@ export const toNodeAvailableVars = ({
       isChatMode,
       environmentVariables,
       conversationVariables,
+      memoryVariables,
       allPluginInfoList,
       schemaTypeDefinitions,
     })

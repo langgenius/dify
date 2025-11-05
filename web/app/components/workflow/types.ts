@@ -312,7 +312,7 @@ export enum VarType {
   arrayFile = 'array[file]',
   any = 'any',
   arrayAny = 'array[any]',
-  memory = 'memory',
+  memory = 'memory_block',
 }
 
 export enum ValueType {
@@ -334,6 +334,8 @@ export type Var = {
   nodeId?: string
   isRagVariable?: boolean
   schemaType?: string
+  memoryVariableName?: string
+  memoryVariableNodeId?: string
 }
 
 export type NodeOutPutVar = {

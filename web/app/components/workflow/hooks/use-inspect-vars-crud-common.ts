@@ -132,7 +132,7 @@ export const useInspectVarsCrudCommon = ({
       mcpTools: mcpTools || [],
       dataSourceList: dataSourceList || [],
     }
-    const currentNodeOutputVars = toNodeOutputVars([currentNode], false, () => true, [], [], [], allPluginInfoList, schemaTypeDefinitions)
+    const currentNodeOutputVars = toNodeOutputVars([currentNode], false, () => true, [], [], [], [], allPluginInfoList, schemaTypeDefinitions)
     const vars = await fetchNodeInspectVars(flowType, flowId, nodeId)
     const varsWithSchemaType = vars.map((varItem) => {
       const schemaType = currentNodeOutputVars[0]?.vars.find(v => v.variable === varItem.name)?.schemaType || ''

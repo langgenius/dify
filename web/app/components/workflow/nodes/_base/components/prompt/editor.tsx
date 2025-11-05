@@ -38,9 +38,6 @@ import { useStore } from '@/app/components/workflow/store'
 import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
 import AddMemoryButton from './add-memory-button'
 import { MEMORY_POPUP_SHOW_BY_EVENT_EMITTER } from './type'
-import type {
-  MemoryVariable,
-} from '@/app/components/workflow/types'
 import MemoryCreateButton from '@/app/components/workflow/nodes/llm/components/memory-system/memory-create-button'
 
 type Props = {
@@ -86,8 +83,6 @@ type Props = {
   titleClassName?: string
   required?: boolean
   isMemorySupported?: boolean
-  memoryVarInNode?: MemoryVariable[]
-  memoryVarInApp?: MemoryVariable[]
 }
 
 const Editor: FC<Props> = ({
@@ -128,8 +123,6 @@ const Editor: FC<Props> = ({
   editorContainerClassName,
   required,
   isMemorySupported,
-  memoryVarInNode = [],
-  memoryVarInApp = [],
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -311,8 +304,6 @@ const Editor: FC<Props> = ({
                         editable={!readOnly}
                         isSupportFileVar={isSupportFileVar}
                         isMemorySupported
-                        memoryVarInNode={memoryVarInNode}
-                        memoryVarInApp={memoryVarInApp}
                       />
                       {/* to patch Editor not support dynamic change editable status */}
                       {readOnly && <div className='absolute inset-0 z-10'></div>}

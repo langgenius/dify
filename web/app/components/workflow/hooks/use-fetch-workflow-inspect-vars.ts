@@ -51,7 +51,7 @@ export const useSetWorkflowVarsWithValue = ({
     const { getNodes } = store.getState()
 
     const nodeArr = getNodes()
-    const allNodesOutputVars = toNodeOutputVars(nodeArr, false, () => true, [], [], [], passedInAllPluginInfoList || allPluginInfoList, passedInSchemaTypeDefinitions || schemaTypeDefinitions)
+    const allNodesOutputVars = toNodeOutputVars(nodeArr, false, () => true, [], [], [], [], passedInAllPluginInfoList || allPluginInfoList, passedInSchemaTypeDefinitions || schemaTypeDefinitions)
 
     const nodesKeyValue: Record<string, Node> = {}
     nodeArr.forEach((node) => {

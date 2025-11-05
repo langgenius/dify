@@ -64,6 +64,7 @@ const Item: FC<ItemProps> = ({
   const isSys = itemData.variable.startsWith('sys.')
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')
+  const isMemoryVar = itemData.variable.startsWith('memory_block')
   const isRagVariable = itemData.isRagVariable
   const flatVarIcon = useMemo(() => {
     if (!isFlat)
@@ -147,7 +148,7 @@ const Item: FC<ItemProps> = ({
     if (isFlat) {
       onChange([itemData.variable], itemData)
     }
-    else if (isSys || isEnv || isChatVar || isRagVariable) { // system variable | environment variable | conversation variable
+    else if (isSys || isEnv || isChatVar || isMemoryVar || isRagVariable) { // system variable | environment variable | conversation variable
       onChange([...objPath, ...itemData.variable.split('.')], itemData)
     }
     else {
@@ -157,10 +158,16 @@ const Item: FC<ItemProps> = ({
   const variableCategory = useMemo(() => {
     if (isEnv) return 'environment'
     if (isChatVar) return 'conversation'
+    if (isMemoryVar) return 'memory_block'
     if (isLoopVar) return 'loop'
     if (isRagVariable) return 'rag'
     return 'system'
-  }, [isEnv, isChatVar, isSys, isLoopVar, isRagVariable])
+  }, [isEnv, isChatVar, isMemoryVar, isSys, isLoopVar, isRagVariable])
+  const variableType = useMemo(() => {
+    if (itemData.type === 'memory_block')
+      return 'memory'
+    return itemData.type
+  }, [itemData.type])
   return (
     <PortalToFollowElem
       open={open}
@@ -187,7 +194,7 @@ const Item: FC<ItemProps> = ({
             />}
             {isFlat && flatVarIcon}
 
-            {!isEnv && !isChatVar && !isRagVariable && (
+            {!isEnv && !isChatVar && !isMemoryVar && !isRagVariable && (
               <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{varName}</div>
             )}
             {isEnv && (
@@ -196,11 +203,15 @@ const Item: FC<ItemProps> = ({
             {isChatVar && (
               <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.replace('conversation.', '')}</div>
             )}
+            {isMemoryVar && (
+              <div title={itemData.memoryVariableName} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.memoryVariableName}</div>
+            )
+            }
             {isRagVariable && (
               <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.split('.').slice(-1)[0]}</div>
             )}
           </div>
-          <div className='ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary'>{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</div>
+          <div className='ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary'>{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : variableType}</div>
           {
             (isObj || isStructureOutput) && (
               <ChevronRight className={cn('ml-0.5 h-3 w-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
