@@ -170,7 +170,6 @@ const translation = {
     workspace: 'Workspace',
     createWorkspace: 'Crea Workspace',
     helpCenter: 'Aiuto',
-    communityFeedback: 'Feedback',
     roadmap: 'Tabella di marcia',
     community: 'Comunità',
     about: 'Informazioni',
@@ -179,6 +178,7 @@ const translation = {
     compliance: 'Conformità',
     github: 'GitHub',
     contactUs: 'Contattaci',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'ACCOUNT',
@@ -756,6 +756,7 @@ const translation = {
     uploadFromComputerUploadError: 'Caricamento del file non riuscito, carica di nuovo.',
     pasteFileLink: 'Incolla il collegamento del file',
     uploadFromComputerReadError: 'Lettura del file non riuscita, riprovare.',
+    fileExtensionBlocked: 'Questo tipo di file è bloccato per motivi di sicurezza',
   },
   license: {
     expiring_plural: 'Scadenza tra {{count}} giorni',
