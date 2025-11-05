@@ -24,7 +24,6 @@ const TimeRangePicker: FC<Props> = ({
   queryDateFormat,
 }) => {
   const { t } = useTranslation()
-  console.log(Object.entries(ranges).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}`) })))
 
   const handleSelectRange = useCallback((item: Item) => {
     const { name, value } = item
