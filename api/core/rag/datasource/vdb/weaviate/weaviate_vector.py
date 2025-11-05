@@ -45,7 +45,7 @@ class WeaviateConfig(BaseModel):
     """
 
     endpoint: str
-    grpc_endpoint: str = None
+    grpc_endpoint: str
     api_key: str | None = None
     batch_size: int = 100
 
