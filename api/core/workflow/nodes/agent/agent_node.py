@@ -271,7 +271,7 @@ class AgentNode(Node):
                     if include_tool:
                         filtered_tools.append(tool)
                 value = [tool for tool in filtered_tools if tool.get("enabled", False)]
-                
+
                 value = self._filter_mcp_type_tool(strategy, value)
                 for tool in value:
                     if "schemas" in tool:
