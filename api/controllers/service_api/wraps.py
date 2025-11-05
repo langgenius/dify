@@ -1,4 +1,5 @@
 import time
+import uuid
 from collections.abc import Callable
 from datetime import timedelta
 from enum import StrEnum, auto
@@ -61,7 +62,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
 
             tenant = db.session.query(Tenant).where(Tenant.id == app_model.tenant_id).first()
             if tenant is None:
-                raise ValueError("Tenant does not exist.")
+                raise NotFound("Tenant does not exist.")
             if tenant.status == TenantStatus.ARCHIVE:
                 raise Forbidden("The workspace's status is archived.")
 
@@ -72,14 +73,15 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                 if fetch_user_arg.fetch_from == WhereisUserArg.QUERY:
                     user_id = request.args.get("user")
                 elif fetch_user_arg.fetch_from == WhereisUserArg.JSON:
-                    user_id = request.get_json().get("user")
+                    json_data = request.get_json()
+                    user_id = json_data.get("user") if json_data else None
                 elif fetch_user_arg.fetch_from == WhereisUserArg.FORM:
                     user_id = request.form.get("user")
                 else:
                     user_id = None
 
                 if not user_id and fetch_user_arg.required:
-                    raise ValueError("Arg user must be provided.")
+                    raise Unauthorized("Arg user must be provided.")
 
                 if user_id:
                     user_id = str(user_id)
@@ -232,21 +234,21 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                     potential_id = args[1]
                     # Validate it's a string-like UUID, not another object
                     try:
-                        # Try to convert to string and check if it's a valid UUID format
                         str_id = str(potential_id)
-                        # Basic check: UUIDs are 36 chars with hyphens
-                        if len(str_id) == 36 and str_id.count("-") == 4:
-                            dataset_id = str_id
-                    except:
+                        # Properly validate UUID format
+                        uuid.UUID(str_id)
+                        dataset_id = str_id
+                    except (ValueError, AttributeError, TypeError):
                         pass
                 elif len(args) > 0:
                     # Not a class method, check if args[0] looks like a UUID
                     potential_id = args[0]
                     try:
                         str_id = str(potential_id)
-                        if len(str_id) == 36 and str_id.count("-") == 4:
-                            dataset_id = str_id
-                    except:
+                        # Properly validate UUID format
+                        uuid.UUID(str_id)
+                        dataset_id = str_id
+                    except (ValueError, AttributeError, TypeError):
                         pass
 
             # Validate dataset if dataset_id is provided
