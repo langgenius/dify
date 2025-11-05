@@ -22,7 +22,7 @@ class AsyncTriggerStatus(StrEnum):
 class TriggerMetadata(BaseModel):
     """Trigger metadata"""
 
-    pass
+    type: AppTriggerType = Field(default=AppTriggerType.UNKNOWN)
 
 
 class TriggerData(BaseModel):
@@ -36,7 +36,7 @@ class TriggerData(BaseModel):
     files: Sequence[Mapping[str, Any]] = Field(default_factory=list)
     trigger_type: AppTriggerType
     trigger_from: WorkflowRunTriggeredFrom
-    trigger_metadata: TriggerMetadata = Field(default_factory=TriggerMetadata)
+    trigger_metadata: TriggerMetadata | None = None
 
     model_config = ConfigDict(use_enum_values=True)
 
@@ -57,6 +57,8 @@ class ScheduleTriggerData(TriggerData):
 
 class PluginTriggerMetadata(TriggerMetadata):
     """Plugin trigger metadata"""
+
+    type: AppTriggerType = AppTriggerType.TRIGGER_PLUGIN
 
     endpoint_id: str
     plugin_unique_identifier: str

@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 
 from core.workflow.enums import WorkflowExecutionStatus
 from models import Account, App, EndUser, WorkflowAppLog, WorkflowRun
-from models.enums import CreatorUserRole
+from models.enums import AppTriggerType, CreatorUserRole
 from models.trigger import WorkflowTriggerLog
 from services.plugin.plugin_service import PluginService
+from services.workflow.entities import TriggerMetadata
 
 
 # Since the workflow_app_log table has exceeded 100 million records, we use an additional details field to extend it
@@ -169,14 +170,15 @@ class WorkflowAppService:
         metadata: dict[str, Any] | None = self._safe_json_loads(meta_val)
         if not metadata:
             return {}
-        icon = metadata.get("icon_filename")
-        icon_dark = metadata.get("icon_dark_filename")
-        return {
-            "icon": PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=icon) if icon else None,
-            "icon_dark": PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=icon_dark)
-            if icon_dark
-            else None,
-        }
+        trigger_metadata = TriggerMetadata.model_validate(metadata)
+        if trigger_metadata.type == AppTriggerType.TRIGGER_PLUGIN:
+            icon = metadata.get("icon_filename")
+            icon_dark = metadata.get("icon_dark_filename")
+            metadata["icon"] = PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=icon) if icon else None
+            metadata["icon_dark"] = (
+                PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=icon_dark) if icon_dark else None
+            )
+        return metadata
 
     @staticmethod
     def _safe_json_loads(val):
