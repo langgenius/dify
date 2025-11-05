@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import operator
 import os
 import re
 import time
@@ -120,22 +121,14 @@ def sign_file_urls_in_text(text: str) -> str:
     """
     signed_urls: list[tuple[int, int, str]] = []
 
-    # For data before v0.10.0 - image-preview
-    pattern = r"/files/([a-f0-9\-]+)/image-preview(?:\?.*?)?"
+    # For image-preview and file-preview URLs (combined pattern)
+    pattern = r"/files/([a-f0-9\-]+)/(image-preview|file-preview)(?:\?.*?)?"
     matches = re.finditer(pattern, text)
     for match in matches:
         upload_file_id = match.group(1)
-        base_url = f"/files/{upload_file_id}/image-preview"
-        signed_url = _generate_signed_url(upload_file_id, "image-preview", base_url)
-        signed_urls.append((match.start(), match.end(), signed_url))
-
-    # For data after v0.10.0 - file-preview
-    pattern = r"/files/([a-f0-9\-]+)/file-preview(?:\?.*?)?"
-    matches = re.finditer(pattern, text)
-    for match in matches:
-        upload_file_id = match.group(1)
-        base_url = f"/files/{upload_file_id}/file-preview"
-        signed_url = _generate_signed_url(upload_file_id, "file-preview", base_url)
+        sign_type = match.group(2)
+        base_url = f"/files/{upload_file_id}/{sign_type}"
+        signed_url = _generate_signed_url(upload_file_id, sign_type, base_url)
         signed_urls.append((match.start(), match.end(), signed_url))
 
     # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
@@ -149,13 +142,19 @@ def sign_file_urls_in_text(text: str) -> str:
         signed_url = _generate_signed_url(upload_file_id, "file-preview", base_url)
         signed_urls.append((match.start(), match.end(), signed_url))
 
-    # Reconstruct the text with signed URLs
-    offset = 0
-    for start, end, signed_url in signed_urls:
-        text = text[: start + offset] + signed_url + text[end + offset :]
-        offset += len(signed_url) - (end - start)
+    # Sort by start position to handle replacements correctly
+    signed_urls.sort(key=operator.itemgetter(0))
 
-    return text
+    # Rebuild the string from parts for efficiency
+    new_text_parts = []
+    last_pos = 0
+    for start, end, signed_url in signed_urls:
+        new_text_parts.append(text[last_pos:start])
+        new_text_parts.append(signed_url)
+        last_pos = end
+    new_text_parts.append(text[last_pos:])
+
+    return "".join(new_text_parts)
 
 
 def sign_file_urls_in_content(content: str) -> str:
