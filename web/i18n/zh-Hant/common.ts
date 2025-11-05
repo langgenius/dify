@@ -170,6 +170,7 @@ const translation = {
     github: 'GitHub',
     compliance: '合規',
     contactUs: '聯絡我們',
+    forum: '論壇',
   },
   settings: {
     accountGroup: '賬戶',
@@ -726,6 +727,7 @@ const translation = {
     uploadFromComputer: '本地上傳',
     fileExtensionNotSupport: '不支援檔擴展名',
     uploadFromComputerLimit: '上傳文件不能超過 {{size}}',
+    fileExtensionBlocked: '出於安全原因，此檔案類型被阻止',
   },
   license: {
     expiring: '將在 1 天內過期',
