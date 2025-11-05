@@ -46,6 +46,10 @@ const OpeningSettingModal = ({
   const [notIncludeKeys, setNotIncludeKeys] = useState<string[]>([])
 
   const handleSave = useCallback((ignoreVariablesCheck?: boolean) => {
+    // Prevent saving if opening statement is empty
+    if (!tempValue.trim())
+      return
+
     if (!ignoreVariablesCheck) {
       const keys = getInputKeys(tempValue)
       const promptKeys = promptVariables.map(item => item.key)
@@ -217,6 +221,7 @@ const OpeningSettingModal = ({
         <Button
           variant='primary'
           onClick={() => handleSave()}
+          disabled={!tempValue.trim()}
         >
           {t('common.operation.save')}
         </Button>
