@@ -165,7 +165,6 @@ const translation = {
     workspace: 'فضای کاری',
     createWorkspace: 'ایجاد فضای کاری',
     helpCenter: 'راهنما',
-    communityFeedback: 'بازخورد',
     roadmap: 'نقشه راه',
     community: 'انجمن',
     about: 'درباره',

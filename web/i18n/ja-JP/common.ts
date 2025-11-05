@@ -173,7 +173,6 @@ const translation = {
     helpCenter: 'ヘルプ',
     support: 'サポート',
     compliance: 'コンプライアンス',
-    communityFeedback: 'フィードバック',
     roadmap: 'ロードマップ',
     community: 'コミュニティ',
     about: 'Dify について',
