@@ -1,13 +1,7 @@
-import base64
 import enum
-import hashlib
-import hmac
 import json
 import logging
-import os
 import pickle
-import re
-import time
 from datetime import datetime
 from json import JSONDecodeError
 from typing import Any, cast
@@ -788,69 +782,9 @@ class DocumentSegment(Base):
         return self.get_sign_content()
 
     def get_sign_content(self) -> str:
-        signed_urls: list[tuple[int, int, str]] = []
-        text = self.content
+        from core.file.helpers import sign_file_urls_in_text
 
-        # For data before v0.10.0
-        pattern = r"/files/([a-f0-9\-]+)/image-preview(?:\?.*?)?"
-        matches = re.finditer(pattern, text)
-        for match in matches:
-            upload_file_id = match.group(1)
-            nonce = os.urandom(16).hex()
-            timestamp = str(int(time.time()))
-            data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
-            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-            encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
-            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            base_url = f"/files/{upload_file_id}/image-preview"
-            signed_url = f"{base_url}?{params}"
-            signed_urls.append((match.start(), match.end(), signed_url))
-
-        # For data after v0.10.0
-        pattern = r"/files/([a-f0-9\-]+)/file-preview(?:\?.*?)?"
-        matches = re.finditer(pattern, text)
-        for match in matches:
-            upload_file_id = match.group(1)
-            nonce = os.urandom(16).hex()
-            timestamp = str(int(time.time()))
-            data_to_sign = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
-            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-            encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
-            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            base_url = f"/files/{upload_file_id}/file-preview"
-            signed_url = f"{base_url}?{params}"
-            signed_urls.append((match.start(), match.end(), signed_url))
-
-        # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
-        # Match URL including any query parameters up to common URL boundaries (space, parenthesis, quotes)
-        pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?[^\s\)\"\']*)?"
-        matches = re.finditer(pattern, text)
-        for match in matches:
-            upload_file_id = match.group(1)
-            file_extension = match.group(2)
-            nonce = os.urandom(16).hex()
-            timestamp = str(int(time.time()))
-            data_to_sign = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
-            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
-            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-            encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
-            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            base_url = f"/files/tools/{upload_file_id}.{file_extension}"
-            signed_url = f"{base_url}?{params}"
-            signed_urls.append((match.start(), match.end(), signed_url))
-
-        # Reconstruct the text with signed URLs
-        offset = 0
-        for start, end, signed_url in signed_urls:
-            text = text[: start + offset] + signed_url + text[end + offset :]
-            offset += len(signed_url) - (end - start)
-
-        return text
+        return sign_file_urls_in_text(self.content)
 
 
 class ChildChunk(Base):

@@ -3,6 +3,7 @@ import time
 from typing import Any
 
 from core.app.app_config.entities import ModelConfig
+from core.file.helpers import sign_file_urls_in_content
 from core.model_runtime.entities import LLMMode
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
@@ -130,11 +131,23 @@ class HitTestingService:
     def compact_retrieve_response(cls, query: str, documents: list[Document]) -> dict[Any, Any]:
         records = RetrievalService.format_retrieval_documents(documents)
 
+        processed_records = []
+        for record in records:
+            record_dict = record.model_dump()
+            if record_dict.get("segment"):
+                segment = record_dict["segment"]
+                if segment.get("content"):
+                    if segment.get("sign_content"):
+                        segment["content"] = segment["sign_content"]
+                    else:
+                        segment["content"] = sign_file_urls_in_content(segment["content"])
+            processed_records.append(record_dict)
+
         return {
             "query": {
                 "content": query,
             },
-            "records": [record.model_dump() for record in records],
+            "records": processed_records,
         }
 
     @classmethod
@@ -142,8 +155,11 @@ class HitTestingService:
         records = []
         if dataset.provider == "external":
             for document in documents:
+                content = document.get("content", None)
+                if content:
+                    content = sign_file_urls_in_content(content)
                 record = {
-                    "content": document.get("content", None),
+                    "content": content,
                     "title": document.get("title", None),
                     "score": document.get("score", None),
                     "metadata": document.get("metadata", None),
