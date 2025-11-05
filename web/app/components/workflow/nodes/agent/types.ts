@@ -1,4 +1,4 @@
-import type { CommonNodeType, Memory } from '@/app/components/workflow/types'
+import type { CommonNodeType, Memory, ValueSelector, VarType } from '@/app/components/workflow/types'
 import type { ToolVarInputs } from '../tool/types'
 import type { PluginMeta } from '@/app/components/plugins/types'
 
@@ -17,4 +17,23 @@ export type AgentNodeType = CommonNodeType & {
 
 export enum AgentFeature {
   HISTORY_MESSAGES = 'history-messages',
+}
+
+export enum AgentToolConditionLogicalOperator {
+  And = 'and',
+  Or = 'or',
+}
+
+export type AgentToolCondition = {
+  id: string
+  varType: VarType
+  variable_selector?: ValueSelector
+  comparison_operator?: string
+  value?: string | string[] | boolean
+}
+
+export type AgentToolActivationCondition = {
+  enabled: boolean
+  logical_operator: AgentToolConditionLogicalOperator
+  conditions: AgentToolCondition[]
 }

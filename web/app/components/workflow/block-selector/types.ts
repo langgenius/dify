@@ -1,4 +1,5 @@
 import type { PluginMeta } from '../../plugins/types'
+import type { AgentToolActivationCondition } from '@/app/components/workflow/nodes/agent/types'
 
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
@@ -61,6 +62,7 @@ export type ToolValue = {
   enabled?: boolean
   extra?: Record<string, any>
   credential_id?: string
+  activation_condition?: AgentToolActivationCondition
 }
 
 export type DataSourceItem = {

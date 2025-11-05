@@ -1,6 +1,6 @@
 import json
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from packaging.version import Version
 from pydantic import ValidationError
@@ -44,6 +44,8 @@ from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.runtime import VariablePool
+from core.workflow.utils.condition.entities import Condition
+from core.workflow.utils.condition.processor import ConditionProcessor
 from extensions.ext_database import db
 from factories import file_factory
 from factories.agent_factory import get_plugin_agent_strategy
@@ -206,6 +208,7 @@ class AgentNode(Node):
 
         """
         agent_parameters_dictionary = {parameter.name: parameter for parameter in agent_parameters}
+        condition_processor = ConditionProcessor()
 
         result: dict[str, Any] = {}
         for parameter_name in node_data.agent_parameters:
@@ -243,7 +246,32 @@ class AgentNode(Node):
             value = parameter_value
             if parameter.type == "array[tools]":
                 value = cast(list[dict[str, Any]], value)
-                value = [tool for tool in value if tool.get("enabled", False)]
+                filtered_tools: list[dict[str, Any]] = []
+                for tool in value:
+                    activation_condition = tool.get("activation_condition")
+                    include_tool = True
+                    if activation_condition and activation_condition.get("enabled"):
+                        logical_operator = activation_condition.get("logical_operator", "and")
+                        if logical_operator not in {"and", "or"}:
+                            logical_operator = "and"
+                        try:
+                            conditions_raw = activation_condition.get("conditions", []) or []
+                            conditions = [Condition.model_validate(condition) for condition in conditions_raw]
+                            if conditions:
+                                _, _, include_tool = condition_processor.process_conditions(
+                                    variable_pool=variable_pool,
+                                    conditions=conditions,
+                                    operator=cast(Literal["and", "or"], logical_operator),
+                                )
+                            else:
+                                include_tool = False
+                        except (ValidationError, ValueError):
+                            include_tool = False
+                    tool.pop("activation_condition", None)
+                    if include_tool:
+                        filtered_tools.append(tool)
+                value = [tool for tool in filtered_tools if tool.get("enabled", False)]
+                
                 value = self._filter_mcp_type_tool(strategy, value)
                 for tool in value:
                     if "schemas" in tool:

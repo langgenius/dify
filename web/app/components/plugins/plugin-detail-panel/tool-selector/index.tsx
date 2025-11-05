@@ -40,6 +40,7 @@ import {
   AuthCategory,
   PluginAuthInAgent,
 } from '@/app/components/plugins/plugin-auth'
+import { AgentToolConditionEditor } from '@/app/components/workflow/nodes/agent/components/tool-condition'
 
 type Props = {
   disabled?: boolean
@@ -128,6 +129,7 @@ const ToolSelector: FC<Props> = ({
         description: tool.tool_description,
       },
       schemas: tool.paramSchemas,
+      activation_condition: value?.activation_condition,
     }
   }
   const handleSelectTool = (tool: ToolDefaultValue) => {
@@ -147,6 +149,15 @@ const ToolSelector: FC<Props> = ({
         ...value?.extra,
         description: e.target.value || '',
       },
+    } as any)
+  }
+
+  const handleActivationConditionChange = (condition?: ToolValue['activation_condition']) => {
+    if (!value)
+      return
+    onSelect({
+      ...value,
+      activation_condition: condition,
     } as any)
   }
 
@@ -266,7 +277,7 @@ const ToolSelector: FC<Props> = ({
           )}
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-10'>
-          <div className={cn('relative max-h-[642px] min-h-20 w-[361px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
+          <div className={cn('relative max-h-[642px] min-h-20 w-[480px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
             <>
               <div className='system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary'>{t(`plugin.detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`)}</div>
               {/* base form */}
@@ -389,6 +400,20 @@ const ToolSelector: FC<Props> = ({
                       nodeId={nodeId}
                     />
                   )}
+                </>
+              )}
+              {value?.provider_name && nodeId && (
+                <>
+                  <Divider className='my-1 w-full' />
+                  <div className='px-4 py-2'>
+                    <AgentToolConditionEditor
+                      value={value.activation_condition}
+                      onChange={handleActivationConditionChange}
+                      availableVars={nodeOutputVars}
+                      availableNodes={availableNodes}
+                      disabled={disabled}
+                    />
+                  </div>
                 </>
               )}
             </>
