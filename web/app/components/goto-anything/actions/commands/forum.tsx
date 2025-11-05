@@ -24,7 +24,7 @@ export const forumCommand: SlashCommandHandler<ForumDeps> = {
   async search(args: string, locale: string = 'en') {
     return [{
       id: 'forum',
-      title: i18n.t('common.userProfile.communityFeedback', { lng: locale }),
+      title: i18n.t('common.userProfile.forum', { lng: locale }),
       description: i18n.t('app.gotoAnything.actions.feedbackDesc', { lng: locale }) || 'Open community feedback discussions',
       type: 'command' as const,
       icon: (

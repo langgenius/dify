@@ -165,7 +165,6 @@ const translation = {
     workspace: 'Delovni prostor',
     createWorkspace: 'Ustvari delovni prostor',
     helpCenter: 'Pomoč',
-    communityFeedback: 'Povratne informacije',
     roadmap: 'Načrt razvoja',
     community: 'Skupnost',
     about: 'O nas',

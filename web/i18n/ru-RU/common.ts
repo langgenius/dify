@@ -165,7 +165,6 @@ const translation = {
     workspace: 'Рабочее пространство',
     createWorkspace: 'Создать рабочее пространство',
     helpCenter: 'Помощь',
-    communityFeedback: 'Обратная связь',
     roadmap: 'План развития',
     community: 'Сообщество',
     about: 'О нас',
