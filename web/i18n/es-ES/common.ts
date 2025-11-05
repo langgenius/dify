@@ -173,6 +173,7 @@ const translation = {
     compliance: 'Cumplimiento',
     github: 'GitHub',
     contactUs: 'Contáctenos',
+    forum: 'Foro',
   },
   settings: {
     accountGroup: 'CUENTA',
@@ -725,6 +726,7 @@ const translation = {
     fileExtensionNotSupport: 'Extensión de archivo no compatible',
     pasteFileLinkInputPlaceholder: 'Introduzca la URL...',
     uploadFromComputerLimit: 'El archivo de carga no puede exceder {{size}}',
+    fileExtensionBlocked: 'Este tipo de archivo está bloqueado por motivos de seguridad',
   },
   license: {
     expiring: 'Caduca en un día',
