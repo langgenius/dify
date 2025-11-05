@@ -1,5 +1,5 @@
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { RiArrowRightSLine, RiArrowRightUpLine, RiChatSmile2Line, RiDiscordLine, RiFeedbackLine, RiMailSendLine, RiQuestionLine } from '@remixicon/react'
+import { RiArrowRightSLine, RiArrowRightUpLine, RiChatSmile2Line, RiDiscordLine, RiDiscussLine, RiMailSendLine, RiQuestionLine } from '@remixicon/react'
 import { Fragment } from 'react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
@@ -88,7 +88,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                     )}
                     href='https://forum.dify.ai/'
                     target='_blank' rel='noopener noreferrer'>
-                    <RiFeedbackLine className='size-4 shrink-0 text-text-tertiary' />
+                    <RiDiscussLine className='size-4 shrink-0 text-text-tertiary' />
                     <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.forum')}</div>
                     <RiArrowRightUpLine className='size-[14px] shrink-0 text-text-tertiary' />
                   </Link>
