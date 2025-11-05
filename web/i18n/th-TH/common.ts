@@ -168,6 +168,7 @@ const translation = {
     compliance: 'การปฏิบัติตามข้อกำหนด',
     support: 'การสนับสนุน',
     contactUs: 'ติดต่อเรา',
+    forum: 'ฟอรั่ม',
   },
   settings: {
     accountGroup: 'ทั่วไป',
@@ -705,6 +706,7 @@ const translation = {
     uploadFromComputerLimit: 'อัปโหลด {{type}} ต้องไม่เกิน {{size}}',
     pasteFileLinkInvalid: 'ลิงก์ไฟล์ไม่ถูกต้อง',
     fileExtensionNotSupport: 'ไม่รองรับนามสกุลไฟล์',
+    fileExtensionBlocked: 'ประเภทไฟล์นี้ถูกบล็อกด้วยเหตุผลด้านความปลอดภัย',
   },
   tag: {
     placeholder: 'แท็กทั้งหมด',

@@ -173,6 +173,7 @@ const translation = {
     compliance: 'انطباق',
     support: 'پشتیبانی',
     contactUs: 'با ما تماس بگیرید',
+    forum: 'انجمن',
   },
   settings: {
     accountGroup: 'حساب کاربری',
@@ -725,6 +726,7 @@ const translation = {
     uploadFromComputerUploadError: 'آپلود فایل انجام نشد، لطفا دوباره آپلود کنید.',
     pasteFileLink: 'پیوند فایل را جایگذاری کنید',
     uploadFromComputerLimit: 'آپلود فایل نمی تواند از {{size}} تجاوز کند',
+    fileExtensionBlocked: 'این نوع فایل به دلایل امنیتی مسدود شده است',
   },
   license: {
     expiring_plural: 'انقضا در {{count}} روز',

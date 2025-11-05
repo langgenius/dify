@@ -169,6 +169,7 @@ const translation = {
     github: 'GitHub',
     support: 'Hỗ trợ',
     contactUs: 'Liên hệ với chúng tôi',
+    forum: 'Diễn đàn',
   },
   settings: {
     accountGroup: 'TÀI KHOẢN',
@@ -725,6 +726,7 @@ const translation = {
     pasteFileLinkInvalid: 'Liên kết tệp không hợp lệ',
     uploadFromComputerUploadError: 'Tải lên tệp không thành công, vui lòng tải lên lại.',
     uploadFromComputerReadError: 'Đọc tệp không thành công, vui lòng thử lại.',
+    fileExtensionBlocked: 'Loại tệp này bị chặn vì lý do bảo mật',
   },
   license: {
     expiring_plural: 'Hết hạn sau {{count}} ngày',

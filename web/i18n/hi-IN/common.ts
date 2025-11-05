@@ -178,6 +178,7 @@ const translation = {
     github: 'गिटहब',
     support: 'समर्थन',
     contactUs: 'संपर्क करें',
+    forum: 'फोरम',
   },
   settings: {
     accountGroup: 'खाता',
@@ -747,6 +748,7 @@ const translation = {
     pasteFileLink: 'फ़ाइल लिंक पेस्ट करें',
     fileExtensionNotSupport: 'फ़ाइल एक्सटेंशन समर्थित नहीं है',
     uploadFromComputer: 'स्थानीय अपलोड',
+    fileExtensionBlocked: 'सुरक्षा कारणों से इस फ़ाइल प्रकार को अवरुद्ध कर दिया गया है',
   },
   license: {
     expiring: 'एक दिन में समाप्त हो रहा है',

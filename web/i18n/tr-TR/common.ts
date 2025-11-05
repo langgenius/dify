@@ -173,6 +173,7 @@ const translation = {
     compliance: 'Uygunluk',
     github: 'GitHub',
     contactUs: 'Bize Ulaşın',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'HESAP',
@@ -725,6 +726,7 @@ const translation = {
     pasteFileLinkInputPlaceholder: 'URL\'yi giriniz...',
     pasteFileLinkInvalid: 'Geçersiz dosya bağlantısı',
     fileExtensionNotSupport: 'Dosya uzantısı desteklenmiyor',
+    fileExtensionBlocked: 'Bu dosya türü güvenlik nedenleriyle engellenmiştir',
   },
   license: {
     expiring_plural: '{{count}} gün içinde sona eriyor',
