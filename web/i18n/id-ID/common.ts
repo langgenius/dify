@@ -163,7 +163,6 @@ const translation = {
     helpCenter: 'Docs',
     compliance: 'Kepatuhan',
     community: 'Masyarakat',
-    communityFeedback: 'Umpan balik',
     roadmap: 'Peta jalan',
     logout: 'Keluar',
     settings: 'Pengaturan',
@@ -173,6 +172,7 @@ const translation = {
     workspace: 'Workspace',
     createWorkspace: 'Membuat Ruang Kerja',
     contactUs: 'Hubungi Kami',
+    forum: 'Forum',
   },
   compliance: {
     soc2Type2: 'Laporan SOC 2 Tipe II',
@@ -701,6 +701,7 @@ const translation = {
     pasteFileLinkInvalid: 'Tautan file tidak valid',
     pasteFileLinkInputPlaceholder: 'Masukkan URL...',
     uploadFromComputerReadError: 'Pembacaan file gagal, silakan coba lagi.',
+    fileExtensionBlocked: 'Tipe file ini diblokir karena alasan keamanan',
   },
   tag: {
     noTag: 'Tidak ada tag',
