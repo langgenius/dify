@@ -67,6 +67,7 @@ const translation = {
       quarterToDate: '四半期初から今日まで',
       yearToDate: '年初から今日まで',
       allTime: 'すべての期間',
+      custom: 'カスタム',
     },
     annotation: {
       all: 'すべて',

@@ -36,6 +36,7 @@ const DatePicker = ({
   renderTrigger,
   triggerWrapClassName,
   popupZIndexClassname = 'z-[11]',
+  getIsDateDisabled,
 }: DatePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -270,6 +271,7 @@ const DatePicker = ({
                 days={days}
                 selectedDate={selectedDate}
                 onDateClick={handleDateSelect}
+                getIsDateDisabled={getIsDateDisabled}
               />
             ) : view === ViewType.yearMonth ? (
               <YearAndMonthPickerOptions
