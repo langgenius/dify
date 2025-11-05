@@ -34,6 +34,9 @@ export const useWorkflowComment = () => {
   const setCommentDetailCache = useStore(s => s.setCommentDetailCache)
   const rightPanelWidth = useStore(s => s.rightPanelWidth)
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
+  const mentionableUsers = useStore(state => (
+    appId ? state.mentionableUsersCache[appId] ?? [] : []
+  ))
   const { userProfile } = useAppContext()
   const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
   const commentDetailCacheRef = useRef<Record<string, WorkflowCommentDetail>>(commentDetailCache)
@@ -128,6 +131,23 @@ export const useWorkflowComment = () => {
         email: userProfile?.email ?? '',
         avatar_url: userProfile?.avatar_url || userProfile?.avatar || undefined,
       }
+      const mentionedUsers = mentionedUserIds
+        .map(mentionedId => mentionableUsers.find(user => user.id === mentionedId))
+        .filter((user): user is NonNullable<typeof user> => Boolean(user))
+      const uniqueParticipantsMap = new Map<string, typeof createdByAccount>()
+      if (createdByAccount.id)
+        uniqueParticipantsMap.set(createdByAccount.id, createdByAccount)
+      for (const user of mentionedUsers) {
+        if (!uniqueParticipantsMap.has(user.id)) {
+          uniqueParticipantsMap.set(user.id, {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            avatar_url: user.avatar_url,
+          })
+        }
+      }
+      const participants = Array.from(uniqueParticipantsMap.values())
 
       const composedComment: WorkflowCommentList = {
         id: newComment.id,
@@ -141,7 +161,7 @@ export const useWorkflowComment = () => {
         resolved: false,
         mention_count: mentionedUserIds.length,
         reply_count: 0,
-        participants: createdByAccount.id ? [createdByAccount] : [],
+        participants,
       }
 
       const composedDetail: WorkflowCommentDetail = {
@@ -157,7 +177,7 @@ export const useWorkflowComment = () => {
         replies: [],
         mentions: mentionedUserIds.map(mentionedId => ({
           mentioned_user_id: mentionedId,
-          mentioned_user_account: null,
+          mentioned_user_account: mentionableUsers.find(user => user.id === mentionedId) ?? null,
           reply_id: null,
         })),
       }
@@ -177,7 +197,7 @@ export const useWorkflowComment = () => {
       console.error('Failed to create comment:', error)
       setPendingComment(null)
     }
-  }, [appId, pendingComment, setPendingComment, reactflow, comments, setComments, userProfile, setCommentDetailCache])
+  }, [appId, pendingComment, setPendingComment, reactflow, comments, setComments, userProfile, setCommentDetailCache, mentionableUsers])
 
   const handleCommentCancel = useCallback(() => {
     setPendingComment(null)
