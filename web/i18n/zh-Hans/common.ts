@@ -176,12 +176,13 @@ const translation = {
     helpCenter: '帮助文档',
     support: '支持',
     compliance: '合规',
-    communityFeedback: '用户反馈',
+    forum: '论坛',
     roadmap: '路线图',
     github: 'GitHub',
     community: '社区',
     about: '关于',
     logout: '登出',
+    contactUs: '联系我们',
   },
   compliance: {
     soc2Type1: 'SOC 2 Type I Report',
@@ -727,6 +728,7 @@ const translation = {
     uploadFromComputerLimit: '上传 {{type}} 不能超过 {{size}}',
     pasteFileLinkInvalid: '文件链接无效',
     fileExtensionNotSupport: '文件类型不支持',
+    fileExtensionBlocked: '出于安全考虑，该文件类型已被禁止上传',
   },
   tag: {
     placeholder: '全部标签',

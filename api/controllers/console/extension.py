@@ -66,13 +66,7 @@ class APIBasedExtensionAPI(Resource):
     @account_initialization_required
     @marshal_with(api_based_extension_fields)
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("name", type=str, required=True, location="json")
-            .add_argument("api_endpoint", type=str, required=True, location="json")
-            .add_argument("api_key", type=str, required=True, location="json")
-        )
-        args = parser.parse_args()
+        args = api.payload
         _, current_tenant_id = current_account_with_tenant()
 
         extension_data = APIBasedExtension(
@@ -125,13 +119,7 @@ class APIBasedExtensionDetailAPI(Resource):
 
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("name", type=str, required=True, location="json")
-            .add_argument("api_endpoint", type=str, required=True, location="json")
-            .add_argument("api_key", type=str, required=True, location="json")
-        )
-        args = parser.parse_args()
+        args = api.payload
 
         extension_data_from_db.name = args["name"]
         extension_data_from_db.api_endpoint = args["api_endpoint"]
