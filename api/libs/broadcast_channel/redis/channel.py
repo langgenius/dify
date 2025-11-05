@@ -99,7 +99,7 @@ class _RedisSubscription(Subscription):
 
     def _listen(self) -> None:
         pubsub = self._pubsub
-        assert pubsub is not None, "PubSub shouold not be None while starting listening."
+        assert pubsub is not None, "PubSub should not be None while starting listening."
         while not self._closed.is_set():
             raw_message = pubsub.get_message(ignore_subscribe_messages=True, timeout=0.1)
 
