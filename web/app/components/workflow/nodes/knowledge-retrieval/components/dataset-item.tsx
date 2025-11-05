@@ -15,6 +15,8 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import AppIcon from '@/app/components/base/app-icon'
+import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
+import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type Props = {
   payload: DataSet
@@ -96,6 +98,11 @@ const DatasetItem: FC<Props> = ({
           >
             <RiDeleteBinLine className={`h-4 w-4 shrink-0 ${isDeleteHovered ? 'text-text-destructive' : 'text-text-tertiary'}`} />
           </ActionButton>
+        </div>
+      )}
+      {payload.is_multimodal && (
+        <div className='mr-1 shrink-0 group-hover/dataset-item:hidden'>
+          <FeatureIcon feature={ModelFeatureEnum.vision} />
         </div>
       )}
       {

@@ -511,6 +511,7 @@ const translation = {
         icon: '分段图标',
         url: '分段链接',
         metadata: '其他元数据',
+        files: '召回的文件',
       },
       metadata: {
         title: '元数据过滤',

@@ -180,6 +180,11 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                   type: 'object',
                   description: t(`${i18nPrefix}.outputVars.metadata`),
                 },
+                {
+                  name: 'files',
+                  type: 'Array[File]',
+                  description: t(`${i18nPrefix}.outputVars.files`),
+                },
               ]}
             />
 

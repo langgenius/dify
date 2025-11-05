@@ -1,18 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef, useState } from 'react'
-import { useGetState, useInfiniteScroll } from 'ahooks'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import Modal from '@/app/components/base/modal'
 import type { DataSet } from '@/models/datasets'
 import Button from '@/app/components/base/button'
-import { fetchDatasets } from '@/service/datasets'
 import Loading from '@/app/components/base/loading'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import cn from '@/utils/classnames'
 import AppIcon from '@/app/components/base/app-icon'
+import { useDatasetList } from '@/service/knowledge/use-dataset'
 
 export type ISelectDataSetProps = {
   isShow: boolean
@@ -28,49 +27,49 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const [selected, setSelected] = React.useState<DataSet[]>([])
-  const [loaded, setLoaded] = React.useState(false)
-  const [datasets, setDataSets] = React.useState<DataSet[] | null>(null)
-  const [hasInitialized, setHasInitialized] = React.useState(false)
-  const hasNoData = !datasets || datasets?.length === 0
-  const canSelectMulti = true
+  const [selected, setSelected] = useState<DataSet[]>([])
+  const canSelectMulti = useRef(true)
+  const anchorRef = useRef<HTMLDivElement>(null)
+  const observerRef = useRef<IntersectionObserver>(null)
 
-  const listRef = useRef<HTMLDivElement>(null)
-  const [page, setPage, getPage] = useGetState(1)
-  const [isNoMore, setIsNoMore] = useState(false)
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
 
-  useInfiniteScroll(
-    async () => {
-      if (!isNoMore) {
-        const { data, has_more } = await fetchDatasets({ url: '/datasets', params: { page } })
-        setPage(getPage() + 1)
-        setIsNoMore(!has_more)
-        const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique || item.provider === 'external')]
-        setDataSets(newList)
-        setLoaded(true)
+  const {
+    data: datasetList,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isLoading,
+  } = useDatasetList({
+    initialPage: 1,
+    limit: 20,
+  })
 
-        // Initialize selected datasets based on selectedIds and available datasets
-        if (!hasInitialized) {
-          if (selectedIds.length > 0) {
-            const validSelectedDatasets = selectedIds
-              .map(id => newList.find(item => item.id === id))
-              .filter(Boolean) as DataSet[]
-            setSelected(validSelectedDatasets)
-          }
-          setHasInitialized(true)
-        }
-      }
-      return { list: [] }
-    },
-    {
-      target: listRef,
-      isNoMore: () => {
-        return isNoMore
-      },
-      reloadDeps: [isNoMore],
-    },
-  )
+  const allDatasets = useMemo(() => {
+    return datasetList?.pages.flatMap(({ data: datasets }) => datasets) || []
+  }, [datasetList])
+  const hasNoData = allDatasets.length === 0
+
+  // Set selected datasets based on selectedIds after initial loading
+  useEffect(() => {
+    if (!isLoading && selectedIds.length > 0) {
+      const newSelected = allDatasets.filter(item => selectedIds.includes(item.id))
+      setSelected(newSelected)
+    }
+  }, [isLoading])
+
+  useEffect(() => {
+    if (anchorRef.current) {
+      observerRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetching)
+          fetchNextPage()
+      }, {
+        rootMargin: '100px',
+      })
+      observerRef.current.observe(anchorRef.current)
+    }
+    return () => observerRef.current?.disconnect()
+  }, [anchorRef, hasNextPage, isFetching, fetchNextPage])
 
   const toggleSelect = (dataSet: DataSet) => {
     const isSelected = selected.some(item => item.id === dataSet.id)
@@ -78,7 +77,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       setSelected(selected.filter(item => item.id !== dataSet.id))
     }
     else {
-      if (canSelectMulti)
+      if (canSelectMulti.current)
         setSelected([...selected, dataSet])
       else
         setSelected([dataSet])
@@ -96,13 +95,13 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       className='w-[400px]'
       title={t('appDebug.feature.dataSet.selectTitle')}
     >
-      {!loaded && (
+      {isLoading && (
         <div className='flex h-[200px]'>
           <Loading type='area' />
         </div>
       )}
 
-      {(loaded && hasNoData) && (
+      {(!isLoading && hasNoData) && (
         <div className='mt-6 flex h-[128px] items-center justify-center space-x-1  rounded-lg border text-[13px]'
           style={{
             background: 'rgba(0, 0, 0, 0.02)',
@@ -114,10 +113,10 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         </div>
       )}
 
-      {datasets && datasets?.length > 0 && (
+      {(!isLoading && !hasNoData) && (
         <>
-          <div ref={listRef} className='mt-7 max-h-[286px] space-y-1 overflow-y-auto'>
-            {datasets.map(item => (
+          <div className='mt-7 max-h-[286px] space-y-1 overflow-y-auto'>
+            {allDatasets.map(item => (
               <div
                 key={item.id}
                 className={cn(
@@ -161,10 +160,11 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                 }
               </div>
             ))}
+            <div ref={anchorRef} className='h-0' />
           </div>
         </>
       )}
-      {loaded && (
+      {!isLoading && (
         <div className='mt-8 flex items-center justify-between'>
           <div className='text-sm  font-medium text-text-secondary'>
             {selected.length > 0 && `${selected.length} ${t('appDebug.feature.dataSet.selected')}`}

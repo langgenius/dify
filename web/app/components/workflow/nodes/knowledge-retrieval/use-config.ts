@@ -285,6 +285,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     return varPayload.type === VarType.string
   }, [])
 
+  const filterNumberVar = useCallback((varPayload: Var) => {
+    return varPayload.type === VarType.number
+  }, [])
+
   const filterFileVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.file
   }, [])
@@ -372,21 +376,13 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
-  const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.string].includes(varPayload.type)
-  }, [])
-
   const {
     availableVars: availableStringVars,
     availableNodesWithParent: availableStringNodesWithParent,
   } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
-    filterVar,
+    filterVar: filterStringVar,
   })
-
-  const filterNumberVar = useCallback((varPayload: Var) => {
-    return [VarType.number].includes(varPayload.type)
-  }, [])
 
   const {
     availableVars: availableNumberVars,

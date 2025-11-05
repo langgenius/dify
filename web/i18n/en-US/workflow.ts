@@ -511,6 +511,7 @@ const translation = {
         icon: 'Segmented icon',
         url: 'Segmented URL',
         metadata: 'Other metadata',
+        files: 'Retrieved files',
       },
       metadata: {
         title: 'Metadata Filtering',
