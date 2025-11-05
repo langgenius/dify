@@ -67,7 +67,7 @@ class _RedisSubscription(Subscription):
         pubsub: PubSub,
         topic: str,
     ):
-        # The _pubsub is Noen only if the subscription is closed.
+        # The _pubsub is None only if the subscription is closed.
         self._pubsub: PubSub | None = pubsub
         self._topic = topic
         self._closed = threading.Event()
