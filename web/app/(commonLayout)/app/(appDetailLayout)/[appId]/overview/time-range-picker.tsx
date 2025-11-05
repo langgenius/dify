@@ -4,13 +4,17 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { SimpleSelect } from '@/app/components/base/select'
 import type { Item } from '@/app/components/base/select'
+import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import { HourglassShape } from '@/app/components/base/icons/src/vender/other'
-import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import { noop } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
-import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiCalendarLine, RiCheckLine } from '@remixicon/react'
+import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
+import 'dayjs/locale/zh-cn'
+import { formatToLocalTime } from '@/utils/format'
+import { useI18N } from '@/context/i18n'
 
 const today = dayjs()
 
@@ -68,6 +72,17 @@ const TimeRangePicker: FC<Props> = ({
     }
     onSelect({ query: period!, name })
   }, [onSelect])
+
+  const { locale } = useI18N()
+
+  const renderDate = useCallback(({ value, handleClickTrigger, isOpen }: { value?: Dayjs, handleClickTrigger: () => void, isOpen: boolean }) => {
+    return (
+      <div className={cn('system-sm-regular flex h-7 cursor-pointer items-center rounded-lg px-1 text-components-input-text-filled hover:bg-state-base-hover', isOpen && 'bg-state-base-hover')} onClick={handleClickTrigger}>
+        {value ? formatToLocalTime(value, locale, 'MMM D') : ''}
+      </div>
+    )
+  }, [locale])
+
   return (
     <div className='flex items-center'>
       <SimpleSelect
@@ -83,10 +98,23 @@ const TimeRangePicker: FC<Props> = ({
         renderOption={renderOption}
       />
       <HourglassShape className='h-3.5 w-2 text-components-input-bg-normal' />
-      <TimePicker
-        value={today}
-        onChange={noop}
-      />
+      <div className='flex h-8 items-center space-x-0.5 rounded-lg bg-components-input-bg-normal px-2'>
+        <RiCalendarLine className='size-3.5 text-text-tertiary' />
+        <DatePicker
+          value={today}
+          onChange={noop}
+          renderTrigger={renderDate}
+          needTimePicker={false}
+        />
+        <span className='system-sm-regular text-text-tertiary'>-</span>
+        <DatePicker
+          value={today}
+          onChange={noop}
+          renderTrigger={renderDate}
+          needTimePicker={false}
+        />
+      </div>
+
     </div>
   )
 }
