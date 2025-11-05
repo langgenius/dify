@@ -25,6 +25,5 @@ class HitTestingApi(DatasetApiResource, DatasetsHitTestingBase):
 
         dataset = self.get_and_validate_dataset(dataset_id_str)
         args = self.parse_args()
-        self.hit_testing_args_check(args)
 
         return self.perform_hit_testing(dataset, args)
