@@ -255,7 +255,6 @@ const translation = {
   variableTable: {
     key: '變數 Key',
     name: '欄位名稱',
-    optional: '可選',
     type: '型別',
     action: '操作',
     typeString: '文字',
@@ -390,7 +389,7 @@ const translation = {
     writeOpener: '編寫開場白',
     placeholder: '在這裡寫下你的開場白，你可以使用變數，嘗試輸入 {{variable}}。',
     openingQuestion: '開場問題',
-    openingQuestionPlaceholder: '可以使用變量，嘗試輸入 {{variable}}。',
+    openingQuestionPlaceholder: '可以使用變數，嘗試輸入 {{variable}}。',
     noDataPlaceHolder:
       '在對話型應用中，讓 AI 主動說第一段話可以拉近與使用者間的距離。',
     varTip: '你可以使用變數，試試輸入 {{variable}}',
@@ -420,14 +419,14 @@ const translation = {
   },
   result: '結果',
   datasetConfig: {
-    settingTitle: '召回設定',
+    settingTitle: '檢索設定',
     knowledgeTip: '點選“+”按鈕新增知識庫',
     retrieveOneWay: {
-      title: 'N 選 1 召回',
+      title: 'N 選 1 檢索',
       description: '根據使用者意圖和知識庫描述，由 Agent 自主判斷選擇最匹配的單個知識庫來查詢相關文字，適合知識庫區分度大且知識庫數量偏少的應用。',
     },
     retrieveMultiWay: {
-      title: '多路召回',
+      title: '多路檢索',
       description: '根據使用者意圖同時匹配所有知識庫，從多路知識庫查詢相關文字片段，經過重排序步驟，從多路查詢結果中選擇匹配使用者問題的最佳結果，需配置 Rerank 模型 API。',
     },
     rerankModelRequired: '請選擇 Rerank 模型',
@@ -480,25 +479,25 @@ const translation = {
     },
   },
   codegen: {
-    resTitle: '生成的代碼',
+    resTitle: '生成的程式碼',
     apply: '應用',
-    overwriteConfirmMessage: '此作將覆蓋現有代碼。你想繼續嗎？',
+    overwriteConfirmMessage: '此作將覆蓋現有程式碼。你想繼續嗎？',
     instruction: '指示',
-    instructionPlaceholder: '輸入要生成的代碼的詳細說明。',
+    instructionPlaceholder: '輸入要生成的程式碼的詳細說明。',
     generate: '生成',
-    noDataLine2: '代碼預覽將在此處顯示。',
+    noDataLine2: '程式碼預覽將在此處顯示。',
     applyChanges: '應用更改',
     noDataLine1: '在左側描述您的用例，',
-    overwriteConfirmTitle: '覆蓋現有代碼？',
-    title: '代碼生成器',
-    generatedCodeTitle: '生成的代碼',
-    loading: '產生代碼...',
-    description: '代碼生成器使用配置的模型根據您的指令生成高質量的代碼。請提供清晰詳細的說明。',
+    overwriteConfirmTitle: '覆蓋現有程式碼？',
+    title: '程式碼生成器',
+    generatedCodeTitle: '生成的程式碼',
+    loading: '產生程式碼...',
+    description: '程式碼生成器使用配置的模型根據您的指令生成高品質的程式碼。請提供清晰詳細的說明。',
   },
   generate: {
     template: {
       pythonDebugger: {
-        instruction: '可以根據您的指令生成和調試代碼的機器人',
+        instruction: '可以根據您的指令生成和調試程式碼的機器人',
         name: 'Python 調試器',
       },
       translation: {
@@ -561,7 +560,7 @@ const translation = {
     idealOutputPlaceholder: '描述您理想的回應格式、長度、語調和內容要求...',
     press: '新聞稿',
     newNoDataLine1: '在左側列寫入指示，然後點擊生成以查看回應.',
-    codeGenInstructionPlaceHolderLine: '反饋越詳細，例如輸入和輸出的數據類型以及變量的處理方式，代碼生成就會越準確。',
+    codeGenInstructionPlaceHolderLine: '反饋越詳細，例如輸入和輸出的數據類型以及變數的處理方式，程式碼生成就會越準確。',
   },
   warningMessage: {
     timeoutExceeded: '由於超時，不顯示結果。請參閱日誌以收集完整結果。',

@@ -259,7 +259,6 @@ const translation = {
   variableTable: {
     key: 'Variablenschlüssel',
     name: 'Name des Benutzereingabefelds',
-    optional: 'Optional',
     type: 'Eingabetyp',
     action: 'Aktionen',
     typeString: 'String',
