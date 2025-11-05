@@ -86,7 +86,7 @@ class Producer(Protocol):
 class Subscriber(Protocol):
     """Subscriber is an interface for subscription creation. It is already bound to a specific topic.
 
-    `Producer` implementations must be thread-safe and support concurrent use by multiple threads.
+    `Subscriber` implementations must be thread-safe and support concurrent use by multiple threads.
     """
 
     @abstractmethod
