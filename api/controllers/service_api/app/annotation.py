@@ -3,7 +3,7 @@ from typing import Literal
 from flask import request
 from flask_restx import Api, Namespace, Resource, fields, reqparse
 from flask_restx.api import HTTPStatus
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_app_token
@@ -73,13 +73,14 @@ class AnnotationReplyActionStatusApi(Resource):
         app_annotation_job_key = f"{action}_app_annotation_job_{str(job_id)}"
         cache_result = redis_client.get(app_annotation_job_key)
         if cache_result is None:
-            raise ValueError("The job does not exist.")
+            raise NotFound("The job does not exist.")
 
         job_status = cache_result.decode()
         error_msg = ""
         if job_status == "error":
             app_annotation_error_key = f"{action}_app_annotation_error_{str(job_id)}"
-            error_msg = redis_client.get(app_annotation_error_key).decode()
+            error_result = redis_client.get(app_annotation_error_key)
+            error_msg = error_result.decode() if error_result else ""
 
         return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
 
