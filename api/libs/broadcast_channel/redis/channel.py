@@ -190,7 +190,7 @@ class _RedisSubscription(Subscription):
 
         self._closed.set()
         # NOTE: PubSub is not thread-safe. More specifically, the `PubSub.close` method and the `PubSub.get_message`
-        # method should be called concurrently.
+        # method should NOT be called concurrently.
         #
         # Due to the restriction above, the PubSub cleanup logic happens inside the consumer thread.
         listener = self._listener_thread
