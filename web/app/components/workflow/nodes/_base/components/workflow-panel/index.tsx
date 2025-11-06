@@ -75,7 +75,6 @@ import { DataSourceClassification } from '@/app/components/workflow/nodes/data-s
 import { useModalContext } from '@/context/modal-context'
 import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { useAllBuiltInTools } from '@/service/use-tools'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useAppContext } from '@/context/app-context'
