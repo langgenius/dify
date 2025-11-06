@@ -584,7 +584,7 @@ class WorkflowVariableTruncationConfig(BaseSettings):
     )
     WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH: PositiveInt = Field(
         100000,
-        description="maximum length for string to trigger tuncation, measure in number of characters",
+        description="maximum length for string to trigger truncation, measure in number of characters",
     )
     WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH: PositiveInt = Field(
         1000,

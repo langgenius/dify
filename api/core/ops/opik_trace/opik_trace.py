@@ -38,7 +38,7 @@ def wrap_dict(key_name, data):
 
 
 def wrap_metadata(metadata, **kwargs):
-    """Add common metatada to all Traces and Spans"""
+    """Add common metadata to all Traces and Spans"""
     metadata["created_from"] = "dify"
 
     metadata.update(kwargs)

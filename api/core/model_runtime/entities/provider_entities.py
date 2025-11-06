@@ -9,7 +9,7 @@ from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 
 class ConfigurateMethod(StrEnum):
     """
-    Enum class for configurate method of provider model.
+    Enum class for configure method of provider model.
     """
 
     PREDEFINED_MODEL = "predefined-model"
