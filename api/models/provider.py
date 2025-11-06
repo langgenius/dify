@@ -1,4 +1,3 @@
-from models.base import TypeBase
 from datetime import datetime
 from enum import StrEnum, auto
 from functools import cached_property
@@ -6,6 +5,8 @@ from functools import cached_property
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
+
+from models.base import TypeBase
 
 from .base import Base
 from .engine import db
@@ -72,8 +73,12 @@ class Provider(TypeBase):
     quota_limit: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True, default=None)
     quota_used: Mapped[int | None] = mapped_column(sa.BigInteger, default=0)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     def __repr__(self):
         return (
