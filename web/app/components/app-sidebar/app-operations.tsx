@@ -124,7 +124,7 @@ const AppOperations = ({ operations, gap }: {
               <span className='system-xs-medium text-components-button-secondary-text'>{t('common.operation.more')}</span>
             </Button>
           </PortalToFollowElemTrigger>
-          <PortalToFollowElemContent className='z-[21]'>
+          <PortalToFollowElemContent className='z-[30]'>
             <div className='flex min-w-[264px] flex-col rounded-[12px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'>
               {moreOperations.map(item => <div
                 key={item.id}
