@@ -229,12 +229,38 @@ export type AnnotationsCountResponse = {
   count: number
 }
 
+export enum WorkflowRunTriggeredFrom {
+  DEBUGGING = 'debugging',
+  APP_RUN = 'app-run',
+  RAG_PIPELINE_RUN = 'rag-pipeline-run',
+  RAG_PIPELINE_DEBUGGING = 'rag-pipeline-debugging',
+  WEBHOOK = 'webhook',
+  SCHEDULE = 'schedule',
+  PLUGIN = 'plugin',
+}
+
+export type TriggerMetadata = {
+  type?: string
+  endpoint_id?: string
+  plugin_unique_identifier?: string
+  provider_id?: string
+  event_name?: string
+  icon_filename?: string
+  icon_dark_filename?: string
+  icon?: string | null
+  icon_dark?: string | null
+}
+
+export type WorkflowLogDetails = {
+  trigger_metadata?: TriggerMetadata
+}
+
 export type WorkflowRunDetail = {
   id: string
   version: string
   status: 'running' | 'succeeded' | 'failed' | 'stopped'
   error?: string
-  triggered_from?: string
+  triggered_from?: WorkflowRunTriggeredFrom
   elapsed_time: number
   total_tokens: number
   total_price: number
@@ -256,6 +282,7 @@ export type EndUserInfo = {
 export type WorkflowAppLogDetail = {
   id: string
   workflow_run: WorkflowRunDetail
+  details?: WorkflowLogDetails
   created_from: 'service-api' | 'web-app' | 'explore'
   created_by_role: 'account' | 'end_user'
   created_by_account?: AccountInfo

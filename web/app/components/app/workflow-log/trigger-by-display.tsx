@@ -11,15 +11,23 @@ import {
 } from '@/app/components/base/icons/src/vender/workflow'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
+import useTheme from '@/hooks/use-theme'
+import type { TriggerMetadata } from '@/models/log'
+import { WorkflowRunTriggeredFrom } from '@/models/log'
+import { Theme } from '@/types/app'
 
 type TriggerByDisplayProps = {
-  triggeredFrom: string
+  triggeredFrom: WorkflowRunTriggeredFrom
   className?: string
   showText?: boolean
+  triggerMetadata?: TriggerMetadata
 }
 
-const getTriggerDisplayName = (triggeredFrom: string, t: any) => {
-  const nameMap: Record<string, string> = {
+const getTriggerDisplayName = (triggeredFrom: WorkflowRunTriggeredFrom, t: any, metadata?: TriggerMetadata) => {
+  if (triggeredFrom === WorkflowRunTriggeredFrom.PLUGIN && metadata?.event_name)
+    return metadata.event_name
+
+  const nameMap: Record<WorkflowRunTriggeredFrom, string> = {
     'debugging': t('appLog.triggerBy.debugging'),
     'app-run': t('appLog.triggerBy.appRun'),
     'webhook': t('appLog.triggerBy.webhook'),
@@ -32,7 +40,27 @@ const getTriggerDisplayName = (triggeredFrom: string, t: any) => {
   return nameMap[triggeredFrom] || triggeredFrom
 }
 
-const getTriggerIcon = (triggeredFrom: string) => {
+const getPluginIcon = (metadata: TriggerMetadata | undefined, theme: Theme) => {
+  if (!metadata)
+    return null
+
+  const icon = theme === Theme.dark
+    ? metadata.icon_dark || metadata.icon
+    : metadata.icon || metadata.icon_dark
+
+  if (!icon)
+    return null
+
+  return (
+    <BlockIcon
+      type={BlockEnum.TriggerPlugin}
+      size='md'
+      toolIcon={icon}
+    />
+  )
+}
+
+const getTriggerIcon = (triggeredFrom: WorkflowRunTriggeredFrom, metadata: TriggerMetadata | undefined, theme: Theme) => {
   switch (triggeredFrom) {
     case 'webhook':
       return (
@@ -47,9 +75,7 @@ const getTriggerIcon = (triggeredFrom: string) => {
         </div>
       )
     case 'plugin':
-      // For plugin triggers in logs, use a generic plugin icon since we don't have specific plugin info
-      // This matches the standard BlockIcon styling for TriggerPlugin
-      return (
+      return getPluginIcon(metadata, theme) || (
         <BlockIcon
           type={BlockEnum.TriggerPlugin}
           size="md"
@@ -83,11 +109,13 @@ const TriggerByDisplay: FC<TriggerByDisplayProps> = ({
   triggeredFrom,
   className = '',
   showText = true,
+  triggerMetadata,
 }) => {
   const { t } = useTranslation()
+  const { theme } = useTheme()
 
-  const displayName = getTriggerDisplayName(triggeredFrom, t)
-  const icon = getTriggerIcon(triggeredFrom)
+  const displayName = getTriggerDisplayName(triggeredFrom, t, triggerMetadata)
+  const icon = getTriggerIcon(triggeredFrom, triggerMetadata, theme)
 
   return (
     <div className={`flex items-center gap-1.5 ${className}`}>

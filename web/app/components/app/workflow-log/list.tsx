@@ -13,6 +13,7 @@ import Indicator from '@/app/components/header/indicator'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import cn from '@/utils/classnames'
+import type { WorkflowRunTriggeredFrom } from '@/models/log'
 
 type ILogs = {
   logs?: WorkflowLogsResponse
@@ -162,7 +163,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
               </td>
               {isWorkflow && (
                 <td className='p-3 pr-2'>
-                  <TriggerByDisplay triggeredFrom={log.workflow_run.triggered_from || 'app-run'} />
+                  <TriggerByDisplay triggeredFrom={log.workflow_run.triggered_from as WorkflowRunTriggeredFrom} triggerMetadata={log.details?.trigger_metadata} />
                 </td>
               )}
             </tr>
