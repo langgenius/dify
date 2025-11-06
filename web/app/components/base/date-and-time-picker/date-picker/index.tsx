@@ -36,6 +36,7 @@ const DatePicker = ({
   renderTrigger,
   triggerWrapClassName,
   popupZIndexClassname = 'z-[11]',
+  noConfirm,
   getIsDateDisabled,
 }: DatePickerProps) => {
   const { t } = useTranslation()
@@ -121,23 +122,26 @@ const DatePicker = ({
     setCurrentDate(currentDate.clone().subtract(1, 'month'))
   }, [currentDate])
 
+  const handleConfirmDate = (passedInSelectedDate?: Dayjs) => {
+    // passedInSelectedDate may be a click event when noConfirm is false
+    const nextDate = (dayjs.isDayjs(passedInSelectedDate) ? passedInSelectedDate : selectedDate)
+    onChange(nextDate ? nextDate.tz(timezone) : undefined)
+    setIsOpen(false)
+  }
+
   const handleDateSelect = useCallback((day: Dayjs) => {
     const newDate = cloneTime(day, selectedDate || getDateWithTimezone({ timezone }))
     setCurrentDate(newDate)
     setSelectedDate(newDate)
-  }, [selectedDate, timezone])
+    if (noConfirm)
+      handleConfirmDate(newDate)
+  }, [selectedDate, timezone, noConfirm, handleConfirmDate])
 
   const handleSelectCurrentDate = () => {
     const newDate = getDateWithTimezone({ timezone })
     setCurrentDate(newDate)
     setSelectedDate(newDate)
     onChange(newDate)
-    setIsOpen(false)
-  }
-
-  const handleConfirmDate = () => {
-    // debugger
-    onChange(selectedDate ? selectedDate.tz(timezone) : undefined)
     setIsOpen(false)
   }
 
@@ -292,7 +296,7 @@ const DatePicker = ({
 
           {/* Footer */}
           {
-            [ViewType.date, ViewType.time].includes(view) ? (
+            [ViewType.date, ViewType.time].includes(view) && !noConfirm && (
               <DatePickerFooter
                 needTimePicker={needTimePicker}
                 displayTime={displayTime}
@@ -301,7 +305,10 @@ const DatePicker = ({
                 handleSelectCurrentDate={handleSelectCurrentDate}
                 handleConfirmDate={handleConfirmDate}
               />
-            ) : (
+            )
+          }
+          {
+            ![ViewType.date, ViewType.time].includes(view) && (
               <YearAndMonthPickerFooter
                 handleYearMonthCancel={handleYearMonthCancel}
                 handleYearMonthConfirm={handleYearMonthConfirm}
