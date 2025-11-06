@@ -7,6 +7,8 @@ import { HourglassShape } from '@/app/components/base/icons/src/vender/other'
 import RangeSelector from './range-selector'
 import DatePicker from './date-picker'
 import dayjs from 'dayjs'
+import { useI18N } from '@/context/i18n'
+import { formatToLocalTime } from '@/utils/format'
 
 const today = dayjs()
 
@@ -21,6 +23,8 @@ const TimeRangePicker: FC<Props> = ({
   onSelect,
   queryDateFormat,
 }) => {
+  const { locale } = useI18N()
+
   const [isCustomRange, setIsCustomRange] = useState(false)
   const [start, setStart] = useState<Dayjs>(today)
   const [end, setEnd] = useState<Dayjs>(today)
@@ -38,19 +42,29 @@ const TimeRangePicker: FC<Props> = ({
     })
   }, [onSelect])
 
-  const handleStartChange = useCallback((date?: Dayjs) => {
-    if (!date) return
-    setStart(date)
-    setIsCustomRange(true)
-    onSelect({ name: 'custom', query: { start: date.format(queryDateFormat), end: end.format(queryDateFormat) } })
-  }, [end, onSelect, queryDateFormat])
+  const handleDateChange = useCallback((type: 'start' | 'end') => {
+    return (date?: Dayjs) => {
+      if (!date) return
+      if (type === 'start' && date.isSame(start)) return
+      if (type === 'end' && date.isSame(end)) return
+      if (type === 'start')
+        setStart(date)
+      else
+        setEnd(date)
 
-  const handleEndChange = useCallback((date?: Dayjs) => {
-    if (!date) return
-    setEnd(date)
-    setIsCustomRange(true)
-    onSelect({ name: 'custom', query: { start: start.format(queryDateFormat), end: date.format(queryDateFormat) } })
-  }, [start, onSelect, queryDateFormat])
+      const currStart = type === 'start' ? date : start
+      const currEnd = type === 'end' ? date : end
+      onSelect({
+        name: `${formatToLocalTime(currStart, locale, 'MMM D')} - ${formatToLocalTime(currEnd, locale, 'MMM D')}`,
+        query: {
+          start: currStart.format(queryDateFormat),
+          end: currEnd.format(queryDateFormat),
+        },
+      })
+
+      setIsCustomRange(true)
+    }
+  }, [])
 
   return (
     <div className='flex items-center'>
@@ -63,8 +77,8 @@ const TimeRangePicker: FC<Props> = ({
       <DatePicker
         start={start}
         end={end}
-        onStartChange={handleStartChange}
-        onEndChange={handleEndChange}
+        onStartChange={handleDateChange('start')}
+        onEndChange={handleDateChange('end')}
       />
     </div>
   )
