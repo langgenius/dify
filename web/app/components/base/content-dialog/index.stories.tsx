@@ -5,7 +5,7 @@ import ContentDialog from '.'
 type Props = React.ComponentProps<typeof ContentDialog>
 
 const meta = {
-  title: 'Base/Dialog/ContentDialog',
+  title: 'Base/Feedback/ContentDialog',
   component: ContentDialog,
   parameters: {
     layout: 'fullscreen',
@@ -29,9 +29,14 @@ const meta = {
       control: false,
       description: 'Invoked when the overlay/backdrop is clicked.',
     },
+    children: {
+      control: false,
+      table: { disable: true },
+    },
   },
   args: {
     show: false,
+    children: null,
   },
 } satisfies Meta<typeof ContentDialog>
 
@@ -92,6 +97,9 @@ const DemoWrapper = (props: Props) => {
 }
 
 export const Default: Story = {
+  args: {
+    children: null,
+  },
   render: args => <DemoWrapper {...args} />,
 }
 
@@ -99,6 +107,7 @@ export const NarrowPanel: Story = {
   render: args => <DemoWrapper {...args} />,
   args: {
     className: 'max-w-[420px]',
+    children: null,
   },
   parameters: {
     docs: {

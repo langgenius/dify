@@ -2,6 +2,7 @@ from flask import request
 from flask_restx import marshal, reqparse
 from werkzeug.exceptions import NotFound
 
+from configs import dify_config
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.wraps import (
@@ -107,6 +108,10 @@ class SegmentApi(DatasetApiResource):
         # validate args
         args = segment_create_parser.parse_args()
         if args["segments"] is not None:
+            segments_limit = dify_config.DATASET_MAX_SEGMENTS_PER_REQUEST
+            if segments_limit > 0 and len(args["segments"]) > segments_limit:
+                raise ValueError(f"Exceeded maximum segments limit of {segments_limit}.")
+
             for args_item in args["segments"]:
                 SegmentService.segment_create_args_validate(args_item, document)
             segments = SegmentService.multi_create_segment(args["segments"], document, dataset)

@@ -18,8 +18,7 @@ import { LanguagesSupported } from '@/i18n-config/language'
 import { IS_CE_EDITION } from '@/config'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
-
-const FILES_NUMBER_LIMIT = 20
+import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
 
 type IFileUploaderProps = {
   fileList: FileItem[]
@@ -72,6 +71,7 @@ const FileUploader = ({
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
     file_size_limit: 15,
     batch_count_limit: 5,
+    file_upload_limit: 5,
   }, [fileUploadConfigResponse])
 
   const fileListRef = useRef<FileItem[]>([])
@@ -106,6 +106,8 @@ const FileUploader = ({
     return isValidType && isValidSize
   }, [fileUploadConfig, notify, t, ACCEPTS])
 
+  type UploadResult = Awaited<ReturnType<typeof upload>>
+
   const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     const formData = new FormData()
     formData.append('file', fileItem.file)
@@ -121,10 +123,10 @@ const FileUploader = ({
       data: formData,
       onprogress: onProgress,
     }, false, undefined, '?source=datasets')
-      .then((res: File) => {
+      .then((res) => {
         const completeFile = {
           fileID: fileItem.fileID,
-          file: res,
+          file: res as unknown as File,
           progress: -1,
         }
         const index = fileListRef.current.findIndex(item => item.fileID === fileItem.fileID)
@@ -133,7 +135,8 @@ const FileUploader = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        notify({ type: 'error', message: e?.response?.code === 'forbidden' ? e?.response?.message : t('datasetCreation.stepOne.uploader.failed') })
+        const errorMessage = getFileUploadErrorMessage(e, t('datasetCreation.stepOne.uploader.failed'), t)
+        notify({ type: 'error', message: errorMessage })
         onFileUpdate(fileItem, -2, fileListRef.current)
         return Promise.resolve({ ...fileItem })
       })
@@ -163,11 +166,12 @@ const FileUploader = ({
   }, [fileUploadConfig, uploadBatchFiles])
 
   const initialUpload = useCallback((files: File[]) => {
+    const filesCountLimit = fileUploadConfig.file_upload_limit
     if (!files.length)
       return false
 
-    if (files.length + fileList.length > FILES_NUMBER_LIMIT && !IS_CE_EDITION) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.filesNumber', { filesNumber: FILES_NUMBER_LIMIT }) })
+    if (files.length + fileList.length > filesCountLimit && !IS_CE_EDITION) {
+      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.filesNumber', { filesNumber: filesCountLimit }) })
       return false
     }
 
@@ -180,7 +184,7 @@ const FileUploader = ({
     prepareFileList(newFiles)
     fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
-  }, [prepareFileList, uploadMultipleFiles, notify, t, fileList])
+  }, [prepareFileList, uploadMultipleFiles, notify, t, fileList, fileUploadConfig])
 
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
@@ -255,10 +259,11 @@ const FileUploader = ({
       )
       let files = nested.flat()
       if (notSupportBatchUpload) files = files.slice(0, 1)
+      files = files.slice(0, fileUploadConfig.batch_count_limit)
       const valid = files.filter(isValid)
       initialUpload(valid)
     },
-    [initialUpload, isValid, notSupportBatchUpload, traverseFileEntry],
+    [initialUpload, isValid, notSupportBatchUpload, traverseFileEntry, fileUploadConfig],
   )
   const selectHandle = () => {
     if (fileUploader.current)
@@ -273,9 +278,10 @@ const FileUploader = ({
     onFileListUpdate?.([...fileListRef.current])
   }
   const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = [...(e.target.files ?? [])] as File[]
+    let files = [...(e.target.files ?? [])] as File[]
+    files = files.slice(0, fileUploadConfig.batch_count_limit)
     initialUpload(files.filter(isValid))
-  }, [isValid, initialUpload])
+  }, [isValid, initialUpload, fileUploadConfig])
 
   const { theme } = useTheme()
   const chartColor = useMemo(() => theme === Theme.dark ? '#5289ff' : '#296dff', [theme])
@@ -325,6 +331,7 @@ const FileUploader = ({
             size: fileUploadConfig.file_size_limit,
             supportTypes: supportTypesShowNames,
             batchCount: notSupportBatchUpload ? 1 : fileUploadConfig.batch_count_limit,
+            totalCount: fileUploadConfig.file_upload_limit,
           })}</div>
           {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
         </div>
