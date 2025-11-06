@@ -61,7 +61,7 @@ class Provider(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider_type: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default=text("'custom'::character varying"), default='custom'
+        String(40), nullable=False, server_default=text("'custom'::character varying"), default="custom"
     )
     is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"), default=False)
     last_used: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, init=False)
