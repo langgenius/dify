@@ -22,7 +22,7 @@ const FileThumbVariants = cva(
   },
 )
 
-type FileEntity = {
+export type FileEntity = {
   name: string
   size: number
   extension: string
