@@ -43,6 +43,7 @@ const DatePicker: FC<Props> = ({
         renderTrigger={renderDate}
         needTimePicker={false}
         onClear={noop}
+        noConfirm
       />
       <span className='system-sm-regular text-text-tertiary'>-</span>
       <Picker
@@ -51,6 +52,7 @@ const DatePicker: FC<Props> = ({
         renderTrigger={renderDate}
         needTimePicker={false}
         onClear={noop}
+        noConfirm
       />
     </div>
 

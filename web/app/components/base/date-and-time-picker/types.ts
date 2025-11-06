@@ -30,6 +30,7 @@ export type DatePickerProps = {
   renderTrigger?: (props: TriggerProps) => React.ReactNode
   minuteFilter?: (minutes: string[]) => string[]
   popupZIndexClassname?: string
+  noConfirm?: boolean
   getIsDateDisabled?: (date: Dayjs) => boolean
 }
 
