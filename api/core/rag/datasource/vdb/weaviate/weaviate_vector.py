@@ -392,7 +392,7 @@ class WeaviateVector(BaseVector):
 
 
 class WeaviateClientManager:
-    _default_instance: ClassVar[Optional[weaviate.WeaviateClient]] = None
+    _default_instance: ClassVar[weaviate.WeaviateClient | None] = None
     _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @classmethod
