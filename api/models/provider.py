@@ -77,7 +77,7 @@ class Provider(TypeBase):
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
 
     def __repr__(self):
