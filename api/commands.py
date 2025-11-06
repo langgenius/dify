@@ -1650,7 +1650,7 @@ def transform_datasource_credentials():
                             "integration_secret": api_key,
                         }
                         datasource_provider = DatasourceProvider(
-                            provider="jina",
+                            provider="jinareader",
                             tenant_id=tenant_id,
                             plugin_id=jina_plugin_id,
                             auth_type=api_key_credential_type.value,
