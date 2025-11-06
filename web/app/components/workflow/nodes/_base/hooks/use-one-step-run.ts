@@ -70,7 +70,7 @@ import {
 } from '@/service/use-tools'
 
 // eslint-disable-next-line ts/no-unsafe-function-type
-const checkValidFns: Record<BlockEnum, Function> = {
+const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.LLM]: checkLLMValid,
   [BlockEnum.KnowledgeRetrieval]: checkKnowledgeRetrievalValid,
   [BlockEnum.IfElse]: checkIfElseValid,
@@ -631,7 +631,7 @@ const useOneStepRun = <T>({
       })
       Toast.notify({
         type: 'error',
-        message: res.errorMessage,
+        message: res.errorMessage || '',
       })
     }
     return res
