@@ -389,6 +389,7 @@ class WeaviateVector(BaseVector):
             return value.isoformat()
         return value
 
+
 class WeaviateClientManager:
     _client_instance = None
 
@@ -431,6 +432,7 @@ class WeaviateClientManager:
             raise ConnectionError("Vector database is not ready")
 
         return client
+
 
 class WeaviateVectorFactory(AbstractVectorFactory):
     """Factory class for creating WeaviateVector instances."""
