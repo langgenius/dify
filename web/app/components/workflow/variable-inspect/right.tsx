@@ -272,6 +272,7 @@ const Right = ({
         )}
         {currentNodeVar && !isValueFetching && (
           <ValueContent
+            key={`${currentNodeVar.nodeId}-${currentNodeVar.var.id}`}
             currentVar={currentNodeVar.var}
             handleValueChange={handleValueChange}
             isTruncated={!!isTruncated}
