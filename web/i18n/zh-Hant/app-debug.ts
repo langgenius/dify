@@ -255,7 +255,6 @@ const translation = {
   variableTable: {
     key: '變數 Key',
     name: '欄位名稱',
-    optional: '可選',
     type: '型別',
     action: '操作',
     typeString: '文字',
