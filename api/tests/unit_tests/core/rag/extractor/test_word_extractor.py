@@ -1,7 +1,8 @@
 """Primarily used for testing merged cell scenarios"""
 
-from core.rag.extractor.word_extractor import WordExtractor
 from docx import Document
+
+from core.rag.extractor.word_extractor import WordExtractor
 
 
 def _generate_table_with_merged_cells():
@@ -18,12 +19,12 @@ def _generate_table_with_merged_cells():
     +-----+-----+-----+
     """
     table = doc.add_table(rows=3, cols=3)
-    table.style = 'Table Grid'
+    table.style = "Table Grid"
 
     for i in range(3):
         for j in range(3):
             cell = table.cell(i, j)
-            cell.text = f"{i+1}-{j+1}"
+            cell.text = f"{i + 1}-{j + 1}"
 
     # Merge cells
     cell_0_0 = table.cell(0, 0)
@@ -36,11 +37,7 @@ def _generate_table_with_merged_cells():
     merged_cell_2 = cell_1_0.merge(cell_2_0)
     merged_cell_2.text = "2-1 & 3-1"
 
-    ground_truth = [
-        ['1-1 & 1-2', '', '1-3'],
-        ['2-1 & 3-1', '2-2', '2-3'],
-        ['2-1 & 3-1', '3-2', '3-3']
-    ]
+    ground_truth = [["1-1 & 1-2", "", "1-3"], ["2-1 & 3-1", "2-2", "2-3"], ["2-1 & 3-1", "3-2", "3-3"]]
 
     return doc.tables[0], ground_truth
 
