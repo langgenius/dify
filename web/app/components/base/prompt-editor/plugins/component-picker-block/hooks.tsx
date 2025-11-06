@@ -283,7 +283,19 @@ export const useOptions = (
   const workflowVariableOptions = useMemo(() => {
     if (!workflowVariableBlockType?.show)
       return []
-    const res = workflowVariableBlockType.variables || []
+    let res = workflowVariableBlockType.variables || []
+
+    if (!workflowVariableBlockType.isMemorySupported) {
+      res = res.map((v) => {
+        if (v.nodeId === 'conversation') {
+          return {
+            ...v,
+            vars: v.vars.filter(vv => !vv.variable.startsWith('memory_block.')),
+          }
+        }
+        return v
+      })
+    }
     if(errorMessageBlockType?.show && res.findIndex(v => v.nodeId === 'error_message') === -1) {
       res.unshift({
         nodeId: 'error_message',

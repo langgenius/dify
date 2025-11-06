@@ -39,6 +39,7 @@ type Props = {
   varList: Variable[]
   handleAddVariable: (payload: any) => void
   modelConfig?: ModelConfig
+  isMemorySupported?: boolean
 }
 
 const roleOptions = [
@@ -81,6 +82,7 @@ const ConfigPromptItem: FC<Props> = ({
   varList,
   handleAddVariable,
   modelConfig,
+  isMemorySupported,
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -156,7 +158,7 @@ const ConfigPromptItem: FC<Props> = ({
           </div>
         </>
       }
-      isMemorySupported
+      isMemorySupported={isMemorySupported}
     />
   )
 }

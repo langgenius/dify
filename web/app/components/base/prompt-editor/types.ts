@@ -71,6 +71,7 @@ export type WorkflowVariableBlockType = {
   getVarType?: GetVarType
   showManageInputField?: boolean
   onManageInputField?: () => void
+  isMemorySupported?: boolean
 }
 
 export type MenuTextMatch = {

@@ -2,6 +2,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,12 +35,12 @@ type WorkflowVariableBlockComponentProps = {
   workflowNodesMap: WorkflowNodesMap
   environmentVariables?: Var[]
   conversationVariables?: Var[]
-  memoryVariables?: Var[]
   ragVariables?: Var[]
   getVarType?: (payload: {
     nodeId: string,
     valueSelector: ValueSelector,
   }) => Type
+  isMemorySupported?: boolean
 }
 
 const WorkflowVariableBlockComponent = ({
@@ -49,8 +50,8 @@ const WorkflowVariableBlockComponent = ({
   getVarType,
   environmentVariables,
   conversationVariables,
-  memoryVariables,
   ragVariables,
+  isMemorySupported,
 }: WorkflowVariableBlockComponentProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -72,6 +73,8 @@ const WorkflowVariableBlockComponent = ({
   const isMemoryVar = isMemoryVariable(variables)
   const isException = isExceptionVariable(varName, node?.type)
 
+  const memoryVariables = conversationVariables?.filter(v => v.variable.startsWith('memory_block.'))
+
   let variableValid = true
   if (isEnv) {
     if (environmentVariables)
@@ -84,6 +87,9 @@ const WorkflowVariableBlockComponent = ({
   else if (isMemoryVar) {
     if (memoryVariables)
       variableValid = memoryVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+
+    if (!isMemorySupported)
+      variableValid = false
   }
   else if (isRagVar) {
     if (ragVariables)
@@ -133,11 +139,28 @@ const WorkflowVariableBlockComponent = ({
     })
   }, [node, reactflow, store])
 
+  const memoriedVariables = useMemo(() => {
+    if (variables[0] === 'memory_block') {
+      const currentMemoryVariable = memoryVariables?.find(v => v.variable === variables.join('.'))
+
+      if (currentMemoryVariable && currentMemoryVariable.memoryVariableName) {
+        return [
+          'memory_block',
+          currentMemoryVariable.memoryVariableName,
+        ]
+      }
+
+      return variables
+    }
+
+    return variables
+  }, [memoryVariables, variables])
+
   const Item = (
     <VariableLabelInEditor
       nodeType={node?.type}
       nodeTitle={node?.title}
-      variables={variables}
+      variables={memoriedVariables}
       onClick={(e) => {
         e.stopPropagation()
         handleVariableJump()
@@ -151,7 +174,7 @@ const WorkflowVariableBlockComponent = ({
   )
 
   if (!node)
-    return Item
+    return <div>{Item}</div>
 
   return (
     <Tooltip
@@ -159,10 +182,10 @@ const WorkflowVariableBlockComponent = ({
       popupContent={
         <VarFullPathPanel
           nodeName={node.title}
-          path={variables.slice(1)}
+          path={memoriedVariables.slice(1)}
           varType={getVarType ? getVarType({
-            nodeId: variables[0],
-            valueSelector: variables,
+            nodeId: memoriedVariables[0],
+            valueSelector: memoriedVariables,
           }) : Type.string}
           nodeType={node?.type}
         />}

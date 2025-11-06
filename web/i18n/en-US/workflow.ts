@@ -150,6 +150,7 @@ const translation = {
     docLink: 'Visit our docs to learn more.',
     button: 'Add Variable',
     nodeScopeMemory: 'Node Scope Memory',
+    appScopeText: 'Conversation History',
     modal: {
       title: 'Add Conversation Variable',
       editTitle: 'Edit Conversation Variable',

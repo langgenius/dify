@@ -34,6 +34,7 @@ type Props = {
   varList?: Variable[]
   handleAddVariable: (payload: any) => void
   modelConfig: ModelConfig
+  isMemorySupported?: boolean
 }
 
 const ConfigPrompt: FC<Props> = ({
@@ -49,6 +50,7 @@ const ConfigPrompt: FC<Props> = ({
   varList = [],
   handleAddVariable,
   modelConfig,
+  isMemorySupported,
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -205,6 +207,7 @@ const ConfigPrompt: FC<Props> = ({
                           varList={varList}
                           handleAddVariable={handleAddVariable}
                           modelConfig={modelConfig}
+                          isMemorySupported={isMemorySupported}
                         />
                       </div>
                     )
@@ -241,6 +244,7 @@ const ConfigPrompt: FC<Props> = ({
               handleAddVariable={handleAddVariable}
               onGenerated={handleGenerated}
               modelConfig={modelConfig}
+              isMemorySupported={isMemorySupported}
             />
           </div>
         )}

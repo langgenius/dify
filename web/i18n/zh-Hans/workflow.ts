@@ -150,6 +150,7 @@ const translation = {
     docLink: '查看文档了解更多。',
     button: '添加变量',
     nodeScopeMemory: '节点范围记忆',
+    appScopeText: '会话历史',
     modal: {
       title: '添加会话变量',
       editTitle: '编辑会话变量',

@@ -1,4 +1,5 @@
-import { memo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { capitalize } from 'lodash-es'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import {
@@ -27,7 +28,13 @@ const VariableItem = ({
   term,
   currentVarId,
 }: VariableItemProps) => {
+  const { t } = useTranslation()
   const [destructive, setDestructive] = useState(false)
+  const valueType = useMemo(() => {
+    if (item.value_type === ChatVarType.Memory)
+      return 'memory'
+    return item.value_type
+  }, [item.value_type])
   return (
     <div className={cn(
       'radius-md mb-1 border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
@@ -46,7 +53,7 @@ const VariableItem = ({
             )
           }
           <div className='system-sm-medium text-text-primary'>{item.name}</div>
-          <div className='system-xs-medium text-text-tertiary'>{capitalize(item.value_type)}</div>
+          <div className='system-xs-medium text-text-tertiary'>{capitalize(valueType)}</div>
         </div>
         <div className='flex shrink-0 items-center gap-1 text-text-tertiary'>
           <div className={cn('radius-md hidden cursor-pointer p-1 hover:bg-state-base-hover hover:text-text-secondary group-hover:block', currentVarId === item.id && 'block bg-state-base-hover text-text-secondary')}>
@@ -60,7 +67,7 @@ const VariableItem = ({
             <RiDeleteBinLine className='h-4 w-4' onClick={() => onDelete(item)}/>
           </div>
           <div className={cn('flex h-6 items-center gap-0.5 group-hover:hidden', currentVarId === item.id && 'hidden')}>
-            {scope && <Badge text={scope} />}
+            {scope === 'app' && <Badge text={'conv'} />}
             {term && <Badge text={term} />}
           </div>
         </div>
@@ -68,6 +75,11 @@ const VariableItem = ({
       {
         'description' in item && item.description && (
           <div className='system-xs-regular truncate text-text-tertiary'>{item.description}</div>
+        )
+      }
+      {
+        scope === 'app' && (
+          <div className='system-xs-regular truncate text-text-tertiary'>{t('workflow.chatVariable.appScopeText')}</div>
         )
       }
     </div>

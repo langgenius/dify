@@ -105,7 +105,6 @@ export type PromptEditorProps = {
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
-  isMemorySupported?: boolean
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -131,7 +130,6 @@ const PromptEditor: FC<PromptEditorProps> = ({
   errorMessageBlock,
   lastRunBlock,
   isSupportFileVar,
-  isMemorySupported,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -202,7 +200,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           }
           ErrorBoundary={LexicalErrorBoundary}
         />
-        {isMemorySupported && workflowVariableBlock?.show && (
+        {workflowVariableBlock?.show && workflowVariableBlock?.isMemorySupported && (
           <MemoryPopupPlugin
             instanceId={instanceId}
             memoryVariables={workflowVariableBlock?.variables?.find(v => v.nodeId === 'memory_block')?.vars || []}
@@ -269,7 +267,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         {
           workflowVariableBlock?.show && (
             <>
-              <WorkflowVariableBlock {...workflowVariableBlock} />
+              <WorkflowVariableBlock {...workflowVariableBlock } />
               <WorkflowVariableBlockReplacementBlock {...workflowVariableBlock} />
             </>
           )

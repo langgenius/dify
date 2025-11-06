@@ -236,7 +236,7 @@ const ChatVariablePanel = () => {
               onEdit={handleEdit}
               onDelete={deleteCheck}
               term={memoryVariable.term}
-              scope='conv'
+              scope='app'
               currentVarId={currentVar?.id}
             />
           ))

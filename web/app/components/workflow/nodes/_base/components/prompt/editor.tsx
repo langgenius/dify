@@ -297,13 +297,13 @@ const Editor: FC<Props> = ({
                           }, {} as any),
                           showManageInputField: !!pipelineId,
                           onManageInputField: () => setShowInputFieldPanel?.(true),
+                          isMemorySupported,
                         }}
                         onChange={onChange}
                         onBlur={setBlur}
                         onFocus={setFocus}
                         editable={!readOnly}
                         isSupportFileVar={isSupportFileVar}
-                        isMemorySupported
                       />
                       {/* to patch Editor not support dynamic change editable status */}
                       {readOnly && <div className='absolute inset-0 z-10'></div>}

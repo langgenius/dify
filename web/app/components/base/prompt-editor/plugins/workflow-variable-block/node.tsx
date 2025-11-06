@@ -13,8 +13,8 @@ export type SerializedNode = SerializedLexicalNode & {
   getVarType?: GetVarType
   environmentVariables?: Var[]
   conversationVariables?: Var[]
-  memoryVariables?: Var[]
   ragVariables?: Var[]
+  isMemorySupported?: boolean
 }
 
 export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> {
@@ -23,8 +23,8 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
   __getVarType?: GetVarType
   __environmentVariables?: Var[]
   __conversationVariables?: Var[]
-  __memoryVariables?: Var[]
   __ragVariables?: Var[]
+  __isMemorySupported?: boolean
 
   static getType(): string {
     return 'workflow-variable-block'
@@ -45,8 +45,8 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
     key?: NodeKey,
     environmentVariables?: Var[],
     conversationVariables?: Var[],
-    memoryVariables?: Var[],
     ragVariables?: Var[],
+    isMemorySupported?: boolean,
   ) {
     super(key)
 
@@ -55,8 +55,8 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
     this.__getVarType = getVarType
     this.__environmentVariables = environmentVariables
     this.__conversationVariables = conversationVariables
-    this.__memoryVariables = memoryVariables
     this.__ragVariables = ragVariables
+    this.__isMemorySupported = isMemorySupported
   }
 
   createDOM(): HTMLElement {
@@ -78,14 +78,14 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
         getVarType={this.__getVarType!}
         environmentVariables={this.__environmentVariables}
         conversationVariables={this.__conversationVariables}
-        memoryVariables={this.__memoryVariables}
         ragVariables={this.__ragVariables}
+        isMemorySupported={this.__isMemorySupported}
       />
     )
   }
 
   static importJSON(serializedNode: SerializedNode): WorkflowVariableBlockNode {
-    const node = $createWorkflowVariableBlockNode(serializedNode.variables, serializedNode.workflowNodesMap, serializedNode.getVarType, serializedNode.environmentVariables, serializedNode.conversationVariables, serializedNode.ragVariables)
+    const node = $createWorkflowVariableBlockNode(serializedNode.variables, serializedNode.workflowNodesMap, serializedNode.getVarType, serializedNode.environmentVariables, serializedNode.conversationVariables, serializedNode.ragVariables, serializedNode.isMemorySupported)
 
     return node
   }
@@ -99,7 +99,6 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
       getVarType: this.getVarType(),
       environmentVariables: this.getEnvironmentVariables(),
       conversationVariables: this.getConversationVariables(),
-      memoryVariables: this.getMemoryVariables(),
       ragVariables: this.getRagVariables(),
     }
   }
@@ -129,22 +128,22 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
     return self.__conversationVariables
   }
 
-  getMemoryVariables(): any {
-    const self = this.getLatest()
-    return self.__memoryVariables
-  }
-
   getRagVariables(): any {
     const self = this.getLatest()
     return self.__ragVariables
+  }
+
+  getIsMemorySupported() {
+    const self = this.getLatest()
+    return self.__isMemorySupported
   }
 
   getTextContent(): string {
     return `{{#${this.getVariables().join('.')}#}}`
   }
 }
-export function $createWorkflowVariableBlockNode(variables: string[], workflowNodesMap: WorkflowNodesMap, getVarType?: GetVarType, environmentVariables?: Var[], conversationVariables?: Var[], memoryVariables?: Var[], ragVariables?: Var[]): WorkflowVariableBlockNode {
-  return new WorkflowVariableBlockNode(variables, workflowNodesMap, getVarType, undefined, environmentVariables, conversationVariables, memoryVariables, ragVariables)
+export function $createWorkflowVariableBlockNode(variables: string[], workflowNodesMap: WorkflowNodesMap, getVarType?: GetVarType, environmentVariables?: Var[], conversationVariables?: Var[], ragVariables?: Var[], isMemorySupported?: boolean): WorkflowVariableBlockNode {
+  return new WorkflowVariableBlockNode(variables, workflowNodesMap, getVarType, undefined, environmentVariables, conversationVariables, ragVariables, isMemorySupported)
 }
 
 export function $isWorkflowVariableBlockNode(
