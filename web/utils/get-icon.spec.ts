@@ -68,7 +68,7 @@ describe('get-icon', () => {
       expect(result).toContain(pluginId)
     })
 
-    test('rejects path traversal with encoded sequences', () => {
+    test('passes through URL-encoded path traversal sequences', () => {
       const pluginId = '..%2F..%2Fetc%2Fpasswd'
       const result = getIconFromMarketPlace(pluginId)
       expect(result).toContain(pluginId)
