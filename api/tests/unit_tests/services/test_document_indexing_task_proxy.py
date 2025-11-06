@@ -2,6 +2,7 @@ from unittest.mock import Mock, patch
 
 from core.entities.document_task import DocumentTask
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
+from enums.cloud_plan import CloudPlan
 from services.document_indexing_task_proxy import DocumentIndexingTaskProxy
 
 
@@ -9,7 +10,7 @@ class DocumentIndexingTaskProxyTestDataFactory:
     """Factory class for creating test data and mock objects for DocumentIndexingTaskProxy tests."""
 
     @staticmethod
-    def create_mock_features(billing_enabled: bool = False, plan: str = "sandbox") -> Mock:
+    def create_mock_features(billing_enabled: bool = False, plan: CloudPlan = CloudPlan.SANDBOX) -> Mock:
         """Create mock features with billing configuration."""
         features = Mock()
         features.billing = Mock()
@@ -178,7 +179,7 @@ class TestDocumentIndexingTaskProxy:
         """Test _dispatch method when billing is enabled with sandbox plan."""
         # Arrange
         mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(
-            billing_enabled=True, plan="sandbox"
+            billing_enabled=True, plan=CloudPlan.SANDBOX
         )
         mock_feature_service.get_features.return_value = mock_features
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
@@ -194,7 +195,9 @@ class TestDocumentIndexingTaskProxy:
     def test_dispatch_with_billing_enabled_non_sandbox_plan(self, mock_feature_service):
         """Test _dispatch method when billing is enabled with non-sandbox plan."""
         # Arrange
-        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(billing_enabled=True, plan="team")
+        mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(
+            billing_enabled=True, plan=CloudPlan.TEAM
+        )
         mock_feature_service.get_features.return_value = mock_features
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
         proxy._send_to_priority_tenant_queue = Mock()
@@ -225,7 +228,7 @@ class TestDocumentIndexingTaskProxy:
         """Test delay method integration."""
         # Arrange
         mock_features = DocumentIndexingTaskProxyTestDataFactory.create_mock_features(
-            billing_enabled=True, plan="sandbox"
+            billing_enabled=True, plan=CloudPlan.SANDBOX
         )
         mock_feature_service.get_features.return_value = mock_features
         proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()

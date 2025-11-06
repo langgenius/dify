@@ -5,6 +5,7 @@ import pytest
 
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
+from enums.cloud_plan import CloudPlan
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 
 
@@ -12,7 +13,7 @@ class RagPipelineTaskProxyTestDataFactory:
     """Factory class for creating test data and mock objects for RagPipelineTaskProxy tests."""
 
     @staticmethod
-    def create_mock_features(billing_enabled: bool = False, plan: str = "sandbox") -> Mock:
+    def create_mock_features(billing_enabled: bool = False, plan: CloudPlan = CloudPlan.SANDBOX) -> Mock:
         """Create mock features with billing configuration."""
         features = Mock()
         features.billing = Mock()
@@ -316,7 +317,9 @@ class TestRagPipelineTaskProxy:
     def test_dispatch_with_billing_enabled_sandbox_plan(self, mock_db, mock_file_service_class, mock_feature_service):
         """Test _dispatch method when billing is enabled with sandbox plan."""
         # Arrange
-        mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(billing_enabled=True, plan="sandbox")
+        mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(
+            billing_enabled=True, plan=CloudPlan.SANDBOX
+        )
         mock_feature_service.get_features.return_value = mock_features
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
         proxy._send_to_default_tenant_queue = Mock()
@@ -340,7 +343,9 @@ class TestRagPipelineTaskProxy:
     ):
         """Test _dispatch method when billing is enabled with non-sandbox plan."""
         # Arrange
-        mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(billing_enabled=True, plan="team")
+        mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(
+            billing_enabled=True, plan=CloudPlan.TEAM
+        )
         mock_feature_service.get_features.return_value = mock_features
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
         proxy._send_to_priority_tenant_queue = Mock()
@@ -445,7 +450,9 @@ class TestRagPipelineTaskProxy:
     def test_delay_method(self, mock_db, mock_file_service_class, mock_feature_service):
         """Test delay method integration."""
         # Arrange
-        mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(billing_enabled=True, plan="sandbox")
+        mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(
+            billing_enabled=True, plan=CloudPlan.SANDBOX
+        )
         mock_feature_service.get_features.return_value = mock_features
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
         proxy._dispatch = Mock()

@@ -5,6 +5,7 @@ from functools import cached_property
 
 from core.entities.document_task import DocumentTask
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
+from enums.cloud_plan import CloudPlan
 from services.feature_service import FeatureService
 from tasks.document_indexing_task import normal_document_indexing_task, priority_document_indexing_task
 
@@ -68,7 +69,7 @@ class DocumentIndexingTaskProxy:
         )
         # dispatch to different indexing queue with tenant isolation when billing enabled
         if self.features.billing.enabled:
-            if self.features.billing.subscription.plan == "sandbox":
+            if self.features.billing.subscription.plan == CloudPlan.SANDBOX:
                 # dispatch to normal pipeline queue with tenant self sub queue for sandbox plan
                 self._send_to_default_tenant_queue()
             else:

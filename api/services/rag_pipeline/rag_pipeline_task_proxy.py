@@ -5,6 +5,7 @@ from functools import cached_property
 
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from services.feature_service import FeatureService
 from services.file_service import FileService
@@ -84,7 +85,7 @@ class RagPipelineTaskProxy:
 
         # dispatch to different pipeline queue with tenant isolation when billing enabled
         if self.features.billing.enabled:
-            if self.features.billing.subscription.plan == "sandbox":
+            if self.features.billing.subscription.plan == CloudPlan.SANDBOX:
                 # dispatch to normal pipeline queue with tenant isolation for sandbox plan
                 self._send_to_default_tenant_queue(upload_file_id)
             else:
