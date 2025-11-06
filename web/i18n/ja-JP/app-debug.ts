@@ -340,7 +340,6 @@ const translation = {
   variableTable: {
     key: '変数キー',
     name: 'ユーザー入力フィールド名',
-    optional: 'オプション',
     type: '入力タイプ',
     action: 'アクション',
     typeString: '文字列',

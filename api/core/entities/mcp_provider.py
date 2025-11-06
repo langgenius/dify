@@ -272,6 +272,7 @@ class MCPProviderEntity(BaseModel):
 
     def _decrypt_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """Generic method to decrypt dictionary fields"""
+
         if not data:
             return {}
 

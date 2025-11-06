@@ -75,19 +75,24 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR('appInfo', () => {
     return isTryApp ? () => fetchTryAppInfo(tryAppId!) : fetchAppInfo
   })
+  const embeddedConversationId = useWebAppStore(s => s.embeddedConversationId)
+  const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
   const appId = useMemo(() => {
     return isTryApp ? tryAppId : (appInfo as any)?.app_id
   }, [appInfo])
 
   const [userId, setUserId] = useState<string>()
   const [conversationId, setConversationId] = useState<string>()
+
   useEffect(() => {
     if (isTryApp) return
-    getProcessedSystemVariablesFromUrlParams().then(({ user_id, conversation_id }) => {
-      setUserId(user_id)
-      setConversationId(conversation_id)
-    })
-  }, [])
+    setUserId(embeddedUserId || undefined)
+  }, [embeddedUserId])
+
+  useEffect(() => {
+    if (isTryApp) return
+    setConversationId(embeddedConversationId || undefined)
+  }, [embeddedConversationId])
 
   useEffect(() => {
     if (isTryApp) return

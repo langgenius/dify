@@ -240,6 +240,7 @@ class ToolTransformService:
         user_name: str | None = None,
         include_sensitive: bool = True,
     ) -> ToolProviderApiEntity:
+
         # Use provided user_name to avoid N+1 query, fallback to load_user() if not provided
         if user_name is None:
             user = db_provider.load_user()

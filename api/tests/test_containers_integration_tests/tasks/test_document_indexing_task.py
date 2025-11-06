@@ -5,6 +5,7 @@ import pytest
 from faker import Faker
 
 from core.entities.document_task import DocumentTask
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
@@ -19,7 +20,7 @@ from tasks.document_indexing_task import (
 
 class TestDocumentIndexingTasks:
     """Integration tests for document indexing tasks using testcontainers.
-    
+
     This test class covers:
     - Core _document_indexing function
     - Deprecated document_indexing_task function
@@ -213,7 +214,7 @@ class TestDocumentIndexingTasks:
         # Configure billing features
         mock_external_service_dependencies["features"].billing.enabled = billing_enabled
         if billing_enabled:
-            mock_external_service_dependencies["features"].billing.subscription.plan = "sandbox"
+            mock_external_service_dependencies["features"].billing.subscription.plan = CloudPlan.SANDBOX
             mock_external_service_dependencies["features"].vector_space.limit = 100
             mock_external_service_dependencies["features"].vector_space.size = 50
 
@@ -462,7 +463,7 @@ class TestDocumentIndexingTasks:
         )
 
         # Configure sandbox plan with batch limit
-        mock_external_service_dependencies["features"].billing.subscription.plan = "sandbox"
+        mock_external_service_dependencies["features"].billing.subscription.plan = CloudPlan.SANDBOX
 
         # Create more documents than sandbox plan allows (limit is 1)
         fake = Faker()
@@ -597,7 +598,7 @@ class TestDocumentIndexingTasks:
         # Assert: Verify processing occurred (core logic is tested in _document_indexing tests)
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
-    
+
     def test_normal_document_indexing_task_success(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
@@ -718,10 +719,10 @@ class TestDocumentIndexingTasks:
 
         # Use real Redis for TenantSelfTaskQueue
         from core.rag.pipeline.queue import TenantSelfTaskQueue
-        
+
         # Create real queue instance
         queue = TenantSelfTaskQueue(tenant_id, "document_indexing")
-        
+
         # Add waiting tasks to the real Redis queue
         waiting_tasks = [
             DocumentTask(tenant_id=tenant_id, dataset_id=dataset.id, document_ids=["waiting-doc-1"]),
@@ -740,7 +741,7 @@ class TestDocumentIndexingTasks:
 
         # Verify task function was called for each waiting task
         assert mock_task_func.delay.call_count == 1
-        
+
         # Verify correct parameters for each call
         calls = mock_task_func.delay.call_args_list
         assert calls[0][1] == {"tenant_id": tenant_id, "dataset_id": dateset_id, "document_ids": ["waiting-doc-1"]}
@@ -782,7 +783,7 @@ class TestDocumentIndexingTasks:
 
         # Create real queue instance
         queue = TenantSelfTaskQueue(tenant_id, "document_indexing")
-        
+
         # Add waiting task to the real Redis queue
         waiting_task = DocumentTask(tenant_id=tenant_id, dataset_id=dataset.id, document_ids=["waiting-doc-1"])
         queue.push_tasks([asdict(waiting_task)])
@@ -804,7 +805,7 @@ class TestDocumentIndexingTasks:
 
         # Verify waiting task was still processed despite core processing error
         mock_task_func.delay.assert_called_once()
-        
+
         # Verify correct parameters for the call
         call = mock_task_func.delay.call_args
         assert call[1] == {"tenant_id": tenant_id, "dataset_id": dateset_id, "document_ids": ["waiting-doc-1"]}
@@ -831,7 +832,7 @@ class TestDocumentIndexingTasks:
         dataset2, documents2 = self._create_test_dataset_and_documents(
             db_session_with_containers, mock_external_service_dependencies, document_count=1
         )
-        
+
         tenant1_id = dataset1.tenant_id
         tenant2_id = dataset2.tenant_id
         dataset1_id = dataset1.id
@@ -845,15 +846,15 @@ class TestDocumentIndexingTasks:
 
         # Use real Redis for TenantSelfTaskQueue
         from core.rag.pipeline.queue import TenantSelfTaskQueue
-        
+
         # Create queue instances for both tenants
         queue1 = TenantSelfTaskQueue(tenant1_id, "document_indexing")
         queue2 = TenantSelfTaskQueue(tenant2_id, "document_indexing")
-        
+
         # Add waiting tasks to both queues
         waiting_task1 = DocumentTask(tenant_id=tenant1_id, dataset_id=dataset1.id, document_ids=["tenant1-doc-1"])
         waiting_task2 = DocumentTask(tenant_id=tenant2_id, dataset_id=dataset2.id, document_ids=["tenant2-doc-1"])
-        
+
         queue1.push_tasks([asdict(waiting_task1)])
         queue2.push_tasks([asdict(waiting_task2)])
 

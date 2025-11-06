@@ -1422,6 +1422,7 @@ export const useNodesInteractions = () => {
         // If no nodeId is provided, fall back to the current behavior
         const bundledNodes = nodes.filter((node) => {
           if (!node.data._isBundled) return false
+          if (node.type === CUSTOM_NOTE_NODE) return true
           const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
           if (metaData.isSingleton) return false
           return !node.data.isInIteration && !node.data.isInLoop
@@ -1434,6 +1435,7 @@ export const useNodesInteractions = () => {
 
         const selectedNode = nodes.find((node) => {
           if (!node.data.selected) return false
+          if (node.type === CUSTOM_NOTE_NODE) return true
           const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
           return !metaData.isSingleton
         })
@@ -1471,7 +1473,7 @@ export const useNodesInteractions = () => {
           = generateNewNode({
             type: nodeToPaste.type,
             data: {
-              ...nodesMetaDataMap![nodeType].defaultValue,
+              ...(nodeToPaste.type !== CUSTOM_NOTE_NODE && nodesMetaDataMap![nodeType].defaultValue),
               ...nodeToPaste.data,
               selected: false,
               _isBundled: false,

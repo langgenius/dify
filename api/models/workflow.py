@@ -42,7 +42,7 @@ from factories import variable_factory
 from libs import helper
 
 from .account import Account
-from .base import Base
+from .base import Base, DefaultFieldsMixin
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType
 from .types import EnumText, StringUUID
@@ -259,7 +259,9 @@ class Workflow(Base):
         return node_type
 
     @staticmethod
-    def get_enclosing_node_type_and_id(node_config: Mapping[str, Any]) -> tuple[NodeType, str] | None:
+    def get_enclosing_node_type_and_id(
+        node_config: Mapping[str, Any],
+    ) -> tuple[NodeType, str] | None:
         in_loop = node_config.get("isInLoop", False)
         in_iteration = node_config.get("isInIteration", False)
         if in_loop:
@@ -318,7 +320,10 @@ class Workflow(Base):
         if "nodes" not in graph_dict:
             return []
 
-        start_node = next((node for node in graph_dict["nodes"] if node["data"]["type"] == "start"), None)
+        start_node = next(
+            (node for node in graph_dict["nodes"] if node["data"]["type"] == "start"),
+            None,
+        )
         if not start_node:
             return []
 
@@ -371,7 +376,9 @@ class Workflow(Base):
         return db.session.execute(stmt).scalar_one()
 
     @property
-    def environment_variables(self) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
+    def environment_variables(
+        self,
+    ) -> Sequence[StringVariable | IntegerVariable | FloatVariable | SecretVariable]:
         # TODO: find some way to init `self._environment_variables` when instance created.
         if self._environment_variables is None:
             self._environment_variables = "{}"
@@ -388,7 +395,9 @@ class Workflow(Base):
         ]
 
         # decrypt secret variables value
-        def decrypt_func(var: Variable) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable:
+        def decrypt_func(
+            var: Variable,
+        ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable:
             if isinstance(var, SecretVariable):
                 return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
             elif isinstance(var, (StringVariable, IntegerVariable, FloatVariable)):
@@ -570,7 +579,10 @@ class WorkflowRun(Base):
     version: Mapped[str] = mapped_column(String(255))
     graph: Mapped[str | None] = mapped_column(sa.Text)
     inputs: Mapped[str | None] = mapped_column(sa.Text)
-    status: Mapped[str] = mapped_column(String(255))  # running, succeeded, failed, stopped, partial-succeeded
+    status: Mapped[str] = mapped_column(
+        EnumText(WorkflowExecutionStatus, length=255),
+        nullable=False,
+    )
     outputs: Mapped[str | None] = mapped_column(sa.Text, default="{}")
     error: Mapped[str | None] = mapped_column(sa.Text)
     elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
@@ -581,6 +593,15 @@ class WorkflowRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
+
+    pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
+        "WorkflowPause",
+        primaryjoin="WorkflowRun.id == foreign(WorkflowPause.workflow_run_id)",
+        uselist=False,
+        # require explicit preloading.
+        lazy="raise",
+        back_populates="workflow_run",
+    )
 
     @property
     def created_by_account(self):
@@ -1067,7 +1088,16 @@ class WorkflowAppLog(Base):
 
     @property
     def workflow_run(self):
-        return db.session.get(WorkflowRun, self.workflow_run_id)
+        if self.workflow_run_id:
+            from sqlalchemy.orm import sessionmaker
+
+            from repositories.factory import DifyAPIRepositoryFactory
+
+            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+            repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            return repo.get_workflow_run_by_id_without_tenant(run_id=self.workflow_run_id)
+
+        return None
 
     @property
     def created_by_account(self):
@@ -1106,7 +1136,10 @@ class ConversationVariable(Base):
         DateTime, nullable=False, server_default=func.current_timestamp(), index=True
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
     )
 
     def __init__(self, *, id: str, app_id: str, conversation_id: str, data: str):
@@ -1132,10 +1165,6 @@ class ConversationVariable(Base):
 
 # Only `sys.query` and `sys.files` could be modified.
 _EDITABLE_SYSTEM_VARIABLE = frozenset(["query", "files"])
-
-
-def _naive_utc_datetime():
-    return naive_utc_now()
 
 
 class WorkflowDraftVariable(Base):
@@ -1171,14 +1200,14 @@ class WorkflowDraftVariable(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=_naive_utc_datetime,
+        default=naive_utc_now,
         server_default=func.current_timestamp(),
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=_naive_utc_datetime,
+        default=naive_utc_now,
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
     )
@@ -1445,8 +1474,8 @@ class WorkflowDraftVariable(Base):
         file_id: str | None = None,
     ) -> "WorkflowDraftVariable":
         variable = WorkflowDraftVariable()
-        variable.created_at = _naive_utc_datetime()
-        variable.updated_at = _naive_utc_datetime()
+        variable.created_at = naive_utc_now()
+        variable.updated_at = naive_utc_now()
         variable.description = description
         variable.app_id = app_id
         variable.node_id = node_id
@@ -1576,7 +1605,7 @@ class WorkflowDraftVariableFile(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=_naive_utc_datetime,
+        default=naive_utc_now,
         server_default=func.current_timestamp(),
     )
 
@@ -1641,3 +1670,68 @@ class WorkflowDraftVariableFile(Base):
 
 def is_system_variable_editable(name: str) -> bool:
     return name in _EDITABLE_SYSTEM_VARIABLE
+
+
+class WorkflowPause(DefaultFieldsMixin, Base):
+    """
+    WorkflowPause records the paused state and related metadata for a specific workflow run.
+
+    Each `WorkflowRun` can have zero or one associated `WorkflowPause`, depending on its execution status.
+    If a `WorkflowRun` is in the `PAUSED` state, there must be a corresponding `WorkflowPause`
+    that has not yet been resumed.
+    Otherwise, there should be no active (non-resumed) `WorkflowPause` linked to that run.
+
+    This model captures the execution context required to resume workflow processing at a later time.
+    """
+
+    __tablename__ = "workflow_pauses"
+    __table_args__ = (
+        # Design Note:
+        # Instead of adding a `pause_id` field to the `WorkflowRun` model—which would require a migration
+        # on a potentially large table—we reference `WorkflowRun` from `WorkflowPause` and enforce a unique
+        # constraint on `workflow_run_id` to guarantee a one-to-one relationship.
+        UniqueConstraint("workflow_run_id"),
+    )
+
+    # `workflow_id` represents the unique identifier of the workflow associated with this pause.
+    # It corresponds to the `id` field in the `Workflow` model.
+    #
+    # Since an application can have multiple versions of a workflow, each with its own unique ID,
+    # the `app_id` alone is insufficient to determine which workflow version should be loaded
+    # when resuming a suspended workflow.
+    workflow_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+    )
+
+    # `workflow_run_id` represents the identifier of the execution of workflow,
+    # correspond to the `id` field of `WorkflowRun`.
+    workflow_run_id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+    )
+
+    # `resumed_at` records the timestamp when the suspended workflow was resumed.
+    # It is set to `NULL` if the workflow has not been resumed.
+    #
+    # NOTE: Resuming a suspended WorkflowPause does not delete the record immediately.
+    # It only set `resumed_at` to a non-null value.
+    resumed_at: Mapped[datetime | None] = mapped_column(
+        sa.DateTime,
+        nullable=True,
+    )
+
+    # state_object_key stores the object key referencing the serialized runtime state
+    # of the `GraphEngine`. This object captures the complete execution context of the
+    # workflow at the moment it was paused, enabling accurate resumption.
+    state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
+
+    # Relationship to WorkflowRun
+    workflow_run: Mapped["WorkflowRun"] = orm.relationship(
+        foreign_keys=[workflow_run_id],
+        # require explicit preloading.
+        lazy="raise",
+        uselist=False,
+        primaryjoin="WorkflowPause.workflow_run_id == WorkflowRun.id",
+        back_populates="pause",
+    )

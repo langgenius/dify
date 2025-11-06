@@ -40,6 +40,7 @@ from core.workflow.repositories.draft_variable_repository import DraftVariableSa
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
@@ -47,7 +48,6 @@ from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from services.datasource_provider_service import DatasourceProviderService
-from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 logger = logging.getLogger(__name__)
@@ -244,7 +244,34 @@ class PipelineGenerator(BaseAppGenerator):
                 )
 
         if rag_pipeline_invoke_entities:
-            RagPipelineTaskProxy(dataset.tenant_id, user.id, rag_pipeline_invoke_entities).delay()
+            # store the rag_pipeline_invoke_entities to object storage
+            text = [item.model_dump() for item in rag_pipeline_invoke_entities]
+            name = "rag_pipeline_invoke_entities.json"
+            # Convert list to proper JSON string
+            json_text = json.dumps(text)
+            upload_file = FileService(db.engine).upload_text(json_text, name, user.id, dataset.tenant_id)
+            features = FeatureService.get_features(dataset.tenant_id)
+            if features.billing.enabled and features.billing.subscription.plan == CloudPlan.SANDBOX:
+                tenant_pipeline_task_key = f"tenant_pipeline_task:{dataset.tenant_id}"
+                tenant_self_pipeline_task_queue = f"tenant_self_pipeline_task_queue:{dataset.tenant_id}"
+
+                if redis_client.get(tenant_pipeline_task_key):
+                    # Add to waiting queue using List operations (lpush)
+                    redis_client.lpush(tenant_self_pipeline_task_queue, upload_file.id)
+                else:
+                    # Set flag and execute task
+                    redis_client.set(tenant_pipeline_task_key, 1, ex=60 * 60)
+                    rag_pipeline_run_task.delay(  # type: ignore
+                        rag_pipeline_invoke_entities_file_id=upload_file.id,
+                        tenant_id=dataset.tenant_id,
+                    )
+
+            else:
+                priority_rag_pipeline_run_task.delay(  # type: ignore
+                    rag_pipeline_invoke_entities_file_id=upload_file.id,
+                    tenant_id=dataset.tenant_id,
+                )
+
         # return batch, dataset, documents
         return {
             "batch": batch,

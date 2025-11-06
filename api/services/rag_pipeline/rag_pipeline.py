@@ -9,7 +9,7 @@ from typing import Any, Union, cast
 from uuid import uuid4
 
 from flask_login import current_user
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
@@ -94,6 +94,7 @@ class RagPipelineService:
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
+        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @classmethod
     def get_pipeline_templates(cls, type: str = "built-in", language: str = "en-US") -> dict:
@@ -1015,47 +1016,20 @@ class RagPipelineService:
         :param args: request args
         """
         limit = int(args.get("limit", 20))
+        last_id = args.get("last_id")
 
-        base_query = db.session.query(WorkflowRun).where(
-            WorkflowRun.tenant_id == pipeline.tenant_id,
-            WorkflowRun.app_id == pipeline.id,
-            or_(
-                WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN.value,
-                WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING.value,
-            ),
+        triggered_from_values = [
+            WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
+            WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
+        ]
+
+        return self._workflow_run_repo.get_paginated_workflow_runs(
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            triggered_from=triggered_from_values,
+            limit=limit,
+            last_id=last_id,
         )
-
-        if args.get("last_id"):
-            last_workflow_run = base_query.where(
-                WorkflowRun.id == args.get("last_id"),
-            ).first()
-
-            if not last_workflow_run:
-                raise ValueError("Last workflow run not exists")
-
-            workflow_runs = (
-                base_query.where(
-                    WorkflowRun.created_at < last_workflow_run.created_at, WorkflowRun.id != last_workflow_run.id
-                )
-                .order_by(WorkflowRun.created_at.desc())
-                .limit(limit)
-                .all()
-            )
-        else:
-            workflow_runs = base_query.order_by(WorkflowRun.created_at.desc()).limit(limit).all()
-
-        has_more = False
-        if len(workflow_runs) == limit:
-            current_page_first_workflow_run = workflow_runs[-1]
-            rest_count = base_query.where(
-                WorkflowRun.created_at < current_page_first_workflow_run.created_at,
-                WorkflowRun.id != current_page_first_workflow_run.id,
-            ).count()
-
-            if rest_count > 0:
-                has_more = True
-
-        return InfiniteScrollPagination(data=workflow_runs, limit=limit, has_more=has_more)
 
     def get_rag_pipeline_workflow_run(self, pipeline: Pipeline, run_id: str) -> WorkflowRun | None:
         """
@@ -1064,17 +1038,11 @@ class RagPipelineService:
         :param app_model: app model
         :param run_id: workflow run id
         """
-        workflow_run = (
-            db.session.query(WorkflowRun)
-            .where(
-                WorkflowRun.tenant_id == pipeline.tenant_id,
-                WorkflowRun.app_id == pipeline.id,
-                WorkflowRun.id == run_id,
-            )
-            .first()
+        return self._workflow_run_repo.get_workflow_run_by_id(
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            run_id=run_id,
         )
-
-        return workflow_run
 
     def get_rag_pipeline_workflow_run_node_executions(
         self,
