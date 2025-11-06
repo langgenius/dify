@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from libs.broadcast_channel.exc import BroadcastChannelError
+from libs.broadcast_channel.exc import BroadcastChannelError, SubscriptionClosedError
 from libs.broadcast_channel.redis.channel import (
     BroadcastChannel as RedisBroadcastChannel,
 )
@@ -175,14 +175,14 @@ class TestRedisSubscription:
         """Test that _start_if_needed() raises error when subscription is closed."""
         subscription.close()
 
-        with pytest.raises(BroadcastChannelError, match="The Redis subscription is closed"):
+        with pytest.raises(SubscriptionClosedError, match="The Redis subscription is closed"):
             subscription._start_if_needed()
 
     def test_start_if_needed_when_cleaned_up(self, subscription: _RedisSubscription):
         """Test that _start_if_needed() raises error when pubsub is None."""
         subscription._pubsub = None
 
-        with pytest.raises(BroadcastChannelError, match="The Redis subscription has been cleaned up"):
+        with pytest.raises(SubscriptionClosedError, match="The Redis subscription has been cleaned up"):
             subscription._start_if_needed()
 
     def test_context_manager_usage(self, subscription: _RedisSubscription, mock_pubsub: MagicMock):
@@ -337,48 +337,6 @@ class TestRedisSubscription:
         # Should not enqueue messages from wrong channels
         assert subscription._queue.empty()
 
-    def test_listener_thread_handles_various_payload_types(
-        self, subscription: _RedisSubscription, mock_pubsub: MagicMock
-    ):
-        """Test that listener thread handles various payload types correctly."""
-        test_cases = [
-            (b"bytes", b"bytes"),
-            (bytearray(b"bytearray"), b"bytearray"),
-            (memoryview(b"memoryview"), b"memoryview"),
-            ("string", b"string"),
-            (None, b""),
-        ]
-
-        for input_payload, expected_output in test_cases:
-            mock_message = {"type": "message", "channel": "test-topic", "data": input_payload}
-            mock_pubsub.get_message.return_value = mock_message
-
-            # Clear queue and process message
-            while not subscription._queue.empty():
-                subscription._queue.get_nowait()
-
-            subscription._enqueue_message(expected_output)
-
-            assert not subscription._queue.empty()
-            assert subscription._queue.get_nowait() == expected_output
-
-    def test_listener_thread_handles_unsupported_payload_type(
-        self, subscription: _RedisSubscription, mock_pubsub: MagicMock
-    ):
-        """Test that listener thread drops unsupported payload types."""
-        mock_message = {
-            "type": "message",
-            "channel": "test-topic",
-            "data": {"invalid": "object"},  # Unsupported type
-        }
-        mock_pubsub.get_message.return_value = mock_message
-
-        subscription._start_if_needed()
-        time.sleep(0.1)
-
-        # Should not enqueue unsupported payload types
-        assert subscription._queue.empty()
-
     def test_listener_thread_handles_redis_exceptions(self, subscription: _RedisSubscription, mock_pubsub: MagicMock):
         """Test that listener thread handles Redis exceptions gracefully."""
         mock_pubsub.get_message.side_effect = Exception("Redis error")
@@ -390,6 +348,7 @@ class TestRedisSubscription:
 
         # Thread should still be alive but not processing
         assert subscription._listener_thread is not None
+        assert not subscription._listener_thread.is_alive()
 
     def test_listener_thread_stops_when_closed(self, subscription: _RedisSubscription, mock_pubsub: MagicMock):
         """Test that listener thread stops when subscription is closed."""
@@ -467,37 +426,6 @@ class TestRedisSubscription:
         finally:
             subscription.close()
 
-    # ==================== Thread Safety Tests ====================
-
-    def test_concurrent_message_enqueue(self, started_subscription: _RedisSubscription):
-        """Test concurrent message enqueue operations."""
-        messages = [f"msg_{i}".encode() for i in range(100)]
-        threads = []
-        errors = []
-
-        def enqueue_msgs(msgs):
-            try:
-                for msg in msgs:
-                    started_subscription._enqueue_message(msg)
-            except Exception as e:
-                errors.append(e)
-
-        # Create multiple threads
-        for i in range(5):
-            thread = threading.Thread(target=enqueue_msgs, args=(messages[i * 20 : (i + 1) * 20],))
-            threads.append(thread)
-            thread.start()
-
-        # Wait for all threads
-        for thread in threads:
-            thread.join(timeout=2.0)
-
-        # Should not have any errors
-        assert len(errors) == 0
-
-        # Should have processed some messages (may have dropped some due to queue size)
-        assert started_subscription._queue.qsize() > 0
-
     def test_concurrent_close_and_enqueue(self, started_subscription: _RedisSubscription):
         """Test concurrent close and enqueue operations."""
         errors = []
@@ -537,21 +465,21 @@ class TestRedisSubscription:
         """Test iterator behavior after close."""
         subscription.close()
 
-        with pytest.raises(BroadcastChannelError, match="The Redis subscription is closed"):
+        with pytest.raises(SubscriptionClosedError, match="The Redis subscription is closed"):
             iter(subscription)
 
     def test_start_after_close(self, subscription: _RedisSubscription):
         """Test start attempts after close."""
         subscription.close()
 
-        with pytest.raises(BroadcastChannelError, match="The Redis subscription is closed"):
+        with pytest.raises(SubscriptionClosedError, match="The Redis subscription is closed"):
             subscription._start_if_needed()
 
     def test_pubsub_none_operations(self, subscription: _RedisSubscription):
         """Test operations when pubsub is None."""
         subscription._pubsub = None
 
-        with pytest.raises(BroadcastChannelError, match="The Redis subscription has been cleaned up"):
+        with pytest.raises(SubscriptionClosedError, match="The Redis subscription has been cleaned up"):
             subscription._start_if_needed()
 
         # Close should still work
@@ -578,3 +506,9 @@ class TestRedisSubscription:
             subscription._start_if_needed()
             mock_pubsub.subscribe.assert_called_with(channel_name)
             subscription.close()
+
+    def test_received_on_closed_subscription(self, subscription: _RedisSubscription):
+        subscription.close()
+
+        with pytest.raises(SubscriptionClosedError):
+            subscription.receive()

@@ -302,5 +302,10 @@ class TestRedisBroadcastChannelIntegration:
         time.sleep(1)
 
         # Verify subscriptions are cleaned up
-        # Note: Redis might still show some connections due to connection pooling
-        # This is more about ensuring our code properly cleans up its state
+        pubsub_info_after = redis_client.pubsub_numsub(topic_name)
+        topic_subscribers_after = 0
+        for channel, count in pubsub_info_after:
+            if channel == topic_name.encode():
+                topic_subscribers_after = count
+                break
+        assert topic_subscribers_after == 0

@@ -19,6 +19,8 @@ class BroadcastChannel:
 
     Provides "at most once" delivery semantics for messages published to channels.
     Uses Redis PUBLISH/SUBSCRIBE commands for real-time message delivery.
+
+    The `redis_client` used to construct BroadcastChannel should have `decode_responses` set to `False`.
     """
 
     def __init__(
