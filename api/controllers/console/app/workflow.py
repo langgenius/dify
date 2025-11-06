@@ -102,7 +102,18 @@ class DraftWorkflowApi(Resource):
             },
         )
     )
-    @api.response(200, "Draft workflow synced successfully", workflow_fields)
+    @api.response(
+        200,
+        "Draft workflow synced successfully",
+        api.model(
+            "SyncDraftWorkflowResponse",
+            {
+                "result": fields.String,
+                "hash": fields.String,
+                "updated_at": fields.String,
+            },
+        ),
+    )
     @api.response(400, "Invalid workflow configuration")
     @api.response(403, "Permission denied")
     @edit_permission_required

@@ -346,7 +346,6 @@ const translation = {
   variableTable: {
     key: 'Variable Key',
     name: 'User Input Field Name',
-    optional: 'Optional',
     type: 'Input Type',
     action: 'Actions',
     typeString: 'String',

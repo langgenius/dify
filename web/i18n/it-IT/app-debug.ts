@@ -281,7 +281,6 @@ const translation = {
   variableTable: {
     key: 'Chiave Variabile',
     name: 'Nome Campo Input Utente',
-    optional: 'Opzionale',
     type: 'Tipo di Input',
     action: 'Azioni',
     typeString: 'Stringa',
