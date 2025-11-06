@@ -298,30 +298,29 @@ describe('useTabSearchParams', () => {
     })
 
     /**
-     * Test handling of tabs with special URL characters
-     * Should properly encode/decode various special characters
+     * Test that special characters in tab names are properly encoded
+     * This ensures URLs remain valid even with unusual tab names
      */
     it('should handle tabs with various special characters', () => {
-      const specialTabs = [
-        'tab/with/slashes',
-        'tab?with?questions',
-        'tab#with#hash',
-        'tab=with=equals',
-      ]
+      const { result } = renderHook(() =>
+        useTabSearchParams({ defaultTab: 'overview' }),
+      )
 
-      specialTabs.forEach((tabName) => {
-        const { result } = renderHook(() =>
-          useTabSearchParams({ defaultTab: 'overview' }),
-        )
+      // Test tab with slashes
+      act(() => result.current[1]('tab/with/slashes'))
+      expect(result.current[0]).toBe('tab/with/slashes')
 
-        act(() => {
-          const [, setActiveTab] = result.current
-          setActiveTab(tabName)
-        })
+      // Test tab with question marks
+      act(() => result.current[1]('tab?with?questions'))
+      expect(result.current[0]).toBe('tab?with?questions')
 
-        const [activeTab] = result.current
-        expect(activeTab).toBe(tabName)
-      })
+      // Test tab with hash symbols
+      act(() => result.current[1]('tab#with#hash'))
+      expect(result.current[0]).toBe('tab#with#hash')
+
+      // Test tab with equals signs
+      act(() => result.current[1]('tab=with=equals'))
+      expect(result.current[0]).toBe('tab=with=equals')
     })
 
     /**
@@ -460,8 +459,9 @@ describe('useTabSearchParams', () => {
     /**
      * Test that the hook creates a new function on each render
      * Note: The current implementation doesn't use useCallback,
-     * so setActiveTab is recreated on each render. This is acceptable
-     * for this hook's use case as it's typically used in controlled components.
+     * so setActiveTab is recreated on each render. This could lead to
+     * unnecessary re-renders in child components that depend on this function.
+     * TODO: Consider memoizing setActiveTab with useCallback for better performance.
      */
     it('should create new setActiveTab function on each render', () => {
       const { result, rerender } = renderHook(() =>

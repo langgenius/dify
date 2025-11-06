@@ -110,7 +110,7 @@ describe('Model Config Utilities', () => {
             default: '',
             hide: false,
           },
-        },
+        } as any,
       ]
 
       const result = userInputsFormToPromptVariables(userInputs)
@@ -140,7 +140,7 @@ describe('Model Config Utilities', () => {
             default: '',
             hide: false,
           },
-        },
+        } as any,
       ]
 
       const result = userInputsFormToPromptVariables(userInputs)
@@ -205,7 +205,7 @@ describe('Model Config Utilities', () => {
             default: '',
             hide: false,
           },
-        },
+        } as any,
       ]
 
       const result = userInputsFormToPromptVariables(userInputs)
@@ -244,7 +244,7 @@ describe('Model Config Utilities', () => {
             default: '',
             hide: false,
           },
-        },
+        } as any,
       ]
 
       const result = userInputsFormToPromptVariables(userInputs)
@@ -283,7 +283,7 @@ describe('Model Config Utilities', () => {
             icon_background: '#FF5733',
             hide: false,
           },
-        },
+        } as any,
       ]
 
       const result = userInputsFormToPromptVariables(userInputs)
@@ -349,7 +349,7 @@ describe('Model Config Utilities', () => {
             default: '',
             hide: false,
           },
-        },
+        } as any,
         {
           select: {
             label: 'Gender',
@@ -553,7 +553,7 @@ describe('Model Config Utilities', () => {
       const result = promptVariablesToUserInputsForm(promptVariables)
 
       expect(result).toHaveLength(1)
-      expect(result[0]['text-input']?.variable).toBe('valid_key')
+      expect((result[0] as any)['text-input']?.variable).toBe('valid_key')
     })
 
     /**
@@ -613,8 +613,8 @@ describe('Model Config Utilities', () => {
 
       const result = promptVariablesToUserInputsForm(promptVariables)
 
-      expect(result[0]['text-input']?.required).toBe(true)
-      expect(result[1]['text-input']?.required).toBe(false)
+      expect((result[0] as any)['text-input']?.required).toBe(true)
+      expect((result[1] as any)['text-input']?.required).toBe(false)
     })
   })
 
@@ -637,6 +637,7 @@ describe('Model Config Utilities', () => {
     /**
      * Test conversion of boolean input values to actual boolean type
      * This is important for proper type handling in the backend
+     * Note: checkbox inputs are converted to type 'checkbox' by userInputsFormToPromptVariables
      */
     it('should convert boolean inputs to boolean type', () => {
       const useInputs: PromptVariable[] = [
@@ -644,14 +645,14 @@ describe('Model Config Utilities', () => {
           key: 'accept_terms',
           name: 'Accept Terms',
           required: true,
-          type: 'boolean',
+          type: 'checkbox',
           options: [],
         },
         {
           key: 'subscribe',
           name: 'Subscribe',
           required: false,
-          type: 'boolean',
+          type: 'checkbox',
           options: [],
         },
       ]
@@ -704,6 +705,7 @@ describe('Model Config Utilities', () => {
 
     /**
      * Test handling of truthy and falsy values for boolean conversion
+     * Note: checkbox inputs are converted to type 'checkbox' by userInputsFormToPromptVariables
      */
     it('should handle various truthy and falsy values', () => {
       const useInputs: PromptVariable[] = [
@@ -711,28 +713,28 @@ describe('Model Config Utilities', () => {
           key: 'bool1',
           name: 'Bool 1',
           required: true,
-          type: 'boolean',
+          type: 'checkbox',
           options: [],
         },
         {
           key: 'bool2',
           name: 'Bool 2',
           required: true,
-          type: 'boolean',
+          type: 'checkbox',
           options: [],
         },
         {
           key: 'bool3',
           name: 'Bool 3',
           required: true,
-          type: 'boolean',
+          type: 'checkbox',
           options: [],
         },
         {
           key: 'bool4',
           name: 'Bool 4',
           required: true,
-          type: 'boolean',
+          type: 'checkbox',
           options: [],
         },
       ]
@@ -741,19 +743,20 @@ describe('Model Config Utilities', () => {
         bool1: 1,
         bool2: 0,
         bool3: 'yes',
-        bool4: null,
+        bool4: null as any,
       }
 
       const result = formatBooleanInputs(useInputs, inputs)
 
-      expect(result.bool1).toBe(true)
-      expect(result.bool2).toBe(false)
-      expect(result.bool3).toBe(true)
-      expect(result.bool4).toBe(false)
+      expect(result?.bool1).toBe(true)
+      expect(result?.bool2).toBe(false)
+      expect(result?.bool3).toBe(true)
+      expect(result?.bool4).toBe(false)
     })
 
     /**
      * Test that the function creates a new object and doesn't mutate the original
+     * Note: checkbox inputs are converted to type 'checkbox' by userInputsFormToPromptVariables
      */
     it('should not mutate original inputs object', () => {
       const useInputs: PromptVariable[] = [
@@ -761,7 +764,7 @@ describe('Model Config Utilities', () => {
           key: 'flag',
           name: 'Flag',
           required: true,
-          type: 'boolean',
+          type: 'checkbox',
           options: [],
         },
       ]
@@ -808,9 +811,9 @@ describe('Model Config Utilities', () => {
       const backToUserInputs = promptVariablesToUserInputsForm(promptVars)
 
       expect(backToUserInputs).toHaveLength(2)
-      expect(backToUserInputs[0]['text-input']?.variable).toBe('name')
-      expect(backToUserInputs[1].select?.variable).toBe('type')
-      expect(backToUserInputs[1].select?.options).toEqual(['A', 'B', 'C'])
+      expect((backToUserInputs[0] as any)['text-input']?.variable).toBe('name')
+      expect((backToUserInputs[1] as any).select?.variable).toBe('type')
+      expect((backToUserInputs[1] as any).select?.options).toEqual(['A', 'B', 'C'])
     })
   })
 })
