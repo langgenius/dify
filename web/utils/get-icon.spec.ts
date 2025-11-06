@@ -97,7 +97,7 @@ describe('get-icon', () => {
      * Security tests: URL-sensitive characters
      * These tests verify that URL-sensitive characters are handled appropriately
      */
-    test('encodes URL-sensitive characters', () => {
+    test('does not encode URL-sensitive characters', () => {
       const pluginId = 'plugin/with?special=chars#hash'
       const result = getIconFromMarketPlace(pluginId)
       // Note: Current implementation doesn't encode, but test documents the behavior
