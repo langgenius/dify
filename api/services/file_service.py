@@ -239,8 +239,12 @@ class FileService:
         with self._session_maker(expire_on_commit=False) as session:
             upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
 
-        if not upload_file:
-            return
-        storage.delete(upload_file.key)
-        session.delete(upload_file)
-        session.commit()
+            if not upload_file:
+                raise NotFound("File not found")
+            try:
+                storage.delete(upload_file.key)
+                session.delete(upload_file)
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                raise e
