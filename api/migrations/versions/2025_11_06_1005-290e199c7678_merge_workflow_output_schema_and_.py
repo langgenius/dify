@@ -1,8 +1,8 @@
-"""merge workflow output schema and builtin template user removal
+"""merge workflow output schema and workflow pause model
 
-Revision ID: a7b5f0850866
+Revision ID: 290e199c7678
 Revises: 
-Create Date: 2025-10-21 20:10:03.928853
+Create Date: 2025-11-06 10:05:15.772142
 
 """
 from alembic import op
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'a7b5f0850866'
-down_revision = ('528502a5e3c8', 'ae662b25d9bc')
+revision = '290e199c7678'
+down_revision = ('528502a5e3c8', '03f8dcbc611e')
 branch_labels = None
 depends_on = None
 
