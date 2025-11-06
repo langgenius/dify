@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from yarl import URL
 
 from configs import dify_config
+from core.model_runtime.entities.llm_entities import LLMResultChunk
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -249,7 +250,17 @@ class BasePluginClient:
         """
         for line in self._stream_request(method, path, params, headers, data, files):
             try:
-                rep = PluginDaemonBasicResponse[type_].model_validate_json(line)  # type: ignore
+                line_data = json.loads(line)
+
+                if isinstance(line_data, dict) and type_ is LLMResultChunk:
+                    if "data" in line_data and isinstance(line_data["data"], dict):
+                        data_dict = line_data["data"]
+                        if "delta" in data_dict and isinstance(data_dict["delta"], dict):
+                            delta_dict = data_dict["delta"]
+                            if "thinking" in delta_dict and "reasoning_content" not in delta_dict:
+                                delta_dict["reasoning_content"] = delta_dict.pop("thinking")
+
+                rep = PluginDaemonBasicResponse[type_].model_validate(line_data)  # type: ignore
             except (ValueError, TypeError):
                 # TODO modify this when line_data has code and message
                 try:
