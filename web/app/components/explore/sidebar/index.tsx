@@ -88,10 +88,16 @@ const SideBar: FC<IExploreSideBarProps> = ({
         </div>
         {!isMobile && !isFold && <div className={cn('truncate', isDiscoverySelected ? 'system-sm-semibold text-components-menu-item-text-active' : 'system-sm-regular text-components-menu-item-text')}>{t('explore.sidebar.title')}</div>}
       </Link>
+
+      {installedApps.length === 0 && !isMobile && !isFold
+        && <div className='mt-5'>
+          <NoApps />
+        </div>
+      }
+
       {installedApps.length > 0 && (
         <div className='mt-5'>
           {!isMobile && !isFold && <p className='system-xs-medium-uppercase mb-1.5 break-all pl-2 uppercase text-text-tertiary mobile:px-0'>{t('explore.sidebar.webApps')}</p>}
-          {installedApps.length === 0 && !isMobile && !isFold && <NoApps />}
           <div className='space-y-0.5 overflow-y-auto overflow-x-hidden'
             style={{
               height: 'calc(100vh - 250px)',
