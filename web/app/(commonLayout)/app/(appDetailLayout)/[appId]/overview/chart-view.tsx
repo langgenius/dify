@@ -38,7 +38,7 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
       period: payload.query,
       period_name: payload.name,
     })
-  }, [doSetPeriod])
+  }, [doSetPeriod, isWorkflow])
   if (!appDetail)
     return null
 
