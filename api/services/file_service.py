@@ -247,4 +247,4 @@ class FileService:
                 session.commit()
             except Exception as e:
                 session.rollback()
-                raise e
+                raise
