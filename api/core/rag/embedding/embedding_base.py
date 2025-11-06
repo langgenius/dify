@@ -19,6 +19,11 @@ class Embeddings(ABC):
         """Embed query text."""
         raise NotImplementedError
 
+    @abstractmethod
+    def embed_file_query(self, file_document: dict) -> list[float]:
+        """Embed file query."""
+        raise NotImplementedError
+
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         """Asynchronous Embed search docs."""
         raise NotImplementedError

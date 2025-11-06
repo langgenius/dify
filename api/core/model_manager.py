@@ -488,7 +488,18 @@ class ModelManager:
             model_type=model_type,
             model=default_model_entity.model,
         )
-
+    
+    def check_model_support_vision(self, tenant_id: str, provider: str, model: str) -> bool:
+        """
+        Check if model supports vision
+        :param tenant_id: tenant id
+        :param provider: provider name
+        :param model: model name
+        :return: True if model supports vision, False otherwise
+        """
+        model_instance = self.get_model_instance(tenant_id, provider, ModelType.TEXT_EMBEDDING, model)
+        return model_instance.model_type_instance.supports_vision()
+        return model_instance.model_type_instance.supports_vision()
 
 class LBModelManager:
     def __init__(

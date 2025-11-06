@@ -224,3 +224,46 @@ class CacheEmbedding(Embeddings):
             raise ex
 
         return embedding_results  # type: ignore
+
+    def embed_file_query(self, file_document: dict) -> list[float]:
+        """Embed file documents."""
+        # use doc embedding cache or store if not exists
+        file_id = file_document["file_id"]
+        embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model}_{file_id}"
+        embedding = redis_client.get(embedding_cache_key)
+        if embedding:
+            redis_client.expire(embedding_cache_key, 600)
+            decoded_embedding = np.frombuffer(base64.b64decode(embedding), dtype="float")
+            return [float(x) for x in decoded_embedding]
+        try:
+            embedding_result = self._model_instance.invoke_file_embedding(
+                file_documents=[file_document], user=self._user, input_type=EmbeddingInputType.QUERY
+            )
+
+            embedding_results = embedding_result.embeddings[0]
+            # FIXME: type ignore for numpy here
+            embedding_results = (embedding_results / np.linalg.norm(embedding_results)).tolist()  # type: ignore
+            if np.isnan(embedding_results).any():
+                raise ValueError("Normalized embedding is nan please try again")
+        except Exception as ex:
+            if dify_config.DEBUG:
+                logger.exception("Failed to embed file document '%s'", file_document["file_id"])
+            raise ex
+
+        try:
+            # encode embedding to base64
+            embedding_vector = np.array(embedding_results)
+            vector_bytes = embedding_vector.tobytes()
+            # Transform to Base64
+            encoded_vector = base64.b64encode(vector_bytes)
+            # Transform to string
+            encoded_str = encoded_vector.decode("utf-8")
+            redis_client.setex(embedding_cache_key, 600, encoded_str)
+        except Exception as ex:
+            if dify_config.DEBUG:
+                logger.exception(
+                    "Failed to add embedding to redis for the file document '%s'", file_document["file_id"]
+                )
+            raise ex
+
+        return embedding_results  # type: ignore

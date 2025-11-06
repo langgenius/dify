@@ -257,12 +257,22 @@ class Vector:
         self._vector_processor.delete_by_metadata_field(key, value)
 
     def search_by_vector(self, query: str, **kwargs: Any) -> list[Document]:
-        query_vector = self._embeddings.embed_file_documents(query)
+        query_vector = self._embeddings.embed_query(query)
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
     def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
-        file_vector = self._embeddings.embed_file(file_id)
-        return self._vector_processor.search_by_vector(file_ids, **kwargs)
+        upload_file: UploadFile | None = db.session.query(UploadFile).where(UploadFile.id == file_id).first()
+
+        if not upload_file:
+            return []
+        blob = storage.load_once(upload_file.key)
+        file_base64_str = base64.b64encode(blob).decode()
+        file_vector = self._embeddings.embed_file_query({
+            "file": file_base64_str,
+            "file_type": upload_file.file_type,
+            "file_id": file_id,
+        })
+        return self._vector_processor.search_by_vector(file_vector, **kwargs)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)

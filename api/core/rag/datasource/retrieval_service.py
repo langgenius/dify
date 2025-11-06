@@ -1,17 +1,22 @@
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
+from typing import cast
 
 from flask import Flask, current_app
 from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.model_providers.__base.rerank_model import RerankModel
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.entities.metadata_entities import MetadataCondition
 from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -225,7 +230,7 @@ class RetrievalService:
         retrieval_method: RetrievalMethod,
         exceptions: list,
         document_ids_filter: list[str] | None = None,
-        attachment_ids: list | None = None,
+        query_type: QueryType = QueryType.TEXT_QUERY,
     ):
         with flask_app.app_context():
             try:
@@ -234,15 +239,25 @@ class RetrievalService:
                     raise ValueError("dataset not found")
 
                 vector = Vector(dataset=dataset)
-                documents = vector.search_by_vector(
-                    query,
-                    search_type="similarity_score_threshold",
-                    top_k=top_k,
-                    score_threshold=score_threshold,
-                    filter={"group_id": [dataset.id]},
+                documents = []
+                if query_type == QueryType.TEXT_QUERY:
+                    documents.extend(vector.search_by_vector(
+                        query,
+                        search_type="similarity_score_threshold",
+                        top_k=top_k,
+                        score_threshold=score_threshold,
+                        filter={"group_id": [dataset.id]},
+                        document_ids_filter=document_ids_filter,
+                    ))
+                if query_type == QueryType.IMAGE_QUERY:
+                    documents.extend(vector.search_by_file(
+                    file_id=query, 
+                    top_k=top_k, 
+                    score_threshold=score_threshold, 
+                    filter={"group_id": [dataset.id]}, 
                     document_ids_filter=document_ids_filter,
-                )
-
+                    ))
+ 
                 if documents:
                     if (
                         reranking_model
@@ -253,6 +268,23 @@ class RetrievalService:
                         data_post_processor = DataPostProcessor(
                             str(dataset.tenant_id), str(RerankMode.RERANKING_MODEL), reranking_model, None, False
                         )
+                        model_manager = ModelManager()
+                        model_instance = model_manager.get_model_instance(
+                            tenant_id=dataset.tenant_id,
+                            provider=reranking_model.get("reranking_provider_name") or "",
+                            model_type=ModelType.RERANK,
+                            model=reranking_model.get("reranking_model_name") or "",
+                        )
+                        model_type_instance = model_instance.model_type_instance
+                        model_type_instance = cast(RerankModel, model_type_instance)
+                        model_schema = model_type_instance.get_model_schema(
+                            model=model_instance.model, credentials=model_instance.credentials
+                        )
+                        if model_schema:
+                            features = model_schema.features
+                            if features:
+                                if ModelFeature.TOOL_CALL in features or ModelFeature.MULTI_TOOL_CALL in features:
+                                    reranking_mode = RerankMode.RERANKING_MODEL
                         all_documents.extend(
                             data_post_processor.invoke(
                                 query=query,
