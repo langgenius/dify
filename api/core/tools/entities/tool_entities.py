@@ -129,6 +129,7 @@ class ToolInvokeMessage(BaseModel):
 
     class JsonMessage(BaseModel):
         json_object: dict
+        suppress_output: bool = Field(default=False, description="Whether to suppress JSON output in result string")
 
     class BlobMessage(BaseModel):
         blob: bytes
