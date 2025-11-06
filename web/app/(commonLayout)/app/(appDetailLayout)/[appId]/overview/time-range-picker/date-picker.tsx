@@ -34,7 +34,9 @@ const DatePicker: FC<Props> = ({
   }, [locale])
   return (
     <div className='flex h-8 items-center space-x-0.5 rounded-lg bg-components-input-bg-normal px-2'>
-      <RiCalendarLine className='size-3.5 text-text-tertiary' />
+      <div className='p-px'>
+        <RiCalendarLine className='size-3.5 text-text-tertiary' />
+      </div>
       <Picker
         value={start}
         onChange={onStartChange}
