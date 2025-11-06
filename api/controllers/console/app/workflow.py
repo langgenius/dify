@@ -6,7 +6,7 @@ from typing import cast
 from flask import abort, request
 from flask_restx import Resource, fields, inputs, marshal_with, reqparse
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.console import api, console_ns
@@ -992,7 +992,7 @@ class DraftWorkflowTriggerRunApi(Resource):
         except InvokeRateLimitError as ex:
             raise InvokeRateLimitHttpError(ex.description)
         except PluginInvokeError as e:
-            raise BadRequest(e.to_user_friendly_error())
+            return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400
         except Exception as e:
             logger.exception("Error polling trigger debug event")
             raise e
@@ -1126,7 +1126,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
                 node_ids=node_ids,
             )
         except PluginInvokeError as e:
-            raise ValueError(e.to_user_friendly_error())
+            return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400
         except Exception as e:
             logger.exception("Error polling trigger debug event")
             raise e
