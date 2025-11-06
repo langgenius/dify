@@ -596,19 +596,22 @@ export const useWorkflowRun = () => {
         catch (error) {
           if (controller.signal.aborted)
             return
-          console.error(`handleRun: ${debugLabel.toLowerCase()} debug polling error`, error)
-          Toast.notify({ type: 'error', message: `${debugLabel} debug request failed` })
-          clearAbortController()
-          setWorkflowRunningData({
-            result: {
-              status: WorkflowRunningStatus.Failed,
-              error: `${debugLabel} debug request failed`,
-              inputs_truncated: false,
-              process_data_truncated: false,
-              outputs_truncated: false,
-            },
-            tracing: [],
-          })
+          if (error instanceof Response) {
+            const data = await error.clone().json() as Record<string, any>
+            const { error: respError } = data || {}
+            Toast.notify({ type: 'error', message: respError })
+            clearAbortController()
+            setWorkflowRunningData({
+              result: {
+                status: WorkflowRunningStatus.Failed,
+                error: respError,
+                inputs_truncated: false,
+                process_data_truncated: false,
+                outputs_truncated: false,
+              },
+              tracing: [],
+            })
+          }
           clearListeningState()
         }
       }

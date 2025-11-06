@@ -85,7 +85,12 @@ const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.Iteration]: checkIterationValid,
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
   [BlockEnum.Loop]: checkLoopValid,
-} as any
+}
+
+type RequestError = {
+  message: string
+  status: string
+}
 
 export type Params<T> = {
   id: string
@@ -510,7 +515,6 @@ const useOneStepRun = <T>({
         if (controller.signal.aborted)
           return null
 
-        console.error('handleRun: webhook debug polling error', error)
         Toast.notify({ type: 'error', message: 'Webhook debug request failed' })
         cancelWebhookSingleRun()
         if (error instanceof Error)
@@ -535,78 +539,79 @@ const useOneStepRun = <T>({
       const controller = new AbortController()
       pluginSingleRunAbortRef.current = controller
 
-      try {
-        const response: any = await post(urlPath, {
-          body: JSON.stringify({}),
-          signal: controller.signal,
-        })
-
-        if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
-          return null
-
-        if (!response) {
-          const message = response?.message || 'Plugin debug failed'
-          Toast.notify({ type: 'error', message })
-          cancelPluginSingleRun()
-          throw new Error(message)
+      let requestError: RequestError | undefined
+      const response: any = await post(urlPath, {
+        body: JSON.stringify({}),
+        signal: controller.signal,
+      }).catch(async (error: Response) => {
+        const data = await error.clone().json() as Record<string, any>
+        const { error: respError, status } = data || {}
+        requestError = {
+          message: respError,
+          status,
         }
+        return null
+      }).finally(() => {
+        pluginSingleRunAbortRef.current = null
+      })
 
-        if (response?.status === 'waiting') {
-          const delay = Number(response.retry_in) || 2000
-          pluginSingleRunAbortRef.current = null
-          if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
-            return null
+      if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
+        return null
 
-          await new Promise<void>((resolve) => {
-            const timeoutId = window.setTimeout(resolve, delay)
-            pluginSingleRunTimeoutRef.current = timeoutId
-            pluginSingleRunDelayResolveRef.current = resolve
-            controller.signal.addEventListener('abort', () => {
-              window.clearTimeout(timeoutId)
-              resolve()
-            }, { once: true })
-          })
-
-          pluginSingleRunTimeoutRef.current = undefined
-          pluginSingleRunDelayResolveRef.current = null
-          continue
-        }
-
-        if (response?.status === 'error') {
-          const message = response.message || 'Plugin debug failed'
-          Toast.notify({ type: 'error', message })
-          cancelPluginSingleRun()
-          throw new Error(message)
-        }
-
-        handleNodeDataUpdate({
-          id,
-          data: {
-            ...data,
-            _isSingleRun: false,
-            _singleRunningStatus: NodeRunningStatus.Listening,
-          },
-        })
-
-        cancelPluginSingleRun()
-        return response
-      }
-      catch (error) {
-        if (controller.signal.aborted && (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current))
-          return null
+      if (requestError) {
         if (controller.signal.aborted)
           return null
 
-        console.error('handleRun: plugin debug polling error', error)
-        Toast.notify({ type: 'error', message: 'Plugin debug request failed' })
+        Toast.notify({ type: 'error', message: requestError.message })
         cancelPluginSingleRun()
-        if (error instanceof Error)
-          throw error
-        throw new Error(String(error))
+        throw requestError
       }
-      finally {
-        pluginSingleRunAbortRef.current = null
+
+      if (!response) {
+        const message = 'Plugin debug failed'
+        Toast.notify({ type: 'error', message })
+        cancelPluginSingleRun()
+        throw new Error(message)
       }
+
+      if (response?.status === 'waiting') {
+        const delay = Number(response.retry_in) || 2000
+        if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
+          return null
+
+        await new Promise<void>((resolve) => {
+          const timeoutId = window.setTimeout(resolve, delay)
+          pluginSingleRunTimeoutRef.current = timeoutId
+          pluginSingleRunDelayResolveRef.current = resolve
+          controller.signal.addEventListener('abort', () => {
+            window.clearTimeout(timeoutId)
+            resolve()
+          }, { once: true })
+        })
+
+        pluginSingleRunTimeoutRef.current = undefined
+        pluginSingleRunDelayResolveRef.current = null
+        continue
+      }
+
+      if (response?.status === 'error') {
+        const message = response.message || 'Plugin debug failed'
+        Toast.notify({ type: 'error', message })
+        cancelPluginSingleRun()
+        throw new Error(message)
+      }
+
+      handleNodeDataUpdate({
+        id,
+        data: {
+          ...data,
+          _isSingleRun: false,
+          _singleRunningStatus: NodeRunningStatus.Listening,
+        },
+      })
+
+      cancelPluginSingleRun()
+      return response
     }
 
     return null
