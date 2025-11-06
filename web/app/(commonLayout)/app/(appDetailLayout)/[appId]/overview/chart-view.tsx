@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +7,7 @@ import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, MessagesChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/app-chart'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import TimeRangePicker from './time-range-picker'
+import { sendGAEvent } from '@/utils/gtag'
 
 dayjs.extend(quarterOfYear)
 
@@ -30,8 +31,14 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const appDetail = useAppStore(state => state.appDetail)
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
-  const [period, setPeriod] = useState<PeriodParams>({ name: t('appLog.filter.period.today'), query: { start: today.startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } })
-
+  const [period, doSetPeriod] = useState<PeriodParams>({ name: t('appLog.filter.period.today'), query: { start: today.startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } })
+  const setPeriod = useCallback((payload: PeriodParams) => {
+    doSetPeriod(payload)
+    sendGAEvent(isWorkflow ? 'filter_workflow_overview_period' : 'filter_chat_conversation_overview_period', {
+      period: payload.query,
+      period_name: payload.name,
+    })
+  }, [doSetPeriod])
   if (!appDetail)
     return null
 
