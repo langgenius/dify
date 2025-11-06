@@ -130,7 +130,14 @@ class _GraphRuntimeStateSnapshot:
 
 
 class GraphRuntimeState:
-    """Mutable runtime state shared across graph execution components."""
+    """Mutable runtime state shared across graph execution components.
+
+    `GraphRuntimeState` encapsulates the runtime state of workflow execution,
+    including scheduling details, variable values, and timing information.
+
+    Values that are initialized prior to workflow execution and remain constant
+    throughout the execution should be part of `GraphInitParams` instead.
+    """
 
     def __init__(
         self,

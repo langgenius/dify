@@ -30,6 +30,7 @@ from . import (
     saved_message,
     site,
     workflow,
+    workflow_events,
 )
 
 api.add_namespace(web_ns)
@@ -52,4 +53,5 @@ __all__ = [
     "site",
     "web_ns",
     "workflow",
+    "workflow_events",
 ]

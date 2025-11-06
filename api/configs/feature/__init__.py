@@ -765,6 +765,12 @@ class RepositoryConfig(BaseSettings):
         default="core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository",
     )
 
+    CORE_HUMAN_INPUT_FORM_REPOSITORY: str = Field(
+        description="Repository implementation for HumanInputForm. Options: "
+        "'core.repositories.sqlalchemy_human_input_form_repository.SQLAlchemyHumanInputFormRepository' (default)",
+        default="core.repositories.sqlalchemy_human_input_form_repository.SQLAlchemyHumanInputFormRepository",
+    )
+
     API_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
         description="Service-layer repository implementation for WorkflowNodeExecutionModel operations. "
         "Specify as a module path",

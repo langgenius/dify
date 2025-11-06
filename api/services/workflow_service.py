@@ -945,6 +945,13 @@ class WorkflowService:
             if any(nt.is_trigger_node for nt in node_types):
                 raise ValueError("Start node and trigger nodes cannot coexist in the same workflow")
 
+        for node in node_configs:
+            node_data = node.get("data", {})
+            node_type = node_data.get("type")
+
+            if node_type == "human_input":
+                self._validate_human_input_node_data(node_data)
+
     def validate_features_structure(self, app_model: App, features: dict):
         if app_model.mode == AppMode.ADVANCED_CHAT:
             return AdvancedChatAppConfigManager.config_validate(
@@ -956,6 +963,23 @@ class WorkflowService:
             )
         else:
             raise ValueError(f"Invalid app mode: {app_model.mode}")
+
+    def _validate_human_input_node_data(self, node_data: dict) -> None:
+        """
+        Validate HumanInput node data format.
+
+        Args:
+            node_data: The node data dictionary
+
+        Raises:
+            ValueError: If the node data format is invalid
+        """
+        from core.workflow.nodes.human_input.entities import HumanInputNodeData
+
+        try:
+            HumanInputNodeData.model_validate(node_data)
+        except Exception as e:
+            raise ValueError(f"Invalid HumanInput node data: {str(e)}")
 
     def update_workflow(
         self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict

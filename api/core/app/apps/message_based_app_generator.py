@@ -1,7 +1,8 @@
 import json
 import logging
+import uuid
 from collections.abc import Generator
-from typing import Union, cast
+from typing import Mapping, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -23,10 +24,13 @@ from core.app.entities.task_entities import (
     ChatbotAppStreamResponse,
     CompletionAppBlockingResponse,
     CompletionAppStreamResponse,
+    StreamEvent,
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
+from libs.broadcast_channel.channel import Topic
+from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.enums import CreatorUserRole
@@ -34,6 +38,7 @@ from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Me
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
+from extensions.ext_redis import redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -284,3 +289,28 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             raise MessageNotExistsError("Message not exists")
 
         return message
+
+    @staticmethod
+    def _make_channel_key(app_mode: AppMode, workflow_run_id: uuid.UUID):
+        return f"channel:{app_mode}:{str(workflow_run_id)}"
+
+    @classmethod
+    def get_response_topic(cls, app_mode: AppMode, workflow_run_id: uuid.UUID) -> Topic:
+        key = cls._make_channel_key(app_mode, workflow_run_id)
+        channel = RedisBroadcastChannel(redis_client)
+        topic = channel.topic(key)
+        return topic
+
+    @classmethod
+    def retrieve_events(cls, app_mode: AppMode, workflow_run_id: uuid.UUID) -> Generator[Mapping | str, None, None]:
+        topic = cls.get_response_topic(app_mode, workflow_run_id)
+        with topic.subscribe() as sub:
+            for payload in sub:
+                event = json.loads(payload)
+                yield event
+                if not isinstance(event, dict):
+                    continue
+
+                event_type = event.get("event")
+                if event_type == StreamEvent.WORKFLOW_FINISHED:
+                    return

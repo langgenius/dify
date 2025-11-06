@@ -11,6 +11,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
+from core.workflow.repositories.human_input_form_repository import HumanInputFormRepository
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from libs.module_loading import import_string
@@ -106,3 +107,36 @@ class DifyCoreRepositoryFactory:
             raise RepositoryImportError(
                 f"Failed to create WorkflowNodeExecutionRepository from '{class_path}': {e}"
             ) from e
+
+    @classmethod
+    def create_human_input_form_repository(
+        cls,
+        session_factory: Union[sessionmaker, Engine],
+        user: Union[Account, EndUser],
+        app_id: str,
+    ) -> HumanInputFormRepository:
+        """
+        Create a HumanInputFormRepository instance based on configuration.
+
+        Args:
+            session_factory: SQLAlchemy sessionmaker or engine
+            user: Account or EndUser object
+            app_id: Application ID
+
+        Returns:
+            Configured HumanInputFormRepository instance
+
+        Raises:
+            RepositoryImportError: If the configured repository cannot be created
+        """
+        class_path = dify_config.CORE_HUMAN_INPUT_FORM_REPOSITORY
+
+        try:
+            repository_class = import_string(class_path)
+            return repository_class(  # type: ignore[no-any-return]
+                session_factory=session_factory,
+                user=user,
+                app_id=app_id,
+            )
+        except (ImportError, Exception) as e:
+            raise RepositoryImportError(f"Failed to create HumanInputFormRepository from '{class_path}': {e}") from e

@@ -10,12 +10,14 @@ from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
+from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from enums.quota_type import QuotaType, unlimited
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
 from services.errors.app import InvokeRateLimitError, QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.workflow_service import WorkflowService
+from tasks.app_generate.workflow_execute_task import ChatflowExecutionParams, chatflow_execute_task
 
 
 class AppGenerateService:
@@ -82,16 +84,20 @@ class AppGenerateService:
             elif app_model.mode == AppMode.ADVANCED_CHAT:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
+                with rate_limit_context(rate_limit, request_id):
+                    payload = ChatflowExecutionParams.new(
+                        app_model=app_model,
+                        workflow=workflow,
+                        user=user,
+                        args=args,
+                        invoke_from=invoke_from,
+                        streaming=streaming,
+                    )
+                    chatflow_execute_task.delay(payload.model_dump_json())
+                generator = AdvancedChatAppGenerator()
                 return rate_limit.generate(
-                    AdvancedChatAppGenerator.convert_to_event_stream(
-                        AdvancedChatAppGenerator().generate(
-                            app_model=app_model,
-                            workflow=workflow,
-                            user=user,
-                            args=args,
-                            invoke_from=invoke_from,
-                            streaming=streaming,
-                        ),
+                    generator.convert_to_event_stream(
+                        generator.retrieve_events(AppMode.ADVANCED_CHAT, payload.workflow_run_id),
                     ),
                     request_id=request_id,
                 )

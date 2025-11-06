@@ -1166,3 +1166,8 @@ class DraftWorkflowTriggerRunAllApi(Resource):
                     "status": "error",
                 }
             ), 400
+
+
+@console_ns.route("/events")
+class WorkflowEventAPI(Resource):
+    pass

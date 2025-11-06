@@ -3,7 +3,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, Union, overload
+from typing import Any, Literal, TypeVar, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -39,6 +39,7 @@ from extensions.ext_database import db
 from factories import file_factory
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
+from models.base import Base
 from models.enums import WorkflowRunTriggeredFrom
 from services.conversation_service import ConversationService
 from services.workflow_draft_variable_service import (
@@ -60,6 +61,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
+        workflow_run_id: uuid.UUID,
         streaming: Literal[False],
     ) -> Mapping[str, Any]: ...
 
@@ -69,8 +71,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: Mapping,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
+        workflow_run_id: uuid.UUID,
         streaming: Literal[True],
     ) -> Generator[Mapping | str, None, None]: ...
 
@@ -80,8 +83,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: Mapping,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
+        workflow_run_id: uuid.UUID,
         streaming: bool,
     ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]: ...
 
@@ -90,8 +94,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: Mapping,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
+        workflow_run_id: uuid.UUID,
         streaming: bool = True,
     ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]:
         """
@@ -156,7 +161,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             # always enable retriever resource in debugger mode
             app_config.additional_features.show_retrieve_source = True  # type: ignore
 
-        workflow_run_id = str(uuid.uuid4())
         # init application generate entity
         application_generate_entity = AdvancedChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -174,7 +178,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=invoke_from,
             extras=extras,
             trace_manager=trace_manager,
-            workflow_run_id=workflow_run_id,
+            workflow_run_id=str(workflow_run_id),
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -455,8 +459,17 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         worker_thread.start()
 
         # release database connection, because the following new thread operations may take a long time
-        db.session.refresh(workflow)
-        db.session.refresh(message)
+        with Session(bind=db.engine, expire_on_commit=False) as session:
+            workflow = _refresh_model(session, workflow)
+            message = _refresh_model(session, message)
+        #     workflow_ = session.get(Workflow, workflow.id)
+        #     assert workflow_ is not None
+        #     workflow = workflow_
+        #     message_ = session.get(Message, message.id)
+        #     assert message_ is not None
+        #     message = message_
+        # db.session.refresh(workflow)
+        # db.session.refresh(message)
         # db.session.refresh(user)
         db.session.close()
 
@@ -609,3 +622,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             else:
                 logger.exception("Failed to process generate task pipeline, conversation_id: %s", conversation.id)
                 raise e
+
+
+_T = TypeVar("_T", bound=Base)
+
+
+def _refresh_model(session, model: _T) -> _T:
+    with Session(bind=db.engine, expire_on_commit=False) as session:
+        detach_model = session.get(type(model), model.id)
+        assert detach_model is not None
+        return detach_model

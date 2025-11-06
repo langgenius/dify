@@ -34,6 +34,7 @@ from .enums import (
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
+from .human_input import HumanInputForm
 from .model import (
     ApiRequest,
     ApiToken,
@@ -151,6 +152,7 @@ __all__ = [
     "EndUser",
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
+    "HumanInputForm",
     "IconType",
     "InstalledApp",
     "InvitationCode",

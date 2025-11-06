@@ -1,3 +1,9 @@
-from .human_input_node import HumanInputNode
+"""
+Human Input node implementation.
+"""
 
-__all__ = ["HumanInputNode"]
+from .entities import HumanInputNodeData
+from .human_input_node import HumanInputNode
+from .node import HumanInputNode
+
+__all__ = ["HumanInputNode", "HumanInputNodeData"]

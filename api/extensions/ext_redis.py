@@ -11,6 +11,7 @@ from redis.cache import CacheConfig
 from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
 from redis.sentinel import Sentinel
+from redis.client import PubSub
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -106,6 +107,7 @@ class RedisClientWrapper:
         def zremrangebyscore(self, name: str | bytes, min: float | str, max: float | str) -> Any: ...
         def zcard(self, name: str | bytes) -> Any: ...
         def getdel(self, name: str | bytes) -> Any: ...
+        def pubsub(self) -> PubSub: ...
 
     def __getattr__(self, item: str) -> Any:
         if self._client is None:

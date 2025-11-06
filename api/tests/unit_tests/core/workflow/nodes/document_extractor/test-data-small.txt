@@ -1,0 +1,2710 @@
+Directory structure:
+└── tiangolo-fastapi/
+    ├── README.md
+    ├── CITATION.cff
+    ├── CONTRIBUTING.md
+    ├── LICENSE
+    ├── pdm_build.py
+    ├── pyproject.toml
+    ├── requirements-docs-insiders.txt
+    ├── requirements-docs-tests.txt
+    ├── requirements-docs.txt
+    ├── requirements-github-actions.txt
+    ├── requirements-tests.txt
+    ├── requirements-translations.txt
+    ├── requirements.txt
+    ├── SECURITY.md
+    ├── .pre-commit-config.yaml
+    ├── docs/
+    │   ├── language_names.yml
+    │   ├── missing-translation.md
+    │   ├── az/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── index.md
+    │   │       └── learn/
+    │   │           └── index.md
+    │   ├── bn/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── environment-variables.md
+    │   │       ├── index.md
+    │   │       ├── python-types.md
+    │   │       ├── about/
+    │   │       │   └── index.md
+    │   │       └── learn/
+    │   │           └── index.md
+    │   ├── de/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── alternatives.md
+    │   │       ├── async.md
+    │   │       ├── benchmarks.md
+    │   │       ├── features.md
+    │   │       ├── help-fastapi.md
+    │   │       ├── history-design-future.md
+    │   │       ├── index.md
+    │   │       ├── project-generation.md
+    │   │       ├── python-types.md
+    │   │       ├── about/
+    │   │       │   └── index.md
+    │   │       ├── advanced/
+    │   │       │   ├── additional-responses.md
+    │   │       │   ├── additional-status-codes.md
+    │   │       │   ├── advanced-dependencies.md
+    │   │       │   ├── async-tests.md
+    │   │       │   ├── behind-a-proxy.md
+    │   │       │   ├── custom-response.md
+    │   │       │   ├── dataclasses.md
+    │   │       │   ├── events.md
+    │   │       │   ├── generate-clients.md
+    │   │       │   ├── index.md
+    │   │       │   ├── middleware.md
+    │   │       │   ├── openapi-callbacks.md
+    │   │       │   ├── openapi-webhooks.md
+    │   │       │   ├── path-operation-advanced-configuration.md
+    │   │       │   ├── response-change-status-code.md
+    │   │       │   ├── response-cookies.md
+    │   │       │   ├── response-directly.md
+    │   │       │   ├── response-headers.md
+    │   │       │   ├── settings.md
+    │   │       │   ├── sub-applications.md
+    │   │       │   ├── templates.md
+    │   │       │   ├── testing-dependencies.md
+    │   │       │   ├── testing-events.md
+    │   │       │   ├── testing-websockets.md
+    │   │       │   ├── using-request-directly.md
+    │   │       │   ├── websockets.md
+    │   │       │   ├── wsgi.md
+    │   │       │   └── security/
+    │   │       │       ├── http-basic-auth.md
+    │   │       │       ├── index.md
+    │   │       │       └── oauth2-scopes.md
+    │   │       ├── deployment/
+    │   │       │   ├── cloud.md
+    │   │       │   ├── concepts.md
+    │   │       │   ├── docker.md
+    │   │       │   ├── https.md
+    │   │       │   ├── index.md
+    │   │       │   ├── manually.md
+    │   │       │   ├── server-workers.md
+    │   │       │   └── versions.md
+    │   │       ├── how-to/
+    │   │       │   ├── conditional-openapi.md
+    │   │       │   ├── configure-swagger-ui.md
+    │   │       │   ├── custom-docs-ui-assets.md
+    │   │       │   ├── custom-request-and-route.md
+    │   │       │   ├── extending-openapi.md
+    │   │       │   ├── general.md
+    │   │       │   ├── graphql.md
+    │   │       │   ├── index.md
+    │   │       │   └── separate-openapi-schemas.md
+    │   │       ├── learn/
+    │   │       │   └── index.md
+    │   │       ├── resources/
+    │   │       │   └── index.md
+    │   │       └── tutorial/
+    │   │           ├── background-tasks.md
+    │   │           ├── bigger-applications.md
+    │   │           ├── body-fields.md
+    │   │           ├── body-multiple-params.md
+    │   │           ├── body-nested-models.md
+    │   │           ├── body-updates.md
+    │   │           ├── body.md
+    │   │           ├── cookie-params.md
+    │   │           ├── encoder.md
+    │   │           ├── extra-data-types.md
+    │   │           ├── extra-models.md
+    │   │           ├── first-steps.md
+    │   │           ├── handling-errors.md
+    │   │           ├── header-params.md
+    │   │           ├── index.md
+    │   │           ├── metadata.md
+    │   │           ├── middleware.md
+    │   │           ├── path-operation-configuration.md
+    │   │           ├── path-params-numeric-validations.md
+    │   │           ├── path-params.md
+    │   │           ├── query-params-str-validations.md
+    │   │           ├── query-params.md
+    │   │           ├── request-files.md
+    │   │           ├── request-forms-and-files.md
+    │   │           ├── request-forms.md
+    │   │           ├── response-model.md
+    │   │           ├── response-status-code.md
+    │   │           ├── schema-extra-example.md
+    │   │           ├── static-files.md
+    │   │           ├── testing.md
+    │   │           ├── dependencies/
+    │   │           │   ├── classes-as-dependencies.md
+    │   │           │   ├── dependencies-in-path-operation-decorators.md
+    │   │           │   ├── dependencies-with-yield.md
+    │   │           │   ├── global-dependencies.md
+    │   │           │   ├── index.md
+    │   │           │   └── sub-dependencies.md
+    │   │           └── security/
+    │   │               ├── first-steps.md
+    │   │               ├── get-current-user.md
+    │   │               ├── index.md
+    │   │               ├── oauth2-jwt.md
+    │   │               └── simple-oauth2.md
+    │   ├── em/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── alternatives.md
+    │   │       ├── async.md
+    │   │       ├── benchmarks.md
+    │   │       ├── features.md
+    │   │       ├── help-fastapi.md
+    │   │       ├── history-design-future.md
+    │   │       ├── index.md
+    │   │       ├── project-generation.md
+    │   │       ├── python-types.md
+    │   │       ├── advanced/
+    │   │       │   ├── additional-responses.md
+    │   │       │   ├── additional-status-codes.md
+    │   │       │   ├── advanced-dependencies.md
+    │   │       │   ├── async-tests.md
+    │   │       │   ├── behind-a-proxy.md
+    │   │       │   ├── custom-response.md
+    │   │       │   ├── dataclasses.md
+    │   │       │   ├── events.md
+    │   │       │   ├── generate-clients.md
+    │   │       │   ├── index.md
+    │   │       │   ├── middleware.md
+    │   │       │   ├── openapi-callbacks.md
+    │   │       │   ├── path-operation-advanced-configuration.md
+    │   │       │   ├── response-change-status-code.md
+    │   │       │   ├── response-cookies.md
+    │   │       │   ├── response-directly.md
+    │   │       │   ├── response-headers.md
+    │   │       │   ├── settings.md
+    │   │       │   ├── sub-applications.md
+    │   │       │   ├── templates.md
+    │   │       │   ├── testing-dependencies.md
+    │   │       │   ├── testing-events.md
+    │   │       │   ├── testing-websockets.md
+    │   │       │   ├── using-request-directly.md
+    │   │       │   ├── websockets.md
+    │   │       │   ├── wsgi.md
+    │   │       │   └── security/
+    │   │       │       ├── http-basic-auth.md
+    │   │       │       ├── index.md
+    │   │       │       └── oauth2-scopes.md
+    │   │       ├── deployment/
+    │   │       │   ├── concepts.md
+    │   │       │   ├── docker.md
+    │   │       │   ├── https.md
+    │   │       │   ├── index.md
+    │   │       │   ├── manually.md
+    │   │       │   ├── server-workers.md
+    │   │       │   └── versions.md
+    │   │       ├── how-to/
+    │   │       │   ├── conditional-openapi.md
+    │   │       │   ├── custom-request-and-route.md
+    │   │       │   ├── extending-openapi.md
+    │   │       │   └── graphql.md
+    │   │       └── tutorial/
+    │   │           ├── background-tasks.md
+    │   │           ├── bigger-applications.md
+    │   │           ├── body-fields.md
+    │   │           ├── body-multiple-params.md
+    │   │           ├── body-nested-models.md
+    │   │           ├── body-updates.md
+    │   │           ├── body.md
+    │   │           ├── cookie-params.md
+    │   │           ├── cors.md
+    │   │           ├── debugging.md
+    │   │           ├── encoder.md
+    │   │           ├── extra-data-types.md
+    │   │           ├── extra-models.md
+    │   │           ├── first-steps.md
+    │   │           ├── handling-errors.md
+    │   │           ├── header-params.md
+    │   │           ├── index.md
+    │   │           ├── metadata.md
+    │   │           ├── middleware.md
+    │   │           ├── path-operation-configuration.md
+    │   │           ├── path-params-numeric-validations.md
+    │   │           ├── path-params.md
+    │   │           ├── query-params-str-validations.md
+    │   │           ├── query-params.md
+    │   │           ├── request-files.md
+    │   │           ├── request-forms-and-files.md
+    │   │           ├── request-forms.md
+    │   │           ├── response-model.md
+    │   │           ├── response-status-code.md
+    │   │           ├── schema-extra-example.md
+    │   │           ├── static-files.md
+    │   │           ├── testing.md
+    │   │           ├── dependencies/
+    │   │           │   ├── classes-as-dependencies.md
+    │   │           │   ├── dependencies-in-path-operation-decorators.md
+    │   │           │   ├── dependencies-with-yield.md
+    │   │           │   ├── global-dependencies.md
+    │   │           │   ├── index.md
+    │   │           │   └── sub-dependencies.md
+    │   │           └── security/
+    │   │               ├── first-steps.md
+    │   │               ├── get-current-user.md
+    │   │               ├── index.md
+    │   │               ├── oauth2-jwt.md
+    │   │               └── simple-oauth2.md
+    │   ├── en/
+    │   │   ├── mkdocs.insiders.yml
+    │   │   ├── mkdocs.maybe-insiders.yml
+    │   │   ├── mkdocs.no-insiders.yml
+    │   │   ├── mkdocs.yml
+    │   │   ├── data/
+    │   │   │   ├── contributors.yml
+    │   │   │   ├── external_links.yml
+    │   │   │   ├── github_sponsors.yml
+    │   │   │   ├── members.yml
+    │   │   │   ├── people.yml
+    │   │   │   ├── skip_users.yml
+    │   │   │   ├── sponsors.yml
+    │   │   │   ├── sponsors_badge.yml
+    │   │   │   ├── topic_repos.yml
+    │   │   │   └── translators.yml
+    │   │   ├── docs/
+    │   │   │   ├── alternatives.md
+    │   │   │   ├── async.md
+    │   │   │   ├── benchmarks.md
+    │   │   │   ├── contributing.md
+    │   │   │   ├── environment-variables.md
+    │   │   │   ├── external-links.md
+    │   │   │   ├── fastapi-cli.md
+    │   │   │   ├── fastapi-people.md
+    │   │   │   ├── features.md
+    │   │   │   ├── help-fastapi.md
+    │   │   │   ├── history-design-future.md
+    │   │   │   ├── index.md
+    │   │   │   ├── management-tasks.md
+    │   │   │   ├── management.md
+    │   │   │   ├── newsletter.md
+    │   │   │   ├── project-generation.md
+    │   │   │   ├── python-types.md
+    │   │   │   ├── virtual-environments.md
+    │   │   │   ├── about/
+    │   │   │   │   └── index.md
+    │   │   │   ├── advanced/
+    │   │   │   │   ├── additional-responses.md
+    │   │   │   │   ├── additional-status-codes.md
+    │   │   │   │   ├── advanced-dependencies.md
+    │   │   │   │   ├── async-tests.md
+    │   │   │   │   ├── behind-a-proxy.md
+    │   │   │   │   ├── custom-response.md
+    │   │   │   │   ├── dataclasses.md
+    │   │   │   │   ├── events.md
+    │   │   │   │   ├── generate-clients.md
+    │   │   │   │   ├── index.md
+    │   │   │   │   ├── middleware.md
+    │   │   │   │   ├── openapi-callbacks.md
+    │   │   │   │   ├── openapi-webhooks.md
+    │   │   │   │   ├── path-operation-advanced-configuration.md
+    │   │   │   │   ├── response-change-status-code.md
+    │   │   │   │   ├── response-cookies.md
+    │   │   │   │   ├── response-directly.md
+    │   │   │   │   ├── response-headers.md
+    │   │   │   │   ├── settings.md
+    │   │   │   │   ├── sub-applications.md
+    │   │   │   │   ├── templates.md
+    │   │   │   │   ├── testing-dependencies.md
+    │   │   │   │   ├── testing-events.md
+    │   │   │   │   ├── testing-websockets.md
+    │   │   │   │   ├── using-request-directly.md
+    │   │   │   │   ├── websockets.md
+    │   │   │   │   ├── wsgi.md
+    │   │   │   │   └── security/
+    │   │   │   │       ├── http-basic-auth.md
+    │   │   │   │       ├── index.md
+    │   │   │   │       └── oauth2-scopes.md
+    │   │   │   ├── css/
+    │   │   │   │   ├── custom.css
+    │   │   │   │   └── termynal.css
+    │   │   │   ├── deployment/
+    │   │   │   │   ├── cloud.md
+    │   │   │   │   ├── concepts.md
+    │   │   │   │   ├── docker.md
+    │   │   │   │   ├── https.md
+    │   │   │   │   ├── index.md
+    │   │   │   │   ├── manually.md
+    │   │   │   │   ├── server-workers.md
+    │   │   │   │   └── versions.md
+    │   │   │   ├── how-to/
+    │   │   │   │   ├── conditional-openapi.md
+    │   │   │   │   ├── configure-swagger-ui.md
+    │   │   │   │   ├── custom-docs-ui-assets.md
+    │   │   │   │   ├── custom-request-and-route.md
+    │   │   │   │   ├── extending-openapi.md
+    │   │   │   │   ├── general.md
+    │   │   │   │   ├── graphql.md
+    │   │   │   │   ├── index.md
+    │   │   │   │   ├── separate-openapi-schemas.md
+    │   │   │   │   └── testing-database.md
+    │   │   │   ├── js/
+    │   │   │   │   ├── custom.js
+    │   │   │   │   └── termynal.js
+    │   │   │   ├── learn/
+    │   │   │   │   └── index.md
+    │   │   │   ├── reference/
+    │   │   │   │   ├── apirouter.md
+    │   │   │   │   ├── background.md
+    │   │   │   │   ├── dependencies.md
+    │   │   │   │   ├── encoders.md
+    │   │   │   │   ├── exceptions.md
+    │   │   │   │   ├── fastapi.md
+    │   │   │   │   ├── httpconnection.md
+    │   │   │   │   ├── index.md
+    │   │   │   │   ├── middleware.md
+    │   │   │   │   ├── parameters.md
+    │   │   │   │   ├── request.md
+    │   │   │   │   ├── response.md
+    │   │   │   │   ├── responses.md
+    │   │   │   │   ├── staticfiles.md
+    │   │   │   │   ├── status.md
+    │   │   │   │   ├── templating.md
+    │   │   │   │   ├── testclient.md
+    │   │   │   │   ├── uploadfile.md
+    │   │   │   │   ├── websockets.md
+    │   │   │   │   ├── openapi/
+    │   │   │   │   │   ├── docs.md
+    │   │   │   │   │   ├── index.md
+    │   │   │   │   │   └── models.md
+    │   │   │   │   └── security/
+    │   │   │   │       └── index.md
+    │   │   │   ├── resources/
+    │   │   │   │   └── index.md
+    │   │   │   └── tutorial/
+    │   │   │       ├── background-tasks.md
+    │   │   │       ├── bigger-applications.md
+    │   │   │       ├── body-fields.md
+    │   │   │       ├── body-multiple-params.md
+    │   │   │       ├── body-nested-models.md
+    │   │   │       ├── body-updates.md
+    │   │   │       ├── body.md
+    │   │   │       ├── cookie-param-models.md
+    │   │   │       ├── cookie-params.md
+    │   │   │       ├── cors.md
+    │   │   │       ├── debugging.md
+    │   │   │       ├── encoder.md
+    │   │   │       ├── extra-data-types.md
+    │   │   │       ├── extra-models.md
+    │   │   │       ├── first-steps.md
+    │   │   │       ├── handling-errors.md
+    │   │   │       ├── header-param-models.md
+    │   │   │       ├── header-params.md
+    │   │   │       ├── index.md
+    │   │   │       ├── metadata.md
+    │   │   │       ├── middleware.md
+    │   │   │       ├── path-operation-configuration.md
+    │   │   │       ├── path-params-numeric-validations.md
+    │   │   │       ├── path-params.md
+    │   │   │       ├── query-param-models.md
+    │   │   │       ├── query-params-str-validations.md
+    │   │   │       ├── query-params.md
+    │   │   │       ├── request-files.md
+    │   │   │       ├── request-form-models.md
+    │   │   │       ├── request-forms-and-files.md
+    │   │   │       ├── request-forms.md
+    │   │   │       ├── response-model.md
+    │   │   │       ├── response-status-code.md
+    │   │   │       ├── schema-extra-example.md
+    │   │   │       ├── sql-databases.md
+    │   │   │       ├── static-files.md
+    │   │   │       ├── testing.md
+    │   │   │       ├── dependencies/
+    │   │   │       │   ├── classes-as-dependencies.md
+    │   │   │       │   ├── dependencies-in-path-operation-decorators.md
+    │   │   │       │   ├── dependencies-with-yield.md
+    │   │   │       │   ├── global-dependencies.md
+    │   │   │       │   ├── index.md
+    │   │   │       │   └── sub-dependencies.md
+    │   │   │       └── security/
+    │   │   │           ├── first-steps.md
+    │   │   │           ├── get-current-user.md
+    │   │   │           ├── index.md
+    │   │   │           ├── oauth2-jwt.md
+    │   │   │           └── simple-oauth2.md
+    │   │   └── overrides/
+    │   │       ├── main.html
+    │   │       └── partials/
+    │   │           └── copyright.html
+    │   ├── es/
+    │   │   ├── llm-prompt.md
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── alternatives.md
+    │   │       ├── async.md
+    │   │       ├── benchmarks.md
+    │   │       ├── environment-variables.md
+    │   │       ├── fastapi-cli.md
+    │   │       ├── features.md
+    │   │       ├── help-fastapi.md
+    │   │       ├── history-design-future.md
+    │   │       ├── index.md
+    │   │       ├── project-generation.md
+    │   │       ├── python-types.md
+    │   │       ├── virtual-environments.md
+    │   │       ├── about/
+    │   │       │   └── index.md
+    │   │       ├── advanced/
+    │   │       │   ├── additional-responses.md
+    │   │       │   ├── additional-status-codes.md
+    │   │       │   ├── advanced-dependencies.md
+    │   │       │   ├── async-tests.md
+    │   │       │   ├── behind-a-proxy.md
+    │   │       │   ├── custom-response.md
+    │   │       │   ├── dataclasses.md
+    │   │       │   ├── events.md
+    │   │       │   ├── generate-clients.md
+    │   │       │   ├── index.md
+    │   │       │   ├── middleware.md
+    │   │       │   ├── openapi-callbacks.md
+    │   │       │   ├── openapi-webhooks.md
+    │   │       │   ├── path-operation-advanced-configuration.md
+    │   │       │   ├── response-change-status-code.md
+    │   │       │   ├── response-cookies.md
+    │   │       │   ├── response-directly.md
+    │   │       │   ├── response-headers.md
+    │   │       │   ├── settings.md
+    │   │       │   ├── sub-applications.md
+    │   │       │   ├── templates.md
+    │   │       │   ├── testing-dependencies.md
+    │   │       │   ├── testing-events.md
+    │   │       │   ├── testing-websockets.md
+    │   │       │   ├── using-request-directly.md
+    │   │       │   ├── websockets.md
+    │   │       │   ├── wsgi.md
+    │   │       │   └── security/
+    │   │       │       ├── http-basic-auth.md
+    │   │       │       ├── index.md
+    │   │       │       └── oauth2-scopes.md
+    │   │       ├── deployment/
+    │   │       │   ├── cloud.md
+    │   │       │   ├── concepts.md
+    │   │       │   ├── docker.md
+    │   │       │   ├── https.md
+    │   │       │   ├── index.md
+    │   │       │   ├── manually.md
+    │   │       │   ├── server-workers.md
+    │   │       │   └── versions.md
+    │   │       ├── how-to/
+    │   │       │   ├── conditional-openapi.md
+    │   │       │   ├── configure-swagger-ui.md
+    │   │       │   ├── custom-docs-ui-assets.md
+    │   │       │   ├── custom-request-and-route.md
+    │   │       │   ├── extending-openapi.md
+    │   │       │   ├── general.md
+    │   │       │   ├── graphql.md
+    │   │       │   ├── index.md
+    │   │       │   ├── separate-openapi-schemas.md
+    │   │       │   └── testing-database.md
+    │   │       ├── learn/
+    │   │       │   └── index.md
+    │   │       ├── resources/
+    │   │       │   └── index.md
+    │   │       └── tutorial/
+    │   │           ├── background-tasks.md
+    │   │           ├── bigger-applications.md
+    │   │           ├── body-fields.md
+    │   │           ├── body-multiple-params.md
+    │   │           ├── body-nested-models.md
+    │   │           ├── body-updates.md
+    │   │           ├── body.md
+    │   │           ├── cookie-param-models.md
+    │   │           ├── cookie-params.md
+    │   │           ├── cors.md
+    │   │           ├── debugging.md
+    │   │           ├── encoder.md
+    │   │           ├── extra-data-types.md
+    │   │           ├── extra-models.md
+    │   │           ├── first-steps.md
+    │   │           ├── handling-errors.md
+    │   │           ├── header-param-models.md
+    │   │           ├── header-params.md
+    │   │           ├── index.md
+    │   │           ├── metadata.md
+    │   │           ├── middleware.md
+    │   │           ├── path-operation-configuration.md
+    │   │           ├── path-params-numeric-validations.md
+    │   │           ├── path-params.md
+    │   │           ├── query-param-models.md
+    │   │           ├── query-params-str-validations.md
+    │   │           ├── query-params.md
+    │   │           ├── request-files.md
+    │   │           ├── request-form-models.md
+    │   │           ├── request-forms-and-files.md
+    │   │           ├── request-forms.md
+    │   │           ├── response-model.md
+    │   │           ├── response-status-code.md
+    │   │           ├── schema-extra-example.md
+    │   │           ├── sql-databases.md
+    │   │           ├── static-files.md
+    │   │           ├── testing.md
+    │   │           ├── dependencies/
+    │   │           │   ├── classes-as-dependencies.md
+    │   │           │   ├── dependencies-in-path-operation-decorators.md
+    │   │           │   ├── dependencies-with-yield.md
+    │   │           │   ├── global-dependencies.md
+    │   │           │   ├── index.md
+    │   │           │   └── sub-dependencies.md
+    │   │           └── security/
+    │   │               ├── first-steps.md
+    │   │               ├── get-current-user.md
+    │   │               ├── index.md
+    │   │               ├── oauth2-jwt.md
+    │   │               └── simple-oauth2.md
+    │   ├── fa/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── async.md
+    │   │       ├── environment-variables.md
+    │   │       ├── features.md
+    │   │       ├── index.md
+    │   │       ├── python-types.md
+    │   │       ├── advanced/
+    │   │       │   └── sub-applications.md
+    │   │       ├── learn/
+    │   │       │   └── index.md
+    │   │       └── tutorial/
+    │   │           ├── middleware.md
+    │   │           └── security/
+    │   │               └── index.md
+    │   ├── fr/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── alternatives.md
+    │   │       ├── async.md
+    │   │       ├── benchmarks.md
+    │   │       ├── features.md
+    │   │       ├── help-fastapi.md
+    │   │       ├── history-design-future.md
+    │   │       ├── index.md
+    │   │       ├── project-generation.md
+    │   │       ├── python-types.md
+    │   │       ├── advanced/
+    │   │       │   ├── additional-responses.md
+    │   │       │   ├── additional-status-codes.md
+    │   │       │   ├── index.md
+    │   │       │   ├── path-operation-advanced-configuration.md
+    │   │       │   └── response-directly.md
+    │   │       ├── deployment/
+    │   │       │   ├── docker.md
+    │   │       │   ├── https.md
+    │   │       │   ├── index.md
+    │   │       │   ├── manually.md
+    │   │       │   └── versions.md
+    │   │       ├── learn/
+    │   │       │   └── index.md
+    │   │       └── tutorial/
+    │   │           ├── background-tasks.md
+    │   │           ├── body-multiple-params.md
+    │   │           ├── body.md
+    │   │           ├── debugging.md
+    │   │           ├── first-steps.md
+    │   │           ├── index.md
+    │   │           ├── path-params-numeric-validations.md
+    │   │           ├── path-params.md
+    │   │           ├── query-params-str-validations.md
+    │   │           └── query-params.md
+    │   ├── he/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       └── index.md
+    │   ├── hu/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       └── index.md
+    │   ├── id/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── index.md
+    │   │       └── tutorial/
+    │   │           ├── first-steps.md
+    │   │           ├── index.md
+    │   │           ├── path-params.md
+    │   │           └── static-files.md
+    │   ├── it/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       └── index.md
+    │   ├── ja/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── alternatives.md
+    │   │       ├── async.md
+    │   │       ├── benchmarks.md
+    │   │       ├── environment-variables.md
+    │   │       ├── features.md
+    │   │       ├── help-fastapi.md
+    │   │       ├── history-design-future.md
+    │   │       ├── index.md
+    │   │       ├── project-generation.md
+    │   │       ├── python-types.md
+    │   │       ├── virtual-environments.md
+    │   │       ├── advanced/
+    │   │       │   ├── additional-status-codes.md
+    │   │       │   ├── custom-response.md
+    │   │       │   ├── index.md
+    │   │       │   ├── path-operation-advanced-configuration.md
+    │   │       │   ├── response-directly.md
+    │   │       │   └── websockets.md
+    │   │       ├── deployment/
+    │   │       │   ├── concepts.md
+    │   │       │   ├── docker.md
+    │   │       │   ├── https.md
+    │   │       │   ├── index.md
+    │   │       │   ├── manually.md
+    │   │       │   ├── server-workers.md
+    │   │       │   └── versions.md
+    │   │       ├── how-to/
+    │   │       │   └── conditional-openapi.md
+    │   │       ├── learn/
+    │   │       │   └── index.md
+    │   │       └── tutorial/
+    │   │           ├── background-tasks.md
+    │   │           ├── body-fields.md
+    │   │           ├── body-multiple-params.md
+    │   │           ├── body-nested-models.md
+    │   │           ├── body-updates.md
+    │   │           ├── body.md
+    │   │           ├── cookie-param-models.md
+    │   │           ├── cookie-params.md
+    │   │           ├── cors.md
+    │   │           ├── debugging.md
+    │   │           ├── encoder.md
+    │   │           ├── extra-data-types.md
+    │   │           ├── extra-models.md
+    │   │           ├── first-steps.md
+    │   │           ├── handling-errors.md
+    │   │           ├── header-params.md
+    │   │           ├── index.md
+    │   │           ├── metadata.md
+    │   │           ├── middleware.md
+    │   │           ├── path-operation-configuration.md
+    │   │           ├── path-params-numeric-validations.md
+    │   │           ├── path-params.md
+    │   │           ├── query-param-models.md
+    │   │           ├── query-params-str-validations.md
+    │   │           ├── query-params.md
+    │   │           ├── request-forms-and-files.md
+    │   │           ├── request-forms.md
+    │   │           ├── response-model.md
+    │   │           ├── response-status-code.md
+    │   │           ├── schema-extra-example.md
+    │   │           ├── static-files.md
+    │   │           ├── testing.md
+    │   │           ├── dependencies/
+    │   │           │   ├── classes-as-dependencies.md
+    │   │           │   ├── dependencies-in-path-operation-decorators.md
+    │   │           │   ├── dependencies-with-yield.md
+    │   │           │   ├── index.md
+    │   │           │   └── sub-dependencies.md
+    │   │           └── security/
+    │   │               ├── first-steps.md
+    │   │               ├── get-current-user.md
+    │   │               ├── index.md
+    │   │               └── oauth2-jwt.md
+    │   ├── ko/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── async.md
+    │   │       ├── benchmarks.md
+    │   │       ├── environment-variables.md
+    │   │       ├── fastapi-cli.md
+    │   │       ├── features.md
+    │   │       ├── help-fastapi.md
+    │   │       ├── history-design-future.md
+    │   │       ├── index.md
+    │   │       ├── openapi-webhooks.md
+    │   │       ├── project-generation.md
+    │   │       ├── python-types.md
+    │   │       ├── virtual-environments.md
+    │   │       ├── about/
+    │   │       │   └── index.md
+    │   │       ├── advanced/
+    │   │       │   ├── additional-status-codes.md
+    │   │       │   ├── advanced-dependencies.md
+    │   │       │   ├── async-tests.md
+    │   │       │   ├── custom-response.md
+    │   │       │   ├── events.md
+    │   │       │   ├── index.md
+    │   │       │   ├── middlewares.md
+    │   │       │   ├── response-change-status-code.md
+    │   │       │   ├── response-cookies.md
+    │   │       │   ├── response-directly.md
+    │   │       │   ├── response-headers.md
+    │   │       │   ├── sub-applications.md
+    │   │       │   ├── templates.md
+    │   │       │   ├── testing-dependencies.md
+    │   │       │   ├── testing-events.md
+    │   │       │   ├── testing-websockets.md
+    │   │       │   ├── using-request-directly.md
+    │   │       │   ├── websockets.md
+    │   │       │   └── wsgi.md
+    │   │       ├── deployment/
+    │   │       │   ├── cloud.md
+    │   │       │   ├── docker.md
+    │   │       │   ├── index.md
+    │   │       │   ├── server-workers.md
+    │   │       │   └── versions.md
+    │   │       ├── how-to/
+    │   │       │   ├── conditional-openapi.md
+    │   │       │   └── configure-swagger-ui.md
+    │   │       ├── learn/
+    │   │       │   └── index.md
+    │   │       ├── resources/
+    │   │       │   └── index.md
+    │   │       ├── security/
+    │   │       │   └── index.md
+    │   │       └── tutorial/
+    │   │           ├── background-tasks.md
+    │   │           ├── body-fields.md
+    │   │           ├── body-multiple-params.md
+    │   │           ├── body-nested-models.md
+    │   │           ├── body.md
+    │   │           ├── cookie-param-models.md
+    │   │           ├── cookie-params.md
+    │   │           ├── cors.md
+    │   │           ├── debugging.md
+    │   │           ├── encoder.md
+    │   │           ├── extra-data-types.md
+    │   │           ├── extra-models.md
+    │   │           ├── first-steps.md
+    │   │           ├── header-param-models.md
+    │   │           ├── header-params.md
+    │   │           ├── index.md
+    │   │           ├── metadata.md
+    │   │           ├── middleware.md
+    │   │           ├── path-operation-configuration.md
+    │   │           ├── path-params-numeric-validations.md
+    │   │           ├── path-params.md
+    │   │           ├── query-param-models.md
+    │   │           ├── query-params-str-validations.md
+    │   │           ├── query-params.md
+    │   │           ├── request-files.md
+    │   │           ├── request-form-models.md
+    │   │           ├── request-forms-and-files.md
+    │   │           ├── request-forms.md
+    │   │           ├── response-model.md
+    │   │           ├── response-status-code.md
+    │   │           ├── schema-extra-example.md
+    │   │           ├── sql-databases.md
+    │   │           ├── static-files.md
+    │   │           ├── testing.md
+    │   │           ├── dependencies/
+    │   │           │   ├── classes-as-dependencies.md
+    │   │           │   ├── dependencies-in-path-operation-decorators.md
+    │   │           │   ├── dependencies-with-yield.md
+    │   │           │   ├── global-dependencies.md
+    │   │           │   └── index.md
+    │   │           └── security/
+    │   │               ├── get-current-user.md
+    │   │               ├── oauth2-jwt.md
+    │   │               └── simple-oauth2.md
+    │   ├── nl/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── environment-variables.md
+    │   │       ├── features.md
+    │   │       ├── index.md
+    │   │       └── python-types.md
+    │   ├── pl/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── features.md
+    │   │       ├── help-fastapi.md
+    │   │       ├── index.md
+    │   │       └── tutorial/
+    │   │           ├── first-steps.md
+    │   │           └── index.md
+    │   ├── pt/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── alternatives.md
+    │   │       ├── async.md
+    │   │       ├── benchmarks.md
+    │   │       ├── environment-variables.md
+    │   │       ├── fastapi-cli.md
+    │   │       ├── features.md
+    │   │       ├── help-fastapi.md
+    │   │       ├── history-design-future.md
+    │   │       ├── index.md
+    │   │       ├── project-generation.md
+    │   │       ├── python-types.md
+    │   │       ├── virtual-environments.md
+    │   │       ├── about/
+    │   │       │   └── index.md
+    │   │       ├── advanced/
+    │   │       │   ├── additional-responses.md
+    │   │       │   ├── additional-status-codes.md
+    │   │       │   ├── advanced-dependencies.md
+    │   │       │   ├── async-tests.md
+    │   │       │   ├── behind-a-proxy.md
+    │   │       │   ├── custom-response.md
+    │   │       │   ├── dataclasses.md
+    │   │       │   ├── events.md
+    │   │       │   ├── generate-clients.md
+    │   │       │   ├── index.md
+    │   │       │   ├── middleware.md
+    │   │       │   ├── openapi-callbacks.md
+    │   │       │   ├── openapi-webhooks.md
+    │   │       │   ├── path-operation-advanced-configuration.md
+    │   │       │   ├── response-change-status-code.md
+    │   │       │   ├── response-cookies.md
+    │   │       │   ├── response-directly.md
+    │   │       │   ├── response-headers.md
+    │   │       │   ├── settings.md
+    │   │       │   ├── sub-applications.md
+    │   │       │   ├── templates.md
+    │   │       │   ├── testing-dependencies.md
+    │   │       │   ├── testing-events.md
+    │   │       │   ├── testing-websockets.md
+    │   │       │   ├── using-request-directly.md
+    │   │       │   ├── websockets.md
+    │   │       │   ├── wsgi.md
+    │   │       │   └── security/
+    │   │       │       ├── http-basic-auth.md
+    │   │       │       ├── index.md
+    │   │       │       └── oauth2-scopes.md
+    │   │       ├── deployment/
+    │   │       │   ├── cloud.md
+    │   │       │   ├── concepts.md
+    │   │       │   ├── docker.md
+    │   │       │   ├── https.md
+    │   │       │   ├── index.md
+    │   │       │   ├── manually.md
+    │   │       │   ├── server-workers.md
+    │   │       │   └── versions.md
+    │   │       ├── how-to/
+    │   │       │   ├── conditional-openapi.md
+    │   │       │   ├── configure-swagger-ui.md
+    │   │       │   ├── custom-docs-ui-assets.md
+    │   │       │   ├── custom-request-and-route.md
+    │   │       │   ├── extending-openapi.md
+    │   │       │   ├── general.md
+    │   │       │   ├── graphql.md
+    │   │       │   ├── index.md
+    │   │       │   ├── separate-openapi-schemas.md
+    │   │       │   └── testing-database.md
+    │   │       ├── learn/
+    │   │       │   └── index.md
+    │   │       ├── resources/
+    │   │       │   └── index.md
+    │   │       └── tutorial/
+    │   │           ├── background-tasks.md
+    │   │           ├── bigger-applications.md
+    │   │           ├── body-fields.md
+    │   │           ├── body-multiple-params.md
+    │   │           ├── body-nested-models.md
+    │   │           ├── body-updates.md
+    │   │           ├── body.md
+    │   │           ├── cookie-param-models.md
+    │   │           ├── cookie-params.md
+    │   │           ├── cors.md
+    │   │           ├── debugging.md
+    │   │           ├── encoder.md
+    │   │           ├── extra-data-types.md
+    │   │           ├── extra-models.md
+    │   │           ├── first-steps.md
+    │   │           ├── handling-errors.md
+    │   │           ├── header-param-models.md
+    │   │           ├── header-params.md
+    │   │           ├── index.md
+    │   │           ├── metadata.md
+    │   │           ├── middleware.md
+    │   │           ├── path-operation-configuration.md
+    │   │           ├── path-params-numeric-validations.md
+    │   │           ├── path-params.md
+    │   │           ├── query-param-models.md
+    │   │           ├── query-params-str-validations.md
+    │   │           ├── query-params.md
+    │   │           ├── request-files.md
+    │   │           ├── request-form-models.md
+    │   │           ├── request-forms-and-files.md
+    │   │           ├── request-forms.md
+    │   │           ├── request_files.md
+    │   │           ├── response-model.md
+    │   │           ├── response-status-code.md
+    │   │           ├── schema-extra-example.md
+    │   │           ├── sql-databases.md
+    │   │           ├── static-files.md
+    │   │           ├── testing.md
+    │   │           ├── dependencies/
+    │   │           │   ├── classes-as-dependencies.md
+    │   │           │   ├── dependencies-in-path-operation-decorators.md
+    │   │           │   ├── dependencies-with-yield.md
+    │   │           │   ├── global-dependencies.md
+    │   │           │   ├── index.md
+    │   │           │   └── sub-dependencies.md
+    │   │           └── security/
+    │   │               ├── first-steps.md
+    │   │               ├── get-current-user.md
+    │   │               ├── index.md
+    │   │               ├── oauth2-jwt.md
+    │   │               └── simple-oauth2.md
+    │   ├── ru/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── alternatives.md
+    │   │       ├── async.md
+    │   │       ├── benchmarks.md
+    │   │       ├── environment-variables.md
+    │   │       ├── fastapi-cli.md
+    │   │       ├── features.md
+    │   │       ├── help-fastapi.md
+    │   │       ├── history-design-future.md
+    │   │       ├── index.md
+    │   │       ├── project-generation.md
+    │   │       ├── python-types.md
+    │   │       ├── virtual-environments.md
+    │   │       ├── about/
+    │   │       │   └── index.md
+    │   │       ├── advanced/
+    │   │       │   ├── additional-status-codes.md
+    │   │       │   ├── async-tests.md
+    │   │       │   ├── index.md
+    │   │       │   ├── response-change-status-code.md
+    │   │       │   ├── response-cookies.md
+    │   │       │   ├── response-directly.md
+    │   │       │   └── websockets.md
+    │   │       ├── deployment/
+    │   │       │   ├── concepts.md
+    │   │       │   ├── https.md
+    │   │       │   ├── index.md
+    │   │       │   ├── manually.md
+    │   │       │   └── versions.md
+    │   │       ├── learn/
+    │   │       │   └── index.md
+    │   │       └── tutorial/
+    │   │           ├── background-tasks.md
+    │   │           ├── bigger-applications.md
+    │   │           ├── body-fields.md
+    │   │           ├── body-multiple-params.md
+    │   │           ├── body-nested-models.md
+    │   │           ├── body-updates.md
+    │   │           ├── body.md
+    │   │           ├── cookie-param-models.md
+    │   │           ├── cookie-params.md
+    │   │           ├── cors.md
+    │   │           ├── debugging.md
+    │   │           ├── encoder.md
+    │   │           ├── extra-data-types.md
+    │   │           ├── extra-models.md
+    │   │           ├── first-steps.md
+    │   │           ├── handling-errors.md
+    │   │           ├── header-param-models.md
+    │   │           ├── header-params.md
+    │   │           ├── index.md
+    │   │           ├── metadata.md
+    │   │           ├── middleware.md
+    │   │           ├── path-operation-configuration.md
+    │   │           ├── path-params-numeric-validations.md
+    │   │           ├── path-params.md
+    │   │           ├── query-param-models.md
+    │   │           ├── query-params-str-validations.md
+    │   │           ├── query-params.md
+    │   │           ├── request-files.md
+    │   │           ├── request-form-models.md
+    │   │           ├── request-forms-and-files.md
+    │   │           ├── request-forms.md
+    │   │           ├── response-model.md
+    │   │           ├── response-status-code.md
+    │   │           ├── schema-extra-example.md
+    │   │           ├── sql-databases.md
+    │   │           ├── static-files.md
+    │   │           ├── testing.md
+    │   │           ├── dependencies/
+    │   │           │   ├── classes-as-dependencies.md
+    │   │           │   ├── dependencies-in-path-operation-decorators.md
+    │   │           │   ├── dependencies-with-yield.md
+    │   │           │   ├── global-dependencies.md
+    │   │           │   ├── index.md
+    │   │           │   └── sub-dependencies.md
+    │   │           └── security/
+    │   │               ├── first-steps.md
+    │   │               ├── get-current-user.md
+    │   │               ├── index.md
+    │   │               ├── oauth2-jwt.md
+    │   │               └── simple-oauth2.md
+    │   ├── tr/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── alternatives.md
+    │   │       ├── async.md
+    │   │       ├── benchmarks.md
+    │   │       ├── features.md
+    │   │       ├── history-design-future.md
+    │   │       ├── index.md
+    │   │       ├── project-generation.md
+    │   │       ├── python-types.md
+    │   │       ├── about/
+    │   │       │   └── index.md
+    │   │       ├── advanced/
+    │   │       │   ├── index.md
+    │   │       │   ├── testing-websockets.md
+    │   │       │   ├── wsgi.md
+    │   │       │   └── security/
+    │   │       │       └── index.md
+    │   │       ├── deployment/
+    │   │       │   ├── cloud.md
+    │   │       │   └── index.md
+    │   │       ├── how-to/
+    │   │       │   ├── general.md
+    │   │       │   └── index.md
+    │   │       ├── learn/
+    │   │       │   └── index.md
+    │   │       ├── resources/
+    │   │       │   └── index.md
+    │   │       └── tutorial/
+    │   │           ├── cookie-params.md
+    │   │           ├── first-steps.md
+    │   │           ├── path-params.md
+    │   │           ├── query-params.md
+    │   │           ├── request-forms.md
+    │   │           └── static-files.md
+    │   ├── uk/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── alternatives.md
+    │   │       ├── fastapi-cli.md
+    │   │       ├── features.md
+    │   │       ├── index.md
+    │   │       ├── python-types.md
+    │   │       ├── learn/
+    │   │       │   └── index.md
+    │   │       └── tutorial/
+    │   │           ├── background-tasks.md
+    │   │           ├── body-fields.md
+    │   │           ├── body-multiple-params.md
+    │   │           ├── body-nested-models.md
+    │   │           ├── body-updates.md
+    │   │           ├── body.md
+    │   │           ├── cookie-param-models.md
+    │   │           ├── cookie-params.md
+    │   │           ├── cors.md
+    │   │           ├── debugging.md
+    │   │           ├── encoder.md
+    │   │           ├── extra-data-types.md
+    │   │           ├── first-steps.md
+    │   │           ├── handling-errors.md
+    │   │           ├── header-param-models.md
+    │   │           ├── header-params.md
+    │   │           ├── index.md
+    │   │           ├── metadata.md
+    │   │           ├── middleware.md
+    │   │           ├── path-params-numeric-validations.md
+    │   │           ├── path-params.md
+    │   │           ├── query-param-models.md
+    │   │           ├── query-params-str-validations.md
+    │   │           ├── query-params.md
+    │   │           ├── request-files.md
+    │   │           ├── request-form-models.md
+    │   │           ├── request-forms-and-files.md
+    │   │           ├── request-forms.md
+    │   │           ├── response-model.md
+    │   │           ├── response-status-code.md
+    │   │           ├── schema-extra-example.md
+    │   │           ├── static-files.md
+    │   │           ├── testing.md
+    │   │           └── security/
+    │   │               └── index.md
+    │   ├── ur/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       └── benchmarks.md
+    │   ├── vi/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── environment-variables.md
+    │   │       ├── fastapi-cli.md
+    │   │       ├── features.md
+    │   │       ├── index.md
+    │   │       ├── python-types.md
+    │   │       ├── virtual-environments.md
+    │   │       ├── deployment/
+    │   │       │   ├── cloud.md
+    │   │       │   ├── index.md
+    │   │       │   └── versions.md
+    │   │       └── tutorial/
+    │   │           ├── first-steps.md
+    │   │           ├── index.md
+    │   │           └── static-files.md
+    │   ├── yo/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       └── index.md
+    │   ├── zh/
+    │   │   ├── mkdocs.yml
+    │   │   └── docs/
+    │   │       ├── async.md
+    │   │       ├── benchmarks.md
+    │   │       ├── environment-variables.md
+    │   │       ├── fastapi-cli.md
+    │   │       ├── features.md
+    │   │       ├── help-fastapi.md
+    │   │       ├── history-design-future.md
+    │   │       ├── index.md
+    │   │       ├── project-generation.md
+    │   │       ├── python-types.md
+    │   │       ├── virtual-environments.md
+    │   │       ├── advanced/
+    │   │       │   ├── additional-responses.md
+    │   │       │   ├── additional-status-codes.md
+    │   │       │   ├── advanced-dependencies.md
+    │   │       │   ├── async-tests.md
+    │   │       │   ├── behind-a-proxy.md
+    │   │       │   ├── custom-response.md
+    │   │       │   ├── dataclasses.md
+    │   │       │   ├── events.md
+    │   │       │   ├── generate-clients.md
+    │   │       │   ├── index.md
+    │   │       │   ├── middleware.md
+    │   │       │   ├── openapi-callbacks.md
+    │   │       │   ├── openapi-webhooks.md
+    │   │       │   ├── path-operation-advanced-configuration.md
+    │   │       │   ├── response-change-status-code.md
+    │   │       │   ├── response-cookies.md
+    │   │       │   ├── response-directly.md
+    │   │       │   ├── response-headers.md
+    │   │       │   ├── settings.md
+    │   │       │   ├── sub-applications.md
+    │   │       │   ├── templates.md
+    │   │       │   ├── testing-dependencies.md
+    │   │       │   ├── testing-events.md
+    │   │       │   ├── testing-websockets.md
+    │   │       │   ├── using-request-directly.md
+    │   │       │   ├── websockets.md
+    │   │       │   ├── wsgi.md
+    │   │       │   └── security/
+    │   │       │       ├── http-basic-auth.md
+    │   │       │       ├── index.md
+    │   │       │       └── oauth2-scopes.md
+    │   │       ├── deployment/
+    │   │       │   ├── cloud.md
+    │   │       │   ├── concepts.md
+    │   │       │   ├── docker.md
+    │   │       │   ├── https.md
+    │   │       │   ├── index.md
+    │   │       │   ├── manually.md
+    │   │       │   ├── server-workers.md
+    │   │       │   └── versions.md
+    │   │       ├── how-to/
+    │   │       │   ├── configure-swagger-ui.md
+    │   │       │   ├── general.md
+    │   │       │   └── index.md
+    │   │       ├── learn/
+    │   │       │   └── index.md
+    │   │       └── tutorial/
+    │   │           ├── background-tasks.md
+    │   │           ├── bigger-applications.md
+    │   │           ├── body-fields.md
+    │   │           ├── body-multiple-params.md
+    │   │           ├── body-nested-models.md
+    │   │           ├── body-updates.md
+    │   │           ├── body.md
+    │   │           ├── cookie-param-models.md
+    │   │           ├── cookie-params.md
+    │   │           ├── cors.md
+    │   │           ├── debugging.md
+    │   │           ├── encoder.md
+    │   │           ├── extra-data-types.md
+    │   │           ├── extra-models.md
+    │   │           ├── first-steps.md
+    │   │           ├── handling-errors.md
+    │   │           ├── header-param-models.md
+    │   │           ├── header-params.md
+    │   │           ├── index.md
+    │   │           ├── metadata.md
+    │   │           ├── middleware.md
+    │   │           ├── path-operation-configuration.md
+    │   │           ├── path-params-numeric-validations.md
+    │   │           ├── path-params.md
+    │   │           ├── query-param-models.md
+    │   │           ├── query-params-str-validations.md
+    │   │           ├── query-params.md
+    │   │           ├── request-files.md
+    │   │           ├── request-form-models.md
+    │   │           ├── request-forms-and-files.md
+    │   │           ├── request-forms.md
+    │   │           ├── response-model.md
+    │   │           ├── response-status-code.md
+    │   │           ├── schema-extra-example.md
+    │   │           ├── sql-databases.md
+    │   │           ├── static-files.md
+    │   │           ├── testing.md
+    │   │           ├── dependencies/
+    │   │           │   ├── classes-as-dependencies.md
+    │   │           │   ├── dependencies-in-path-operation-decorators.md
+    │   │           │   ├── dependencies-with-yield.md
+    │   │           │   ├── global-dependencies.md
+    │   │           │   ├── index.md
+    │   │           │   └── sub-dependencies.md
+    │   │           └── security/
+    │   │               ├── first-steps.md
+    │   │               ├── get-current-user.md
+    │   │               ├── index.md
+    │   │               ├── oauth2-jwt.md
+    │   │               └── simple-oauth2.md
+    │   └── zh-hant/
+    │       ├── mkdocs.yml
+    │       └── docs/
+    │           ├── async.md
+    │           ├── benchmarks.md
+    │           ├── environment-variables.md
+    │           ├── fastapi-cli.md
+    │           ├── features.md
+    │           ├── index.md
+    │           ├── virtual-environments.md
+    │           ├── about/
+    │           │   └── index.md
+    │           ├── deployment/
+    │           │   ├── cloud.md
+    │           │   └── index.md
+    │           ├── how-to/
+    │           │   └── index.md
+    │           ├── learn/
+    │           │   └── index.md
+    │           ├── resources/
+    │           │   └── index.md
+    │           └── tutorial/
+    │               ├── first-steps.md
+    │               ├── index.md
+    │               └── query-param-models.md
+    ├── docs_src/
+    │   ├── additional_responses/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial003.py
+    │   │   └── tutorial004.py
+    │   ├── additional_status_codes/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py310.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   └── tutorial001_py310.py
+    │   ├── advanced_middleware/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   └── tutorial003.py
+    │   ├── app_testing/
+    │   │   ├── __init__.py
+    │   │   ├── main.py
+    │   │   ├── test_main.py
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial004.py
+    │   │   ├── app_b/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── main.py
+    │   │   │   └── test_main.py
+    │   │   ├── app_b_an/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── main.py
+    │   │   │   └── test_main.py
+    │   │   ├── app_b_an_py310/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── main.py
+    │   │   │   └── test_main.py
+    │   │   ├── app_b_an_py39/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── main.py
+    │   │   │   └── test_main.py
+    │   │   └── app_b_py310/
+    │   │       ├── __init__.py
+    │   │       ├── main.py
+    │   │       └── test_main.py
+    │   ├── async_tests/
+    │   │   ├── __init__.py
+    │   │   ├── main.py
+    │   │   └── test_main.py
+    │   ├── background_tasks/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_an.py
+    │   │   ├── tutorial002_an_py310.py
+    │   │   ├── tutorial002_an_py39.py
+    │   │   └── tutorial002_py310.py
+    │   ├── behind_a_proxy/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_01.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial003.py
+    │   │   └── tutorial004.py
+    │   ├── bigger_applications/
+    │   │   ├── __init__.py
+    │   │   ├── app/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── dependencies.py
+    │   │   │   ├── main.py
+    │   │   │   ├── internal/
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   └── admin.py
+    │   │   │   └── routers/
+    │   │   │       ├── __init__.py
+    │   │   │       ├── items.py
+    │   │   │       └── users.py
+    │   │   ├── app_an/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── dependencies.py
+    │   │   │   ├── main.py
+    │   │   │   ├── internal/
+    │   │   │   │   ├── __init__.py
+    │   │   │   │   └── admin.py
+    │   │   │   └── routers/
+    │   │   │       ├── __init__.py
+    │   │   │       ├── items.py
+    │   │   │       └── users.py
+    │   │   └── app_an_py39/
+    │   │       ├── __init__.py
+    │   │       ├── dependencies.py
+    │   │       ├── main.py
+    │   │       ├── internal/
+    │   │       │   ├── __init__.py
+    │   │       │   └── admin.py
+    │   │       └── routers/
+    │   │           ├── __init__.py
+    │   │           ├── items.py
+    │   │           └── users.py
+    │   ├── body/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_py310.py
+    │   │   ├── tutorial004.py
+    │   │   └── tutorial004_py310.py
+    │   ├── body_fields/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py310.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   └── tutorial001_py310.py
+    │   ├── body_multiple_params/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py310.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_an.py
+    │   │   ├── tutorial003_an_py310.py
+    │   │   ├── tutorial003_an_py39.py
+    │   │   ├── tutorial003_py310.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial004_an.py
+    │   │   ├── tutorial004_an_py310.py
+    │   │   ├── tutorial004_an_py39.py
+    │   │   ├── tutorial004_py310.py
+    │   │   ├── tutorial005.py
+    │   │   ├── tutorial005_an.py
+    │   │   ├── tutorial005_an_py310.py
+    │   │   ├── tutorial005_an_py39.py
+    │   │   └── tutorial005_py310.py
+    │   ├── body_nested_models/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial002_py39.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_py310.py
+    │   │   ├── tutorial003_py39.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial004_py310.py
+    │   │   ├── tutorial004_py39.py
+    │   │   ├── tutorial005.py
+    │   │   ├── tutorial005_py310.py
+    │   │   ├── tutorial005_py39.py
+    │   │   ├── tutorial006.py
+    │   │   ├── tutorial006_py310.py
+    │   │   ├── tutorial006_py39.py
+    │   │   ├── tutorial007.py
+    │   │   ├── tutorial007_py310.py
+    │   │   ├── tutorial007_py39.py
+    │   │   ├── tutorial008.py
+    │   │   ├── tutorial008_py39.py
+    │   │   ├── tutorial009.py
+    │   │   └── tutorial009_py39.py
+    │   ├── body_updates/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial001_py39.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_py310.py
+    │   │   └── tutorial002_py39.py
+    │   ├── conditional_openapi/
+    │   │   └── tutorial001.py
+    │   ├── configure_swagger_ui/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   └── tutorial003.py
+    │   ├── cookie_param_models/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py310.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_an.py
+    │   │   ├── tutorial002_an_py310.py
+    │   │   ├── tutorial002_an_py39.py
+    │   │   ├── tutorial002_pv1.py
+    │   │   ├── tutorial002_pv1_an.py
+    │   │   ├── tutorial002_pv1_an_py310.py
+    │   │   ├── tutorial002_pv1_an_py39.py
+    │   │   ├── tutorial002_pv1_py310.py
+    │   │   └── tutorial002_py310.py
+    │   ├── cookie_params/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py310.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   └── tutorial001_py310.py
+    │   ├── cors/
+    │   │   └── tutorial001.py
+    │   ├── custom_docs_ui/
+    │   │   ├── tutorial001.py
+    │   │   └── tutorial002.py
+    │   ├── custom_request_and_route/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   └── tutorial003.py
+    │   ├── custom_response/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001b.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial005.py
+    │   │   ├── tutorial006.py
+    │   │   ├── tutorial006b.py
+    │   │   ├── tutorial006c.py
+    │   │   ├── tutorial007.py
+    │   │   ├── tutorial008.py
+    │   │   ├── tutorial009.py
+    │   │   ├── tutorial009b.py
+    │   │   ├── tutorial009c.py
+    │   │   └── tutorial010.py
+    │   ├── dataclasses/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   └── tutorial003.py
+    │   ├── debugging/
+    │   │   └── tutorial001.py
+    │   ├── dependencies/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_02_an.py
+    │   │   ├── tutorial001_02_an_py310.py
+    │   │   ├── tutorial001_02_an_py39.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py310.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_an.py
+    │   │   ├── tutorial002_an_py310.py
+    │   │   ├── tutorial002_an_py39.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_an.py
+    │   │   ├── tutorial003_an_py310.py
+    │   │   ├── tutorial003_an_py39.py
+    │   │   ├── tutorial003_py310.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial004_an.py
+    │   │   ├── tutorial004_an_py310.py
+    │   │   ├── tutorial004_an_py39.py
+    │   │   ├── tutorial004_py310.py
+    │   │   ├── tutorial005.py
+    │   │   ├── tutorial005_an.py
+    │   │   ├── tutorial005_an_py310.py
+    │   │   ├── tutorial005_an_py39.py
+    │   │   ├── tutorial005_py310.py
+    │   │   ├── tutorial006.py
+    │   │   ├── tutorial006_an.py
+    │   │   ├── tutorial006_an_py39.py
+    │   │   ├── tutorial007.py
+    │   │   ├── tutorial008.py
+    │   │   ├── tutorial008_an.py
+    │   │   ├── tutorial008_an_py39.py
+    │   │   ├── tutorial008b.py
+    │   │   ├── tutorial008b_an.py
+    │   │   ├── tutorial008b_an_py39.py
+    │   │   ├── tutorial008c.py
+    │   │   ├── tutorial008c_an.py
+    │   │   ├── tutorial008c_an_py39.py
+    │   │   ├── tutorial008d.py
+    │   │   ├── tutorial008d_an.py
+    │   │   ├── tutorial008d_an_py39.py
+    │   │   ├── tutorial009.py
+    │   │   ├── tutorial010.py
+    │   │   ├── tutorial011.py
+    │   │   ├── tutorial011_an.py
+    │   │   ├── tutorial011_an_py39.py
+    │   │   ├── tutorial012.py
+    │   │   ├── tutorial012_an.py
+    │   │   └── tutorial012_an_py39.py
+    │   ├── dependency_testing/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py310.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   └── tutorial001_py310.py
+    │   ├── encoder/
+    │   │   ├── tutorial001.py
+    │   │   └── tutorial001_py310.py
+    │   ├── events/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   └── tutorial003.py
+    │   ├── extending_openapi/
+    │   │   └── tutorial001.py
+    │   ├── extra_data_types/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py310.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   └── tutorial001_py310.py
+    │   ├── extra_models/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_py310.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial004_py39.py
+    │   │   ├── tutorial005.py
+    │   │   └── tutorial005_py39.py
+    │   ├── first_steps/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   └── tutorial003.py
+    │   ├── generate_clients/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_py39.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_py39.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_py39.py
+    │   │   ├── tutorial004.js
+    │   │   └── tutorial004.py
+    │   ├── graphql/
+    │   │   └── tutorial001.py
+    │   ├── handling_errors/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial005.py
+    │   │   └── tutorial006.py
+    │   ├── header_param_models/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py310.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial001_py39.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_an.py
+    │   │   ├── tutorial002_an_py310.py
+    │   │   ├── tutorial002_an_py39.py
+    │   │   ├── tutorial002_pv1.py
+    │   │   ├── tutorial002_pv1_an.py
+    │   │   ├── tutorial002_pv1_an_py310.py
+    │   │   ├── tutorial002_pv1_an_py39.py
+    │   │   ├── tutorial002_pv1_py310.py
+    │   │   ├── tutorial002_pv1_py39.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial002_py39.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_an.py
+    │   │   ├── tutorial003_an_py310.py
+    │   │   ├── tutorial003_an_py39.py
+    │   │   ├── tutorial003_py310.py
+    │   │   └── tutorial003_py39.py
+    │   ├── header_params/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py310.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_an.py
+    │   │   ├── tutorial002_an_py310.py
+    │   │   ├── tutorial002_an_py39.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_an.py
+    │   │   ├── tutorial003_an_py310.py
+    │   │   ├── tutorial003_an_py39.py
+    │   │   ├── tutorial003_py310.py
+    │   │   └── tutorial003_py39.py
+    │   ├── metadata/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_1.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial003.py
+    │   │   └── tutorial004.py
+    │   ├── middleware/
+    │   │   └── tutorial001.py
+    │   ├── openapi_callbacks/
+    │   │   └── tutorial001.py
+    │   ├── openapi_webhooks/
+    │   │   └── tutorial001.py
+    │   ├── path_operation_advanced_configuration/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial005.py
+    │   │   ├── tutorial006.py
+    │   │   ├── tutorial007.py
+    │   │   └── tutorial007_pv1.py
+    │   ├── path_operation_configuration/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial001_py39.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial002_py39.py
+    │   │   ├── tutorial002b.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_py310.py
+    │   │   ├── tutorial003_py39.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial004_py310.py
+    │   │   ├── tutorial004_py39.py
+    │   │   ├── tutorial005.py
+    │   │   ├── tutorial005_py310.py
+    │   │   ├── tutorial005_py39.py
+    │   │   └── tutorial006.py
+    │   ├── path_params/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003b.py
+    │   │   ├── tutorial004.py
+    │   │   └── tutorial005.py
+    │   ├── path_params_numeric_validations/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py310.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_an.py
+    │   │   ├── tutorial002_an_py39.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_an.py
+    │   │   ├── tutorial003_an_py39.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial004_an.py
+    │   │   ├── tutorial004_an_py39.py
+    │   │   ├── tutorial005.py
+    │   │   ├── tutorial005_an.py
+    │   │   ├── tutorial005_an_py39.py
+    │   │   ├── tutorial006.py
+    │   │   ├── tutorial006_an.py
+    │   │   └── tutorial006_an_py39.py
+    │   ├── python_types/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial005.py
+    │   │   ├── tutorial006.py
+    │   │   ├── tutorial006_py39.py
+    │   │   ├── tutorial007.py
+    │   │   ├── tutorial007_py39.py
+    │   │   ├── tutorial008.py
+    │   │   ├── tutorial008_py39.py
+    │   │   ├── tutorial008b.py
+    │   │   ├── tutorial008b_py310.py
+    │   │   ├── tutorial009.py
+    │   │   ├── tutorial009_py310.py
+    │   │   ├── tutorial009b.py
+    │   │   ├── tutorial009c.py
+    │   │   ├── tutorial009c_py310.py
+    │   │   ├── tutorial010.py
+    │   │   ├── tutorial011.py
+    │   │   ├── tutorial011_py310.py
+    │   │   ├── tutorial011_py39.py
+    │   │   ├── tutorial012.py
+    │   │   ├── tutorial013.py
+    │   │   └── tutorial013_py39.py
+    │   ├── query_param_models/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py310.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial001_py39.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_an.py
+    │   │   ├── tutorial002_an_py310.py
+    │   │   ├── tutorial002_an_py39.py
+    │   │   ├── tutorial002_pv1.py
+    │   │   ├── tutorial002_pv1_an.py
+    │   │   ├── tutorial002_pv1_an_py310.py
+    │   │   ├── tutorial002_pv1_an_py39.py
+    │   │   ├── tutorial002_pv1_py310.py
+    │   │   ├── tutorial002_pv1_py39.py
+    │   │   ├── tutorial002_py310.py
+    │   │   └── tutorial002_py39.py
+    │   ├── query_params/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_py310.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial004_py310.py
+    │   │   ├── tutorial005.py
+    │   │   ├── tutorial006.py
+    │   │   ├── tutorial006_py310.py
+    │   │   └── tutorial006b.py
+    │   ├── query_params_str_validations/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_an.py
+    │   │   ├── tutorial002_an_py310.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_an.py
+    │   │   ├── tutorial003_an_py310.py
+    │   │   ├── tutorial003_an_py39.py
+    │   │   ├── tutorial003_py310.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial004_an.py
+    │   │   ├── tutorial004_an_py310.py
+    │   │   ├── tutorial004_an_py39.py
+    │   │   ├── tutorial004_py310.py
+    │   │   ├── tutorial004_regex_an_py310.py
+    │   │   ├── tutorial005.py
+    │   │   ├── tutorial005_an.py
+    │   │   ├── tutorial005_an_py39.py
+    │   │   ├── tutorial006.py
+    │   │   ├── tutorial006_an.py
+    │   │   ├── tutorial006_an_py39.py
+    │   │   ├── tutorial006c.py
+    │   │   ├── tutorial006c_an.py
+    │   │   ├── tutorial006c_an_py310.py
+    │   │   ├── tutorial006c_an_py39.py
+    │   │   ├── tutorial006c_py310.py
+    │   │   ├── tutorial007.py
+    │   │   ├── tutorial007_an.py
+    │   │   ├── tutorial007_an_py310.py
+    │   │   ├── tutorial007_an_py39.py
+    │   │   ├── tutorial007_py310.py
+    │   │   ├── tutorial008.py
+    │   │   ├── tutorial008_an.py
+    │   │   ├── tutorial008_an_py310.py
+    │   │   ├── tutorial008_an_py39.py
+    │   │   ├── tutorial008_py310.py
+    │   │   ├── tutorial009.py
+    │   │   ├── tutorial009_an.py
+    │   │   ├── tutorial009_an_py310.py
+    │   │   ├── tutorial009_an_py39.py
+    │   │   ├── tutorial009_py310.py
+    │   │   ├── tutorial010.py
+    │   │   ├── tutorial010_an.py
+    │   │   ├── tutorial010_an_py310.py
+    │   │   ├── tutorial010_an_py39.py
+    │   │   ├── tutorial010_py310.py
+    │   │   ├── tutorial011.py
+    │   │   ├── tutorial011_an.py
+    │   │   ├── tutorial011_an_py310.py
+    │   │   ├── tutorial011_an_py39.py
+    │   │   ├── tutorial011_py310.py
+    │   │   ├── tutorial011_py39.py
+    │   │   ├── tutorial012.py
+    │   │   ├── tutorial012_an.py
+    │   │   ├── tutorial012_an_py39.py
+    │   │   ├── tutorial012_py39.py
+    │   │   ├── tutorial013.py
+    │   │   ├── tutorial013_an.py
+    │   │   ├── tutorial013_an_py39.py
+    │   │   ├── tutorial014.py
+    │   │   ├── tutorial014_an.py
+    │   │   ├── tutorial014_an_py310.py
+    │   │   ├── tutorial014_an_py39.py
+    │   │   ├── tutorial014_py310.py
+    │   │   ├── tutorial015_an.py
+    │   │   ├── tutorial015_an_py310.py
+    │   │   └── tutorial015_an_py39.py
+    │   ├── request_files/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_02.py
+    │   │   ├── tutorial001_02_an.py
+    │   │   ├── tutorial001_02_an_py310.py
+    │   │   ├── tutorial001_02_an_py39.py
+    │   │   ├── tutorial001_02_py310.py
+    │   │   ├── tutorial001_03.py
+    │   │   ├── tutorial001_03_an.py
+    │   │   ├── tutorial001_03_an_py39.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_an.py
+    │   │   ├── tutorial002_an_py39.py
+    │   │   ├── tutorial002_py39.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_an.py
+    │   │   ├── tutorial003_an_py39.py
+    │   │   └── tutorial003_py39.py
+    │   ├── request_form_models/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_an.py
+    │   │   ├── tutorial002_an_py39.py
+    │   │   ├── tutorial002_pv1.py
+    │   │   ├── tutorial002_pv1_an.py
+    │   │   └── tutorial002_pv1_an_py39.py
+    │   ├── request_forms/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   └── tutorial001_an_py39.py
+    │   ├── request_forms_and_files/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   └── tutorial001_an_py39.py
+    │   ├── response_change_status_code/
+    │   │   └── tutorial001.py
+    │   ├── response_cookies/
+    │   │   ├── tutorial001.py
+    │   │   └── tutorial002.py
+    │   ├── response_directly/
+    │   │   ├── tutorial001.py
+    │   │   └── tutorial002.py
+    │   ├── response_headers/
+    │   │   ├── tutorial001.py
+    │   │   └── tutorial002.py
+    │   ├── response_model/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_01.py
+    │   │   ├── tutorial001_01_py310.py
+    │   │   ├── tutorial001_01_py39.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial001_py39.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_01.py
+    │   │   ├── tutorial003_01_py310.py
+    │   │   ├── tutorial003_02.py
+    │   │   ├── tutorial003_03.py
+    │   │   ├── tutorial003_04.py
+    │   │   ├── tutorial003_04_py310.py
+    │   │   ├── tutorial003_05.py
+    │   │   ├── tutorial003_05_py310.py
+    │   │   ├── tutorial003_py310.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial004_py310.py
+    │   │   ├── tutorial004_py39.py
+    │   │   ├── tutorial005.py
+    │   │   ├── tutorial005_py310.py
+    │   │   ├── tutorial006.py
+    │   │   └── tutorial006_py310.py
+    │   ├── response_status_code/
+    │   │   ├── tutorial001.py
+    │   │   └── tutorial002.py
+    │   ├── schema_extra_example/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_pv1.py
+    │   │   ├── tutorial001_pv1_py310.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_an.py
+    │   │   ├── tutorial003_an_py310.py
+    │   │   ├── tutorial003_an_py39.py
+    │   │   ├── tutorial003_py310.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial004_an.py
+    │   │   ├── tutorial004_an_py310.py
+    │   │   ├── tutorial004_an_py39.py
+    │   │   ├── tutorial004_py310.py
+    │   │   ├── tutorial005.py
+    │   │   ├── tutorial005_an.py
+    │   │   ├── tutorial005_an_py310.py
+    │   │   ├── tutorial005_an_py39.py
+    │   │   └── tutorial005_py310.py
+    │   ├── security/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_an.py
+    │   │   ├── tutorial002_an_py310.py
+    │   │   ├── tutorial002_an_py39.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial003.py
+    │   │   ├── tutorial003_an.py
+    │   │   ├── tutorial003_an_py310.py
+    │   │   ├── tutorial003_an_py39.py
+    │   │   ├── tutorial003_py310.py
+    │   │   ├── tutorial004.py
+    │   │   ├── tutorial004_an.py
+    │   │   ├── tutorial004_an_py310.py
+    │   │   ├── tutorial004_an_py39.py
+    │   │   ├── tutorial004_py310.py
+    │   │   ├── tutorial005.py
+    │   │   ├── tutorial005_an.py
+    │   │   ├── tutorial005_an_py310.py
+    │   │   ├── tutorial005_an_py39.py
+    │   │   ├── tutorial005_py310.py
+    │   │   ├── tutorial005_py39.py
+    │   │   ├── tutorial006.py
+    │   │   ├── tutorial006_an.py
+    │   │   ├── tutorial006_an_py39.py
+    │   │   ├── tutorial007.py
+    │   │   ├── tutorial007_an.py
+    │   │   └── tutorial007_an_py39.py
+    │   ├── separate_openapi_schemas/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial001_py39.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_py310.py
+    │   │   └── tutorial002_py39.py
+    │   ├── settings/
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_pv1.py
+    │   │   ├── app01/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── config.py
+    │   │   │   └── main.py
+    │   │   ├── app02/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── config.py
+    │   │   │   ├── main.py
+    │   │   │   └── test_main.py
+    │   │   ├── app02_an/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── config.py
+    │   │   │   ├── main.py
+    │   │   │   └── test_main.py
+    │   │   ├── app02_an_py39/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── config.py
+    │   │   │   ├── main.py
+    │   │   │   └── test_main.py
+    │   │   ├── app03/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── config.py
+    │   │   │   └── main.py
+    │   │   ├── app03_an/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── config.py
+    │   │   │   ├── config_pv1.py
+    │   │   │   └── main.py
+    │   │   └── app03_an_py39/
+    │   │       ├── __init__.py
+    │   │       ├── config.py
+    │   │       └── main.py
+    │   ├── sql_databases/
+    │   │   ├── __init__.py
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial001_an.py
+    │   │   ├── tutorial001_an_py310.py
+    │   │   ├── tutorial001_an_py39.py
+    │   │   ├── tutorial001_py310.py
+    │   │   ├── tutorial001_py39.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_an.py
+    │   │   ├── tutorial002_an_py310.py
+    │   │   ├── tutorial002_an_py39.py
+    │   │   ├── tutorial002_py310.py
+    │   │   └── tutorial002_py39.py
+    │   ├── static_files/
+    │   │   └── tutorial001.py
+    │   ├── sub_applications/
+    │   │   └── tutorial001.py
+    │   ├── templates/
+    │   │   ├── tutorial001.py
+    │   │   ├── static/
+    │   │   │   └── styles.css
+    │   │   └── templates/
+    │   │       └── item.html
+    │   ├── using_request_directly/
+    │   │   └── tutorial001.py
+    │   ├── websockets/
+    │   │   ├── __init__.py
+    │   │   ├── tutorial001.py
+    │   │   ├── tutorial002.py
+    │   │   ├── tutorial002_an.py
+    │   │   ├── tutorial002_an_py310.py
+    │   │   ├── tutorial002_an_py39.py
+    │   │   ├── tutorial002_py310.py
+    │   │   ├── tutorial003.py
+    │   │   └── tutorial003_py39.py
+    │   └── wsgi/
+    │       └── tutorial001.py
+    ├── fastapi/
+    │   ├── __init__.py
+    │   ├── __main__.py
+    │   ├── _compat.py
+    │   ├── background.py
+    │   ├── cli.py
+    │   ├── concurrency.py
+    │   ├── datastructures.py
+    │   ├── encoders.py
+    │   ├── exception_handlers.py
+    │   ├── exceptions.py
+    │   ├── logger.py
+    │   ├── params.py
+    │   ├── py.typed
+    │   ├── requests.py
+    │   ├── responses.py
+    │   ├── staticfiles.py
+    │   ├── templating.py
+    │   ├── testclient.py
+    │   ├── types.py
+    │   ├── utils.py
+    │   ├── websockets.py
+    │   ├── dependencies/
+    │   │   ├── __init__.py
+    │   │   ├── models.py
+    │   │   └── utils.py
+    │   ├── middleware/
+    │   │   ├── __init__.py
+    │   │   ├── cors.py
+    │   │   ├── gzip.py
+    │   │   ├── httpsredirect.py
+    │   │   ├── trustedhost.py
+    │   │   └── wsgi.py
+    │   ├── openapi/
+    │   │   ├── __init__.py
+    │   │   ├── constants.py
+    │   │   ├── docs.py
+    │   │   ├── models.py
+    │   │   └── utils.py
+    │   └── security/
+    │       ├── __init__.py
+    │       ├── api_key.py
+    │       ├── base.py
+    │       ├── http.py
+    │       ├── oauth2.py
+    │       ├── open_id_connect_url.py
+    │       └── utils.py
+    ├── scripts/
+    │   ├── contributors.py
+    │   ├── deploy_docs_status.py
+    │   ├── docs.py
+    │   ├── format.sh
+    │   ├── label_approved.py
+    │   ├── lint.sh
+    │   ├── mkdocs_hooks.py
+    │   ├── notify_translations.py
+    │   ├── people.py
+    │   ├── sponsors.py
+    │   ├── test-cov-html.sh
+    │   ├── test.sh
+    │   ├── topic_repos.py
+    │   ├── translate.py
+    │   └── playwright/
+    │       ├── cookie_param_models/
+    │       │   └── image01.py
+    │       ├── header_param_models/
+    │       │   └── image01.py
+    │       ├── query_param_models/
+    │       │   └── image01.py
+    │       ├── request_form_models/
+    │       │   └── image01.py
+    │       ├── separate_openapi_schemas/
+    │       │   ├── image01.py
+    │       │   ├── image02.py
+    │       │   ├── image03.py
+    │       │   ├── image04.py
+    │       │   └── image05.py
+    │       └── sql_databases/
+    │           ├── image01.py
+    │           └── image02.py
+    ├── tests/
+    │   ├── __init__.py
+    │   ├── main.py
+    │   ├── test_additional_properties.py
+    │   ├── test_additional_properties_bool.py
+    │   ├── test_additional_response_extra.py
+    │   ├── test_additional_responses_bad.py
+    │   ├── test_additional_responses_custom_model_in_callback.py
+    │   ├── test_additional_responses_custom_validationerror.py
+    │   ├── test_additional_responses_default_validationerror.py
+    │   ├── test_additional_responses_response_class.py
+    │   ├── test_additional_responses_router.py
+    │   ├── test_allow_inf_nan_in_enforcing.py
+    │   ├── test_ambiguous_params.py
+    │   ├── test_annotated.py
+    │   ├── test_callable_endpoint.py
+    │   ├── test_compat.py
+    │   ├── test_computed_fields.py
+    │   ├── test_custom_middleware_exception.py
+    │   ├── test_custom_route_class.py
+    │   ├── test_custom_schema_fields.py
+    │   ├── test_custom_swagger_ui_redirect.py
+    │   ├── test_datastructures.py
+    │   ├── test_datetime_custom_encoder.py
+    │   ├── test_default_response_class.py
+    │   ├── test_default_response_class_router.py
+    │   ├── test_dependency_cache.py
+    │   ├── test_dependency_class.py
+    │   ├── test_dependency_contextmanager.py
+    │   ├── test_dependency_contextvars.py
+    │   ├── test_dependency_duplicates.py
+    │   ├── test_dependency_normal_exceptions.py
+    │   ├── test_dependency_overrides.py
+    │   ├── test_dependency_security_overrides.py
+    │   ├── test_deprecated_openapi_prefix.py
+    │   ├── test_duplicate_models_openapi.py
+    │   ├── test_empty_router.py
+    │   ├── test_enforce_once_required_parameter.py
+    │   ├── test_exception_handlers.py
+    │   ├── test_extra_routes.py
+    │   ├── test_fastapi_cli.py
+    │   ├── test_filter_pydantic_sub_model_pv2.py
+    │   ├── test_forms_from_non_typing_sequences.py
+    │   ├── test_forms_single_model.py
+    │   ├── test_forms_single_param.py
+    │   ├── test_generic_parameterless_depends.py
+    │   ├── test_get_request_body.py
+    │   ├── test_http_connection_injection.py
+    │   ├── test_include_route.py
+    │   ├── test_infer_param_optionality.py
+    │   ├── test_inherited_custom_class.py
+    │   ├── test_invalid_path_param.py
+    │   ├── test_invalid_sequence_param.py
+    │   ├── test_jsonable_encoder.py
+    │   ├── test_local_docs.py
+    │   ├── test_multi_body_errors.py
+    │   ├── test_multi_query_errors.py
+    │   ├── test_multipart_installation.py
+    │   ├── test_no_swagger_ui_redirect.py
+    │   ├── test_openapi_examples.py
+    │   ├── test_openapi_model_description_trim_on_formfeed.py
+    │   ├── test_openapi_query_parameter_extension.py
+    │   ├── test_openapi_route_extensions.py
+    │   ├── test_openapi_separate_input_output_schemas.py
+    │   ├── test_openapi_servers.py
+    │   ├── test_operations_signatures.py
+    │   ├── test_orjson_response_class.py
+    │   ├── test_param_class.py
+    │   ├── test_param_in_path_and_dependency.py
+    │   ├── test_param_include_in_schema.py
+    │   ├── test_params_repr.py
+    │   ├── test_path.py
+    │   ├── test_put_no_body.py
+    │   ├── test_query.py
+    │   ├── test_read_with_orm_mode.py
+    │   ├── test_regex_deprecated_body.py
+    │   ├── test_regex_deprecated_params.py
+    │   ├── test_repeated_cookie_headers.py
+    │   ├── test_repeated_dependency_schema.py
+    │   ├── test_repeated_parameter_alias.py
+    │   ├── test_reponse_set_reponse_code_empty.py
+    │   ├── test_request_body_parameters_media_type.py
+    │   ├── test_required_noneable.py
+    │   ├── test_response_by_alias.py
+    │   ├── test_response_change_status_code.py
+    │   ├── test_response_class_no_mediatype.py
+    │   ├── test_response_code_no_body.py
+    │   ├── test_response_model_as_return_annotation.py
+    │   ├── test_response_model_data_filter.py
+    │   ├── test_response_model_data_filter_no_inheritance.py
+    │   ├── test_response_model_include_exclude.py
+    │   ├── test_response_model_invalid.py
+    │   ├── test_response_model_sub_types.py
+    │   ├── test_route_scope.py
+    │   ├── test_router_events.py
+    │   ├── test_router_prefix_with_template.py
+    │   ├── test_router_redirect_slashes.py
+    │   ├── test_schema_extra_examples.py
+    │   ├── test_security_api_key_cookie.py
+    │   ├── test_security_api_key_cookie_description.py
+    │   ├── test_security_api_key_cookie_optional.py
+    │   ├── test_security_api_key_header.py
+    │   ├── test_security_api_key_header_description.py
+    │   ├── test_security_api_key_header_optional.py
+    │   ├── test_security_api_key_query.py
+    │   ├── test_security_api_key_query_description.py
+    │   ├── test_security_api_key_query_optional.py
+    │   ├── test_security_http_base.py
+    │   ├── test_security_http_base_description.py
+    │   ├── test_security_http_base_optional.py
+    │   ├── test_security_http_basic_optional.py
+    │   ├── test_security_http_basic_realm.py
+    │   ├── test_security_http_basic_realm_description.py
+    │   ├── test_security_http_bearer.py
+    │   ├── test_security_http_bearer_description.py
+    │   ├── test_security_http_bearer_optional.py
+    │   ├── test_security_http_digest.py
+    │   ├── test_security_http_digest_description.py
+    │   ├── test_security_http_digest_optional.py
+    │   ├── test_security_oauth2.py
+    │   ├── test_security_oauth2_authorization_code_bearer.py
+    │   ├── test_security_oauth2_authorization_code_bearer_description.py
+    │   ├── test_security_oauth2_optional.py
+    │   ├── test_security_oauth2_optional_description.py
+    │   ├── test_security_oauth2_password_bearer_optional.py
+    │   ├── test_security_oauth2_password_bearer_optional_description.py
+    │   ├── test_security_openid_connect.py
+    │   ├── test_security_openid_connect_description.py
+    │   ├── test_security_openid_connect_optional.py
+    │   ├── test_serialize_response.py
+    │   ├── test_serialize_response_dataclass.py
+    │   ├── test_serialize_response_model.py
+    │   ├── test_skip_defaults.py
+    │   ├── test_starlette_exception.py
+    │   ├── test_starlette_urlconvertors.py
+    │   ├── test_sub_callbacks.py
+    │   ├── test_swagger_ui_init_oauth.py
+    │   ├── test_tuples.py
+    │   ├── test_typing_python39.py
+    │   ├── test_union_body.py
+    │   ├── test_union_forms.py
+    │   ├── test_union_inherited_body.py
+    │   ├── test_validate_response.py
+    │   ├── test_validate_response_dataclass.py
+    │   ├── test_webhooks_security.py
+    │   ├── test_ws_dependencies.py
+    │   ├── test_ws_router.py
+    │   ├── utils.py
+    │   ├── test_filter_pydantic_sub_model/
+    │   │   ├── __init__.py
+    │   │   ├── app_pv1.py
+    │   │   └── test_filter_pydantic_sub_model_pv1.py
+    │   ├── test_modules_same_name_body/
+    │   │   ├── __init__.py
+    │   │   ├── test_main.py
+    │   │   └── app/
+    │   │       ├── __init__.py
+    │   │       ├── a.py
+    │   │       ├── b.py
+    │   │       └── main.py
+    │   ├── test_tutorial/
+    │   │   ├── __init__.py
+    │   │   ├── test_additional_responses/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   ├── test_tutorial003.py
+    │   │   │   └── test_tutorial004.py
+    │   │   ├── test_additional_status_codes/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_advanced_middleware/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   └── test_tutorial003.py
+    │   │   ├── test_async_tests/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_main.py
+    │   │   ├── test_background_tasks/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   └── test_tutorial002.py
+    │   │   ├── test_behind_a_proxy/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial001_01.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   ├── test_tutorial003.py
+    │   │   │   └── test_tutorial004.py
+    │   │   ├── test_bigger_applications/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_main.py
+    │   │   ├── test_body/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_body_fields/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_body_multiple_params/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   └── test_tutorial003.py
+    │   │   ├── test_body_nested_models/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial009.py
+    │   │   ├── test_body_updates/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_conditional_openapi/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_configure_swagger_ui/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   └── test_tutorial003.py
+    │   │   ├── test_cookie_param_models/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   └── test_tutorial002.py
+    │   │   ├── test_cookie_params/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_cors/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_custom_docs_ui/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   └── test_tutorial002.py
+    │   │   ├── test_custom_request_and_route/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   └── test_tutorial003.py
+    │   │   ├── test_custom_response/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial001b.py
+    │   │   │   ├── test_tutorial004.py
+    │   │   │   ├── test_tutorial005.py
+    │   │   │   ├── test_tutorial006.py
+    │   │   │   ├── test_tutorial006b.py
+    │   │   │   ├── test_tutorial006c.py
+    │   │   │   ├── test_tutorial007.py
+    │   │   │   ├── test_tutorial008.py
+    │   │   │   ├── test_tutorial009.py
+    │   │   │   ├── test_tutorial009b.py
+    │   │   │   └── test_tutorial009c.py
+    │   │   ├── test_dataclasses/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   └── test_tutorial003.py
+    │   │   ├── test_dependencies/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial004.py
+    │   │   │   ├── test_tutorial006.py
+    │   │   │   ├── test_tutorial008b.py
+    │   │   │   ├── test_tutorial008c.py
+    │   │   │   ├── test_tutorial008d.py
+    │   │   │   └── test_tutorial012.py
+    │   │   ├── test_events/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   └── test_tutorial003.py
+    │   │   ├── test_extending_openapi/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_extra_data_types/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_extra_models/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial003.py
+    │   │   │   ├── test_tutorial004.py
+    │   │   │   └── test_tutorial005.py
+    │   │   ├── test_first_steps/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_generate_clients/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial003.py
+    │   │   ├── test_handling_errors/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   ├── test_tutorial003.py
+    │   │   │   ├── test_tutorial004.py
+    │   │   │   ├── test_tutorial005.py
+    │   │   │   └── test_tutorial006.py
+    │   │   ├── test_header_param_models/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   └── test_tutorial003.py
+    │   │   ├── test_header_params/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   └── test_tutorial003.py
+    │   │   ├── test_metadata/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial001_1.py
+    │   │   │   └── test_tutorial004.py
+    │   │   ├── test_openapi_callbacks/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_openapi_webhooks/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_path_operation_advanced_configurations/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   ├── test_tutorial003.py
+    │   │   │   ├── test_tutorial004.py
+    │   │   │   ├── test_tutorial005.py
+    │   │   │   ├── test_tutorial006.py
+    │   │   │   ├── test_tutorial007.py
+    │   │   │   └── test_tutorial007_pv1.py
+    │   │   ├── test_path_operation_configurations/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial002b.py
+    │   │   │   ├── test_tutorial005.py
+    │   │   │   └── test_tutorial006.py
+    │   │   ├── test_path_params/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial004.py
+    │   │   │   └── test_tutorial005.py
+    │   │   ├── test_query_param_models/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   └── test_tutorial002.py
+    │   │   ├── test_query_params/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial005.py
+    │   │   │   └── test_tutorial006.py
+    │   │   ├── test_query_params_str_validations/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial010.py
+    │   │   │   ├── test_tutorial011.py
+    │   │   │   ├── test_tutorial012.py
+    │   │   │   ├── test_tutorial013.py
+    │   │   │   ├── test_tutorial014.py
+    │   │   │   └── test_tutorial015.py
+    │   │   ├── test_request_files/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial001_02.py
+    │   │   │   ├── test_tutorial001_03.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   └── test_tutorial003.py
+    │   │   ├── test_request_form_models/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   └── test_tutorial002_pv1.py
+    │   │   ├── test_request_forms/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_request_forms_and_files/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_response_change_status_code/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_response_cookies/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   └── test_tutorial002.py
+    │   │   ├── test_response_headers/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   └── test_tutorial002.py
+    │   │   ├── test_response_model/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial003.py
+    │   │   │   ├── test_tutorial003_01.py
+    │   │   │   ├── test_tutorial003_02.py
+    │   │   │   ├── test_tutorial003_03.py
+    │   │   │   ├── test_tutorial003_04.py
+    │   │   │   ├── test_tutorial003_04_py310.py
+    │   │   │   ├── test_tutorial003_05.py
+    │   │   │   ├── test_tutorial003_py310.py
+    │   │   │   ├── test_tutorial004.py
+    │   │   │   ├── test_tutorial005.py
+    │   │   │   └── test_tutorial006.py
+    │   │   ├── test_schema_extra_example/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial001_pv1.py
+    │   │   │   ├── test_tutorial004.py
+    │   │   │   └── test_tutorial005.py
+    │   │   ├── test_security/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial003.py
+    │   │   │   ├── test_tutorial005.py
+    │   │   │   └── test_tutorial006.py
+    │   │   ├── test_separate_openapi_schemas/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   └── test_tutorial002.py
+    │   │   ├── test_settings/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_app02.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_sql_databases/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   └── test_tutorial002.py
+    │   │   ├── test_sub_applications/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_templates/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_testing/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_main.py
+    │   │   │   ├── test_main_b.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   ├── test_tutorial003.py
+    │   │   │   └── test_tutorial004.py
+    │   │   ├── test_testing_dependencies/
+    │   │   │   ├── __init__.py
+    │   │   │   └── test_tutorial001.py
+    │   │   ├── test_websockets/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── test_tutorial001.py
+    │   │   │   ├── test_tutorial002.py
+    │   │   │   ├── test_tutorial003.py
+    │   │   │   └── test_tutorial003_py39.py
+    │   │   └── test_wsgi/
+    │   │       ├── __init__.py
+    │   │       └── test_tutorial001.py
+    │   └── test_validate_response_recursive/
+    │       ├── __init__.py
+    │       ├── app.py
+    │       └── test_validate_response_recursive.py
+    └── .github/
+        ├── dependabot.yml
+        ├── FUNDING.yml
+        ├── labeler.yml
+        ├── DISCUSSION_TEMPLATE/
+        │   ├── questions.yml
+        │   └── translations.yml
+        ├── ISSUE_TEMPLATE/
+        │   ├── config.yml
+        │   └── privileged.yml
+        └── workflows/
+            ├── add-to-project.yml
+            ├── build-docs.yml
+            ├── contributors.yml
+            ├── deploy-docs.yml
+            ├── issue-manager.yml
+            ├── label-approved.yml
+            ├── labeler.yml
+            ├── latest-changes.yml
+            ├── notify-translations.yml
+            ├── people.yml
+            ├── publish.yml
+            ├── smokeshow.yml
+            ├── sponsors.yml
+            ├── test-redistribute.yml
+            ├── test.yml
+            ├── topic-repos.yml
+            └── translate.yml
+
+================================================
+FILE: README.md
+================================================
+<p align="center">
+  <a href="https://fastapi.tiangolo.com"><img src="https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png" alt="FastAPI"></a>
+</p>
+<p align="center">
+    <em>FastAPI framework, high performance, easy to learn, fast to code, ready for production</em>
+</p>
+<p align="center">
+<a href="https://github.com/fastapi/fastapi/actions?query=workflow%3ATest+event%3Apush+branch%3Amaster" target="_blank">
+    <img src="https://github.com/fastapi/fastapi/actions/workflows/test.yml/badge.svg?event=push&branch=master" alt="Test">
+</a>
+<a href="https://coverage-badge.samuelcolvin.workers.dev/redirect/fastapi/fastapi" target="_blank">
+    <img src="https://coverage-badge.samuelcolvin.workers.dev/fastapi/fastapi.svg" alt="Coverage">
+</a>
+<a href="https://pypi.org/project/fastapi" target="_blank">
+    <img src="https://img.shields.io/pypi/v/fastapi?color=%2334D058&label=pypi%20package" alt="Package version">
+</a>
+<a href="https://pypi.org/project/fastapi" target="_blank">
+    <img src="https://img.shields.io/pypi/pyversions/fastapi.svg?color=%2334D058" alt="Supported Python versions">
+</a>
+</p>
+
+---
+
+**Documentation**: <a href="https://fastapi.tiangolo.com" target="_blank">https://fastapi.tiangolo.com</a>
+
+**Source Code**: <a href="https://github.com/fastapi/fastapi" target="_blank">https://github.com/fastapi/fastapi</a>
+
+---
+
+FastAPI is a modern, fast (high-performance), web framework for building APIs with Python based on standard Python type hints.
+
+The key features are:
+
+* **Fast**: Very high performance, on par with **NodeJS** and **Go** (thanks to Starlette and Pydantic). [One of the fastest Python frameworks available](#performance).
+* **Fast to code**: Increase the speed to develop features by about 200% to 300%. *
+* **Fewer bugs**: Reduce about 40% of human (developer) induced errors. *
+* **Intuitive**: Great editor support. <abbr title="also known as auto-complete, autocompletion, IntelliSense">Completion</abbr> everywhere. Less time debugging.
+* **Easy**: Designed to be easy to use and learn. Less time reading docs.
+* **Short**: Minimize code duplication. Multiple features from each parameter declaration. Fewer bugs.
+* **Robust**: Get production-ready code. With automatic interactive documentation.
+* **Standards-based**: Based on (and fully compatible with) the open standards for APIs: <a href="https://github.com/OAI/OpenAPI-Specification" class="external-link" target="_blank">OpenAPI</a> (previously known as Swagger) and <a href="https://json-schema.org/" class="external-link" target="_blank">JSON Schema</a>.
+
+<small>* estimation based on tests on an internal development team, building production applications.</small>
+
+## Sponsors { #sponsors }
+
+<!-- sponsors -->
+
+<a href="https://blockbee.io?ref=fastapi" target="_blank" title="BlockBee Cryptocurrency Payment Gateway"><img src="https://fastapi.tiangolo.com/img/sponsors/blockbee.png"></a>
+<a href="https://github.com/scalar/scalar/?utm_source=fastapi&utm_medium=website&utm_campaign=main-badge" target="_blank" title="Scalar: Beautiful Open-Source API References from Swagger/OpenAPI files"><img src="https://fastapi.tiangolo.com/img/sponsors/scalar.svg"></a>
+<a href="https://www.propelauth.com/?utm_source=fastapi&utm_campaign=1223&utm_medium=mainbadge" target="_blank" title="Auth, user management and more for your B2B product"><img src="https://fastapi.tiangolo.com/img/sponsors/propelauth.png"></a>
+<a href="https://zuplo.link/fastapi-gh" target="_blank" title="Zuplo: Deploy, Secure, Document, and Monetize your FastAPI"><img src="https://fastapi.tiangolo.com/img/sponsors/zuplo.png"></a>
+<a href="https://liblab.com?utm_source=fastapi" target="_blank" title="liblab - Generate SDKs from FastAPI"><img src="https://fastapi.tiangolo.com/img/sponsors/liblab.png"></a>
+<a href="https://docs.render.com/deploy-fastapi?utm_source=deploydoc&utm_medium=referral&utm_campaign=fastapi" target="_blank" title="Deploy & scale any full-stack web app on Render. Focus on building apps, not infra."><img src="https://fastapi.tiangolo.com/img/sponsors/render.svg"></a>
+<a href="https://www.coderabbit.ai/?utm_source=fastapi&utm_medium=badge&utm_campaign=fastapi" target="_blank" title="Cut Code Review Time & Bugs in Half with CodeRabbit"><img src="https://fastapi.tiangolo.com/img/sponsors/coderabbit.png"></a>
+<a href="https://subtotal.com/?utm_source=fastapi&utm_medium=sponsorship&utm_campaign=open-source" target="_blank" title="The Gold Standard in Retail Account Linking"><img src="https://fastapi.tiangolo.com/img/sponsors/subtotal.svg"></a>
+<a href="https://docs.railway.com/guides/fastapi?utm_medium=integration&utm_source=docs&utm_campaign=fastapi" target="_blank" title="Deploy enterprise applications at startup speed"><img src="https://fastapi.tiangolo.com/img/sponsors/railway.png"></a>
+<a href="https://databento.com/?utm_source=fastapi&utm_medium=sponsor&utm_content=display" target="_blank" title="Pay as you go for market data"><img src="https://fastapi.tiangolo.com/img/sponsors/databento.svg"></a>
+<a href="https://speakeasy.com/editor?utm_source=fastapi+repo&utm_medium=github+sponsorship" target="_blank" title="SDKs for your API | Speakeasy"><img src="https://fastapi.tiangolo.com/img/sponsors/speakeasy.png"></a>
+<a href="https://www.svix.com/" target="_blank" title="Svix - Webhooks as a service"><img src="https://fastapi.tiangolo.com/img/sponsors/svix.svg"></a>
+<a href="https://www.stainlessapi.com/?utm_source=fastapi&utm_medium=referral" target="_blank" title="Stainless | Generate best-in-class SDKs"><img src="https://fastapi.tiangolo.com/img/sponsors/stainless.png"></a>
+<a href="https://www.permit.io/blog/implement-authorization-in-fastapi?utm_source=github&utm_medium=referral&utm_campaign=fastapi" target="_blank" title="Fine-Grained Authorization for FastAPI"><img src="https://fastapi.tiangolo.com/img/sponsors/permit.png"></a>
+<a href="https://www.interviewpal.com/?utm_source=fastapi&utm_medium=open-source&utm_campaign=dev-hiring" target="_blank" title="InterviewPal - AI Interview Coach for Engineers and Devs"><img src="https://fastapi.tiangolo.com/img/sponsors/interviewpal.png"></a>
+<a href="https://dribia.com/en/" target="_blank" title="Dribia - Data Science within your reach"><img src="https://fastapi.tiangolo.com/img/sponsors/dribia.png"></a>
+
+<!-- /sponsors -->
+
+<a href="https://fastapi.tiangolo.com/fastapi-people/#sponsors" class="external-link" target="_blank">Other sponsors</a>
+
+## Opinions { #opinions }
+
+"_[...] I'm using **FastAPI** a ton these days. [...] I'm actually planning to use it for all of my team's **ML services at Microsoft**. Some of them are getting integrated into the core **Windows** product and some **Office** products._"
+
+<div style="text-align: right; margin-right: 10%;">Kabir Khan - <strong>Microsoft</strong> <a href="https://github.com/fastapi/fastapi/pull/26" target="_blank"><small>(ref)</small></a></div>
+
+---
+
+"_We adopted the **FastAPI** library to spawn a **REST** server that can be queried to obtain **predictions**. [for Ludwig]_"
+
+<div style="text-align: right; margin-right: 10%;">Piero Molino, Yaroslav Dudin, and Sai Sumanth Miryala - <strong>Uber</strong> <a href="https://eng.uber.com/ludwig-v0-2/" target="_blank"><small>(ref)</small></a></div>
+
+---
+
+"_**Netflix** is pleased to announce the open-source release of our **crisis management** orchestration framework: **Dispatch**! [built with **FastAPI**]_"
+
+<div style="text-align: right; margin-right: 10%;">Kevin Glisson, Marc Vilanova, Forest Monsen - <strong>Netflix</strong> <a href="https://netflixtechblog.com/introducing-dispatch-da4b8a2a8072" target="_blank"><small>(ref)</small></a></div>
+
+---
+
+"_I’m over the moon excited about **FastAPI**. It’s so fun!_"
+
+<div style="text-align: right; margin-right: 10%;">Brian Okken - <strong><a href="https://pythonbytes.fm/episodes/show/123/time-to-right-the-py-wrongs?time_in_sec=855" target="_blank">Python Bytes</a> podcast host</strong> <a href="https://x.com/brianokken/status/1112220079972728832" target="_blank"><small>(ref)</small></a></div>
+
+---
+
+"_Honestly, what you've built looks super solid and polished. In many ways, it's what I wanted **Hug** to be - it's really inspiring to see someone build that._"
+
+<div style="text-align: right; margin-right: 10%;">Timothy Crosley - <strong><a href="https://github.com/hugapi/hug" target="_blank">Hug</a> creator</strong> <a href="https://news.ycombinator.com/item?id=19455465" target="_blank"><small>(ref)</small></a></div>
+
+---
