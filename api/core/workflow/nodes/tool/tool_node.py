@@ -334,14 +334,11 @@ class ToolNode(Node):
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
 
                 # Check if this LINK message is a file link
-                if message.meta and "file" in message.meta and isinstance(message.meta["file"], File):
-                    file = message.meta["file"]
+                file = (message.meta or {}).get("file")
+                if isinstance(file, File):
                     files.append(file)
-
-                    # Show as file in text output
                     stream_text = f"File: {message.message.text}\n"
                 else:
-                    # Regular link message
                     stream_text = f"Link: {message.message.text}\n"
 
                 text += stream_text
