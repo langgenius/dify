@@ -90,11 +90,10 @@ def test_workflow_tool_streams_events(monkeypatch: pytest.MonkeyPatch):
     messages = list(tool.invoke("test_user", {}))
 
     text_messages = [msg.message.text for msg in messages if msg.type == ToolInvokeMessage.MessageType.TEXT]
-    assert text_messages == ["partial", "done"]
+    assert text_messages == ["partial"]
 
     json_messages = [msg.message.json_object for msg in messages if msg.type == ToolInvokeMessage.MessageType.JSON]
-    assert any(chunk.get("event") == StreamEvent.NODE_STARTED.value for chunk in json_messages)
-    assert {"answer": "done", "extra": 1} in json_messages
+    assert json_messages == [{"answer": "done", "extra": 1}]
 
     link_messages = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.LINK]
     assert len(link_messages) == 1
@@ -125,7 +124,7 @@ def test_workflow_tool_streams_non_answer_chunks(monkeypatch: pytest.MonkeyPatch
 
     messages = list(tool.invoke("test_user", {}))
     text_messages = [msg.message.text for msg in messages if msg.type == ToolInvokeMessage.MessageType.TEXT]
-    assert text_messages == ["code output", "final answer"]
+    assert text_messages == ["code output"]
 
     json_messages = [msg.message.json_object for msg in messages if msg.type == ToolInvokeMessage.MessageType.JSON]
     assert json_messages == [{"answer": "final answer"}]
@@ -146,3 +145,24 @@ def test_workflow_tool_streaming_error_event(monkeypatch: pytest.MonkeyPatch):
         list(tool.invoke("test_user", {}))
 
     assert "stream exploded" in str(exc_info.value)
+
+
+def test_workflow_tool_blocks_when_streaming_not_supported(monkeypatch: pytest.MonkeyPatch):
+    tool = _build_tool(monkeypatch)
+
+    captured_kwargs = {}
+
+    def _blocking_generate(*args, **kwargs):
+        captured_kwargs.update(kwargs)
+        return {"data": {"outputs": {"answer": "final"}, "error": None}}
+
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", _blocking_generate)
+    monkeypatch.setattr(tool, "_workflow_supports_streaming", lambda workflow: False)
+
+    messages = list(tool.invoke("test_user", {}))
+
+    assert captured_kwargs.get("streaming") is False
+    text_messages = [msg.message.text for msg in messages if msg.type == ToolInvokeMessage.MessageType.TEXT]
+    assert text_messages == ["final"]
+    json_messages = [msg.message.json_object for msg in messages if msg.type == ToolInvokeMessage.MessageType.JSON]
+    assert json_messages == [{"answer": "final"}]

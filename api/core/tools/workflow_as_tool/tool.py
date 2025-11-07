@@ -25,6 +25,7 @@ from libs.login import current_user
 from models import Account, Tenant
 from models.model import App, EndUser
 from models.workflow import Workflow
+from core.workflow.enums import NodeType
 
 logger = logging.getLogger(__name__)
 
@@ -92,21 +93,28 @@ class WorkflowTool(Tool):
 
         self._latest_usage = LLMUsage.empty_usage()
 
+        streaming = False
+        should_stream = self._workflow_supports_streaming(workflow)
         result = generator.generate(
             app_model=app,
             workflow=workflow,
             user=user,
             args={"inputs": tool_parameters, "files": files},
             invoke_from=self.runtime.invoke_from,
-            streaming=True,
+            streaming=should_stream,
             call_depth=self.workflow_call_depth + 1,
         )
         if isinstance(result, Mapping):
             data = result.get("data", {})
             yield from self._emit_outputs_from_data(data)
             return
+        streaming = True
 
-        yield from self._stream_workflow_events(result)
+        if streaming:
+            yield from self._stream_workflow_events(result)
+        else:
+            data = result.get("data", {}) if isinstance(result, Mapping) else {}
+            yield from self._emit_outputs_from_data(data)
 
     @property
     def latest_usage(self) -> LLMUsage:
@@ -246,13 +254,13 @@ class WorkflowTool(Tool):
 
         answer_text = normalized_outputs.get("answer")
         fallback_text = normalized_outputs.get("text")
-        if isinstance(answer_text, str):
-            yield self.create_text_message(answer_text)
-        elif isinstance(fallback_text, str):
-            yield self.create_text_message(fallback_text)
-        elif normalized_outputs:
-            yield self.create_text_message(json.dumps(normalized_outputs, ensure_ascii=False))
-
+        if not data.get("_streamed_text_emitted"):
+            if isinstance(answer_text, str):
+                yield self.create_text_message(answer_text)
+            elif isinstance(fallback_text, str):
+                yield self.create_text_message(fallback_text)
+            elif normalized_outputs:
+                yield self.create_text_message(json.dumps(normalized_outputs, ensure_ascii=False))
         yield self.create_json_message(dict(normalized_outputs), suppress_output=True)
 
     def _stream_workflow_events(
@@ -262,6 +270,8 @@ class WorkflowTool(Tool):
         Convert workflow streaming events into ToolInvokeMessages.
         """
         final_payload: Mapping[str, Any] | None = None
+
+        streamed_text_emitted = False
 
         for chunk in stream:
             if isinstance(chunk, str):
@@ -284,6 +294,7 @@ class WorkflowTool(Tool):
                 text = data.get("text")
                 if text:
                     yield self.create_text_message(text)
+                    streamed_text_emitted = True
                 continue
 
             if event == StreamEvent.MESSAGE_FILE.value:
@@ -298,10 +309,13 @@ class WorkflowTool(Tool):
                     yield message
                 continue
 
-            yield self.create_json_message(dict(chunk), suppress_output=True)
+            continue
 
         if final_payload is None:
             raise ToolInvokeError("workflow run did not complete")
+
+        if streamed_text_emitted:
+            final_payload["_streamed_text_emitted"] = True
 
         yield from self._emit_outputs_from_data(final_payload)
 
@@ -337,6 +351,32 @@ class WorkflowTool(Tool):
             raise ValueError("app not found")
 
         return app
+
+    def _workflow_supports_streaming(self, workflow: Workflow | None) -> bool:
+        """
+        Determine whether the workflow contains nodes that benefit from streaming output.
+        Defaults to True to avoid changing legacy behavior when detection fails.
+        """
+        if workflow is None:
+            return True
+
+        try:
+            nodes = workflow.graph_dict.get("nodes", [])
+        except Exception:
+            return True
+
+        streaming_node_types = {
+            NodeType.ANSWER.value,
+            NodeType.LLM.value,
+            NodeType.AGENT.value,
+        }
+
+        for node in nodes:
+            node_type = node.get("data", {}).get("type")
+            if node_type in streaming_node_types:
+                return True
+
+        return False
 
     def _transform_args(self, tool_parameters: dict) -> tuple[dict, list[dict]]:
         """
