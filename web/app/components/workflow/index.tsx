@@ -209,6 +209,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   } = useWorkflowComment()
   const showUserComments = useStore(s => s.showUserComments)
   const showUserCursors = useStore(s => s.showUserCursors)
+  const isCommentPreviewHovering = useStore(s => s.isCommentPreviewHovering)
   const { t } = useTranslation()
 
   eventEmitter?.useSubscription((v: any) => {
@@ -535,7 +536,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         edgesFocusable={!nodesReadOnly}
         panOnScroll={false}
         panOnDrag={controlMode === ControlMode.Hand}
-        zoomOnPinch={true}
+        zoomOnPinch={!isCommentPreviewHovering}
         zoomOnScroll={true}
         zoomOnDoubleClick={true}
         isValidConnection={isValidConnection}

@@ -1,10 +1,11 @@
 'use client'
 
 import type { FC } from 'react'
-import { memo, useMemo } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import type { WorkflowCommentList } from '@/service/workflow-comment'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useStore } from '../store'
 
 type CommentPreviewProps = {
   comment: WorkflowCommentList
@@ -13,6 +14,7 @@ type CommentPreviewProps = {
 
 const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const setCommentPreviewHovering = useStore(s => s.setCommentPreviewHovering)
   const participants = useMemo(() => {
     const list = comment.participants ?? []
     const author = comment.created_by_account
@@ -21,11 +23,16 @@ const CommentPreview: FC<CommentPreviewProps> = ({ comment, onClick }) => {
     const rest = list.filter(user => user.id !== author.id)
     return [author, ...rest]
   }, [comment.created_by_account, comment.participants])
+  useEffect(() => () => {
+    setCommentPreviewHovering(false)
+  }, [setCommentPreviewHovering])
 
   return (
     <div
       className="w-80 cursor-pointer rounded-3xl rounded-bl-[3px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-[10px] transition-colors hover:bg-components-panel-on-panel-item-bg-hover"
       onClick={onClick}
+      onMouseEnter={() => setCommentPreviewHovering(true)}
+      onMouseLeave={() => setCommentPreviewHovering(false)}
     >
       <div className="mb-3 flex items-center justify-between">
         <UserAvatarList
