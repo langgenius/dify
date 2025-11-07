@@ -282,6 +282,11 @@ const useOneStepRun = <T>({
   }, [isPaused])
   const { eventEmitter } = useEventEmitterContextContext()
 
+  const isScheduleTriggerNode = data.type === BlockEnum.TriggerSchedule
+  const isWebhookTriggerNode = data.type === BlockEnum.TriggerWebhook
+  const isPluginTriggerNode = data.type === BlockEnum.TriggerPlugin
+  const isTriggerNode = isWebhookTriggerNode || isPluginTriggerNode || isScheduleTriggerNode
+
   const setRunResult = useCallback(async (data: NodeRunResult | null) => {
     const isPaused = isPausedRef.current
 
@@ -303,11 +308,24 @@ const useOneStepRun = <T>({
     updateNodeInspectRunningState(id, false)
     if (data?.status === NodeRunningStatus.Succeeded) {
       invalidLastRun()
-      if (isStartNode)
+      if (isStartNode || isTriggerNode)
         invalidateSysVarValues()
       invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
     }
-  }, [isRunAfterSingleRun, runningStatus, flowId, id, store, appendNodeInspectVars, updateNodeInspectRunningState, invalidLastRun, isStartNode, invalidateSysVarValues, invalidateConversationVarValues])
+  }, [
+    isRunAfterSingleRun,
+    runningStatus,
+    flowId,
+    id,
+    store,
+    appendNodeInspectVars,
+    updateNodeInspectRunningState,
+    invalidLastRun,
+    isStartNode,
+    isTriggerNode,
+    invalidateSysVarValues,
+    invalidateConversationVarValues,
+  ])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const setNodeRunning = () => {
@@ -351,11 +369,6 @@ const useOneStepRun = <T>({
       pluginSingleRunDelayResolveRef.current = null
     }
   }, [])
-
-  const isScheduleTriggerNode = data.type === BlockEnum.TriggerSchedule
-  const isWebhookTriggerNode = data.type === BlockEnum.TriggerWebhook
-  const isPluginTriggerNode = data.type === BlockEnum.TriggerPlugin
-  const isTriggerNode = isWebhookTriggerNode || isPluginTriggerNode || isScheduleTriggerNode
 
   const startTriggerListening = useCallback(() => {
     if (!isTriggerNode)
