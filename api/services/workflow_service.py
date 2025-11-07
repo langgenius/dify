@@ -5,8 +5,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, Union, cast
 
 from sqlalchemy import exists, select
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager

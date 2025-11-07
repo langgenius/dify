@@ -39,8 +39,8 @@ from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
-from services.workflow_service import WorkflowService
 from services.workflow_app_service import WorkflowAppService
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 

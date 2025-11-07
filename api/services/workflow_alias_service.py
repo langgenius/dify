@@ -120,7 +120,6 @@ class WorkflowAliasService:
 
         return list(session.scalars(stmt))
 
-
     def delete_alias(
         self,
         session: Union[Session, "scoped_session"],
