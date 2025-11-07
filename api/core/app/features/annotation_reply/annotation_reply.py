@@ -75,7 +75,7 @@ class AnnotationReplyFeature:
                     AppAnnotationService.add_annotation_history(
                         annotation.id,
                         app_record.id,
-                        annotation.question,
+                        annotation.question_text,
                         annotation.content,
                         query,
                         user_id,
