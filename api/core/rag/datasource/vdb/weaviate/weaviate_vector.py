@@ -5,9 +5,11 @@ This module provides integration with Weaviate vector database for storing and r
 document embeddings used in retrieval-augmented generation workflows.
 """
 
+import atexit
 import datetime
 import json
 import logging
+import threading
 import uuid as _uuid
 from typing import Any
 from urllib.parse import urlparse
@@ -31,6 +33,40 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
+
+# Maintain a single Weaviate client instance per unique configuration
+_WEAVIATE_CLIENTS: dict[str, weaviate.WeaviateClient] = {}
+_WEAVIATE_CLIENTS_LOCK = threading.Lock()
+
+
+def _weaviate_client_key(config: "WeaviateConfig") -> str:
+    return f"{config.endpoint}|{config.grpc_endpoint or ''}|{config.api_key or ''}"
+
+
+def get_weaviate_client(config: "WeaviateConfig") -> weaviate.WeaviateClient:
+    key = _weaviate_client_key(config)
+    client = _WEAVIATE_CLIENTS.get(key)
+    if client is not None:
+        return client
+    with _WEAVIATE_CLIENTS_LOCK:
+        client = _WEAVIATE_CLIENTS.get(key)
+        if client is None:
+            client = WeaviateVector._init_client(config)  # type: ignore[attr-defined]
+            _WEAVIATE_CLIENTS[key] = client
+        return client
+
+
+def _close_all_weaviate_clients() -> None:
+    with _WEAVIATE_CLIENTS_LOCK:
+        for c in _WEAVIATE_CLIENTS.values():
+            try:
+                c.close()
+            except Exception:
+                logger.warning("Failed to close Weaviate client on exit", exc_info=True)
+        _WEAVIATE_CLIENTS.clear()
+
+
+atexit.register(_close_all_weaviate_clients)
 
 
 class WeaviateConfig(BaseModel):
@@ -76,10 +112,12 @@ class WeaviateVector(BaseVector):
             attributes: List of metadata attributes to store
         """
         super().__init__(collection_name)
-        self._client = self._init_client(config)
+        # Use a pooled single client instance per unique configuration
+        self._client = get_weaviate_client(config)
         self._attributes = attributes
 
-    def _init_client(self, config: WeaviateConfig) -> weaviate.WeaviateClient:
+    @staticmethod
+    def _init_client(config: WeaviateConfig) -> weaviate.WeaviateClient:
         """
         Initializes and returns a connected Weaviate client.
 
