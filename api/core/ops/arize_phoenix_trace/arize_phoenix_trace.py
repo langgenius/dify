@@ -631,7 +631,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
     def ensure_root_span(self, dify_trace_id: str | None):
         """Ensure a unique root span exists for the given Dify trace ID."""
         if str(dify_trace_id) not in self.dify_trace_ids:
-            self.carrier = {}
+            self.carrier: dict[str, str] = {}
 
             root_span = self.tracer.start_span(name="Dify")
             root_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.CHAIN.value)
