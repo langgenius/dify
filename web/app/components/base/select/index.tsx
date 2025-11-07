@@ -54,6 +54,7 @@ export type ISelectProps = {
   isLoading?: boolean
   onOpenChange?: (open: boolean) => void
 }
+
 const Select: FC<ISelectProps> = ({
   className,
   items = defaultItems,
@@ -70,6 +71,7 @@ const Select: FC<ISelectProps> = ({
   const [open, setOpen] = useState(false)
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
+  // ✅ Fix 1: Include `items` in dependency array to react to dynamic item changes
   useEffect(() => {
     let defaultSelect = null
     const existed = items.find((item: Item) => item.value === defaultValue)
@@ -77,7 +79,7 @@ const Select: FC<ISelectProps> = ({
       defaultSelect = existed
 
     setSelectedItem(defaultSelect)
-  }, [defaultValue])
+  }, [defaultValue, items])
 
   const filteredItems: Item[]
     = query === ''
@@ -86,51 +88,77 @@ const Select: FC<ISelectProps> = ({
         return item.name.toLowerCase().includes(query.toLowerCase())
       })
 
+  // ✅ Fix 2: Close dropdown on blur only if click is outside the portal
+  const handleBlur = () => {
+    setTimeout(() => {
+      if (!document.activeElement?.closest('.headlessui-portal'))
+        setOpen(false)
+    }, 100)
+  }
+
   return (
     <Combobox
       as="div"
       disabled={disabled}
       value={selectedItem}
       className={className}
-      onChange={(value: Item) => {
+      // ✅ Fix 3: Handle possible `null` value (e.g., when cleared)
+      onChange={(value: Item | null) => {
         if (!disabled) {
           setSelectedItem(value)
-          setOpen(false)
-          onSelect(value)
+          if (value) {
+            setOpen(false)
+            onSelect(value)
+          }
         }
       }}>
       <div className={classNames('relative')}>
         <div className='group text-text-secondary'>
           {allowSearch
-            ? <ComboboxInput
-              className={`w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-              onChange={(event) => {
-                if (!disabled)
-                  setQuery(event.target.value)
+            ? <>
+              <ComboboxInput
+                className={`w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                onChange={(event) => {
+                  if (!disabled) {
+                    const val = event.target.value
+                    setQuery(val)
+                    setOpen(true) // Open on input
+                  }
+                }}
+                displayValue={(item: Item | null) => item?.name || ''}
+                onBlur={handleBlur} // Bind blur handler
+              />
+              {/* ✅ Fix 4: Overlay button to make entire input clickable */}
+              <ComboboxButton
+                className={`absolute inset-0 rounded-lg ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                onClick={() => {
+                  if (!disabled)
+                    setOpen(!open)
+                }}
+              >
+                <span className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
+                  {open ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
+                </span>
+              </ComboboxButton>
+            </>
+            : <ComboboxButton
+              onClick={() => {
+                if (!disabled) setOpen(!open)
               }}
-              displayValue={(item: Item) => item?.name}
-            />
-            : <ComboboxButton onClick={
-              () => {
-                if (!disabled)
-                  setOpen(!open)
-              }
-            } className={classNames(`flex h-9 w-full items-center rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6`, optionClassName)}>
-              <div className='w-0 grow truncate text-left' title={selectedItem?.name}>{selectedItem?.name}</div>
-            </ComboboxButton>}
-          <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none" onClick={
-            () => {
-              if (!disabled)
-                setOpen(!open)
-            }
-          }>
-            {open ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
-          </ComboboxButton>
+              className={classNames(`flex h-9 w-full items-center rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6`, optionClassName)}
+            >
+              <div className='w-0 grow truncate text-left' title={selectedItem?.name || ''}>{selectedItem?.name || ''}</div>
+              <span className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
+                {open ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
+              </span>
+            </ComboboxButton>
+          }
         </div>
 
-        {(filteredItems.length > 0 && open) && (
+        {/* ✅ Fix 5: Show dropdown when open and items exist (support non-search mode) */}
+        {(open && (allowSearch ? filteredItems : items).length > 0) && (
           <ComboboxOptions className={`absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm ${overlayClassName}`}>
-            {filteredItems.map((item: Item) => (
+            {(allowSearch ? filteredItems : items).map((item: Item) => (
               <ComboboxOption
                 key={item.value}
                 value={item}
@@ -142,13 +170,13 @@ const Select: FC<ISelectProps> = ({
                   )
                 }
               >
-                {({ /* active, */ selected }) => (
+                {({ selected }) => (
                   <>
                     {renderOption
                       ? renderOption({ item, selected })
                       : (
                         <>
-                          <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
+                          <span className={classNames('block truncate', selected && 'font-normal')}>{item.name}</span>
                           {selected && (
                             <span
                               className={classNames(
@@ -167,7 +195,7 @@ const Select: FC<ISelectProps> = ({
           </ComboboxOptions>
         )}
       </div>
-    </Combobox >
+    </Combobox>
   )
 }
 
