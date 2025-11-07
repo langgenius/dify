@@ -51,8 +51,8 @@ class WorkflowNameAlias(Base):
         Account,
         primaryjoin=lambda: Account.id == WorkflowNameAlias.created_by,
         foreign_keys=[created_by],
-        lazy='select',
-        viewonly=True
+        lazy="select",
+        viewonly=True,
     )
 
     def __init__(self, *args, **kwargs):

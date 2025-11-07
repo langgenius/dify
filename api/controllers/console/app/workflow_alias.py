@@ -142,7 +142,7 @@ class WorkflowAliasApi(Resource):
                     session=db.session,
                     request=request,
                 )
-            
+
             db.session.commit()
 
             return alias
