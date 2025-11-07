@@ -52,18 +52,13 @@ x-shared-env: &shared-api-worker-env
   ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
   ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
   NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: ${NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX:-false}
-  DB_USERNAME: ${DB_USERNAME:-postgres}
-  DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
-  DB_HOST: ${DB_HOST:-db}
-  DB_PORT: ${DB_PORT:-5432}
-  DB_DATABASE: ${DB_DATABASE:-dify}
-  SQLALCHEMY_POOL_SIZE: ${SQLALCHEMY_POOL_SIZE:-30}
-  SQLALCHEMY_MAX_OVERFLOW: ${SQLALCHEMY_MAX_OVERFLOW:-10}
-  SQLALCHEMY_POOL_RECYCLE: ${SQLALCHEMY_POOL_RECYCLE:-3600}
-  SQLALCHEMY_ECHO: ${SQLALCHEMY_ECHO:-false}
-  SQLALCHEMY_POOL_PRE_PING: ${SQLALCHEMY_POOL_PRE_PING:-false}
-  SQLALCHEMY_POOL_USE_LIFO: ${SQLALCHEMY_POOL_USE_LIFO:-false}
-  SQLALCHEMY_POOL_TIMEOUT: ${SQLALCHEMY_POOL_TIMEOUT:-30}
+  DB_TYPE: ${DB_TYPE:-postgresql}
+  POSTGRES_USER: ${POSTGRES_USER:-postgres}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
+  POSTGRES_HOST: ${POSTGRES_HOST:-db_postgres}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+  POSTGRES_DATABASE: ${POSTGRES_DATABASE:-dify}
+  PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
   POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-100}
   POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-128MB}
   POSTGRES_WORK_MEM: ${POSTGRES_WORK_MEM:-4MB}
@@ -71,6 +66,32 @@ x-shared-env: &shared-api-worker-env
   POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}
   POSTGRES_STATEMENT_TIMEOUT: ${POSTGRES_STATEMENT_TIMEOUT:-0}
   POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT: ${POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT:-0}
+  MYSQL_USER: ${MYSQL_USER:-root}
+  MYSQL_PASSWORD: ${MYSQL_PASSWORD:-difyai123456}
+  MYSQL_HOST: ${MYSQL_HOST:-db_mysql}
+  MYSQL_PORT: ${MYSQL_PORT:-3306}
+  MYSQL_DATABASE: ${MYSQL_DATABASE:-dify}
+  MYSQL_HOST_VOLUME: ${MYSQL_HOST_VOLUME:-./volumes/mysql/data}
+  MYSQL_MAX_CONNECTIONS: ${MYSQL_MAX_CONNECTIONS:-1000}
+  MYSQL_INNODB_BUFFER_POOL_SIZE: ${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}
+  MYSQL_INNODB_LOG_FILE_SIZE: ${MYSQL_INNODB_LOG_FILE_SIZE:-128M}
+  MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT: ${MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT:-2}
+  OCEANBASE_HOST: ${OCEANBASE_HOST:-oceanbase}
+  OCEANBASE_PORT: ${OCEANBASE_PORT:-2881}
+  OCEANBASE_USER: ${OCEANBASE_USER:-root@test}
+  OCEANBASE_PASSWORD: ${OCEANBASE_PASSWORD:-difyai123456}
+  OCEANBASE_DATABASE: ${OCEANBASE_DATABASE:-test}
+  OCEANBASE_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
+  OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
+  OCEANBASE_ENABLE_HYBRID_SEARCH: ${OCEANBASE_ENABLE_HYBRID_SEARCH:-false}
+  OCEANBASE_FULLTEXT_PARSER: ${OCEANBASE_FULLTEXT_PARSER:-ik}
+  SQLALCHEMY_POOL_SIZE: ${SQLALCHEMY_POOL_SIZE:-30}
+  SQLALCHEMY_MAX_OVERFLOW: ${SQLALCHEMY_MAX_OVERFLOW:-10}
+  SQLALCHEMY_POOL_RECYCLE: ${SQLALCHEMY_POOL_RECYCLE:-3600}
+  SQLALCHEMY_ECHO: ${SQLALCHEMY_ECHO:-false}
+  SQLALCHEMY_POOL_PRE_PING: ${SQLALCHEMY_POOL_PRE_PING:-false}
+  SQLALCHEMY_POOL_USE_LIFO: ${SQLALCHEMY_POOL_USE_LIFO:-false}
+  SQLALCHEMY_POOL_TIMEOUT: ${SQLALCHEMY_POOL_TIMEOUT:-30}
   REDIS_HOST: ${REDIS_HOST:-redis}
   REDIS_PORT: ${REDIS_PORT:-6379}
   REDIS_USERNAME: ${REDIS_USERNAME:-}
@@ -312,15 +333,6 @@ x-shared-env: &shared-api-worker-env
   LINDORM_PASSWORD: ${LINDORM_PASSWORD:-admin}
   LINDORM_USING_UGC: ${LINDORM_USING_UGC:-True}
   LINDORM_QUERY_TIMEOUT: ${LINDORM_QUERY_TIMEOUT:-1}
-  OCEANBASE_VECTOR_HOST: ${OCEANBASE_VECTOR_HOST:-oceanbase}
-  OCEANBASE_VECTOR_PORT: ${OCEANBASE_VECTOR_PORT:-2881}
-  OCEANBASE_VECTOR_USER: ${OCEANBASE_VECTOR_USER:-root@test}
-  OCEANBASE_VECTOR_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
-  OCEANBASE_VECTOR_DATABASE: ${OCEANBASE_VECTOR_DATABASE:-test}
-  OCEANBASE_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
-  OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
-  OCEANBASE_ENABLE_HYBRID_SEARCH: ${OCEANBASE_ENABLE_HYBRID_SEARCH:-false}
-  OCEANBASE_FULLTEXT_PARSER: ${OCEANBASE_FULLTEXT_PARSER:-ik}
   OPENGAUSS_HOST: ${OPENGAUSS_HOST:-opengauss}
   OPENGAUSS_PORT: ${OPENGAUSS_PORT:-6600}
   OPENGAUSS_USER: ${OPENGAUSS_USER:-postgres}
@@ -444,10 +456,6 @@ x-shared-env: &shared-api-worker-env
   TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
   ALLOW_UNSAFE_DATA_SCHEME: ${ALLOW_UNSAFE_DATA_SCHEME:-false}
   MAX_TREE_DEPTH: ${MAX_TREE_DEPTH:-50}
-  POSTGRES_USER: ${POSTGRES_USER:-${DB_USERNAME}}
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${DB_PASSWORD}}
-  POSTGRES_DB: ${POSTGRES_DB:-${DB_DATABASE}}
-  PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
   SANDBOX_API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
   SANDBOX_GIN_MODE: ${SANDBOX_GIN_MODE:-release}
   SANDBOX_WORKER_TIMEOUT: ${SANDBOX_WORKER_TIMEOUT:-15}
@@ -632,8 +640,15 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
-      db:
+      db_postgres:
         condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      oceanbase:
+        condition: service_healthy
+        required: false
       redis:
         condition: service_started
     volumes:
@@ -659,8 +674,15 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
-      db:
+      db_postgres:
         condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      oceanbase:
+        condition: service_healthy
+        required: false
       redis:
         condition: service_started
     volumes:
@@ -681,8 +703,15 @@ services:
       # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
       MODE: beat
     depends_on:
-      db:
+      db_postgres:
         condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      oceanbase:
+        condition: service_healthy
+        required: false
       redis:
         condition: service_started
     networks:
@@ -716,16 +745,17 @@ services:
       ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
       ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
       ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
-      NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: ${NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX:-false}
-
-  # The postgres database.
-  db:
+      
+  # The PostgreSQL database.
+  db_postgres:
     image: postgres:15-alpine
+    profiles:
+      - postgresql
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
-      POSTGRES_DB: ${POSTGRES_DB:-dify}
+      POSTGRES_DB: ${DB_DATABASE:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     command: >
       postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
@@ -743,15 +773,49 @@ services:
           "CMD",
           "pg_isready",
           "-h",
-          "db",
+          "db_postgres",
           "-U",
           "${PGUSER:-postgres}",
           "-d",
-          "${POSTGRES_DB:-dify}",
+          "${DB_DATABASE:-dify}",
         ]
       interval: 1s
       timeout: 3s
       retries: 60
+
+  # The mysql database.
+  db_mysql:
+    image: mysql:8.0
+    profiles:
+      - mysql
+    restart: always
+    env_file:
+      - ./middleware.env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-difyai123456}
+      MYSQL_DATABASE: ${DB_DATABASE:-dify}
+    command: >
+      --max_connections=1000
+      --innodb_buffer_pool_size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}
+      --innodb_log_file_size=${MYSQL_INNODB_LOG_FILE_SIZE:-128M}
+      --innodb_flush_log_at_trx_commit=${MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT:-2}
+    volumes:
+      - ${MYSQL_HOST_VOLUME:-./volumes/mysql/data}:/var/lib/mysql
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-u",
+          "root",
+          "-p${MYSQL_PASSWORD:-difyai123456}",
+        ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
 
   # The redis cache.
   redis:
@@ -853,8 +917,15 @@ services:
     volumes:
       - ./volumes/plugin_daemon:/app/storage
     depends_on:
-      db:
+      db_postgres:
         condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      oceanbase:
+        condition: service_healthy
+        required: false
 
   # ssrf_proxy server
   # for more information, please refer to
@@ -969,6 +1040,38 @@ services:
       AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
       AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
+
+  # OceanBase vector database
+  oceanbase:
+    image: oceanbase/oceanbase-ce:4.3.5-lts
+    container_name: oceanbase
+    profiles:
+      - oceanbase
+    restart: always
+    volumes:
+      - ./volumes/oceanbase/data:/root/ob
+      - ./volumes/oceanbase/conf:/root/.obd/cluster
+      - ./volumes/oceanbase/init.d:/root/boot/init.d
+    environment:
+      OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
+      OB_SYS_PASSWORD: ${OCEANBASE_PASSWORD:-difyai123456}
+      OB_TENANT_PASSWORD: ${OCEANBASE_PASSWORD:-difyai123456}
+      OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
+      OB_SERVER_IP: 127.0.0.1
+      MODE: mini
+      LANG: en_US.UTF-8
+    ports:
+      - "${OCEANBASE_PORT:-2881}:2881"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'obclient -h127.0.0.1 -P2881 -uroot@test -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"',
+        ]
+      interval: 10s
+      retries: 30
+      start_period: 30s
+      timeout: 10s
 
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
@@ -1104,38 +1207,6 @@ services:
       CHROMA_SERVER_AUTHN_CREDENTIALS: ${CHROMA_SERVER_AUTHN_CREDENTIALS:-difyai123456}
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
-
-  # OceanBase vector database
-  oceanbase:
-    image: oceanbase/oceanbase-ce:4.3.5-lts
-    container_name: oceanbase
-    profiles:
-      - oceanbase
-    restart: always
-    volumes:
-      - ./volumes/oceanbase/data:/root/ob
-      - ./volumes/oceanbase/conf:/root/.obd/cluster
-      - ./volumes/oceanbase/init.d:/root/boot/init.d
-    environment:
-      OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
-      OB_SYS_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
-      OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
-      OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
-      OB_SERVER_IP: 127.0.0.1
-      MODE: mini
-      LANG: en_US.UTF-8
-    ports:
-      - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'obclient -h127.0.0.1 -P2881 -uroot@test -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"',
-        ]
-      interval: 10s
-      retries: 30
-      start_period: 30s
-      timeout: 10s
 
   # Oracle vector database
   oracle:

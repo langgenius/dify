@@ -2,8 +2,9 @@ import enum
 import uuid
 from typing import Any, Generic, TypeVar
 
-from sqlalchemy import CHAR, VARCHAR, TypeDecorator
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import CHAR, TEXT, VARCHAR, LargeBinary, TypeDecorator
+from sqlalchemy.dialects.mysql import LONGBLOB, LONGTEXT
+from sqlalchemy.dialects.postgresql import BYTEA, UUID
 from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.sql.type_api import TypeEngine
 
@@ -32,6 +33,52 @@ class StringUUID(TypeDecorator[uuid.UUID | str | None]):
         if value is None:
             return value
         return str(value)
+
+
+class LongText(TypeDecorator[str | None]):
+    impl = TEXT
+    cache_ok = True
+
+    def process_bind_param(self, value: str | None, dialect: Dialect) -> str | None:
+        if value is None:
+            return value
+        return value
+
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(TEXT())
+        elif dialect.name == "mysql":
+            return dialect.type_descriptor(LONGTEXT())
+        else:
+            return dialect.type_descriptor(TEXT())
+
+    def process_result_value(self, value: str | None, dialect: Dialect) -> str | None:
+        if value is None:
+            return value
+        return value
+
+
+class BinaryData(TypeDecorator[bytes | None]):
+    impl = LargeBinary
+    cache_ok = True
+
+    def process_bind_param(self, value: bytes | None, dialect: Dialect) -> bytes | None:
+        if value is None:
+            return value
+        return value
+
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(BYTEA())
+        elif dialect.name == "mysql":
+            return dialect.type_descriptor(LONGBLOB())
+        else:
+            return dialect.type_descriptor(LargeBinary())
+
+    def process_result_value(self, value: bytes | None, dialect: Dialect) -> bytes | None:
+        if value is None:
+            return value
+        return value
 
 
 _E = TypeVar("_E", bound=enum.StrEnum)
