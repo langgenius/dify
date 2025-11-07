@@ -11,6 +11,7 @@ import { noop } from 'lodash-es'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { useGlobalPublicStore } from './global-public-context'
+import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 
 export type AppContextValue = {
   userProfile: UserProfileResponse
@@ -163,6 +164,33 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     }
   }, [currentWorkspace?.id])
   // #endregion Zendesk conversation fields
+
+  // #region Amplitude user tracking
+  useEffect(() => {
+    // Report user info to Amplitude when loaded
+    if (userProfile?.id) {
+      setUserId(userProfile.id)
+      setUserProperties({
+        email: userProfile.email,
+        name: userProfile.name,
+        has_password: userProfile.is_password_set,
+      })
+    }
+  }, [userProfile?.id, userProfile?.email, userProfile?.name, userProfile?.is_password_set])
+
+  useEffect(() => {
+    // Report workspace info to Amplitude when loaded
+    if (currentWorkspace?.id && userProfile?.id) {
+      setUserProperties({
+        workspace_id: currentWorkspace.id,
+        workspace_name: currentWorkspace.name,
+        workspace_plan: currentWorkspace.plan,
+        workspace_status: currentWorkspace.status,
+        workspace_role: currentWorkspace.role,
+      })
+    }
+  }, [currentWorkspace?.id, currentWorkspace?.name, currentWorkspace?.plan, currentWorkspace?.status, currentWorkspace?.role, userProfile?.id])
+  // #endregion Amplitude user tracking
 
   return (
     <AppContext.Provider value={{

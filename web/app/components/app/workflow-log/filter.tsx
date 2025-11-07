@@ -9,6 +9,7 @@ import type { QueryParam } from './index'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
 import { sendGAEvent } from '@/utils/gtag'
+import { trackEvent } from '../../base/amplitude/utils'
 dayjs.extend(quarterOfYear)
 
 const today = dayjs()
@@ -42,6 +43,9 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
             status_name: item.name,
           })
           setQueryParams({ ...queryParams, status: item.value as string })
+          trackEvent('workflow_log_filter_status_selected', {
+            workflow_log_filter_status: item.value as string,
+          })
         }}
         onClear={() => {
           sendGAEvent('filter_workflow_status_clear', {
