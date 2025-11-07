@@ -8765,6 +8765,181 @@ snapshots:
 
   '@antfu/eslint-config@5.4.1(@eslint-react/eslint-plugin@1.53.1(eslint@9.38.0(jiti@1.21.7))(ts-api-utils@2.1.0(typescript@5.9.3))(typescript@5.9.3))(@next/eslint-plugin-next@15.5.4)(@vue/compiler-sfc@3.5.17)(eslint-plugin-react-hooks@5.2.0(eslint@9.38.0(jiti@1.21.7)))(eslint-plugin-react-refresh@0.4.24(eslint@9.38.0(jiti@1.21.7)))(eslint@9.38.0(jiti@1.21.7))(typescript@5.9.3)':
   '@antfu/eslint-config@5.4.1(@eslint-react/eslint-plugin@1.53.1(eslint@9.38.0(jiti@1.21.7))(ts-api-utils@2.1.0(typescript@5.9.3))(typescript@5.9.3))(@next/eslint-plugin-next@15.5.4)(@vue/compiler-sfc@3.5.22)(eslint-plugin-react-hooks@5.2.0(eslint@9.38.0(jiti@1.21.7)))(eslint-plugin-react-refresh@0.4.24(eslint@9.38.0(jiti@1.21.7)))(eslint@9.38.0(jiti@1.21.7))(typescript@5.9.3)':
+  '@amplitude/analytics-browser@2.30.1':
+    dependencies:
+      '@amplitude/analytics-core': 2.31.1
+      '@amplitude/plugin-autocapture-browser': 1.17.1
+      '@amplitude/plugin-network-capture-browser': 1.6.13
+      '@amplitude/plugin-page-url-enrichment-browser': 0.5.2
+      '@amplitude/plugin-page-view-tracking-browser': 2.5.7
+      '@amplitude/plugin-web-vitals-browser': 0.1.0-frustrationanalytics.0
+      tslib: 2.8.1
+
+  '@amplitude/analytics-client-common@2.4.12':
+    dependencies:
+      '@amplitude/analytics-connector': 1.6.4
+      '@amplitude/analytics-core': 2.31.1
+      '@amplitude/analytics-types': 2.11.0
+      tslib: 2.8.1
+
+  '@amplitude/analytics-connector@1.6.4': {}
+
+  '@amplitude/analytics-core@2.31.1':
+    dependencies:
+      '@amplitude/analytics-connector': 1.6.4
+      tslib: 2.8.1
+
+  '@amplitude/analytics-types@1.4.0': {}
+
+  '@amplitude/analytics-types@2.11.0': {}
+
+  '@amplitude/engagement-browser@1.0.5':
+    dependencies:
+      '@amplitude/analytics-types': 1.4.0
+
+  '@amplitude/experiment-core@0.11.1':
+    dependencies:
+      js-base64: 3.7.8
+
+  '@amplitude/experiment-core@0.7.2':
+    dependencies:
+      js-base64: 3.7.8
+
+  '@amplitude/experiment-js-client@1.18.0':
+    dependencies:
+      '@amplitude/analytics-connector': 1.6.4
+      '@amplitude/experiment-core': 0.11.1
+      '@amplitude/ua-parser-js': 0.7.33
+      base64-js: 1.5.1
+      unfetch: 4.1.0
+
+  '@amplitude/plugin-autocapture-browser@1.17.1':
+    dependencies:
+      '@amplitude/analytics-core': 2.31.1
+      rxjs: 7.8.2
+      tslib: 2.8.1
+
+  '@amplitude/plugin-experiment-browser@1.0.0-beta.0':
+    dependencies:
+      '@amplitude/analytics-core': 2.31.1
+      '@amplitude/experiment-js-client': 1.18.0
+
+  '@amplitude/plugin-network-capture-browser@1.6.13':
+    dependencies:
+      '@amplitude/analytics-core': 2.31.1
+      rxjs: 7.8.2
+      tslib: 2.8.1
+
+  '@amplitude/plugin-page-url-enrichment-browser@0.5.2':
+    dependencies:
+      '@amplitude/analytics-core': 2.31.1
+      tslib: 2.8.1
+
+  '@amplitude/plugin-page-view-tracking-browser@2.5.7':
+    dependencies:
+      '@amplitude/analytics-core': 2.31.1
+      tslib: 2.8.1
+
+  '@amplitude/plugin-session-replay-browser@1.23.2(@amplitude/rrweb@2.0.0-alpha.33)(rollup@2.79.2)':
+    dependencies:
+      '@amplitude/analytics-client-common': 2.4.12
+      '@amplitude/analytics-core': 2.31.1
+      '@amplitude/analytics-types': 2.11.0
+      '@amplitude/session-replay-browser': 1.29.4(@amplitude/rrweb@2.0.0-alpha.33)(rollup@2.79.2)
+      idb-keyval: 6.2.2
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - '@amplitude/rrweb'
+      - rollup
+
+  '@amplitude/plugin-web-vitals-browser@0.1.0-frustrationanalytics.0':
+    dependencies:
+      '@amplitude/analytics-core': 2.31.1
+      rxjs: 7.8.2
+      tslib: 2.8.1
+      web-vitals: 5.1.0
+
+  '@amplitude/rrdom@2.0.0-alpha.33':
+    dependencies:
+      '@amplitude/rrweb-snapshot': 2.0.0-alpha.33
+
+  '@amplitude/rrweb-packer@2.0.0-alpha.32':
+    dependencies:
+      '@amplitude/rrweb-types': 2.0.0-alpha.32
+      fflate: 0.4.8
+
+  '@amplitude/rrweb-plugin-console-record@2.0.0-alpha.32(@amplitude/rrweb@2.0.0-alpha.33)':
+    dependencies:
+      '@amplitude/rrweb': 2.0.0-alpha.33
+
+  '@amplitude/rrweb-record@2.0.0-alpha.32':
+    dependencies:
+      '@amplitude/rrweb': 2.0.0-alpha.33
+      '@amplitude/rrweb-types': 2.0.0-alpha.32
+
+  '@amplitude/rrweb-snapshot@2.0.0-alpha.33':
+    dependencies:
+      postcss: 8.5.6
+
+  '@amplitude/rrweb-types@2.0.0-alpha.32': {}
+
+  '@amplitude/rrweb-types@2.0.0-alpha.33': {}
+
+  '@amplitude/rrweb-utils@2.0.0-alpha.32': {}
+
+  '@amplitude/rrweb-utils@2.0.0-alpha.33': {}
+
+  '@amplitude/rrweb@2.0.0-alpha.33':
+    dependencies:
+      '@amplitude/rrdom': 2.0.0-alpha.33
+      '@amplitude/rrweb-snapshot': 2.0.0-alpha.33
+      '@amplitude/rrweb-types': 2.0.0-alpha.33
+      '@amplitude/rrweb-utils': 2.0.0-alpha.33
+      '@types/css-font-loading-module': 0.0.7
+      '@xstate/fsm': 1.6.5
+      base64-arraybuffer: 1.0.2
+      mitt: 3.0.1
+
+  '@amplitude/session-replay-browser@1.29.4(@amplitude/rrweb@2.0.0-alpha.33)(rollup@2.79.2)':
+    dependencies:
+      '@amplitude/analytics-client-common': 2.4.12
+      '@amplitude/analytics-core': 2.31.1
+      '@amplitude/analytics-types': 2.11.0
+      '@amplitude/rrweb-packer': 2.0.0-alpha.32
+      '@amplitude/rrweb-plugin-console-record': 2.0.0-alpha.32(@amplitude/rrweb@2.0.0-alpha.33)
+      '@amplitude/rrweb-record': 2.0.0-alpha.32
+      '@amplitude/rrweb-types': 2.0.0-alpha.32
+      '@amplitude/rrweb-utils': 2.0.0-alpha.32
+      '@amplitude/targeting': 0.2.0
+      '@rollup/plugin-replace': 6.0.3(rollup@2.79.2)
+      idb: 8.0.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - '@amplitude/rrweb'
+      - rollup
+
+  '@amplitude/targeting@0.2.0':
+    dependencies:
+      '@amplitude/analytics-client-common': 2.4.12
+      '@amplitude/analytics-core': 2.31.1
+      '@amplitude/analytics-types': 2.11.0
+      '@amplitude/experiment-core': 0.7.2
+      idb: 8.0.0
+      tslib: 2.8.1
+
+  '@amplitude/ua-parser-js@0.7.33': {}
+
+  '@amplitude/unified@1.0.0-beta.9(@amplitude/rrweb@2.0.0-alpha.33)(rollup@2.79.2)':
+    dependencies:
+      '@amplitude/analytics-browser': 2.30.1
+      '@amplitude/engagement-browser': 1.0.5
+      '@amplitude/plugin-experiment-browser': 1.0.0-beta.0
+      '@amplitude/plugin-session-replay-browser': 1.23.2(@amplitude/rrweb@2.0.0-alpha.33)(rollup@2.79.2)
+    transitivePeerDependencies:
+      - '@amplitude/rrweb'
+      - rollup
+
+  '@antfu/eslint-config@5.4.1(@eslint-react/eslint-plugin@1.53.1(eslint@9.38.0(jiti@1.21.7))(ts-api-utils@2.1.0(typescript@5.9.3))(typescript@5.9.3))(@next/eslint-plugin-next@15.5.4)(@vue/compiler-sfc@3.5.17)(eslint-plugin-react-hooks@5.2.0(eslint@9.38.0(jiti@1.21.7)))(eslint-plugin-react-refresh@0.4.24(eslint@9.38.0(jiti@1.21.7)))(eslint@9.38.0(jiti@1.21.7))(typescript@5.9.3)':
     dependencies:
       '@antfu/install-pkg': 1.1.0
       '@clack/prompts': 0.11.0

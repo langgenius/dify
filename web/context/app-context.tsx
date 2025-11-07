@@ -12,6 +12,7 @@ import { setZendeskConversationFields } from '@/app/components/base/zendesk/util
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { useGlobalPublicStore } from './global-public-context'
+import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 
 export type AppContextValue = {
   userProfile: UserProfileResponse
@@ -163,41 +164,28 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   // #region Amplitude user tracking
   useEffect(() => {
     // Report user info to Amplitude when loaded
-    if (!userProfile?.id)
-      return
-
-    // Step 1: Set User ID first
-    setUserId(userProfile.id)
-
-    // Step 2: Set user properties
-    const userProperties: Record<string, any> = {
-      email: userProfile.email,
-      name: userProfile.name,
-      has_password: userProfile.is_password_set,
+    if (userProfile?.id) {
+      setUserId(userProfile.id)
+      setUserProperties({
+        email: userProfile.email,
+        name: userProfile.name,
+        has_password: userProfile.is_password_set,
+      })
     }
+  }, [userProfile?.id, userProfile?.email, userProfile?.name, userProfile?.is_password_set])
 
-    // Step 3: Add workspace properties if available
-    if (currentWorkspace?.id) {
-      userProperties.workspace_id = currentWorkspace.id
-      userProperties.workspace_name = currentWorkspace.name
-      userProperties.workspace_plan = currentWorkspace.plan
-      userProperties.workspace_status = currentWorkspace.status
-      userProperties.workspace_role = currentWorkspace.role
+  useEffect(() => {
+    // Report workspace info to Amplitude when loaded
+    if (currentWorkspace?.id && userProfile?.id) {
+      setUserProperties({
+        workspace_id: currentWorkspace.id,
+        workspace_name: currentWorkspace.name,
+        workspace_plan: currentWorkspace.plan,
+        workspace_status: currentWorkspace.status,
+        workspace_role: currentWorkspace.role,
+      })
     }
-
-    // Set all properties at once
-    setUserProperties(userProperties)
-  }, [
-    userProfile?.id,
-    userProfile?.email,
-    userProfile?.name,
-    userProfile?.is_password_set,
-    currentWorkspace?.id,
-    currentWorkspace?.name,
-    currentWorkspace?.plan,
-    currentWorkspace?.status,
-    currentWorkspace?.role,
-  ])
+  }, [currentWorkspace?.id, currentWorkspace?.name, currentWorkspace?.plan, currentWorkspace?.status, currentWorkspace?.role, userProfile?.id])
   // #endregion Amplitude user tracking
 
   return (
