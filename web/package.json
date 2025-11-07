@@ -209,7 +209,7 @@
     "canvas": "^3.2.0",
     "esbuild": "~0.25.0",
     "pbkdf2": "~3.1.3",
-    "vite": "~6.2",
+    "vite": "~6.4.1",
     "prismjs": "~1.30",
     "brace-expansion": "~2.0"
   },
@@ -232,7 +232,7 @@
       "esbuild@<0.25.0": "0.25.0",
       "pbkdf2@<3.1.3": "3.1.3",
       "prismjs@<1.30.0": "1.30.0",
-      "vite@<6.2.7": "6.2.7",
+      "vite@<6.4.1": "6.4.1",
       "array-includes": "npm:@nolyfill/array-includes@^1",
       "array.prototype.findlast": "npm:@nolyfill/array.prototype.findlast@^1",
       "array.prototype.findlastindex": "npm:@nolyfill/array.prototype.findlastindex@^1",

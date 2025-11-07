@@ -50,6 +50,7 @@ from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
+from services.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
@@ -79,7 +80,6 @@ from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
-from tasks.document_indexing_task import document_indexing_task
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.duplicate_document_indexing_task import duplicate_document_indexing_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
@@ -1701,7 +1701,7 @@ class DocumentService:
 
                 # trigger async task
                 if document_ids:
-                    document_indexing_task.delay(dataset.id, document_ids)
+                    DocumentIndexingTaskProxy(dataset.tenant_id, dataset.id, document_ids).delay()
                 if duplicate_document_ids:
                     duplicate_document_indexing_task.delay(dataset.id, duplicate_document_ids)
 
