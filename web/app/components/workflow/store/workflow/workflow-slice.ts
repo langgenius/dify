@@ -32,6 +32,8 @@ export type WorkflowSliceShape = {
   setPendingComment: (pendingComment: WorkflowSliceShape['pendingComment']) => void
   mousePosition: MousePosition
   setMousePosition: (mousePosition: WorkflowSliceShape['mousePosition']) => void
+  isCommentPreviewHovering: boolean
+  setCommentPreviewHovering: (hovering: boolean) => void
   showConfirm?: { title: string; desc?: string; onConfirm: () => void }
   setShowConfirm: (showConfirm: WorkflowSliceShape['showConfirm']) => void
   controlPromptEditorRerenderKey: number
@@ -66,6 +68,8 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setPendingComment: pendingComment => set(() => ({ pendingComment })),
   mousePosition: { pageX: 0, pageY: 0, elementX: 0, elementY: 0 },
   setMousePosition: mousePosition => set(() => ({ mousePosition })),
+  isCommentPreviewHovering: false,
+  setCommentPreviewHovering: hovering => set(() => ({ isCommentPreviewHovering: hovering })),
   showConfirm: undefined,
   setShowConfirm: showConfirm => set(() => ({ showConfirm })),
   controlPromptEditorRerenderKey: 0,
