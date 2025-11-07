@@ -28,6 +28,7 @@ import Input from '@/app/components/base/input'
 import type { AppMode } from '@/types/app'
 import { DSLImportMode } from '@/models/app'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -141,6 +142,16 @@ const Apps = ({
         icon_background,
         description,
       })
+
+      // Track app creation from template
+      trackEvent('app_created', {
+        app_mode: mode,
+        creation_method: 'template',
+        template_id: currApp?.app.id,
+        template_name: currApp?.app.name,
+        has_description: !!description,
+      })
+
       setIsShowCreateModal(false)
       Toast.notify({
         type: 'success',
