@@ -38,15 +38,6 @@ export const setUserProperties = (properties: Record<string, any>) => {
     return acc
   }, {} as Record<string, any>)
 
-  if (Object.keys(validProperties).length === 0) {
-    if (process.env.NODE_ENV === 'development')
-      console.warn('[Amplitude] ⚠️ No valid properties to set')
-    return
-  }
-
-  if (process.env.NODE_ENV === 'development')
-    console.log('[Amplitude] 📊 Setting user properties:', validProperties)
-
   const identifyEvent = new amplitude.Identify()
   Object.entries(validProperties).forEach(([key, value]) => {
     identifyEvent.set(key, value)
@@ -54,11 +45,7 @@ export const setUserProperties = (properties: Record<string, any>) => {
 
   const result = amplitude.identify(identifyEvent)
 
-  // Log the result in development
-  result.promise.then(() => {
-    if (process.env.NODE_ENV === 'development')
-      console.log('[Amplitude] ✅ User properties set successfully')
-  }).catch((err) => {
+  result.promise.catch((err) => {
     console.error('[Amplitude] ❌ Failed to set user properties:', err)
   })
 }

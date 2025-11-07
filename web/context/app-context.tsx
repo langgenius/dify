@@ -172,8 +172,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       return
 
     // Step 1: Set User ID first
-    setUserId(userProfile.id)
-
+    setUserId(userProfile.email || userProfile.id)
     // Step 2: Set user properties
     const userProperties: Record<string, any> = {
       email: userProfile.email,
