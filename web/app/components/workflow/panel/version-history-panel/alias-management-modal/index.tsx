@@ -119,15 +119,15 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
           {aliases && aliases.length > 0 ? (
             <div className="space-y-2">
               {aliases.map((alias: WorkflowAlias) => (
-                <div key={alias.id} className="group flex items-center justify-between rounded-lg bg-gray-50 p-3 transition-colors hover:bg-gray-100">
+                <div key={alias.id} className="group flex items-center justify-between rounded-lg bg-gray-100 p-3 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700">
                   <div className="flex flex-1 items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                      <span className="text-sm font-medium text-gray-900">
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {alias.name}
                       </span>
                     </div>
-                    <div className="flex items-center space-x-2 text-xs text-gray-500">
+                    <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
                       <span>{alias.created_by.name}</span>
                       <span>·</span>
                       <span>{new Date(alias.created_at * 1000).toLocaleString()}</span>
@@ -137,7 +137,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleDeleteAlias(alias)}
-                      className="rounded-md p-1.5 text-gray-400 opacity-0 transition-all duration-200 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+                      className="rounded-md p-1.5 text-gray-400 opacity-0 transition-all duration-200 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 dark:hover:bg-red-900/20"
                       title={t('workflow.alias.deleteAlias')}
                     >
                       <RiDeleteBinLine className="h-3.5 w-3.5" />
@@ -155,7 +155,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
           )}
         </div>
         {isAddingNew ? (
-          <div className="relative z-10 flex items-center space-x-3 rounded-md border-2 border-dashed border-gray-300 bg-gray-50 p-3">
+          <div className="relative z-10 flex items-center space-x-3 rounded-md border-2 border-dashed border-gray-300 bg-gray-50 p-3 dark:border-gray-600 dark:bg-gray-800">
             <div className="flex-1">
               <Input
                 value={newAliasName}
@@ -171,7 +171,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
                 type="button"
                 onClick={handleCreateAlias}
                 disabled={!newAliasName.trim() || isCreating}
-                className="rounded-md p-2 text-green-600 transition-colors hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md p-2 text-green-600 transition-colors hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-green-900/20"
                 title={t('workflow.alias.confirmAdd')}
               >
                 {isCreating ? (
@@ -188,7 +188,7 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
                   setIsAddingNew(false)
                   resetForm()
                 }}
-                className="rounded-md p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                className="rounded-md p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
                 title={t('workflow.alias.cancel')}
               >
                 <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
@@ -200,11 +200,11 @@ const AliasManagementModal: React.FC<AliasManagementModalProps> = ({
         ) : (
           <div className="pt-2">
             <div
-              className="flex cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-3 transition-colors hover:border-gray-400 hover:bg-gray-50"
+              className="flex cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-3 transition-colors hover:border-gray-400 hover:bg-gray-50 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-800"
               onClick={() => setIsAddingNew(true)}
             >
-              <RiAddLine className="mr-2 h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-500">
+              <RiAddLine className="mr-2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <span className="text-sm text-gray-500 dark:text-gray-400">
                 {t('workflow.alias.add')}
               </span>
             </div>
