@@ -173,13 +173,13 @@ const translation = {
     helpCenter: 'ヘルプ',
     support: 'サポート',
     compliance: 'コンプライアンス',
-    communityFeedback: 'フィードバック',
     roadmap: 'ロードマップ',
     community: 'コミュニティ',
     about: 'Dify について',
     logout: 'ログアウト',
     github: 'GitHub',
     contactUs: 'お問い合わせ',
+    forum: 'フォーラム',
   },
   compliance: {
     soc2Type1: 'SOC 2 Type I 報告書',
@@ -740,6 +740,7 @@ const translation = {
     uploadFromComputerReadError: 'ファイルの読み取りに失敗しました。もう一度やり直してください。',
     fileExtensionNotSupport: 'ファイル拡張子はサポートされていません',
     pasteFileLinkInvalid: '無効なファイルリンク',
+    fileExtensionBlocked: 'このファイルタイプは、セキュリティ上の理由でブロックされています',
   },
   license: {
     expiring_plural: '有効期限 {{count}} 日',
