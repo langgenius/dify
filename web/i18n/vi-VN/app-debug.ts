@@ -255,7 +255,6 @@ const translation = {
   variableTable: {
     key: 'Khóa biến',
     name: 'Tên trường nhập liệu người dùng',
-    optional: 'Tùy chọn',
     type: 'Loại nhập liệu',
     action: 'Hành động',
     typeString: 'Chuỗi',
