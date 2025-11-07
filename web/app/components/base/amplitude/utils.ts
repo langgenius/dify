@@ -14,6 +14,14 @@ export const trackEvent = (eventName: string, eventProperties?: Record<string, a
  * @param userId User ID
  */
 export const setUserId = (userId: string) => {
+  if (!userId) {
+    console.warn('[Amplitude] ⚠️ Cannot set empty user ID')
+    return
+  }
+
+  if (process.env.NODE_ENV === 'development')
+    console.log('[Amplitude] 👤 Setting User ID:', userId)
+
   amplitude.setUserId(userId)
 }
 
@@ -22,11 +30,37 @@ export const setUserId = (userId: string) => {
  * @param properties User properties
  */
 export const setUserProperties = (properties: Record<string, any>) => {
+  // Filter out undefined and null values
+  const validProperties = Object.entries(properties).reduce((acc, [key, value]) => {
+    if (value !== undefined && value !== null)
+      acc[key] = value
+
+    return acc
+  }, {} as Record<string, any>)
+
+  if (Object.keys(validProperties).length === 0) {
+    if (process.env.NODE_ENV === 'development')
+      console.warn('[Amplitude] ⚠️ No valid properties to set')
+    return
+  }
+
+  if (process.env.NODE_ENV === 'development')
+    console.log('[Amplitude] 📊 Setting user properties:', validProperties)
+
   const identifyEvent = new amplitude.Identify()
-  Object.entries(properties).forEach(([key, value]) => {
+  Object.entries(validProperties).forEach(([key, value]) => {
     identifyEvent.set(key, value)
   })
-  amplitude.identify(identifyEvent)
+
+  const result = amplitude.identify(identifyEvent)
+
+  // Log the result in development
+  result.promise.then(() => {
+    if (process.env.NODE_ENV === 'development')
+      console.log('[Amplitude] ✅ User properties set successfully')
+  }).catch((err) => {
+    console.error('[Amplitude] ❌ Failed to set user properties:', err)
+  })
 }
 
 /**
