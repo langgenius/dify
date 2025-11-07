@@ -120,23 +120,6 @@ class WorkflowAliasService:
 
         return list(session.scalars(stmt))
 
-    def get_workflow_by_alias(
-        self,
-        session: Union[Session, "scoped_session"],
-        app_id: str,
-        name: str,
-    ) -> Workflow | None:
-        alias = session.scalar(
-            select(WorkflowNameAlias).where(
-                WorkflowNameAlias.app_id == app_id,
-                WorkflowNameAlias.name == name,
-            )
-        )
-
-        if not alias:
-            return None
-
-        return session.get(Workflow, alias.workflow_id)
 
     def delete_alias(
         self,

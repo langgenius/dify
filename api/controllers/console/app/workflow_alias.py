@@ -17,6 +17,7 @@ from libs.login import current_user, login_required
 from models import App, AppMode
 from models.account import Account
 from services.workflow_alias_service import WorkflowAliasArgs, WorkflowAliasService
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,7 @@ class WorkflowAliasApi(Resource):
         workflow_id = args.get("workflow_id")
         name = args.get("name")
 
+        workflow_service = WorkflowService()
         workflow_alias_service = WorkflowAliasService()
         try:
             request = WorkflowAliasArgs(
@@ -124,7 +126,7 @@ class WorkflowAliasApi(Resource):
             )
 
             # Check if alias already exists to determine create vs update
-            existing_alias = workflow_alias_service.get_workflow_by_alias(
+            existing_alias = workflow_service.get_workflow_by_alias(
                 session=db.session,
                 app_id=app_model.id,
                 name=request.name,

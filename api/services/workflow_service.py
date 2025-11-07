@@ -2,10 +2,11 @@ import json
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, Union, cast
 
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import scoped_session
 
 from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -35,6 +36,7 @@ from models import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow_alias import WorkflowNameAlias
 from repositories.factory import DifyAPIRepositoryFactory
 from services.enterprise.plugin_manager_service import PluginCredentialType
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
@@ -984,6 +986,24 @@ class WorkflowService:
 
         session.delete(workflow)
         return True
+
+    def get_workflow_by_alias(
+        self,
+        session: Union[Session, "scoped_session"],
+        app_id: str,
+        name: str,
+    ) -> Workflow | None:
+        alias = session.scalar(
+            select(WorkflowNameAlias).where(
+                WorkflowNameAlias.app_id == app_id,
+                WorkflowNameAlias.name == name,
+            )
+        )
+
+        if not alias:
+            return None
+
+        return session.get(Workflow, alias.workflow_id)
 
 
 def _setup_variable_pool(

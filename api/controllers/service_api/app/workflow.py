@@ -39,7 +39,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
-from services.workflow_alias_service import WorkflowAliasService
+from services.workflow_service import WorkflowService
 from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
@@ -270,8 +270,8 @@ class WorkflowRunByIdentifierApi(Resource):
 
     def _get_workflow_by_alias(self, session: Session, app_model: App, alias_name: str) -> Workflow | None:
         """Get workflow by alias name"""
-        workflow_alias_service = WorkflowAliasService()
-        return workflow_alias_service.get_workflow_by_alias(session=session, app_id=app_model.id, name=alias_name)
+        workflow_service = WorkflowService()
+        return workflow_service.get_workflow_by_alias(session=session, app_id=app_model.id, name=alias_name)
 
 
 @service_api_ns.route("/workflows/tasks/<string:task_id>/stop")

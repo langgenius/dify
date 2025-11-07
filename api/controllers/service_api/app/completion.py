@@ -34,7 +34,7 @@ from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
-from services.workflow_alias_service import WorkflowAliasService
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -246,9 +246,9 @@ class ChatApi(Resource):
         Resolve workflow_alias to workflow_id
         Priority: workflow_alias > workflow_id > latest published workflow
         """
-        workflow_alias_service = WorkflowAliasService()
+        workflow_service = WorkflowService()
         with Session(db.engine) as session:
-            workflow = workflow_alias_service.get_workflow_by_alias(
+            workflow = workflow_service.get_workflow_by_alias(
                 session=session,
                 app_id=app_model.id,
                 name=workflow_alias,
