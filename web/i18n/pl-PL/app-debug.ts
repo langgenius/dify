@@ -277,7 +277,6 @@ const translation = {
   variableTable: {
     key: 'Klucz Zmiennej',
     name: 'Nazwa Pola Wejściowego Użytkownika',
-    optional: 'Opcjonalnie',
     type: 'Typ Wejścia',
     action: 'Akcje',
     typeString: 'String',

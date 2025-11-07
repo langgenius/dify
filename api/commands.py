@@ -321,6 +321,8 @@ def migrate_knowledge_vector_database():
             )
 
             datasets = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
+            if not datasets.items:
+                break
         except SQLAlchemyError:
             raise
 
@@ -1599,7 +1601,7 @@ def transform_datasource_credentials():
                             "integration_secret": api_key,
                         }
                         datasource_provider = DatasourceProvider(
-                            provider="jina",
+                            provider="jinareader",
                             tenant_id=tenant_id,
                             plugin_id=jina_plugin_id,
                             auth_type=api_key_credential_type.value,

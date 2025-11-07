@@ -261,7 +261,6 @@ const translation = {
   variableTable: {
     key: 'Cheie variabilă',
     name: 'Nume câmp de intrare utilizator',
-    optional: 'Opțional',
     type: 'Tip intrare',
     action: 'Acțiuni',
     typeString: 'Șir',

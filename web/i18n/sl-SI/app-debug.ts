@@ -350,7 +350,6 @@ const translation = {
   },
   variableTable: {
     action: 'Dejanja',
-    optional: 'Neobvezno',
     typeString: 'Niz',
     typeSelect: 'Izbrati',
     type: 'Vrsta vnosa',

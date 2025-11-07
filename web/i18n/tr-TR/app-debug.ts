@@ -327,7 +327,6 @@ const translation = {
   variableTable: {
     key: 'Değişken Anahtarı',
     name: 'Kullanıcı Giriş Alanı Adı',
-    optional: 'İsteğe Bağlı',
     type: 'Giriş Tipi',
     action: 'Aksiyonlar',
     typeString: 'Metin',

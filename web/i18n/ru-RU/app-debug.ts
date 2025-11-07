@@ -327,7 +327,6 @@ const translation = {
   variableTable: {
     key: 'Ключ переменной',
     name: 'Имя поля пользовательского ввода',
-    optional: 'Необязательно',
     type: 'Тип ввода',
     action: 'Действия',
     typeString: 'Строка',

@@ -259,7 +259,6 @@ const translation = {
   variableTable: {
     key: 'Clé Variable',
     name: 'Nom du champ d\'entrée de l\'utilisateur',
-    optional: 'Facultatif',
     type: 'Type d\'Entrée',
     action: 'Actions',
     typeString: 'Chaîne',

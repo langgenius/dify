@@ -279,7 +279,6 @@ const translation = {
   variableTable: {
     key: 'वेरिएबल कुंजी',
     name: 'उपयोगकर्ता इनपुट फ़ील्ड नाम',
-    optional: 'वैकल्पिक',
     type: 'इनपुट प्रकार',
     action: 'क्रियाएँ',
     typeString: 'स्ट्रिंग',

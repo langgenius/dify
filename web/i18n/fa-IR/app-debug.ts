@@ -590,7 +590,6 @@ const translation = {
     typeString: 'رشته',
     name: 'نام فیلد ورودی کاربر',
     type: 'نوع ورودی',
-    optional: 'اختیاری',
   },
   varKeyError: {
     canNoBeEmpty: '{{key}} باید پر شود',
