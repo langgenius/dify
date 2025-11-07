@@ -269,7 +269,7 @@ class WorkflowTool(Tool):
         """
         Convert workflow streaming events into ToolInvokeMessages.
         """
-        final_payload: Mapping[str, Any] | None = None
+        final_payload: dict[str, Any] | None = None
 
         streamed_text_emitted = False
 
