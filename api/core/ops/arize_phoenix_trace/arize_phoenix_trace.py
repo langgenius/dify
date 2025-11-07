@@ -9,13 +9,13 @@ from urllib.parse import urlparse
 from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GrpcOTLPSpanExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HttpOTLPSpanExporter
-from opentelemetry.propagators.textmap import CarrierT
 from opentelemetry.sdk import trace as trace_sdk
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
 from opentelemetry.trace import Span, Status, StatusCode, set_span_in_context, use_span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.util.types import AttributeValue
 from sqlalchemy import select
 
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -100,16 +100,19 @@ def datetime_to_nanos(dt: datetime | None) -> int:
     return int(dt.timestamp() * 1_000_000_000)
 
 
-def error_to_string(error: Exception | None) -> str:
+def error_to_string(error: Exception | str | None) -> str:
     """Convert an error to a string with traceback information."""
     error_message = "Empty Stack Trace"
     if error:
-        string_stacktrace = traceback.format_exception(error)
-        error_message = f"{error.__class__.__name__}: {error}\n\n{string_stacktrace}"
+        if isinstance(error, Exception):
+            string_stacktrace = "".join(traceback.format_exception(error))
+            error_message = f"{error.__class__.__name__}: {error}\n\n{string_stacktrace}"
+        else:
+            error_message = str(error)
     return error_message
 
 
-def set_span_status(current_span: Span, error: Exception | None = None):
+def set_span_status(current_span: Span, error: Exception | str | None = None):
     """Set the status of the current span based on the presence of an error."""
     if error:
         error_string = error_to_string(error)
@@ -147,7 +150,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         self.tracer, self.processor = setup_tracer(arize_phoenix_config)
         self.project = arize_phoenix_config.project
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
-        self.dify_trace_ids: list[str] = []
+        self.propagator = TraceContextTextMapPropagator()
+        self.dify_trace_ids: set[str] = set()
 
     def trace(self, trace_info: BaseTraceInfo):
         logger.info("[Arize/Phoenix] Trace Entity Info: %s", trace_info)
@@ -624,25 +628,22 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         finally:
             span.end(end_time=datetime_to_nanos(trace_info.end_time))
 
-    def ensure_root_span(self, dify_trace_id: str):
+    def ensure_root_span(self, dify_trace_id: str | None):
         """Ensure a unique root span exists for the given Dify trace ID."""
-        if dify_trace_id not in self.dify_trace_ids:
-            self.propagator = TraceContextTextMapPropagator()
-            self.carrier: dict[Any, CarrierT] = {}
+        if str(dify_trace_id) not in self.dify_trace_ids:
+            self.carrier = {}
 
-            self.root_span = self.tracer.start_span(name="Dify")
-            self.root_span.set_attribute(
-                SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.CHAIN.value
-            )
-            self.root_span.set_attribute("dify_project_name", self.project)
-            self.root_span.set_attribute("dify_trace_id", dify_trace_id)
+            root_span = self.tracer.start_span(name="Dify")
+            root_span.set_attribute(SpanAttributes.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKindValues.CHAIN.value)
+            root_span.set_attribute("dify_project_name", str(self.project))
+            root_span.set_attribute("dify_trace_id", str(dify_trace_id))
 
-            with use_span(self.root_span, end_on_exit=False):
+            with use_span(root_span, end_on_exit=False):
                 self.propagator.inject(carrier=self.carrier)
 
-            set_span_status(self.root_span)
-            self.root_span.end()
-            self.dify_trace_ids.append(dify_trace_id)
+            set_span_status(root_span)
+            root_span.end()
+            self.dify_trace_ids.add(str(dify_trace_id))
 
     def api_check(self):
         try:
