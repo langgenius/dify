@@ -67,6 +67,9 @@ const LastRun: FC<Props> = ({
     if (oneStepRunRunningStatus === NodeRunningStatus.Stopped)
       return NodeRunningStatus.Stopped
 
+    if (oneStepRunRunningStatus === NodeRunningStatus.Listening)
+      return NodeRunningStatus.Listening
+
     return (runResult as any).status || otherResultPanelProps.status
   }, [isPaused, oneStepRunRunningStatus, runResult, otherResultPanelProps.status])
 
