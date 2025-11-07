@@ -131,6 +131,8 @@ const nextConfig = {
       '@heroicons/react'
     ],
   },
+  // This is required to support PostHog trailing slash API requests
+  skipTrailingSlashRedirect: true,
   // fix all before production. Now it slow the develop speed.
   eslint: {
     // Warning: This allows production builds to successfully complete even if

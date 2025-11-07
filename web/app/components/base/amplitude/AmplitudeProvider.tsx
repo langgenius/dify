@@ -3,6 +3,7 @@
 import type { FC } from 'react'
 import React, { useEffect } from 'react'
 import * as amplitude from '@amplitude/analytics-browser'
+import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
 
 export type IAmplitudeProps = {
   apiKey?: string
@@ -18,7 +19,12 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
     //   return
     // }
 
-    // Initialize Amplitude with proxy configuration to bypass CSP
+    // Create Session Replay plugin instance
+    const sessionReplay = sessionReplayPlugin({
+      sampleRate: 1,
+    })
+
+    // Initialize Amplitude with proxy configuration to bypass CSP and Session Replay
     amplitude.init(apiKey, {
       defaultTracking: {
         sessions: true,
@@ -31,10 +37,10 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
       // Use Next.js proxy to bypass CSP restrictions
       serverUrl: '/api/amplitude/2/httpapi',
     })
-
+    amplitude.add(sessionReplay)
     // Log initialization success in development
     if (process.env.NODE_ENV === 'development')
-      console.log('[Amplitude] Initialized successfully, API Key:', apiKey)
+      console.log('[Amplitude] Initialized successfully with Session Replay, API Key:', apiKey)
   }, [apiKey])
 
   // This is a client component that renders nothing

@@ -44,6 +44,7 @@
     "knip": "knip"
   },
   "dependencies": {
+    "@amplitude/plugin-session-replay-browser": "^1.23.2",
     "@amplitude/unified": "1.0.0-beta.9",
     "@emoji-mart/data": "^1.2.1",
     "@floating-ui/react": "^0.26.28",
@@ -106,6 +107,8 @@
     "next-pwa": "^5.6.0",
     "next-themes": "^0.4.6",
     "pinyin-pro": "^3.27.0",
+    "posthog-js": "^1.288.0",
+    "posthog-node": "^5.11.1",
     "qrcode.react": "^4.2.0",
     "qs": "^6.14.0",
     "react": "19.1.1",
@@ -131,9 +134,9 @@
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "scheduler": "^0.26.0",
-    "socket.io-client": "^4.8.1",
     "semver": "^7.7.3",
     "sharp": "^0.33.5",
+    "socket.io-client": "^4.8.1",
     "sortablejs": "^1.15.6",
     "swr": "^2.3.6",
     "tailwind-merge": "^2.6.0",

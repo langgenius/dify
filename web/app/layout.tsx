@@ -3,6 +3,7 @@ import type { Viewport } from 'next'
 import I18nServer from './components/i18n-server'
 import BrowserInitializer from './components/browser-initializer'
 import SentryInitializer from './components/sentry-initializer'
+import PostHogProvider from './components/posthog-provider'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { ThemeProvider } from 'next-themes'
@@ -93,15 +94,18 @@ const LocaleLayout = async ({
           enableColorScheme={false}
         >
           <BrowserInitializer>
-            <SentryInitializer>
-              <TanstackQueryInitializer>
-                <I18nServer>
-                  <GlobalPublicStoreProvider>
-                    {children}
-                  </GlobalPublicStoreProvider>
-                </I18nServer>
-              </TanstackQueryInitializer>
-            </SentryInitializer>
+            <>
+              <PostHogProvider />
+              <SentryInitializer>
+                <TanstackQueryInitializer>
+                  <I18nServer>
+                    <GlobalPublicStoreProvider>
+                      {children}
+                    </GlobalPublicStoreProvider>
+                  </I18nServer>
+                </TanstackQueryInitializer>
+              </SentryInitializer>
+            </>
           </BrowserInitializer>
         </ThemeProvider>
         <RoutePrefixHandle />
