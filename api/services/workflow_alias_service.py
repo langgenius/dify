@@ -25,18 +25,22 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowAliasService:
-    def create_or_update_alias(
+    def create_alias(
         self,
         session: Union[Session, "scoped_session"],
         request: WorkflowAliasArgs,
     ) -> WorkflowNameAlias:
+        """
+        Create a new workflow alias. Raises an error if alias already exists.
+        """
         workflow = session.get(Workflow, request.workflow_id)
         if not workflow:
             raise ValueError(f"Workflow {request.workflow_id} not found")
 
         if workflow.version == Workflow.VERSION_DRAFT:
-            raise ValueError("Cannot create or transfer aliases for draft workflows")
+            raise ValueError("Cannot create aliases for draft workflows")
 
+        # Check if alias already exists
         existing_alias = session.scalar(
             select(WorkflowNameAlias).where(
                 and_(WorkflowNameAlias.app_id == request.app_id, WorkflowNameAlias.name == request.name)
@@ -44,13 +48,7 @@ class WorkflowAliasService:
         )
 
         if existing_alias:
-            old_workflow_id = existing_alias.workflow_id
-            existing_alias.workflow_id = request.workflow_id
-            existing_alias.updated_at = func.current_timestamp()
-
-            existing_alias._is_transferred = True  # type: ignore[reportPrivateUsage]
-            existing_alias._old_workflow_id = old_workflow_id  # type: ignore[reportPrivateUsage]
-            return existing_alias
+            raise ValueError(f"Alias '{request.name}' already exists for app {request.app_id}")
 
         alias = WorkflowNameAlias(
             id=str(uuidv7()),
@@ -62,6 +60,42 @@ class WorkflowAliasService:
 
         session.add(alias)
         return alias
+
+    def update_alias(
+        self,
+        session: Union[Session, "scoped_session"],
+        request: WorkflowAliasArgs,
+    ) -> WorkflowNameAlias:
+        """
+        Update an existing workflow alias. Raises an error if alias doesn't exist.
+        """
+        workflow = session.get(Workflow, request.workflow_id)
+        if not workflow:
+            raise ValueError(f"Workflow {request.workflow_id} not found")
+
+        if workflow.version == Workflow.VERSION_DRAFT:
+            raise ValueError("Cannot update aliases for draft workflows")
+
+        # Find existing alias to update
+        existing_alias = session.scalar(
+            select(WorkflowNameAlias).where(
+                and_(WorkflowNameAlias.app_id == request.app_id, WorkflowNameAlias.name == request.name)
+            )
+        )
+
+        if not existing_alias:
+            raise ValueError(f"Alias '{request.name}' not found for app {request.app_id}")
+
+        old_workflow_id = existing_alias.workflow_id
+        existing_alias.workflow_id = request.workflow_id
+        existing_alias.updated_at = func.current_timestamp()
+
+        # Mark as transferred if workflow ID changed
+        if old_workflow_id != request.workflow_id:
+            existing_alias.is_transferred = True
+            existing_alias.old_workflow_id = old_workflow_id
+
+        return existing_alias
 
     def get_aliases_by_app(
         self,

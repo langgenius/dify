@@ -2,7 +2,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy import func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .account import Account
 from .base import Base
@@ -30,7 +30,7 @@ class WorkflowNameAlias(Base):
 
     __tablename__ = "workflow_name_aliases"
     __allow_unmapped__ = True  # Allow non-mapped attributes
-    __slots__ = ("_is_transferred", "_old_workflow_id")
+    __slots__ = ("is_transferred", "old_workflow_id")
     __table_args__ = (
         # Ensure alias name is unique within an app
         sa.UniqueConstraint("app_id", "name", name="unique_workflow_alias_app_name"),
@@ -47,14 +47,19 @@ class WorkflowNameAlias(Base):
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
-    @property
-    def created_by_account(self):
-        return db.session.query(Account).where(Account.id == self.created_by).first()
+    # Relationship to Account without foreign key constraint
+    created_by_account: Mapped[Account] = relationship(
+        Account,
+        primaryjoin=lambda: Account.id == WorkflowNameAlias.created_by,
+        foreign_keys=[created_by],
+        lazy='select',
+        viewonly=True
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._is_transferred = False
-        self._old_workflow_id = None
+        self.is_transferred = False
+        self.old_workflow_id = None
 
     def __repr__(self):
         return f"<WorkflowNameAlias(id='{self.id}', app_id='{self.app_id}', name='{self.name}')>"

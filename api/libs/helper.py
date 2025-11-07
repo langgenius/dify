@@ -128,7 +128,6 @@ def alias_name(value: str):
     if not value or not value.strip():
         raise ValueError("Alias name is required")
 
-    value = value.strip()
     if len(value) > 100:
         raise ValueError("Alias name cannot exceed 100 characters")
 

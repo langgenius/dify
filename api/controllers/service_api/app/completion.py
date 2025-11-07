@@ -241,28 +241,25 @@ class ChatApi(Resource):
             logger.exception("internal server error.")
             raise InternalServerError()
 
-    def _fetch_workflow_id_by_alias(self, *, app_model: App, workflow_alias: str = "") -> str:
+    def _fetch_workflow_id_by_alias(self, *, app_model: App, workflow_alias: str) -> str:
         """
         Resolve workflow_alias to workflow_id
         Priority: workflow_alias > workflow_id > latest published workflow
         """
-        if workflow_alias:
-            workflow_alias_service = WorkflowAliasService()
-            with Session(db.engine) as session:
-                workflow = workflow_alias_service.get_workflow_by_alias(
-                    session=session,
-                    app_id=app_model.id,
-                    name=workflow_alias,
-                )
+        workflow_alias_service = WorkflowAliasService()
+        with Session(db.engine) as session:
+            workflow = workflow_alias_service.get_workflow_by_alias(
+                session=session,
+                app_id=app_model.id,
+                name=workflow_alias,
+            )
 
-                if not workflow:
-                    raise WorkflowNotFoundError(f"Workflow with alias '{workflow_alias}' not found")
+            if not workflow:
+                raise WorkflowNotFoundError(f"Workflow with alias '{workflow_alias}' not found")
 
-                workflow_id = workflow.id
+            workflow_id = workflow.id
 
-            return workflow_id
-
-        return ""
+        return workflow_id
 
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")

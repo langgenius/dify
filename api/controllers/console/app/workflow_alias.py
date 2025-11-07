@@ -115,7 +115,6 @@ class WorkflowAliasApi(Resource):
         name = args.get("name")
 
         workflow_alias_service = WorkflowAliasService()
-
         try:
             request = WorkflowAliasArgs(
                 app_id=app_model.id,
@@ -124,10 +123,26 @@ class WorkflowAliasApi(Resource):
                 created_by=current_user.id,
             )
 
-            alias = workflow_alias_service.create_or_update_alias(
+            # Check if alias already exists to determine create vs update
+            existing_alias = workflow_alias_service.get_workflow_by_alias(
                 session=db.session,
-                request=request,
+                app_id=app_model.id,
+                name=request.name,
             )
+
+            if existing_alias:
+                # Update existing alias
+                alias = workflow_alias_service.update_alias(
+                    session=db.session,
+                    request=request,
+                )
+            else:
+                # Create new alias
+                alias = workflow_alias_service.create_alias(
+                    session=db.session,
+                    request=request,
+                )
+            
             db.session.commit()
 
             return alias
