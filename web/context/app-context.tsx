@@ -168,28 +168,41 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   // #region Amplitude user tracking
   useEffect(() => {
     // Report user info to Amplitude when loaded
-    if (userProfile?.id) {
-      setUserId(userProfile.id)
-      setUserProperties({
-        email: userProfile.email,
-        name: userProfile.name,
-        has_password: userProfile.is_password_set,
-      })
-    }
-  }, [userProfile?.id, userProfile?.email, userProfile?.name, userProfile?.is_password_set])
+    if (!userProfile?.id)
+      return
 
-  useEffect(() => {
-    // Report workspace info to Amplitude when loaded
-    if (currentWorkspace?.id && userProfile?.id) {
-      setUserProperties({
-        workspace_id: currentWorkspace.id,
-        workspace_name: currentWorkspace.name,
-        workspace_plan: currentWorkspace.plan,
-        workspace_status: currentWorkspace.status,
-        workspace_role: currentWorkspace.role,
-      })
+    // Step 1: Set User ID first
+    setUserId(userProfile.id)
+
+    // Step 2: Set user properties
+    const userProperties: Record<string, any> = {
+      email: userProfile.email,
+      name: userProfile.name,
+      has_password: userProfile.is_password_set,
     }
-  }, [currentWorkspace?.id, currentWorkspace?.name, currentWorkspace?.plan, currentWorkspace?.status, currentWorkspace?.role, userProfile?.id])
+
+    // Step 3: Add workspace properties if available
+    if (currentWorkspace?.id) {
+      userProperties.workspace_id = currentWorkspace.id
+      userProperties.workspace_name = currentWorkspace.name
+      userProperties.workspace_plan = currentWorkspace.plan
+      userProperties.workspace_status = currentWorkspace.status
+      userProperties.workspace_role = currentWorkspace.role
+    }
+
+    // Set all properties at once
+    setUserProperties(userProperties)
+  }, [
+    userProfile?.id,
+    userProfile?.email,
+    userProfile?.name,
+    userProfile?.is_password_set,
+    currentWorkspace?.id,
+    currentWorkspace?.name,
+    currentWorkspace?.plan,
+    currentWorkspace?.status,
+    currentWorkspace?.role,
+  ])
   // #endregion Amplitude user tracking
 
   return (

@@ -18,7 +18,7 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
     //   return
     // }
 
-    // Initialize Amplitude
+    // Initialize Amplitude with proxy configuration to bypass CSP
     amplitude.init(apiKey, {
       defaultTracking: {
         sessions: true,
@@ -28,6 +28,8 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
       },
       // Enable debug logs in development environment
       logLevel: process.env.NODE_ENV === 'development' ? amplitude.Types.LogLevel.Debug : amplitude.Types.LogLevel.Warn,
+      // Use Next.js proxy to bypass CSP restrictions
+      serverUrl: '/api/amplitude/2/httpapi',
     })
 
     // Log initialization success in development

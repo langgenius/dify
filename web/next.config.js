@@ -152,6 +152,18 @@ const nextConfig = {
       },
     ]
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/amplitude/:path*',
+        destination: 'https://api2.amplitude.com/:path*',
+      },
+      {
+        source: '/api/amplitude-config/:path*',
+        destination: 'https://sr-client-cfg.amplitude.com/:path*',
+      },
+    ]
+  },
   output: 'standalone',
 }
 
