@@ -7,6 +7,7 @@ from flask import has_request_context
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.app.entities.task_entities import StreamEvent
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from core.tools.__base.tool import Tool
@@ -97,27 +98,15 @@ class WorkflowTool(Tool):
             user=user,
             args={"inputs": tool_parameters, "files": files},
             invoke_from=self.runtime.invoke_from,
-            streaming=False,
+            streaming=True,
             call_depth=self.workflow_call_depth + 1,
         )
-        assert isinstance(result, dict)
-        data = result.get("data", {})
+        if isinstance(result, Mapping):
+            data = result.get("data", {})
+            yield from self._emit_outputs_from_data(data)
+            return
 
-        if err := data.get("error"):
-            raise ToolInvokeError(err)
-
-        outputs = data.get("outputs")
-        if outputs is None:
-            outputs = {}
-        else:
-            outputs, files = self._extract_files(outputs)  # type: ignore
-            for file in files:
-                yield self.create_file_message(file)  # type: ignore
-
-        self._latest_usage = self._derive_usage_from_result(data)
-
-        yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
-        yield self.create_json_message(outputs, suppress_output=True)
+        yield from self._stream_workflow_events(result)
 
     @property
     def latest_usage(self) -> LLMUsage:
@@ -237,6 +226,84 @@ class WorkflowTool(Tool):
         user.current_tenant = tenant
 
         return user
+
+    def _emit_outputs_from_data(self, data: Mapping[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
+        """
+        Emit final workflow outputs as tool messages.
+        """
+        if err := data.get("error"):
+            raise ToolInvokeError(err)
+
+        outputs = data.get("outputs") or {}
+        if not isinstance(outputs, Mapping):
+            raise ToolInvokeError("workflow outputs must be a mapping")
+
+        normalized_outputs, files = self._extract_files(dict(outputs))
+        for file in files:
+            yield self.create_file_message(file)
+
+        self._latest_usage = self._derive_usage_from_result(data)
+
+        answer_text = normalized_outputs.get("answer")
+        fallback_text = normalized_outputs.get("text")
+        if isinstance(answer_text, str):
+            yield self.create_text_message(answer_text)
+        elif isinstance(fallback_text, str):
+            yield self.create_text_message(fallback_text)
+        elif normalized_outputs:
+            yield self.create_text_message(json.dumps(normalized_outputs, ensure_ascii=False))
+
+        yield self.create_json_message(dict(normalized_outputs), suppress_output=True)
+
+    def _stream_workflow_events(
+        self, stream: Generator[Mapping[str, Any] | str, None, None]
+    ) -> Generator[ToolInvokeMessage, None, None]:
+        """
+        Convert workflow streaming events into ToolInvokeMessages.
+        """
+        final_payload: Mapping[str, Any] | None = None
+
+        for chunk in stream:
+            if isinstance(chunk, str):
+                if chunk == StreamEvent.PING.value:
+                    continue
+                yield self.create_text_message(chunk)
+                continue
+
+            event = chunk.get("event")
+            if event == StreamEvent.ERROR.value:
+                message = chunk.get("message") or chunk.get("detail") or "workflow tool execution failed"
+                raise ToolInvokeError(message)
+
+            if event == StreamEvent.WORKFLOW_FINISHED.value:
+                final_payload = dict(chunk.get("data") or {})
+                continue
+
+            if event == StreamEvent.TEXT_CHUNK.value:
+                data = chunk.get("data") or {}
+                text = data.get("text")
+                if text:
+                    yield self.create_text_message(text)
+                continue
+
+            if event == StreamEvent.MESSAGE_FILE.value:
+                url = chunk.get("url")
+                if url:
+                    message = self.create_link_message(url)
+                    message.meta = {
+                        "type": chunk.get("type"),
+                        "belongs_to": chunk.get("belongs_to"),
+                        "event": event,
+                    }
+                    yield message
+                continue
+
+            yield self.create_json_message(dict(chunk), suppress_output=True)
+
+        if final_payload is None:
+            raise ToolInvokeError("workflow run did not complete")
+
+        yield from self._emit_outputs_from_data(final_payload)
 
     def _get_workflow(self, app_id: str, version: str) -> Workflow:
         """
