@@ -2,7 +2,7 @@ import { Fragment, useCallback, useRef } from 'react'
 import type { ElementType, ReactNode } from 'react'
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
 import classNames from '@/utils/classnames'
-import { useTiltEffect, useRevealEffect } from '@/utils/animations'
+import { useRevealEffect, useTiltEffect } from '@/utils/animations'
 
 // https://headlessui.com/react/dialog
 

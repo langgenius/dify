@@ -8,9 +8,8 @@ const SubscriptionChecker = ({ children }: { children: React.ReactNode }) => {
   const { isGlobalPending, systemFeatures, userProfile } = useGlobalPublicStore()
 
   useEffect(() => {
-    if (!isGlobalPending && systemFeatures.require_subscription && userProfile.subscription_status !== 'active') {
+    if (!isGlobalPending && systemFeatures.require_subscription && userProfile.subscription_status !== 'active')
       router.push('/pricing')
-    }
   }, [isGlobalPending, systemFeatures.require_subscription, userProfile.subscription_status, router])
 
   return <>{children}</>
