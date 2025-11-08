@@ -85,15 +85,14 @@ export const useRevealEffect = (ref: React.RefObject<HTMLElement>) => {
       },
       {
         threshold: 0.1,
-      }
+      },
     )
 
     observer.observe(element)
 
     return () => {
-      if (element) {
+      if (element)
         observer.unobserve(element)
-      }
     }
   }, [ref])
 }
@@ -113,9 +112,9 @@ export const useParallaxEffect = (ref: React.RefObject<HTMLElement>, speed = 0.5
     }
 
     const handleScroll = () => {
-      if (animationFrameId) {
+      if (animationFrameId)
         cancelAnimationFrame(animationFrameId)
-      }
+
       animationFrameId = requestAnimationFrame(update)
     }
 
@@ -123,9 +122,9 @@ export const useParallaxEffect = (ref: React.RefObject<HTMLElement>, speed = 0.5
     update() // Initial call
 
     return () => {
-      if (animationFrameId) {
+      if (animationFrameId)
         cancelAnimationFrame(animationFrameId)
-      }
+
       window.removeEventListener('scroll', handleScroll)
     }
   }, [ref, speed])
