@@ -45,16 +45,16 @@ fi
 if $web_modified; then
     echo "Running ESLint on web module"
 
-    git diff --cached --quiet -- 'web/**/*.ts' 'web/**/*.tsx'
-    ts_diff_status=$?
-
-    if [ $ts_diff_status -eq 0 ]; then
+    if git diff --cached --quiet -- 'web/**/*.ts' 'web/**/*.tsx'; then
         web_ts_modified=false
-    elif [ $ts_diff_status -eq 1 ]; then
-        web_ts_modified=true
     else
-        echo "Unable to determine staged TypeScript changes (git exit code: $ts_diff_status)."
-        exit $ts_diff_status
+        ts_diff_status=$?
+        if [ $ts_diff_status -eq 1 ]; then
+            web_ts_modified=true
+        else
+            echo "Unable to determine staged TypeScript changes (git exit code: $ts_diff_status)."
+            exit $ts_diff_status
+        fi
     fi
 
     cd ./web || exit 1
