@@ -1,6 +1,7 @@
 'use client'
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import Link from 'next/link'
+import { useParallaxEffect } from '@/utils/animations'
 import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
 import DatasetNav from './dataset-nav'
@@ -27,6 +28,8 @@ const navClassName = `
 `
 
 const Header = () => {
+  const parallaxRef = useRef(null)
+  useParallaxEffect(parallaxRef, 0.2)
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -43,7 +46,7 @@ const Header = () => {
 
   if (isMobile) {
     return (
-      <div className=''>
+      <div className='' ref={parallaxRef}>
         <div className='flex items-center justify-between px-2'>
           <div className='flex items-center'>
             <Link href="/apps" className='flex h-8 shrink-0 items-center justify-center px-0.5'>
@@ -79,7 +82,7 @@ const Header = () => {
   }
 
   return (
-    <div className='flex h-[56px] items-center'>
+    <div className='flex h-[56px] items-center' ref={parallaxRef}>
       <div className='flex min-w-0 flex-[1]  items-center pl-3 pr-2 min-[1280px]:pr-3'>
         <Link href="/apps" className='flex h-8 shrink-0 items-center justify-center px-0.5'>
           {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo

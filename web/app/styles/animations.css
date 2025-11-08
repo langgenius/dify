@@ -1,0 +1,40 @@
+/* Floating, Tilting Cards */
+.floating-card {
+  transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transform-style: preserve-3d;
+  animation: float 6s ease-in-out infinite;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.floating-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 25px 55px rgba(0,0,0,0.3);
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+/* Magnetic Buttons */
+.magnetic-button {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+/* Scroll-Triggered Fade-In */
+.reveal-card {
+  opacity: 0;
+  transform: translateY(50px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+  will-change: opacity, transform;
+}
+
+.reveal-card.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}

@@ -1,7 +1,8 @@
-import { Fragment, useCallback } from 'react'
+import { Fragment, useCallback, useRef } from 'react'
 import type { ElementType, ReactNode } from 'react'
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
 import classNames from '@/utils/classnames'
+import { useTiltEffect, useRevealEffect } from '@/utils/animations'
 
 // https://headlessui.com/react/dialog
 
@@ -16,6 +17,7 @@ type DialogProps = {
   footer?: ReactNode
   show: boolean
   onClose?: () => void
+  useAnimation?: boolean
 }
 
 const CustomDialog = ({
@@ -29,8 +31,13 @@ const CustomDialog = ({
   footer,
   show,
   onClose,
+  useAnimation,
 }: DialogProps) => {
   const close = useCallback(() => onClose?.(), [onClose])
+  const animatedRef = useRef<HTMLDivElement>(null)
+  useTiltEffect(animatedRef)
+  useRevealEffect(animatedRef)
+
   return (
     <Transition appear show={show} as={Fragment}>
       <Dialog as="div" className="relative z-40" onClose={close}>
@@ -46,13 +53,16 @@ const CustomDialog = ({
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center">
             <TransitionChild>
-              <DialogPanel className={classNames(
-                'w-full max-w-[800px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-all',
-                'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
-                'data-[enter]:scale-100 data-[enter]:opacity-100',
-                'data-[enter]:scale-95 data-[leave]:opacity-0',
-                className,
-              )}>
+              <DialogPanel
+                ref={useAnimation ? animatedRef : null}
+                className={classNames(
+                  'w-full max-w-[800px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-all',
+                  'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
+                  'data-[enter]:scale-100 data-[enter]:opacity-100',
+                  'data-[enter]:scale-95 data-[leave]:opacity-0',
+                  useAnimation && 'floating-card reveal-card',
+                  className,
+                )}>
                 {Boolean(title) && (
                   <DialogTitle
                     as={titleAs || 'h3'}
