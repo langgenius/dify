@@ -171,6 +171,10 @@ const translation = {
       title: 'Databricks',
       description: 'Databricks cung cấp MLflow được quản lý hoàn toàn với quản trị mạnh mẽ và bảo mật để lưu trữ dữ liệu theo dõi.',
     },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Giám sát hiệu suất ứng dụng của Tencent cung cấp khả năng theo dõi toàn diện và phân tích đa chiều cho các ứng dụng LLM.',
+    },
   },
   answerIcon: {
     description: 'Có nên sử dụng biểu tượng web app để thay thế 🤖 trong ứng dụng được chia sẻ hay không',

@@ -19,11 +19,11 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
-from models.account import Account
+from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 
-from .errors.file import FileTooLargeError, UnsupportedFileTypeError
+from .errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -58,6 +58,10 @@ class FileService:
 
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
+
+        # check if extension is in blacklist
+        if extension and extension in dify_config.UPLOAD_FILE_EXTENSION_BLACKLIST:
+            raise BlockedFileExtensionError(f"File extension '.{extension}' is not allowed for security reasons")
 
         if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()

@@ -184,6 +184,10 @@ const translation = {
       title: 'Databricks',
       description: 'Databricks ponuja popolnoma upravljan MLflow z močnim upravljanjem in varnostjo za shranjevanje podatkov sledenja.',
     },
+    tencent: {
+      description: 'Tencent Application Performance Monitoring zagotavlja celovito sledenje in večdimenzionalno analizo za aplikacije LLM.',
+      title: 'Tencent APM',
+    },
   },
   mermaid: {
     handDrawn: 'Ročno narisano',

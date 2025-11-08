@@ -170,6 +170,10 @@ const translation = {
       title: 'Databricks',
       description: 'Databricks提供完全託管的MLflow，具有強大的治理和安全功能，用於存儲追蹤數據。',
     },
+    tencent: {
+      title: '騰訊 APM',
+      description: '騰訊應用性能監控為大型語言模型應用提供全面的追蹤和多維分析。',
+    },
   },
   answerIcon: {
     descriptionInExplore: '是否使用 web app 圖示在 Explore 中取代 🤖',

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { clone } from 'lodash-es'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { ChatPromptConfig, CompletionPromptConfig, ConversationHistoriesRole, PromptItem } from '@/models/debug'
 import { PromptMode } from '@/models/debug'
 import { ModelModeType } from '@/types/app'
@@ -35,8 +35,8 @@ const useAdvancedPromptConfig = ({
   setStop,
 }: Param) => {
   const isAdvancedPrompt = promptMode === PromptMode.advanced
-  const [chatPromptConfig, setChatPromptConfig] = useState<ChatPromptConfig>(clone(DEFAULT_CHAT_PROMPT_CONFIG))
-  const [completionPromptConfig, setCompletionPromptConfig] = useState<CompletionPromptConfig>(clone(DEFAULT_COMPLETION_PROMPT_CONFIG))
+  const [chatPromptConfig, setChatPromptConfig] = useState<ChatPromptConfig>(() => clone(DEFAULT_CHAT_PROMPT_CONFIG))
+  const [completionPromptConfig, setCompletionPromptConfig] = useState<CompletionPromptConfig>(() => clone(DEFAULT_COMPLETION_PROMPT_CONFIG))
 
   const currentAdvancedPrompt = (() => {
     if (!isAdvancedPrompt)

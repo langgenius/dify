@@ -28,7 +28,6 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.node_events import AgentLogEvent
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import App, Message, WorkflowNodeExecutionModel
@@ -101,7 +100,7 @@ class LLMGenerator:
         return name
 
     @classmethod
-    def generate_suggested_questions_after_answer(cls, tenant_id: str, histories: str):
+    def generate_suggested_questions_after_answer(cls, tenant_id: str, histories: str) -> Sequence[str]:
         output_parser = SuggestedQuestionsAfterAnswerOutputParser()
         format_instructions = output_parser.get_format_instructions()
 
@@ -119,6 +118,8 @@ class LLMGenerator:
             return []
 
         prompt_messages = [UserPromptMessage(content=prompt)]
+
+        questions: Sequence[str] = []
 
         try:
             response: LLMResult = model_instance.invoke_llm(
@@ -462,19 +463,18 @@ class LLMGenerator:
             )
 
         def agent_log_of(node_execution: WorkflowNodeExecutionModel) -> Sequence:
-            raw_agent_log = node_execution.execution_metadata_dict.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG)
+            raw_agent_log = node_execution.execution_metadata_dict.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG, [])
             if not raw_agent_log:
                 return []
-            parsed: Sequence[AgentLogEvent] = json.loads(raw_agent_log)
 
-            def dict_of_event(event: AgentLogEvent):
-                return {
-                    "status": event.status,
-                    "error": event.error,
-                    "data": event.data,
+            return [
+                {
+                    "status": event["status"],
+                    "error": event["error"],
+                    "data": event["data"],
                 }
-
-            return [dict_of_event(event) for event in parsed]
+                for event in raw_agent_log
+            ]
 
         inputs = last_run.load_full_inputs(session, storage)
         last_run_dict = {

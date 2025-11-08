@@ -1,4 +1,4 @@
-import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { refreshAccessTokenOrRelogin } from './refresh-token'
 import Toast from '@/app/components/base/toast'
 import { basePath } from '@/utils/var'
@@ -21,15 +21,16 @@ import type {
   WorkflowFinishedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
-import { removeAccessToken } from '@/app/components/share/utils'
 import type { FetchOptionType, ResponseError } from './fetch'
-import { ContentType, base, getAccessToken, getBaseOptions } from './fetch'
+import { ContentType, base, getBaseOptions } from './fetch'
 import { asyncRunSafe } from '@/utils'
 import type {
   DataSourceNodeCompletedResponse,
   DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
+import Cookies from 'js-cookie'
+import { getWebAppPassport } from './webapp-auth'
 const TIME_OUT = 100000
 
 export type IOnDataMoreInfo = {
@@ -113,6 +114,15 @@ export type IOtherOptions = {
   onDataSourceNodeError?: IOnDataSourceNodeError
 }
 
+function jumpTo(url: string) {
+  if (!url)
+    return
+  const targetPath = new URL(url, globalThis.location.origin).pathname
+  if (targetPath === globalThis.location.pathname)
+    return
+  globalThis.location.href = url
+}
+
 function unicodeToChar(text: string) {
   if (!text)
     return ''
@@ -122,14 +132,19 @@ function unicodeToChar(text: string) {
   })
 }
 
+const WBB_APP_LOGIN_PATH = '/webapp-signin'
 function requiredWebSSOLogin(message?: string, code?: number) {
   const params = new URLSearchParams()
+  // prevent redirect loop
+  if (globalThis.location.pathname === WBB_APP_LOGIN_PATH)
+    return
+
   params.append('redirect_url', encodeURIComponent(`${globalThis.location.pathname}${globalThis.location.search}`))
   if (message)
     params.append('message', message)
   if (code)
     params.append('code', String(code))
-  globalThis.location.href = `${globalThis.location.origin}${basePath}/webapp-signin?${params.toString()}`
+  globalThis.location.href = `${globalThis.location.origin}${basePath}/${WBB_APP_LOGIN_PATH}?${params.toString()}`
 }
 
 export function format(text: string) {
@@ -180,9 +195,9 @@ const handleStream = (
   let isFirstMessage = true
   function read() {
     let hasError = false
-    reader?.read().then((result: any) => {
+    reader?.read().then((result: ReadableStreamReadResult<Uint8Array>) => {
       if (result.done) {
-        onCompleted && onCompleted()
+        onCompleted?.()
         return
       }
       buffer += decoder.decode(result.value, { stream: true })
@@ -322,27 +337,43 @@ const handleStream = (
 
 const baseFetch = base
 
-export const upload = async (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
+type UploadOptions = {
+  xhr: XMLHttpRequest
+  method?: string
+  url?: string
+  headers?: Record<string, string>
+  data: FormData
+  onprogress?: (this: XMLHttpRequest, ev: ProgressEvent<EventTarget>) => void
+}
+
+type UploadResponse = {
+  id: string
+  [key: string]: unknown
+}
+
+export const upload = async (options: UploadOptions, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<UploadResponse> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const token = await getAccessToken(isPublicAPI)
+  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
   const defaultOptions = {
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
     headers: {
-      Authorization: `Bearer ${token}`,
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
+      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
     },
-    data: {},
   }
-  options = {
+  const mergedOptions = {
     ...defaultOptions,
     ...options,
-    headers: { ...defaultOptions.headers, ...options.headers },
+    url: options.url || defaultOptions.url,
+    headers: { ...defaultOptions.headers, ...options.headers } as Record<string, string>,
   }
   return new Promise((resolve, reject) => {
-    const xhr = options.xhr
-    xhr.open(options.method, options.url)
-    for (const key in options.headers)
-      xhr.setRequestHeader(key, options.headers[key])
+    const xhr = mergedOptions.xhr
+    xhr.open(mergedOptions.method, mergedOptions.url)
+    for (const key in mergedOptions.headers)
+      xhr.setRequestHeader(key, mergedOptions.headers[key])
 
     xhr.withCredentials = true
     xhr.responseType = 'json'
@@ -354,8 +385,9 @@ export const upload = async (options: any, isPublicAPI?: boolean, url?: string, 
           reject(xhr)
       }
     }
-    xhr.upload.onprogress = options.onprogress
-    xhr.send(options.data)
+    if (mergedOptions.onprogress)
+      xhr.upload.onprogress = mergedOptions.onprogress
+    xhr.send(mergedOptions.data)
   })
 }
 
@@ -398,14 +430,17 @@ export const ssePost = async (
   } = otherOptions
   const abortController = new AbortController()
 
-  const token = localStorage.getItem('console_token')
+  // No need to get token from localStorage, cookies will be sent automatically
 
   const baseOptions = getBaseOptions()
+  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
     headers: new Headers({
-      Authorization: `Bearer ${token}`,
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode),
     }),
   } as RequestInit, fetchOptions)
 
@@ -424,28 +459,21 @@ export const ssePost = async (
   if (body)
     options.body = JSON.stringify(body)
 
-  const accessToken = await getAccessToken(isPublicAPI)
-    ; (options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
-
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           if (isPublicAPI) {
-            res.json().then((data: any) => {
+            res.json().then((data: { code?: string; message?: string }) => {
               if (isPublicAPI) {
                 if (data.code === 'web_app_access_denied')
                   requiredWebSSOLogin(data.message, 403)
 
-                if (data.code === 'web_sso_auth_required') {
-                  removeAccessToken()
+                if (data.code === 'web_sso_auth_required')
                   requiredWebSSOLogin()
-                }
 
-                if (data.code === 'unauthorized') {
-                  removeAccessToken()
+                if (data.code === 'unauthorized')
                   requiredWebSSOLogin()
-                }
               }
             })
           }
@@ -536,13 +564,11 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (code === 'web_sso_auth_required') {
-        removeAccessToken()
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
       if (code === 'unauthorized_and_force_logout') {
-        localStorage.removeItem('console_token')
-        localStorage.removeItem('refresh_token')
+        // Cookies will be cleared by the backend
         globalThis.location.reload()
         return Promise.reject(err)
       }
@@ -551,7 +577,6 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         silent,
       } = otherOptionsForBaseFetch
       if (isPublicAPI && code === 'unauthorized') {
-        removeAccessToken()
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
@@ -560,11 +585,11 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (code === 'not_init_validated' && IS_CE_EDITION) {
-        globalThis.location.href = `${globalThis.location.origin}${basePath}/init`
+        jumpTo(`${globalThis.location.origin}${basePath}/init`)
         return Promise.reject(err)
       }
       if (code === 'not_setup' && IS_CE_EDITION) {
-        globalThis.location.href = `${globalThis.location.origin}${basePath}/install`
+        jumpTo(`${globalThis.location.origin}${basePath}/install`)
         return Promise.reject(err)
       }
 
@@ -573,14 +598,14 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       if (refreshErr === null)
         return baseFetch<T>(url, options, otherOptionsForBaseFetch)
       if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
-        globalThis.location.href = loginUrl
+        jumpTo(loginUrl)
         return Promise.reject(err)
       }
       if (!silent) {
         Toast.notify({ type: 'error', message })
         return Promise.reject(err)
       }
-      globalThis.location.href = loginUrl
+      jumpTo(loginUrl)
       return Promise.reject(err)
     }
     else {

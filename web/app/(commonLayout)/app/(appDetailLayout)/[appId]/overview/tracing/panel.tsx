@@ -8,12 +8,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
 import { useBoolean } from 'ahooks'
-import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ConfigButton from './config-button'
 import cn from '@/utils/classnames'
-import { AliyunIcon, ArizeIcon, DatabricksIcon, LangfuseIcon, LangsmithIcon, MlflowIcon, OpikIcon, PhoenixIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
+import { AliyunIcon, ArizeIcon, DatabricksIcon, LangfuseIcon, LangsmithIcon, MlflowIcon, OpikIcon, PhoenixIcon, TencentIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import type { TracingStatus } from '@/models/app'
@@ -73,6 +73,7 @@ const Panel: FC = () => {
     [TracingProvider.aliyun]: AliyunIcon,
     [TracingProvider.mlflow]: MlflowIcon,
     [TracingProvider.databricks]: DatabricksIcon,
+    [TracingProvider.tencent]: TencentIcon,
   }
   const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
 
@@ -85,7 +86,8 @@ const Panel: FC = () => {
   const [aliyunConfig, setAliyunConfig] = useState<AliyunConfig | null>(null)
   const [mlflowConfig, setMLflowConfig] = useState<MLflowConfig | null>(null)
   const [databricksConfig, setDatabricksConfig] = useState<DatabricksConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig || mlflowConfig || databricksConfig)
+  const [tencentConfig, setTencentConfig] = useState<TencentConfig | null>(null)
+  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig || mlflowConfig || databricksConfig || tencentConfig)
 
   const fetchTracingConfig = async () => {
     const getArizeConfig = async () => {
@@ -133,6 +135,11 @@ const Panel: FC = () => {
       if (!databricksHasNotConfig)
         setDatabricksConfig(databricksConfig as DatabricksConfig)
     }
+    const getTencentConfig = async () => {
+      const { tracing_config: tencentConfig, has_not_configured: tencentHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.tencent })
+      if (!tencentHasNotConfig)
+        setTencentConfig(tencentConfig as TencentConfig)
+    }
     Promise.all([
       getArizeConfig(),
       getPhoenixConfig(),
@@ -143,6 +150,7 @@ const Panel: FC = () => {
       getAliyunConfig(),
       getMLflowConfig(),
       getDatabricksConfig(),
+      getTencentConfig(),
     ])
   }
 
@@ -163,6 +171,8 @@ const Panel: FC = () => {
       setWeaveConfig(tracing_config as WeaveConfig)
     else if (provider === TracingProvider.aliyun)
       setAliyunConfig(tracing_config as AliyunConfig)
+    else if (provider === TracingProvider.tencent)
+      setTencentConfig(tracing_config as TencentConfig)
   }
 
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
@@ -184,6 +194,8 @@ const Panel: FC = () => {
       setMLflowConfig(null)
     else if (provider === TracingProvider.databricks)
       setDatabricksConfig(null)
+    else if (provider === TracingProvider.tencent)
+      setTencentConfig(null)
     if (provider === inUseTracingProvider) {
       handleTracingStatusChange({
         enabled: false,
@@ -231,6 +243,7 @@ const Panel: FC = () => {
           aliyunConfig={aliyunConfig}
           mlflowConfig={mlflowConfig}
           databricksConfig={databricksConfig}
+          tencentConfig={tencentConfig}
           onConfigUpdated={handleTracingConfigUpdated}
           onConfigRemoved={handleTracingConfigRemoved}
         >
@@ -269,6 +282,7 @@ const Panel: FC = () => {
           aliyunConfig={aliyunConfig}
           mlflowConfig={mlflowConfig}
           databricksConfig={databricksConfig}
+          tencentConfig={tencentConfig}
           onConfigUpdated={handleTracingConfigUpdated}
           onConfigRemoved={handleTracingConfigRemoved}
         >

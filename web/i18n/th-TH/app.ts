@@ -180,6 +180,10 @@ const translation = {
       title: 'Databricks',
       description: 'Databricks ให้บริการ MLflow ที่จัดการแบบเต็มรูปแบบพร้อมการกำกับดูแลและความปลอดภัยที่แข็งแกร่งสำหรับการจัดเก็บข้อมูลการติดตาม',
     },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'การติดตามประสิทธิภาพแอปพลิเคชันของ Tencent มอบการตรวจสอบแบบครบวงจรและการวิเคราะห์หลายมิติสำหรับแอป LLM',
+    },
   },
   mermaid: {
     handDrawn: 'วาดด้วยมือ',

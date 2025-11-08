@@ -171,6 +171,10 @@ const translation = {
       title: 'Databricks',
       description: 'Databricks oferă MLflow complet gestionat cu o puternică guvernanță și securitate pentru stocarea datelor de urmărire.',
     },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Monitorizarea Performanței Aplicațiilor Tencent oferă trasabilitate cuprinzătoare și analiză multidimensională pentru aplicațiile LLM.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Dacă să utilizați pictograma web app pentru a înlocui 🤖 în Explore',

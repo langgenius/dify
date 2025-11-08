@@ -21,6 +21,7 @@ from core.file.enums import FileTransferMethod, FileType
 from core.file.models import File
 from core.variables.segments import (
     ArrayFileSegment,
+    ArrayNumberSegment,
     ArraySegment,
     FileSegment,
     FloatSegment,
@@ -30,6 +31,7 @@ from core.variables.segments import (
     StringSegment,
 )
 from services.variable_truncator import (
+    DummyVariableTruncator,
     MaxDepthExceededError,
     TruncationResult,
     UnknownTypeError,
@@ -588,3 +590,40 @@ class TestIntegrationScenarios:
             if isinstance(result.result, ObjectSegment):
                 result_size = truncator.calculate_json_size(result.result.value)
                 assert result_size <= original_size
+
+    def test_file_and_array_file_variable_mapping(self, file):
+        truncator = VariableTruncator(string_length_limit=30, array_element_limit=3, max_size_bytes=300)
+
+        mapping = {"array_file": [file]}
+        truncated_mapping, truncated = truncator.truncate_variable_mapping(mapping)
+        assert truncated is False
+        assert truncated_mapping == mapping
+
+
+def test_dummy_variable_truncator_methods():
+    """Test DummyVariableTruncator methods work correctly."""
+    truncator = DummyVariableTruncator()
+
+    # Test truncate_variable_mapping
+    test_data: dict[str, Any] = {
+        "key1": "value1",
+        "key2": ["item1", "item2"],
+        "large_array": list(range(2000)),
+    }
+    result, is_truncated = truncator.truncate_variable_mapping(test_data)
+
+    assert result == test_data
+    assert not is_truncated
+
+    # Test truncate method
+    segment = StringSegment(value="test string")
+    result = truncator.truncate(segment)
+    assert isinstance(result, TruncationResult)
+    assert result.result == segment
+    assert result.truncated is False
+
+    segment = ArrayNumberSegment(value=list(range(2000)))
+    result = truncator.truncate(segment)
+    assert isinstance(result, TruncationResult)
+    assert result.result == segment
+    assert result.truncated is False

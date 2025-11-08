@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Désélectionner tout',
     selectAll: 'Sélectionner tout',
     config: 'Config',
+    no: 'Non',
+    confirmAction: 'Veuillez confirmer votre action.',
+    deleteConfirmTitle: 'Supprimer ?',
+    yes: 'Oui',
   },
   placeholder: {
     input: 'Veuillez entrer',
@@ -157,7 +161,6 @@ const translation = {
     workspace: 'Espace de travail',
     createWorkspace: 'Créer un Espace de Travail',
     helpCenter: 'Aide',
-    communityFeedback: 'Retour d\'information',
     roadmap: 'Feuille de route',
     community: 'Communauté',
     about: 'À propos',
@@ -165,6 +168,8 @@ const translation = {
     support: 'Soutien',
     github: 'GitHub',
     compliance: 'Conformité',
+    contactUs: 'Contactez-nous',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'COMPTE',
@@ -502,6 +507,7 @@ const translation = {
       editModelCredential: 'Modifier les informations d’identification du modèle',
     },
     parametersInvalidRemoved: 'Certains paramètres sont invalides et ont été supprimés.',
+    installDataSourceProvider: 'Installer les fournisseurs de sources de données',
   },
   dataSource: {
     add: 'Ajouter une source de données',
@@ -721,6 +727,7 @@ const translation = {
     fileExtensionNotSupport: 'Extension de fichier non prise en charge',
     pasteFileLinkInvalid: 'Lien de fichier non valide',
     uploadFromComputerLimit: 'Le fichier de téléchargement ne peut pas dépasser {{size}}',
+    fileExtensionBlocked: 'Ce type de fichier est bloqué pour des raisons de sécurité',
   },
   license: {
     expiring: 'Expirant dans un jour',

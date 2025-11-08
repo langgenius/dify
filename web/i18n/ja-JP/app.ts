@@ -191,6 +191,10 @@ const translation = {
       title: 'Databricks',
       description: 'DatabricksはフルマネージドのMLflowサービスを提供し、本番環境のトレースデータを強力なガバナンスとセキュリティの元で保存することができます。',
     },
+    tencent: {
+      title: 'テンセントAPM',
+      description: 'Tencent アプリケーションパフォーマンスモニタリングは、LLM アプリケーションに対して包括的なトレーシングと多次元分析を提供します。',
+    },
   },
   answerIcon: {
     title: 'Web アプリアイコンを使用して🤖を置き換える',

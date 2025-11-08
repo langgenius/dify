@@ -8,6 +8,7 @@ export enum TracingProvider {
   aliyun = 'aliyun',
   mlflow = 'mlflow',
   databricks = 'databricks',
+  tencent = 'tencent',
 }
 
 export type ArizeConfig = {
@@ -69,4 +70,10 @@ export type DatabricksConfig = {
   client_id: string
   client_secret: string
   personal_access_token: string
+}
+
+export type TencentConfig = {
+  token: string
+  endpoint: string
+  service_name: string
 }

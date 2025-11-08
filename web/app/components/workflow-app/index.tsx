@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  useEffect,
   useMemo,
 } from 'react'
 import {
@@ -8,7 +9,7 @@ import {
 } from '@/app/components/workflow/types'
 import {
   useWorkflowInit,
-} from './hooks'
+} from './hooks/use-workflow-init'
 import {
   initialEdges,
   initialNodes,
@@ -23,8 +24,13 @@ import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 import WorkflowAppMain from './components/workflow-main'
+import { useSearchParams } from 'next/navigation'
+
+import { fetchRunDetail } from '@/service/log'
+import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
 
 const WorkflowAppWithAdditionalContext = () => {
   const {
@@ -46,6 +52,71 @@ const WorkflowAppWithAdditionalContext = () => {
 
     return []
   }, [data])
+
+  const searchParams = useSearchParams()
+  const workflowStore = useWorkflowStore()
+  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
+  const replayRunId = searchParams.get('replayRunId')
+
+  useEffect(() => {
+    if (!replayRunId)
+      return
+    const { runUrl } = getWorkflowRunAndTraceUrl(replayRunId)
+    if (!runUrl)
+      return
+    fetchRunDetail(runUrl).then((res) => {
+      const { setInputs, setShowInputsPanel, setShowDebugAndPreviewPanel } = workflowStore.getState()
+      const rawInputs = res.inputs
+      let parsedInputs: Record<string, unknown> | null = null
+
+      if (typeof rawInputs === 'string') {
+        try {
+          const maybeParsed = JSON.parse(rawInputs) as unknown
+          if (maybeParsed && typeof maybeParsed === 'object' && !Array.isArray(maybeParsed))
+            parsedInputs = maybeParsed as Record<string, unknown>
+        }
+        catch (error) {
+          console.error('Failed to parse workflow run inputs', error)
+        }
+      }
+      else if (rawInputs && typeof rawInputs === 'object' && !Array.isArray(rawInputs)) {
+        parsedInputs = rawInputs as Record<string, unknown>
+      }
+
+      if (!parsedInputs)
+        return
+
+      const userInputs: Record<string, string | number | boolean> = {}
+      Object.entries(parsedInputs).forEach(([key, value]) => {
+        if (key.startsWith('sys.'))
+          return
+
+        if (value == null) {
+          userInputs[key] = ''
+          return
+        }
+
+        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+          userInputs[key] = value
+          return
+        }
+
+        try {
+          userInputs[key] = JSON.stringify(value)
+        }
+        catch {
+          userInputs[key] = String(value)
+        }
+      })
+
+      if (!Object.keys(userInputs).length)
+        return
+
+      setInputs(userInputs)
+      setShowInputsPanel(true)
+      setShowDebugAndPreviewPanel(true)
+    })
+  }, [replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
 
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (

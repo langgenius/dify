@@ -290,6 +290,7 @@ class ApiTool(Tool):
             method_lc
         ](  # https://discuss.python.org/t/type-inference-for-function-return-types/42926
             url,
+            max_retries=0,
             params=params,
             headers=headers,
             cookies=cookies,
@@ -394,11 +395,13 @@ class ApiTool(Tool):
         parsed_response = self.validate_and_parse_response(response)
 
         # assemble invoke message based on response type
-        if parsed_response.is_json and isinstance(parsed_response.content, dict):
-            yield self.create_json_message(parsed_response.content)
+        if parsed_response.is_json:
+            if isinstance(parsed_response.content, dict):
+                yield self.create_json_message(parsed_response.content)
 
-            # FIXES: https://github.com/langgenius/dify/pull/23456#issuecomment-3182413088
-            # We need never break the original flows
+            # The yield below must be preserved to keep backward compatibility.
+            #
+            # ref: https://github.com/langgenius/dify/pull/23456#issuecomment-3182413088
             yield self.create_text_message(response.text)
         else:
             # Convert to string if needed and create text message

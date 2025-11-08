@@ -186,6 +186,10 @@ const translation = {
       title: 'Databricks',
       description: 'Databricks는 강력한 거버넌스와 보안을 갖춘 완전 관리형 MLflow를 제공하여 트레이스 데이터 저장을 지원합니다.',
     },
+    tencent: {
+      title: '텐센트 APM',
+      description: '텐센트 애플리케이션 성능 모니터링은 LLM 애플리케이션에 대한 포괄적인 추적 및 다차원 분석을 제공합니다.',
+    },
   },
   answerIcon: {
     description:

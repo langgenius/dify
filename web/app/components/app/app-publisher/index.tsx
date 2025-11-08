@@ -44,7 +44,7 @@ import { appDefaultIconBackground } from '@/config'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { AccessMode } from '@/models/access-control'
-import { fetchAppDetail } from '@/service/apps'
+import { fetchAppDetailDirect } from '@/service/apps'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
@@ -162,11 +162,16 @@ const AppPublisher = ({
     }
   }, [appDetail?.id])
 
-  const handleAccessControlUpdate = useCallback(() => {
-    fetchAppDetail({ url: '/apps', id: appDetail!.id }).then((res) => {
+  const handleAccessControlUpdate = useCallback(async () => {
+    if (!appDetail)
+      return
+    try {
+      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail.id })
       setAppDetail(res)
+    }
+    finally {
       setShowAppAccessControl(false)
-    })
+    }
   }, [appDetail, setAppDetail])
 
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
@@ -348,7 +353,8 @@ const AppPublisher = ({
                     <SuggestedAction
                       className='flex-1'
                       onClick={() => {
-                        publishedAt && handleOpenInExplore()
+                        if (publishedAt)
+                          handleOpenInExplore()
                       }}
                       disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && !userCanAccessApp?.result)}
                       icon={<RiPlanetLine className='h-4 w-4' />}

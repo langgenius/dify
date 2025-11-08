@@ -61,7 +61,7 @@ from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model: dict[str, Any] = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     "top_k": 4,
@@ -72,6 +72,19 @@ default_retrieval_model: dict[str, Any] = {
 class DatasetRetrieval:
     def __init__(self, application_generate_entity=None):
         self.application_generate_entity = application_generate_entity
+        self._llm_usage = LLMUsage.empty_usage()
+
+    @property
+    def llm_usage(self) -> LLMUsage:
+        return self._llm_usage.model_copy()
+
+    def _record_usage(self, usage: LLMUsage | None) -> None:
+        if usage is None or usage.total_tokens <= 0:
+            return
+        if self._llm_usage.total_tokens == 0:
+            self._llm_usage = usage
+        else:
+            self._llm_usage = self._llm_usage.plus(usage)
 
     def retrieve(
         self,
@@ -312,15 +325,18 @@ class DatasetRetrieval:
             )
             tools.append(message_tool)
         dataset_id = None
+        router_usage = LLMUsage.empty_usage()
         if planning_strategy == PlanningStrategy.REACT_ROUTER:
             react_multi_dataset_router = ReactMultiDatasetRouter()
-            dataset_id = react_multi_dataset_router.invoke(
+            dataset_id, router_usage = react_multi_dataset_router.invoke(
                 query, tools, model_config, model_instance, user_id, tenant_id
             )
 
         elif planning_strategy == PlanningStrategy.ROUTER:
             function_call_router = FunctionCallMultiDatasetRouter()
-            dataset_id = function_call_router.invoke(query, tools, model_config, model_instance)
+            dataset_id, router_usage = function_call_router.invoke(query, tools, model_config, model_instance)
+
+        self._record_usage(router_usage)
 
         if dataset_id:
             # get retrieval model config
@@ -364,7 +380,7 @@ class DatasetRetrieval:
                     top_k = retrieval_model_config["top_k"]
                     # get retrieval method
                     if dataset.indexing_technique == "economy":
-                        retrieval_method = "keyword_search"
+                        retrieval_method = RetrievalMethod.KEYWORD_SEARCH
                     else:
                         retrieval_method = retrieval_model_config["search_method"]
                     # get reranking model
@@ -623,7 +639,7 @@ class DatasetRetrieval:
                 if dataset.indexing_technique == "economy":
                     # use keyword table query
                     documents = RetrievalService.retrieve(
-                        retrieval_method="keyword_search",
+                        retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
                         dataset_id=dataset.id,
                         query=query,
                         top_k=top_k,
@@ -692,7 +708,7 @@ class DatasetRetrieval:
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             # get retrieval model config
             default_retrieval_model = {
-                "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+                "search_method": RetrievalMethod.SEMANTIC_SEARCH,
                 "reranking_enable": False,
                 "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
                 "top_k": 2,
@@ -983,7 +999,8 @@ class DatasetRetrieval:
             )
 
             # handle invoke result
-            result_text, _ = self._handle_invoke_result(invoke_result=invoke_result)
+            result_text, usage = self._handle_invoke_result(invoke_result=invoke_result)
+            self._record_usage(usage)
 
             result_text_json = parse_and_check_json_markdown(result_text, [])
             automatic_metadata_filters = []

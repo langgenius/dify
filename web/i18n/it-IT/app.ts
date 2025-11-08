@@ -177,6 +177,10 @@ const translation = {
       title: 'Databricks',
       description: 'Databricks offre MLflow completamente gestito con forte governance e sicurezza per memorizzare i dati di tracciamento.',
     },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring fornisce tracciamento completo e analisi multidimensionale per le applicazioni LLM.',
+    },
   },
   answerIcon: {
     description: 'Se utilizzare l\'icona web app per la sostituzione 🤖 nell\'applicazione condivisa',

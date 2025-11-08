@@ -61,6 +61,10 @@ const translation = {
     selectAll: '모두 선택',
     deSelectAll: '모두 선택 해제',
     config: '구성',
+    no: '아니요',
+    yes: '네',
+    deleteConfirmTitle: '삭제하시겠습니까?',
+    confirmAction: '귀하의 행동을 확인해 주세요.',
   },
   placeholder: {
     input: '입력해주세요',
@@ -153,7 +157,6 @@ const translation = {
     workspace: '작업 공간',
     createWorkspace: '작업 공간 만들기',
     helpCenter: '도움말 센터',
-    communityFeedback: '로드맵 및 피드백',
     roadmap: '로드맵',
     community: '커뮤니티',
     about: 'Dify 소개',
@@ -161,6 +164,8 @@ const translation = {
     github: '깃허브',
     compliance: '컴플라이언스',
     support: '지원',
+    contactUs: '문의하기',
+    forum: '포럼',
   },
   settings: {
     accountGroup: '계정',
@@ -497,6 +502,7 @@ const translation = {
       customModelCredentialsDeleteTip: '자격 증명이 사용 중이며 삭제할 수 없습니다.',
     },
     parametersInvalidRemoved: '일부 매개변수가 유효하지 않아 제거되었습니다.',
+    installDataSourceProvider: '데이터 소스 공급자 설치',
   },
   dataSource: {
     add: '데이터 소스 추가하기',
@@ -716,6 +722,7 @@ const translation = {
     fileExtensionNotSupport: '지원되지 않는 파일 확장자',
     uploadFromComputerLimit: '업로드 파일은 {{size}}를 초과할 수 없습니다.',
     uploadFromComputerUploadError: '파일 업로드에 실패했습니다. 다시 업로드하십시오.',
+    fileExtensionBlocked: '보안상의 이유로 이 파일 형식은 차단되었습니다',
   },
   license: {
     expiring_plural: '{{count}}일 후에 만료',

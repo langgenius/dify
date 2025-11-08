@@ -10,4 +10,5 @@ export const docURL = {
   [TracingProvider.aliyun]: 'https://help.aliyun.com/zh/arms/tracing-analysis/untitled-document-1750672984680',
   [TracingProvider.mlflow]: 'https://mlflow.org/docs/latest/genai/',
   [TracingProvider.databricks]: 'https://docs.databricks.com/aws/en/mlflow3/genai/tracing/',
+  [TracingProvider.tencent]: 'https://cloud.tencent.com/document/product/248/116531',
 }

@@ -3,7 +3,7 @@ import logging
 from flask_restx import Resource, fields, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy import exists, select
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.console import api, console_ns
 from controllers.console.app.error import (
@@ -16,20 +16,18 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDisabledError
 from controllers.console.wraps import (
     account_initialization_required,
-    cloud_edition_billing_resource_check,
+    edit_permission_required,
     setup_required,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
-from fields.conversation_fields import annotation_fields, message_detail_fields
+from fields.conversation_fields import message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from libs.login import current_user, login_required
-from models.account import Account
+from libs.login import current_account_with_tenant, login_required
 from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
-from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
@@ -56,19 +54,19 @@ class ChatMessageListApi(Resource):
     )
     @api.response(200, "Success", message_infinite_scroll_pagination_fields)
     @api.response(404, "Conversation not found")
-    @setup_required
     @login_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @account_initialization_required
+    @setup_required
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(message_infinite_scroll_pagination_fields)
+    @edit_permission_required
     def get(self, app_model):
-        if not isinstance(current_user, Account) or not current_user.has_edit_permission:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("conversation_id", required=True, type=uuid_value, location="args")
-        parser.add_argument("first_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("conversation_id", required=True, type=uuid_value, location="args")
+            .add_argument("first_id", type=uuid_value, location="args")
+            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        )
         args = parser.parse_args()
 
         conversation = (
@@ -154,12 +152,13 @@ class MessageFeedbackApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, app_model):
-        if current_user is None:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("message_id", required=True, type=uuid_value, location="json")
-        parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("message_id", required=True, type=uuid_value, location="json")
+            .add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
+        )
         args = parser.parse_args()
 
         message_id = str(args["message_id"])
@@ -191,47 +190,6 @@ class MessageFeedbackApi(Resource):
         db.session.commit()
 
         return {"result": "success"}
-
-
-@console_ns.route("/apps/<uuid:app_id>/annotations")
-class MessageAnnotationApi(Resource):
-    @api.doc("create_message_annotation")
-    @api.doc(description="Create message annotation")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.model(
-            "MessageAnnotationRequest",
-            {
-                "message_id": fields.String(description="Message ID"),
-                "question": fields.String(required=True, description="Question text"),
-                "answer": fields.String(required=True, description="Answer text"),
-                "annotation_reply": fields.Raw(description="Annotation reply"),
-            },
-        )
-    )
-    @api.response(200, "Annotation created successfully", annotation_fields)
-    @api.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @cloud_edition_billing_resource_check("annotation")
-    @get_app_model
-    @marshal_with(annotation_fields)
-    def post(self, app_model):
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("message_id", required=False, type=uuid_value, location="json")
-        parser.add_argument("question", required=True, type=str, location="json")
-        parser.add_argument("answer", required=True, type=str, location="json")
-        parser.add_argument("annotation_reply", required=False, type=dict, location="json")
-        args = parser.parse_args()
-        annotation = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
-
-        return annotation
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/count")
@@ -270,6 +228,7 @@ class MessageSuggestedQuestionApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     def get(self, app_model, message_id):
+        current_user, _ = current_account_with_tenant()
         message_id = str(message_id)
 
         try:
@@ -304,12 +263,12 @@ class MessageApi(Resource):
     @api.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
     @api.response(200, "Message retrieved successfully", message_detail_fields)
     @api.response(404, "Message not found")
+    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
     @marshal_with(message_detail_fields)
-    def get(self, app_model, message_id):
+    def get(self, app_model, message_id: str):
         message_id = str(message_id)
 
         message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app_model.id).first()

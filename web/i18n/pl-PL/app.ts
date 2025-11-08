@@ -172,6 +172,10 @@ const translation = {
       title: 'Databricks',
       description: 'Databricks oferuje w pełni zarządzany MLflow z silną kontrolą i bezpieczeństwem do przechowywania danych śledzenia.',
     },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring zapewnia kompleksowe śledzenie i wielowymiarową analizę dla aplikacji LLM.',
+    },
   },
   answerIcon: {
     description: 'Czy w aplikacji udostępnionej ma być używana ikona aplikacji internetowej do zamiany 🤖.',

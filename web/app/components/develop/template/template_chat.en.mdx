@@ -199,7 +199,7 @@ Chat applications support session persistence, allowing previous chat history to
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
 --data-raw '{
-      "inputs": ${JSON.stringify(props.inputs)},
+    "inputs": ${JSON.stringify(props.inputs)},
     "query": "What are the specs of the iPhone 13 Pro Max?",
     "response_mode": "streaming",
     "conversation_id": "",
@@ -1182,7 +1182,7 @@ Chat applications support session persistence, allowing previous chat history to
 --header 'Content-Type: application/json' \\
 --data-raw '{
     "value": "Updated Value",
-  "user": "abc-123"
+    "user": "abc-123"
 }'`}
     />
 
@@ -1599,8 +1599,8 @@ Chat applications support session persistence, allowing previous chat history to
   <Col>
     <CodeGroup
       title="Request"
-      tag="POST"
-      label="/meta"
+      tag="GET"
+      label="/site"
       targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\
 -H 'Authorization: Bearer {api_key}'`}
     />

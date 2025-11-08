@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
@@ -22,10 +22,10 @@ import Divider from '@/app/components/base/divider'
 type Props = {
   appId: string
   type: TracingProvider
-  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | null
+  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig | null
   onRemoved: () => void
   onCancel: () => void
-  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig) => void
+  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig) => void
   onChosen: (provider: TracingProvider) => void
 }
 
@@ -92,6 +92,12 @@ const databricksConfigTemplate = {
   personal_access_token: '',
 }
 
+const tencentConfigTemplate = {
+  token: '',
+  endpoint: '',
+  service_name: '',
+}
+
 const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
@@ -105,30 +111,38 @@ const ProviderConfigModal: FC<Props> = ({
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig>((() => {
+  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig>((() => {
     if (isEdit)
       return payload
 
-    switch (type) {
-      case TracingProvider.arize:
-        return arizeConfigTemplate
-      case TracingProvider.phoenix:
-        return phoenixConfigTemplate
-      case TracingProvider.langSmith:
-        return langSmithConfigTemplate
-      case TracingProvider.langfuse:
-        return langFuseConfigTemplate
-      case TracingProvider.opik:
-        return opikConfigTemplate
-      case TracingProvider.aliyun:
-        return aliyunConfigTemplate
-      case TracingProvider.mlflow:
-        return mlflowConfigTemplate
-      case TracingProvider.databricks:
-        return databricksConfigTemplate
-      case TracingProvider.weave:
-        return weaveConfigTemplate
-    }
+    if (type === TracingProvider.arize)
+      return arizeConfigTemplate
+
+    else if (type === TracingProvider.phoenix)
+      return phoenixConfigTemplate
+
+    else if (type === TracingProvider.langSmith)
+      return langSmithConfigTemplate
+
+    else if (type === TracingProvider.langfuse)
+      return langFuseConfigTemplate
+
+    else if (type === TracingProvider.opik)
+      return opikConfigTemplate
+
+    else if (type === TracingProvider.aliyun)
+      return aliyunConfigTemplate
+
+    else if (type === TracingProvider.mlflow)
+      return mlflowConfigTemplate
+
+    else if (type === TracingProvider.databricks)
+      return databricksConfigTemplate
+
+    else if (type === TracingProvider.tencent)
+      return tencentConfigTemplate
+
+    return weaveConfigTemplate
   })())
   const [isShowRemoveConfirm, {
     setTrue: showRemoveConfirm,
@@ -230,6 +244,16 @@ const ProviderConfigModal: FC<Props> = ({
         errorMessage = t('common.errorMsg.fieldRequired', { field: 'Experiment ID' })
       if (!errorMessage && !postData.host)
         errorMessage = t('common.errorMsg.fieldRequired', { field: 'Host' })
+    }
+
+    if (type === TracingProvider.tencent) {
+      const postData = config as TencentConfig
+      if (!errorMessage && !postData.token)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Token' })
+      if (!errorMessage && !postData.endpoint)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Endpoint' })
+      if (!errorMessage && !postData.service_name)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Service Name' })
     }
 
     return errorMessage
@@ -368,6 +392,34 @@ const ProviderConfigModal: FC<Props> = ({
                           />
                         </>
                       )}
+                      {type === TracingProvider.tencent && (
+                        <>
+                          <Field
+                            label='Token'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as TencentConfig).token}
+                            onChange={handleConfigChange('token')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'Token' })!}
+                          />
+                          <Field
+                            label='Endpoint'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as TencentConfig).endpoint}
+                            onChange={handleConfigChange('endpoint')}
+                            placeholder='https://your-region.cls.tencentcs.com'
+                          />
+                          <Field
+                            label='Service Name'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as TencentConfig).service_name}
+                            onChange={handleConfigChange('service_name')}
+                            placeholder='dify_app'
+                          />
+                        </>
+                      )}
                       {type === TracingProvider.weave && (
                         <>
                           <Field
@@ -496,7 +548,7 @@ const ProviderConfigModal: FC<Props> = ({
                           />
                         </>
                       )}
-                    {type === TracingProvider.mlflow && (
+                      {type === TracingProvider.mlflow && (
                         <>
                           <Field
                             label={t(`${I18N_PREFIX}.trackingUri`)!}

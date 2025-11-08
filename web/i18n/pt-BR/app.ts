@@ -171,6 +171,10 @@ const translation = {
       title: 'Databricks',
       description: 'Databricks oferece MLflow totalmente gerenciado com forte governança e segurança para armazenar dados de rastreamento.',
     },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'O Monitoramento de Desempenho de Aplicações da Tencent fornece rastreamento abrangente e análise multidimensional para aplicações LLM.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Se o ícone do web app deve ser usado para substituir 🤖 no Explore',

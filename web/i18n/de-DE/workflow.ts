@@ -328,6 +328,7 @@ const translation = {
     changeBlock: 'Knoten ändern',
     maximize: 'Maximiere die Leinwand',
     minimize: 'Vollbildmodus beenden',
+    optional_and_hidden: '(optional & hidden)',
   },
   nodes: {
     common: {
@@ -444,6 +445,7 @@ const translation = {
       },
       outputVars: {
         output: 'Generierter Inhalt',
+        reasoning_content: 'Reasoning-Inhalt',
         usage: 'Nutzungsinformationen des Modells',
       },
       singleRun: {
@@ -944,6 +946,11 @@ const translation = {
       chunkIsRequired: 'Chunk-Struktur ist erforderlich',
       chunksInput: 'Stücke',
       chunksInputTip: 'Die Eingangsvariable des Wissensbasis-Knotens sind Chunks. Der Variablentyp ist ein Objekt mit einem spezifischen JSON-Schema, das konsistent mit der ausgewählten Chunk-Struktur sein muss.',
+      embeddingModelIsRequired: 'Ein Einbettungsmodell ist erforderlich',
+      chunksVariableIsRequired: 'Die Variable \'Chunks\' ist erforderlich',
+      rerankingModelIsRequired: 'Ein Reranking-Modell ist erforderlich',
+      embeddingModelIsInvalid: 'Einbettungsmodell ist ungültig',
+      rerankingModelIsInvalid: 'Das Reranking-Modell ist ungültig',
     },
   },
   tracing: {

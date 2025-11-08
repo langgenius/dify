@@ -2,6 +2,7 @@ import json
 import logging
 from typing import TypedDict, cast
 
+import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
 
 from configs import dify_config
@@ -17,7 +18,7 @@ from events.app_event import app_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
-from models.account import Account
+from models import Account
 from models.model import App, AppMode, AppModelConfig, Site
 from models.tools import ApiToolProvider
 from services.billing_service import BillingService
@@ -65,7 +66,7 @@ class AppService:
                 return None
 
         app_models = db.paginate(
-            db.select(App).where(*filters).order_by(App.created_at.desc()),
+            sa.select(App).where(*filters).order_by(App.created_at.desc()),
             page=args["page"],
             per_page=args["limit"],
             error_out=False,

@@ -7,7 +7,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { TracingProvider } from './type'
 import cn from '@/utils/classnames'
-import { AliyunIconBig, ArizeIconBig, DatabricksIconBig, LangfuseIconBig, LangsmithIconBig, MlflowIconBig, OpikIconBig, PhoenixIconBig, WeaveIconBig } from '@/app/components/base/icons/src/public/tracing'
+import { AliyunIconBig, ArizeIconBig, DatabricksIconBig, LangfuseIconBig, LangsmithIconBig, MlflowIconBig, OpikIconBig, PhoenixIconBig, TencentIconBig, WeaveIconBig } from '@/app/components/base/icons/src/public/tracing'
 import { Eye as View } from '@/app/components/base/icons/src/vender/solid/general'
 
 const I18N_PREFIX = 'app.tracing'
@@ -33,6 +33,7 @@ const getIcon = (type: TracingProvider) => {
     [TracingProvider.aliyun]: AliyunIconBig,
     [TracingProvider.mlflow]: MlflowIconBig,
     [TracingProvider.databricks]: DatabricksIconBig,
+    [TracingProvider.tencent]: TencentIconBig,
   })[type]
 }
 

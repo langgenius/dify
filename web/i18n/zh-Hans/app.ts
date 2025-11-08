@@ -200,6 +200,10 @@ const translation = {
       title: 'Databricks',
       description: 'Databricks提供完全托管的MLflow，具有强大的治理和安全功能，用于存储跟踪数据。',
     },
+    tencent: {
+      title: '腾讯云 APM',
+      description: '腾讯云应用性能监控，提供 LLM 应用全链路追踪和多维分析',
+    },
   },
   appSelector: {
     label: '应用',

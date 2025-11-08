@@ -16,13 +16,12 @@ import {
 } from '../../../types'
 import type { Node } from '../../../types'
 import BlockSelector from '../../../block-selector'
-import type { ToolDefaultValue } from '../../../block-selector/types'
+import type { DataSourceDefaultValue, ToolDefaultValue } from '../../../block-selector/types'
 import {
   useAvailableBlocks,
   useIsChatMode,
   useNodesInteractions,
   useNodesReadOnly,
-  useWorkflow,
 } from '../../../hooks'
 import {
   useStore,
@@ -58,7 +57,7 @@ export const NodeTargetHandle = memo(({
     if (!connected)
       setOpen(v => !v)
   }, [connected])
-  const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
+  const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,
@@ -132,7 +131,6 @@ export const NodeSourceHandle = memo(({
   const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
   const isConnectable = !!availableNextBlocks.length
   const isChatMode = useIsChatMode()
-  const { checkParallelLimit } = useWorkflow()
 
   const connected = data._connectedSourceHandleIds?.includes(handleId)
   const handleOpenChange = useCallback((v: boolean) => {
@@ -140,10 +138,9 @@ export const NodeSourceHandle = memo(({
   }, [])
   const handleHandleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation()
-    if (checkParallelLimit(id, handleId))
-      setOpen(v => !v)
-  }, [checkParallelLimit, id, handleId])
-  const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
+    setOpen(v => !v)
+  }, [])
+  const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,

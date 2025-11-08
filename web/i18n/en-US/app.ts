@@ -191,6 +191,10 @@ const translation = {
       title: 'Databricks',
       description: 'Databricks offers fully-managed MLflow with strong governance and security for storing trace data.',
     },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring provides comprehensive tracing and multi-dimensional analysis for LLM applications.',
+    },
     inUse: 'In use',
     configProvider: {
       title: 'Config ',
