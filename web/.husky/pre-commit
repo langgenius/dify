@@ -47,6 +47,12 @@ if $web_modified; then
     cd ./web || exit 1
     lint-staged
 
+    echo "Running TypeScript type-check"
+    if ! pnpm run type-check; then
+        echo "Type check failed. Please run 'pnpm run type-check' to fix the errors."
+        exit 1
+    fi
+
     echo "Running unit tests check"
     modified_files=$(git diff --cached --name-only -- utils | grep -v '\.spec\.ts$' || true)
 
