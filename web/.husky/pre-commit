@@ -44,13 +44,30 @@ fi
 
 if $web_modified; then
     echo "Running ESLint on web module"
+
+    git diff --cached --quiet -- 'web/**/*.ts' 'web/**/*.tsx'
+    ts_diff_status=$?
+
+    if [ $ts_diff_status -eq 0 ]; then
+        web_ts_modified=false
+    elif [ $ts_diff_status -eq 1 ]; then
+        web_ts_modified=true
+    else
+        echo "Unable to determine staged TypeScript changes (git exit code: $ts_diff_status)."
+        exit $ts_diff_status
+    fi
+
     cd ./web || exit 1
     lint-staged
 
-    echo "Running TypeScript type-check"
-    if ! pnpm run type-check; then
-        echo "Type check failed. Please run 'pnpm run type-check' to fix the errors."
-        exit 1
+    if $web_ts_modified; then
+        echo "Running TypeScript type-check"
+        if ! pnpm run type-check; then
+            echo "Type check failed. Please run 'pnpm run type-check' to fix the errors."
+            exit 1
+        fi
+    else
+        echo "No staged TypeScript changes detected, skipping type-check"
     fi
 
     echo "Running unit tests check"
