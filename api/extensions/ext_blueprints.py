@@ -19,6 +19,7 @@ def init_app(app: DifyApp):
     from controllers.mcp import bp as mcp_bp
     from controllers.service_api import bp as service_api_bp
     from controllers.web import bp as web_bp
+    from controllers import bp as webhook_bp
 
     CORS(
         service_api_bp,
@@ -56,3 +57,4 @@ def init_app(app: DifyApp):
 
     app.register_blueprint(inner_api_bp)
     app.register_blueprint(mcp_bp)
+    app.register_blueprint(webhook_bp)

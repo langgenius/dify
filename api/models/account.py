@@ -112,6 +112,9 @@ class Account(UserMixin, TypeBase):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
+    subscription_status: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    message_credits: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), default=0)
 
     role: TenantAccountRole | None = field(default=None, init=False)
     _current_tenant: "Tenant | None" = field(default=None, init=False)

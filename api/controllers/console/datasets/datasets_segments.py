@@ -19,6 +19,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
     setup_required,
+    subscription_required,
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -117,6 +118,7 @@ class DatasetDocumentSegmentListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def delete(self, dataset_id, document_id):
         current_user, _ = current_account_with_tenant()
 
@@ -152,6 +154,7 @@ class DatasetDocumentSegmentApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def patch(self, dataset_id, document_id, action):
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -210,6 +213,7 @@ class DatasetDocumentSegmentAddApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def post(self, dataset_id, document_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -265,6 +269,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def patch(self, dataset_id, document_id, segment_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -331,6 +336,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def delete(self, dataset_id, document_id, segment_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -446,6 +452,7 @@ class ChildChunkAddApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def post(self, dataset_id, document_id, segment_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -556,6 +563,7 @@ class ChildChunkAddApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def patch(self, dataset_id, document_id, segment_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -609,6 +617,7 @@ class ChildChunkUpdateApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def delete(self, dataset_id, document_id, segment_id, child_chunk_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -665,6 +674,7 @@ class ChildChunkUpdateApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def patch(self, dataset_id, document_id, segment_id, child_chunk_id):
         current_user, current_tenant_id = current_account_with_tenant()
 

@@ -32,3 +32,23 @@ class DeploymentConfig(BaseSettings):
         description="Deployment environment (e.g., 'PRODUCTION', 'DEVELOPMENT'), default to PRODUCTION",
         default="PRODUCTION",
     )
+
+    REQUIRE_SUBSCRIPTION: bool = Field(
+        description="Require subscription to use the application",
+        default=False,
+    )
+
+    STRIPE_SECRET_KEY: str = Field(
+        description="Stripe secret key",
+        default="",
+    )
+
+    STRIPE_WEBHOOK_SECRET: str = Field(
+        description="Stripe webhook secret",
+        default="",
+    )
+
+    STRIPE_PUBLISHABLE_KEY: str = Field(
+        description="Stripe publishable key",
+        default="",
+    )

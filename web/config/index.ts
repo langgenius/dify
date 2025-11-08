@@ -57,6 +57,12 @@ export const PUBLIC_API_PREFIX = getStringConfig(
   DatasetAttr.DATA_PUBLIC_API_PREFIX,
   'http://localhost:5001/api',
 )
+
+export const APP_NAME = getStringConfig(
+  process.env.NEXT_PUBLIC_APP_NAME,
+  DatasetAttr.DATA_APP_NAME,
+  'Dify',
+)
 export const MARKETPLACE_API_PREFIX = getStringConfig(
   process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
   DatasetAttr.DATA_MARKETPLACE_API_PREFIX,

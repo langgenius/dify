@@ -16,6 +16,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_rate_limit_check,
     enterprise_license_required,
     setup_required,
+    subscription_required,
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
@@ -205,6 +206,7 @@ class DatasetListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def post(self):
         parser = (
             reqparse.RequestParser()
@@ -348,6 +350,7 @@ class DatasetApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def patch(self, dataset_id):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -468,6 +471,7 @@ class DatasetApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def delete(self, dataset_id):
         dataset_id_str = str(dataset_id)
         current_user, _ = current_account_with_tenant()

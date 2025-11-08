@@ -13,6 +13,7 @@ from controllers.console.wraps import (
     edit_permission_required,
     enterprise_license_required,
     setup_required,
+    subscription_required,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
 from extensions.ext_database import db
@@ -132,6 +133,7 @@ class AppListApi(Resource):
     @marshal_with(app_detail_fields)
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
+    @subscription_required
     def post(self):
         """Create app"""
         current_user, current_tenant_id = current_account_with_tenant()
@@ -204,6 +206,7 @@ class AppApi(Resource):
     @account_initialization_required
     @get_app_model
     @edit_permission_required
+    @subscription_required
     @marshal_with(app_detail_fields_with_site)
     def put(self, app_model):
         """Update app"""
@@ -246,6 +249,7 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @subscription_required
     def delete(self, app_model):
         """Delete app"""
         app_service = AppService()
@@ -278,6 +282,7 @@ class AppCopyApi(Resource):
     @account_initialization_required
     @get_app_model
     @edit_permission_required
+    @subscription_required
     @marshal_with(app_detail_fields_with_site)
     def post(self, app_model):
         """Copy app"""
@@ -366,6 +371,7 @@ class AppNameApi(Resource):
     @get_app_model
     @marshal_with(app_detail_fields)
     @edit_permission_required
+    @subscription_required
     def post(self, app_model):
         parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
@@ -399,6 +405,7 @@ class AppIconApi(Resource):
     @get_app_model
     @marshal_with(app_detail_fields)
     @edit_permission_required
+    @subscription_required
     def post(self, app_model):
         parser = (
             reqparse.RequestParser()
@@ -431,6 +438,7 @@ class AppSiteStatus(Resource):
     @get_app_model
     @marshal_with(app_detail_fields)
     @edit_permission_required
+    @subscription_required
     def post(self, app_model):
         parser = reqparse.RequestParser().add_argument("enable_site", type=bool, required=True, location="json")
         args = parser.parse_args()
@@ -458,6 +466,7 @@ class AppApiStatus(Resource):
     @account_initialization_required
     @get_app_model
     @marshal_with(app_detail_fields)
+    @subscription_required
     def post(self, app_model):
         # The role of the current user in the ta table must be admin or owner
         current_user, _ = current_account_with_tenant()
@@ -506,6 +515,7 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @subscription_required
     def post(self, app_id):
         # add app trace
         parser = (

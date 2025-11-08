@@ -299,6 +299,17 @@ def knowledge_pipeline_publish_enabled(view: Callable[P, R]):
     return decorated
 
 
+def subscription_required(view: Callable[P, R]):
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        if dify_config.REQUIRE_SUBSCRIPTION:
+            current_user, _ = current_account_with_tenant()
+            if current_user.subscription_status != "active":
+                abort(403, "You must have an active subscription to access this resource.")
+        return view(*args, **kwargs)
+    return decorated
+
+
 def edit_permission_required(f: Callable[P, R]):
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):

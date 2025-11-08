@@ -42,6 +42,7 @@ export type SystemFeatures = {
   is_allow_create_workspace: boolean
   is_allow_register: boolean
   is_email_setup: boolean
+  require_subscription: boolean
   license: License
   branding: {
     enabled: boolean
@@ -78,6 +79,7 @@ export const defaultSystemFeatures: SystemFeatures = {
   is_allow_create_workspace: false,
   is_allow_register: false,
   is_email_setup: false,
+  require_subscription: false,
   license: {
     status: LicenseStatus.NONE,
     expired_at: '',
@@ -129,4 +131,5 @@ export enum DatasetAttr {
   NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL = 'next-public-zendesk-field-id-email',
   NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID = 'next-public-zendesk-field-id-workspace-id',
   NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN = 'next-public-zendesk-field-id-plan',
+  DATA_APP_NAME = 'data-app-name',
 }

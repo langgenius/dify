@@ -23,7 +23,6 @@ type CloudPlanItemProps = {
   currentPlan: BasicPlan
   plan: BasicPlan
   planRange: PlanRange
-  canPay: boolean
 }
 
 const CloudPlanItem: FC<CloudPlanItemProps> = ({
@@ -32,7 +31,6 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   planRange,
 }) => {
   const { t } = useTranslation()
-  const [loading, setLoading] = React.useState(false)
   const i18nPrefix = `billing.plans.${plan}`
   const isFreePlan = plan === Plan.sandbox
   const isMostPopularPlan = plan === Plan.professional
@@ -53,35 +51,6 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     })[plan]
   }, [isCurrent, plan, t])
 
-  const handleGetPayUrl = async () => {
-    if (loading)
-      return
-
-    if (isPlanDisabled)
-      return
-
-    if (isFreePlan)
-      return
-
-    // Only workspace manager can buy plan
-    if (!isCurrentWorkspaceManager) {
-      Toast.notify({
-        type: 'error',
-        message: t('billing.buyPermissionDeniedTip'),
-        className: 'z-[1001]',
-      })
-      return
-    }
-    setLoading(true)
-    try {
-      const res = await fetchSubscriptionUrls(plan, isYear ? 'year' : 'month')
-      // Adb Block additional tracking block the gtag, so we need to redirect directly
-      window.location.href = res.url
-    }
-    finally {
-      setLoading(false)
-    }
-  }
   return (
     <div className='flex min-w-0 flex-1 flex-col pb-3'>
       <div className='flex flex-col px-5 py-4'>
@@ -123,7 +92,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           plan={plan}
           isPlanDisabled={isPlanDisabled}
           btnText={btnText}
-          handleGetPayUrl={handleGetPayUrl}
+          ctaLink={planInfo.ctaLink}
         />
       </div>
       <List plan={plan} />

@@ -13,6 +13,7 @@ import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { DatasetAttr } from '@/types/feature'
 import { Instrument_Serif } from 'next/font/google'
 import cn from '@/utils/classnames'
+import SubscriptionChecker from './components/subscription-checker'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -98,7 +99,9 @@ const LocaleLayout = async ({
               <TanstackQueryInitializer>
                 <I18nServer>
                   <GlobalPublicStoreProvider>
-                    {children}
+                    <SubscriptionChecker>
+                      {children}
+                    </SubscriptionChecker>
                   </GlobalPublicStoreProvider>
                 </I18nServer>
               </TanstackQueryInitializer>

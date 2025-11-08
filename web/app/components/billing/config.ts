@@ -12,9 +12,10 @@ export const getStartedWithCommunityUrl = 'https://github.com/langgenius/dify'
 export const getWithPremiumUrl = 'https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6'
 
 export const ALL_PLANS: Record<BasicPlan, PlanInfo> = {
-  sandbox: {
-    level: 1,
-    price: 0,
+  professional: {
+    level: 2,
+    price: 59,
+    ctaLink: '',
     modelProviders: supportModelProviders,
     teamWorkspace: 1,
     teamMembers: 1,
@@ -49,6 +50,7 @@ export const ALL_PLANS: Record<BasicPlan, PlanInfo> = {
   team: {
     level: 3,
     price: 159,
+    ctaLink: '',
     modelProviders: supportModelProviders,
     teamWorkspace: 1,
     teamMembers: 50,
