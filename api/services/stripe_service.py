@@ -1,7 +1,9 @@
 import stripe
+
 from configs import dify_config
 from extensions.ext_database import db
 from models.account import Account
+
 
 class StripeService:
     def __init__(self):

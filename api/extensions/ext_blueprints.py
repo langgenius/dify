@@ -13,13 +13,13 @@ def init_app(app: DifyApp):
 
     from flask_cors import CORS
 
+    from controllers import bp as webhook_bp
     from controllers.console import bp as console_app_bp
     from controllers.files import bp as files_bp
     from controllers.inner_api import bp as inner_api_bp
     from controllers.mcp import bp as mcp_bp
     from controllers.service_api import bp as service_api_bp
     from controllers.web import bp as web_bp
-    from controllers import bp as webhook_bp
 
     CORS(
         service_api_bp,
