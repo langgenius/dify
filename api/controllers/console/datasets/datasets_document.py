@@ -30,6 +30,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
     setup_required,
+    subscription_required,
 )
 from core.errors.error import (
     LLMBadRequestError,
@@ -274,6 +275,7 @@ class DatasetDocumentListApi(Resource):
     @marshal_with(dataset_and_document_fields)
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def post(self, dataset_id):
         current_user, _ = current_account_with_tenant()
         dataset_id = str(dataset_id)
@@ -333,6 +335,7 @@ class DatasetDocumentListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def delete(self, dataset_id):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -806,6 +809,7 @@ class DocumentApi(DocumentResource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @subscription_required
     def delete(self, dataset_id, document_id):
         dataset_id = str(dataset_id)
         document_id = str(document_id)

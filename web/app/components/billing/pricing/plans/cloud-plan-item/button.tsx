@@ -23,14 +23,14 @@ type ButtonProps = {
   plan: BasicPlan
   isPlanDisabled: boolean
   btnText: string
-  handleGetPayUrl: () => void
+  ctaLink: string
 }
 
 const Button = ({
   plan,
   isPlanDisabled,
   btnText,
-  handleGetPayUrl,
+  ctaLink,
 }: ButtonProps) => {
   return (
     <button
@@ -42,9 +42,8 @@ const Button = ({
         isPlanDisabled && BUTTON_CLASSNAME[plan].btnDisabledClassname,
         isPlanDisabled && 'cursor-not-allowed',
       )}
-      onClick={handleGetPayUrl}
     >
-      <span className='grow text-start'>{btnText}</span>
+      <a href={ctaLink} target="_blank" rel="noopener noreferrer" className='grow text-start'>{btnText}</a>
       {!isPlanDisabled && <RiArrowRightLine className='size-5 shrink-0' />}
     </button>
   )

@@ -4,6 +4,7 @@ version = "1.9.2"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
+    "stripe",
     "arize-phoenix-otel~=0.9.2",
     "azure-identity==1.16.1",
     "beautifulsoup4==4.12.2",

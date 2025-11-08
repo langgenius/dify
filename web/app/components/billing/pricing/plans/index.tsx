@@ -12,14 +12,12 @@ type PlansProps = {
   }
   currentPlan: string
   planRange: PlanRange
-  canPay: boolean
 }
 
 const Plans = ({
   plan,
   currentPlan,
   planRange,
-  canPay,
 }: PlansProps) => {
   const currentPlanType: BasicPlan = plan.type === Plan.enterprise ? Plan.team : plan.type
   return (
@@ -30,23 +28,14 @@ const Plans = ({
             <>
               <CloudPlanItem
                 currentPlan={currentPlanType}
-                plan={Plan.sandbox}
-                planRange={planRange}
-                canPay={canPay}
-              />
-              <Divider type='vertical' className='mx-0 shrink-0 bg-divider-accent' />
-              <CloudPlanItem
-                currentPlan={currentPlanType}
                 plan={Plan.professional}
                 planRange={planRange}
-                canPay={canPay}
               />
               <Divider type='vertical' className='mx-0 shrink-0 bg-divider-accent' />
               <CloudPlanItem
                 currentPlan={currentPlanType}
                 plan={Plan.team}
                 planRange={planRange}
-                canPay={canPay}
               />
             </>
           )
