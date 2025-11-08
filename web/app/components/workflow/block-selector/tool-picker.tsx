@@ -17,7 +17,7 @@ import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal/modal'
+import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import {
   createCustomCollection,
 } from '@/service/tools'
@@ -129,7 +129,7 @@ const ToolPicker: FC<Props> = ({
   if (isShowEditCollectionToolModal) {
     return (
       <EditCustomToolModal
-        positionLeft
+        dialogClassName='bg-background-overlay'
         payload={null}
         onHide={hideEditCustomCollectionModal}
         onAdd={doCreateCustomToolCollection}
