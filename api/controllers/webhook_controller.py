@@ -1,10 +1,11 @@
 import stripe
-from flask import request, jsonify
-from flask_restx import Resource, Namespace
+from flask import jsonify, request
+from flask_restx import Namespace, Resource
 
 from services.stripe_service import StripeService
 
 ns = Namespace('webhooks', description='Webhook operations')
+
 
 @ns.route('/stripe')
 class StripeWebhook(Resource):
