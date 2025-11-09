@@ -42,7 +42,7 @@ class DatasourceProvider(Base):
 
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, default=datetime.now, onupdate=func.current_timestamp()
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 
 
