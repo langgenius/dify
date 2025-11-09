@@ -436,7 +436,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
         return {"result": "success"}
 
 
-parser_enable = (
+parser_model_enable_disable = (
     reqparse.RequestParser()
     .add_argument("model", type=str, required=True, nullable=False, location="json")
     .add_argument(
@@ -454,14 +454,14 @@ parser_enable = (
     "/workspaces/current/model-providers/<path:provider>/models/enable", endpoint="model-provider-model-enable"
 )
 class ModelProviderModelEnableApi(Resource):
-    @api.expect(parser_enable)
+    @api.expect(parser_model_enable_disable)
     @setup_required
     @login_required
     @account_initialization_required
     def patch(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_enable.parse_args()
+        args = parser_model_enable_disable.parse_args()
 
         model_provider_service = ModelProviderService()
         model_provider_service.enable_model(
@@ -471,32 +471,18 @@ class ModelProviderModelEnableApi(Resource):
         return {"result": "success"}
 
 
-parser_disable = (
-    reqparse.RequestParser()
-    .add_argument("model", type=str, required=True, nullable=False, location="json")
-    .add_argument(
-        "model_type",
-        type=str,
-        required=True,
-        nullable=False,
-        choices=[mt.value for mt in ModelType],
-        location="json",
-    )
-)
-
-
 @console_ns.route(
     "/workspaces/current/model-providers/<path:provider>/models/disable", endpoint="model-provider-model-disable"
 )
 class ModelProviderModelDisableApi(Resource):
-    @api.expect(parser_disable)
+    @api.expect(parser_model_enable_disable)
     @setup_required
     @login_required
     @account_initialization_required
     def patch(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_disable.parse_args()
+        args = parser_model_enable_disable.parse_args()
 
         model_provider_service = ModelProviderService()
         model_provider_service.disable_model(
