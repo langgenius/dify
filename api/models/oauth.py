@@ -40,9 +40,7 @@ class DatasourceProvider(Base):
     is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     expires_at: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="-1")
 
-    created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
@@ -62,9 +60,7 @@ class DatasourceOauthTenantParamConfig(Base):
     client_params: Mapped[dict] = mapped_column(JSONB, nullable=False, default={})
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
 
-    created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
