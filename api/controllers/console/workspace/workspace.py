@@ -1,4 +1,3 @@
-from controllers.console import api
 import logging
 
 from flask import request
@@ -14,7 +13,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.console import console_ns
+from controllers.console import api, console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import (
@@ -152,6 +151,8 @@ class TenantApi(Resource):
 
 
 parser_switch = reqparse.RequestParser().add_argument("tenant_id", type=str, required=True, location="json")
+
+
 @console_ns.route("/workspaces/switch")
 class SwitchWorkspaceApi(Resource):
     @api.expect(parser_switch)
@@ -245,6 +246,8 @@ class WebappLogoWorkspaceApi(Resource):
 
 
 parser_info = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
+
+
 @console_ns.route("/workspaces/info")
 class WorkspaceInfoApi(Resource):
     @api.expect(parser_info)
