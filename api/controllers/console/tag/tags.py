@@ -1,9 +1,8 @@
-from controllers.console import api
 from flask import request
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import console_ns
+from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.tag_fields import dataset_tag_fields
 from libs.login import current_account_with_tenant, login_required

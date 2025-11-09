@@ -1,4 +1,3 @@
-from controllers.console import api
 from datetime import datetime
 
 import pytz
@@ -9,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import supported_language
-from controllers.console import console_ns
+from controllers.console import api, console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
     EmailChangeLimitError,
@@ -42,7 +41,6 @@ from models import Account, AccountIntegrate, InvitationCode
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
-
 
 parser = reqparse.RequestParser()
 
