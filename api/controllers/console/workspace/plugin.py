@@ -61,17 +61,17 @@ class PluginListApi(Resource):
         return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
-req = reqparse.RequestParser().add_argument("plugin_ids", type=list, required=True, location="json")
+parser_latest = reqparse.RequestParser().add_argument("plugin_ids", type=list, required=True, location="json")
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
 class PluginListLatestVersionsApi(Resource):
-    @api.expect(req)
+    @api.expect(parser_latest)
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        args = req.parse_args()
+        args = parser_latest.parse_args()
 
         try:
             versions = PluginService.list_latest_versions(args["plugin_ids"])
@@ -103,7 +103,7 @@ class PluginListInstallationsFromIdsApi(Resource):
         return jsonable_encoder({"plugins": plugins})
 
 
-req = (
+parser_icon = (
     reqparse.RequestParser()
     .add_argument("tenant_id", type=str, required=True, location="args")
     .add_argument("filename", type=str, required=True, location="args")
@@ -112,10 +112,10 @@ req = (
 
 @console_ns.route("/workspaces/current/plugin/icon")
 class PluginIconApi(Resource):
-    @api.expect(req)
+    @api.expect(parser_icon)
     @setup_required
     def get(self):
-        args = req.parse_args()
+        args = parser_icon.parse_args()
 
         try:
             icon_bytes, mimetype = PluginService.get_asset(args["tenant_id"], args["filename"])
@@ -530,7 +530,7 @@ class PluginUninstallApi(Resource):
             raise ValueError(e)
 
 
-req = (
+parser_change_post = (
     reqparse.RequestParser()
     .add_argument("install_permission", type=str, required=True, location="json")
     .add_argument("debug_permission", type=str, required=True, location="json")
@@ -539,7 +539,7 @@ req = (
 
 @console_ns.route("/workspaces/current/plugin/permission/change")
 class PluginChangePermissionApi(Resource):
-    @api.expect(req)
+    @api.expect(parser_change_post)
     @setup_required
     @login_required
     @account_initialization_required
@@ -549,7 +549,7 @@ class PluginChangePermissionApi(Resource):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        args = req.parse_args()
+        args = parser_change_post.parse_args()
 
         install_permission = TenantPluginPermission.InstallPermission(args["install_permission"])
         debug_permission = TenantPluginPermission.DebugPermission(args["debug_permission"])
@@ -626,7 +626,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
         return jsonable_encoder({"options": options})
 
 
-req = (
+parser_change = (
     reqparse.RequestParser()
     .add_argument("permission", type=dict, required=True, location="json")
     .add_argument("auto_upgrade", type=dict, required=True, location="json")
@@ -635,7 +635,7 @@ req = (
 
 @console_ns.route("/workspaces/current/plugin/preferences/change")
 class PluginChangePreferencesApi(Resource):
-    @api.expect(req)
+    @api.expect(parser_change)
     @setup_required
     @login_required
     @account_initialization_required
@@ -644,7 +644,7 @@ class PluginChangePreferencesApi(Resource):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        args = req.parse_args()
+        args = parser_change.parse_args()
 
         permission = args["permission"]
 
