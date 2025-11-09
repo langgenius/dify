@@ -758,7 +758,7 @@ class ConvertToWorkflowApi(Resource):
 parser_workflows = (
     reqparse.RequestParser()
     .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
-    .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+    .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=10, location="args")
     .add_argument("user_id", type=str, required=False, location="args")
     .add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
 )
