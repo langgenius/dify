@@ -41,7 +41,7 @@ class DatasourceProvider(Base):
     expires_at: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="-1")
 
     created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, default=datetime.now, server_default=func.current_timestamp()
+        sa.DateTime, nullable=False, server_default=func.current_timestamp()
     )
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
