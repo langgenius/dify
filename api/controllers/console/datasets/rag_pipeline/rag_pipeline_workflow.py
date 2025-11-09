@@ -185,12 +185,9 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
             raise InternalServerError()
 
 
-parser_string_run = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
-
-
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/loop/nodes/<string:node_id>/run")
 class RagPipelineDraftRunLoopNodeApi(Resource):
-    @api.expect(parser_string_run)
+    @api.expect(parser_run)
     @setup_required
     @login_required
     @account_initialization_required
@@ -204,7 +201,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        args = parser_string_run.parse_args()
+        args = parser_run.parse_args()
 
         try:
             response = PipelineGenerateService.generate_single_loop(
@@ -442,17 +439,9 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
         )
 
 
-parser_run_api = (
-    reqparse.RequestParser()
-    .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-    .add_argument("datasource_type", type=str, required=True, location="json")
-    .add_argument("credential_id", type=str, required=False, location="json")
-)
-
-
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/nodes/<string:node_id>/run")
 class RagPipelineDraftDatasourceNodeRunApi(Resource):
-    @api.expect(parser_run_api)
+    @api.expect(parser_rag_run)
     @setup_required
     @login_required
     @account_initialization_required
@@ -466,7 +455,7 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        args = parser_run_api.parse_args()
+        args = parser_rag_run.parse_args()
 
         inputs = args.get("inputs")
         if inputs is None:
@@ -491,14 +480,14 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
         )
 
 
-parser_run_api_1 = reqparse.RequestParser().add_argument(
+parser_run_api = reqparse.RequestParser().add_argument(
     "inputs", type=dict, required=True, nullable=False, location="json"
 )
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/run")
 class RagPipelineDraftNodeRunApi(Resource):
-    @api.expect(parser_run_api_1)
+    @api.expect(parser_run_api)
     @setup_required
     @login_required
     @account_initialization_required
@@ -513,7 +502,7 @@ class RagPipelineDraftNodeRunApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        args = parser_run_api_1.parse_args()
+        args = parser_run_api.parse_args()
 
         inputs = args.get("inputs")
         if inputs == None:
@@ -807,12 +796,9 @@ class PublishedRagPipelineSecondStepApi(Resource):
         }
 
 
-parser_pre = reqparse.RequestParser().add_argument("node_id", type=str, required=True, location="args")
-
-
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/pre-processing/parameters")
 class PublishedRagPipelineFirstStepApi(Resource):
-    @api.expect(parser_pre)
+    @api.expect(parser_parameters)
     @setup_required
     @login_required
     @account_initialization_required
@@ -822,7 +808,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
         """
         Get first step parameters of rag pipeline
         """
-        args = parser_pre.parse_args()
+        args = parser_parameters.parse_args()
         node_id = args.get("node_id")
         if not node_id:
             raise ValueError("Node ID is required")
@@ -833,12 +819,9 @@ class PublishedRagPipelineFirstStepApi(Resource):
         }
 
 
-parser_wf_parameters = reqparse.RequestParser().add_argument("node_id", type=str, required=True, location="args")
-
-
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/pre-processing/parameters")
 class DraftRagPipelineFirstStepApi(Resource):
-    @api.expect(parser_wf_parameters)
+    @api.expect(parser_parameters)
     @setup_required
     @login_required
     @account_initialization_required
@@ -848,7 +831,7 @@ class DraftRagPipelineFirstStepApi(Resource):
         """
         Get first step parameters of rag pipeline
         """
-        args = parser_wf_parameters.parse_args()
+        args = parser_parameters.parse_args()
         node_id = args.get("node_id")
         if not node_id:
             raise ValueError("Node ID is required")
@@ -859,12 +842,9 @@ class DraftRagPipelineFirstStepApi(Resource):
         }
 
 
-parser_step_api = reqparse.RequestParser().add_argument("node_id", type=str, required=True, location="args")
-
-
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/processing/parameters")
 class DraftRagPipelineSecondStepApi(Resource):
-    @api.expect(parser_step_api)
+    @api.expect(parser_parameters)
     @setup_required
     @login_required
     @account_initialization_required
@@ -874,7 +854,7 @@ class DraftRagPipelineSecondStepApi(Resource):
         """
         Get second step parameters of rag pipeline
         """
-        args = parser_step_api.parse_args()
+        args = parser_parameters.parse_args()
         node_id = args.get("node_id")
         if not node_id:
             raise ValueError("Node ID is required")
