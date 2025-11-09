@@ -163,6 +163,7 @@
     "@testing-library/react": "^16.3.0",
     "@types/jest": "^29.5.14",
     "@types/js-cookie": "^3.0.6",
+    "@types/js-yaml": "^4.0.9",
     "@types/lodash-es": "^4.17.12",
     "@types/negotiator": "^0.6.4",
     "@types/node": "18.15.0",

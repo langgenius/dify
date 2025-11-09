@@ -22,6 +22,7 @@ import {
 } from './types'
 import type {
   CommonNodeType,
+  Node,
 } from './types'
 import {
   initialEdges,
@@ -137,9 +138,9 @@ const UpdateDSLModal = ({
 
   const validateDSLContent = (content: string): boolean => {
     try {
-      const data = yamlLoad(content)
+      const data = yamlLoad(content) as any
       const nodes = data?.workflow?.graph?.nodes ?? []
-      const hasInvalidNode = nodes.some((node: CommonNodeType) => {
+      const hasInvalidNode = nodes.some((node: Node<CommonNodeType>) => {
         return (appDetail?.mode === 'advanced-chat' && node?.data?.type === BlockEnum.End) || (appDetail?.mode === 'workflow' && node?.data?.type === BlockEnum.Answer)
       })
       if (hasInvalidNode) {
