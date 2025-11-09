@@ -14,7 +14,6 @@ parser = (
 )
 
 
-
 @console_ns.route("/app/prompt-templates")
 class AdvancedPromptTemplateList(Resource):
     @api.doc("get_advanced_prompt_templates")
