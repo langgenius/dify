@@ -16,7 +16,7 @@ from services.model_provider_service import ModelProviderService
 logger = logging.getLogger(__name__)
 
 
-parser_get = reqparse.RequestParser().add_argument(
+parser_get_default = reqparse.RequestParser().add_argument(
     "model_type",
     type=str,
     required=True,
@@ -24,21 +24,21 @@ parser_get = reqparse.RequestParser().add_argument(
     choices=[mt.value for mt in ModelType],
     location="args",
 )
-parser_post = reqparse.RequestParser().add_argument(
+parser_post_default = reqparse.RequestParser().add_argument(
     "model_settings", type=list, required=True, nullable=False, location="json"
 )
 
 
 @console_ns.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
-    @api.expect(parser_get)
+    @api.expect(parser_get_default)
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_get.parse_args()
+        args = parser_get_default.parse_args()
 
         model_provider_service = ModelProviderService()
         default_model_entity = model_provider_service.get_default_model_of_model_type(
@@ -47,7 +47,7 @@ class DefaultModelApi(Resource):
 
         return jsonable_encoder({"data": default_model_entity})
 
-    @api.expect(parser_post)
+    @api.expect(parser_post_default)
     @setup_required
     @login_required
     @account_initialization_required
@@ -57,7 +57,7 @@ class DefaultModelApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        args = parser_post.parse_args()
+        args = parser_post_default.parse_args()
         model_provider_service = ModelProviderService()
         model_settings = args["model_settings"]
         for model_setting in model_settings:
@@ -88,7 +88,7 @@ class DefaultModelApi(Resource):
         return {"result": "success"}
 
 
-parser_post = (
+parser_post_models = (
     reqparse.RequestParser()
     .add_argument("model", type=str, required=True, nullable=False, location="json")
     .add_argument(
@@ -103,7 +103,7 @@ parser_post = (
     .add_argument("config_from", type=str, required=False, nullable=True, location="json")
     .add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="json")
 )
-parser_delete = (
+parser_delete_models = (
     reqparse.RequestParser()
     .add_argument("model", type=str, required=True, nullable=False, location="json")
     .add_argument(
@@ -130,7 +130,7 @@ class ModelProviderModelApi(Resource):
 
         return jsonable_encoder({"data": models})
 
-    @api.expect(parser_post)
+    @api.expect(parser_post_models)
     @setup_required
     @login_required
     @account_initialization_required
@@ -140,7 +140,7 @@ class ModelProviderModelApi(Resource):
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-        args = parser_post.parse_args()
+        args = parser_post_models.parse_args()
 
         if args.get("config_from", "") == "custom-model":
             if not args.get("credential_id"):
@@ -178,7 +178,7 @@ class ModelProviderModelApi(Resource):
 
         return {"result": "success"}, 200
 
-    @api.expect(parser_delete)
+    @api.expect(parser_delete_models)
     @setup_required
     @login_required
     @account_initialization_required
@@ -188,7 +188,7 @@ class ModelProviderModelApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        args = parser_delete.parse_args()
+        args = parser_delete_models.parse_args()
 
         model_provider_service = ModelProviderService()
         model_provider_service.remove_model(
@@ -198,7 +198,7 @@ class ModelProviderModelApi(Resource):
         return {"result": "success"}, 204
 
 
-parser_get = (
+parser_get_credintials = (
     reqparse.RequestParser()
     .add_argument("model", type=str, required=True, nullable=False, location="args")
     .add_argument(
@@ -214,7 +214,7 @@ parser_get = (
 )
 
 
-parser_post = (
+parser_post_cred = (
     reqparse.RequestParser()
     .add_argument("model", type=str, required=True, nullable=False, location="json")
     .add_argument(
@@ -228,7 +228,7 @@ parser_post = (
     .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
     .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
 )
-parser_put = (
+parser_put_cred = (
     reqparse.RequestParser()
     .add_argument("model", type=str, required=True, nullable=False, location="json")
     .add_argument(
@@ -243,7 +243,7 @@ parser_put = (
     .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
     .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
 )
-parser_delete = (
+parser_delete_cred = (
     reqparse.RequestParser()
     .add_argument("model", type=str, required=True, nullable=False, location="json")
     .add_argument(
@@ -260,14 +260,14 @@ parser_delete = (
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
 class ModelProviderModelCredentialApi(Resource):
-    @api.expect(parser_get)
+    @api.expect(parser_get_credintials)
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_get.parse_args()
+        args = parser_get_credintials.parse_args()
 
         model_provider_service = ModelProviderService()
         current_credential = model_provider_service.get_model_credential(
@@ -311,7 +311,7 @@ class ModelProviderModelCredentialApi(Resource):
             }
         )
 
-    @api.expect(parser_post)
+    @api.expect(parser_post_cred)
     @setup_required
     @login_required
     @account_initialization_required
@@ -321,7 +321,7 @@ class ModelProviderModelCredentialApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        args = parser_post.parse_args()
+        args = parser_post_cred.parse_args()
 
         model_provider_service = ModelProviderService()
 
@@ -345,7 +345,7 @@ class ModelProviderModelCredentialApi(Resource):
 
         return {"result": "success"}, 201
 
-    @api.expect(parser_put)
+    @api.expect(parser_put_cred)
     @setup_required
     @login_required
     @account_initialization_required
@@ -355,7 +355,7 @@ class ModelProviderModelCredentialApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        args = parser_put.parse_args()
+        args = parser_put_cred.parse_args()
 
         model_provider_service = ModelProviderService()
 
@@ -374,7 +374,7 @@ class ModelProviderModelCredentialApi(Resource):
 
         return {"result": "success"}
 
-    @api.expect(parser_delete)
+    @api.expect(parser_delete_cred)
     @setup_required
     @login_required
     @account_initialization_required
@@ -383,7 +383,7 @@ class ModelProviderModelCredentialApi(Resource):
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-        args = parser_delete.parse_args()
+        args = parser_delete_cred.parse_args()
 
         model_provider_service = ModelProviderService()
         model_provider_service.remove_model_credential(
