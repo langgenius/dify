@@ -1,11 +1,10 @@
-from controllers.console import api
 import io
 
 from flask import send_file
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import console_ns
+from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -14,7 +13,6 @@ from libs.helper import StrLen, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
 from services.model_provider_service import ModelProviderService
-
 
 parser_model = reqparse.RequestParser().add_argument(
     "model_type",
@@ -157,6 +155,8 @@ class ModelProviderCredentialApi(Resource):
 parser_switch = reqparse.RequestParser().add_argument(
     "credential_id", type=str, required=True, nullable=False, location="json"
 )
+
+
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/switch")
 class ModelProviderCredentialSwitchApi(Resource):
     @api.expect(parser_switch)
@@ -181,6 +181,8 @@ class ModelProviderCredentialSwitchApi(Resource):
 parser_validate = reqparse.RequestParser().add_argument(
     "credentials", type=dict, required=True, nullable=False, location="json"
 )
+
+
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/validate")
 class ModelProviderValidateApi(Resource):
     @api.expect(parser_validate)
@@ -241,6 +243,8 @@ parser_preferred = reqparse.RequestParser().add_argument(
     choices=["system", "custom"],
     location="json",
 )
+
+
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/preferred-provider-type")
 class PreferredProviderTypeUpdateApi(Resource):
     @api.expect(parser_preferred)
