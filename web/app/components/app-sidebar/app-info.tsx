@@ -235,7 +235,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       icon: <RiFileDownloadLine />,
       onClick: exportCheck,
     },
-    (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')) ? {
+    (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow') ? {
       id: 'import',
       title: t('workflow.common.importDSL'),
       icon: <RiFileUploadLine />,
@@ -245,7 +245,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         setShowImportDSLModal(true)
       },
     } : undefined,
-    (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'completion' || appDetail.mode === 'chat')) ? {
+    (appDetail.mode === 'completion' || appDetail.mode === 'chat') ? {
       id: 'switch',
       title: t('app.switch'),
       icon: <RiExchange2Line />,

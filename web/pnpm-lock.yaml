@@ -189,6 +189,9 @@ importers:
       js-cookie:
         specifier: ^3.0.5
         version: 3.0.5
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.0
       jsonschema:
         specifier: ^1.5.0
         version: 1.5.0
