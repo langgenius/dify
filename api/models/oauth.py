@@ -63,7 +63,7 @@ class DatasourceOauthTenantParamConfig(Base):
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
 
     created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, default=datetime.now, server_default=func.current_timestamp()
+        sa.DateTime, nullable=False, server_default=func.current_timestamp()
     )
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
