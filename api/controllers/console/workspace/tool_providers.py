@@ -842,7 +842,7 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
         )
 
 
-parser_custon = (
+parser_custom = (
     reqparse.RequestParser()
     .add_argument("client_params", type=dict, required=False, nullable=True, location="json")
     .add_argument("enable_oauth_custom_client", type=bool, required=False, nullable=True, location="json")
@@ -851,12 +851,12 @@ parser_custon = (
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/oauth/custom-client")
 class ToolOAuthCustomClient(Resource):
-    @api.expect(parser_custon)
+    @api.expect(parser_custom)
     @setup_required
     @login_required
     @account_initialization_required
     def post(self, provider):
-        args = parser_custon.parse_args()
+        args = parser_custom.parse_args()
 
         user, tenant_id = current_account_with_tenant()
 

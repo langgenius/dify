@@ -198,7 +198,7 @@ class ModelProviderModelApi(Resource):
         return {"result": "success"}, 204
 
 
-parser_get_credintials = (
+parser_get_credentials = (
     reqparse.RequestParser()
     .add_argument("model", type=str, required=True, nullable=False, location="args")
     .add_argument(
@@ -260,14 +260,14 @@ parser_delete_cred = (
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
 class ModelProviderModelCredentialApi(Resource):
-    @api.expect(parser_get_credintials)
+    @api.expect(parser_get_credentials)
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_get_credintials.parse_args()
+        args = parser_get_credentials.parse_args()
 
         model_provider_service = ModelProviderService()
         current_credential = model_provider_service.get_model_credential(
