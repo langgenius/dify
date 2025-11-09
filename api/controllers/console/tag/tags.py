@@ -1,3 +1,4 @@
+from controllers.console import api
 from flask import request
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
@@ -16,6 +17,19 @@ def _validate_name(name):
     return name
 
 
+parser = (
+    reqparse.RequestParser()
+    .add_argument(
+        "name",
+        nullable=False,
+        required=True,
+        help="Name must be between 1 to 50 characters.",
+        type=_validate_name,
+    )
+    .add_argument("type", type=str, location="json", choices=Tag.TAG_TYPE_LIST, nullable=True, help="Invalid tag type.")
+)
+
+
 @console_ns.route("/tags")
 class TagListApi(Resource):
     @setup_required
@@ -30,6 +44,7 @@ class TagListApi(Resource):
 
         return tags, 200
 
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -39,19 +54,6 @@ class TagListApi(Resource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument(
-                "name",
-                nullable=False,
-                required=True,
-                help="Name must be between 1 to 50 characters.",
-                type=_validate_name,
-            )
-            .add_argument(
-                "type", type=str, location="json", choices=Tag.TAG_TYPE_LIST, nullable=True, help="Invalid tag type."
-            )
-        )
         args = parser.parse_args()
         tag = TagService.save_tags(args)
 
@@ -60,8 +62,14 @@ class TagListApi(Resource):
         return response, 200
 
 
+parser = reqparse.RequestParser().add_argument(
+    "name", nullable=False, required=True, help="Name must be between 1 to 50 characters.", type=_validate_name
+)
+
+
 @console_ns.route("/tags/<uuid:tag_id>")
 class TagUpdateDeleteApi(Resource):
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -72,9 +80,6 @@ class TagUpdateDeleteApi(Resource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        parser = reqparse.RequestParser().add_argument(
-            "name", nullable=False, required=True, help="Name must be between 1 to 50 characters.", type=_validate_name
-        )
         args = parser.parse_args()
         tag = TagService.update_tags(args, tag_id)
 
@@ -99,8 +104,17 @@ class TagUpdateDeleteApi(Resource):
         return 204
 
 
+parser = (
+    reqparse.RequestParser()
+    .add_argument("tag_ids", type=list, nullable=False, required=True, location="json", help="Tag IDs is required.")
+    .add_argument("target_id", type=str, nullable=False, required=True, location="json", help="Target ID is required.")
+    .add_argument("type", type=str, location="json", choices=Tag.TAG_TYPE_LIST, nullable=True, help="Invalid tag type.")
+)
+
+
 @console_ns.route("/tag-bindings/create")
 class TagBindingCreateApi(Resource):
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -110,26 +124,23 @@ class TagBindingCreateApi(Resource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument(
-                "tag_ids", type=list, nullable=False, required=True, location="json", help="Tag IDs is required."
-            )
-            .add_argument(
-                "target_id", type=str, nullable=False, required=True, location="json", help="Target ID is required."
-            )
-            .add_argument(
-                "type", type=str, location="json", choices=Tag.TAG_TYPE_LIST, nullable=True, help="Invalid tag type."
-            )
-        )
         args = parser.parse_args()
         TagService.save_tag_binding(args)
 
         return {"result": "success"}, 200
 
 
+parser = (
+    reqparse.RequestParser()
+    .add_argument("tag_id", type=str, nullable=False, required=True, help="Tag ID is required.")
+    .add_argument("target_id", type=str, nullable=False, required=True, help="Target ID is required.")
+    .add_argument("type", type=str, location="json", choices=Tag.TAG_TYPE_LIST, nullable=True, help="Invalid tag type.")
+)
+
+
 @console_ns.route("/tag-bindings/remove")
 class TagBindingDeleteApi(Resource):
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -139,14 +150,6 @@ class TagBindingDeleteApi(Resource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("tag_id", type=str, nullable=False, required=True, help="Tag ID is required.")
-            .add_argument("target_id", type=str, nullable=False, required=True, help="Target ID is required.")
-            .add_argument(
-                "type", type=str, location="json", choices=Tag.TAG_TYPE_LIST, nullable=True, help="Invalid tag type."
-            )
-        )
         args = parser.parse_args()
         TagService.delete_tag_binding(args)
 
