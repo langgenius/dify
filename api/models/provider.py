@@ -6,9 +6,7 @@ import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from models.base import TypeBase
-
-from .base import Base
+from .base import Base, TypeBase
 from .engine import db
 from .types import StringUUID
 
