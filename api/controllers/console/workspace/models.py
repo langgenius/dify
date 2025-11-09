@@ -557,7 +557,9 @@ class ModelProviderModelValidateApi(Resource):
         return response
 
 
-parser_parameter = reqparse.RequestParser().add_argument("model", type=str, required=True, nullable=False, location="args")
+parser_parameter = reqparse.RequestParser().add_argument(
+    "model", type=str, required=True, nullable=False, location="args"
+)
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/parameter-rules")

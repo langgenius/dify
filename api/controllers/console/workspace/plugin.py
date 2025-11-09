@@ -202,7 +202,9 @@ class PluginUploadFromBundleApi(Resource):
         return jsonable_encoder(response)
 
 
-parser_pkg = reqparse.RequestParser().add_argument("plugin_unique_identifiers", type=list, required=True, location="json")
+parser_pkg = reqparse.RequestParser().add_argument(
+    "plugin_unique_identifiers", type=list, required=True, location="json"
+)
 
 
 @console_ns.route("/workspaces/current/plugin/install/pkg")
@@ -264,7 +266,9 @@ class PluginInstallFromGithubApi(Resource):
         return jsonable_encoder(response)
 
 
-parser_marketplace = reqparse.RequestParser().add_argument("plugin_unique_identifiers", type=list, required=True, location="json")
+parser_marketplace = reqparse.RequestParser().add_argument(
+    "plugin_unique_identifiers", type=list, required=True, location="json"
+)
 
 
 @console_ns.route("/workspaces/current/plugin/install/marketplace")
@@ -292,7 +296,9 @@ class PluginInstallFromMarketplaceApi(Resource):
         return jsonable_encoder(response)
 
 
-parser_pkgapi = reqparse.RequestParser().add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+parser_pkgapi = reqparse.RequestParser().add_argument(
+    "plugin_unique_identifier", type=str, required=True, location="args"
+)
 
 
 @console_ns.route("/workspaces/current/plugin/marketplace/pkg")
@@ -319,7 +325,9 @@ class PluginFetchMarketplacePkgApi(Resource):
             raise ValueError(e)
 
 
-parser_fetch = reqparse.RequestParser().add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+parser_fetch = reqparse.RequestParser().add_argument(
+    "plugin_unique_identifier", type=str, required=True, location="args"
+)
 
 
 @console_ns.route("/workspaces/current/plugin/fetch-manifest")
@@ -499,7 +507,9 @@ class PluginUpgradeFromGithubApi(Resource):
             raise ValueError(e)
 
 
-parser_uninstall = reqparse.RequestParser().add_argument("plugin_installation_id", type=str, required=True, location="json")
+parser_uninstall = reqparse.RequestParser().add_argument(
+    "plugin_installation_id", type=str, required=True, location="json"
+)
 
 
 @console_ns.route("/workspaces/current/plugin/uninstall")
