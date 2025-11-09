@@ -689,8 +689,8 @@ class PublishedAllRagPipelineApi(Resource):
             raise Forbidden()
 
         args = parser_wf.parse_args()
-        page = int(args.get("page", 1))
-        limit = int(args.get("limit", 10))
+        page = args["page"]
+        limit = args["limit"]
         user_id = args.get("user_id")
         named_only = args.get("named_only", False)
 
