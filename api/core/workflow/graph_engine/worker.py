@@ -16,7 +16,7 @@ from uuid import uuid4
 from flask import Flask
 from typing_extensions import override
 
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
+from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent
 from core.workflow.node_events import NodeRunResult
