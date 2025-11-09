@@ -574,11 +574,13 @@ class DraftWorkflowNodeRunApi(Resource):
 
         return workflow_node_execution
 
+
 parser_publish = (
-            reqparse.RequestParser()
-            .add_argument("marked_name", type=str, required=False, default="", location="json")
-            .add_argument("marked_comment", type=str, required=False, default="", location="json")
-        )
+    reqparse.RequestParser()
+    .add_argument("marked_name", type=str, required=False, default="", location="json")
+    .add_argument("marked_comment", type=str, required=False, default="", location="json")
+)
+
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
 class PublishedWorkflowApi(Resource):
@@ -603,6 +605,7 @@ class PublishedWorkflowApi(Resource):
 
         # return workflow, if not found, return None
         return workflow
+
     @api.expect(parser_publish)
     @setup_required
     @login_required
@@ -671,6 +674,8 @@ class DefaultBlockConfigsApi(Resource):
 
 
 parser_block = reqparse.RequestParser().add_argument("q", type=str, location="args")
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>")
 class DefaultBlockConfigApi(Resource):
     @api.doc("get_default_block_config")
@@ -711,6 +716,8 @@ parser_convert = (
     .add_argument("icon", type=str, required=False, nullable=True, location="json")
     .add_argument("icon_background", type=str, required=False, nullable=True, location="json")
 )
+
+
 @console_ns.route("/apps/<uuid:app_id>/convert-to-workflow")
 class ConvertToWorkflowApi(Resource):
     @api.expect(parser_convert)
@@ -755,6 +762,8 @@ parser_workflows = (
     .add_argument("user_id", type=str, required=False, location="args")
     .add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
 )
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
     @api.expect(parser_workflows)
