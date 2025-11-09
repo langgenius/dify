@@ -1,10 +1,9 @@
-from controllers.console import api
 from flask import make_response, redirect, request
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
-from controllers.console import console_ns
+from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder

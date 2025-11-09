@@ -1,4 +1,3 @@
-from controllers.console import api
 import io
 
 from flask import request, send_file
@@ -6,7 +5,7 @@ from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.console import console_ns
+from controllers.console import api, console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder

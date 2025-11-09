@@ -1,7 +1,7 @@
-from controllers.console import api
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy.orm import Session
 
+from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
