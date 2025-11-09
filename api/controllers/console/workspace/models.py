@@ -397,7 +397,7 @@ class ModelProviderModelCredentialApi(Resource):
         return {"result": "success"}, 204
 
 
-parser = (
+parser_switch = (
     reqparse.RequestParser()
     .add_argument("model", type=str, required=True, nullable=False, location="json")
     .add_argument(
@@ -414,7 +414,7 @@ parser = (
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
 class ModelProviderModelCredentialSwitchApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_switch)
     @setup_required
     @login_required
     @account_initialization_required
@@ -423,7 +423,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
 
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-        args = parser.parse_args()
+        args = parser_switch.parse_args()
 
         service = ModelProviderService()
         service.add_model_credential_to_model_list(
@@ -436,7 +436,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
         return {"result": "success"}
 
 
-parser = (
+parser_enable = (
     reqparse.RequestParser()
     .add_argument("model", type=str, required=True, nullable=False, location="json")
     .add_argument(
@@ -454,14 +454,14 @@ parser = (
     "/workspaces/current/model-providers/<path:provider>/models/enable", endpoint="model-provider-model-enable"
 )
 class ModelProviderModelEnableApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_enable)
     @setup_required
     @login_required
     @account_initialization_required
     def patch(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser.parse_args()
+        args = parser_enable.parse_args()
 
         model_provider_service = ModelProviderService()
         model_provider_service.enable_model(
@@ -471,7 +471,7 @@ class ModelProviderModelEnableApi(Resource):
         return {"result": "success"}
 
 
-parser = (
+parser_disable = (
     reqparse.RequestParser()
     .add_argument("model", type=str, required=True, nullable=False, location="json")
     .add_argument(
@@ -489,14 +489,14 @@ parser = (
     "/workspaces/current/model-providers/<path:provider>/models/disable", endpoint="model-provider-model-disable"
 )
 class ModelProviderModelDisableApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_disable)
     @setup_required
     @login_required
     @account_initialization_required
     def patch(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser.parse_args()
+        args = parser_disable.parse_args()
 
         model_provider_service = ModelProviderService()
         model_provider_service.disable_model(
@@ -506,7 +506,7 @@ class ModelProviderModelDisableApi(Resource):
         return {"result": "success"}
 
 
-parser = (
+parser_validate = (
     reqparse.RequestParser()
     .add_argument("model", type=str, required=True, nullable=False, location="json")
     .add_argument(
@@ -523,14 +523,14 @@ parser = (
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/validate")
 class ModelProviderModelValidateApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_validate)
     @setup_required
     @login_required
     @account_initialization_required
     def post(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser.parse_args()
+        args = parser_validate.parse_args()
 
         model_provider_service = ModelProviderService()
 
@@ -557,17 +557,17 @@ class ModelProviderModelValidateApi(Resource):
         return response
 
 
-parser = reqparse.RequestParser().add_argument("model", type=str, required=True, nullable=False, location="args")
+parser_parameter = reqparse.RequestParser().add_argument("model", type=str, required=True, nullable=False, location="args")
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/parameter-rules")
 class ModelProviderModelParameterRuleApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_parameter)
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, provider: str):
-        args = parser.parse_args()
+        args = parser_parameter.parse_args()
         _, tenant_id = current_account_with_tenant()
 
         model_provider_service = ModelProviderService()

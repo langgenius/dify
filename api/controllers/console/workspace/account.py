@@ -42,12 +42,20 @@ from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 
-parser = reqparse.RequestParser()
+
+def _init_parser():
+    parser = reqparse.RequestParser()
+    if dify_config.EDITION == "CLOUD":
+        parser.add_argument("invitation_code", type=str, location="json")
+    parser.add_argument("interface_language", type=supported_language, required=True, location="json").add_argument(
+        "timezone", type=timezone, required=True, location="json"
+    )
+    return parser
 
 
 @console_ns.route("/account/init")
 class AccountInitApi(Resource):
-    @api.expect(parser)
+    @api.expect(_init_parser())
     @setup_required
     @login_required
     def post(self):
@@ -56,12 +64,7 @@ class AccountInitApi(Resource):
         if account.status == "active":
             raise AccountAlreadyInitedError()
 
-        if dify_config.EDITION == "CLOUD":
-            parser.add_argument("invitation_code", type=str, location="json")
-        parser.add_argument("interface_language", type=supported_language, required=True, location="json").add_argument(
-            "timezone", type=timezone, required=True, location="json"
-        )
-        args = parser.parse_args()
+        args = _init_parser().parse_args()
 
         if dify_config.EDITION == "CLOUD":
             if not args["invitation_code"]:
@@ -107,19 +110,19 @@ class AccountProfileApi(Resource):
         return current_user
 
 
-parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
+parser_name = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
 
 
 @console_ns.route("/account/name")
 class AccountNameApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_name)
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
         current_user, _ = current_account_with_tenant()
-        args = parser.parse_args()
+        args = parser_name.parse_args()
 
         # Validate account name length
         if len(args["name"]) < 3 or len(args["name"]) > 30:
@@ -130,80 +133,80 @@ class AccountNameApi(Resource):
         return updated_account
 
 
-parser = reqparse.RequestParser().add_argument("avatar", type=str, required=True, location="json")
+parser_avatar = reqparse.RequestParser().add_argument("avatar", type=str, required=True, location="json")
 
 
 @console_ns.route("/account/avatar")
 class AccountAvatarApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_avatar)
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
         current_user, _ = current_account_with_tenant()
-        args = parser.parse_args()
+        args = parser_avatar.parse_args()
 
         updated_account = AccountService.update_account(current_user, avatar=args["avatar"])
 
         return updated_account
 
 
-parser = reqparse.RequestParser().add_argument(
+parser_interface = reqparse.RequestParser().add_argument(
     "interface_language", type=supported_language, required=True, location="json"
 )
 
 
 @console_ns.route("/account/interface-language")
 class AccountInterfaceLanguageApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_interface)
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
         current_user, _ = current_account_with_tenant()
-        args = parser.parse_args()
+        args = parser_interface.parse_args()
 
         updated_account = AccountService.update_account(current_user, interface_language=args["interface_language"])
 
         return updated_account
 
 
-parser = reqparse.RequestParser().add_argument(
+parser_theme = reqparse.RequestParser().add_argument(
     "interface_theme", type=str, choices=["light", "dark"], required=True, location="json"
 )
 
 
 @console_ns.route("/account/interface-theme")
 class AccountInterfaceThemeApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_theme)
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
         current_user, _ = current_account_with_tenant()
-        args = parser.parse_args()
+        args = parser_theme.parse_args()
 
         updated_account = AccountService.update_account(current_user, interface_theme=args["interface_theme"])
 
         return updated_account
 
 
-parser = reqparse.RequestParser().add_argument("timezone", type=str, required=True, location="json")
+parser_timezone = reqparse.RequestParser().add_argument("timezone", type=str, required=True, location="json")
 
 
 @console_ns.route("/account/timezone")
 class AccountTimezoneApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_timezone)
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
         current_user, _ = current_account_with_tenant()
-        args = parser.parse_args()
+        args = parser_timezone.parse_args()
 
         # Validate timezone string, e.g. America/New_York, Asia/Shanghai
         if args["timezone"] not in pytz.all_timezones:
@@ -214,7 +217,7 @@ class AccountTimezoneApi(Resource):
         return updated_account
 
 
-parser = (
+parser_pw = (
     reqparse.RequestParser()
     .add_argument("password", type=str, required=False, location="json")
     .add_argument("new_password", type=str, required=True, location="json")
@@ -224,14 +227,14 @@ parser = (
 
 @console_ns.route("/account/password")
 class AccountPasswordApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_pw)
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
         current_user, _ = current_account_with_tenant()
-        args = parser.parse_args()
+        args = parser_pw.parse_args()
 
         if args["new_password"] != args["repeat_new_password"]:
             raise RepeatPasswordNotMatchError()
@@ -313,7 +316,7 @@ class AccountDeleteVerifyApi(Resource):
         return {"result": "success", "data": token}
 
 
-parser = (
+parser_delete = (
     reqparse.RequestParser()
     .add_argument("token", type=str, required=True, location="json")
     .add_argument("code", type=str, required=True, location="json")
@@ -322,14 +325,14 @@ parser = (
 
 @console_ns.route("/account/delete")
 class AccountDeleteApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_delete)
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
         account, _ = current_account_with_tenant()
 
-        args = parser.parse_args()
+        args = parser_delete.parse_args()
 
         if not AccountService.verify_account_deletion_code(args["token"], args["code"]):
             raise InvalidAccountDeletionCodeError()
@@ -339,7 +342,7 @@ class AccountDeleteApi(Resource):
         return {"result": "success"}
 
 
-parser = (
+parser_feedback = (
     reqparse.RequestParser()
     .add_argument("email", type=str, required=True, location="json")
     .add_argument("feedback", type=str, required=True, location="json")
@@ -348,10 +351,10 @@ parser = (
 
 @console_ns.route("/account/delete/feedback")
 class AccountDeleteUpdateFeedbackApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_feedback)
     @setup_required
     def post(self):
-        args = parser.parse_args()
+        args = parser_feedback.parse_args()
 
         BillingService.update_account_deletion_feedback(args["email"], args["feedback"])
 
@@ -376,7 +379,7 @@ class EducationVerifyApi(Resource):
         return BillingService.EducationIdentity.verify(account.id, account.email)
 
 
-parser = (
+parser_edu = (
     reqparse.RequestParser()
     .add_argument("token", type=str, required=True, location="json")
     .add_argument("institution", type=str, required=True, location="json")
@@ -393,7 +396,7 @@ class EducationApi(Resource):
         "allow_refresh": fields.Boolean,
     }
 
-    @api.expect(parser)
+    @api.expect(parser_edu)
     @setup_required
     @login_required
     @account_initialization_required
@@ -402,7 +405,7 @@ class EducationApi(Resource):
     def post(self):
         account, _ = current_account_with_tenant()
 
-        args = parser.parse_args()
+        args = parser_edu.parse_args()
 
         return BillingService.EducationIdentity.activate(account, args["token"], args["institution"], args["role"])
 
@@ -422,7 +425,7 @@ class EducationApi(Resource):
         return res
 
 
-parser = (
+parser_autocomplete = (
     reqparse.RequestParser()
     .add_argument("keywords", type=str, required=True, location="args")
     .add_argument("page", type=int, required=False, location="args", default=0)
@@ -438,7 +441,7 @@ class EducationAutoCompleteApi(Resource):
         "has_next": fields.Boolean,
     }
 
-    @api.expect(parser)
+    @api.expect(parser_autocomplete)
     @setup_required
     @login_required
     @account_initialization_required
@@ -446,12 +449,12 @@ class EducationAutoCompleteApi(Resource):
     @cloud_edition_billing_enabled
     @marshal_with(data_fields)
     def get(self):
-        args = parser.parse_args()
+        args = parser_autocomplete.parse_args()
 
         return BillingService.EducationIdentity.autocomplete(args["keywords"], args["page"], args["limit"])
 
 
-parser = (
+parser_change_email = (
     reqparse.RequestParser()
     .add_argument("email", type=email, required=True, location="json")
     .add_argument("language", type=str, required=False, location="json")
@@ -462,14 +465,14 @@ parser = (
 
 @console_ns.route("/account/change-email")
 class ChangeEmailSendEmailApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_change_email)
     @enable_change_email
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
         current_user, _ = current_account_with_tenant()
-        args = parser.parse_args()
+        args = parser_change_email.parse_args()
 
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
@@ -504,7 +507,7 @@ class ChangeEmailSendEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
-parser = (
+parser_validity = (
     reqparse.RequestParser()
     .add_argument("email", type=email, required=True, location="json")
     .add_argument("code", type=str, required=True, location="json")
@@ -514,13 +517,13 @@ parser = (
 
 @console_ns.route("/account/change-email/validity")
 class ChangeEmailCheckApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_validity)
     @enable_change_email
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        args = parser.parse_args()
+        args = parser_validity.parse_args()
 
         user_email = args["email"]
 
@@ -551,7 +554,7 @@ class ChangeEmailCheckApi(Resource):
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
-parser = (
+parser_reset = (
     reqparse.RequestParser()
     .add_argument("new_email", type=email, required=True, location="json")
     .add_argument("token", type=str, required=True, nullable=False, location="json")
@@ -560,14 +563,14 @@ parser = (
 
 @console_ns.route("/account/change-email/reset")
 class ChangeEmailResetApi(Resource):
-    @api.expect(parser)
+    @api.expect(parser_reset)
     @enable_change_email
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
     def post(self):
-        args = parser.parse_args()
+        args = parser_reset.parse_args()
 
         if AccountService.is_account_in_freeze(args["new_email"]):
             raise AccountInFreezeError()
@@ -595,15 +598,15 @@ class ChangeEmailResetApi(Resource):
         return updated_account
 
 
-parser = reqparse.RequestParser().add_argument("email", type=email, required=True, location="json")
+parser_check = reqparse.RequestParser().add_argument("email", type=email, required=True, location="json")
 
 
 @console_ns.route("/account/change-email/check-email-unique")
 class CheckEmailUnique(Resource):
-    @api.expect(parser)
+    @api.expect(parser_check)
     @setup_required
     def post(self):
-        args = parser.parse_args()
+        args = parser_check.parse_args()
         if AccountService.is_account_in_freeze(args["email"]):
             raise AccountInFreezeError()
         if not AccountService.check_email_unique(args["email"]):
