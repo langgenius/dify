@@ -1,3 +1,4 @@
+from controllers.console import api
 from flask import make_response, redirect, request
 from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
@@ -121,8 +122,16 @@ class DatasourceOAuthCallback(Resource):
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
 
+parser = (
+    reqparse.RequestParser()
+    .add_argument("name", type=StrLen(max_length=100), required=False, nullable=True, location="json", default=None)
+    .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+)
+
+
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>")
 class DatasourceAuth(Resource):
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -130,13 +139,6 @@ class DatasourceAuth(Resource):
     def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument(
-                "name", type=StrLen(max_length=100), required=False, nullable=True, location="json", default=None
-            )
-            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        )
         args = parser.parse_args()
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
@@ -168,8 +170,14 @@ class DatasourceAuth(Resource):
         return {"result": datasources}, 200
 
 
+parser = reqparse.RequestParser().add_argument(
+    "credential_id", type=str, required=True, nullable=False, location="json"
+)
+
+
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/delete")
 class DatasourceAuthDeleteApi(Resource):
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -181,9 +189,6 @@ class DatasourceAuthDeleteApi(Resource):
         plugin_id = datasource_provider_id.plugin_id
         provider_name = datasource_provider_id.provider_name
 
-        parser = reqparse.RequestParser().add_argument(
-            "credential_id", type=str, required=True, nullable=False, location="json"
-        )
         args = parser.parse_args()
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.remove_datasource_credentials(
@@ -195,8 +200,17 @@ class DatasourceAuthDeleteApi(Resource):
         return {"result": "success"}, 200
 
 
+parser = (
+    reqparse.RequestParser()
+    .add_argument("credentials", type=dict, required=False, nullable=True, location="json")
+    .add_argument("name", type=StrLen(max_length=100), required=False, nullable=True, location="json")
+    .add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+)
+
+
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update")
 class DatasourceAuthUpdateApi(Resource):
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -205,12 +219,6 @@ class DatasourceAuthUpdateApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
 
         datasource_provider_id = DatasourceProviderID(provider_id)
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("credentials", type=dict, required=False, nullable=True, location="json")
-            .add_argument("name", type=StrLen(max_length=100), required=False, nullable=True, location="json")
-            .add_argument("credential_id", type=str, required=True, nullable=False, location="json")
-        )
         args = parser.parse_args()
 
         datasource_provider_service = DatasourceProviderService()
@@ -251,8 +259,16 @@ class DatasourceHardCodeAuthListApi(Resource):
         return {"result": jsonable_encoder(datasources)}, 200
 
 
+parser = (
+    reqparse.RequestParser()
+    .add_argument("client_params", type=dict, required=False, nullable=True, location="json")
+    .add_argument("enable_oauth_custom_client", type=bool, required=False, nullable=True, location="json")
+)
+
+
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/custom-client")
 class DatasourceAuthOauthCustomClient(Resource):
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -260,11 +276,6 @@ class DatasourceAuthOauthCustomClient(Resource):
     def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("client_params", type=dict, required=False, nullable=True, location="json")
-            .add_argument("enable_oauth_custom_client", type=bool, required=False, nullable=True, location="json")
-        )
         args = parser.parse_args()
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
@@ -291,8 +302,12 @@ class DatasourceAuthOauthCustomClient(Resource):
         return {"result": "success"}, 200
 
 
+parser = reqparse.RequestParser().add_argument("id", type=str, required=True, nullable=False, location="json")
+
+
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/default")
 class DatasourceAuthDefaultApi(Resource):
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -300,7 +315,6 @@ class DatasourceAuthDefaultApi(Resource):
     def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
-        parser = reqparse.RequestParser().add_argument("id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()
@@ -312,8 +326,16 @@ class DatasourceAuthDefaultApi(Resource):
         return {"result": "success"}, 200
 
 
+parser = (
+    reqparse.RequestParser()
+    .add_argument("name", type=StrLen(max_length=100), required=True, nullable=False, location="json")
+    .add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+)
+
+
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update-name")
 class DatasourceUpdateProviderNameApi(Resource):
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -321,11 +343,6 @@ class DatasourceUpdateProviderNameApi(Resource):
     def post(self, provider_id: str):
         _, current_tenant_id = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("name", type=StrLen(max_length=100), required=True, nullable=False, location="json")
-            .add_argument("credential_id", type=str, required=True, nullable=False, location="json")
-        )
         args = parser.parse_args()
         datasource_provider_id = DatasourceProviderID(provider_id)
         datasource_provider_service = DatasourceProviderService()

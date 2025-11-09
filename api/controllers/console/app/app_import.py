@@ -1,3 +1,4 @@
+from controllers.console import api
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy.orm import Session
 
@@ -18,9 +19,23 @@ from services.feature_service import FeatureService
 
 from .. import console_ns
 
+parser = (
+    reqparse.RequestParser()
+    .add_argument("mode", type=str, required=True, location="json")
+    .add_argument("yaml_content", type=str, location="json")
+    .add_argument("yaml_url", type=str, location="json")
+    .add_argument("name", type=str, location="json")
+    .add_argument("description", type=str, location="json")
+    .add_argument("icon_type", type=str, location="json")
+    .add_argument("icon", type=str, location="json")
+    .add_argument("icon_background", type=str, location="json")
+    .add_argument("app_id", type=str, location="json")
+)
+
 
 @console_ns.route("/apps/imports")
 class AppImportApi(Resource):
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -30,18 +45,6 @@ class AppImportApi(Resource):
     def post(self):
         # Check user role first
         current_user, _ = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("mode", type=str, required=True, location="json")
-            .add_argument("yaml_content", type=str, location="json")
-            .add_argument("yaml_url", type=str, location="json")
-            .add_argument("name", type=str, location="json")
-            .add_argument("description", type=str, location="json")
-            .add_argument("icon_type", type=str, location="json")
-            .add_argument("icon", type=str, location="json")
-            .add_argument("icon_background", type=str, location="json")
-            .add_argument("app_id", type=str, location="json")
-        )
         args = parser.parse_args()
 
         # Create service with session
