@@ -7,11 +7,12 @@ from services.advanced_prompt_template_service import AdvancedPromptTemplateServ
 
 parser = (
     reqparse.RequestParser()
-    .add_argument("app_mode", type=str, required=True, location="args")
-    .add_argument("model_mode", type=str, required=True, location="args")
-    .add_argument("has_context", type=str, required=False, default="true", location="args")
-    .add_argument("model_name", type=str, required=True, location="args")
+    .add_argument("app_mode", type=str, required=True, location="args", help="Application mode")
+    .add_argument("model_mode", type=str, required=True, location="args", help="Model mode")
+    .add_argument("has_context", type=str, required=False, default="true", location="args", help="Whether has context")
+    .add_argument("model_name", type=str, required=True, location="args", help="Model name")
 )
+
 
 
 @console_ns.route("/app/prompt-templates")
