@@ -142,6 +142,7 @@ class Workflow(Base):
         nullable=False,
         default=naive_utc_now(),
         server_onupdate=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
     )
     _environment_variables: Mapped[str] = mapped_column(
         "environment_variables", sa.Text, nullable=False, server_default="{}"
@@ -150,7 +151,7 @@ class Workflow(Base):
         "conversation_variables", sa.Text, nullable=False, server_default="{}"
     )
     _rag_pipeline_variables: Mapped[str] = mapped_column(
-        "rag_pipeline_variables", db.Text, nullable=False, server_default="{}"
+        "rag_pipeline_variables", sa.Text, nullable=False, server_default="{}"
     )
 
     VERSION_DRAFT = "draft"
