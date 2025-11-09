@@ -307,6 +307,7 @@ def subscription_required(view: Callable[P, R]):
             if current_user.subscription_status != "active":
                 abort(403, "You must have an active subscription to access this resource.")
         return view(*args, **kwargs)
+
     return decorated
 
 
