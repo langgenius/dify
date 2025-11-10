@@ -72,7 +72,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       （选填）自动生成标题，默认 `true`。 若设置为 `false`，则可通过调用会话重命名接口并设置 `auto_generate` 为 `true` 实现异步生成标题。
       </Property>
       <Property name='workflow_id' type='string' key='workflow_id'>
-      （选填）工作流ID，用于指定特定版本，如果不提供则使用默认的已发布版本。
+      （选填）工作流ID，用于指定特定版本，如果不提供则使用默认的已发布版本。<br/>
+      获取方式：在版本历史界面，点击每个版本条目右侧的复制图标即可复制完整的工作流 ID。
       </Property>
       <Property name='workflow_alias' type='string' key='workflow_alias'>
       （选填）工作流别名，用于通过别名指定特定版本的工作流。系统按以下优先级查找：workflow_alias > workflow_id > 最新发布版本。

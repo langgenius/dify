@@ -74,7 +74,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       `false`に設定すると、会話のリネームAPIを呼び出し、`auto_generate`を`true`に設定することで非同期タイトル生成を実現できます。
       </Property>
       <Property name='workflow_id' type='string' key='workflow_id'>
-      （オプション）ワークフローID、特定のバージョンを指定するために使用、提供されない場合はデフォルトの公開バージョンを使用。
+      （オプション）ワークフローID、特定のバージョンを指定するために使用、提供されない場合はデフォルトの公開バージョンを使用。<br/>
+      取得方法：バージョン履歴インターフェースで、各バージョンエントリの右側にあるコピーアイコンをクリックすると、完全なワークフローIDをコピーできます。
       </Property>
       <Property name='workflow_alias' type='string' key='workflow_alias'>
       （オプション）ワークフローエイリアス、エイリアスで特定バージョンのワークフローを指定するために使用されます。システムは以下の優先順位で検索します：workflow_alias > workflow_id > 最新公開バージョン。
