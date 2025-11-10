@@ -64,7 +64,7 @@ const TimeRangePicker: FC<Props> = ({
 
       setIsCustomRange(true)
     }
-  }, [])
+  }, [start, end, onSelect, locale, queryDateFormat])
 
   return (
     <div className='flex items-center'>
