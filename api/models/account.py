@@ -111,7 +111,7 @@ class Account(UserMixin, TypeBase):
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.current_timestamp(), nullable=False, init=False
+        DateTime, server_default=func.current_timestamp(), nullable=False, init=False, onupdate=func.current_timestamp()
     )
 
     role: TenantAccountRole | None = field(default=None, init=False)
@@ -251,7 +251,9 @@ class Tenant(TypeBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), init=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), init=False, onupdate=func.current_timestamp()
+    )
 
     def get_accounts(self) -> list[Account]:
         return list(
@@ -290,7 +292,7 @@ class TenantAccountJoin(TypeBase):
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.current_timestamp(), nullable=False, init=False
+        DateTime, server_default=func.current_timestamp(), nullable=False, init=False, onupdate=func.current_timestamp()
     )
 
 
@@ -311,7 +313,7 @@ class AccountIntegrate(TypeBase):
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.current_timestamp(), nullable=False, init=False
+        DateTime, server_default=func.current_timestamp(), nullable=False, init=False, onupdate=func.current_timestamp()
     )
 
 
@@ -397,5 +399,5 @@ class TenantPluginAutoUpgradeStrategy(TypeBase):
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False, onupdate=func.current_timestamp()
     )
