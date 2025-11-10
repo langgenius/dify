@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any, Union, cast
 from urllib.parse import urlparse
 
-from openinference.semconv.trace import OpenInferenceSpanKindValues, SpanAttributes
+from openinference.semconv.trace import OpenInferenceMimeTypeValues, OpenInferenceSpanKindValues, SpanAttributes
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GrpcOTLPSpanExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HttpOTLPSpanExporter
 from opentelemetry.sdk import trace as trace_sdk
@@ -16,7 +16,7 @@ from opentelemetry.semconv.trace import SpanAttributes as OTELSpanAttributes
 from opentelemetry.trace import Span, Status, StatusCode, set_span_in_context, use_span
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.util.types import AttributeValue
-from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import ArizeConfig, PhoenixConfig
@@ -31,9 +31,10 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from models.model import EndUser, MessageFile
-from models.workflow import WorkflowNodeExecutionModel
+from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +137,11 @@ def set_span_status(current_span: Span, error: Exception | str | None = None):
         current_span.set_status(Status(StatusCode.OK))
 
 
+def safe_json_dumps(obj: Any) -> str:
+    """A convenience wrapper around `json.dumps` that ensures that any object can be safely encoded."""
+    return json.dumps(obj, default=str, ensure_ascii=False)
+
+
 class ArizePhoenixDataTrace(BaseTraceInstance):
     def __init__(
         self,
@@ -205,28 +211,55 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             context=root_span_context,
         )
 
+        # Through workflow_run_id, get all_nodes_execution using repository
+        session_factory = sessionmaker(bind=db.engine)
+
+        # Find the app's creator account
+        app_id = trace_info.metadata.get("app_id")
+        if not app_id:
+            raise ValueError("No app_id found in trace_info metadata")
+
+        service_account = self.get_service_account_with_tenant(app_id)
+
+        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+            session_factory=session_factory,
+            user=service_account,
+            app_id=app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+
+        # Get all executions for this workflow run
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
+            workflow_run_id=trace_info.workflow_run_id
+        )
+
         try:
-            # Process workflow nodes
-            for node_execution in self._get_workflow_nodes(trace_info.workflow_run_id):
+            for node_execution in workflow_node_executions:
+                tenant_id = trace_info.tenant_id  # Use from trace_info instead
+                app_id = trace_info.metadata.get("app_id")  # Use from trace_info instead
+                inputs_value = node_execution.inputs or {}
+                outputs_value = node_execution.outputs or {}
+
                 created_at = node_execution.created_at or datetime.now()
                 elapsed_time = node_execution.elapsed_time
                 finished_at = created_at + timedelta(seconds=elapsed_time)
 
-                process_data = json.loads(node_execution.process_data) if node_execution.process_data else {}
+                process_data = node_execution.process_data or {}
+                execution_metadata = node_execution.metadata or {}
+                node_metadata = {str(k): v for k, v in execution_metadata.items()}
 
-                node_metadata = {
-                    "node_id": node_execution.id,
-                    "node_type": node_execution.node_type,
-                    "node_status": node_execution.status,
-                    "tenant_id": node_execution.tenant_id,
-                    "app_id": node_execution.app_id,
-                    "app_name": node_execution.title,
-                    "status": node_execution.status,
-                    "level": "ERROR" if node_execution.status == "failed" else "DEFAULT",
-                }
-
-                if node_execution.execution_metadata:
-                    node_metadata.update(json.loads(node_execution.execution_metadata))
+                node_metadata.update(
+                    {
+                        "node_id": node_execution.id,
+                        "node_type": node_execution.node_type,
+                        "node_status": node_execution.status,
+                        "tenant_id": tenant_id,
+                        "app_id": app_id,
+                        "app_name": node_execution.title,
+                        "status": node_execution.status,
+                        "level": "ERROR" if node_execution.status == "failed" else "DEFAULT",
+                    }
+                )
 
                 # Determine the correct span kind based on node type
                 span_kind = OpenInferenceSpanKindValues.CHAIN
@@ -239,8 +272,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     if model:
                         node_metadata["ls_model_name"] = model
 
-                    outputs = json.loads(node_execution.outputs).get("usage", {}) if "outputs" in node_execution else {}
-                    usage_data = process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+                    usage_data = (
+                        process_data.get("usage", {}) if "usage" in process_data else outputs_value.get("usage", {})
+                    )
                     if usage_data:
                         node_metadata["total_tokens"] = usage_data.get("total_tokens", 0)
                         node_metadata["prompt_tokens"] = usage_data.get("prompt_tokens", 0)
@@ -256,10 +290,12 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 node_span = self.tracer.start_span(
                     name=node_execution.node_type,
                     attributes={
-                        SpanAttributes.INPUT_VALUE: node_execution.inputs or "{}",
-                        SpanAttributes.OUTPUT_VALUE: node_execution.outputs or "{}",
+                        SpanAttributes.INPUT_VALUE: safe_json_dumps(inputs_value),
+                        SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
+                        SpanAttributes.OUTPUT_VALUE: safe_json_dumps(outputs_value),
+                        SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                         SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind.value,
-                        SpanAttributes.METADATA: json.dumps(node_metadata, ensure_ascii=False),
+                        SpanAttributes.METADATA: safe_json_dumps(node_metadata),
                         SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
                     },
                     start_time=datetime_to_nanos(created_at),
@@ -277,11 +313,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                             llm_attributes[SpanAttributes.LLM_PROVIDER] = provider
                         if model:
                             llm_attributes[SpanAttributes.LLM_MODEL_NAME] = model
-                        outputs = (
-                            json.loads(node_execution.outputs).get("usage", {}) if "outputs" in node_execution else {}
-                        )
                         usage_data = (
-                            process_data.get("usage", {}) if "usage" in process_data else outputs.get("usage", {})
+                            process_data.get("usage", {}) if "usage" in process_data else outputs_value.get("usage", {})
                         )
                         if usage_data:
                             llm_attributes[SpanAttributes.LLM_TOKEN_COUNT_TOTAL] = usage_data.get("total_tokens", 0)
@@ -663,27 +696,6 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         except Exception as e:
             logger.info("[Arize/Phoenix] Get run url failed: %s", str(e), exc_info=True)
             raise ValueError(f"[Arize/Phoenix] Get run url failed: {str(e)}")
-
-    def _get_workflow_nodes(self, workflow_run_id: str):
-        """Helper method to get workflow nodes"""
-        workflow_nodes = db.session.scalars(
-            select(
-                WorkflowNodeExecutionModel.id,
-                WorkflowNodeExecutionModel.tenant_id,
-                WorkflowNodeExecutionModel.app_id,
-                WorkflowNodeExecutionModel.title,
-                WorkflowNodeExecutionModel.node_type,
-                WorkflowNodeExecutionModel.status,
-                WorkflowNodeExecutionModel.error,
-                WorkflowNodeExecutionModel.inputs,
-                WorkflowNodeExecutionModel.outputs,
-                WorkflowNodeExecutionModel.created_at,
-                WorkflowNodeExecutionModel.elapsed_time,
-                WorkflowNodeExecutionModel.process_data,
-                WorkflowNodeExecutionModel.execution_metadata,
-            ).where(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
-        ).all()
-        return workflow_nodes
 
     def _construct_llm_attributes(self, prompts: dict | list | str | None) -> dict[str, str]:
         """Helper method to construct LLM attributes with passed prompts."""
