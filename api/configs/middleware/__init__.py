@@ -163,7 +163,7 @@ class DatabaseConfig(BaseSettings):
         default="dify",
     )
 
-    # OceanBase configuration (MySQL-compatible)
+    # OceanBase configuration(MySQL-compatible)
     OCEANBASE_HOST: str = Field(
         description="OceanBase hostname or IP address.",
         default="localhost",
@@ -195,50 +195,50 @@ class DatabaseConfig(BaseSettings):
     def DB_HOST(self) -> str:
         if self.DB_TYPE == "postgresql":
             return self.POSTGRES_HOST
+        elif self.DB_TYPE == "mysql":
+            return self.MYSQL_HOST
         elif self.DB_TYPE == "oceanbase":
             return self.OCEANBASE_HOST
-        else:
-            return self.MYSQL_HOST
-    
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def DB_PORT(self) -> int:
         if self.DB_TYPE == "postgresql":
             return self.POSTGRES_PORT
+        elif self.DB_TYPE == "mysql":
+            return self.MYSQL_PORT
         elif self.DB_TYPE == "oceanbase":
             return self.OCEANBASE_PORT
-        else:
-            return self.MYSQL_PORT
     
     @computed_field  # type: ignore[prop-decorator]
     @property
     def DB_USERNAME(self) -> str:
         if self.DB_TYPE == "postgresql":
             return self.POSTGRES_USER
+        elif self.DB_TYPE == "mysql":
+            return self.MYSQL_USER
         elif self.DB_TYPE == "oceanbase":
             return self.OCEANBASE_USER
-        else:
-            return self.MYSQL_USER
     
     @computed_field  # type: ignore[prop-decorator]
     @property
     def DB_PASSWORD(self) -> str:
         if self.DB_TYPE == "postgresql":
             return self.POSTGRES_PASSWORD
+        elif self.DB_TYPE == "mysql":
+            return self.MYSQL_PASSWORD
         elif self.DB_TYPE == "oceanbase":
             return self.OCEANBASE_PASSWORD
-        else:
-            return self.MYSQL_PASSWORD
 
     @computed_field  # type: ignore[prop-decorator]
     @property
     def DB_DATABASE(self) -> str:
         if self.DB_TYPE == "postgresql":
             return self.POSTGRES_DATABASE
+        elif self.DB_TYPE == "mysql":
+            return self.MYSQL_DATABASE
         elif self.DB_TYPE == "oceanbase":
             return self.OCEANBASE_DATABASE
-        else:
-            return self.MYSQL_DATABASE
 
     DB_CHARSET: str = Field(
         description="Character set for database connection.",
