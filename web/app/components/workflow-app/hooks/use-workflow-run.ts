@@ -344,7 +344,17 @@ export const useWorkflowRun = () => {
     }
 
     featuresStore?.setState({ features: mappedFeatures })
-    workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables || [])
+    // slice description of env & chatVar
+    const newEnvList = (publishedWorkflow.environment_variables || []).map(env => ({
+      ...env,
+      description: env.description.slice(0, 256),
+    }))
+    const newChatVarList = (publishedWorkflow.conversation_variables || []).map(chatVar => ({
+      ...chatVar,
+      description: chatVar.description.slice(0, 256),
+    }))
+    workflowStore.getState().setEnvironmentVariables(newEnvList || [])
+    workflowStore.getState().setConversationVariables(newChatVarList || [])
   }, [featuresStore, handleUpdateWorkflowCanvas, workflowStore])
 
   return {
