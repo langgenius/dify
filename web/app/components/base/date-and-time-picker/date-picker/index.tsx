@@ -122,12 +122,12 @@ const DatePicker = ({
     setCurrentDate(currentDate.clone().subtract(1, 'month'))
   }, [currentDate])
 
-  const handleConfirmDate = (passedInSelectedDate?: Dayjs) => {
+  const handleConfirmDate = useCallback((passedInSelectedDate?: Dayjs) => {
     // passedInSelectedDate may be a click event when noConfirm is false
     const nextDate = (dayjs.isDayjs(passedInSelectedDate) ? passedInSelectedDate : selectedDate)
     onChange(nextDate ? nextDate.tz(timezone) : undefined)
     setIsOpen(false)
-  }
+  }, [selectedDate, onChange, timezone])
 
   const handleDateSelect = useCallback((day: Dayjs) => {
     const newDate = cloneTime(day, selectedDate || getDateWithTimezone({ timezone }))
