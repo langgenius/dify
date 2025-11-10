@@ -62,7 +62,7 @@ class BillingService:
         retry=retry_if_exception_type(httpx.RequestError),
         reraise=True,
     )
-    def _send_request(cls, method: Literal["GET", "POST", "DELETE"], endpoint: str, json=None, params=None):
+    def _send_request(cls, method: Literal["GET", "POST", "DELETE", "PUT"], endpoint: str, json=None, params=None):
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
         url = f"{cls.base_url}{endpoint}"
@@ -179,3 +179,8 @@ class BillingService:
     @classmethod
     def clean_billing_info_cache(cls, tenant_id: str):
         redis_client.delete(f"tenant:{tenant_id}:billing_info")
+    
+    @classmethod
+    def sync_partner_tenants_bindings(cls, account_id: str, partner_key: str, click_id: str):
+        json = {"account_id": account_id, "click_id": click_id}
+        return cls._send_request("PUT", f"/partners/{partner_key}/tenants", json=json)
