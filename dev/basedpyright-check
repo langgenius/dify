@@ -13,7 +13,7 @@ CPU_CORES=$(
   if [[ "$(uname -s)" == "Darwin" ]]; then
     sysctl -n hw.ncpu 2>/dev/null
   else
-      nproc
+    nproc
   fi
 )
 
