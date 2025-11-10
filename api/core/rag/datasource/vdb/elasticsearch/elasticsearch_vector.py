@@ -148,9 +148,7 @@ class ElasticSearchVector(BaseVector):
     def _get_version(self) -> str:
         info = self._client.info()
         # remove any suffix like "-SNAPSHOT" from the version string
-        version_str = cast(str, info["version"]["number"])
-        version_str = version_str.split("-")[0]
-        return version_str
+        return cast(str, info["version"]["number"]).split("-")[0]
 
     def _check_version(self):
         if parse_version(self._version) < parse_version("8.0.0"):
