@@ -542,6 +542,7 @@ export type SegmentsQuery = {
 }
 
 export type Attachment = {
+  id: string
   name: string
   size: number
   extension: string
@@ -607,7 +608,8 @@ export type HitTesting = {
   content: Segment
   score: number
   tsne_position: TsnePosition
-  child_chunks?: HitTestingChildChunk[] | null
+  child_chunks: HitTestingChildChunk[] | null
+  attachments: Attachment[]
 }
 
 export type ExternalKnowledgeBaseHitTesting = {
