@@ -69,6 +69,8 @@ const translation = {
       quarterToDate: 'Trimestre corrente',
       yearToDate: 'Anno corrente',
       allTime: 'Tutto il tempo',
+      custom: 'Personalizzato',
+      last30days: 'Ultimi 30 giorni',
     },
     annotation: {
       all: 'Tutti',
