@@ -39,10 +39,16 @@ from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTrigger
 from models.enums import WorkflowRunTriggeredFrom
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
+SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
+
 logger = logging.getLogger(__name__)
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
+    @staticmethod
+    def _should_prepare_user_inputs(args: Mapping[str, Any]) -> bool:
+        return not bool(args.get(SKIP_PREPARE_USER_INPUTS_KEY))
+
     @overload
     def generate(
         self,
@@ -139,8 +145,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             **extract_external_trace_id_from_args(args),
         }
         workflow_run_id = str(uuid.uuid4())
-        if triggered_from in (WorkflowRunTriggeredFrom.DEBUGGING, WorkflowRunTriggeredFrom.APP_RUN):
-            # start node get inputs
+        # for trigger debug run, not prepare user inputs 
+        if self._should_prepare_user_inputs(args):
             inputs = self._prepare_user_inputs(
                 user_inputs=inputs,
                 variables=app_config.variables,

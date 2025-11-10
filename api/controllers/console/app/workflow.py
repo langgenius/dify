@@ -16,6 +16,7 @@ from controllers.console.wraps import account_initialization_required, edit_perm
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.helper.trace_id_helper import get_external_trace_id
@@ -990,11 +991,13 @@ class DraftWorkflowTriggerRunApi(Resource):
             event = poller.poll()
             if not event:
                 return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
+            workflow_args = dict(event.workflow_args)
+            workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             return helper.compact_generate_response(
                 AppGenerateService.generate(
                     app_model=app_model,
                     user=current_user,
-                    args=event.workflow_args,
+                    args=workflow_args,
                     invoke_from=InvokeFrom.DEBUGGER,
                     streaming=True,
                     root_node_id=node_id,
@@ -1145,10 +1148,12 @@ class DraftWorkflowTriggerRunAllApi(Resource):
             return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
 
         try:
+            workflow_args = dict(trigger_debug_event.workflow_args)
+            workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             response = AppGenerateService.generate(
                 app_model=app_model,
                 user=current_user,
-                args=trigger_debug_event.workflow_args,
+                args=workflow_args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
                 root_node_id=trigger_debug_event.node_id,
