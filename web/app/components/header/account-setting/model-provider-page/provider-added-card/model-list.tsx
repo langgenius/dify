@@ -86,7 +86,7 @@ const ModelList: FC<ModelListProps> = ({
         {
           models.map(model => (
             <ModelListItem
-              key={`${model.model}-${model.fetch_from}`}
+              key={`${model.model}-${model.model_type}-${model.fetch_from}`}
               {...{
                 model,
                 provider,
