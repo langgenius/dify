@@ -18,6 +18,7 @@ type Props = {
   nodeId: string
   editorId?: string
   currentPrompt?: string
+  isBasicMode?: boolean
 }
 
 const PromptGeneratorBtn: FC<Props> = ({
@@ -26,6 +27,7 @@ const PromptGeneratorBtn: FC<Props> = ({
   nodeId,
   editorId,
   currentPrompt,
+  isBasicMode,
 }) => {
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
   const handleAutomaticRes = useCallback((res: GenRes) => {
@@ -50,6 +52,8 @@ const PromptGeneratorBtn: FC<Props> = ({
           nodeId={nodeId}
           editorId={editorId}
           currentPrompt={currentPrompt}
+          isBasicMode={isBasicMode}
+          hideTryIt
         />
       )}
     </div>

@@ -17,7 +17,7 @@ export const useForm = (chatVar?: ConversationVariable | MemoryVariable, nodeSco
   const valueSchema = useValueSchema()
   const editInJSONSchema = useEditInJSONSchema()
   const memorySchema = useMemorySchema(nodeScopeMemoryVariable)
-  const memoryDefaultValues = useMemoryDefaultValues(nodeScopeMemoryVariable)
+  const memoryDefaultValues = useMemoryDefaultValues(chatVar, nodeScopeMemoryVariable)
 
   const formSchemas = useMemo(() => {
     return [

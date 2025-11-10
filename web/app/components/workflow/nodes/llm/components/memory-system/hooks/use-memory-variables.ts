@@ -9,20 +9,19 @@ import {
 } from '@/app/components/workflow/store'
 import type { MemoryVariable } from '@/app/components/workflow/types'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useMemoryUsedDetector } from './use-memory-used-detector'
 
 export const useMemoryVariables = (nodeId: string) => {
   const workflowStore = useWorkflowStore()
   const memoryVariables = useStore(s => s.memoryVariables)
   const [editMemoryVariable, setEditMemoryVariable] = useState<MemoryVariable | undefined>(undefined)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { getMemoryUsedDetector } = useMemoryUsedDetector(nodeId)
+  const [cacheForDeleteMemoryVariable, setCacheForDeleteMemoryVariable] = useState<MemoryVariable | undefined>(undefined)
 
   const memoryVariablesInUsed = useMemo(() => {
     return memoryVariables.filter(variable => variable.node_id === nodeId)
   }, [memoryVariables, nodeId])
-
-  const handleDelete = (blockId: string) => {
-    console.log('delete', blockId)
-  }
 
   const handleSave = useCallback((newMemoryVar: MemoryVariable) => {
     const { memoryVariables, setMemoryVariables } = workflowStore.getState()
@@ -47,6 +46,23 @@ export const useMemoryVariables = (nodeId: string) => {
     handleSyncWorkflowDraft()
   }
 
+  const handleDeleteConfirm = (memoryVariableId?: string) => {
+    const { memoryVariables, setMemoryVariables } = workflowStore.getState()
+    const newList = memoryVariables.filter(variable => variable.id !== memoryVariableId)
+    setMemoryVariables(newList)
+    handleSyncWorkflowDraft()
+    setCacheForDeleteMemoryVariable(undefined)
+  }
+
+  const handleDelete = (memoryVariable: MemoryVariable) => {
+    const effectedNodes = getMemoryUsedDetector(memoryVariable)
+    if (effectedNodes.length > 0) {
+      setCacheForDeleteMemoryVariable(memoryVariable)
+      return
+    }
+    handleDeleteConfirm(memoryVariable.id)
+  }
+
   return {
     memoryVariablesInUsed,
     handleDelete,
@@ -54,5 +70,8 @@ export const useMemoryVariables = (nodeId: string) => {
     handleSetEditMemoryVariable,
     handleEdit,
     editMemoryVariable,
+    handleDeleteConfirm,
+    cacheForDeleteMemoryVariable,
+    setCacheForDeleteMemoryVariable,
   }
 }

@@ -21,6 +21,7 @@ import { MemoryMode } from '@/app/components/workflow/types'
 import BlockMemory from './block-memory'
 import { ActionButton } from '@/app/components/base/action-button'
 import cn from '@/utils/classnames'
+import Confirm from '@/app/components/base/confirm'
 
 type MemoryProps = Pick<Node, 'id' | 'data'> & {
   readonly?: boolean
@@ -38,8 +39,11 @@ const MemorySystem = ({
     collapsed,
     setCollapsed,
     handleMemoryTypeChange,
+    handleMemoryTypeChangeBefore,
     memoryType,
     handleUpdateMemory,
+    showTipsWhenMemoryModeBlockToLinear,
+    setShowTipsWhenMemoryModeBlockToLinear,
   } = useMemory(id, data as LLMNodeType)
 
   const renderTrigger = useCallback((open?: boolean) => {
@@ -87,7 +91,7 @@ const MemorySystem = ({
                 </div>
                 <MemorySelector
                   value={memoryType}
-                  onSelected={handleMemoryTypeChange}
+                  onSelected={handleMemoryTypeChangeBefore}
                   readonly={readonly}
                 />
               </div>
@@ -114,6 +118,20 @@ const MemorySystem = ({
         </Collapse>
         <Split className='mt-4' />
       </div>
+      {
+        showTipsWhenMemoryModeBlockToLinear && (
+          <Confirm
+            isShow
+            type='info'
+            showCancel={false}
+            onCancel={() => setShowTipsWhenMemoryModeBlockToLinear(false)}
+            onConfirm={() => handleMemoryTypeChange(MemoryMode.linear)}
+            confirmText={t('workflow.nodes.common.memory.toLinearConfirmButton')}
+            title={t('workflow.nodes.common.memory.toLinearConfirmTitle')}
+            content={t('workflow.nodes.common.memory.toLinearConfirmDesc')}
+          />
+        )
+      }
     </>
   )
 }

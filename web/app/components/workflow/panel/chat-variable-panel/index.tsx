@@ -74,8 +74,20 @@ const ChatVariablePanel = () => {
   const getEffectedNodes = useCallback((chatVar: ConversationVariable | MemoryVariable) => {
     const { getNodes } = store.getState()
     const allNodes = getNodes()
+    let valueSelector = []
+
+    if (chatVar.value_type === ChatVarType.Memory) {
+      const { node_id, id } = chatVar as MemoryVariable
+      valueSelector = [
+        'memory_block',
+        node_id ? `${node_id}_${id}` : id,
+      ]
+    }
+    else {
+      valueSelector = ['conversation', chatVar.name]
+    }
     return findUsedVarNodes(
-      ['conversation', chatVar.name],
+      valueSelector,
       allNodes,
     )
   }, [store])

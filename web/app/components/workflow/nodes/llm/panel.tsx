@@ -214,7 +214,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 availableNodes={availableNodesWithParent}
                 isSupportFileVar
                 instanceId={`${id}-chat-workflow-llm-prompt-editor-user`}
-                isMemorySupported={memoryType === MemoryMode.block}
               />
 
               {inputs.memory?.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (

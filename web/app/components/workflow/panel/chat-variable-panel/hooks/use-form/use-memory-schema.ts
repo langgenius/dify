@@ -1,10 +1,41 @@
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import type {
+  AnyFormApi,
+} from '@tanstack/react-form'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import type { FormSchema } from '@/app/components/base/form/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import type { MemoryVariable } from '@/app/components/workflow/types'
 
 export const useMemorySchema = (nodeScopeMemoryVariable?: { nodeId: string }) => {
   const { t } = useTranslation()
+
+  const getTemplateSelfFormProps = useCallback((form: AnyFormApi) => {
+    const {
+      node_id,
+    } = form.state.values
+
+    return {
+      enablePromptGenerator: true,
+      withTopDivider: true,
+      editorId: 'memory-template',
+      nodeId: node_id,
+    }
+  }, [t])
+
+  const getInstructionSelfFormProps = useCallback((form: AnyFormApi) => {
+    const {
+      node_id,
+    } = form.state.values
+
+    return {
+      enablePromptGenerator: true,
+      placeholder: t('workflow.chatVariable.modal.updateInstructionsPlaceholder'),
+      editorId: 'memory-instruction',
+      nodeId: node_id,
+    }
+  }, [t])
 
   const scopeSchema = [
     {
@@ -66,9 +97,7 @@ export const useMemorySchema = (nodeScopeMemoryVariable?: { nodeId: string }) =>
           value: [ChatVarType.Memory],
         },
       ],
-      selfFormProps: {
-        withTopDivider: true,
-      },
+      selfFormProps: getTemplateSelfFormProps,
     },
     {
       name: 'instruction',
@@ -80,10 +109,7 @@ export const useMemorySchema = (nodeScopeMemoryVariable?: { nodeId: string }) =>
           value: [ChatVarType.Memory],
         },
       ],
-      selfFormProps: {
-        enablePromptGenerator: true,
-        placeholder: t('workflow.chatVariable.modal.updateInstructionsPlaceholder'),
-      },
+      selfFormProps: getInstructionSelfFormProps,
     },
     {
       name: 'strategy',
@@ -242,7 +268,7 @@ export const useMemorySchema = (nodeScopeMemoryVariable?: { nodeId: string }) =>
   ] as FormSchema[]
 }
 
-export const useMemoryDefaultValues = (nodeScopeMemoryVariable?: { nodeId: string }) => {
+export const useMemoryDefaultValues = (chatVar?: MemoryVariable, nodeScopeMemoryVariable?: { nodeId: string }) => {
   return {
     template: '',
     instruction: '',
@@ -252,8 +278,8 @@ export const useMemoryDefaultValues = (nodeScopeMemoryVariable?: { nodeId: strin
     scope: nodeScopeMemoryVariable ? 'node' : 'app',
     node_id: nodeScopeMemoryVariable?.nodeId || '',
     term: 'session',
-    more: false,
-    model: '',
+    more: true,
+    model: undefined,
     schedule_mode: 'sync',
     end_user_visible: false,
     end_user_editable: false,

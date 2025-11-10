@@ -76,6 +76,7 @@ const ConfigPrompt: FC<Props> = ({
     onlyLeafNodeVar: false,
     filterVar,
     conversationVariablesFirst: true,
+    isMemorySupported,
   })
 
   const handleChatModePromptChange = useCallback((index: number) => {

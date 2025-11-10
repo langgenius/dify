@@ -10,6 +10,7 @@ export const LAST_RUN_PLACEHOLDER_TEXT = '{{#last_run#}}'
 export const PRE_PROMPT_PLACEHOLDER_TEXT = '{{#pre_prompt#}}'
 export const UPDATE_DATASETS_EVENT_EMITTER = 'prompt-editor-context-block-update-datasets'
 export const UPDATE_HISTORY_EVENT_EMITTER = 'prompt-editor-history-block-update-role'
+export const UPDATE_WORKFLOW_VARIABLES_EVENT_EMITTER = 'prompt-editor-workflow-variables-block-update-variables'
 
 export const checkHasContextBlock = (text: string) => {
   if (!text)

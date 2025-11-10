@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   RiArrowDownSLine,
   RiCheckLine,
@@ -29,6 +30,7 @@ const NodeSelector: FC<Props> = ({
   onChange,
   nodeType = BlockEnum.LLM,
 }) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   const filteredNodes = useStore(useShallow((s) => {
@@ -46,11 +48,14 @@ const NodeSelector: FC<Props> = ({
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         {currentNode && (
-          <div className={cn('flex h-8 w-[208px] cursor-pointer items-center gap-1 rounded-lg bg-components-input-bg-normal px-2 py-1 pl-3 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt')}>{currentNode.data?.title}</div>
+          <div className={cn('flex h-8 w-[208px] cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-2 py-1 pl-3 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt')}>
+            <BlockIcon className={cn('mr-1.5 h-4 w-4 shrink-0')} type={currentNode.data?.type} />
+            <div className='system-sm-regular grow truncate text-components-input-text-filled'>{currentNode.data?.title}</div>
+          </div>
         )}
         {!currentNode && (
           <div className={cn('flex h-8 w-[208px] cursor-pointer items-center gap-1 rounded-lg bg-components-input-bg-normal px-2 py-1 pl-3 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt')}>
-            <div className='system-sm-regular grow truncate text-components-input-text-placeholder'>Select node...</div>
+            <div className='system-sm-regular grow truncate text-components-input-text-placeholder'>{t('workflow.chatVariable.modal.selectNode')}</div>
             <RiArrowDownSLine className='h-4 w-4 text-text-quaternary' />
           </div>
         )}

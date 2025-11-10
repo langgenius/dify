@@ -823,7 +823,7 @@ export const toNodeOutputVars = (
   let nodeList = []
   if (conversationVariablesFirst) {
     nodeList = [
-      ...((isChatMode && conversationVariables.length > 0) ? [CHAT_VAR_NODE] : []),
+      ...((isChatMode && (conversationVariables.length > 0 || memoryVariables.length > 0)) ? [CHAT_VAR_NODE] : []),
       ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
       ...sortedNodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type)),
       ...(RAG_PIPELINE_NODE.data.ragVariables.length > 0
@@ -835,7 +835,7 @@ export const toNodeOutputVars = (
     nodeList = [
       ...sortedNodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type)),
       ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
-      ...((isChatMode && conversationVariables.length > 0) ? [CHAT_VAR_NODE] : []),
+      ...((isChatMode && (conversationVariables.length > 0 || memoryVariables.length > 0)) ? [CHAT_VAR_NODE] : []),
       ...(RAG_PIPELINE_NODE.data.ragVariables.length > 0
         ? [RAG_PIPELINE_NODE]
         : []),

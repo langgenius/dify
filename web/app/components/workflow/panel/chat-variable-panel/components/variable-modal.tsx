@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
@@ -16,6 +16,10 @@ import { checkKeys } from '@/utils/var'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import VariableForm from '@/app/components/base/form/form-scenarios/variable'
 import { useForm } from '../hooks'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import {
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 export type ModalPropsType = {
   className?: string
@@ -46,7 +50,19 @@ const ChatVariableModal = ({
     defaultValues,
   })
   const type = useTanstackStore(form.store, (s: any) => s.values.value_type)
+  const isPristine = useTanstackStore(form.store, (s: any) => s.fieldMeta?.model?.isPristine)
+  const { data: defaultModel } = useDefaultModel(ModelTypeEnum.textGeneration, !chatVar && type === ChatVarType.Memory && isPristine)
 
+  useEffect(() => {
+    if (defaultModel) {
+      form.setFieldValue('model', {
+        mode: 'chat',
+        name: defaultModel.model,
+        provider: defaultModel.provider.provider,
+        completion_params: {},
+      })
+    }
+  }, [defaultModel])
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
     if (!isValid) {

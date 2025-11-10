@@ -33,17 +33,8 @@ const WorkflowVariableBlock = memo(({
   onDelete,
   getVarType,
   variables: originalVariables,
-  isMemorySupported,
 }: WorkflowVariableBlockType) => {
   const [editor] = useLexicalComposerContext()
-
-  const ragVariables = originalVariables?.reduce<any[]>((acc, curr) => {
-    if (curr.nodeId === 'rag')
-      acc.push(...curr.vars)
-    else
-      acc.push(...curr.vars.filter(v => v.isRagVariable))
-    return acc
-  }, [])
 
   useEffect(() => {
     editor.update(() => {
@@ -60,7 +51,7 @@ const WorkflowVariableBlock = memo(({
         INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
         (variables: string[]) => {
           editor.dispatchCommand(CLEAR_HIDE_MENU_TIMEOUT, undefined)
-          const workflowVariableBlockNode = $createWorkflowVariableBlockNode(variables, workflowNodesMap, getVarType, originalVariables?.find(o => o.nodeId === 'env')?.vars || [], originalVariables?.find(o => o.nodeId === 'conversation')?.vars || [], ragVariables, isMemorySupported)
+          const workflowVariableBlockNode = $createWorkflowVariableBlockNode(variables, workflowNodesMap, getVarType, originalVariables || [])
 
           $insertNodes([workflowVariableBlockNode])
           if (onInsert)

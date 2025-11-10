@@ -129,8 +129,8 @@ export const useProviderCredentialsAndLoadBalancing = (
   // as ([Record<string, string | boolean | undefined> | undefined, ModelLoadBalancingConfig | undefined])
 }
 
-export const useModelList = (type: ModelTypeEnum) => {
-  const { data, mutate, isLoading } = useSWR(`/workspaces/current/models/model-types/${type}`, fetchModelList)
+export const useModelList = (type: ModelTypeEnum, enabled?: boolean) => {
+  const { data, mutate, isLoading } = useSWR(enabled ? `/workspaces/current/models/model-types/${type}` : null, fetchModelList)
 
   return {
     data: data?.data || [],
@@ -139,8 +139,8 @@ export const useModelList = (type: ModelTypeEnum) => {
   }
 }
 
-export const useDefaultModel = (type: ModelTypeEnum) => {
-  const { data, mutate, isLoading } = useSWR(`/workspaces/current/default-model?model_type=${type}`, fetchDefaultModal)
+export const useDefaultModel = (type: ModelTypeEnum, enabled?: boolean) => {
+  const { data, mutate, isLoading } = useSWR(enabled ? `/workspaces/current/default-model?model_type=${type}` : null, fetchDefaultModal)
 
   return {
     data: data?.data,

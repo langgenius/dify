@@ -24,23 +24,26 @@ import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type {
+  NodeOutPutVar,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 import {
   VariableLabelInEditor,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { UPDATE_WORKFLOW_VARIABLES_EVENT_EMITTER } from '../../constants'
+import { usePromptEditorStore } from '../../store/store'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
   variables: string[]
   workflowNodesMap: WorkflowNodesMap
-  environmentVariables?: Var[]
-  conversationVariables?: Var[]
-  ragVariables?: Var[]
+  availableVariables: NodeOutPutVar[]
   getVarType?: (payload: {
     nodeId: string,
     valueSelector: ValueSelector,
   }) => Type
-  isMemorySupported?: boolean
 }
 
 const WorkflowVariableBlockComponent = ({
@@ -48,13 +51,27 @@ const WorkflowVariableBlockComponent = ({
   variables,
   workflowNodesMap = {},
   getVarType,
-  environmentVariables,
-  conversationVariables,
-  ragVariables,
-  isMemorySupported,
+  availableVariables: initialAvailableVariables,
 }: WorkflowVariableBlockComponentProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
+  const instanceId = usePromptEditorStore(s => s.instanceId)
+  const { eventEmitter } = useEventEmitterContextContext()
+  const [availableVariables, setAvailableVariables] = useState<NodeOutPutVar[]>(initialAvailableVariables)
+  eventEmitter?.useSubscription((v: any) => {
+    if (v?.type === UPDATE_WORKFLOW_VARIABLES_EVENT_EMITTER && instanceId && v.instanceId === instanceId)
+      setAvailableVariables(v.payload)
+  })
+  const environmentVariables = availableVariables?.find(v => v.nodeId === 'env')?.vars || []
+  const conversationVariables = availableVariables?.find(v => v.nodeId === 'conversation')?.vars || []
+  const memoryVariables = conversationVariables?.filter(v => v.variable.startsWith('memory_block.'))
+  const ragVariables = availableVariables?.reduce<any[]>((acc, curr) => {
+    if (curr.nodeId === 'rag')
+      acc.push(...curr.vars)
+    else
+      acc.push(...curr.vars.filter(v => v.isRagVariable))
+    return acc
+  }, [])
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND)
   const variablesLength = variables.length
   const isRagVar = isRagVariableVar(variables)
@@ -73,27 +90,19 @@ const WorkflowVariableBlockComponent = ({
   const isMemoryVar = isMemoryVariable(variables)
   const isException = isExceptionVariable(varName, node?.type)
 
-  const memoryVariables = conversationVariables?.filter(v => v.variable.startsWith('memory_block.'))
-
   let variableValid = true
   if (isEnv) {
-    if (environmentVariables)
-      variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+    variableValid = environmentVariables.some(v =>
+      v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
   }
   else if (isConversationVar) {
-    if (conversationVariables)
-      variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+    variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
   }
   else if (isMemoryVar) {
-    if (memoryVariables)
-      variableValid = memoryVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-
-    if (!isMemorySupported)
-      variableValid = false
+    variableValid = memoryVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
   }
   else if (isRagVar) {
-    if (ragVariables)
-      variableValid = ragVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}.${variables?.[2] ?? ''}`)
+    variableValid = ragVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}.${variables?.[2] ?? ''}`)
   }
   else {
     variableValid = !!node

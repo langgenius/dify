@@ -40,12 +40,6 @@ export const useFormatMemoryVariables = () => {
       return {
         ...v,
         value_type: ChatVarType.Memory,
-        model: v.model ? {
-          completion_params: v.model?.completion_params,
-          mode: v.model?.mode,
-          provider: v.model?.provider,
-          model: v.model?.name,
-        } : undefined,
       }
     })
   }, [])

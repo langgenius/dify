@@ -334,6 +334,7 @@ export type Var = {
   nodeId?: string
   isRagVariable?: boolean
   schemaType?: string
+  isMemoryVariable?: boolean
   memoryVariableName?: string
   memoryVariableNodeId?: string
 }

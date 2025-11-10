@@ -53,6 +53,7 @@ export type IGetAutomaticResProps = {
   editorId?: string
   currentPrompt?: string
   isBasicMode?: boolean
+  hideTryIt?: boolean
 }
 
 const TryLabel: FC<{
@@ -81,6 +82,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   currentPrompt,
   isBasicMode,
   onFinished,
+  hideTryIt,
 }) => {
   const { t } = useTranslation()
   const localModel = localStorage.getItem('auto-gen-model')
@@ -307,7 +309,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               hideDebugWithMultipleModel
             />
           </div>
-          {isBasicMode && (
+          {isBasicMode && !hideTryIt && (
             <div className='mt-4'>
               <div className='flex items-center'>
                 <div className='mr-3 shrink-0 text-xs font-semibold uppercase leading-[18px] text-text-tertiary'>{t('appDebug.generate.tryIt')}</div>

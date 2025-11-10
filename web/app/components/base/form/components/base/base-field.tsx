@@ -22,7 +22,7 @@ import Radio from '@/app/components/base/radio'
 import RadioE from '@/app/components/base/radio/ui'
 import Textarea from '@/app/components/base/textarea'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import ObjectValueList from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-list'
 import ArrayValueList from '@/app/components/workflow/panel/chat-variable-panel/components/array-value-list'
 import ArrayBooleanValueList from '@/app/components/workflow/panel/chat-variable-panel/components/array-bool-list'
@@ -136,6 +136,7 @@ const BaseField = ({
   const handleChange = useCallback((value: any) => {
     if (disabled)
       return
+
     field.handleChange(value)
     formOnChange?.(field.form, value)
     onChange?.(field.name, value)
@@ -340,10 +341,12 @@ const BaseField = ({
                   selfProps?.enablePromptGenerator && (
                     <PromptGeneratorBtn
                       nodeId={selfProps?.nodeId}
+                      editorId={selfProps?.editorId}
                       className='absolute right-0 top-[-26px]'
                       onGenerated={handleChange}
                       modelConfig={selfProps?.modelConfig}
                       currentPrompt={value}
+                      isBasicMode={selfProps?.isBasicMode}
                     />
                   )
                 }
@@ -405,11 +408,28 @@ const BaseField = ({
             type === FormTypeEnum.modelSelector && (
               <ModelParameterModal
                 popupClassName='!w-[387px]'
-                value={value}
-                setModel={handleChange}
+                mode={value?.mode}
+                modelId={value?.name}
+                provider={value?.provider}
+                setModel={({ modelId, mode, provider }) => {
+                  handleChange({
+                    mode,
+                    provider,
+                    name: modelId,
+                    completion_params: value?.completion_params,
+                  })
+                }}
+                completionParams={value?.completion_params}
+                onCompletionParamsChange={(params) => {
+                  handleChange({
+                    ...value,
+                    completion_params: params,
+                  })
+                }}
                 readonly={disabled}
-                scope={formSchema.scope}
                 isAdvancedMode
+                isInWorkflow
+                hideDebugWithMultipleModel
               />
             )
           }

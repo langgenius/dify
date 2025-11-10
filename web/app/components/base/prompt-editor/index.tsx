@@ -78,9 +78,11 @@ import type {
 import {
   UPDATE_DATASETS_EVENT_EMITTER,
   UPDATE_HISTORY_EVENT_EMITTER,
+  UPDATE_WORKFLOW_VARIABLES_EVENT_EMITTER,
 } from './constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import cn from '@/utils/classnames'
+import PromptEditorProvider from './store/provider'
 
 export type PromptEditorProps = {
   instanceId?: string
@@ -176,6 +178,13 @@ const PromptEditor: FC<PromptEditorProps> = ({
       payload: historyBlock?.history,
     } as any)
   }, [eventEmitter, historyBlock?.history])
+  useEffect(() => {
+    eventEmitter?.emit({
+      type: UPDATE_WORKFLOW_VARIABLES_EVENT_EMITTER,
+      payload: workflowVariableBlock?.variables,
+      instanceId,
+    } as any)
+  }, [eventEmitter, workflowVariableBlock?.variables])
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
@@ -267,7 +276,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         {
           workflowVariableBlock?.show && (
             <>
-              <WorkflowVariableBlock {...workflowVariableBlock } />
+              <WorkflowVariableBlock {...workflowVariableBlock} />
               <WorkflowVariableBlockReplacementBlock {...workflowVariableBlock} />
             </>
           )
@@ -311,4 +320,12 @@ const PromptEditor: FC<PromptEditorProps> = ({
   )
 }
 
-export default PromptEditor
+const PromptEditorWithProvider = ({ instanceId, ...props }: PromptEditorProps) => {
+  return (
+    <PromptEditorProvider instanceId={instanceId}>
+      <PromptEditor {...props} instanceId={instanceId} />
+    </PromptEditorProvider>
+  )
+}
+
+export default PromptEditorWithProvider

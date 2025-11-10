@@ -28,20 +28,11 @@ const BlockMemory = ({ id }: BlockMemoryProps) => {
     editMemoryVariable,
     handleSetEditMemoryVariable,
     handleEdit,
+    handleDelete,
+    handleDeleteConfirm,
+    cacheForDeleteMemoryVariable,
+    setCacheForDeleteMemoryVariable,
   } = useMemoryVariables(id)
-  const [showConfirm, setShowConfirm] = useState<{
-    title: string
-    desc: string
-    onConfirm: () => void
-  } | undefined>(undefined)
-
-  const handleDelete = (blockId: string) => {
-    setShowConfirm({
-      title: t('workflow.nodes.common.memory.block.deleteConfirmTitle'),
-      desc: t('workflow.nodes.common.memory.block.deleteConfirmDesc'),
-      onConfirm: () => handleDelete(blockId),
-    })
-  }
 
   if (!memoryVariablesInUsed?.length) {
     return (
@@ -87,7 +78,7 @@ const BlockMemory = ({ id }: BlockMemoryProps) => {
                   editMemoryVariable?.id === memoryVariable.id && 'inline-flex',
                 )}
                 size='m'
-                onClick={() => handleDelete(memoryVariable.id)}
+                onClick={() => handleDelete(memoryVariable)}
                 onMouseOver={() => setDestructiveItemId(memoryVariable.id)}
                 onMouseOut={() => setDestructiveItemId(undefined)}
               >
@@ -98,13 +89,13 @@ const BlockMemory = ({ id }: BlockMemoryProps) => {
         }
       </div>
       {
-        !!showConfirm && (
+        !!cacheForDeleteMemoryVariable && (
           <Confirm
             isShow
-            onCancel={() => setShowConfirm(undefined)}
-            onConfirm={showConfirm.onConfirm}
-            title={showConfirm.title}
-            content={showConfirm.desc}
+            onCancel={() => setCacheForDeleteMemoryVariable(undefined)}
+            onConfirm={() => handleDeleteConfirm(cacheForDeleteMemoryVariable.id)}
+            title={t('workflow.nodes.common.memory.deleteNodeMemoryVariableConfirmTitle', { name: cacheForDeleteMemoryVariable.name })}
+            content={t('workflow.nodes.common.memory.deleteNodeMemoryVariableConfirmDesc')}
           />
         )
       }

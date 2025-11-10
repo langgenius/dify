@@ -16,6 +16,7 @@ type Params = {
   filterVar: (payload: Var, selector: ValueSelector) => boolean
   passedInAvailableNodes?: Node[]
   conversationVariablesFirst?: boolean
+  isMemorySupported?: boolean
 }
 
 // TODO: loop type?
@@ -26,6 +27,7 @@ const useAvailableVarList = (nodeId: string, {
   hideChatVar,
   passedInAvailableNodes,
   conversationVariablesFirst,
+  isMemorySupported,
 }: Params = {
   onlyLeafNodeVar: false,
   filterVar: () => true,
@@ -80,6 +82,11 @@ const useAvailableVarList = (nodeId: string, {
       return {
         ...availableVar,
         vars: availableVar.vars.filter((v) => {
+          if (!v.isMemoryVariable)
+            return true
+
+          if (!isMemorySupported)
+            return false
           if (!v.memoryVariableNodeId)
             return true
 
