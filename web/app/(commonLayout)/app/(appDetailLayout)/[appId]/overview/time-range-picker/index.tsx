@@ -40,7 +40,7 @@ const TimeRangePicker: FC<Props> = ({
         end: payload.query!.end.format(queryDateFormat),
       },
     })
-  }, [onSelect])
+  }, [onSelect, queryDateFormat])
 
   const handleDateChange = useCallback((type: 'start' | 'end') => {
     return (date?: Dayjs) => {
