@@ -391,6 +391,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
               const normalizedType = normalizeFormType(schema.type as FormTypeEnum | string)
               return {
                 ...schema,
+                tooltip: schema.description,
                 type: normalizedType,
                 dynamicSelectParams: normalizedType === FormTypeEnum.dynamicSelect ? {
                   plugin_id: detail?.plugin_id || '',
@@ -404,7 +405,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
               }
             })}
             ref={autoCommonParametersFormRef}
-            labelClassName='system-sm-medium mb-2 block text-text-primary'
+            labelClassName='system-sm-medium mb-2 flex items-center gap-1 text-text-primary'
             formClassName='space-y-4'
           />
         )}
@@ -412,9 +413,12 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
           {manualPropertiesSchema.length > 0 && (
             <div className='mb-6'>
               <BaseForm
-                formSchemas={manualPropertiesSchema}
+                formSchemas={manualPropertiesSchema.map(schema => ({
+                  ...schema,
+                  tooltip: schema.description,
+                }))}
                 ref={manualPropertiesFormRef}
-                labelClassName='system-sm-medium mb-2 block text-text-primary'
+                labelClassName='system-sm-medium mb-2 flex items-center gap-1 text-text-primary'
                 formClassName='space-y-4'
                 onChange={handleManualPropertiesChange}
               />
