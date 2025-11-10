@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # Dify 企业 API Mock 服务
+  enterprise-api-mock:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.10-slim
+        WORKDIR /app
+        RUN pip install flask
+        COPY enterprise_mock_api.py .
+        EXPOSE 5001
+        CMD ["python", "enterprise_mock_api.py"]
+    ports:
+      - "5001:5001"
+    environment:
+      - ENTERPRISE_SECRET_KEY=your-secret-key-here
+      - PLUGIN_MANAGER_SECRET_KEY=your-plugin-secret-key
+    networks:
+      - dify-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/info", "-H", "Enterprise-Api-Secret-Key: your-secret-key-here"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  dify-network:
+    external: true
+    name: docker_default  # 连接到 Dify 的网络

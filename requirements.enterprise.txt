@@ -1,0 +1,26 @@
+# Dify Enterprise Mock API Dependencies
+
+# 基础版本 (Flask)
+flask>=3.0.0
+
+# 高级版本 (FastAPI)
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.6.0
+
+# 数据库支持（可选）
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0  # PostgreSQL
+aiomysql>=0.2.0         # MySQL
+
+# 缓存和会话（可选）
+redis>=5.0.0
+
+# SSO 支持（可选）
+python-saml>=1.16.0     # SAML 2.0
+authlib>=1.3.0          # OAuth 2.0 / OIDC
+
+# 工具库
+python-jose[cryptography]>=3.3.0  # JWT
+passlib[bcrypt]>=1.7.4            # 密码哈希
+python-multipart>=0.0.6            # 文件上传
