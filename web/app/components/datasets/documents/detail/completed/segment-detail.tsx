@@ -20,6 +20,7 @@ import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { IndexingType } from '../../../create/step-two'
+import ImageUploaderInChunk from './image-uploader/image-uploader-in-chunk'
 
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
@@ -50,6 +51,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
   const parentMode = useDocumentContext(s => s.parentMode)
   const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
+  const isMultimodal = useDatasetDetailContextWithSelector(s => s.dataset?.is_multimodal)
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'update-segment')
@@ -136,14 +138,28 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
             isEditMode={isEditMode}
           />
         </div>
-        {isECOIndexing && <Keywords
-          className={fullScreen ? 'w-1/5' : ''}
-          actionType={isEditMode ? 'edit' : 'view'}
-          segInfo={segInfo}
-          keywords={keywords}
-          isEditMode={isEditMode}
-          onKeywordsChange={keywords => setKeywords(keywords)}
-        />}
+
+        <div className={cn('flex flex-col', fullScreen ? 'w-[320px] gap-y-2' : 'w-full gap-y-1')}>
+          {isMultimodal && (
+            <ImageUploaderInChunk
+              value={[]}
+              onChange={() => {
+                console.log('🚀 ~ onChange:')
+              }}
+            />
+          )}
+          {isECOIndexing && (
+            <Keywords
+              className='w-full'
+              actionType={isEditMode ? 'edit' : 'view'}
+              segInfo={segInfo}
+              keywords={keywords}
+              isEditMode={isEditMode}
+              onKeywordsChange={keywords => setKeywords(keywords)}
+            />
+          )}
+        </div>
+
       </div>
       {isEditMode && !fullScreen && (
         <div className='flex items-center justify-end border-t-[1px] border-t-divider-subtle p-4 pt-3'>

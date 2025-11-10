@@ -242,6 +242,11 @@ const translation = {
     pipeline: 'Pipeline',
   },
   multimodal: 'Multimodal',
+  imageUploader: {
+    button: 'Drag and drop file or folder, or',
+    browse: 'Browse',
+    tip: '{{supportTypes}} (Max {{batchCount}}, {{size}}MB each)',
+  },
 }
 
 export default translation
