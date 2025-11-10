@@ -176,7 +176,7 @@ const translation = {
     helpCenter: '帮助文档',
     support: '支持',
     compliance: '合规',
-    communityFeedback: '用户反馈',
+    forum: '论坛',
     roadmap: '路线图',
     github: 'GitHub',
     community: '社区',

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
@@ -45,7 +45,13 @@ const OpeningSettingModal = ({
   const [isShowConfirmAddVar, { setTrue: showConfirmAddVar, setFalse: hideConfirmAddVar }] = useBoolean(false)
   const [notIncludeKeys, setNotIncludeKeys] = useState<string[]>([])
 
+  const isSaveDisabled = useMemo(() => !tempValue.trim(), [tempValue])
+
   const handleSave = useCallback((ignoreVariablesCheck?: boolean) => {
+    // Prevent saving if opening statement is empty
+    if (isSaveDisabled)
+      return
+
     if (!ignoreVariablesCheck) {
       const keys = getInputKeys(tempValue)
       const promptKeys = promptVariables.map(item => item.key)
@@ -75,7 +81,7 @@ const OpeningSettingModal = ({
       }
     })
     onSave(newOpening)
-  }, [data, onSave, promptVariables, workflowVariables, showConfirmAddVar, tempSuggestedQuestions, tempValue])
+  }, [data, onSave, promptVariables, workflowVariables, showConfirmAddVar, tempSuggestedQuestions, tempValue, isSaveDisabled])
 
   const cancelAutoAddVar = useCallback(() => {
     hideConfirmAddVar()
@@ -217,6 +223,7 @@ const OpeningSettingModal = ({
         <Button
           variant='primary'
           onClick={() => handleSave()}
+          disabled={isSaveDisabled}
         >
           {t('common.operation.save')}
         </Button>
