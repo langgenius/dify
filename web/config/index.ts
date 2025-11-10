@@ -443,3 +443,8 @@ export const STOP_PARAMETER_RULE: ModelParameterRule = {
     zh_Hans: '输入序列并按 Tab 键',
   },
 }
+
+export const PARTNER_STACK_CONFIG = {
+  cookieName: 'partner_stack_info',
+  saveCookieDays: 90,
+}
