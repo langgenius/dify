@@ -7,6 +7,8 @@ const translation = {
     documentsUploadQuota: 'ドキュメント・アップロード・クォータ',
     vectorSpace: 'ナレッジベースのデータストレージ',
     vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、ナレッジベースのデータストレージのリソースを消費します。ナレッジベースのデータストレージの上限に達すると、新しいドキュメントはアップロードされません。',
+    triggerEvents: 'トリガーイベント',
+    perMonth: '月あたり',
   },
   upgradeBtn: {
     plain: 'プランをアップグレード',

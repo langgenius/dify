@@ -7,6 +7,8 @@ const translation = {
     documentsUploadQuota: 'Documents Upload Quota',
     vectorSpace: 'Knowledge Data Storage',
     vectorSpaceTooltip: 'Documents with the High Quality indexing mode will consume Knowledge Data Storage resources. When Knowledge Data Storage reaches the limit, new documents will not be uploaded.',
+    triggerEvents: 'Trigger Events',
+    perMonth: 'per month',
   },
   teamMembers: 'Team Members',
   upgradeBtn: {

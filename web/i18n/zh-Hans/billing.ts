@@ -7,6 +7,8 @@ const translation = {
     documentsUploadQuota: '文档上传配额',
     vectorSpace: '知识库数据存储空间',
     vectorSpaceTooltip: '采用高质量索引模式的文档会消耗知识数据存储资源。当知识数据存储达到限制时，将不会上传新文档。',
+    triggerEvents: '触发事件',
+    perMonth: '每月',
   },
   upgradeBtn: {
     plain: '查看套餐',
