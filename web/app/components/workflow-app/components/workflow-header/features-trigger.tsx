@@ -52,7 +52,6 @@ const FeaturesTrigger = () => {
   const startVariables = useReactflowStore(
     s => s.getNodes().find(node => node.data.type === BlockEnum.Start)?.data.variables,
   )
-  // TODO image files type ?
   const endVariables = useReactflowStore(
     s => s.getNodes().find(node => node.data.type === BlockEnum.End)?.data.outputs,
   )

@@ -123,7 +123,6 @@ const translation = {
       reserved: '预留',
       reservedParameterDuplicateTip: '自定义输出变量不能与预留属性重名',
       description: '描述',
-      descriptionPlaceholder: '参数意义的描述',
     },
     customDisclaimer: '自定义免责声明',
     customDisclaimerPlaceholder: '请输入自定义免责声明',

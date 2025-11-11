@@ -123,7 +123,6 @@ const translation = {
       reserved: 'Reserved',
       reservedParameterDuplicateTip: 'Custom output variables name cannot be the same as reserved parameters',
       description: 'Description',
-      descriptionPlaceholder: 'Description of the parameter\'s meaning',
     },
     customDisclaimer: 'Custom disclaimer',
     customDisclaimerPlaceholder: 'Please enter custom disclaimer',
