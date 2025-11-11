@@ -77,9 +77,9 @@ def clean_dataset_task(
         # This ensures all invalid doc_form values are properly handled
         if doc_form is None or (isinstance(doc_form, str) and not doc_form.strip()):
             # Use default paragraph index type for empty/invalid datasets to enable vector database cleanup
-            from core.rag.index_processor.constant.index_type import IndexType
+            from core.rag.index_processor.constant.index_type import IndexStructureType
 
-            doc_form = IndexType.PARAGRAPH_INDEX
+            doc_form = IndexStructureType.PARAGRAPH_INDEX
             logger.info(
                 click.style(f"Invalid doc_form detected, using default index type for cleanup: {doc_form}", fg="yellow")
             )

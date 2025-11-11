@@ -26,6 +26,7 @@ from core.rag.entities.metadata_entities import Condition, MetadataCondition
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.variables import (
+    ArrayFileSegment,
     StringSegment,
 )
 from core.variables.segments import ArrayObjectSegment
@@ -145,20 +146,39 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node):
         return "1"
 
     def _run(self) -> NodeRunResult:
-        # extract variables
-        variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_variable_selector)
-        if not isinstance(variable, StringSegment):
+        if not self._node_data.query_variable_selector and not self._node_data.attachments_variable_selector:
             return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs={},
-                error="Query variable is not string type.",
+                process_data={},
+                outputs={},
+                metadata={},
+                llm_usage=LLMUsage.empty_usage(),
             )
-        query = variable.value
-        variables = {"query": query}
-        if not query:
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error="Query is required."
-            )
+        variables = {}
+        # extract variables
+        if self._node_data.query_variable_selector:
+            variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_variable_selector)
+            if not isinstance(variable, StringSegment):
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs={},
+                    error="Query variable is not string type.",
+                )
+            query = variable.value
+            variables["query"] = query
+
+        if self._node_data.attachments_variable_selector:
+            variable = self.graph_runtime_state.variable_pool.get(self._node_data.attachments_variable_selector)
+            if not isinstance(variable, ArrayFileSegment):
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs={},
+                    error="Attachments variable is not array file type.",
+                )
+            attachments = variable.value
+            variables["attachments"] = attachments
+
         # TODO(-LAN-): Move this check outside.
         # check rate limit
         knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(self.tenant_id)
@@ -187,7 +207,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node):
         # retrieve knowledge
         usage = LLMUsage.empty_usage()
         try:
-            results, usage = self._fetch_dataset_retriever(node_data=self._node_data, query=query)
+            results, usage = self._fetch_dataset_retriever(node_data=self._node_data, variables=variables)
             outputs = {"result": ArrayObjectSegment(value=results)}
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -224,12 +244,16 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node):
             db.session.close()
 
     def _fetch_dataset_retriever(
-        self, node_data: KnowledgeRetrievalNodeData, query: str
+        self, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
     ) -> tuple[list[dict[str, Any]], LLMUsage]:
         usage = LLMUsage.empty_usage()
         available_datasets = []
         dataset_ids = node_data.dataset_ids
-
+        query = variables.get("query")
+        attachments = variables.get("attachments")
+        metadata_filter_document_ids = None
+        metadata_condition = None
+        metadata_usage = LLMUsage.empty_usage()
         # Subquery: Count the number of available documents for each dataset
         subquery = (
             db.session.query(Document.dataset_id, func.count(Document.id).label("available_document_count"))
@@ -260,13 +284,14 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node):
             if not dataset:
                 continue
             available_datasets.append(dataset)
-        metadata_filter_document_ids, metadata_condition, metadata_usage = self._get_metadata_filter_condition(
-            [dataset.id for dataset in available_datasets], query, node_data
-        )
-        usage = self._merge_usage(usage, metadata_usage)
+        if query:
+            metadata_filter_document_ids, metadata_condition, metadata_usage = self._get_metadata_filter_condition(
+                [dataset.id for dataset in available_datasets], query, node_data
+            )
+            usage = self._merge_usage(usage, metadata_usage)
         all_documents = []
         dataset_retrieval = DatasetRetrieval()
-        if node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
+        if str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE and query:
             # fetch model config
             if node_data.single_retrieval_config is None:
                 raise ValueError("single_retrieval_config is required")
@@ -298,7 +323,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node):
                     metadata_filter_document_ids=metadata_filter_document_ids,
                     metadata_condition=metadata_condition,
                 )
-        elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
+        elif str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             if node_data.multiple_retrieval_config is None:
                 raise ValueError("multiple_retrieval_config is required")
             if node_data.multiple_retrieval_config.reranking_mode == "reranking_model":
@@ -345,6 +370,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node):
                 reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
                 metadata_filter_document_ids=metadata_filter_document_ids,
                 metadata_condition=metadata_condition,
+                attachment_ids=[attachment.id for attachment in attachments] if attachments else None,
             )
         usage = self._merge_usage(usage, dataset_retrieval.llm_usage)
 
@@ -353,7 +379,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node):
         retrieval_resource_list = []
         # deal with external documents
         for item in external_documents:
-            source = {
+            source: dict[str, dict[str, str | Any | dict[Any, Any] | None] | Any | str | None] = {
                 "metadata": {
                     "_source": "knowledge",
                     "dataset_id": item.metadata.get("dataset_id"),

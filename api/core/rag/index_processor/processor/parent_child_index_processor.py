@@ -13,7 +13,7 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import ChildDocument, Document, ParentChildStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -283,7 +283,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         for parent_child in parent_childs.parent_child_chunks:
             preview.append({"content": parent_child.parent_content, "child_chunks": parent_child.child_contents})
         return {
-            "chunk_structure": IndexType.PARENT_CHILD_INDEX,
+            "chunk_structure": IndexStructureType.PARENT_CHILD_INDEX,
             "parent_mode": parent_childs.parent_mode,
             "preview": preview,
             "total_segments": len(parent_childs.parent_child_chunks),

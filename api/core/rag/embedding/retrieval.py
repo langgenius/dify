@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 
+from core.file.models import File
 from models.dataset import DocumentSegment
+from models.model import UploadFile
 
 
 class RetrievalChildChunk(BaseModel):
@@ -19,3 +21,4 @@ class RetrievalSegments(BaseModel):
     segment: DocumentSegment
     child_chunks: list[RetrievalChildChunk] | None = None
     score: float | None = None
+    files: list[File] | None = None

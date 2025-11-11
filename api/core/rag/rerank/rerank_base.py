@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 
 
@@ -12,6 +13,7 @@ class BaseRerankRunner(ABC):
         score_threshold: float | None = None,
         top_n: int | None = None,
         user: str | None = None,
+        query_type: QueryType = QueryType.TEXT_QUERY,
     ) -> list[Document]:
         """
         Run rerank model

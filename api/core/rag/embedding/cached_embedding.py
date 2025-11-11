@@ -103,13 +103,13 @@ class CacheEmbedding(Embeddings):
 
         return text_embeddings
 
-    def embed_file_documents(self, file_documents: list[dict]) -> list[list[float]]:
+    def embed_multimodal_documents(self, multimodel_documents: list[dict]) -> list[list[float]]:
         """Embed file documents."""
         # use doc embedding cache or store if not exists
-        file_embeddings: list[Any] = [None for _ in range(len(file_documents))]
+        multimodel_embeddings: list[Any] = [None for _ in range(len(multimodel_documents))]
         embedding_queue_indices = []
-        for i, file_document in enumerate(file_documents):
-            file_id = file_document["file_id"]
+        for i, multimodel_document in enumerate(multimodel_documents):
+            file_id = multimodel_document["file_id"]
             embedding = (
                 db.session.query(Embedding)
                 .filter_by(
@@ -118,14 +118,14 @@ class CacheEmbedding(Embeddings):
                 .first()
             )
             if embedding:
-                file_embeddings[i] = embedding.get_embedding()
+                multimodel_embeddings[i] = embedding.get_embedding()
             else:
                 embedding_queue_indices.append(i)
 
         # NOTE: avoid closing the shared scoped session here; downstream code may still have pending work
 
         if embedding_queue_indices:
-            embedding_queue_files = [file_documents[i] for i in embedding_queue_indices]
+            embedding_queue_multimodel_documents = [multimodel_documents[i] for i in embedding_queue_indices]
             embedding_queue_embeddings = []
             try:
                 model_type_instance = cast(TextEmbeddingModel, self._model_instance.model_type_instance)
@@ -137,11 +137,11 @@ class CacheEmbedding(Embeddings):
                     if model_schema and ModelPropertyKey.MAX_CHUNKS in model_schema.model_properties
                     else 1
                 )
-                for i in range(0, len(embedding_queue_files), max_chunks):
-                    batch_files = embedding_queue_files[i : i + max_chunks]
+                for i in range(0, len(embedding_queue_multimodel_documents), max_chunks):
+                    batch_multimodel_documents = embedding_queue_multimodel_documents[i : i + max_chunks]
 
-                    embedding_result = self._model_instance.invoke_file_embedding(
-                        file_documents=batch_files, user=self._user, input_type=EmbeddingInputType.DOCUMENT
+                    embedding_result = self._model_instance.invoke_multimodal_embedding(
+                        multimodel_documents=batch_multimodel_documents, user=self._user, input_type=EmbeddingInputType.DOCUMENT
                     )
 
                     for vector in embedding_result.embeddings:
@@ -161,8 +161,8 @@ class CacheEmbedding(Embeddings):
                 cache_embeddings = []
                 try:
                     for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
-                        file_embeddings[i] = n_embedding
-                        file_id = file_documents[i]["file_id"]
+                        multimodel_embeddings[i] = n_embedding
+                        file_id = multimodel_documents[i]["file_id"]
                         if file_id not in cache_embeddings:
                             embedding_cache = Embedding(
                                 model_name=self._model_instance.model,
@@ -180,7 +180,7 @@ class CacheEmbedding(Embeddings):
                 logger.exception("Failed to embed documents")
                 raise ex
 
-        return file_embeddings
+        return multimodel_embeddings
 
     def embed_query(self, text: str) -> list[float]:
         """Embed query text."""
@@ -225,10 +225,10 @@ class CacheEmbedding(Embeddings):
 
         return embedding_results  # type: ignore
 
-    def embed_file_query(self, file_document: dict) -> list[float]:
-        """Embed file documents."""
+    def embed_multimodal_query(self, multimodel_document: dict) -> list[float]:
+        """Embed multimodal documents."""
         # use doc embedding cache or store if not exists
-        file_id = file_document["file_id"]
+        file_id = multimodel_document["file_id"]
         embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model}_{file_id}"
         embedding = redis_client.get(embedding_cache_key)
         if embedding:
@@ -236,8 +236,8 @@ class CacheEmbedding(Embeddings):
             decoded_embedding = np.frombuffer(base64.b64decode(embedding), dtype="float")
             return [float(x) for x in decoded_embedding]
         try:
-            embedding_result = self._model_instance.invoke_file_embedding(
-                file_documents=[file_document], user=self._user, input_type=EmbeddingInputType.QUERY
+            embedding_result = self._model_instance.invoke_multimodal_embedding(
+                multimodel_documents=[multimodel_document], user=self._user, input_type=EmbeddingInputType.QUERY
             )
 
             embedding_results = embedding_result.embeddings[0]
@@ -247,7 +247,7 @@ class CacheEmbedding(Embeddings):
                 raise ValueError("Normalized embedding is nan please try again")
         except Exception as ex:
             if dify_config.DEBUG:
-                logger.exception("Failed to embed file document '%s'", file_document["file_id"])
+                logger.exception("Failed to embed multimodal document '%s'", multimodel_document["file_id"])
             raise ex
 
         try:
@@ -262,7 +262,7 @@ class CacheEmbedding(Embeddings):
         except Exception as ex:
             if dify_config.DEBUG:
                 logger.exception(
-                    "Failed to add embedding to redis for the file document '%s'", file_document["file_id"]
+                    "Failed to add embedding to redis for the multimodal document '%s'", multimodel_document["file_id"]
                 )
             raise ex
 

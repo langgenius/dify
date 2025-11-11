@@ -11,7 +11,7 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -167,6 +167,6 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             preview = []
             for content in chunks:
                 preview.append({"content": content})
-            return {"chunk_structure": IndexType.PARAGRAPH_INDEX, "preview": preview, "total_segments": len(chunks)}
+            return {"chunk_structure": IndexStructureType.PARAGRAPH_INDEX, "preview": preview, "total_segments": len(chunks)}
         else:
             raise ValueError("Chunks is not a list")

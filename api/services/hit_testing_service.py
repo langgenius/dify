@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from typing import Any
@@ -5,6 +6,7 @@ from typing import Any
 from core.app.app_config.entities import ModelConfig
 from core.model_runtime.entities import LLMMode
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -82,12 +84,26 @@ class HitTestingService:
 
         end = time.perf_counter()
         logger.debug("Hit testing retrieve in %s seconds", end - start)
-
-        dataset_query = DatasetQuery(
-            dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id
-        )
-
-        db.session.add(dataset_query)
+        if query:
+            content = {
+                "content_type": QueryType.TEXT_QUERY,
+                "content": query
+            }
+            dataset_query = DatasetQuery(
+                dataset_id=dataset.id, content=json.dumps(content), source="hit_testing", created_by_role="account", created_by=account.id
+            )
+            db.session.add(dataset_query)
+        if attachment_ids:
+            for attachment_id in attachment_ids:
+                content = {
+                    "content_type": QueryType.IMAGE_QUERY,
+                    "content": attachment_id
+                }
+                dataset_query = DatasetQuery(
+                    dataset_id=dataset.id, content=json.dumps(content), source="hit_testing", 
+                    created_by_role="account", created_by=account.id
+                )
+                db.session.add(dataset_query)
         db.session.commit()
 
         return cls.compact_retrieve_response(query, all_documents)

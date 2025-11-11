@@ -22,7 +22,7 @@ from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.rag.index_processor.constant.built_in_field import BuiltInField
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
@@ -2853,7 +2853,7 @@ class SegmentService:
                     document.word_count = max(0, document.word_count + word_count_change)
                     db.session.add(document)
                 # update segment index task
-                if document.doc_form == IndexType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
+                if document.doc_form == IndexStructureType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
                     # regenerate child chunks
                     # get embedding model instance
                     if dataset.indexing_technique == "high_quality":
@@ -2884,7 +2884,7 @@ class SegmentService:
                         VectorService.generate_child_chunks(
                             segment, document, dataset, embedding_model_instance, processing_rule, True
                         )
-                elif document.doc_form in (IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX):
+                elif document.doc_form in (IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.QA_INDEX):
                     if args.enabled or keyword_changed:
                         # update segment vector index
                         VectorService.update_segment_vector(args.keywords, segment, dataset)
@@ -2929,7 +2929,7 @@ class SegmentService:
                     db.session.add(document)
                 db.session.add(segment)
                 db.session.commit()
-                if document.doc_form == IndexType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
+                if document.doc_form == IndexStructureType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
                     # get embedding model instance
                     if dataset.indexing_technique == "high_quality":
                         # check embedding model setting
@@ -2959,7 +2959,7 @@ class SegmentService:
                         VectorService.generate_child_chunks(
                             segment, document, dataset, embedding_model_instance, processing_rule, True
                         )
-                elif document.doc_form in (IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX):
+                elif document.doc_form in (IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.QA_INDEX):
                     # update segment vector index
                     VectorService.update_segment_vector(args.keywords, segment, dataset)
             if dataset.is_multimodal:

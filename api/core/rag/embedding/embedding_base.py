@@ -10,7 +10,7 @@ class Embeddings(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def embed_file_documents(self, file_documents: list[dict]) -> list[list[float]]:
+    def embed_multimodal_documents(self, multimodel_documents: list[dict]) -> list[list[float]]:
         """Embed file documents."""
         raise NotImplementedError
 
@@ -20,8 +20,8 @@ class Embeddings(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def embed_file_query(self, file_document: dict) -> list[float]:
-        """Embed file query."""
+    def embed_multimodal_query(self, multimodel_document: dict) -> list[float]:
+        """Embed multimodal query."""
         raise NotImplementedError
 
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:

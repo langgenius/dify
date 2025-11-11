@@ -5,7 +5,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import Document
@@ -27,7 +27,7 @@ class VectorService:
         multimodel_documents: list[Document] = []
 
         for segment in segments:
-            if doc_form == IndexType.PARENT_CHILD_INDEX:
+            if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                 dataset_document = db.session.query(DatasetDocument).filter_by(id=segment.document_id).first()
                 if not dataset_document:
                     logger.warning(

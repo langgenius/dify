@@ -1,9 +1,9 @@
-from typing import Any, Optional
+
 from pydantic import ConfigDict
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
-from core.model_runtime.entities.text_embedding_entities import EmbeddingResult, TextEmbeddingResult
+from core.model_runtime.entities.text_embedding_entities import EmbeddingResult
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 
 
@@ -22,7 +22,7 @@ class TextEmbeddingModel(AIModel):
         model: str,
         credentials: dict,
         texts: list[str] | None = None,
-        files: list[dict] | None = None,
+        multimodel_documents: list[dict] | None = None,
         user: str | None = None,
         input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> EmbeddingResult:
@@ -52,15 +52,15 @@ class TextEmbeddingModel(AIModel):
                 texts=texts,
                 input_type=input_type,
                 )
-            if files:
-                return plugin_model_manager.invoke_file_embedding(
+            if multimodel_documents:
+                return plugin_model_manager.invoke_multimodal_embedding(
                     tenant_id=self.tenant_id,
                     user_id=user or "unknown",
                     plugin_id=self.plugin_id,
                     provider=self.provider_name,
                     model=model,
                     credentials=credentials,
-                    files=files,
+                    documents=multimodel_documents,
                     input_type=input_type,
                 )
             raise ValueError("No texts or files provided")

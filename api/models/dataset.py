@@ -7,6 +7,7 @@ import logging
 import os
 import pickle
 import re
+from sqlalchemy.orm.properties import MappedColumn
 import time
 from datetime import datetime
 from json import JSONDecodeError
@@ -19,6 +20,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
+from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_storage import storage
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
@@ -973,6 +975,35 @@ class DatasetQuery(Base):
     created_by_role = mapped_column(String, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
+
+    @property
+    def queries(self) -> list[dict[str, Any]]:
+        try:
+            queries = json.loads(self.content)
+            if isinstance(queries, list):
+                for query in queries:
+                    if query["content_type"] == QueryType.IMAGE_QUERY:
+                        file_info = db.session.query(UploadFile).filter_by(id=query["content"]).first()
+                        if file_info:
+                            query["file_info"] = {
+                                "id": file_info.id,
+                                "name": file_info.name,
+                                "size": file_info.size,
+                                "extension": file_info.extension,
+                                "mime_type": file_info.mime_type,
+                            }
+                    else:
+                        query["file_info"] = None
+
+                return queries
+            else:
+                return [queries]
+        except JSONDecodeError:
+            return [{
+                "content_type": QueryType.TEXT_QUERY,
+                "content": self.content,
+                "file_info": None,
+            }]
 
 
 class DatasetKeywordTable(Base):

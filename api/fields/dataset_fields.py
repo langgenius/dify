@@ -99,9 +99,23 @@ dataset_detail_fields = {
     "is_multimodal": fields.Boolean,
 }
 
+file_info_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "size": fields.Integer,
+    "extension": fields.String,
+    "mime_type": fields.String,
+}
+
+content_fields = {
+    "content_type": fields.String,
+    "content": fields.String,
+    "file_info": fields.Nested(file_info_fields, allow_null=True),
+}
+
 dataset_query_detail_fields = {
     "id": fields.String,
-    "content": fields.String,
+    "queries": fields.Nested(content_fields),
     "source": fields.String,
     "source_app_id": fields.String,
     "created_by_role": fields.String,

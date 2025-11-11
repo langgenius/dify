@@ -275,7 +275,7 @@ class PluginModelClient(BasePluginClient):
 
         raise ValueError("Failed to invoke text embedding")
     
-    def invoke_file_embedding(
+    def invoke_multimodal_embedding(
         self,
         tenant_id: str,
         user_id: str,
@@ -283,7 +283,7 @@ class PluginModelClient(BasePluginClient):
         provider: str,
         model: str,
         credentials: dict,
-        files: list[dict],
+        documents: list[dict],
         input_type: str,
     ) -> EmbeddingResult:
         """
@@ -298,10 +298,10 @@ class PluginModelClient(BasePluginClient):
                     "user_id": user_id,
                     "data": {
                         "provider": provider,
-                        "model_type": "multimodal-embedding",
+                        "model_type": "embedding",
                         "model": model,
                         "credentials": credentials,
-                        "files": files,
+                        "documents": documents,
                         "input_type": input_type,
                     },
                 }
@@ -402,6 +402,48 @@ class PluginModelClient(BasePluginClient):
             return resp
 
         raise ValueError("Failed to invoke rerank")
+    
+    def invoke_multimodal_rerank(
+        self,
+        tenant_id: str,
+        user_id: str,
+        plugin_id: str,
+        provider: str,
+        model: str,
+        credentials: dict,
+        query: dict,
+        docs: list[dict],
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+    ) -> RerankResult:
+        """
+        Invoke multimodal rerank
+        """
+        response = self._request_with_plugin_daemon_response_stream(
+            method="POST",
+            path=f"plugin/{tenant_id}/dispatch/multimodal_rerank/invoke",
+            type_=RerankResult,
+            data=jsonable_encoder(
+                {
+                    "user_id": user_id,
+                    "data": {
+                        "provider": provider,
+                        "model_type": "rerank",
+                        "model": model,
+                        "credentials": credentials,
+                        "query": query,
+                        "docs": docs,
+                        "score_threshold": score_threshold,
+                        "top_n": top_n,
+                    },
+                }
+            ),
+        )
+        for resp in response:
+            return resp
+
+        raise ValueError("Failed to invoke multimodal rerank")
+
 
     def invoke_tts(
         self,
