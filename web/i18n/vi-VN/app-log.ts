@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'Quý hiện tại',
       yearToDate: 'Năm hiện tại',
       allTime: 'Tất cả thời gian',
+      custom: 'Tùy chỉnh',
+      last30days: '30 Ngày Qua',
     },
     annotation: {
       all: 'Tất cả',
