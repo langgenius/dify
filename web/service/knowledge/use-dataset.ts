@@ -4,6 +4,8 @@ import type {
   DataSet,
   DataSetListResponse,
   DatasetListRequest,
+  HitTestingRecordsRequest,
+  HitTestingRecordsResponse,
   IndexingStatusBatchRequest,
   IndexingStatusBatchResponse,
   ProcessRuleResponse,
@@ -96,4 +98,16 @@ export const useDisableDatasetServiceApi = () => {
     mutationKey: [NAME_SPACE, 'disable-api'],
     mutationFn: (datasetId: string) => post<CommonResponse>(`/datasets/${datasetId}/api-keys/disable`),
   })
+}
+
+export const useHitTestingRecords = (params: HitTestingRecordsRequest) => {
+  const { datasetId, page, limit } = params
+  return useQuery({
+    queryKey: [NAME_SPACE, 'hit-testing-records', datasetId, page, limit],
+    queryFn: () => get<HitTestingRecordsResponse>(`/datasets/${datasetId}/queries`, { params: { page, limit } }),
+  })
+}
+
+export const useInvalidateHitTestingRecords = (datasetId: string) => {
+  return useInvalid([NAME_SPACE, 'hit-testing-records', datasetId])
 }

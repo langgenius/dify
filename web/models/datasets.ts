@@ -595,6 +595,7 @@ export type HitTestingRecord = {
   created_by_role: 'account' | 'end_user'
   created_by: string
   created_at: number
+  attachments: Attachment[]
 }
 
 export type HitTestingChildChunk = {
@@ -825,4 +826,10 @@ export type CreateDatasetResponse = {
 export type IndexingStatusBatchRequest = {
   datasetId: string
   batchId: string
+}
+
+export type HitTestingRecordsRequest = {
+  datasetId: string
+  page: number
+  limit: number
 }

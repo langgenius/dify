@@ -7,6 +7,7 @@ const translation = {
   table: {
     header: {
       source: '数据源',
+      queryContent: '查询内容',
       text: '文本',
       time: '时间',
     },
