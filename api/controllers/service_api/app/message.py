@@ -193,8 +193,15 @@ class AppGetFeedbacksApi(Resource):
         Returns paginated list of all feedback submitted for messages in this app.
         """
         args = feedback_list_parser.parse_args()
-        feedbacks = MessageService.get_all_messages_feedbacks(app_model, page=args["page"], limit=args["limit"])
-        return {"data": feedbacks}
+        feedbacks, total = MessageService.get_all_messages_feedbacks(app_model, page=args["page"], limit=args["limit"])
+        
+        return {
+            "data": feedbacks,
+            "has_more": len(feedbacks) == args["limit"],
+            "limit": args["limit"],
+            "total": total,
+            "page": args["page"],
+        }
 
 
 @service_api_ns.route("/messages/<uuid:message_id>/suggested")

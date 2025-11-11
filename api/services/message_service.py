@@ -182,8 +182,13 @@ class MessageService:
 
     @classmethod
     def get_all_messages_feedbacks(cls, app_model: App, page: int, limit: int):
-        """Get all feedbacks of an app"""
+        """Get all feedbacks of an app with pagination metadata"""
         offset = (page - 1) * limit
+        
+        # Get total count
+        total = db.session.query(MessageFeedback).where(MessageFeedback.app_id == app_model.id).count()
+        
+        # Get paginated feedbacks
         feedbacks = (
             db.session.query(MessageFeedback)
             .where(MessageFeedback.app_id == app_model.id)
@@ -193,7 +198,7 @@ class MessageService:
             .all()
         )
 
-        return [record.to_dict() for record in feedbacks]
+        return [record.to_dict() for record in feedbacks], total
 
     @classmethod
     def get_message(cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str):
