@@ -5,6 +5,7 @@ import type { FileEntity } from '../types'
 import { useUpload } from '../hooks/use-upload'
 import ImageInput from './image-input'
 import cn from '@/utils/classnames'
+import { useTranslation } from 'react-i18next'
 
 type FileUploaderInRetrievalTestingProps = {
   textArea: React.ReactNode
@@ -18,6 +19,7 @@ const FileUploaderInRetrievalTesting = ({
   className,
   actionAreaClassName,
 }: FileUploaderInRetrievalTestingProps) => {
+  const { t } = useTranslation()
   const {
     dragging,
     dragRef,
@@ -33,7 +35,7 @@ const FileUploaderInRetrievalTesting = ({
         <div
           className='absolute inset-0.5 z-10 flex items-center justify-center rounded-lg border-[1.5px] border-dashed border-components-dropzone-border-accent bg-components-dropzone-bg-accent'
         >
-          <div>Drag file here to upload</div>
+          <div>{t('datasetHitTesting.imageUploader.dropZoneTip')}</div>
           <div ref={dragRef} className='absolute inset-0' />
         </div>
       )}
