@@ -16,7 +16,23 @@ const PartnerStack: FC = () => {
   const { mutateAsync } = useBindPartnerStackInfo()
 
   useEffect(() => {
-    if (!IS_CLOUD_EDITION || isSignInPage)
+    if (!IS_CLOUD_EDITION)
+      return
+
+    // Save PartnerStack info in cookie first. Because if user hasn't logged in, redirecting to login page would cause lose the partnerStack info in URL.
+    if (!psInfoInCookie && psPartnerKey && psClickId) {
+      Cookies.set(PARTNER_STACK_CONFIG.cookieName, JSON.stringify({
+        partnerKey: psPartnerKey,
+        clickId: psClickId,
+      }), {
+        expires: PARTNER_STACK_CONFIG.saveCookieDays,
+        path: '/',
+        // Save to top domain. cloud.dify.ai => .dify.ai
+        domain: globalThis.location.hostname.replace('cloud', ''),
+      })
+    }
+
+    if (isSignInPage)
       return
     (async () => {
       if (IS_CLOUD_EDITION && psPartnerKey && psClickId) {
