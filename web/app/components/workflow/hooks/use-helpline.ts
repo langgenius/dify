@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import type { Node } from '../types'
-import { BlockEnum, TRIGGER_NODE_TYPES } from '../types'
+import { BlockEnum, isTriggerNode } from '../types'
 import { useWorkflowStore } from '../store'
 
 // Entry node (Start/Trigger) wrapper offsets
@@ -18,7 +18,7 @@ export const useHelpline = () => {
 
   // Check if a node is an entry node (Start or Trigger)
   const isEntryNode = useCallback((node: Node): boolean => {
-    return TRIGGER_NODE_TYPES.includes(node.data.type as any) || node.data.type === BlockEnum.Start
+    return isTriggerNode(node.data.type as any) || node.data.type === BlockEnum.Start
   }, [])
 
   // Get the actual alignment position of a node (accounting for wrapper offset)

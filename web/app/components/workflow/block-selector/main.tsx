@@ -20,7 +20,7 @@ import type {
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
-import { BlockEnum } from '../types'
+import { BlockEnum, isTriggerNode } from '../types'
 import Tabs from './tabs'
 import { TabsEnum } from './types'
 import { useTabs } from './hooks'
@@ -34,12 +34,6 @@ import {
   Plus02,
 } from '@/app/components/base/icons/src/vender/line/general'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
-
-const TRIGGER_NODE_TYPES: BlockEnum[] = [
-  BlockEnum.TriggerSchedule,
-  BlockEnum.TriggerWebhook,
-  BlockEnum.TriggerPlugin,
-]
 
 export type NodeSelectorProps = {
   open?: boolean
@@ -115,7 +109,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
         continue
       if (nodeType === BlockEnum.Start)
         result.hasUserInputNode = true
-      if (TRIGGER_NODE_TYPES.includes(nodeType))
+      if (isTriggerNode(nodeType))
         result.hasTriggerNode = true
       if (result.hasTriggerNode && result.hasUserInputNode)
         break

@@ -16,24 +16,18 @@ import {
   RiLoader2Line,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import type { NodeProps } from '../../types'
+import type { NodeProps } from '@/app/components/workflow/types'
 import {
   BlockEnum,
   NodeRunningStatus,
-  TRIGGER_NODE_TYPES,
-} from '../../types'
-import {
-  useNodesReadOnly,
-  useToolIcon,
-} from '../../hooks'
-import {
-  hasErrorHandleNode,
-  hasRetryNode,
-} from '../../utils'
-import { useNodeIterationInteractions } from '../iteration/use-interactions'
-import { useNodeLoopInteractions } from '../loop/use-interactions'
-import type { IterationNodeType } from '../iteration/types'
-import CopyID from '../tool/components/copy-id'
+  isTriggerNode,
+} from '@/app/components/workflow/types'
+import { useNodesReadOnly, useToolIcon } from '@/app/components/workflow/hooks'
+import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
+import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
+import { useNodeLoopInteractions } from '@/app/components/workflow/nodes/loop/use-interactions'
+import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
+import CopyID from '@/app/components/workflow/nodes/tool/components/copy-id'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -47,8 +41,8 @@ import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-c
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
-import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
-import { ToolTypeEnum } from '../../block-selector/types'
+import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { ToolTypeEnum } from '@/app/components/workflow/block-selector/types'
 
 type NodeChildProps = {
   id: string
@@ -354,7 +348,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   )
 
   const isStartNode = data.type === BlockEnum.Start
-  const isEntryNode = TRIGGER_NODE_TYPES.includes(data.type as any) || isStartNode
+  const isEntryNode = isTriggerNode(data.type as any) || isStartNode
 
   return isEntryNode ? (
     <EntryNodeContainer

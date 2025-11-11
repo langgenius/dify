@@ -18,7 +18,7 @@ import {
 } from 'reactflow'
 import type { PluginDefaultValue } from '../block-selector/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
-import { BlockEnum, TRIGGER_NODE_TYPES } from '../types'
+import { BlockEnum, isTriggerNode } from '../types'
 import { useWorkflowStore } from '../store'
 import {
   CUSTOM_EDGE,
@@ -148,12 +148,12 @@ export const useNodesInteractions = () => {
         const currentNode = draft.find(n => n.id === node.id)!
 
         // Check if current dragging node is an entry node
-        const isCurrentEntryNode = TRIGGER_NODE_TYPES.includes(node.data.type as any) || node.data.type === BlockEnum.Start
+        const isCurrentEntryNode = isTriggerNode(node.data.type as any) || node.data.type === BlockEnum.Start
 
         // X-axis alignment with offset consideration
         if (showVerticalHelpLineNodesLength > 0) {
           const targetNode = showVerticalHelpLineNodes[0]
-          const isTargetEntryNode = TRIGGER_NODE_TYPES.includes(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
+          const isTargetEntryNode = isTriggerNode(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
 
           // Calculate the wrapper position needed to align the inner nodes
           // Target inner position = target.position + target.offset
@@ -177,7 +177,7 @@ export const useNodesInteractions = () => {
         // Y-axis alignment with offset consideration
         if (showHorizontalHelpLineNodesLength > 0) {
           const targetNode = showHorizontalHelpLineNodes[0]
-          const isTargetEntryNode = TRIGGER_NODE_TYPES.includes(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
+          const isTargetEntryNode = isTriggerNode(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
 
           const targetOffset = isTargetEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
           const currentOffset = isCurrentEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0

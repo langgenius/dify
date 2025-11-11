@@ -23,10 +23,12 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import type {
   CommonEdgeType,
   CommonNodeType,
+  Node,
 } from '@/app/components/workflow/types'
 import {
   BlockEnum,
   InputVarType,
+  isTriggerNode,
 } from '@/app/components/workflow/types'
 import { useToastContext } from '@/app/components/base/toast'
 import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
@@ -36,15 +38,8 @@ import { fetchAppDetail } from '@/service/apps'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import useTheme from '@/hooks/use-theme'
 import cn from '@/utils/classnames'
-import { useIsChatMode } from '../../hooks'
+import { useIsChatMode } from '@/app/components/workflow/hooks'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { Node } from '@/app/components/workflow/types'
-
-const TRIGGER_NODE_TYPES: BlockEnum[] = [
-  BlockEnum.TriggerSchedule,
-  BlockEnum.TriggerWebhook,
-  BlockEnum.TriggerPlugin,
-]
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
@@ -97,7 +92,7 @@ const FeaturesTrigger = () => {
   }, [edges, startNodeIds])
   // Track trigger presence so the publisher can adjust UI (e.g. hide missing start section).
   const hasTriggerNode = useMemo(() => (
-    nodes.some(node => TRIGGER_NODE_TYPES.includes(node.data.type as BlockEnum))
+    nodes.some(node => isTriggerNode(node.data.type as BlockEnum))
   ), [nodes])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
