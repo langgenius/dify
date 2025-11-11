@@ -7,16 +7,37 @@ import FileItem from './image-item'
 import { useUpload } from '../hooks/use-upload'
 import ImageInput from './image-input'
 import cn from '@/utils/classnames'
+import { useCallback, useState } from 'react'
+import type { ImageInfo } from '@/app/components/datasets/common/image-previewer'
+import ImagePreviewer from '@/app/components/datasets/common/image-previewer'
 
-type FileUploaderInAttachmentProps = {
+type ImageUploaderInChunkProps = {
   disabled?: boolean
   className?: string
 }
-const FileUploaderInAttachment = ({
+const ImageUploaderInChunk = ({
   disabled,
   className,
-}: FileUploaderInAttachmentProps) => {
+}: ImageUploaderInChunkProps) => {
   const files = useFileStoreWithSelector(s => s.files)
+  const [previewIndex, setPreviewIndex] = useState(0)
+  const [previewImages, setPreviewImages] = useState<ImageInfo[]>([])
+
+  const handleImagePreview = useCallback((fileId: string) => {
+    const index = files.findIndex(item => item.id === fileId)
+    if (index === -1) return
+    setPreviewIndex(index)
+    setPreviewImages(files.map(item => ({
+      url: item.base64Url || item.sourceUrl || '',
+      name: item.name,
+      size: item.size,
+    })))
+  }, [files])
+
+  const handleClosePreview = useCallback(() => {
+    setPreviewImages([])
+  }, [])
+
   const {
     handleRemoveFile,
     handleReUploadFile,
@@ -32,12 +53,20 @@ const FileUploaderInAttachment = ({
               key={file.id}
               file={file}
               showDeleteAction={!disabled}
-              onRemove={() => handleRemoveFile(file.id)}
-              onReUpload={() => handleReUploadFile(file.id)}
+              onRemove={handleRemoveFile}
+              onReUpload={handleReUploadFile}
+              onPreview={handleImagePreview}
             />
           ))
         }
       </div>
+      {previewImages.length > 0 && (
+        <ImagePreviewer
+          images={previewImages}
+          initialIndex={previewIndex}
+          onClose={handleClosePreview}
+        />
+      )}
     </div>
   )
 }
@@ -60,7 +89,7 @@ const ImageUploaderInChunkWrapper = ({
       value={value}
       onChange={onChange}
     >
-      <FileUploaderInAttachment disabled={disabled} className={className} />
+      <ImageUploaderInChunk disabled={disabled} className={className} />
     </FileContextProvider>
   )
 }

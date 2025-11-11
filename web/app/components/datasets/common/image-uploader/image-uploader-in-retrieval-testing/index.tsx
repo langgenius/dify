@@ -7,18 +7,18 @@ import ImageInput from './image-input'
 import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 
-type FileUploaderInRetrievalTestingProps = {
+type ImageUploaderInRetrievalTestingProps = {
   textArea: React.ReactNode
   actionButton: React.ReactNode
   className?: string
   actionAreaClassName?: string
 }
-const FileUploaderInRetrievalTesting = ({
+const ImageUploaderInRetrievalTesting = ({
   textArea,
   actionButton,
   className,
   actionAreaClassName,
-}: FileUploaderInRetrievalTestingProps) => {
+}: ImageUploaderInRetrievalTestingProps) => {
   const { t } = useTranslation()
   const {
     dragging,
@@ -70,7 +70,7 @@ const ImageUploaderInRetrievalTestingWrapper = ({
       value={value}
       onChange={onChange}
     >
-      <FileUploaderInRetrievalTesting
+      <ImageUploaderInRetrievalTesting
         textArea={textArea}
         actionButton={actionButton}
         className={className}

@@ -148,7 +148,7 @@ const ImagePreviewer = ({
 
   return createPortal(
     <div
-      className='fixed inset-0 z-[1000] flex items-center justify-center bg-background-overlay-fullscreen p-5 pb-4 backdrop-blur-[6px]'
+      className='image-previewer fixed inset-0 z-[10000] flex items-center justify-center bg-background-overlay-fullscreen p-5 pb-4 backdrop-blur-[6px]'
       onClick={e => e.stopPropagation()}
       tabIndex={-1}
     >
