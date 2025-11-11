@@ -276,6 +276,7 @@ const translation = {
     'searchDataSource': 'データソースを検索',
     'sources': 'ソース',
     'start': '始める',
+    'startDisabledTip': 'トリガーノードとユーザー入力ノードは互いに排他です。',
   },
   blocks: {
     'start': 'ユーザー入力',

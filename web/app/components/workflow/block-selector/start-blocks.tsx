@@ -20,6 +20,7 @@ type StartBlocksProps = {
   onSelect: (type: BlockEnum, triggerDefaultValue?: TriggerDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
   onContentStateChange?: (hasContent: boolean) => void
+  hideUserInput?: boolean
 }
 
 const StartBlocks = ({
@@ -27,6 +28,7 @@ const StartBlocks = ({
   onSelect,
   availableBlocksTypes = [],
   onContentStateChange,
+  hideUserInput = false, // Allow parent to explicitly hide Start node option (e.g. when one already exists).
 }: StartBlocksProps) => {
   const { t } = useTranslation()
   const nodes = useNodes()
@@ -45,8 +47,8 @@ const StartBlocks = ({
     }
 
     return START_BLOCKS.filter((block) => {
-      // Hide User Input (Start) if it already exists in workflow
-      if (block.type === BlockEnumValues.Start && hasStartNode)
+      // Hide User Input (Start) if it already exists in workflow or if hideUserInput is true
+      if (block.type === BlockEnumValues.Start && (hasStartNode || hideUserInput))
         return false
 
       // Filter by search text
@@ -57,7 +59,7 @@ const StartBlocks = ({
       // availableBlocksTypes now contains properly filtered entry node types from parent
       return availableBlocksTypes.includes(block.type)
     })
-  }, [searchText, availableBlocksTypes, nodes, t])
+  }, [searchText, availableBlocksTypes, nodes, t, hideUserInput])
 
   const isEmpty = filteredBlocks.length === 0
 

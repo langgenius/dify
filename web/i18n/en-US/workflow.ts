@@ -287,6 +287,7 @@ const translation = {
     'hideActions': 'Hide tools',
     'noFeaturedPlugins': 'Discover more tools in Marketplace',
     'noFeaturedTriggers': 'Discover more triggers in Marketplace',
+    'startDisabledTip': 'Trigger node and user input node are mutually exclusive.',
   },
   blocks: {
     'start': 'User Input',

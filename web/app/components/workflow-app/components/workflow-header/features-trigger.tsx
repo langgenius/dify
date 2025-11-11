@@ -40,6 +40,12 @@ import { useIsChatMode } from '../../hooks'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { Node } from '@/app/components/workflow/types'
 
+const TRIGGER_NODE_TYPES: BlockEnum[] = [
+  BlockEnum.TriggerSchedule,
+  BlockEnum.TriggerWebhook,
+  BlockEnum.TriggerPlugin,
+]
+
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
   const { theme } = useTheme()
@@ -89,6 +95,10 @@ const FeaturesTrigger = () => {
       return false
     return edges.some(edge => startNodeIds.includes(edge.source))
   }, [edges, startNodeIds])
+  // Track trigger presence so the publisher can adjust UI (e.g. hide missing start section).
+  const hasTriggerNode = useMemo(() => (
+    nodes.some(node => TRIGGER_NODE_TYPES.includes(node.data.type as BlockEnum))
+  ), [nodes])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const invalidateAppTriggers = useInvalidateAppTriggers()
@@ -189,6 +199,7 @@ const FeaturesTrigger = () => {
           workflowToolAvailable: lastPublishedHasUserInput,
           crossAxisOffset: 4,
           missingStartNode: !startNode,
+          hasTriggerNode,
         }}
       />
     </>

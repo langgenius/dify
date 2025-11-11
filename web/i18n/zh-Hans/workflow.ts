@@ -286,6 +286,7 @@ const translation = {
     'hideActions': '收起工具',
     'noFeaturedPlugins': '前往插件市场查看更多工具',
     'noFeaturedTriggers': '前往插件市场查看更多触发器',
+    'startDisabledTip': '触发节点与用户输入节点互斥。',
   },
   blocks: {
     'start': '用户输入',
