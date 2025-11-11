@@ -644,6 +644,7 @@ services:
     networks:
       - ssrf_proxy_network
       - default
+      - traefik-net
 
   # worker service
   # The Celery worker for processing the queue.
@@ -719,6 +720,8 @@ services:
       ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
       ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
       NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: ${NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX:-false}
+    # networks:
+    #   - traefik-net
 
   # The postgres database.
   db:
