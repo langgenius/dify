@@ -40,7 +40,7 @@ const NormalForm = () => {
     try {
       if (isLoggedIn) {
         const redirectUrl = resolvePostLoginRedirect(searchParams)
-        router.replace(redirectUrl || `/apps${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)
+        router.replace(redirectUrl || '/apps')
         return
       }
 
