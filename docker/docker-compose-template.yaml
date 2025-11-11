@@ -328,9 +328,18 @@ services:
     depends_on:
       - api
       - web
-    ports:
-      - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
-      - "${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}"
+    # ports:
+    #   - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
+    #   - "${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}"
+    networks:
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dify.rule=Host(`kbnuc-dify.duckdns.org`)"
+      - "traefik.http.routers.dify.entrypoints=websecure"
+      - "traefik.http.routers.dify.tls.certresolver=myresolver"
+      - "traefik.http.services.dify.loadbalancer.server.port=80"
+
 
   # The Weaviate vector store.
   weaviate:
@@ -775,6 +784,8 @@ networks:
   opensearch-net:
     driver: bridge
     internal: true
+  traefik-net:
+    external: true
 
 volumes:
   oradata:
