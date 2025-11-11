@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11, <3.13"
 resolution-markers = [
     "python_full_version >= '3.12.4' and platform_python_implementation != 'PyPy' and sys_platform == 'linux'",
@@ -1184,6 +1184,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/6b/b0/e595ce2a2527e169c3bcd6c33d2473c1918e0b7f6826a043ca1245dd4e5b/crcmod-1.7.tar.gz", hash = "sha256:dc7051a0db5f2bd48665a990d3ec1cc305a466a77358ca4492826f41f283601e", size = 89670, upload-time = "2010-06-27T14:35:29.538Z" }
 
 [[package]]
+name = "croniter"
+version = "6.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-dateutil" },
+    { name = "pytz" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ad/2f/44d1ae153a0e27be56be43465e5cb39b9650c781e001e7864389deb25090/croniter-6.0.0.tar.gz", hash = "sha256:37c504b313956114a983ece2c2b07790b1f1094fe9d81cc94739214748255577", size = 64481, upload-time = "2024-12-17T17:17:47.32Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/4b/290b4c3efd6417a8b0c284896de19b1d5855e6dbdb97d2a35e68fa42de85/croniter-6.0.0-py2.py3-none-any.whl", hash = "sha256:2f878c3856f17896979b2a4379ba1f09c83e374931ea15cc835c5dd2eee9b368", size = 25468, upload-time = "2024-12-17T17:17:45.359Z" },
+]
+
+[[package]]
 name = "cryptography"
 version = "46.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1287,9 +1300,10 @@ wheels = [
 
 [[package]]
 name = "dify-api"
-version = "1.9.2"
+version = "1.10.0rc1"
 source = { virtual = "." }
 dependencies = [
+    { name = "apscheduler" },
     { name = "arize-phoenix-otel" },
     { name = "azure-identity" },
     { name = "beautifulsoup4" },
@@ -1298,6 +1312,7 @@ dependencies = [
     { name = "cachetools" },
     { name = "celery" },
     { name = "chardet" },
+    { name = "croniter" },
     { name = "flask" },
     { name = "flask-compress" },
     { name = "flask-cors" },
@@ -1482,6 +1497,7 @@ vdb = [
 
 [package.metadata]
 requires-dist = [
+    { name = "apscheduler", specifier = ">=3.11.0" },
     { name = "arize-phoenix-otel", specifier = "~=0.9.2" },
     { name = "azure-identity", specifier = "==1.16.1" },
     { name = "beautifulsoup4", specifier = "==4.12.2" },
@@ -1490,6 +1506,7 @@ requires-dist = [
     { name = "cachetools", specifier = "~=5.3.0" },
     { name = "celery", specifier = "~=5.5.2" },
     { name = "chardet", specifier = "~=5.1.0" },
+    { name = "croniter", specifier = ">=6.0.0" },
     { name = "flask", specifier = "~=3.1.2" },
     { name = "flask-compress", specifier = ">=1.17,<1.18" },
     { name = "flask-cors", specifier = "~=6.0.0" },
