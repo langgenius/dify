@@ -52,6 +52,7 @@ import { PromptMode } from '@/models/debug'
 import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import { useModalContext } from '@/context/modal-context'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Drawer from '@/app/components/base/drawer'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -1021,7 +1022,7 @@ const Configuration: FC = () => {
                 <div className='flex grow flex-col rounded-tl-2xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg '>
                   <Debug
                     isAPIKeySet={isAPIKeySet}
-                    onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
+                    onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
                     inputs={inputs}
                     modelParameterParams={{
                       setModel: setModel as any,
@@ -1041,7 +1042,7 @@ const Configuration: FC = () => {
               content={t('appDebug.trailUseGPT4Info.description')}
               isShow={showUseGPT4Confirm}
               onConfirm={() => {
-                setShowAccountSettingModal({ payload: 'provider' })
+                setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
                 setShowUseGPT4Confirm(false)
               }}
               onCancel={() => setShowUseGPT4Confirm(false)}
@@ -1073,7 +1074,7 @@ const Configuration: FC = () => {
             <Drawer showClose isOpen={isShowDebugPanel} onClose={hideDebugPanel} mask footer={null}>
               <Debug
                 isAPIKeySet={isAPIKeySet}
-                onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
+                onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
                 inputs={inputs}
                 modelParameterParams={{
                   setModel: setModel as any,

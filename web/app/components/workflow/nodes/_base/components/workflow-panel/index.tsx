@@ -45,6 +45,7 @@ import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
 import { canFindTool } from '@/utils'
 import cn from '@/utils/classnames'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import {
   RiCloseLine,
   RiPlayLargeLine,
@@ -333,7 +334,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const { setShowAccountSettingModal } = useModalContext()
 
   const handleJumpToDataSourcePage = useCallback(() => {
-    setShowAccountSettingModal({ payload: 'data-source' })
+    setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
   }, [setShowAccountSettingModal])
 
   const {

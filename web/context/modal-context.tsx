@@ -15,6 +15,7 @@ import {
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
   SHOW_PRICING_MODAL_ACTION,
 } from '@/app/education-apply/constants'
+import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
 import {
   ACCOUNT_SETTING_MODAL_ACTION,
   DEFAULT_ACCOUNT_SETTING_TAB,
@@ -96,7 +97,7 @@ export type ModelModalType = {
 }
 
 export type ModalContextState = {
-  setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<string> | null>>
+  setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<AccountSettingTab> | null>>
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
@@ -143,7 +144,7 @@ export const ModalContextProvider = ({
 }: ModalContextProviderProps) => {
   const searchParams = useSearchParams()
 
-  const [showAccountSettingModal, setShowAccountSettingModal] = useState<ModalState<string> | null>(() => {
+  const [showAccountSettingModal, setShowAccountSettingModal] = useState<ModalState<AccountSettingTab> | null>(() => {
     if (searchParams.get('action') === ACCOUNT_SETTING_MODAL_ACTION) {
       const tabParam = searchParams.get('tab')
       const tab = isValidAccountSettingTab(tabParam) ? tabParam : DEFAULT_ACCOUNT_SETTING_TAB
