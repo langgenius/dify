@@ -28,7 +28,12 @@ import docStyle from '@/app/components/datasets/documents/detail/completed/style
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
 import EmptyRecords from './components/empty-records'
 import Records from './components/records'
-import { useHitTestingRecords, useInvalidateHitTestingRecords } from '@/service/knowledge/use-dataset'
+import {
+  useExternalKnowledgeBaseHitTesting,
+  useHitTesting,
+  useHitTestingRecords,
+  useInvalidateHitTestingRecords,
+} from '@/service/knowledge/use-hit-testing'
 
 const limit = 10
 
@@ -44,11 +49,10 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>() // 初始化记录为空数组
   const [externalHitResult, setExternalHitResult] = useState<ExternalKnowledgeBaseHitTestingResponse | undefined>()
-  const [submitLoading, setSubmitLoading] = useState(false)
   const [text, setText] = useState('')
 
   const [currPage, setCurrPage] = React.useState<number>(0)
-  const { data: recordsRes, isLoading } = useHitTestingRecords({ datasetId, page: currPage + 1, limit })
+  const { data: recordsRes, isLoading: isRecordsLoading } = useHitTestingRecords({ datasetId, page: currPage + 1, limit })
   const invalidateHitTestingRecords = useInvalidateHitTestingRecords(datasetId)
 
   const total = recordsRes?.total || 0
@@ -59,6 +63,14 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
   const [isShowRightPanel, { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel }] = useBoolean(!isMobile)
+
+  const { mutateAsync: hitTestingMutation, isPending: isHitTestingPending } = useHitTesting(datasetId)
+  const {
+    mutateAsync: externalKnowledgeBaseHitTestingMutation,
+    isPending: isExternalKnowledgeBaseHitTestingPending,
+  } = useExternalKnowledgeBaseHitTesting(datasetId)
+
+  const isRetrievalLoading = isHitTestingPending || isExternalKnowledgeBaseHitTestingPending
 
   const renderHitResults = (results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]) => (
     <div className='flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3'>
@@ -108,27 +120,27 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           <p className='mt-0.5 text-[13px] font-normal leading-4 text-text-tertiary'>{t('datasetHitTesting.desc')}</p>
         </div>
         <Textarea
-          datasetId={datasetId}
           setHitResult={setHitResult}
           setExternalHitResult={setExternalHitResult}
           onSubmit={showRightPanel}
           onUpdateList={invalidateHitTestingRecords}
-          loading={submitLoading}
-          setLoading={setSubmitLoading}
+          loading={isRetrievalLoading}
           setText={setText}
           text={text}
           isExternal={isExternal}
           onClickRetrievalMethod={() => setIsShowModifyRetrievalModal(true)}
           retrievalConfig={retrievalConfig}
           isEconomy={currentDataset?.indexing_technique === 'economy'}
+          hitTestingMutation={hitTestingMutation}
+          externalKnowledgeBaseHitTestingMutation={externalKnowledgeBaseHitTestingMutation}
         />
         <div className='mb-3 mt-6 text-base font-semibold text-text-primary'>{t('datasetHitTesting.records')}</div>
-        {isLoading
+        {isRecordsLoading
           && (
             <div className='flex-1'><Loading type='app' /></div>
           )
         }
-        {!isLoading && recordsRes?.data && recordsRes.data.length > 0 && (
+        {!isRecordsLoading && recordsRes?.data && recordsRes.data.length > 0 && (
           <>
             <Records records={recordsRes?.data} onClickRecord={handleClickRecord}/>
             {(total && total > limit)
@@ -136,7 +148,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
               : null}
           </>
         )}
-        {!isLoading && !recordsRes?.data?.length && (
+        {!isRecordsLoading && !recordsRes?.data?.length && (
           <EmptyRecords />
         )}
       </div>
@@ -149,7 +161,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         footer={null}
       >
         <div className='flex flex-col pt-3'>
-          {submitLoading
+          {isRetrievalLoading
             ? <div className='flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3'>
               <CardSkelton />
             </div>

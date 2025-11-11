@@ -833,3 +833,18 @@ export type HitTestingRecordsRequest = {
   page: number
   limit: number
 }
+
+export type HitTestingRequest = {
+  query: string
+  attachment_ids: string[]
+  retrieval_model: RetrievalConfig
+}
+
+export type ExternalKnowledgeBaseHitTestingRequest = {
+  query: string
+  external_retrieval_model: {
+    top_k: number
+    score_threshold: number
+    score_threshold_enabled: boolean
+  }
+}
