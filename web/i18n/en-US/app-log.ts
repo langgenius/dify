@@ -60,6 +60,7 @@ const translation = {
     period: {
       today: 'Today',
       last7days: 'Last 7 Days',
+      last30days: 'Last 30 Days',
       last4weeks: 'Last 4 weeks',
       last3months: 'Last 3 months',
       last12months: 'Last 12 months',
@@ -67,6 +68,7 @@ const translation = {
       quarterToDate: 'Quarter to date',
       yearToDate: 'Year to date',
       allTime: 'All time',
+      custom: 'Custom',
     },
     annotation: {
       all: 'All',

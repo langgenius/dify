@@ -1209,6 +1209,13 @@ class SwaggerUIConfig(BaseSettings):
     )
 
 
+class TenantIsolatedTaskQueueConfig(BaseSettings):
+    TENANT_ISOLATED_TASK_CONCURRENCY: int = Field(
+        description="Number of tasks allowed to be delivered concurrently from isolated queue per tenant",
+        default=1,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1235,6 +1242,7 @@ class FeatureConfig(
     RagEtlConfig,
     RepositoryConfig,
     SecurityConfig,
+    TenantIsolatedTaskQueueConfig,
     ToolConfig,
     UpdateConfig,
     WorkflowConfig,

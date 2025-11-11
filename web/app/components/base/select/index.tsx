@@ -34,7 +34,7 @@ export type Item = {
 export type ISelectProps = {
   className?: string
   wrapperClassName?: string
-  renderTrigger?: (value: Item | null) => React.JSX.Element | null
+  renderTrigger?: (value: Item | null, isOpen: boolean) => React.JSX.Element | null
   items?: Item[]
   defaultValue?: number | string
   disabled?: boolean
@@ -222,7 +222,7 @@ const SimpleSelect: FC<ISelectProps> = ({
     >
       {({ open }) => (
         <div className={classNames('group/simple-select relative h-9', wrapperClassName)}>
-          {renderTrigger && <ListboxButton className='w-full'>{renderTrigger(selectedItem)}</ListboxButton>}
+          {renderTrigger && <ListboxButton className='w-full'>{renderTrigger(selectedItem, open)}</ListboxButton>}
           {!renderTrigger && (
             <ListboxButton onClick={() => {
               onOpenChange?.(open)
