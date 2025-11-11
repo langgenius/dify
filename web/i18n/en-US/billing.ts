@@ -74,6 +74,20 @@ const translation = {
       'priority': 'Priority',
       'top-priority': 'Top Priority',
     },
+    triggerEvents: {
+      sandbox: '{{count,number}} Trigger Events',
+      professional: '{{count,number}} Trigger Events/month',
+      unlimited: 'Unlimited Trigger Events',
+    },
+    workflowExecution: {
+      standard: 'Standard Workflow Execution',
+      faster: 'Faster Workflow Execution',
+      priority: 'Priority Workflow Execution',
+    },
+    startNodes: {
+      limited: 'Up to {{count}} Start Nodes per Workflow',
+      unlimited: 'Unlimited Start Nodes per Workflow',
+    },
     logsHistory: '{{days}} Log history',
     customTools: 'Custom Tools',
     unavailable: 'Unavailable',
