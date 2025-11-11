@@ -176,7 +176,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         if not isinstance(agent_mode, dict):
             raise ValueError("agent_mode must be of object type")
 
-        # FIXME(-LAN-): Cast needed due to basedpyright limitation with dict type narrowing
+        # Type narrowing: after isinstance check, treat as dict
         agent_mode = cast(dict[str, Any], agent_mode)
 
         if "enabled" not in agent_mode or not agent_mode["enabled"]:
