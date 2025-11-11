@@ -331,6 +331,31 @@ class FileUploadConfig(BaseSettings):
         default=10,
     )
 
+    inner_UPLOAD_FILE_EXTENSION_BLACKLIST: str = Field(
+        description=(
+            "Comma-separated list of file extensions that are blocked from upload. "
+            "Extensions should be lowercase without dots (e.g., 'exe,bat,sh,dll'). "
+            "Empty by default to allow all file types."
+        ),
+        validation_alias=AliasChoices("UPLOAD_FILE_EXTENSION_BLACKLIST"),
+        default="",
+    )
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def UPLOAD_FILE_EXTENSION_BLACKLIST(self) -> set[str]:
+        """
+        Parse and return the blacklist as a set of lowercase extensions.
+        Returns an empty set if no blacklist is configured.
+        """
+        if not self.inner_UPLOAD_FILE_EXTENSION_BLACKLIST:
+            return set()
+        return {
+            ext.strip().lower().strip(".")
+            for ext in self.inner_UPLOAD_FILE_EXTENSION_BLACKLIST.split(",")
+            if ext.strip()
+        }
+
 
 class HttpConfig(BaseSettings):
     """
@@ -920,6 +945,11 @@ class DataSetConfig(BaseSettings):
         default=True,
     )
 
+    DATASET_MAX_SEGMENTS_PER_REQUEST: NonNegativeInt = Field(
+        description="Maximum number of segments for dataset segments API (0 for unlimited)",
+        default=0,
+    )
+
 
 class WorkspaceConfig(BaseSettings):
     """
@@ -1112,6 +1142,13 @@ class SwaggerUIConfig(BaseSettings):
     )
 
 
+class TenantIsolatedTaskQueueConfig(BaseSettings):
+    TENANT_ISOLATED_TASK_CONCURRENCY: int = Field(
+        description="Number of tasks allowed to be delivered concurrently from isolated queue per tenant",
+        default=1,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1136,6 +1173,7 @@ class FeatureConfig(
     RagEtlConfig,
     RepositoryConfig,
     SecurityConfig,
+    TenantIsolatedTaskQueueConfig,
     ToolConfig,
     UpdateConfig,
     WorkflowConfig,
