@@ -19,8 +19,8 @@ import { formatNumber } from '@/utils/format'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { IndexingType } from '../../../create/step-two'
-import ImageUploaderInChunk from './image-uploader/image-uploader-in-chunk'
+import { IndexingType } from '@/app/components/datasets/create/step-two'
+import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
 
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
