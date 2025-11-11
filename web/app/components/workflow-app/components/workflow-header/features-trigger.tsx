@@ -56,6 +56,7 @@ const FeaturesTrigger = () => {
   const lastPublishedHasUserInput = useStore(s => s.lastPublishedHasUserInput)
 
   const nodes = useNodes<CommonNodeType>()
+  const hasWorkflowNodes = nodes.length > 0
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
   const edges = useEdges<CommonEdgeType>()
@@ -185,7 +186,7 @@ const FeaturesTrigger = () => {
         {...{
           publishedAt,
           draftUpdatedAt,
-          disabled: nodesReadOnly,
+          disabled: nodesReadOnly || !hasWorkflowNodes,
           toolPublished,
           inputs: variables,
           onRefreshData: handleToolConfigureUpdate,
@@ -195,6 +196,7 @@ const FeaturesTrigger = () => {
           crossAxisOffset: 4,
           missingStartNode: !startNode,
           hasTriggerNode,
+          publishDisabled: !hasWorkflowNodes,
         }}
       />
     </>
