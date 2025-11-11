@@ -140,6 +140,7 @@ class Workflow(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
+        default=func.current_timestamp(),
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
     )
