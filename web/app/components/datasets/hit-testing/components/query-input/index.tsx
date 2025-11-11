@@ -20,6 +20,7 @@ import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
 import type { UseMutateAsyncFunction } from '@tanstack/react-query'
 import ImageUploaderInRetrievalTesting from '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing'
 import Textarea from './textarea'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 
 type QueryInputProps = {
   onUpdateList: () => void
@@ -53,6 +54,7 @@ const QueryInput = ({
   externalKnowledgeBaseHitTestingMutation,
 }: QueryInputProps) => {
   const { t } = useTranslation()
+  const isMultimodal = useDatasetDetailContextWithSelector(s => !!s.dataset?.is_multimodal)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [externalRetrievalSettings, setExternalRetrievalSettings] = useState({
     top_k: 4,
@@ -177,6 +179,7 @@ const QueryInput = ({
             console.log(files)
           }}
           value={[]}
+          showUploader={isMultimodal}
           className='grow'
           actionAreaClassName='px-4 py-2 shrink-0 bg-background-default'
         />

@@ -51,7 +51,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
   const parentMode = useDocumentContext(s => s.parentMode)
   const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
-  const isMultimodal = useDatasetDetailContextWithSelector(s => s.dataset?.is_multimodal)
+  const isMultimodal = useDatasetDetailContextWithSelector(s => !!s.dataset?.is_multimodal)
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'update-segment')

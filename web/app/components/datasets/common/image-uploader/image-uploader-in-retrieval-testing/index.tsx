@@ -10,12 +10,14 @@ import { useTranslation } from 'react-i18next'
 type ImageUploaderInRetrievalTestingProps = {
   textArea: React.ReactNode
   actionButton: React.ReactNode
+  showUploader?: boolean
   className?: string
   actionAreaClassName?: string
 }
 const ImageUploaderInRetrievalTesting = ({
   textArea,
   actionButton,
+  showUploader = true,
   className,
   actionAreaClassName,
 }: ImageUploaderInRetrievalTestingProps) => {
@@ -40,8 +42,13 @@ const ImageUploaderInRetrievalTesting = ({
         </div>
       )}
       {textArea}
-      <div className={cn('flex justify-between', actionAreaClassName)}>
-        <ImageInput />
+      <div
+        className={cn(
+          'flex',
+          showUploader ? 'justify-between' : 'justify-end',
+          actionAreaClassName,
+        )}>
+        {showUploader && <ImageInput />}
         {actionButton}
       </div>
     </div>
@@ -52,16 +59,14 @@ export type ImageUploaderInRetrievalTestingWrapperProps = {
   value?: FileEntity[]
   onChange: (files: FileEntity[]) => void
   textArea: React.ReactNode
-  actionButton: React.ReactNode
-  className?: string
-  actionAreaClassName?: string
-}
+} & ImageUploaderInRetrievalTestingProps
 
 const ImageUploaderInRetrievalTestingWrapper = ({
   value,
   onChange,
   textArea,
   actionButton,
+  showUploader,
   className,
   actionAreaClassName,
 }: ImageUploaderInRetrievalTestingWrapperProps) => {
@@ -73,6 +78,7 @@ const ImageUploaderInRetrievalTestingWrapper = ({
       <ImageUploaderInRetrievalTesting
         textArea={textArea}
         actionButton={actionButton}
+        showUploader={showUploader}
         className={className}
         actionAreaClassName={actionAreaClassName}
       />
