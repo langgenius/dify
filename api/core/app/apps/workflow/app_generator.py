@@ -145,7 +145,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             **extract_external_trace_id_from_args(args),
         }
         workflow_run_id = str(uuid.uuid4())
-        # for trigger debug run, not prepare user inputs 
+        # for trigger debug run, not prepare user inputs
         if self._should_prepare_user_inputs(args):
             inputs = self._prepare_user_inputs(
                 user_inputs=inputs,
