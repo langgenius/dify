@@ -208,7 +208,7 @@ class SubscriptionBuilder(BaseModel):
     endpoint_id: str = Field(..., description="The endpoint id of the subscription builder")
     parameters: Mapping[str, Any] = Field(..., description="The parameters of the subscription builder")
     properties: Mapping[str, Any] = Field(..., description="The properties of the subscription builder")
-    credentials: Mapping[str, str] = Field(..., description="The credentials of the subscription builder")
+    credentials: Mapping[str, Any] = Field(..., description="The credentials of the subscription builder")
     credential_type: str | None = Field(default=None, description="The credential type of the subscription builder")
     credential_expires_at: int | None = Field(
         default=None, description="The credential expires at of the subscription builder"
@@ -227,7 +227,7 @@ class SubscriptionBuilderUpdater(BaseModel):
     name: str | None = Field(default=None, description="The name of the subscription builder")
     parameters: Mapping[str, Any] | None = Field(default=None, description="The parameters of the subscription builder")
     properties: Mapping[str, Any] | None = Field(default=None, description="The properties of the subscription builder")
-    credentials: Mapping[str, str] | None = Field(
+    credentials: Mapping[str, Any] | None = Field(
         default=None, description="The credentials of the subscription builder"
     )
     credential_type: str | None = Field(default=None, description="The credential type of the subscription builder")
