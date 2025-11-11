@@ -905,14 +905,21 @@ class WorkflowService:
 
         return new_app
 
-    def validate_graph_structure(self, user_id: str, app_model: App, graph: Mapping[str, Any]) -> None:
+    def validate_graph_structure(self, user_id: str, app_model: App, graph: Mapping[str, Any]):
         """
         Validate workflow graph structure by instantiating the Graph object.
 
         This leverages the built-in graph validators (including trigger/UserInput exclusivity)
         and raises any structural errors before persisting the workflow.
         """
+        node_configs = graph.get("nodes", [])
+        node_configs = cast(list[dict[str, object]], node_configs)
 
+        # is empty graph
+        if not node_configs:
+            return
+
+        workflow_id = app_model.workflow_id or "UNKNOWN"
         Graph.init(
             graph_config=graph,
             # TODO(Mairuis): Add root node id
@@ -921,7 +928,7 @@ class WorkflowService:
                 graph_init_params=GraphInitParams(
                     tenant_id=app_model.tenant_id,
                     app_id=app_model.id,
-                    workflow_id=app_model.workflow_id,
+                    workflow_id=workflow_id,
                     graph_config=graph,
                     user_id=user_id,
                     user_from=UserFrom.ACCOUNT,
