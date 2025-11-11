@@ -13,6 +13,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -66,6 +67,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
 
             kwargs["app_model"] = app_model
 
+            # If caller needs end-user context, attach EndUser to current_user
             if fetch_user_arg:
                 if fetch_user_arg.fetch_from == WhereisUserArg.QUERY:
                     user_id = request.args.get("user")
@@ -74,7 +76,6 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                 elif fetch_user_arg.fetch_from == WhereisUserArg.FORM:
                     user_id = request.form.get("user")
                 else:
-                    # use default-user
                     user_id = None
 
                 if not user_id and fetch_user_arg.required:
@@ -89,6 +90,28 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                 # Set EndUser as current logged-in user for flask_login.current_user
                 current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
                 user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
+            else:
+                # For service API without end-user context, ensure an Account is logged in
+                # so services relying on current_account_with_tenant() work correctly.
+                tenant_owner_info = (
+                    db.session.query(Tenant, Account)
+                    .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
+                    .join(Account, TenantAccountJoin.account_id == Account.id)
+                    .where(
+                        Tenant.id == app_model.tenant_id,
+                        TenantAccountJoin.role == "owner",
+                        Tenant.status == TenantStatus.NORMAL,
+                    )
+                    .one_or_none()
+                )
+
+                if tenant_owner_info:
+                    tenant_model, account = tenant_owner_info
+                    account.current_tenant = tenant_model
+                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
+                else:
+                    raise Unauthorized("Tenant owner account not found or tenant is not active.")
 
             return view_func(*args, **kwargs)
 
@@ -138,7 +161,7 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
             features = FeatureService.get_features(api_token.tenant_id)
             if features.billing.enabled:
                 if resource == "add_segment":
-                    if features.billing.subscription.plan == "sandbox":
+                    if features.billing.subscription.plan == CloudPlan.SANDBOX:
                         raise Forbidden(
                             "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."
                         )

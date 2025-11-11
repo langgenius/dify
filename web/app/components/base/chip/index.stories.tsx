@@ -23,6 +23,10 @@ const meta = {
   args: {
     items: ITEMS,
     value: 'all',
+    // eslint-disable-next-line no-empty-function
+    onSelect: () => {},
+    // eslint-disable-next-line no-empty-function
+    onClear: () => {},
   },
 } satisfies Meta<typeof Chip>
 
@@ -69,6 +73,13 @@ const [selection, setSelection] = useState('all')
 }
 
 export const WithoutLeftIcon: Story = {
+  args: {
+    showLeftIcon: false,
+    // eslint-disable-next-line no-empty-function
+    onSelect: () => {},
+    // eslint-disable-next-line no-empty-function
+    onClear: () => {},
+  },
   render: args => (
     <ChipDemo
       {...args}

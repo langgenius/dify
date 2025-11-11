@@ -16,7 +16,6 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDisabledError
 from controllers.console.wraps import (
     account_initialization_required,
-    cloud_edition_billing_resource_check,
     edit_permission_required,
     setup_required,
 )
@@ -24,12 +23,11 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
-from fields.conversation_fields import annotation_fields, message_detail_fields
+from fields.conversation_fields import message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import current_account_with_tenant, login_required
 from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
-from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
@@ -192,45 +190,6 @@ class MessageFeedbackApi(Resource):
         db.session.commit()
 
         return {"result": "success"}
-
-
-@console_ns.route("/apps/<uuid:app_id>/annotations")
-class MessageAnnotationApi(Resource):
-    @api.doc("create_message_annotation")
-    @api.doc(description="Create message annotation")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.model(
-            "MessageAnnotationRequest",
-            {
-                "message_id": fields.String(description="Message ID"),
-                "question": fields.String(required=True, description="Question text"),
-                "answer": fields.String(required=True, description="Answer text"),
-                "annotation_reply": fields.Raw(description="Annotation reply"),
-            },
-        )
-    )
-    @api.response(200, "Annotation created successfully", annotation_fields)
-    @api.response(403, "Insufficient permissions")
-    @marshal_with(annotation_fields)
-    @get_app_model
-    @setup_required
-    @login_required
-    @cloud_edition_billing_resource_check("annotation")
-    @account_initialization_required
-    @edit_permission_required
-    def post(self, app_model):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("message_id", required=False, type=uuid_value, location="json")
-            .add_argument("question", required=True, type=str, location="json")
-            .add_argument("answer", required=True, type=str, location="json")
-            .add_argument("annotation_reply", required=False, type=dict, location="json")
-        )
-        args = parser.parse_args()
-        annotation = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
-
-        return annotation
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/count")

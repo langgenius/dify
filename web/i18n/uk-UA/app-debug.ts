@@ -273,7 +273,6 @@ const translation = {
   variableTable: {
     key: 'Ключ змінної', // Variable Key
     name: 'Назва поля для введення користувача', // User Input Field Name
-    optional: 'Додатково', // Optional
     type: 'Тип введення', // Input Type
     action: 'Дії', // Actions
     typeString: 'Рядок', // String

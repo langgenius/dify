@@ -1,6 +1,18 @@
+/**
+ * Test suite for the classnames utility function
+ * This utility combines the classnames library with tailwind-merge
+ * to handle conditional CSS classes and merge conflicting Tailwind classes
+ */
 import cn from './classnames'
 
 describe('classnames', () => {
+  /**
+   * Tests basic classnames library features:
+   * - String concatenation
+   * - Array handling
+   * - Falsy value filtering
+   * - Object-based conditional classes
+   */
   test('classnames libs feature', () => {
     expect(cn('foo')).toBe('foo')
     expect(cn('foo', 'bar')).toBe('foo bar')
@@ -17,6 +29,14 @@ describe('classnames', () => {
     })).toBe('foo baz')
   })
 
+  /**
+   * Tests tailwind-merge functionality:
+   * - Conflicting class resolution (last one wins)
+   * - Modifier handling (hover, focus, etc.)
+   * - Important prefix (!)
+   * - Custom color classes
+   * - Arbitrary values
+   */
   test('tailwind-merge', () => {
     /* eslint-disable tailwindcss/classnames-order */
     expect(cn('p-0')).toBe('p-0')
@@ -44,6 +64,10 @@ describe('classnames', () => {
     expect(cn('text-3.5xl text-black')).toBe('text-3.5xl text-black')
   })
 
+  /**
+   * Tests the integration of classnames and tailwind-merge:
+   * - Object-based conditional classes with Tailwind conflict resolution
+   */
   test('classnames combined with tailwind-merge', () => {
     expect(cn('text-right', {
       'text-center': true,
@@ -52,5 +76,82 @@ describe('classnames', () => {
     expect(cn('text-right', {
       'text-center': false,
     })).toBe('text-right')
+  })
+
+  /**
+   * Tests handling of multiple mixed argument types:
+   * - Strings, arrays, and objects in a single call
+   * - Tailwind merge working across different argument types
+   */
+  test('multiple mixed argument types', () => {
+    expect(cn('foo', ['bar', 'baz'], { qux: true, quux: false })).toBe('foo bar baz qux')
+    expect(cn('p-4', ['p-2', 'm-4'], { 'text-left': true, 'text-right': true })).toBe('p-2 m-4 text-right')
+  })
+
+  /**
+   * Tests nested array handling:
+   * - Deep array flattening
+   * - Tailwind merge with nested structures
+   */
+  test('nested arrays', () => {
+    expect(cn(['foo', ['bar', 'baz']])).toBe('foo bar baz')
+    expect(cn(['p-4', ['p-2', 'text-center']])).toBe('p-2 text-center')
+  })
+
+  /**
+   * Tests empty input handling:
+   * - Empty strings, arrays, and objects
+   * - Mixed empty and non-empty values
+   */
+  test('empty inputs', () => {
+    expect(cn('')).toBe('')
+    expect(cn([])).toBe('')
+    expect(cn({})).toBe('')
+    expect(cn('', [], {})).toBe('')
+    expect(cn('foo', '', 'bar')).toBe('foo bar')
+  })
+
+  /**
+   * Tests number input handling:
+   * - Truthy numbers converted to strings
+   * - Zero treated as falsy
+   */
+  test('numbers as inputs', () => {
+    expect(cn(1)).toBe('1')
+    expect(cn(0)).toBe('')
+    expect(cn('foo', 1, 'bar')).toBe('foo 1 bar')
+  })
+
+  /**
+   * Tests multiple object arguments:
+   * - Object merging
+   * - Tailwind conflict resolution across objects
+   */
+  test('multiple objects', () => {
+    expect(cn({ foo: true }, { bar: true })).toBe('foo bar')
+    expect(cn({ foo: true, bar: false }, { bar: true, baz: true })).toBe('foo bar baz')
+    expect(cn({ 'p-4': true }, { 'p-2': true })).toBe('p-2')
+  })
+
+  /**
+   * Tests complex edge cases:
+   * - Mixed falsy values
+   * - Nested arrays with falsy values
+   * - Multiple conflicting Tailwind classes
+   */
+  test('complex edge cases', () => {
+    expect(cn('foo', null, undefined, false, 'bar', 0, 1, '')).toBe('foo bar 1')
+    expect(cn(['foo', null, ['bar', undefined, 'baz']])).toBe('foo bar baz')
+    expect(cn('text-sm', { 'text-lg': false, 'text-xl': true }, 'text-2xl')).toBe('text-2xl')
+  })
+
+  /**
+   * Tests important (!) modifier behavior:
+   * - Important modifiers in objects
+   * - Conflict resolution with important prefix
+   */
+  test('important modifier with objects', () => {
+    expect(cn({ '!font-medium': true }, { '!font-bold': true })).toBe('!font-bold')
+    expect(cn('font-normal', { '!font-bold': true })).toBe('font-normal !font-bold')
   })
 })

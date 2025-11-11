@@ -3,12 +3,13 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
+from enums.cloud_plan import CloudPlan
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 
 
 class SubscriptionModel(BaseModel):
-    plan: str = "sandbox"
+    plan: str = CloudPlan.SANDBOX
     interval: str = ""
 
 
@@ -186,7 +187,7 @@ class FeatureService:
             knowledge_rate_limit.enabled = True
             limit_info = BillingService.get_knowledge_rate_limit(tenant_id)
             knowledge_rate_limit.limit = limit_info.get("limit", 10)
-            knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", "sandbox")
+            knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", CloudPlan.SANDBOX)
         return knowledge_rate_limit
 
     @classmethod
@@ -240,7 +241,7 @@ class FeatureService:
         features.billing.subscription.interval = billing_info["subscription"]["interval"]
         features.education.activated = billing_info["subscription"].get("education", False)
 
-        if features.billing.subscription.plan != "sandbox":
+        if features.billing.subscription.plan != CloudPlan.SANDBOX:
             features.webapp_copyright_enabled = True
         else:
             features.is_allow_transfer_workspace = False
