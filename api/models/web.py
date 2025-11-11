@@ -22,9 +22,7 @@ class SavedMessage(TypeBase):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_by_role: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'end_user'")
-    )
+    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'end_user'"))
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

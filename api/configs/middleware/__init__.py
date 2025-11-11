@@ -110,7 +110,7 @@ class DatabaseConfig(BaseSettings):
         description="Database type to use. OceanBase is MySQL-compatible.",
         default="postgresql",
     )
-    
+
     # PostgreSQL configuration
     POSTGRES_HOST: str = Field(
         description="PostgreSQL hostname or IP address.",
@@ -142,7 +142,7 @@ class DatabaseConfig(BaseSettings):
         description="MySQL hostname or IP address.",
         default="localhost",
     )
-    
+
     MYSQL_PORT: PositiveInt = Field(
         description="MySQL port number.",
         default=3306,
@@ -168,22 +168,22 @@ class DatabaseConfig(BaseSettings):
         description="OceanBase hostname or IP address.",
         default="localhost",
     )
-    
+
     OCEANBASE_PORT: PositiveInt = Field(
         description="OceanBase port number.",
         default=2881,
     )
-    
+
     OCEANBASE_USER: str = Field(
         description="OceanBase username.",
         default="root@test",
     )
-    
+
     OCEANBASE_PASSWORD: str = Field(
         description="OceanBase password.",
         default="difyai123456",
     )
-    
+
     OCEANBASE_DATABASE: str = Field(
         description="OceanBase database name.",
         default="test",
@@ -213,7 +213,7 @@ class DatabaseConfig(BaseSettings):
             return self.OCEANBASE_PORT
         else:
             raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
-    
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def DB_USERNAME(self) -> str:
@@ -225,7 +225,7 @@ class DatabaseConfig(BaseSettings):
             return self.OCEANBASE_USER
         else:
             raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
-    
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def DB_PASSWORD(self) -> str:

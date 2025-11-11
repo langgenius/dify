@@ -182,6 +182,7 @@ def test_flask_configs_mysql(monkeypatch: pytest.MonkeyPatch):
     assert str(config["CODE_EXECUTION_ENDPOINT"]) == "http://127.0.0.1:8194/"
     assert str(URL(str(config["CODE_EXECUTION_ENDPOINT"])) / "v1") == "http://127.0.0.1:8194/v1"
 
+
 def test_inner_api_config_exist(monkeypatch: pytest.MonkeyPatch):
     # Set environment variables using monkeypatch
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")

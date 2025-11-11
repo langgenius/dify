@@ -642,7 +642,7 @@ class ToolManager:
                     WHERE tenant_id = :tenant_id
                 ) ranked WHERE rn = 1
                 """
-        
+
         with Session(db.engine, autoflush=False) as session:
             ids = [row.id for row in session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
             return session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()

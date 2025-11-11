@@ -881,9 +881,7 @@ class ChildChunk(Base):
     index_node_hash = mapped_column(String(255), nullable=True)
     type = mapped_column(String(255), nullable=False, server_default=sa.text("'automatic'"))
     created_by = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=sa.func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), onupdate=func.current_timestamp()
@@ -949,9 +947,7 @@ class DatasetKeywordTable(Base):
     id = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()))
     dataset_id = mapped_column(StringUUID, nullable=False, unique=True)
     keyword_table = mapped_column(LongText, nullable=False)
-    data_source_type = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'database'")
-    )
+    data_source_type = mapped_column(String(255), nullable=False, server_default=sa.text("'database'"))
 
     @property
     def keyword_table_dict(self) -> dict[str, set[Any]] | None:
@@ -998,9 +994,7 @@ class Embedding(Base):
     )
 
     id = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()))
-    model_name = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'text-embedding-ada-002'")
-    )
+    model_name = mapped_column(String(255), nullable=False, server_default=sa.text("'text-embedding-ada-002'"))
     hash = mapped_column(String(64), nullable=False)
     embedding = mapped_column(BinaryData, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -1167,9 +1161,7 @@ class DatasetAutoDisableLog(Base):
     dataset_id = mapped_column(StringUUID, nullable=False)
     document_id = mapped_column(StringUUID, nullable=False)
     notified: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=sa.func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
 
 class RateLimitLog(Base):
@@ -1184,9 +1176,7 @@ class RateLimitLog(Base):
     tenant_id = mapped_column(StringUUID, nullable=False)
     subscription_plan: Mapped[str] = mapped_column(String(255), nullable=False)
     operation: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=sa.func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
 
 class DatasetMetadata(Base):
@@ -1202,9 +1192,7 @@ class DatasetMetadata(Base):
     dataset_id = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=sa.func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=sa.func.current_timestamp(), onupdate=func.current_timestamp()
     )

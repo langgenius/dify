@@ -103,9 +103,7 @@ class Account(UserMixin, TypeBase):
     last_active_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
     )
-    status: Mapped[str] = mapped_column(
-        String(16), server_default=sa.text("'active'"), default="active"
-    )
+    status: Mapped[str] = mapped_column(String(16), server_default=sa.text("'active'"), default="active")
     initialized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
@@ -241,12 +239,8 @@ class Tenant(TypeBase):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     name: Mapped[str] = mapped_column(String(255))
     encrypt_public_key: Mapped[str | None] = mapped_column(LongText, default=None)
-    plan: Mapped[str] = mapped_column(
-        String(255), server_default=sa.text("'basic'"), default="basic"
-    )
-    status: Mapped[str] = mapped_column(
-        String(255), server_default=sa.text("'normal'"), default="normal"
-    )
+    plan: Mapped[str] = mapped_column(String(255), server_default=sa.text("'basic'"), default="basic")
+    status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'normal'"), default="normal")
     custom_config: Mapped[str | None] = mapped_column(LongText, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False
@@ -328,9 +322,7 @@ class InvitationCode(TypeBase):
     id: Mapped[int] = mapped_column(sa.Integer, init=False)
     batch: Mapped[str] = mapped_column(String(255))
     code: Mapped[str] = mapped_column(String(32))
-    status: Mapped[str] = mapped_column(
-        String(16), server_default=sa.text("'unused'"), default="unused"
-    )
+    status: Mapped[str] = mapped_column(String(16), server_default=sa.text("'unused'"), default="unused")
     used_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     used_by_tenant_id: Mapped[str | None] = mapped_column(StringUUID, default=None)
     used_by_account_id: Mapped[str | None] = mapped_column(StringUUID, default=None)

@@ -144,9 +144,7 @@ class Workflow(Base):
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
     )
-    _environment_variables: Mapped[str] = mapped_column(
-        "environment_variables", LongText, nullable=False, default="{}"
-    )
+    _environment_variables: Mapped[str] = mapped_column("environment_variables", LongText, nullable=False, default="{}")
     _conversation_variables: Mapped[str] = mapped_column(
         "conversation_variables", LongText, nullable=False, default="{}"
     )

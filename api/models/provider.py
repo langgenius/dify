@@ -61,16 +61,12 @@ class Provider(Base):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    provider_type: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default=text("'custom'")
-    )
+    provider_type: Mapped[str] = mapped_column(String(40), nullable=False, server_default=text("'custom'"))
     is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"))
     last_used: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 
-    quota_type: Mapped[str | None] = mapped_column(
-        String(40), nullable=True, server_default=text("''")
-    )
+    quota_type: Mapped[str | None] = mapped_column(String(40), nullable=True, server_default=text("''"))
     quota_limit: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True)
     quota_used: Mapped[int | None] = mapped_column(sa.BigInteger, default=0)
 
@@ -216,9 +212,7 @@ class ProviderOrder(Base):
     quantity: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=text("1"))
     currency: Mapped[str | None] = mapped_column(String(40))
     total_amount: Mapped[int | None] = mapped_column(sa.Integer)
-    payment_status: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default=text("'wait_pay'")
-    )
+    payment_status: Mapped[str] = mapped_column(String(40), nullable=False, server_default=text("'wait_pay'"))
     paid_at: Mapped[datetime | None] = mapped_column(DateTime)
     pay_failed_at: Mapped[datetime | None] = mapped_column(DateTime)
     refunded_at: Mapped[datetime | None] = mapped_column(DateTime)

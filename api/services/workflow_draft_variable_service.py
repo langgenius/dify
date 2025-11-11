@@ -628,7 +628,7 @@ def _batch_upsert_draft_variable(
     #
     # For these reasons, we use the SQLAlchemy query builder and rely on dialect-specific
     # insert operations instead of the ORM layer.
-    
+
     # Use different insert statements based on database type
     if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
         stmt = pg_insert(WorkflowDraftVariable).values([_model_to_insertion_dict(v) for v in draft_vars])
@@ -671,7 +671,7 @@ def _batch_upsert_draft_variable(
             )
         elif policy == _UpsertPolicy.IGNORE:
             stmt = stmt.prefix_with("IGNORE")
-    
+
     if policy not in [_UpsertPolicy.OVERWRITE, _UpsertPolicy.IGNORE]:
         raise Exception("Invalid value for update policy.")
     session.execute(stmt)
