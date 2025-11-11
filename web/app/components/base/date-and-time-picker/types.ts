@@ -30,6 +30,8 @@ export type DatePickerProps = {
   renderTrigger?: (props: TriggerProps) => React.ReactNode
   minuteFilter?: (minutes: string[]) => string[]
   popupZIndexClassname?: string
+  noConfirm?: boolean
+  getIsDateDisabled?: (date: Dayjs) => boolean
 }
 
 export type DatePickerHeaderProps = {
@@ -80,12 +82,14 @@ export type CalendarProps = {
   selectedDate: Dayjs | undefined
   onDateClick: (date: Dayjs) => void
   wrapperClassName?: string
+  getIsDateDisabled?: (date: Dayjs) => boolean
 }
 
 export type CalendarItemProps = {
   day: Day
   selectedDate: Dayjs | undefined
   onClick: (date: Dayjs) => void
+  isDisabled: boolean
 }
 
 export type TimeOptionsProps = {
