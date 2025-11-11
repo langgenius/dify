@@ -156,6 +156,17 @@ class OutputVariableEntity(BaseModel):
     value_type: OutputVariableType
     value_selector: Sequence[str]
 
+    @field_validator("value_type", mode="before")
+    @classmethod
+    def normalize_value_type(cls, v: Any) -> Any:
+        """
+        Normalize value_type to handle case-insensitive array types.
+        Converts 'Array[...]' to 'array[...]' for backward compatibility.
+        """
+        if isinstance(v, str) and v.startswith("Array["):
+            return v.lower()
+        return v
+
 
 class RagPipelineVariableEntity(VariableEntity):
     """
