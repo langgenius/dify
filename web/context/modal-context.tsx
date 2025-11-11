@@ -3,7 +3,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { useCallback, useState } from 'react'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import type {
   ConfigurationMethodEnum,
   Credential,
@@ -13,6 +13,7 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
+  SHOW_PRICING_MODAL_ACTION,
 } from '@/app/education-apply/constants'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import type {
@@ -151,8 +152,9 @@ export const ModalContextProvider = ({
   const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] = useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
 
   const searchParams = useSearchParams()
-  const router = useRouter()
-  const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
+  const [showPricingModal, setShowPricingModal] = useState(
+    searchParams.get('action') === SHOW_PRICING_MODAL_ACTION,
+  )
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const handleCancelAccountSettingModal = () => {
     const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
@@ -308,8 +310,6 @@ export const ModalContextProvider = ({
         {
           !!showPricingModal && (
             <Pricing onCancel={() => {
-              if (searchParams.get('show-pricing') === '1')
-                router.push(location.pathname, { forceOptimisticNavigation: true } as any)
               removeSpecificQueryParam('action')
               setShowPricingModal(false)
             }} />

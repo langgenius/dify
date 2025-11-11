@@ -7,6 +7,8 @@ const translation = {
     documentsUploadQuota: '文档上传配额',
     vectorSpace: '知识库数据存储空间',
     vectorSpaceTooltip: '采用高质量索引模式的文档会消耗知识数据存储资源。当知识数据存储达到限制时，将不会上传新文档。',
+    triggerEvents: '触发事件',
+    perMonth: '每月',
   },
   upgradeBtn: {
     plain: '查看套餐',
@@ -70,6 +72,20 @@ const translation = {
       'standard': '标准',
       'priority': '优先',
       'top-priority': '最高优先级',
+    },
+    triggerEvents: {
+      sandbox: '{{count,number}} 触发事件',
+      professional: '{{count,number}} 触发事件/月',
+      unlimited: '无限制触发事件',
+    },
+    workflowExecution: {
+      standard: '标准工作流执行',
+      faster: '更快的工作流执行',
+      priority: '优先工作流执行',
+    },
+    startNodes: {
+      limited: '每个工作流最多 {{count}} 个起始节点',
+      unlimited: '每个工作流无限制起始节点',
     },
     logsHistory: '{{days}}日志历史',
     customTools: '自定义工具',
