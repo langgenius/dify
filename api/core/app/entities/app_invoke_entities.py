@@ -43,6 +43,9 @@ class InvokeFrom(StrEnum):
     # the workflow (or chatflow) edit page.
     DEBUGGER = "debugger"
     PUBLISHED = "published"
+    
+    # VALIDATION indicates that this invocation is from validation.
+    VALIDATION = "validation"
 
     @classmethod
     def value_of(cls, value: str):

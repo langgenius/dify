@@ -1,7 +1,8 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.workflow.graph.validation import GraphValidationError, GraphValidationIssue
 from models.model import App
 from models.workflow import Workflow
 from services.workflow_service import WorkflowService
@@ -161,3 +162,25 @@ class TestWorkflowService:
         assert workflows == []
         assert has_more is False
         mock_session.scalars.assert_called_once()
+
+    def test_validate_graph_structure_invokes_graph_init(self, workflow_service, mock_app):
+        graph = {"nodes": [], "edges": []}
+
+        with patch("services.workflow_service.Graph.init") as mock_graph_init:
+            workflow_service.validate_graph_structure(mock_app, graph)
+
+        mock_graph_init.assert_called_once()
+        assert mock_graph_init.call_args.kwargs["graph_config"] is graph
+        assert "node_factory" in mock_graph_init.call_args.kwargs
+
+    def test_validate_graph_structure_propagates_graph_errors(self, workflow_service, mock_app):
+        graph = {"nodes": [], "edges": []}
+        issue = GraphValidationIssue(code="ERR", message="invalid")
+
+        with patch("services.workflow_service.Graph.init", side_effect=GraphValidationError([issue])):
+            with pytest.raises(GraphValidationError):
+                workflow_service.validate_graph_structure(mock_app, graph)
+
+    def test_validate_graph_structure_requires_nodes_and_edges(self, workflow_service, mock_app):
+        with pytest.raises(ValueError, match="must include 'nodes' and 'edges'"):
+            workflow_service.validate_graph_structure(mock_app, {"nodes": []})
