@@ -16,6 +16,10 @@ from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
 from services.errors.app import InvokeRateLimitError, QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
+from models.model import Account, App, AppMode, EndUser
+from models.workflow import Workflow, WorkflowRun
+from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
+from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import ChatflowExecutionParams, chatflow_execute_task
 
@@ -246,3 +250,19 @@ class AppGenerateService:
                 raise ValueError("Workflow not published")
 
         return workflow
+
+    @classmethod
+    def get_response_generator(
+        cls,
+        app_model: App,
+        workflow_run: WorkflowRun,
+    ):
+        if workflow_run.status.is_ended():
+            # TODO(QuantumGhost): handled the ended scenario.
+            return
+
+        generator = AdvancedChatAppGenerator()
+
+        return generator.convert_to_event_stream(
+            generator.retrieve_events(app_model.mode, workflow_run.id),
+        )

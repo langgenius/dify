@@ -7,10 +7,11 @@ from pydantic import ValidationError
 
 from core.workflow.nodes.human_input.entities import (
     ButtonStyle,
-    DeliveryMethod,
     DeliveryMethodType,
     EmailDeliveryConfig,
+    EmailDeliveryMethod,
     EmailRecipients,
+    EmailRecipientType,
     ExternalRecipient,
     FormInput,
     FormInputPlaceholder,
@@ -18,10 +19,10 @@ from core.workflow.nodes.human_input.entities import (
     HumanInputNodeData,
     MemberRecipient,
     PlaceholderType,
-    RecipientType,
     TimeoutUnit,
     UserAction,
-    WebAppDeliveryConfig,
+    WebAppDeliveryMethod,
+    _WebAppDeliveryConfig,
 )
 
 
@@ -30,19 +31,19 @@ class TestDeliveryMethod:
 
     def test_webapp_delivery_method(self):
         """Test webapp delivery method creation."""
-        delivery_method = DeliveryMethod(type=DeliveryMethodType.WEBAPP, enabled=True, config=WebAppDeliveryConfig())
+        delivery_method = WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())
 
         assert delivery_method.type == DeliveryMethodType.WEBAPP
         assert delivery_method.enabled is True
-        assert isinstance(delivery_method.config, WebAppDeliveryConfig)
+        assert isinstance(delivery_method.config, _WebAppDeliveryConfig)
 
     def test_email_delivery_method(self):
         """Test email delivery method creation."""
         recipients = EmailRecipients(
             whole_workspace=False,
             items=[
-                MemberRecipient(type=RecipientType.MEMBER, user_id="test-user-123"),
-                ExternalRecipient(type=RecipientType.EXTERNAL, email="test@example.com"),
+                MemberRecipient(type=EmailRecipientType.MEMBER, user_id="test-user-123"),
+                ExternalRecipient(type=EmailRecipientType.EXTERNAL, email="test@example.com"),
             ],
         )
 
@@ -50,7 +51,7 @@ class TestDeliveryMethod:
             recipients=recipients, subject="Test Subject", body="Test body with {{#url#}} placeholder"
         )
 
-        delivery_method = DeliveryMethod(type=DeliveryMethodType.EMAIL, enabled=True, config=config)
+        delivery_method = EmailDeliveryMethod(enabled=True, config=config)
 
         assert delivery_method.type == DeliveryMethodType.EMAIL
         assert delivery_method.enabled is True
@@ -118,7 +119,7 @@ class TestHumanInputNodeData:
 
     def test_valid_node_data_creation(self):
         """Test creating valid human input node data."""
-        delivery_methods = [DeliveryMethod(type=DeliveryMethodType.WEBAPP, enabled=True, config=WebAppDeliveryConfig())]
+        delivery_methods = [WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())]
 
         inputs = [
             FormInput(
@@ -153,11 +154,12 @@ class TestHumanInputNodeData:
     def test_node_data_with_multiple_delivery_methods(self):
         """Test node data with multiple delivery methods."""
         delivery_methods = [
-            DeliveryMethod(type=DeliveryMethodType.WEBAPP, enabled=True, config=WebAppDeliveryConfig()),
-            DeliveryMethod(
-                type=DeliveryMethodType.EMAIL,
+            WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig()),
+            EmailDeliveryMethod(
                 enabled=False,  # Disabled method should be fine
-                config=None,
+                config=EmailDeliveryConfig(
+                    subject="Hi there", body="", recipients=EmailRecipients(whole_workspace=True)
+                ),
             ),
         ]
 
@@ -182,28 +184,64 @@ class TestHumanInputNodeData:
         assert node_data.timeout == 36
         assert node_data.timeout_unit == TimeoutUnit.HOUR
 
+    def test_duplicate_input_output_variable_name_raises_validation_error(self):
+        """Duplicate form input output_variable_name should raise validation error."""
+        duplicate_inputs = [
+            FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="content"),
+            FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="content"),
+        ]
+
+        with pytest.raises(ValidationError, match="duplicated output_variable_name 'content'"):
+            HumanInputNodeData(title="Test Node", inputs=duplicate_inputs)
+
+    def test_duplicate_user_action_ids_raise_validation_error(self):
+        """Duplicate user action ids should raise validation error."""
+        duplicate_actions = [
+            UserAction(id="submit", title="Submit"),
+            UserAction(id="submit", title="Submit Again"),
+        ]
+
+        with pytest.raises(ValidationError, match="duplicated user action id 'submit'"):
+            HumanInputNodeData(title="Test Node", user_actions=duplicate_actions)
+
+    def test_extract_outputs_field_names(self):
+        content = r"""This is titile {{#start.title#}}
+
+        A content is required:
+
+        {{#$outputs.content#}}
+
+        A ending is required:
+
+        {{#$outputs.ending#}}
+        """
+
+        node_data = HumanInputNodeData(title="Human Input", form_content=content)
+        field_names = node_data.outputs_field_names()
+        assert field_names == ["content", "ending"]
+
 
 class TestRecipients:
     """Test email recipient entities."""
 
     def test_member_recipient(self):
         """Test member recipient creation."""
-        recipient = MemberRecipient(type=RecipientType.MEMBER, user_id="user-123")
+        recipient = MemberRecipient(type=EmailRecipientType.MEMBER, user_id="user-123")
 
-        assert recipient.type == RecipientType.MEMBER
+        assert recipient.type == EmailRecipientType.MEMBER
         assert recipient.user_id == "user-123"
 
     def test_external_recipient(self):
         """Test external recipient creation."""
-        recipient = ExternalRecipient(type=RecipientType.EXTERNAL, email="test@example.com")
+        recipient = ExternalRecipient(type=EmailRecipientType.EXTERNAL, email="test@example.com")
 
-        assert recipient.type == RecipientType.EXTERNAL
+        assert recipient.type == EmailRecipientType.EXTERNAL
         assert recipient.email == "test@example.com"
 
     def test_email_recipients_whole_workspace(self):
         """Test email recipients with whole workspace enabled."""
         recipients = EmailRecipients(
-            whole_workspace=True, items=[MemberRecipient(type=RecipientType.MEMBER, user_id="user-123")]
+            whole_workspace=True, items=[MemberRecipient(type=EmailRecipientType.MEMBER, user_id="user-123")]
         )
 
         assert recipients.whole_workspace is True
@@ -214,8 +252,8 @@ class TestRecipients:
         recipients = EmailRecipients(
             whole_workspace=False,
             items=[
-                MemberRecipient(type=RecipientType.MEMBER, user_id="user-123"),
-                ExternalRecipient(type=RecipientType.EXTERNAL, email="external@example.com"),
+                MemberRecipient(type=EmailRecipientType.MEMBER, user_id="user-123"),
+                ExternalRecipient(type=EmailRecipientType.EXTERNAL, email="external@example.com"),
             ],
         )
 

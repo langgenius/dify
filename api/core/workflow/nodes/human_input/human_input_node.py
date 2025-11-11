@@ -1,12 +1,26 @@
-from collections.abc import Mapping
+import dataclasses
+import logging
+from collections.abc import Generator, Mapping, Sequence
 from typing import Any
 
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult, PauseRequestedEvent
+from core.workflow.node_events.base import NodeEventBase
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
+from core.workflow.repositories.human_input_form_repository import FormCreateParams, HumanInputFormRepository
 
 from .entities import HumanInputNodeData
+
+_SELECTED_BRANCH_KEY = "selected_branch"
+
+logger = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass
+class _FormSubmissionResult:
+    action_id: str
 
 
 class HumanInputNode(Node[HumanInputNodeData]):
@@ -17,7 +31,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
         "edge_source_handle",
         "edgeSourceHandle",
         "source_handle",
-        "selected_branch",
+        _SELECTED_BRANCH_KEY,
         "selectedBranch",
         "branch",
         "branch_id",
@@ -25,42 +39,11 @@ class HumanInputNode(Node[HumanInputNodeData]):
         "handle",
     )
 
+    _node_data: HumanInputNodeData
+
     @classmethod
     def version(cls) -> str:
         return "1"
-
-    def _run(self):  # type: ignore[override]
-        if self._is_completion_ready():
-            branch_handle = self._resolve_branch_selection()
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs={},
-                edge_source_handle=branch_handle or "source",
-            )
-
-        return self._pause_generator()
-
-    def _pause_generator(self):
-        # TODO(QuantumGhost): yield a real form id.
-        yield PauseRequestedEvent(reason=HumanInputRequired(form_id="test_form_id", node_id=self.id))
-
-    def _is_completion_ready(self) -> bool:
-        """Determine whether all required inputs are satisfied."""
-
-        if not self.node_data.required_variables:
-            return False
-
-        variable_pool = self.graph_runtime_state.variable_pool
-
-        for selector_str in self.node_data.required_variables:
-            parts = selector_str.split(".")
-            if len(parts) != 2:
-                return False
-            segment = variable_pool.get(parts)
-            if segment is None:
-                return False
-
-        return True
 
     def _resolve_branch_selection(self) -> str | None:
         """Determine the branch handle selected by human input if available."""
@@ -108,3 +91,106 @@ class HumanInputNode(Node[HumanInputNodeData]):
                     return candidate
 
         return None
+
+    def _create_form_repository(self) -> HumanInputFormRepository:
+        pass
+
+    @staticmethod
+    def _pause_generator(event: PauseRequestedEvent) -> Generator[NodeEventBase, None, None]:
+        yield event
+
+    @property
+    def _workflow_execution_id(self) -> str:
+        workflow_exec_id = self.graph_runtime_state.variable_pool.system_variables.workflow_execution_id
+        assert workflow_exec_id is not None
+        return workflow_exec_id
+
+    def _run(self) -> NodeRunResult | Generator[NodeEventBase, None, None]:
+        """
+        Execute the human input node.
+
+        This method will:
+        1. Generate a unique form ID
+        2. Create form content with variable substitution
+        3. Create form in database
+        4. Send form via configured delivery methods
+        5. Suspend workflow execution
+        6. Wait for form submission to resume
+        """
+        repo = self._create_form_repository()
+        submission_result = repo.get_form_submission(self._workflow_execution_id, self.app_id)
+        if submission_result:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                outputs={
+                    "action_id": submission_result.selected_action_id,
+                },
+                edge_source_handle=submission_result.selected_action_id,
+            )
+        try:
+            repo = self._create_form_repository()
+            params = FormCreateParams(
+                workflow_execution_id=self._workflow_execution_id,
+                node_id=self.id,
+                form_config=self._node_data,
+                rendered_content=self._render_form_content(),
+            )
+            result = repo.create_form(params)
+            # Create human input required event
+
+            required_event = HumanInputRequired(
+                form_id=result.id,
+                form_content=self._node_data.form_content,
+                inputs=self._node_data.inputs,
+                web_app_form_token=result.web_app_token,
+            )
+            pause_requested_event = PauseRequestedEvent(reason=required_event)
+
+            # Create workflow suspended event
+
+            logger.info(
+                "Human Input node suspended workflow for form. workflow_run_id=%s, node_id=%s, form_id=%s",
+                self.graph_runtime_state.variable_pool.system_variables.workflow_execution_id,
+                self.id,
+                result.id,
+            )
+        except Exception as e:
+            logger.exception("Human Input node failed to execute, node_id=%s", self.id)
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=str(e),
+                error_type="HumanInputNodeError",
+            )
+        return self._pause_generator(pause_requested_event)
+
+    def _render_form_content(self) -> str:
+        """
+        Process form content by substituting variables.
+
+        This method should:
+        1. Parse the form_content markdown
+        2. Substitute {{#node_name.var_name#}} with actual values
+        3. Keep {{#$output.field_name#}} placeholders for form inputs
+        """
+        rendered_form_content = self.graph_runtime_state.variable_pool.convert_template(
+            self._node_data.form_content,
+        )
+        return rendered_form_content.markdown
+
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: Mapping[str, Any],
+    ) -> Mapping[str, Sequence[str]]:
+        """
+        Extract variable selectors referenced in form content and input placeholders.
+
+        This method should parse:
+        1. Variables referenced in form_content ({{#node_name.var_name#}})
+        2. Variables referenced in input placeholders
+        """
+        validated_node_data = HumanInputNodeData.model_validate(node_data)
+        return validated_node_data.extract_variable_selector_to_variable_mapping(node_id)

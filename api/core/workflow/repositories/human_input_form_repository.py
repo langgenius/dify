@@ -1,6 +1,65 @@
-from typing import Protocol
+import abc
+import dataclasses
+from collections.abc import Mapping
+from typing import Any, Protocol
 
-from core.workflow.entities.human_input_form import HumanInputForm
+from core.workflow.nodes.human_input.entities import HumanInputNodeData
+
+
+class HumanInputError(Exception):
+    pass
+
+
+class FormNotFoundError(HumanInputError):
+    pass
+
+
+@dataclasses.dataclass
+class FormCreateParams:
+    workflow_execution_id: str
+
+    # node_id is the identifier for a specific
+    # node in the graph.
+    #
+    # TODO: for node inside loop / iteration, this would
+    # cause problems, as a single node may be executed multiple times.
+    node_id: str
+
+    form_config: HumanInputNodeData
+    rendered_content: str
+
+
+class HumanInputFormEntity(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def id(self) -> str:
+        """id returns the identifer of the form."""
+        pass
+
+    @property
+    @abc.abstractmethod
+    def web_app_token(self) -> str | None:
+        """web_app_token returns the token for submission inside webapp.
+
+        If web app delivery is not enabled, this method would return `None`.
+        """
+
+        # TODO: what if the users are allowed to add multiple
+        # webapp delivery?
+        pass
+
+
+class FormSubmissionEntity(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def selected_action_id(self) -> str:
+        """The identifier of action user has selected, correspond to `UserAction.id`."""
+        pass
+
+    @abc.abstractmethod
+    def form_data(self) -> Mapping[str, Any]:
+        """The data submitted for this form"""
+        pass
 
 
 class HumanInputFormRepository(Protocol):
@@ -16,93 +75,17 @@ class HumanInputFormRepository(Protocol):
     application domains or deployment scenarios.
     """
 
-    def save(self, form: HumanInputForm) -> None:
+    def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
         """
-        Save or update a HumanInputForm instance.
-
-        This method handles both creating new records and updating existing ones.
-        The implementation should determine whether to create or update based on
-        the form's ID or other identifying fields.
-
-        Args:
-            form: The HumanInputForm instance to save or update
+        Create a human input form from form definition.
         """
         ...
 
-    def get_by_id(self, form_id: str) -> HumanInputForm:
-        """
-        Get a form by its ID.
+    def get_form_submission(self, workflow_execution_id: str, node_id: str) -> FormSubmissionEntity | None:
+        """Retrieve the submission for a specific human input node.
 
-        Args:
-            form_id: The ID of the form to retrieve
+        Returns `FormSubmission` if the form has been submitted, or `None` if not.
 
-        Returns:
-            The HumanInputForm instance
-
-        Raises:
-            NotFoundError: If the form is not found
-        """
-        ...
-
-    def get_by_web_app_token(self, web_app_token: str) -> HumanInputForm:
-        """
-        Get a form by its web app token.
-
-        Args:
-            web_app_token: The web app token to search for
-
-        Returns:
-            The HumanInputForm instance
-
-        Raises:
-            NotFoundError: If the form is not found
-        """
-        ...
-
-    def get_pending_forms_for_workflow_run(self, workflow_run_id: str) -> list[HumanInputForm]:
-        """
-        Get all pending human input forms for a workflow run.
-
-        Args:
-            workflow_run_id: The workflow run ID to filter by
-
-        Returns:
-            List of pending HumanInputForm instances
-        """
-        ...
-
-    def mark_expired_forms(self, expiry_hours: int = 48) -> int:
-        """
-        Mark expired forms as expired.
-
-        Args:
-            expiry_hours: Number of hours after which forms should be expired
-
-        Returns:
-            Number of forms marked as expired
-        """
-        ...
-
-    def exists_by_id(self, form_id: str) -> bool:
-        """
-        Check if a form exists by ID.
-
-        Args:
-            form_id: The ID of the form to check
-
-        Returns:
-            True if the form exists, False otherwise
-        """
-        ...
-
-    def exists_by_web_app_token(self, web_app_token: str) -> bool:
-        """
-        Check if a form exists by web app token.
-
-        Args:
-            web_app_token: The web app token to check
-
-        Returns:
-            True if the form exists, False otherwise
+        Raises `FormNotFoundError` if correspond form record is not found.
         """
         ...

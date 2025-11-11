@@ -69,6 +69,7 @@ class StreamEvent(StrEnum):
     AGENT_THOUGHT = "agent_thought"
     AGENT_MESSAGE = "agent_message"
     WORKFLOW_STARTED = "workflow_started"
+    WORKFLOW_PAUSED = "workflow_paused"
     WORKFLOW_FINISHED = "workflow_finished"
     NODE_STARTED = "node_started"
     NODE_FINISHED = "node_finished"

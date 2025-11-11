@@ -30,7 +30,7 @@ from core.workflow.constants import (
     SYSTEM_VARIABLE_NODE_ID,
 )
 from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
-from core.workflow.enums import NodeType
+from core.workflow.enums import NodeType, WorkflowExecutionStatus
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from libs.datetime_utils import naive_utc_now
@@ -607,7 +607,10 @@ class WorkflowRun(Base):
     version: Mapped[str] = mapped_column(String(255))
     graph: Mapped[str | None] = mapped_column(LongText)
     inputs: Mapped[str | None] = mapped_column(LongText)
-    status: Mapped[str] = mapped_column(String(255))  # running, succeeded, failed, stopped, partial-succeeded
+    status: Mapped[WorkflowExecutionStatus] = mapped_column(
+        EnumText(WorkflowExecutionStatus, length=255),
+        nullable=False,
+    )
     outputs: Mapped[str | None] = mapped_column(LongText, default="{}")
     error: Mapped[str | None] = mapped_column(LongText)
     elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))

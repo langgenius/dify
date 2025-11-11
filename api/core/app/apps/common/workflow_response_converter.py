@@ -3,7 +3,7 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, NewType, Union
+from typing import Any, NamedTuple, NewType, Union, final
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -53,6 +53,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser
+from models.workflow import WorkflowRun
 from services.variable_truncator import BaseTruncator, DummyVariableTruncator, VariableTruncator
 
 NodeExecutionId = NewType("NodeExecutionId", str)
@@ -261,6 +262,54 @@ class WorkflowResponseConverter:
                 finished_at=int(finished_at.timestamp()),
                 files=self.fetch_files_from_node_outputs(outputs_mapping),
                 exceptions_count=exceptions_count,
+            ),
+        )
+
+    @classmethod
+    def workflow_run_result_to_finish_response(
+        cls,
+        *,
+        workflow_run: WorkflowRun,
+        creator_user: Account | EndUser,
+    ) -> WorkflowFinishStreamResponse:
+        run_id = workflow_run.id
+        elapsed_time = workflow_run.elapsed_time
+
+        encoded_outputs = workflow_run.outputs_dict
+        finished_at = workflow_run.finished_at
+        assert finished_at is not None
+
+        created_by: Mapping[str, object]
+        user = creator_user
+        if isinstance(user, Account):
+            created_by = {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+            }
+        else:
+            created_by = {
+                "id": user.id,
+                "user": user.session_id,
+            }
+
+        return WorkflowFinishStreamResponse(
+            task_id=task_id,  # TODO
+            workflow_run_id=run_id,
+            data=WorkflowFinishStreamResponse.Data(
+                id=run_id,
+                workflow_id=workflow_run.workflow_id,
+                status=workflow_run.status.value,
+                outputs=encoded_outputs,
+                error=workflow_run.error,
+                elapsed_time=elapsed_time,
+                total_tokens=workflow_run.total_tokens,
+                total_steps=workflow_run.total_steps,
+                created_by=created_by,
+                created_at=int(workflow_run.created_at.timestamp()),
+                finished_at=int(finished_at.timestamp()),
+                files=cls.fetch_files_from_node_outputs(encoded_outputs),
+                exceptions_count=workflow_run.exceptions_count,
             ),
         )
 
@@ -592,7 +641,8 @@ class WorkflowResponseConverter:
             ),
         )
 
-    def fetch_files_from_node_outputs(self, outputs_dict: Mapping[str, Any] | None) -> Sequence[Mapping[str, Any]]:
+    @classmethod
+    def fetch_files_from_node_outputs(cls, outputs_dict: Mapping[str, Any] | None) -> Sequence[Mapping[str, Any]]:
         """
         Fetch files from node outputs
         :param outputs_dict: node outputs dict
@@ -601,7 +651,7 @@ class WorkflowResponseConverter:
         if not outputs_dict:
             return []
 
-        files = [self._fetch_files_from_variable_value(output_value) for output_value in outputs_dict.values()]
+        files = [cls._fetch_files_from_variable_value(output_value) for output_value in outputs_dict.values()]
         # Remove None
         files = [file for file in files if file]
         # Flatten list

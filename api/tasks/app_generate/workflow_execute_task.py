@@ -136,7 +136,7 @@ class _ChatflowRunner:
 
         chat_generator = AdvancedChatAppGenerator()
 
-        workflow_run_id = uuid.uuid4()
+        workflow_run_id = exec_params.workflow_run_id
 
         with self._setup_flask_context(user):
             response = chat_generator.generate(

@@ -1,9 +1,13 @@
 import json
 import logging
+import time
 import uuid
 from collections.abc import Generator
-from typing import Mapping, Union, cast
+from typing import Any, Mapping, Union, cast
 
+from libs.broadcast_channel.channel import Subscription, Topic
+from libs.broadcast_channel.exc import SubscriptionClosedError
+from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -29,8 +33,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
-from libs.broadcast_channel.channel import Topic
-from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
+from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.enums import CreatorUserRole
@@ -38,7 +41,6 @@ from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Me
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
-from extensions.ext_redis import redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -302,15 +304,34 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         return topic
 
     @classmethod
-    def retrieve_events(cls, app_mode: AppMode, workflow_run_id: uuid.UUID) -> Generator[Mapping | str, None, None]:
+    def retrieve_events(
+        cls, app_mode: AppMode, workflow_run_id: uuid.UUID, idle_timeout=300
+    ) -> Generator[Mapping | str, None, None]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
-        with topic.subscribe() as sub:
-            for payload in sub:
-                event = json.loads(payload)
-                yield event
-                if not isinstance(event, dict):
-                    continue
+        return _topic_msg_generator(topic, idle_timeout)
 
-                event_type = event.get("event")
-                if event_type == StreamEvent.WORKFLOW_FINISHED:
+
+def _topic_msg_generator(topic: Topic, idle_timeout: float) -> Generator[Mapping[str, Any], None, None]:
+    last_msg_time = time.time()
+    with topic.subscribe() as sub:
+        while True:
+            try:
+                msg = sub.receive()
+            except SubscriptionClosedError:
+                return
+            if msg is None:
+                current_time = time.time()
+                if current_time - last_msg_time > idle_timeout:
                     return
+                # skip the `None` message
+                continue
+
+            last_msg_time = time.time()
+            event = json.loads(msg)
+            yield event
+            if not isinstance(event, dict):
+                continue
+
+            event_type = event.get("event")
+            if event_type in (StreamEvent.WORKFLOW_FINISHED, StreamEvent.WORKFLOW_PAUSED):
+                return

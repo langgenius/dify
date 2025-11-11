@@ -3,6 +3,8 @@ from typing import Annotated, Literal, TypeAlias
 
 from pydantic import BaseModel, Field
 
+from core.workflow.nodes.human_input.entities import FormInput
+
 
 class PauseReasonType(StrEnum):
     HUMAN_INPUT_REQUIRED = auto()
@@ -11,10 +13,10 @@ class PauseReasonType(StrEnum):
 
 class HumanInputRequired(BaseModel):
     TYPE: Literal[PauseReasonType.HUMAN_INPUT_REQUIRED] = PauseReasonType.HUMAN_INPUT_REQUIRED
-
     form_id: str
-    # The identifier of the human input node causing the pause.
-    node_id: str
+    form_content: str
+    inputs: list[FormInput] = Field(default_factory=list)
+    web_app_form_token: str | None = None
 
 
 class SchedulingPause(BaseModel):
