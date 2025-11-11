@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
-import Textarea from './textarea'
+import QueryInput from './components/query-input'
 import s from './style.module.css'
 import ModifyRetrievalModal from './modify-retrieval-modal'
 import ResultItem from './components/result-item'
@@ -119,7 +119,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           <h1 className='text-base font-semibold text-text-primary'>{t('datasetHitTesting.title')}</h1>
           <p className='mt-0.5 text-[13px] font-normal leading-4 text-text-tertiary'>{t('datasetHitTesting.desc')}</p>
         </div>
-        <Textarea
+        <QueryInput
           setHitResult={setHitResult}
           setExternalHitResult={setExternalHitResult}
           onSubmit={showRightPanel}

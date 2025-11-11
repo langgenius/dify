@@ -50,7 +50,7 @@ const ImageItem = ({
         )
       }
       <FileImageRender
-        className='h-[68px] w-[68px] shadow-md'
+        className='size-8 shadow-md'
         imageUrl={base64Url || sourceUrl || ''}
       />
       {

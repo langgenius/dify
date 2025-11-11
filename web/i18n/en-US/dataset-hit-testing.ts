@@ -29,6 +29,11 @@ const translation = {
   hitChunks: 'Hit {{num}} child chunks',
   open: 'Open',
   keyword: 'Keywords',
+  imageUploader: {
+    tip: 'Upload or drop images (Max {{batchCount}}, {{size}}MB each)',
+    tooltip: 'Upload images (Max {{batchCount}}, {{size}}MB each)',
+    dropZoneTip: 'Drag file here to upload',
+  },
 }
 
 export default translation

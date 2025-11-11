@@ -5,7 +5,7 @@ import {
 import type { FileEntity } from '../types'
 import FileItem from './image-item'
 import { useUpload } from '../hooks/use-upload'
-import ImageInput from '../image-input'
+import ImageInput from './image-input'
 import cn from '@/utils/classnames'
 
 type FileUploaderInAttachmentProps = {
