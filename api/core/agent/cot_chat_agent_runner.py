@@ -79,12 +79,11 @@ class CotChatAgentRunner(CotAgentRunner):
             assistant_messages = []
         else:
             assistant_message = AssistantPromptMessage(content="")
+            # Content is initialized as string and concatenated only with strings
             for unit in agent_scratchpad:
                 if unit.is_final():
-                    assert isinstance(assistant_message.content, str)
                     assistant_message.content += f"Final Answer: {unit.agent_response}"
                 else:
-                    assert isinstance(assistant_message.content, str)
                     assistant_message.content += f"Thought: {unit.thought}\n\n"
                     if unit.action_str:
                         assistant_message.content += f"Action: {unit.action_str}\n\n"

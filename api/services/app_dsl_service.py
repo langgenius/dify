@@ -580,7 +580,7 @@ class AppDslService:
             raise ValueError("Missing draft workflow configuration, please check.")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)
-        # TODO: refactor: we need a better way to filter workspace related data from nodes
+        # Filter workspace-specific data from workflow nodes
         for node in workflow_dict.get("graph", {}).get("nodes", []):
             node_data = node.get("data", {})
             if not node_data:
@@ -622,8 +622,7 @@ class AppDslService:
 
         model_config = app_model_config.to_dict()
 
-        # TODO: refactor: we need a better way to filter workspace related data from model config
-        # filter credential id from model config
+        # Filter workspace-specific credential IDs from model config
         for tool in model_config.get("agent_mode", {}).get("tools", []):
             tool.pop("credential_id", None)
 
