@@ -1,7 +1,7 @@
 'use client'
 
 import type { Dispatch, SetStateAction } from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useSearchParams } from 'next/navigation'
 import type {
@@ -12,8 +12,8 @@ import type {
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
+  EDUCATION_PRICING_SHOW_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
-  SHOW_PRICING_MODAL_ACTION,
 } from '@/app/education-apply/constants'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
 import {
@@ -114,6 +114,9 @@ export type ModalContextState = {
   setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
   setShowEducationExpireNoticeModal: Dispatch<SetStateAction<ModalState<ExpireNoticeModalPayloadProps> | null>>
 }
+const PRICING_MODAL_QUERY_PARAM = 'pricing'
+const PRICING_MODAL_QUERY_VALUE = 'open'
+
 const ModalContext = createContext<ModalContextState>({
   setShowAccountSettingModal: noop,
   setShowApiBasedExtensionModal: noop,
@@ -167,7 +170,7 @@ export const ModalContextProvider = ({
   const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] = useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
 
   const [showPricingModal, setShowPricingModal] = useState(
-    searchParams.get('action') === SHOW_PRICING_MODAL_ACTION,
+    searchParams.get(PRICING_MODAL_QUERY_PARAM) === PRICING_MODAL_QUERY_VALUE,
   )
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const handleCancelAccountSettingModal = () => {
@@ -182,6 +185,48 @@ export const ModalContextProvider = ({
     if (showAccountSettingModal?.onCancelCallback)
       showAccountSettingModal?.onCancelCallback()
   }
+
+  const handleAccountSettingTabChange = useCallback((tab: AccountSettingTab) => {
+    setShowAccountSettingModal((prev) => {
+      if (!prev)
+        return { payload: tab }
+      if (prev.payload === tab)
+        return prev
+      return { ...prev, payload: tab }
+    })
+  }, [setShowAccountSettingModal])
+
+  useEffect(() => {
+    if (typeof window === 'undefined')
+      return
+    const url = new URL(window.location.href)
+    if (!showAccountSettingModal?.payload) {
+      if (url.searchParams.get('action') !== ACCOUNT_SETTING_MODAL_ACTION)
+        return
+      url.searchParams.delete('action')
+      url.searchParams.delete('tab')
+      window.history.replaceState(null, '', url.toString())
+      return
+    }
+    url.searchParams.set('action', ACCOUNT_SETTING_MODAL_ACTION)
+    url.searchParams.set('tab', showAccountSettingModal.payload)
+    window.history.replaceState(null, '', url.toString())
+  }, [showAccountSettingModal])
+
+  useEffect(() => {
+    if (typeof window === 'undefined')
+      return
+    const url = new URL(window.location.href)
+    if (showPricingModal) {
+      url.searchParams.set(PRICING_MODAL_QUERY_PARAM, PRICING_MODAL_QUERY_VALUE)
+    }
+    else {
+      url.searchParams.delete(PRICING_MODAL_QUERY_PARAM)
+      if (url.searchParams.get('action') === EDUCATION_PRICING_SHOW_ACTION)
+        url.searchParams.delete('action')
+    }
+    window.history.replaceState(null, '', url.toString())
+  }, [showPricingModal])
 
   const handleCancelModerationSettingModal = () => {
     setShowModerationSettingModal(null)
@@ -267,13 +312,21 @@ export const ModalContextProvider = ({
     setShowOpeningModal(null)
   }
 
+  const handleShowPricingModal = useCallback(() => {
+    setShowPricingModal(true)
+  }, [])
+
+  const handleCancelPricingModal = useCallback(() => {
+    setShowPricingModal(false)
+  }, [])
+
   return (
     <ModalContext.Provider value={{
       setShowAccountSettingModal,
       setShowApiBasedExtensionModal,
       setShowModerationSettingModal,
       setShowExternalDataToolModal,
-      setShowPricingModal: () => setShowPricingModal(true),
+      setShowPricingModal: handleShowPricingModal,
       setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
       setShowModelModal,
       setShowExternalKnowledgeAPIModal,
@@ -289,6 +342,7 @@ export const ModalContextProvider = ({
             <AccountSetting
               activeTab={showAccountSettingModal.payload}
               onCancel={handleCancelAccountSettingModal}
+              onTabChange={handleAccountSettingTabChange}
             />
           )
         }
@@ -324,10 +378,7 @@ export const ModalContextProvider = ({
 
         {
           !!showPricingModal && (
-            <Pricing onCancel={() => {
-              removeSpecificQueryParam('action')
-              setShowPricingModal(false)
-            }} />
+            <Pricing onCancel={handleCancelPricingModal} />
           )
         }
 

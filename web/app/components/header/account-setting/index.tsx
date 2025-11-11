@@ -43,6 +43,7 @@ const iconClassName = `
 type IAccountSettingProps = {
   onCancel: () => void
   activeTab?: AccountSettingTab
+  onTabChange?: (tab: AccountSettingTab) => void
 }
 
 type GroupItem = {
@@ -56,8 +57,12 @@ type GroupItem = {
 export default function AccountSetting({
   onCancel,
   activeTab = ACCOUNT_SETTING_TAB.MEMBERS,
+  onTabChange,
 }: IAccountSettingProps) {
   const [activeMenu, setActiveMenu] = useState<AccountSettingTab>(activeTab)
+  useEffect(() => {
+    setActiveMenu(activeTab)
+  }, [activeTab])
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
@@ -182,7 +187,10 @@ export default function AccountSetting({
                             'mb-0.5 flex h-[37px] cursor-pointer items-center rounded-lg p-1 pl-3 text-sm',
                             activeMenu === item.key ? 'system-sm-semibold bg-state-base-active text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text')}
                           title={item.name}
-                          onClick={() => setActiveMenu(item.key)}
+                          onClick={() => {
+                            setActiveMenu(item.key)
+                            onTabChange?.(item.key)
+                          }}
                         >
                           {activeMenu === item.key ? item.activeIcon : item.icon}
                           {!isMobile && <div className='truncate'>{item.name}</div>}
