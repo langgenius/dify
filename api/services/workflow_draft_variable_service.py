@@ -653,21 +653,21 @@ def _batch_upsert_draft_variable(
         elif policy == _UpsertPolicy.IGNORE:
             stmt = stmt.on_conflict_do_nothing(index_elements=WorkflowDraftVariable.unique_app_id_node_id_name())
     else:
-        stmt = mysql_insert(WorkflowDraftVariable).values([_model_to_insertion_dict(v) for v in draft_vars])
+        stmt = mysql_insert(WorkflowDraftVariable).values([_model_to_insertion_dict(v) for v in draft_vars])  # type: ignore[assignment]
         if policy == _UpsertPolicy.OVERWRITE:
-            stmt = stmt.on_duplicate_key_update(
+            stmt = stmt.on_duplicate_key_update(  # type: ignore[attr-defined]
                 # Refresh creation timestamp to ensure updated variables
                 # appear first in chronologically sorted result sets.
-                created_at=stmt.inserted.created_at,
-                updated_at=stmt.inserted.updated_at,
-                last_edited_at=stmt.inserted.last_edited_at,
-                description=stmt.inserted.description,
-                value_type=stmt.inserted.value_type,
-                value=stmt.inserted.value,
-                visible=stmt.inserted.visible,
-                editable=stmt.inserted.editable,
-                node_execution_id=stmt.inserted.node_execution_id,
-                file_id=stmt.inserted.file_id,
+                created_at=stmt.inserted.created_at,  # type: ignore[attr-defined]
+                updated_at=stmt.inserted.updated_at,  # type: ignore[attr-defined]
+                last_edited_at=stmt.inserted.last_edited_at,  # type: ignore[attr-defined]
+                description=stmt.inserted.description,  # type: ignore[attr-defined]
+                value_type=stmt.inserted.value_type,  # type: ignore[attr-defined]
+                value=stmt.inserted.value,  # type: ignore[attr-defined]
+                visible=stmt.inserted.visible,  # type: ignore[attr-defined]
+                editable=stmt.inserted.editable,  # type: ignore[attr-defined]
+                node_execution_id=stmt.inserted.node_execution_id,  # type: ignore[attr-defined]
+                file_id=stmt.inserted.file_id,  # type: ignore[attr-defined]
             )
         elif policy == _UpsertPolicy.IGNORE:
             stmt = stmt.prefix_with("IGNORE")

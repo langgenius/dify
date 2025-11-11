@@ -199,6 +199,8 @@ class DatabaseConfig(BaseSettings):
             return self.MYSQL_HOST
         elif self.DB_TYPE == "oceanbase":
             return self.OCEANBASE_HOST
+        else:
+            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -209,6 +211,8 @@ class DatabaseConfig(BaseSettings):
             return self.MYSQL_PORT
         elif self.DB_TYPE == "oceanbase":
             return self.OCEANBASE_PORT
+        else:
+            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
     
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -219,6 +223,8 @@ class DatabaseConfig(BaseSettings):
             return self.MYSQL_USER
         elif self.DB_TYPE == "oceanbase":
             return self.OCEANBASE_USER
+        else:
+            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
     
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -229,6 +235,8 @@ class DatabaseConfig(BaseSettings):
             return self.MYSQL_PASSWORD
         elif self.DB_TYPE == "oceanbase":
             return self.OCEANBASE_PASSWORD
+        else:
+            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -239,6 +247,8 @@ class DatabaseConfig(BaseSettings):
             return self.MYSQL_DATABASE
         elif self.DB_TYPE == "oceanbase":
             return self.OCEANBASE_DATABASE
+        else:
+            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
 
     DB_CHARSET: str = Field(
         description="Character set for database connection.",
