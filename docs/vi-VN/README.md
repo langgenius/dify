@@ -86,7 +86,7 @@ Tất cả các dịch vụ của Dify đều đi kèm với các API tương �
   Sử dụng [tài liệu](https://docs.dify.ai) của chúng tôi để tham khảo thêm và nhận hướng dẫn chi tiết hơn.
 
 - **Dify cho doanh nghiệp / tổ chức</br>**
-  Chúng tôi cung cấp các tính năng bổ sung tập trung vào doanh nghiệp. [Ghi lại câu hỏi của bạn cho chúng tôi thông qua chatbot này](https://udify.app/chat/22L1zSxg6yW1cWQg) hoặc [gửi email cho chúng tôi](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) để thảo luận về nhu cầu doanh nghiệp. </br>
+  Chúng tôi cung cấp các tính năng bổ sung tập trung vào doanh nghiệp. [Gửi email cho chúng tôi](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) để thảo luận về nhu cầu doanh nghiệp. </br>
 
   > Đối với các công ty khởi nghiệp và doanh nghiệp nhỏ sử dụng AWS, hãy xem [Dify Premium trên AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) và triển khai nó vào AWS VPC của riêng bạn chỉ với một cú nhấp chuột. Đây là một AMI giá cả phải chăng với tùy chọn tạo ứng dụng với logo và thương hiệu tùy chỉnh.
 
