@@ -651,7 +651,11 @@ class TestWorkflowService:
                 {
                     "id": "end",
                     "type": "end",
-                    "data": {"type": "end", "title": "End"},
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        "outputs": [{"variable": "output", "value_selector": ["start", "text"]}],
+                    },
                 },
             ],
             "edges": [],
