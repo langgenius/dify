@@ -1,6 +1,7 @@
 import { LoroDoc, LoroList, LoroMap, UndoManager } from 'loro-crdt'
 import { cloneDeep, isEqual } from 'lodash-es'
-import { webSocketClient } from './websocket-manager'
+import type { Socket } from 'socket.io-client'
+import { emitWithAuthGuard, webSocketClient } from './websocket-manager'
 import { CRDTProvider } from './crdt-provider'
 import { EventEmitter } from './event-emitter'
 import type { Edge, Node } from '../../types'
@@ -36,6 +37,58 @@ export class CollaborationManager {
   private activeConnections = new Set<string>()
   private isUndoRedoInProgress = false
   private pendingInitialSync = false
+  private rejoinInProgress = false
+
+  private getActiveSocket(): Socket | null {
+    if (!this.currentAppId)
+      return null
+    return webSocketClient.getSocket(this.currentAppId)
+  }
+
+  private handleSessionUnauthorized = (): void => {
+    if (this.rejoinInProgress)
+      return
+    if (!this.currentAppId)
+      return
+
+    const socket = this.getActiveSocket()
+    if (!socket)
+      return
+
+    this.rejoinInProgress = true
+    console.warn('Collaboration session expired, attempting to rejoin workflow.')
+    emitWithAuthGuard(
+      socket,
+      'user_connect',
+      { workflow_id: this.currentAppId },
+      {
+        onAck: () => {
+          this.rejoinInProgress = false
+        },
+        onUnauthorized: () => {
+          this.rejoinInProgress = false
+          console.error('Rejoin failed due to authorization error, forcing disconnect.')
+          this.forceDisconnect()
+        },
+      },
+    )
+  }
+
+  private sendCollaborationEvent(payload: any): void {
+    const socket = this.getActiveSocket()
+    if (!socket)
+      return
+
+    emitWithAuthGuard(socket, 'collaboration_event', payload, { onUnauthorized: this.handleSessionUnauthorized })
+  }
+
+  private sendGraphEvent(payload: any): void {
+    const socket = this.getActiveSocket()
+    if (!socket)
+      return
+
+    emitWithAuthGuard(socket, 'graph_event', payload, { onUnauthorized: this.handleSessionUnauthorized })
+  }
 
   private getNodeContainer(nodeId: string): LoroMap<any> {
     if (!this.nodesMap)
@@ -362,13 +415,13 @@ export class CollaborationManager {
       },
     })
 
-    this.provider = new CRDTProvider(socket, this.doc)
+    this.provider = new CRDTProvider(socket, this.doc, this.handleSessionUnauthorized)
 
     this.setupSubscriptions()
 
     // Force user_connect if already connected
     if (socket.connected)
-      socket.emit('user_connect', { workflow_id: appId })
+      emitWithAuthGuard(socket, 'user_connect', { workflow_id: appId }, { onUnauthorized: this.handleSessionUnauthorized })
 
     return connectionId
   }
@@ -397,6 +450,7 @@ export class CollaborationManager {
     this.cursors = {}
     this.nodePanelPresence = {}
     this.isUndoRedoInProgress = false
+    this.rejoinInProgress = false
 
     // Only reset leader status when actually disconnecting
     const wasLeader = this.isLeader
@@ -426,49 +480,44 @@ export class CollaborationManager {
   emitCursorMove(position: CursorPosition): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
-    const socket = webSocketClient.getSocket(this.currentAppId)
-    if (socket) {
-      socket.emit('collaboration_event', {
-        type: 'mouse_move',
-        userId: socket.id,
-        data: { x: position.x, y: position.y },
-        timestamp: Date.now(),
-      })
-    }
+    const socket = this.getActiveSocket()
+    if (!socket)
+      return
+
+    this.sendCollaborationEvent({
+      type: 'mouse_move',
+      userId: socket.id,
+      data: { x: position.x, y: position.y },
+      timestamp: Date.now(),
+    })
   }
 
   emitSyncRequest(): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
-    const socket = webSocketClient.getSocket(this.currentAppId)
-    if (socket) {
-      console.log('Emitting sync request to leader')
-      socket.emit('collaboration_event', {
-        type: 'sync_request',
-        data: { timestamp: Date.now() },
-        timestamp: Date.now(),
-      })
-    }
+    console.log('Emitting sync request to leader')
+    this.sendCollaborationEvent({
+      type: 'sync_request',
+      data: { timestamp: Date.now() },
+      timestamp: Date.now(),
+    })
   }
 
   emitWorkflowUpdate(appId: string): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
-    const socket = webSocketClient.getSocket(this.currentAppId)
-    if (socket) {
-      console.log('Emitting Workflow update event')
-      socket.emit('collaboration_event', {
-        type: 'workflow_update',
-        data: { appId, timestamp: Date.now() },
-        timestamp: Date.now(),
-      })
-    }
+    console.log('Emitting Workflow update event')
+    this.sendCollaborationEvent({
+      type: 'workflow_update',
+      data: { appId, timestamp: Date.now() },
+      timestamp: Date.now(),
+    })
   }
 
   emitNodePanelPresence(nodeId: string, isOpen: boolean, user: NodePanelPresenceUser): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
-    const socket = webSocketClient.getSocket(this.currentAppId)
+    const socket = this.getActiveSocket()
     if (!socket || !nodeId || !user?.userId) return
 
     const payload: NodePanelPresenceEventData = {
@@ -479,7 +528,7 @@ export class CollaborationManager {
       timestamp: Date.now(),
     }
 
-    socket.emit('collaboration_event', {
+    this.sendCollaborationEvent({
       type: 'node_panel_presence',
       data: payload,
       timestamp: payload.timestamp,
@@ -545,15 +594,12 @@ export class CollaborationManager {
   emitCommentsUpdate(appId: string): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
-    const socket = webSocketClient.getSocket(this.currentAppId)
-    if (socket) {
-      console.log('Emitting Comments update event')
-      socket.emit('collaboration_event', {
-        type: 'comments_update',
-        data: { appId, timestamp: Date.now() },
-        timestamp: Date.now(),
-      })
-    }
+    console.log('Emitting Comments update event')
+    this.sendCollaborationEvent({
+      type: 'comments_update',
+      data: { appId, timestamp: Date.now() },
+      timestamp: Date.now(),
+    })
   }
 
   onUndoRedoStateChange(callback: (state: { canUndo: boolean; canRedo: boolean }) => void): () => void {
@@ -994,10 +1040,7 @@ export class CollaborationManager {
   private emitGraphResyncRequest(): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
-    const socket = webSocketClient.getSocket(this.currentAppId)
-    if (!socket) return
-
-    socket.emit('collaboration_event', {
+    this.sendCollaborationEvent({
       type: 'graph_resync_request',
       data: { timestamp: Date.now() },
       timestamp: Date.now(),
@@ -1013,7 +1056,7 @@ export class CollaborationManager {
 
     try {
       const snapshot = this.doc.export({ mode: 'snapshot' })
-      socket.emit('graph_event', snapshot)
+      this.sendGraphEvent(snapshot)
     }
     catch (error) {
       console.error('Failed to broadcast graph snapshot:', error)

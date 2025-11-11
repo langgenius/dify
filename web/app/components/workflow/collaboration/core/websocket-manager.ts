@@ -3,6 +3,43 @@ import { io } from 'socket.io-client'
 import { ACCESS_TOKEN_LOCAL_STORAGE_NAME } from '@/config'
 import type { DebugInfo, WebSocketConfig } from '../types/websocket'
 
+const isUnauthorizedAck = (...ackArgs: any[]): boolean => {
+  const [first, second] = ackArgs
+
+  if (second === 401 || first === 401)
+    return true
+
+  if (first && typeof first === 'object' && first.msg === 'unauthorized')
+    return true
+
+  return false
+}
+
+export type EmitAckOptions = {
+  onAck?: (...ackArgs: any[]) => void
+  onUnauthorized?: (...ackArgs: any[]) => void
+}
+
+export const emitWithAuthGuard = (
+  socket: Socket | null | undefined,
+  event: string,
+  payload: any,
+  options?: EmitAckOptions,
+): void => {
+  if (!socket)
+    return
+
+  socket.emit(
+    event,
+    payload,
+    (...ackArgs: any[]) => {
+      options?.onAck?.(...ackArgs)
+      if (isUnauthorizedAck(...ackArgs))
+        options?.onUnauthorized?.(...ackArgs)
+    },
+  )
+}
+
 export class WebSocketClient {
   private connections: Map<string, Socket> = new Map()
   private connecting: Set<string> = new Set()
@@ -115,7 +152,7 @@ export class WebSocketClient {
   private setupBaseEventListeners(socket: Socket, appId: string): void {
     socket.on('connect', () => {
       this.connecting.delete(appId)
-      socket.emit('user_connect', { workflow_id: appId })
+      emitWithAuthGuard(socket, 'user_connect', { workflow_id: appId })
     })
 
     socket.on('disconnect', () => {
