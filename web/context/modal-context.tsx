@@ -15,6 +15,11 @@ import {
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
   SHOW_PRICING_MODAL_ACTION,
 } from '@/app/education-apply/constants'
+import {
+  ACCOUNT_SETTING_MODAL_ACTION,
+  DEFAULT_ACCOUNT_SETTING_TAB,
+  isValidAccountSettingTab,
+} from '@/app/components/header/account-setting/constants'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import type {
   ApiBasedExtension,
@@ -136,7 +141,16 @@ type ModalContextProviderProps = {
 export const ModalContextProvider = ({
   children,
 }: ModalContextProviderProps) => {
-  const [showAccountSettingModal, setShowAccountSettingModal] = useState<ModalState<string> | null>(null)
+  const searchParams = useSearchParams()
+
+  const [showAccountSettingModal, setShowAccountSettingModal] = useState<ModalState<string> | null>(() => {
+    if (searchParams.get('action') === ACCOUNT_SETTING_MODAL_ACTION) {
+      const tabParam = searchParams.get('tab')
+      const tab = isValidAccountSettingTab(tabParam) ? tabParam : DEFAULT_ACCOUNT_SETTING_TAB
+      return { payload: tab }
+    }
+    return null
+  })
   const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ModalState<ApiBasedExtension> | null>(null)
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
@@ -151,7 +165,6 @@ export const ModalContextProvider = ({
   const [showUpdatePluginModal, setShowUpdatePluginModal] = useState<ModalState<UpdatePluginPayload> | null>(null)
   const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] = useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
 
-  const searchParams = useSearchParams()
   const [showPricingModal, setShowPricingModal] = useState(
     searchParams.get('action') === SHOW_PRICING_MODAL_ACTION,
   )
@@ -163,6 +176,7 @@ export const ModalContextProvider = ({
       localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
 
     removeSpecificQueryParam('action')
+    removeSpecificQueryParam('tab')
     setShowAccountSettingModal(null)
     if (showAccountSettingModal?.onCancelCallback)
       showAccountSettingModal?.onCancelCallback()
