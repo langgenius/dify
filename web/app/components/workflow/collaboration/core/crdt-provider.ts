@@ -1,13 +1,16 @@
 import type { LoroDoc } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
+import { emitWithAuthGuard } from './websocket-manager'
 
 export class CRDTProvider {
   private doc: LoroDoc
   private socket: Socket
+  private onUnauthorized?: () => void
 
-  constructor(socket: Socket, doc: LoroDoc) {
+  constructor(socket: Socket, doc: LoroDoc, onUnauthorized?: () => void) {
     this.socket = socket
     this.doc = doc
+    this.onUnauthorized = onUnauthorized
     this.setupEventListeners()
   }
 
@@ -15,7 +18,7 @@ export class CRDTProvider {
     this.doc.subscribe((event: any) => {
       if (event.by === 'local') {
         const update = this.doc.export({ mode: 'update' })
-        this.socket.emit('graph_event', update)
+        emitWithAuthGuard(this.socket, 'graph_event', update, { onUnauthorized: this.onUnauthorized })
       }
     })
 
