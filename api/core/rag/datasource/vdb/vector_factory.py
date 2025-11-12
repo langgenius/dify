@@ -19,7 +19,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from models.dataset import Dataset, Whitelist
 from models.model import UploadFile
-from services.file_service import FileService
+from services.attachment_service import AttachmentService
 
 logger = logging.getLogger(__name__)
 
@@ -222,7 +222,7 @@ class Vector:
                 for document in batch:
                     attachment_id = document.metadata["doc_id"]
                     doc_type = document.metadata["doc_type"]
-                    file_base64_str = FileService(db.engine).get_file_base64(attachment_id)
+                    file_base64_str = AttachmentService(db.engine).get_file_base64(attachment_id)
                     file_base64_list.append(
                         {
                             "content": file_base64_str,

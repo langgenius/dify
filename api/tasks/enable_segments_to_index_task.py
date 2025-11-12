@@ -5,7 +5,7 @@ import click
 from celery import shared_task
 from sqlalchemy import select
 
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
@@ -71,7 +71,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                 },
             )
 
-            if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+            if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                 child_chunks = segment.get_child_chunks()
                 if child_chunks:
                     child_documents = []

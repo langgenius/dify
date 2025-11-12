@@ -21,7 +21,7 @@ from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import ChildDocument, Document
@@ -136,7 +136,7 @@ class IndexingRunner:
 
             for document_segment in document_segments:
                 db.session.delete(document_segment)
-                if requeried_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                if requeried_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                     # delete child chunks
                     db.session.query(ChildChunk).where(ChildChunk.segment_id == document_segment.id).delete()
             db.session.commit()
@@ -209,7 +209,7 @@ class IndexingRunner:
                                 "dataset_id": document_segment.dataset_id,
                             },
                         )
-                        if requeried_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                        if requeried_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                             child_chunks = document_segment.get_child_chunks()
                             if child_chunks:
                                 child_documents = []
@@ -551,7 +551,7 @@ class IndexingRunner:
         indexing_start_at = time.perf_counter()
         tokens = 0
         create_keyword_thread = None
-        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
+        if dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
             # create keyword index
             create_keyword_thread = threading.Thread(
                 target=self._process_keyword_index,
@@ -590,7 +590,7 @@ class IndexingRunner:
                 for future in futures:
                     tokens += future.result()
         if (
-            dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX
+            dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
             and dataset.indexing_technique == "economy"
             and create_keyword_thread is not None
         ):
@@ -744,7 +744,7 @@ class IndexingRunner:
         )
 
         # add document segments
-        doc_store.add_documents(docs=documents, save_child=dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX)
+        doc_store.add_documents(docs=documents, save_child=dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX)
 
         # update document status to indexing
         cur_time = naive_utc_now()

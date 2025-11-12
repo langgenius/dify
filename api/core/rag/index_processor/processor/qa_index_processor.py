@@ -18,7 +18,7 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import Document, QAStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -206,7 +206,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         for qa_chunk in qa_chunks.qa_chunks:
             preview.append({"question": qa_chunk.question, "answer": qa_chunk.answer})
         return {
-            "chunk_structure": IndexType.QA_INDEX,
+            "chunk_structure": IndexStructureType.QA_INDEX,
             "qa_preview": preview,
             "total_segments": len(qa_chunks.qa_chunks),
         }

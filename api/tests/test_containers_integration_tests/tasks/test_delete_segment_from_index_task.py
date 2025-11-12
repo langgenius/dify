@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 
 from faker import Faker
 
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from models import Account, Dataset, Document, DocumentSegment, Tenant
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 
@@ -164,7 +164,7 @@ class TestDeleteSegmentFromIndexTask:
         document.updated_at = fake.date_time_this_year()
         document.doc_type = kwargs.get("doc_type", "text")
         document.doc_metadata = kwargs.get("doc_metadata", {})
-        document.doc_form = kwargs.get("doc_form", IndexType.PARAGRAPH_INDEX)
+        document.doc_form = kwargs.get("doc_form", IndexStructureType.PARAGRAPH_INDEX)
         document.doc_language = kwargs.get("doc_language", "en")
 
         db_session_with_containers.add(document)
@@ -409,7 +409,7 @@ class TestDeleteSegmentFromIndexTask:
         fake = Faker()
 
         # Test different document forms
-        document_forms = [IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX, IndexType.PARENT_CHILD_INDEX]
+        document_forms = [IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.QA_INDEX, IndexStructureType.PARENT_CHILD_INDEX]
 
         for doc_form in document_forms:
             # Create test data for each document form

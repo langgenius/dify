@@ -6,7 +6,7 @@ from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_base import BaseRerankRunner
 from extensions.ext_database import db
-from services.file_service import FileService
+from services.attachment_service import AttachmentService
 
 
 class RerankModelRunner(BaseRerankRunner):
@@ -133,7 +133,7 @@ class RerankModelRunner(BaseRerankRunner):
                 and document.metadata["doc_id"] not in doc_ids
             ):
                 if document.metadata["doc_type"] == DocType.IMAGE:
-                    document_file_base64 = FileService(db.engine).get_file_base64(document.metadata["doc_id"])
+                    document_file_base64 = AttachmentService(db.engine).get_file_base64(document.metadata["doc_id"])
                     document_file_dict = {
                         "content": document_file_base64,
                         "content_type": document.metadata["doc_type"],
@@ -162,7 +162,7 @@ class RerankModelRunner(BaseRerankRunner):
             rerank_result, unique_documents = self.fetch_text_rerank(query, documents, score_threshold, top_n, user)
             return rerank_result, unique_documents
         elif query_type == QueryType.IMAGE_QUERY:
-            file_query = FileService(db.engine).get_file_base64(query)
+            file_query = AttachmentService(db.engine).get_file_base64(query)
             file_query_dict = {
                 "content": file_query,
                 "content_type": DocType.IMAGE,
