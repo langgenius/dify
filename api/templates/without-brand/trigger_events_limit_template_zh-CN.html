@@ -109,10 +109,10 @@
     <div class="card-content">
       <h1 class="title">您的触发事件额度已用尽</h1>
       <div class="body-group">
-        <p class="body-text">
-          您的工作区 <strong>{{workspaceName}}</strong> 已用完 <strong>触发事件额度</strong>，并耗尽
-          <strong>{{planName}} 计划（上限：{{planLimit}}）</strong> 的全部额度。
-        </p>
+      <p class="body-text">
+        您的工作区 <strong>{{workspaceName}}</strong> 已用完 <strong>{{usageScope | default('触发事件额度')}}</strong>，并耗尽
+        <strong>{{planName}} 计划（上限：{{planLimit}}）</strong> 的全部额度。
+      </p>
         <p class="body-text">
           由 <strong>{{triggerSources}}</strong> 触发的工作流已被暂时暂停。
         </p>
@@ -122,7 +122,13 @@
       </div>
       <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
       <p class="note">
-        <strong>{{planName}} 计划的触发事件额度{{resetDescription}}</strong>。
+        <strong>
+          {% if resetLine is defined %}
+            {{ resetLine }}
+          {% else %}
+            {{planName}} 计划的触发事件额度{{resetDescription}}
+          {% endif %}
+        </strong>
       </p>
     </div>
   </div>

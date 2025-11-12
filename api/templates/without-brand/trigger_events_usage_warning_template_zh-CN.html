@@ -117,7 +117,13 @@
       </div>
       <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
       <p class="note">
-        <strong>{{planName}} 计划的触发事件额度{{resetDescription}}</strong>。
+        <strong>
+          {% if resetLine is defined %}
+            {{ resetLine }}
+          {% else %}
+            {{planName}} 计划的触发事件额度{{resetDescription}}
+          {% endif %}
+        </strong>
       </p>
     </div>
   </div>

@@ -112,8 +112,8 @@
       <h1 class="title">You’ve reached your trigger events limit</h1>
       <div class="body-group">
         <p class="body-text">
-          Your workspace <strong>{{workspaceName}}</strong> has used all available <strong>Trigger Events</strong> for the
-          <strong>{{planName}} Plan (limit: {{planLimit}})</strong>.
+        Your workspace <strong>{{workspaceName}}</strong> has used all available <strong>{{usageScope | default('Trigger Events')}}</strong> for the
+        <strong>{{planName}} Plan (limit: {{planLimit}})</strong>.
         </p>
         <p class="body-text">
           Workflows triggered by <strong>{{triggerSources}}</strong> events have been temporarily paused.
@@ -124,7 +124,13 @@
       </div>
       <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
       <p class="note">
-        <strong>Trigger Events</strong> for the <strong>{{planName}} Plan</strong> <strong>{{resetDescription}}</strong>.
+        <strong>
+          {% if resetLine is defined %}
+            {{ resetLine }}
+          {% else %}
+            Trigger Events for the {{planName}} Plan {{resetDescription}}
+          {% endif %}
+        </strong>
       </p>
     </div>
   </div>
