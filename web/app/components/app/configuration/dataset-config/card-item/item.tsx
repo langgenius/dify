@@ -10,7 +10,7 @@ import SettingsModal from '../settings-modal'
 import type { DataSet } from '@/models/datasets'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Drawer from '@/app/components/base/drawer'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import cn from '@/utils/classnames'
@@ -32,7 +32,7 @@ const Item: FC<ItemProps> = ({
   editable = true,
 }) => {
   const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const { t } = useTranslation()

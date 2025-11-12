@@ -24,7 +24,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { noop } from 'lodash-es'
 
@@ -52,7 +52,7 @@ const Prompt: FC<ISimplePromptInput> = ({
 }) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
   const featuresStore = useFeaturesStore()
   const {
     features,

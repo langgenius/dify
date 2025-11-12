@@ -7,7 +7,7 @@ import { RiCloseLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
 import React, { useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import Loading from '@/app/components/base/loading'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import Tooltip from '@/app/components/base/tooltip'
 import { noop } from 'lodash-es'
 
@@ -23,7 +23,7 @@ const PdfPreview: FC<PdfPreviewProps> = ({
   const media = useBreakpoints()
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
 
   const zoomIn = () => {
     setScale(prevScale => Math.min(prevScale * 1.2, 15))

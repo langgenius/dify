@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { RiBookOpenLine } from '@remixicon/react'
 import EmbeddingProcess from '../embedding-process'
 
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import type { FullDocumentDetail, createDocumentResponse } from '@/models/datasets'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
@@ -23,7 +23,7 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
   const docLink = useDocLink()
 
   const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
   const iconInfo = creationCache?.dataset?.icon_info || {
     icon: '📙',
     icon_type: 'emoji',

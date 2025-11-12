@@ -10,7 +10,7 @@ import { type App, AppModeEnum } from '@/types/app'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
 import Indicator from '@/app/components/header/indicator'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import cn from '@/utils/classnames'
 import type { WorkflowRunTriggeredFrom } from '@/models/log'
@@ -28,7 +28,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
   const { formatTime } = useTimestamp()
 
   const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false)
   const [currentLog, setCurrentLog] = useState<WorkflowAppLogDetail | undefined>()

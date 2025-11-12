@@ -11,7 +11,7 @@ import type { DataSet } from '@/models/datasets'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import SettingsModal from '@/app/components/app/configuration/dataset-config/settings-modal'
 import Drawer from '@/app/components/base/drawer'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import AppIcon from '@/app/components/base/app-icon'
@@ -33,7 +33,7 @@ const DatasetItem: FC<Props> = ({
 }) => {
   const media = useBreakpoints()
   const { t } = useTranslation()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const [isDeleteHovered, setIsDeleteHovered] = useState(false)
 

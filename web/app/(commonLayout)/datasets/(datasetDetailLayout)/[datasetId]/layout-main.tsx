@@ -15,7 +15,7 @@ import {
 import AppSideBar from '@/app/components/app-sidebar'
 import Loading from '@/app/components/base/loading'
 import DatasetDetailContext from '@/context/dataset-detail'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import { useStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
@@ -50,7 +50,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 
   const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
 

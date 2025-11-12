@@ -6,7 +6,7 @@ import type { NavIcon } from './navLink'
 import AppInfo from './app-info'
 import DatasetInfo from './dataset-info'
 import AppSidebarDropdown from './app-sidebar-dropdown'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import cn from '@/utils/classnames'
@@ -39,7 +39,7 @@ const AppDetailNav = ({
   })))
   const sidebarRef = React.useRef<HTMLDivElement>(null)
   const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
   const expand = appSidebarExpand === 'expand'
 
   const handleToggle = useCallback(() => {

@@ -13,7 +13,7 @@
  * event listeners on unmount to prevent memory leaks.
  */
 import { act, renderHook } from '@testing-library/react'
-import useBreakpoints, { MediaType } from './use-breakpoints'
+import useBreakpoints from './use-breakpoints'
 
 describe('useBreakpoints', () => {
   const originalInnerWidth = window.innerWidth
@@ -50,7 +50,7 @@ describe('useBreakpoints', () => {
     })
 
     const { result } = renderHook(() => useBreakpoints())
-    expect(result.current).toBe(MediaType.mobile)
+    expect(result.current).toBe(mediaTypeMap.mobile)
   })
 
   /**
@@ -66,7 +66,7 @@ describe('useBreakpoints', () => {
     })
 
     const { result } = renderHook(() => useBreakpoints())
-    expect(result.current).toBe(MediaType.tablet)
+    expect(result.current).toBe(mediaTypeMap.tablet)
   })
 
   /**
@@ -82,7 +82,7 @@ describe('useBreakpoints', () => {
     })
 
     const { result } = renderHook(() => useBreakpoints())
-    expect(result.current).toBe(MediaType.pc)
+    expect(result.current).toBe(mediaTypeMap.pc)
   })
 
   /**
@@ -98,15 +98,15 @@ describe('useBreakpoints', () => {
     })
 
     const { result } = renderHook(() => useBreakpoints())
-    expect(result.current).toBe(MediaType.pc)
+    expect(result.current).toBe(mediaTypeMap.pc)
 
     // Resize to tablet
     fireResize(768)
-    expect(result.current).toBe(MediaType.tablet)
+    expect(result.current).toBe(mediaTypeMap.tablet)
 
     // Resize to mobile
     fireResize(600)
-    expect(result.current).toBe(MediaType.mobile)
+    expect(result.current).toBe(mediaTypeMap.mobile)
   })
 
   /**
