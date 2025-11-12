@@ -25,7 +25,12 @@ import pytest
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session
 
-from core.app.layers.pause_state_persist_layer import PauseStatePersistenceLayer
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.layers.pause_state_persist_layer import (
+    WorkflowResumptionContext,
+    PauseStatePersistenceLayer,
+)
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.enums import WorkflowExecutionStatus
@@ -39,7 +44,7 @@ from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models import WorkflowPause as WorkflowPauseModel
-from models.model import UploadFile
+from models.model import AppMode, UploadFile
 from models.workflow import Workflow, WorkflowRun
 from services.file_service import FileService
 from services.workflow_run_service import WorkflowRunService
@@ -226,11 +231,39 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         return ReadOnlyGraphRuntimeStateWrapper(graph_runtime_state)
 
+    def _create_generate_entity(
+        self,
+        workflow_execution_id: str | None = None,
+        user_id: str | None = None,
+        workflow_id: str | None = None,
+    ) -> WorkflowAppGenerateEntity:
+        execution_id = workflow_execution_id or getattr(self, "test_workflow_run_id", str(uuid.uuid4()))
+        wf_id = workflow_id or getattr(self, "test_workflow_id", str(uuid.uuid4()))
+        tenant_id = getattr(self, "test_tenant_id", "tenant-123")
+        app_id = getattr(self, "test_app_id", "app-123")
+        app_config = WorkflowUIBasedAppConfig(
+            tenant_id=str(tenant_id),
+            app_id=str(app_id),
+            app_mode=AppMode.WORKFLOW,
+            workflow_id=str(wf_id),
+        )
+        return WorkflowAppGenerateEntity(
+            task_id=str(uuid.uuid4()),
+            app_config=app_config,
+            inputs={},
+            files=[],
+            user_id=user_id or getattr(self, "test_user_id", str(uuid.uuid4())),
+            stream=False,
+            invoke_from=InvokeFrom.DEBUGGER,
+            workflow_execution_id=execution_id,
+        )
+
     def _create_pause_state_persistence_layer(
         self,
         workflow_run: WorkflowRun | None = None,
         workflow: Workflow | None = None,
         state_owner_user_id: str | None = None,
+        generate_entity: WorkflowAppGenerateEntity | None = None,
     ) -> PauseStatePersistenceLayer:
         """Create PauseStatePersistenceLayer with real dependencies."""
         owner_id = state_owner_user_id
@@ -244,10 +277,23 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         assert owner_id is not None
         owner_id = str(owner_id)
+        workflow_execution_id = (
+            workflow_run.id if workflow_run is not None else getattr(self, "test_workflow_run_id", None)
+        )
+        assert workflow_execution_id is not None
+        workflow_id = workflow.id if workflow is not None else getattr(self, "test_workflow_id", None)
+        assert workflow_id is not None
+        entity_user_id = getattr(self, "test_user_id", owner_id)
+        entity = generate_entity or self._create_generate_entity(
+            workflow_execution_id=str(workflow_execution_id),
+            user_id=entity_user_id,
+            workflow_id=str(workflow_id),
+        )
 
         return PauseStatePersistenceLayer(
             session_factory=self.session.get_bind(),
             state_owner_user_id=owner_id,
+            generate_entity=entity,
         )
 
     def test_complete_pause_flow_with_real_dependencies(self, db_session_with_containers):
@@ -297,10 +343,15 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert pause_model.resumed_at is None
 
         storage_content = storage.load(pause_model.state_object_key).decode()
+        resumption_context = WorkflowResumptionContext.loads(storage_content)
+        assert resumption_context.version == "1"
+        assert resumption_context.serialized_graph_runtime_state == graph_runtime_state.dumps()
         expected_state = json.loads(graph_runtime_state.dumps())
-        actual_state = json.loads(storage_content)
-
+        actual_state = json.loads(resumption_context.serialized_graph_runtime_state)
         assert actual_state == expected_state
+        persisted_entity = resumption_context.get_generate_entity()
+        assert isinstance(persisted_entity, WorkflowAppGenerateEntity)
+        assert persisted_entity.workflow_execution_id == self.test_workflow_run_id
 
     def test_state_persistence_and_retrieval(self, db_session_with_containers):
         """Test that pause state can be persisted and retrieved correctly."""
@@ -341,13 +392,15 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert pause_entity.workflow_execution_id == self.test_workflow_run_id
 
         state_bytes = pause_entity.get_state()
-        retrieved_state = json.loads(state_bytes.decode())
+        resumption_context = WorkflowResumptionContext.loads(state_bytes.decode())
+        retrieved_state = json.loads(resumption_context.serialized_graph_runtime_state)
         expected_state = json.loads(graph_runtime_state.dumps())
 
         assert retrieved_state == expected_state
         assert retrieved_state["outputs"] == complex_outputs
         assert retrieved_state["total_tokens"] == 250
         assert retrieved_state["node_run_steps"] == 10
+        assert resumption_context.get_generate_entity().workflow_execution_id == self.test_workflow_run_id
 
     def test_database_transaction_handling(self, db_session_with_containers):
         """Test that database transactions are handled correctly."""
@@ -410,7 +463,9 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         # Verify content in storage
         storage_content = storage.load(pause_model.state_object_key).decode()
-        assert storage_content == graph_runtime_state.dumps()
+        resumption_context = WorkflowResumptionContext.loads(storage_content)
+        assert resumption_context.serialized_graph_runtime_state == graph_runtime_state.dumps()
+        assert resumption_context.get_generate_entity().workflow_execution_id == self.test_workflow_run_id
 
     def test_workflow_with_different_creators(self, db_session_with_containers):
         """Test pause state with workflows created by different users."""
@@ -474,6 +529,8 @@ class TestPauseStatePersistenceLayerTestContainers:
         # Verify the state owner is the workflow creator
         pause_entity = self.workflow_run_service._workflow_run_repo.get_workflow_pause(different_workflow_run.id)
         assert pause_entity is not None
+        resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
+        assert resumption_context.get_generate_entity().workflow_execution_id == different_workflow_run.id
 
     def test_layer_ignores_non_pause_events(self, db_session_with_containers):
         """Test that layer ignores non-pause events."""
