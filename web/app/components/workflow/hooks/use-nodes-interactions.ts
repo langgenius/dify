@@ -396,6 +396,7 @@ export const useNodesInteractions = () => {
       if (node.type === CUSTOM_ITERATION_START_NODE) return
       if (node.type === CUSTOM_LOOP_START_NODE) return
       if (node.data.type === BlockEnum.DataSourceEmpty) return
+      if (node.data._pluginInstallLocked) return
       handleNodeSelect(node.id)
     },
     [handleNodeSelect],

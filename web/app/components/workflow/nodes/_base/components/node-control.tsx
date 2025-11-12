@@ -42,7 +42,8 @@ const NodeControl: FC<NodeControlProps> = ({
   return (
     <div
       className={`
-      absolute -top-7 right-0 hidden h-7 pb-1 group-hover:flex
+      absolute -top-7 right-0 hidden h-7 pb-1
+      ${!data._pluginInstallLocked && 'group-hover:flex'}
       ${data.selected && '!flex'}
       ${open && '!flex'}
       `}
