@@ -1,10 +1,11 @@
+import cn from '@/utils/classnames'
+import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
+import { type VariantProps, cva } from 'class-variance-authority'
+import { noop } from 'lodash-es'
 import type { CSSProperties, ChangeEventHandler, FocusEventHandler } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
-import { type VariantProps, cva } from 'class-variance-authority'
-import cn from '@/utils/classnames'
-import { noop } from 'lodash-es'
+import { CopyFeedbackNew } from '../copy-feedback'
 
 export const inputVariants = cva(
   '',
@@ -24,6 +25,7 @@ export const inputVariants = cva(
 export type InputProps = {
   showLeftIcon?: boolean
   showClearIcon?: boolean
+  showCopyIcon?: boolean
   onClear?: () => void
   disabled?: boolean
   destructive?: boolean
@@ -41,6 +43,7 @@ const Input = ({
   destructive,
   showLeftIcon,
   showClearIcon,
+  showCopyIcon,
   onClear,
   wrapperClassName,
   className,
@@ -92,8 +95,8 @@ const Input = ({
           showLeftIcon && size === 'large' && 'pl-7',
           showClearIcon && value && 'pr-[26px]',
           showClearIcon && value && size === 'large' && 'pr-7',
-          destructive && 'pr-[26px]',
-          destructive && size === 'large' && 'pr-7',
+          (destructive || showCopyIcon) && 'pr-[26px]',
+          (destructive || showCopyIcon) && size === 'large' && 'pr-7',
           disabled && 'cursor-not-allowed border-transparent bg-components-input-bg-disabled text-components-input-text-filled-disabled hover:border-transparent hover:bg-components-input-bg-disabled',
           destructive && 'border-components-input-border-destructive bg-components-input-bg-destructive text-components-input-text-filled hover:border-components-input-border-destructive hover:bg-components-input-bg-destructive focus:border-components-input-border-destructive focus:bg-components-input-bg-destructive',
           className,
@@ -114,6 +117,14 @@ const Input = ({
       )}
       {destructive && (
         <RiErrorWarningLine className='absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-destructive-secondary' />
+      )}
+      {showCopyIcon && (
+        <div className={cn('group absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer')}>
+          <CopyFeedbackNew
+            content={String(value ?? '')}
+            className='!h-7 !w-7 hover:bg-transparent'
+          />
+        </div>
       )}
       {
         unit && (

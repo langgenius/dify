@@ -5,6 +5,7 @@ import cn from '@/utils/classnames'
 import Indicator from '@/app/components/header/indicator'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { useDocLink } from '@/context/i18n'
+import { useStore } from '../store'
 
 type ResultProps = {
   status: string
@@ -23,6 +24,7 @@ const StatusPanel: FC<ResultProps> = ({
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const isListening = useStore(s => s.isListening)
 
   return (
     <StatusContainer status={status}>
@@ -45,7 +47,7 @@ const StatusPanel: FC<ResultProps> = ({
             {status === 'running' && (
               <>
                 <Indicator color={'blue'} />
-                <span>Running</span>
+                <span>{isListening ? 'Listening' : 'Running'}</span>
               </>
             )}
             {status === 'succeeded' && (

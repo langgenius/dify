@@ -3,6 +3,7 @@ from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 
 from pydantic import BaseModel
+from yarl import URL
 
 from configs import dify_config
 from core.helper import marketplace
@@ -175,6 +176,13 @@ class PluginService:
         manager = PluginInstaller()
         return manager.fetch_plugin_installation_by_ids(tenant_id, ids)
 
+    @classmethod
+    def get_plugin_icon_url(cls, tenant_id: str, filename: str) -> str:
+        url_prefix = (
+            URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "plugin" / "icon"
+        )
+        return str(url_prefix % {"tenant_id": tenant_id, "filename": filename})
+
     @staticmethod
     def get_asset(tenant_id: str, asset_file: str) -> tuple[bytes, str]:
         """
@@ -184,6 +192,11 @@ class PluginService:
         # guess mime type
         mime_type, _ = guess_type(asset_file)
         return manager.fetch_asset(tenant_id, asset_file), mime_type or "application/octet-stream"
+
+    @staticmethod
+    def extract_asset(tenant_id: str, plugin_unique_identifier: str, file_name: str) -> bytes:
+        manager = PluginAssetManager()
+        return manager.extract_asset(tenant_id, plugin_unique_identifier, file_name)
 
     @staticmethod
     def check_plugin_unique_identifier(tenant_id: str, plugin_unique_identifier: str) -> bool:
@@ -502,3 +515,11 @@ class PluginService:
         """
         manager = PluginInstaller()
         return manager.check_tools_existence(tenant_id, provider_ids)
+
+    @staticmethod
+    def fetch_plugin_readme(tenant_id: str, plugin_unique_identifier: str, language: str) -> str:
+        """
+        Fetch plugin readme
+        """
+        manager = PluginInstaller()
+        return manager.fetch_plugin_readme(tenant_id, plugin_unique_identifier, language)
