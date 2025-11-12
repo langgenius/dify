@@ -604,7 +604,7 @@ class WorkflowConverter:
         """
         return {"id": f"{source}-{target}", "source": source, "target": target}
 
-    def _append_node(self, graph: dict[Any, Any], node: _NodeType):
+    def _append_node(self, graph: dict[str, Any], node: _NodeType):
         """
         Append Node to Graph
 
