@@ -604,13 +604,13 @@ class PluginFetchPermissionApi(Resource):
 
 
 parser_dynamic = (
-            reqparse.RequestParser()
-            .add_argument("plugin_id", type=str, required=True, location="args")
-            .add_argument("provider", type=str, required=True, location="args")
-            .add_argument("action", type=str, required=True, location="args")
-            .add_argument("parameter", type=str, required=True, location="args")
-            .add_argument("credential_id", type=str, required=False, location="args")
-            .add_argument("provider_type", type=str, required=True, location="args")
+    reqparse.RequestParser()
+    .add_argument("plugin_id", type=str, required=True, location="args")
+    .add_argument("provider", type=str, required=True, location="args")
+    .add_argument("action", type=str, required=True, location="args")
+    .add_argument("parameter", type=str, required=True, location="args")
+    .add_argument("credential_id", type=str, required=False, location="args")
+    .add_argument("provider_type", type=str, required=True, location="args")
 )
 
 
