@@ -44,5 +44,3 @@ def skip_if_database_unavailable():
         not is_database_available(),
         reason="Database service is not available (connection refused or authentication failed)",
     )
-
-
