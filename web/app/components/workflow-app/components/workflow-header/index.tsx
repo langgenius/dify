@@ -43,8 +43,8 @@ const WorkflowHeader = () => {
     return {
       normal: {
         components: {
-          left: <ChatVariableTrigger />,
           middle: <FeaturesTrigger />,
+          chatVariableTrigger: <ChatVariableTrigger />,
         },
         runAndHistoryProps: {
           showRunButton: !isChatMode,

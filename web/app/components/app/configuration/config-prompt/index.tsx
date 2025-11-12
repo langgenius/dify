@@ -12,11 +12,13 @@ import Button from '@/app/components/base/button'
 import AdvancedMessageInput from '@/app/components/app/configuration/config-prompt/advanced-prompt-input'
 import { PromptRole } from '@/models/debug'
 import type { PromptItem, PromptVariable } from '@/models/debug'
-import { type AppType, ModelModeType } from '@/types/app'
+import type { AppModeEnum } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
 import { MAX_PROMPT_MESSAGE_LENGTH } from '@/config'
+
 export type IPromptProps = {
-  mode: AppType
+  mode: AppModeEnum
   promptTemplate: string
   promptVariables: PromptVariable[]
   readonly?: boolean
