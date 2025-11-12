@@ -36,9 +36,9 @@ def trigger_endpoint(endpoint_id: str):
             logger.error("Endpoint not found for {endpoint_id}")
             return jsonify({"error": "Endpoint not found"}), 404
         return response
-    except ValueError as e:
-        logger.exception("Endpoint processing failed for {endpoint_id}: {e}")
-        return jsonify({"error": "Endpoint processing failed", "message": str(e)}), 500
+    except ValueError:
+        logger.exception("Endpoint processing failed for {endpoint_id}")
+        return jsonify({"error": "Endpoint processing failed"}), 500
     except Exception as e:
         logger.exception("Webhook processing failed for {endpoint_id}")
         return jsonify({"error": "Internal server error"}), 500
