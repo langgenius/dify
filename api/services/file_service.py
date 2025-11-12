@@ -245,6 +245,6 @@ class FileService:
                 storage.delete(upload_file.key)
                 session.delete(upload_file)
                 session.commit()
-            except Exception as e:
+            except Exception:
                 session.rollback()
                 raise
