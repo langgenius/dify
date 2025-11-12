@@ -53,6 +53,9 @@ jobs:
           cp docker/.env.example docker/.env
           cp docker/middleware.env.example docker/middleware.env
 
+      - name: Setup SSRF Proxy for Testing
+        run: sh docker/ssrf_proxy/setup-testing.sh
+
       - name: Expose Service Ports
         run: sh .github/workflows/expose_service_ports.sh
 

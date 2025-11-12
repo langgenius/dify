@@ -1,37 +1,79 @@
-acl localnet src 0.0.0.1-0.255.255.255	# RFC 1122 "this" network (LAN)
-acl localnet src 10.0.0.0/8		# RFC 1918 local private network (LAN)
-acl localnet src 100.64.0.0/10		# RFC 6598 shared address space (CGN)
-acl localnet src 169.254.0.0/16 	# RFC 3927 link-local (directly plugged) machines
-acl localnet src 172.16.0.0/12		# RFC 1918 local private network (LAN)
-acl localnet src 192.168.0.0/16		# RFC 1918 local private network (LAN)
-acl localnet src fc00::/7       	# RFC 4193 local private network range
-acl localnet src fe80::/10      	# RFC 4291 link-local (directly plugged) machines
+################################## SSRF Protection Configuration ##################################
+# This configuration prevents SSRF attacks by blocking access to private/internal networks
+# while allowing normal access to public internet resources.
+# To add additional restrictions or allowances, create config files in /etc/squid/conf.d/
+
+################################## Security ACLs ##################################
+# Define private/local networks that should be BLOCKED by default
+acl private_networks dst 0.0.0.0/8          # "This" network
+acl private_networks dst 10.0.0.0/8         # RFC 1918 private network
+acl private_networks dst 100.64.0.0/10      # RFC 6598 shared address space
+acl private_networks dst 127.0.0.0/8        # Loopback
+acl private_networks dst 169.254.0.0/16     # RFC 3927 link-local
+acl private_networks dst 172.16.0.0/12      # RFC 1918 private network  
+acl private_networks dst 192.168.0.0/16     # RFC 1918 private network
+acl private_networks dst 224.0.0.0/4        # Multicast
+acl private_networks dst 240.0.0.0/4        # Reserved for future use
+acl private_networks dst 255.255.255.255/32 # Broadcast
+acl private_networks dst fc00::/7           # IPv6 unique local addresses
+acl private_networks dst fe80::/10          # IPv6 link-local addresses
+acl private_networks dst ::1/128            # IPv6 loopback
+acl private_networks dst ff00::/8           # IPv6 multicast
+
+# Define localhost source
+acl localhost src 127.0.0.1/32 ::1
+
+# Define localnet ACL for compatibility with debian.conf (if present in ubuntu/squid image)
+acl localnet src 10.0.0.0/8
+acl localnet src 172.16.0.0/12
+acl localnet src 192.168.0.0/16
+
+# Define ports
 acl SSL_ports port 443
-# acl SSL_ports port 1025-65535   # Enable the configuration to resolve this issue: https://github.com/langgenius/dify/issues/12792
-acl Safe_ports port 80		# http
-acl Safe_ports port 21		# ftp
-acl Safe_ports port 443		# https
-acl Safe_ports port 70		# gopher
-acl Safe_ports port 210		# wais
-acl Safe_ports port 1025-65535	# unregistered ports
-acl Safe_ports port 280		# http-mgmt
-acl Safe_ports port 488		# gss-http
-acl Safe_ports port 591		# filemaker
-acl Safe_ports port 777		# multiling http
+acl Safe_ports port 80          # http
+acl Safe_ports port 443         # https
 acl CONNECT method CONNECT
-acl allowed_domains dstdomain .marketplace.dify.ai
-http_access allow allowed_domains
+
+################################## Access Control Rules ##################################
+# IMPORTANT: Order matters! First matching rule wins.
+
+# Special rule for reverse proxy port (sandbox access)
+# This must come FIRST to bypass other restrictions for sandbox connectivity
+acl reverse_proxy_port myport ${REVERSE_PROXY_PORT}
+http_access allow reverse_proxy_port
+
+# DENY access to all private/local networks - prevents SSRF attacks
+http_access deny private_networks
+
+# DENY non-safe ports
 http_access deny !Safe_ports
+
+# DENY CONNECT to non-SSL ports
 http_access deny CONNECT !SSL_ports
+
+# Allow manager access from localhost only
 http_access allow localhost manager
 http_access deny manager
-http_access allow localhost
-include /etc/squid/conf.d/*.conf
-http_access deny all
 
-################################## Proxy Server ################################
+# Note: We don't have a blanket "allow localhost" rule to prevent bypassing SSRF protection
+# Localhost connections will still be subject to the same restrictions as other clients
+
+# User overrides in /etc/squid/conf.d/*.conf should be placed here
+# These can be used to add additional restrictions or allowances
+# Note: debian.conf may be present by default in the ubuntu/squid image
+# The include directive uses a script to handle optional includes
+include /etc/squid/conf.d/*.conf
+
+# Allow all other requests (public internet resources)
+# This makes the proxy work as a blacklist (blocking private networks)
+# rather than a whitelist (blocking everything except allowed)
+http_access allow all
+
+################################## Proxy Server Configuration ##################################
 http_port ${HTTP_PORT}
 coredump_dir ${COREDUMP_DIR}
+
+# Refresh patterns
 refresh_pattern ^ftp:		1440	20%	10080
 refresh_pattern ^gopher:	1440	0%	1440
 refresh_pattern -i (/cgi-bin/|\?) 0	0%	0
@@ -41,16 +83,14 @@ refresh_pattern \/InRelease$ 0 0% 0 refresh-ims
 refresh_pattern \/(Translation-.*)(|\.bz2|\.gz|\.xz)$ 0 0% 0 refresh-ims
 refresh_pattern .		0	20%	4320
 
+# Upstream proxy configuration (uncomment and configure if needed)
+# cache_peer <upstream_proxy_ip> parent 3128 0 no-query no-digest no-netdb-exchange default
 
-# cache_dir ufs /var/spool/squid 100 16 256
-# upstream proxy, set to your own upstream proxy IP to avoid SSRF attacks
-# cache_peer 172.1.1.1 parent 3128 0 no-query no-digest no-netdb-exchange default
-
-################################## Reverse Proxy To Sandbox ################################
+################################## Reverse Proxy To Sandbox ##################################
+# This configuration allows the sandbox to be accessed through the reverse proxy
+# The reverse proxy port is separate from the main proxy port and has different rules
 http_port ${REVERSE_PROXY_PORT} accel vhost
 cache_peer ${SANDBOX_HOST} parent ${SANDBOX_PORT} 0 no-query originserver
-acl src_all src all
-http_access allow src_all
 
-# Unless the option's size is increased, an error will occur when uploading more than two files.
+# Buffer size for file uploads
 client_request_buffer_max_size 100 MB

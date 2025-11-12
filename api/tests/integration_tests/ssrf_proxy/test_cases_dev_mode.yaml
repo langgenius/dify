@@ -1,0 +1,168 @@
+# Development Mode Test Cases for SSRF Proxy
+# These test cases verify that development mode correctly disables all SSRF protections
+# WARNING: All requests should be ALLOWED in development mode
+
+test_categories:
+  private_networks:
+    name: "Private Networks (Dev Mode)"
+    description: "In dev mode, private networks should be ALLOWED"
+    test_cases:
+      - name: "Loopback (127.0.0.1)"
+        url: "http://127.0.0.1"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "IPv4 loopback - normally blocked, allowed in dev mode"
+      
+      - name: "Localhost"
+        url: "http://localhost"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "Localhost hostname - normally blocked, allowed in dev mode"
+      
+      - name: "Private 10.x.x.x"
+        url: "http://10.0.0.1"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "RFC 1918 private network - normally blocked, allowed in dev mode"
+      
+      - name: "Private 172.16.x.x"
+        url: "http://172.16.0.1"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "RFC 1918 private network - normally blocked, allowed in dev mode"
+      
+      - name: "Private 192.168.x.x"
+        url: "http://192.168.1.1"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "RFC 1918 private network - normally blocked, allowed in dev mode"
+      
+      - name: "Link-local"
+        url: "http://169.254.1.1"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "Link-local address - normally blocked, allowed in dev mode"
+      
+      - name: "This network"
+        url: "http://0.0.0.0"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "'This' network address - normally blocked, allowed in dev mode"
+
+  cloud_metadata:
+    name: "Cloud Metadata (Dev Mode)"
+    description: "In dev mode, cloud metadata endpoints should be ALLOWED"
+    test_cases:
+      - name: "AWS Metadata"
+        url: "http://169.254.169.254/latest/meta-data/"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "AWS EC2 metadata - normally blocked, allowed in dev mode"
+      
+      - name: "Azure Metadata"
+        url: "http://169.254.169.254/metadata/instance"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "Azure metadata - normally blocked, allowed in dev mode"
+
+  non_standard_ports:
+    name: "Non-Standard Ports (Dev Mode)"
+    description: "In dev mode, all ports should be ALLOWED"
+    test_cases:
+      - name: "Port 8080"
+        url: "http://example.com:8080"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "Alternative HTTP port - normally blocked, allowed in dev mode"
+      
+      - name: "Port 3000"
+        url: "http://example.com:3000"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "Node.js development port - normally blocked, allowed in dev mode"
+      
+      - name: "SSH Port 22"
+        url: "http://example.com:22"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "SSH port - normally blocked, allowed in dev mode"
+      
+      - name: "Database Port 3306"
+        url: "http://example.com:3306"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "MySQL port - normally blocked, allowed in dev mode"
+      
+      - name: "Database Port 5432"
+        url: "http://example.com:5432"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "PostgreSQL port - normally blocked, allowed in dev mode"
+      
+      - name: "Redis Port 6379"
+        url: "http://example.com:6379"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "Redis port - normally blocked, allowed in dev mode"
+      
+      - name: "MongoDB Port 27017"
+        url: "http://example.com:27017"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "MongoDB port - normally blocked, allowed in dev mode"
+      
+      - name: "High Port 12345"
+        url: "http://example.com:12345"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "Random high port - normally blocked, allowed in dev mode"
+
+  localhost_ports:
+    name: "Localhost with Various Ports (Dev Mode)"
+    description: "In dev mode, localhost with any port should be ALLOWED"
+    test_cases:
+      - name: "Localhost:8080"
+        url: "http://localhost:8080"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "Localhost with port 8080 - normally blocked, allowed in dev mode"
+      
+      - name: "Localhost:3000"
+        url: "http://localhost:3000"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "Localhost with port 3000 - normally blocked, allowed in dev mode"
+      
+      - name: "127.0.0.1:9200"
+        url: "http://127.0.0.1:9200"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "Loopback with Elasticsearch port - normally blocked, allowed in dev mode"
+      
+      - name: "127.0.0.1:5001"
+        url: "http://127.0.0.1:5001"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "Loopback with API port - normally blocked, allowed in dev mode"
+
+  public_internet:
+    name: "Public Internet (Dev Mode)"
+    description: "Public internet should still work in dev mode"
+    test_cases:
+      - name: "Example.com"
+        url: "http://example.com"
+        expected_blocked: false
+        description: "Public website - always allowed"
+      
+      - name: "Google HTTPS"
+        url: "https://www.google.com"
+        expected_blocked: false
+        description: "HTTPS public website - always allowed"
+      
+      - name: "GitHub API"
+        url: "https://api.github.com"
+        expected_blocked: false
+        description: "Public API over HTTPS - always allowed"
+
+  special_cases:
+    name: "Special Cases (Dev Mode)"
+    description: "Edge cases that should all be allowed in dev mode"
+    test_cases:
+      - name: "Decimal IP notation"
+        url: "http://2130706433"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "127.0.0.1 in decimal - normally blocked, allowed in dev mode"
+      
+      - name: "Private network in subdomain"
+        url: "http://192-168-1-1.example.com"
+        expected_blocked: false
+        description: "Domain that looks like private IP - always allowed as it resolves externally"
+      
+      - name: "IPv6 Loopback"
+        url: "http://[::1]"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "IPv6 loopback - normally blocked, allowed in dev mode"
+      
+      - name: "IPv6 Link-local"
+        url: "http://[fe80::1]"
+        expected_blocked: false  # ALLOWED in dev mode
+        description: "IPv6 link-local - normally blocked, allowed in dev mode"

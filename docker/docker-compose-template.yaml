@@ -250,12 +250,10 @@ services:
     volumes:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
       - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-    entrypoint:
-      [
-        "sh",
-        "-c",
-        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
-      ]
+      # Optional: Mount custom config directory for additional rules
+      # Uncomment the line below and create conf.d directory with custom .conf files
+      # - ./ssrf_proxy/conf.d:/etc/squid/conf.d:ro
+    entrypoint: [ 'sh', '-c', "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
     environment:
       # pls clearly modify the squid env vars to fit your network environment.
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}

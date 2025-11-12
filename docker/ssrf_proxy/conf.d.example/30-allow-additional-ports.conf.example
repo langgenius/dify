@@ -1,0 +1,17 @@
+# Example: Allow additional ports for specific protocols
+# Copy this file to /etc/squid/conf.d/40-allow-additional-ports.conf to enable
+# WARNING: Opening additional ports can increase security risks
+
+# Allow additional safe ports
+# acl Safe_ports port 8080    # http-alt
+# acl Safe_ports port 8443    # https-alt
+# acl Safe_ports port 3000    # common development port
+# acl Safe_ports port 5000    # common API port
+
+# Allow additional SSL ports for CONNECT method
+# acl SSL_ports port 8443     # https-alt
+# acl SSL_ports port 3443     # custom ssl
+
+# Allow high ports (1025-65535) - DANGEROUS! Can be used to bypass restrictions
+# acl Safe_ports port 1025-65535
+# acl SSL_ports port 1025-65535

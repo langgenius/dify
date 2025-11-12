@@ -1,0 +1,18 @@
+# Example: Allow access to specific external domains
+# Copy this file to /etc/squid/conf.d/30-allow-external-domains.conf to enable
+
+# Allow specific domains for API integrations
+# acl allowed_apis dstdomain .api.openai.com .anthropic.com .googleapis.com
+# http_access allow allowed_apis
+
+# Allow webhook endpoints
+# acl webhook_endpoints dstdomain .webhook.site .zapier.com
+# http_access allow webhook_endpoints
+
+# Allow storage services
+# acl storage_services dstdomain .s3.amazonaws.com .blob.core.windows.net .storage.googleapis.com
+# http_access allow storage_services
+
+# Allow by specific IP address (use with caution)
+# acl trusted_ip dst 203.0.113.10
+# http_access allow trusted_ip
