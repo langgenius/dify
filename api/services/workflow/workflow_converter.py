@@ -31,7 +31,7 @@ from models.workflow import Workflow, WorkflowType
 class _NodeType(TypedDict):
     id: str
     position: None
-    data: dict
+    data: dict[str, Any]
 
 
 class WorkflowConverter:
