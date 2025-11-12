@@ -4,7 +4,7 @@ import time
 import click
 from celery import shared_task
 
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
@@ -66,7 +66,7 @@ def add_document_to_index_task(dataset_document_id: str):
                     "dataset_id": segment.dataset_id,
                 },
             )
-            if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+            if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                 child_chunks = segment.get_child_chunks()
                 if child_chunks:
                     child_documents = []

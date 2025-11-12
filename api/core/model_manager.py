@@ -12,7 +12,7 @@ from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.entities.rerank_entities import RerankResult
-from core.model_runtime.entities.text_embedding_entities import EmbeddingResult, TextEmbeddingResult
+from core.model_runtime.entities.text_embedding_entities import EmbeddingResult
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeConnectionError, InvokeRateLimitError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.__base.moderation_model import ModerationModel
@@ -222,11 +222,11 @@ class ModelInstance:
                 input_type=input_type,
             ),
         )
-    
+
     def invoke_multimodal_embedding(
-        self, 
-        multimodel_documents: list[dict], 
-        user: str | None = None, 
+        self,
+        multimodel_documents: list[dict],
+        user: str | None = None,
         input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
     ) -> EmbeddingResult:
         """
@@ -522,7 +522,7 @@ class ModelManager:
             model_type=model_type,
             model=default_model_entity.model,
         )
-    
+
     def check_model_support_vision(self, tenant_id: str, provider: str, model: str, model_type: ModelType) -> bool:
         """
         Check if model supports vision
