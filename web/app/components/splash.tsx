@@ -16,9 +16,6 @@ const Splash: FC<PropsWithChildren> = () => {
       </div>
     )
   }
-  return (
-    <>
-    </>
-  )
+  return null
 }
 export default React.memo(Splash)
