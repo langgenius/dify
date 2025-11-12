@@ -76,7 +76,7 @@ const RetryOnPanel = ({
                 />
                 <Input
                   type='number'
-                  wrapperClassName='w-[80px]'
+                  wrapperClassName='w-[100px]'
                   value={retry_config?.max_retries || 3}
                   onChange={e => handleMaxRetriesChange(e.target.value as any)}
                   min={1}
@@ -96,7 +96,7 @@ const RetryOnPanel = ({
                 />
                 <Input
                   type='number'
-                  wrapperClassName='w-[80px]'
+                  wrapperClassName='w-[100px]'
                   value={retry_config?.retry_interval || 1000}
                   onChange={e => handleRetryIntervalChange(e.target.value as any)}
                   min={100}
