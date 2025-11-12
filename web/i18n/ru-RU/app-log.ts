@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'С начала квартала',
       yearToDate: 'С начала года',
       allTime: 'Все время',
+      last30days: 'Последние 30 дней',
+      custom: 'Кастомный',
     },
     annotation: {
       all: 'Все',
@@ -82,6 +84,7 @@ const translation = {
     workflowTitle: 'Подробная информация о журнале',
     fileListLabel: 'Сведения о файле',
     fileListDetail: 'Подробность',
+    testWithParams: 'Тест с параметрами',
   },
   promptLog: 'Журнал подсказок',
   agentLog: 'Журнал агента',

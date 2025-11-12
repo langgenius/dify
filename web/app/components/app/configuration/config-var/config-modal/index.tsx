@@ -3,7 +3,7 @@ import type { ChangeEvent, FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import produce from 'immer'
+import { produce } from 'immer'
 import ModalFoot from '../modal-foot'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
@@ -32,6 +32,19 @@ import { TransferMethod } from '@/types/app'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
 const TEXT_MAX_LENGTH = 256
+const CHECKBOX_DEFAULT_TRUE_VALUE = 'true'
+const CHECKBOX_DEFAULT_FALSE_VALUE = 'false'
+
+const getCheckboxDefaultSelectValue = (value: InputVar['default']) => {
+  if (typeof value === 'boolean')
+    return value ? CHECKBOX_DEFAULT_TRUE_VALUE : CHECKBOX_DEFAULT_FALSE_VALUE
+  if (typeof value === 'string')
+    return value.toLowerCase() === CHECKBOX_DEFAULT_TRUE_VALUE ? CHECKBOX_DEFAULT_TRUE_VALUE : CHECKBOX_DEFAULT_FALSE_VALUE
+  return CHECKBOX_DEFAULT_FALSE_VALUE
+}
+
+const parseCheckboxSelectValue = (value: string) =>
+  value === CHECKBOX_DEFAULT_TRUE_VALUE
 
 export type IConfigModalProps = {
   isCreate?: boolean
@@ -53,7 +66,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
 }) => {
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation()
-  const [tempPayload, setTempPayload] = useState<InputVar>(payload || getNewVarInWorkflow('') as any)
+  const [tempPayload, setTempPayload] = useState<InputVar>(() => payload || getNewVarInWorkflow('') as any)
   const { type, label, variable, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
   const appDetail = useAppStore(state => state.appDetail)
@@ -66,7 +79,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     try {
       return JSON.stringify(JSON.parse(tempPayload.json_schema).properties, null, 2)
     }
-    catch (_e) {
+    catch {
       return ''
     }
   }, [tempPayload.json_schema])
@@ -110,7 +123,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
       }
       handlePayloadChange('json_schema')(JSON.stringify(res, null, 2))
     }
-    catch (_e) {
+    catch {
       return null
     }
   }, [handlePayloadChange])
@@ -197,6 +210,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
     }
     handlePayloadChange('variable')(e.target.value)
   }, [handlePayloadChange, t])
+
+  const checkboxDefaultSelectValue = useMemo(() => getCheckboxDefaultSelectValue(tempPayload.default), [tempPayload.default])
 
   const handleConfirm = () => {
     const moreInfo = tempPayload.variable === payload?.variable
@@ -305,7 +320,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
           {type === InputVarType.paragraph && (
             <Field title={t('appDebug.variableConfig.defaultValue')}>
               <Textarea
-                value={tempPayload.default || ''}
+                value={String(tempPayload.default ?? '')}
                 onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
                 placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               />
@@ -320,6 +335,23 @@ const ConfigModal: FC<IConfigModalProps> = ({
                 value={tempPayload.default || ''}
                 onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
                 placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              />
+            </Field>
+          )}
+
+          {type === InputVarType.checkbox && (
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
+              <SimpleSelect
+                className="w-full"
+                optionWrapClassName="max-h-[140px] overflow-y-auto"
+                items={[
+                  { value: CHECKBOX_DEFAULT_TRUE_VALUE, name: t('appDebug.variableConfig.startChecked') },
+                  { value: CHECKBOX_DEFAULT_FALSE_VALUE, name: t('appDebug.variableConfig.noDefaultSelected') },
+                ]}
+                defaultValue={checkboxDefaultSelectValue}
+                onSelect={item => handlePayloadChange('default')(parseCheckboxSelectValue(String(item.value)))}
+                placeholder={t('appDebug.variableConfig.selectDefaultValue')}
+                allowSearch={false}
               />
             </Field>
           )}

@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'از ابتدای فصل تاکنون',
       yearToDate: 'از ابتدای سال تاکنون',
       allTime: 'همه زمان‌ها',
+      last30days: '۳۰ روز گذشته',
+      custom: 'سفارشی',
     },
     annotation: {
       all: 'همه',
@@ -82,6 +84,7 @@ const translation = {
     workflowTitle: 'جزئیات لاگ',
     fileListLabel: 'جزئیات فایل',
     fileListDetail: 'جزئیات',
+    testWithParams: 'تست با پارامترها',
   },
   promptLog: 'لاگ درخواست',
   agentLog: 'لاگ عامل',

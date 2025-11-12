@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useStoreApi } from 'reactflow'
 import { useParams } from 'next/navigation'
 import {
@@ -97,7 +97,7 @@ export const useNodesSyncDraft = () => {
 
     if (postParams) {
       navigator.sendBeacon(
-        `${API_PREFIX}/apps/${params.appId}/workflows/draft?_token=${localStorage.getItem('console_token')}`,
+        `${API_PREFIX}/apps/${params.appId}/workflows/draft`,
         JSON.stringify(postParams.params),
       )
     }
@@ -124,7 +124,7 @@ export const useNodesSyncDraft = () => {
         const res = await syncWorkflowDraft(postParams)
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
-        callback?.onSuccess && callback.onSuccess()
+        callback?.onSuccess?.()
       }
       catch (error: any) {
         if (error && error.json && !error.bodyUsed) {
@@ -133,10 +133,10 @@ export const useNodesSyncDraft = () => {
               handleRefreshWorkflowDraft()
           })
         }
-        callback?.onError && callback.onError()
+        callback?.onError?.()
       }
       finally {
-        callback?.onSettled && callback.onSettled()
+        callback?.onSettled?.()
       }
     }
   }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft])

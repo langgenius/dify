@@ -1,15 +1,15 @@
 import os
 from collections import UserDict
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from pymochow import MochowClient  # type: ignore
-from pymochow.model.database import Database  # type: ignore
-from pymochow.model.enum import IndexState, IndexType, MetricType, ReadConsistency, TableState  # type: ignore
-from pymochow.model.schema import HNSWParams, VectorIndex  # type: ignore
-from pymochow.model.table import Table  # type: ignore
-from requests.adapters import HTTPAdapter
+from pymochow import MochowClient
+from pymochow.model.database import Database
+from pymochow.model.enum import IndexState, IndexType, MetricType, ReadConsistency, TableState
+from pymochow.model.schema import HNSWParams, VectorIndex
+from pymochow.model.table import Table
 
 
 class AttrDict(UserDict):
@@ -21,7 +21,7 @@ class MockBaiduVectorDBClass:
     def mock_vector_db_client(
         self,
         config=None,
-        adapter: HTTPAdapter | None = None,
+        adapter: Any | None = None,
     ):
         self.conn = MagicMock()
         self._config = MagicMock()

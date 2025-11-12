@@ -234,13 +234,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
           </div>
           <div className={styles.controlsContent}>
             <div className={styles.leftControls}>
-              <button className={styles.playPauseButton} onClick={togglePlayPause}>
+              <button type="button" className={styles.playPauseButton} onClick={togglePlayPause}>
                 {isPlaying ? <PauseIcon /> : <PlayIcon />}
               </button>
               {!isSmallSize && (<span className={styles.time}>{formatTime(currentTime)} / {formatTime(duration)}</span>)}
             </div>
             <div className={styles.rightControls}>
-              <button className={styles.muteButton} onClick={toggleMute}>
+              <button type="button" className={styles.muteButton} onClick={toggleMute}>
                 {isMuted ? <UnmuteIcon /> : <MuteIcon />}
               </button>
               {!isSmallSize && (
@@ -264,7 +264,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
                   </div>
                 </div>
               )}
-              <button className={styles.fullscreenButton} onClick={toggleFullscreen}>
+              <button type="button" className={styles.fullscreenButton} onClick={toggleFullscreen}>
                 <FullscreenIcon />
               </button>
             </div>

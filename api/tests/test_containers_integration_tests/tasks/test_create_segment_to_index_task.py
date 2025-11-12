@@ -13,7 +13,7 @@ import pytest
 from faker import Faker
 
 from extensions.ext_redis import redis_client
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from tasks.create_segment_to_index_task import create_segment_to_index_task
 
@@ -91,7 +91,7 @@ class TestCreateSegmentToIndexTask:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)

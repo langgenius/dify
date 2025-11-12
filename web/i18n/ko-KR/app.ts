@@ -178,6 +178,10 @@ const translation = {
       title: '클라우드 모니터',
       description: '알리바바 클라우드에서 제공하는 완전 관리형 및 유지보수가 필요 없는 가시성 플랫폼은 Dify 애플리케이션의 모니터링, 추적 및 평가를 즉시 사용할 수 있도록 지원합니다.',
     },
+    tencent: {
+      title: '텐센트 APM',
+      description: '텐센트 애플리케이션 성능 모니터링은 LLM 애플리케이션에 대한 포괄적인 추적 및 다차원 분석을 제공합니다.',
+    },
   },
   answerIcon: {
     description:

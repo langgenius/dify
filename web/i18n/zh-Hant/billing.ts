@@ -56,7 +56,7 @@ const translation = {
       agentMode: '代理模式',
       workflow: '工作流',
       llmLoadingBalancing: 'LLM 負載均衡',
-      llmLoadingBalancingTooltip: '向模型添加多個 API 金鑰，從而有效地繞過 API 速率限制。',
+      llmLoadingBalancingTooltip: '向模型新增多個 API 金鑰，從而有效地繞過 API 速率限制。',
     },
     comingSoon: '即將推出',
     member: '成員',
@@ -68,7 +68,7 @@ const translation = {
     },
     annotatedResponse: {
       title: '標註回覆數',
-      tooltip: '標註回覆功能透過人工編輯標註為應用提供了可定製的高質量問答回覆能力',
+      tooltip: '標註回覆功能透過人工編輯標註為應用提供了可定製的高品質問答回覆能力',
     },
     ragAPIRequestTooltip: '指單獨呼叫 Dify 知識庫資料處理能力的 API。',
     receiptInfo: '只有團隊所有者和團隊管理員才能訂閱和檢視賬單資訊',
@@ -94,6 +94,8 @@ const translation = {
     documentsTooltip: '從知識數據來源導入的文件數量配額。',
     documentsRequestQuotaTooltip: '指定工作區在知識基礎中每分鐘可以執行的總操作次數，包括數據集的創建、刪除、更新、文檔上傳、修改、歸檔和知識基礎查詢。這個指標用於評估知識基礎請求的性能。例如，如果一個沙箱用戶在一分鐘內連續執行 10 次命中測試，他們的工作區將在接下來的一分鐘內暫時禁止執行以下操作：數據集的創建、刪除、更新以及文檔上傳或修改。',
     startBuilding: '開始建造',
+    taxTip: '所有訂閱價格（月費/年費）不包含適用的稅費（例如增值稅、銷售稅）。',
+    taxTipSecond: '如果您的地區沒有適用的稅務要求，結帳時將不會顯示任何稅款，且在整個訂閱期間您也不會被收取任何額外費用。',
   },
   plans: {
     sandbox: {

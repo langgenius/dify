@@ -14,11 +14,11 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import NodeExecutionType, NodeState
 from core.workflow.graph import Graph
 from core.workflow.graph_events import NodeRunStreamChunkEvent, NodeRunSucceededEvent
 from core.workflow.nodes.base.template import TextSegment, VariableSegment
+from core.workflow.runtime import VariablePool
 
 from .path import Path
 from .session import ResponseSession
@@ -212,10 +212,11 @@ class ResponseStreamCoordinator:
                 edge = self._graph.edges[edge_id]
                 source_node = self._graph.nodes[edge.tail]
 
-                # Check if node is a branch/container (original behavior)
+                # Check if node is a branch, container, or response node
                 if source_node.execution_type in {
                     NodeExecutionType.BRANCH,
                     NodeExecutionType.CONTAINER,
+                    NodeExecutionType.RESPONSE,
                 } or source_node.blocks_variable_output(variable_selectors):
                     blocking_edges.append(edge_id)
 

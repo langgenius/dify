@@ -2,8 +2,6 @@ import uuid
 from collections.abc import Generator, Mapping
 from typing import Any, Union
 
-from openai._exceptions import RateLimitError
-
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
@@ -12,6 +10,7 @@ from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
+from enums.cloud_plan import CloudPlan
 from libs.helper import RateLimiter
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
@@ -46,7 +45,7 @@ class AppGenerateService:
         if dify_config.BILLING_ENABLED:
             # check if it's free plan
             limit_info = BillingService.get_info(app_model.tenant_id)
-            if limit_info["subscription"]["plan"] == "sandbox":
+            if limit_info["subscription"]["plan"] == CloudPlan.SANDBOX:
                 if cls.system_rate_limiter.is_rate_limited(app_model.tenant_id):
                     raise InvokeRateLimitError(
                         "Rate limit exceeded, please upgrade your plan "
@@ -122,8 +121,6 @@ class AppGenerateService:
                 )
             else:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
-        except RateLimitError as e:
-            raise InvokeRateLimitError(str(e))
         except Exception:
             rate_limit.exit(request_id)
             raise

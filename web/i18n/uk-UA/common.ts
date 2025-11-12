@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Вимкнути все',
     selectAll: 'Вибрати все',
     config: 'Конфігурація',
+    yes: 'Так',
+    no: 'Ні',
+    deleteConfirmTitle: 'Видалити?',
+    confirmAction: 'Будь ласка, підтвердіть свої дії.',
   },
   placeholder: {
     input: 'Будь ласка, введіть текст',
@@ -157,7 +161,6 @@ const translation = {
     workspace: 'Робочий простір',
     createWorkspace: 'Створити робочий простір',
     helpCenter: 'Довідковий центр',
-    communityFeedback: 'відгуки',
     roadmap: 'Дорожня карта',
     community: 'Спільнота',
     about: 'Про нас',
@@ -165,6 +168,8 @@ const translation = {
     compliance: 'Відповідність',
     support: 'Підтримка',
     github: 'Гітхаб',
+    contactUs: 'Зв’яжіться з нами',
+    forum: 'Форум',
   },
   settings: {
     accountGroup: 'ОБЛІКОВИЙ ЗАПИС',
@@ -502,6 +507,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'Облікові дані використовуються і не можуть бути видалені',
     },
     parametersInvalidRemoved: 'Деякі параметри є недійсними і були видалені',
+    installDataSourceProvider: 'Встановіть постачальників джерел даних',
   },
   dataSource: {
     add: 'Додати джерело даних',
@@ -721,6 +727,7 @@ const translation = {
     fileExtensionNotSupport: 'Розширення файлу не підтримується',
     uploadFromComputerReadError: 'Не вдалося прочитати файл, будь ласка, спробуйте ще раз.',
     uploadFromComputerUploadError: 'Не вдалося завантажити файл, будь ласка, завантажте ще раз.',
+    fileExtensionBlocked: 'Цей тип файлу заблоковано з міркувань безпеки',
   },
   license: {
     expiring: 'Термін дії закінчується за один день',

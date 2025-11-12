@@ -1,14 +1,18 @@
+import contextvars
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, NewType, cast
 
+from flask import Flask, current_app
 from typing_extensions import TypeIs
 
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.variables import IntegerVariable, NoneSegment
 from core.variables.segments import ArrayAnySegment, ArraySegment
-from core.workflow.entities import VariablePool
+from core.variables.variables import VariableUnion
+from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.enums import (
     ErrorStrategy,
     NodeExecutionType,
@@ -31,10 +35,13 @@ from core.workflow.node_events import (
     NodeRunResult,
     StreamCompletedEvent,
 )
+from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
+from core.workflow.runtime import VariablePool
 from libs.datetime_utils import naive_utc_now
+from libs.flask_utils import preserve_flask_contexts
 
 from .exc import (
     InvalidIteratorValueError,
@@ -53,7 +60,7 @@ logger = logging.getLogger(__name__)
 EmptyArraySegment = NewType("EmptyArraySegment", ArraySegment)
 
 
-class IterationNode(Node):
+class IterationNode(LLMUsageTrackingMixin, Node):
     """
     Iteration Node.
     """
@@ -90,7 +97,8 @@ class IterationNode(Node):
             "config": {
                 "is_parallel": False,
                 "parallel_nums": 10,
-                "error_handle_mode": ErrorHandleMode.TERMINATED.value,
+                "error_handle_mode": ErrorHandleMode.TERMINATED,
+                "flatten_output": True,
             },
         }
 
@@ -113,6 +121,7 @@ class IterationNode(Node):
         started_at = naive_utc_now()
         iter_run_map: dict[str, float] = {}
         outputs: list[object] = []
+        usage_accumulator = [LLMUsage.empty_usage()]
 
         yield IterationStartedEvent(
             start_at=started_at,
@@ -125,22 +134,27 @@ class IterationNode(Node):
                 iterator_list_value=iterator_list_value,
                 outputs=outputs,
                 iter_run_map=iter_run_map,
+                usage_accumulator=usage_accumulator,
             )
 
+            self._accumulate_usage(usage_accumulator[0])
             yield from self._handle_iteration_success(
                 started_at=started_at,
                 inputs=inputs,
                 outputs=outputs,
                 iterator_list_value=iterator_list_value,
                 iter_run_map=iter_run_map,
+                usage=usage_accumulator[0],
             )
         except IterationNodeError as e:
+            self._accumulate_usage(usage_accumulator[0])
             yield from self._handle_iteration_failure(
                 started_at=started_at,
                 inputs=inputs,
                 outputs=outputs,
                 iterator_list_value=iterator_list_value,
                 iter_run_map=iter_run_map,
+                usage=usage_accumulator[0],
                 error=e,
             )
 
@@ -191,6 +205,7 @@ class IterationNode(Node):
         iterator_list_value: Sequence[object],
         outputs: list[object],
         iter_run_map: dict[str, float],
+        usage_accumulator: list[LLMUsage],
     ) -> Generator[GraphNodeEventBase | NodeEventBase, None, None]:
         if self._node_data.is_parallel:
             # Parallel mode execution
@@ -198,6 +213,7 @@ class IterationNode(Node):
                 iterator_list_value=iterator_list_value,
                 outputs=outputs,
                 iter_run_map=iter_run_map,
+                usage_accumulator=usage_accumulator,
             )
         else:
             # Sequential mode execution
@@ -214,8 +230,18 @@ class IterationNode(Node):
                     graph_engine=graph_engine,
                 )
 
+                # Sync conversation variables after each iteration completes
+                self._sync_conversation_variables_from_snapshot(
+                    self._extract_conversation_variable_snapshot(
+                        variable_pool=graph_engine.graph_runtime_state.variable_pool
+                    )
+                )
+
                 # Update the total tokens from this iteration
                 self.graph_runtime_state.total_tokens += graph_engine.graph_runtime_state.total_tokens
+                usage_accumulator[0] = self._merge_usage(
+                    usage_accumulator[0], graph_engine.graph_runtime_state.llm_usage
+                )
                 iter_run_map[str(index)] = (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds()
 
     def _execute_parallel_iterations(
@@ -223,6 +249,7 @@ class IterationNode(Node):
         iterator_list_value: Sequence[object],
         outputs: list[object],
         iter_run_map: dict[str, float],
+        usage_accumulator: list[LLMUsage],
     ) -> Generator[GraphNodeEventBase | NodeEventBase, None, None]:
         # Initialize outputs list with None values to maintain order
         outputs.extend([None] * len(iterator_list_value))
@@ -232,13 +259,27 @@ class IterationNode(Node):
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all iteration tasks
-            future_to_index: dict[Future[tuple[datetime, list[GraphNodeEventBase], object | None, int]], int] = {}
+            future_to_index: dict[
+                Future[
+                    tuple[
+                        datetime,
+                        list[GraphNodeEventBase],
+                        object | None,
+                        int,
+                        dict[str, VariableUnion],
+                        LLMUsage,
+                    ]
+                ],
+                int,
+            ] = {}
             for index, item in enumerate(iterator_list_value):
                 yield IterationNextEvent(index=index)
                 future = executor.submit(
                     self._execute_single_iteration_parallel,
                     index=index,
                     item=item,
+                    flask_app=current_app._get_current_object(),  # type: ignore
+                    context_vars=contextvars.copy_context(),
                 )
                 future_to_index[future] = index
 
@@ -247,7 +288,14 @@ class IterationNode(Node):
                 index = future_to_index[future]
                 try:
                     result = future.result()
-                    iter_start_at, events, output_value, tokens_used = result
+                    (
+                        iter_start_at,
+                        events,
+                        output_value,
+                        tokens_used,
+                        conversation_snapshot,
+                        iteration_usage,
+                    ) = result
 
                     # Update outputs at the correct index
                     outputs[index] = output_value
@@ -258,6 +306,11 @@ class IterationNode(Node):
                     # Update tokens and timing
                     self.graph_runtime_state.total_tokens += tokens_used
                     iter_run_map[str(index)] = (datetime.now(UTC).replace(tzinfo=None) - iter_start_at).total_seconds()
+
+                    usage_accumulator[0] = self._merge_usage(usage_accumulator[0], iteration_usage)
+
+                    # Sync conversation variables after iteration completion
+                    self._sync_conversation_variables_from_snapshot(conversation_snapshot)
 
                 except Exception as e:
                     # Handle errors based on error_handle_mode
@@ -281,26 +334,39 @@ class IterationNode(Node):
         self,
         index: int,
         item: object,
-    ) -> tuple[datetime, list[GraphNodeEventBase], object | None, int]:
+        flask_app: Flask,
+        context_vars: contextvars.Context,
+    ) -> tuple[datetime, list[GraphNodeEventBase], object | None, int, dict[str, VariableUnion], LLMUsage]:
         """Execute a single iteration in parallel mode and return results."""
-        iter_start_at = datetime.now(UTC).replace(tzinfo=None)
-        events: list[GraphNodeEventBase] = []
-        outputs_temp: list[object] = []
+        with preserve_flask_contexts(flask_app=flask_app, context_vars=context_vars):
+            iter_start_at = datetime.now(UTC).replace(tzinfo=None)
+            events: list[GraphNodeEventBase] = []
+            outputs_temp: list[object] = []
 
-        graph_engine = self._create_graph_engine(index, item)
+            graph_engine = self._create_graph_engine(index, item)
 
-        # Collect events instead of yielding them directly
-        for event in self._run_single_iter(
-            variable_pool=graph_engine.graph_runtime_state.variable_pool,
-            outputs=outputs_temp,
-            graph_engine=graph_engine,
-        ):
-            events.append(event)
+            # Collect events instead of yielding them directly
+            for event in self._run_single_iter(
+                variable_pool=graph_engine.graph_runtime_state.variable_pool,
+                outputs=outputs_temp,
+                graph_engine=graph_engine,
+            ):
+                events.append(event)
 
-        # Get the output value from the temporary outputs list
-        output_value = outputs_temp[0] if outputs_temp else None
+            # Get the output value from the temporary outputs list
+            output_value = outputs_temp[0] if outputs_temp else None
+            conversation_snapshot = self._extract_conversation_variable_snapshot(
+                variable_pool=graph_engine.graph_runtime_state.variable_pool
+            )
 
-        return iter_start_at, events, output_value, graph_engine.graph_runtime_state.total_tokens
+            return (
+                iter_start_at,
+                events,
+                output_value,
+                graph_engine.graph_runtime_state.total_tokens,
+                conversation_snapshot,
+                graph_engine.graph_runtime_state.llm_usage,
+            )
 
     def _handle_iteration_success(
         self,
@@ -309,14 +375,21 @@ class IterationNode(Node):
         outputs: list[object],
         iterator_list_value: Sequence[object],
         iter_run_map: dict[str, float],
+        *,
+        usage: LLMUsage,
     ) -> Generator[NodeEventBase, None, None]:
+        # Flatten the list of lists if all outputs are lists
+        flattened_outputs = self._flatten_outputs_if_needed(outputs)
+
         yield IterationSucceededEvent(
             start_at=started_at,
             inputs=inputs,
-            outputs={"output": outputs},
+            outputs={"output": flattened_outputs},
             steps=len(iterator_list_value),
             metadata={
-                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
+                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
                 WorkflowNodeExecutionMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
             },
         )
@@ -325,12 +398,48 @@ class IterationNode(Node):
         yield StreamCompletedEvent(
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs={"output": outputs},
+                outputs={"output": flattened_outputs},
                 metadata={
-                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
                 },
+                llm_usage=usage,
             )
         )
+
+    def _flatten_outputs_if_needed(self, outputs: list[object]) -> list[object]:
+        """
+        Flatten the outputs list if all elements are lists.
+        This maintains backward compatibility with version 1.8.1 behavior.
+
+        If flatten_output is False, returns outputs as-is (nested structure).
+        If flatten_output is True (default), flattens the list if all elements are lists.
+        """
+        # If flatten_output is disabled, return outputs as-is
+        if not self._node_data.flatten_output:
+            return outputs
+
+        if not outputs:
+            return outputs
+
+        # Check if all non-None outputs are lists
+        non_none_outputs = [output for output in outputs if output is not None]
+        if not non_none_outputs:
+            return outputs
+
+        if all(isinstance(output, list) for output in non_none_outputs):
+            # Flatten the list of lists
+            flattened: list[Any] = []
+            for output in outputs:
+                if isinstance(output, list):
+                    flattened.extend(output)
+                elif output is not None:
+                    # This shouldn't happen based on our check, but handle it gracefully
+                    flattened.append(output)
+            return flattened
+
+        return outputs
 
     def _handle_iteration_failure(
         self,
@@ -339,15 +448,22 @@ class IterationNode(Node):
         outputs: list[object],
         iterator_list_value: Sequence[object],
         iter_run_map: dict[str, float],
+        *,
+        usage: LLMUsage,
         error: IterationNodeError,
     ) -> Generator[NodeEventBase, None, None]:
+        # Flatten the list of lists if all outputs are lists (even in failure case)
+        flattened_outputs = self._flatten_outputs_if_needed(outputs)
+
         yield IterationFailedEvent(
             start_at=started_at,
             inputs=inputs,
-            outputs={"output": outputs},
+            outputs={"output": flattened_outputs},
             steps=len(iterator_list_value),
             metadata={
-                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
+                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
                 WorkflowNodeExecutionMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
             },
             error=str(error),
@@ -356,6 +472,12 @@ class IterationNode(Node):
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(error),
+                metadata={
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
+                },
+                llm_usage=usage,
             )
         )
 
@@ -422,6 +544,23 @@ class IterationNode(Node):
 
         return variable_mapping
 
+    def _extract_conversation_variable_snapshot(self, *, variable_pool: VariablePool) -> dict[str, VariableUnion]:
+        conversation_variables = variable_pool.variable_dictionary.get(CONVERSATION_VARIABLE_NODE_ID, {})
+        return {name: variable.model_copy(deep=True) for name, variable in conversation_variables.items()}
+
+    def _sync_conversation_variables_from_snapshot(self, snapshot: dict[str, VariableUnion]) -> None:
+        parent_pool = self.graph_runtime_state.variable_pool
+        parent_conversations = parent_pool.variable_dictionary.get(CONVERSATION_VARIABLE_NODE_ID, {})
+
+        current_keys = set(parent_conversations.keys())
+        snapshot_keys = set(snapshot.keys())
+
+        for removed_key in current_keys - snapshot_keys:
+            parent_pool.remove((CONVERSATION_VARIABLE_NODE_ID, removed_key))
+
+        for name, variable in snapshot.items():
+            parent_pool.add((CONVERSATION_VARIABLE_NODE_ID, name), variable)
+
     def _append_iteration_info_to_event(
         self,
         event: GraphNodeEventBase,
@@ -476,11 +615,12 @@ class IterationNode(Node):
 
     def _create_graph_engine(self, index: int, item: object):
         # Import dependencies
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
+        from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
         from core.workflow.graph_engine import GraphEngine
         from core.workflow.graph_engine.command_channels import InMemoryChannel
         from core.workflow.nodes.node_factory import DifyNodeFactory
+        from core.workflow.runtime import GraphRuntimeState
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(

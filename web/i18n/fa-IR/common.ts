@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'انتخاب همه',
     deSelectAll: 'همه را انتخاب نکنید',
     config: 'تنظیمات',
+    no: 'نه',
+    deleteConfirmTitle: 'حذف شود؟',
+    yes: 'بله',
+    confirmAction: 'لطفاً اقدام خود را تأیید کنید.',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
@@ -161,7 +165,6 @@ const translation = {
     workspace: 'فضای کاری',
     createWorkspace: 'ایجاد فضای کاری',
     helpCenter: 'راهنما',
-    communityFeedback: 'بازخورد',
     roadmap: 'نقشه راه',
     community: 'انجمن',
     about: 'درباره',
@@ -169,6 +172,8 @@ const translation = {
     github: 'گیت‌هاب',
     compliance: 'انطباق',
     support: 'پشتیبانی',
+    contactUs: 'با ما تماس بگیرید',
+    forum: 'انجمن',
   },
   settings: {
     accountGroup: 'حساب کاربری',
@@ -505,6 +510,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'اعتبار در حال استفاده است و قابل حذف نیست',
     },
     parametersInvalidRemoved: 'برخی پارامترها نامعتبر هستند و حذف شده‌اند',
+    installDataSourceProvider: 'نصب ارائه‌دهندگان منبع داده',
   },
   dataSource: {
     add: 'افزودن منبع داده',
@@ -720,6 +726,7 @@ const translation = {
     uploadFromComputerUploadError: 'آپلود فایل انجام نشد، لطفا دوباره آپلود کنید.',
     pasteFileLink: 'پیوند فایل را جایگذاری کنید',
     uploadFromComputerLimit: 'آپلود فایل نمی تواند از {{size}} تجاوز کند',
+    fileExtensionBlocked: 'این نوع فایل به دلایل امنیتی مسدود شده است',
   },
   license: {
     expiring_plural: 'انقضا در {{count}} روز',
