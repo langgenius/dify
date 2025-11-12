@@ -691,6 +691,7 @@ class LLMNode(Node):
                 content=context_dict.get("content"),
                 page=metadata.get("page"),
                 doc_metadata=metadata.get("doc_metadata"),
+                files=context_dict.get("files"),
             )
 
             return source
