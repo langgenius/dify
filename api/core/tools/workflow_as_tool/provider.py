@@ -169,10 +169,7 @@ class WorkflowToolProviderController(ToolProviderController):
                 "type": output.value_type,
                 "description": "",
             }
-        output_schema = {
-            "type": "object",
-            "properties": properties
-        }
+        output_schema = {"type": "object", "properties": properties}
 
         return WorkflowTool(
             workflow_as_tool_id=db_provider.id,

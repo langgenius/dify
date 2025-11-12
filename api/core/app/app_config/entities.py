@@ -130,21 +130,21 @@ class VariableEntity(BaseModel):
 
 
 class OutputVariableType(StrEnum):
-    STRING = 'string'
-    NUMBER = 'number'
-    INTEGER = 'integer'
-    SECRET = 'secret'
-    BOOLEAN = 'boolean'
-    OBJECT = 'object'
-    FILE = 'file'
-    ARRAY = 'array'
-    ARRAY_STRING = 'array[string]'
-    ARRAY_NUMBER = 'array[number]'
-    ARRAY_OBJECT = 'array[object]'
-    ARRAY_BOOLEAN = 'array[boolean]'
-    ARRAY_FILE = 'array[file]'
-    ANY = 'any'
-    ARRAY_ANY = 'array[any]'
+    STRING = "string"
+    NUMBER = "number"
+    INTEGER = "integer"
+    SECRET = "secret"
+    BOOLEAN = "boolean"
+    OBJECT = "object"
+    FILE = "file"
+    ARRAY = "array"
+    ARRAY_STRING = "array[string]"
+    ARRAY_NUMBER = "array[number]"
+    ARRAY_OBJECT = "array[object]"
+    ARRAY_BOOLEAN = "array[boolean]"
+    ARRAY_FILE = "array[file]"
+    ANY = "any"
+    ARRAY_ANY = "array[any]"
 
 
 class OutputVariableEntity(BaseModel):
