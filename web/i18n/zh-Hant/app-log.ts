@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: '本季度至今',
       yearToDate: '本年至今',
       allTime: '所有時間',
+      last30days: '過去30天',
+      custom: '自訂',
     },
     annotation: {
       all: '全部',
