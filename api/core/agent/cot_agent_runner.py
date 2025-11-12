@@ -38,6 +38,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         message: Message,
         query: str,
         inputs: Mapping[str, str],
+        passthrough: str | None = None,
     ) -> Generator:
         """
         Run Cot agent application

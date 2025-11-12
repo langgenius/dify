@@ -39,6 +39,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[True],
+        passthrough: str | None = None,
     ) -> Generator[str | Mapping[str, Any], None, None]: ...
 
     @overload
@@ -49,6 +50,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[False],
+        passthrough: str | None = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -59,6 +61,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = False,
+        passthrough: str | None = None,
     ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]: ...
 
     def generate(
@@ -68,6 +71,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
+        passthrough: str | None = None,
     ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
         """
         Generate App response.
@@ -168,6 +172,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
                 message_id=message.id,
+                passthrough=passthrough,
             )
 
         worker_thread = threading.Thread(target=worker_with_context)
@@ -192,6 +197,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: CompletionAppGenerateEntity,
         queue_manager: AppQueueManager,
         message_id: str,
+        passthrough: str | None = None,
     ):
         """
         Generate worker in a new thread.
@@ -212,6 +218,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     message=message,
+                    passthrough=passthrough,
                 )
             except GenerateTaskStoppedError:
                 pass

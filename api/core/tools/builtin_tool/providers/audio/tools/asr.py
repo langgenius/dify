@@ -21,6 +21,7 @@ class ASRTool(BuiltinTool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        passthrough: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         file = tool_parameters.get("audio_file")
         if file.type != FileType.AUDIO:  # type: ignore
