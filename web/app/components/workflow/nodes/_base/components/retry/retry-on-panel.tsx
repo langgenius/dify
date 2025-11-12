@@ -78,7 +78,9 @@ const RetryOnPanel = ({
                   type='number'
                   wrapperClassName='w-[100px]'
                   value={retry_config?.max_retries || 3}
-                  onChange={e => handleMaxRetriesChange(e.target.value as any)}
+                  onChange={e =>
+                    handleMaxRetriesChange(Number.parseInt(e.currentTarget.value, 10) || 3)
+                  }
                   min={1}
                   max={10}
                   unit={t('workflow.nodes.common.retry.times') || ''}
@@ -98,7 +100,9 @@ const RetryOnPanel = ({
                   type='number'
                   wrapperClassName='w-[100px]'
                   value={retry_config?.retry_interval || 1000}
-                  onChange={e => handleRetryIntervalChange(e.target.value as any)}
+                  onChange={e =>
+                    handleRetryIntervalChange(Number.parseInt(e.currentTarget.value, 10) || 1000)
+                  }
                   min={100}
                   max={5000}
                   unit={t('workflow.nodes.common.retry.ms') || ''}
