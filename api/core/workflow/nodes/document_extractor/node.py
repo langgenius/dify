@@ -171,6 +171,7 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             ".txt"
             | ".markdown"
             | ".md"
+            | ".mdx"
             | ".html"
             | ".htm"
             | ".xml"

@@ -48,7 +48,6 @@ def add_document_to_index_task(dataset_document_id: str):
             db.session.query(DocumentSegment)
             .where(
                 DocumentSegment.document_id == dataset_document.id,
-                DocumentSegment.enabled == False,
                 DocumentSegment.status == "completed",
             )
             .order_by(DocumentSegment.position.asc())

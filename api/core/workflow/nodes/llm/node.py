@@ -3,6 +3,7 @@ import io
 import json
 import logging
 import re
+import time
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -396,6 +397,8 @@ class LLMNode(Node):
             output_schema = LLMNode.fetch_structured_output_schema(
                 structured_output=structured_output or {},
             )
+            request_start_time = time.perf_counter()
+
             invoke_result = invoke_llm_with_structured_output(
                 provider=model_instance.provider,
                 model_schema=model_schema,
@@ -408,6 +411,8 @@ class LLMNode(Node):
                 user=user_id,
             )
         else:
+            request_start_time = time.perf_counter()
+
             invoke_result = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages),
                 model_parameters=node_data_model.completion_params,
@@ -423,6 +428,7 @@ class LLMNode(Node):
             node_id=node_id,
             node_type=node_type,
             reasoning_format=reasoning_format,
+            request_start_time=request_start_time,
         )
 
     @staticmethod
@@ -434,14 +440,20 @@ class LLMNode(Node):
         node_id: str,
         node_type: NodeType,
         reasoning_format: Literal["separated", "tagged"] = "tagged",
+        request_start_time: float | None = None,
     ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         # For blocking mode
         if isinstance(invoke_result, LLMResult):
+            duration = None
+            if request_start_time is not None:
+                duration = time.perf_counter() - request_start_time
+                invoke_result.usage.latency = round(duration, 3)
             event = LLMNode.handle_blocking_result(
                 invoke_result=invoke_result,
                 saver=file_saver,
                 file_outputs=file_outputs,
                 reasoning_format=reasoning_format,
+                request_latency=duration,
             )
             yield event
             return
@@ -453,6 +465,12 @@ class LLMNode(Node):
         usage = LLMUsage.empty_usage()
         finish_reason = None
         full_text_buffer = io.StringIO()
+
+        # Initialize streaming metrics tracking
+        start_time = request_start_time if request_start_time is not None else time.perf_counter()
+        first_token_time = None
+        has_content = False
+
         collected_structured_output = None  # Collect structured_output from streaming chunks
         # Consume the invoke result and handle generator exception
         try:
@@ -469,6 +487,11 @@ class LLMNode(Node):
                         file_saver=file_saver,
                         file_outputs=file_outputs,
                     ):
+                        # Detect first token for TTFT calculation
+                        if text_part and not has_content:
+                            first_token_time = time.perf_counter()
+                            has_content = True
+
                         full_text_buffer.write(text_part)
                         yield StreamChunkEvent(
                             selector=[node_id, "text"],
@@ -500,6 +523,16 @@ class LLMNode(Node):
         else:
             # Extract clean text and reasoning from <think> tags
             clean_text, reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
+
+        # Calculate streaming metrics
+        end_time = time.perf_counter()
+        total_duration = end_time - start_time
+        usage.latency = round(total_duration, 3)
+        if has_content and first_token_time:
+            gen_ai_server_time_to_first_token = first_token_time - start_time
+            llm_streaming_time_to_generate = end_time - first_token_time
+            usage.time_to_first_token = round(gen_ai_server_time_to_first_token, 3)
+            usage.time_to_generate = round(llm_streaming_time_to_generate, 3)
 
         yield ModelInvokeCompletedEvent(
             # Use clean_text for separated mode, full_text for tagged mode
@@ -1123,6 +1156,7 @@ class LLMNode(Node):
         saver: LLMFileSaver,
         file_outputs: list["File"],
         reasoning_format: Literal["separated", "tagged"] = "tagged",
+        request_latency: float | None = None,
     ) -> ModelInvokeCompletedEvent:
         buffer = io.StringIO()
         for text_part in LLMNode._save_multimodal_output_and_convert_result_to_markdown(
@@ -1143,7 +1177,7 @@ class LLMNode(Node):
             # Extract clean text and reasoning from <think> tags
             clean_text, reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
 
-        return ModelInvokeCompletedEvent(
+        event = ModelInvokeCompletedEvent(
             # Use clean_text for separated mode, full_text for tagged mode
             text=clean_text if reasoning_format == "separated" else full_text,
             usage=invoke_result.usage,
@@ -1153,6 +1187,9 @@ class LLMNode(Node):
             # Pass structured output if enabled
             structured_output=getattr(invoke_result, "structured_output", None),
         )
+        if request_latency is not None:
+            event.usage.latency = round(request_latency, 3)
+        return event
 
     @staticmethod
     def save_multimodal_image_output(

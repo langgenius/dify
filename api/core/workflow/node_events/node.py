@@ -6,6 +6,7 @@ from pydantic import Field
 from core.file import File
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.workflow.entities.pause_reason import PauseReason
 from core.workflow.node_events import NodeRunResult
 
 from .base import NodeEventBase
@@ -45,4 +46,4 @@ class StreamCompletedEvent(NodeEventBase):
 
 
 class PauseRequestedEvent(NodeEventBase):
-    reason: str | None = Field(default=None, description="Optional pause reason")
+    reason: PauseReason = Field(..., description="pause reason")

@@ -1,7 +1,5 @@
-from datetime import datetime
-
-import pytz
 import sqlalchemy as sa
+from flask import abort
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy import func, or_
@@ -19,7 +17,7 @@ from fields.conversation_fields import (
     conversation_pagination_fields,
     conversation_with_summary_pagination_fields,
 )
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, parse_time_range
 from libs.helper import DatetimeString
 from libs.login import current_account_with_tenant, login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
@@ -90,25 +88,17 @@ class CompletionConversationApi(Resource):
 
         account = current_user
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
+        if start_datetime_utc:
             query = query.where(Conversation.created_at >= start_datetime_utc)
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=59)
-
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
+        if end_datetime_utc:
+            end_datetime_utc = end_datetime_utc.replace(second=59)
             query = query.where(Conversation.created_at < end_datetime_utc)
 
         # FIXME, the type ignore in this file
@@ -270,29 +260,21 @@ class ChatConversationApi(Resource):
 
         account = current_user
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
+        if start_datetime_utc:
             match args["sort_by"]:
                 case "updated_at" | "-updated_at":
                     query = query.where(Conversation.updated_at >= start_datetime_utc)
                 case "created_at" | "-created_at" | _:
                     query = query.where(Conversation.created_at >= start_datetime_utc)
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=59)
-
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
+        if end_datetime_utc:
+            end_datetime_utc = end_datetime_utc.replace(second=59)
             match args["sort_by"]:
                 case "updated_at" | "-updated_at":
                     query = query.where(Conversation.updated_at <= end_datetime_utc)
