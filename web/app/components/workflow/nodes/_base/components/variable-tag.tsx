@@ -8,7 +8,7 @@ import type {
   VarType,
 } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import {
   VariableLabelInSelect,
@@ -39,7 +39,8 @@ const VariableTag = ({
 
   const isEnv = isENV(valueSelector)
   const isChatVar = isConversationVar(valueSelector)
-  const isValid = Boolean(node) || isEnv || isChatVar || isRagVar
+  const isGlobal = isGlobalVar(valueSelector)
+  const isValid = Boolean(node) || isEnv || isChatVar || isRagVar || isGlobal
 
   const variableName = isSystemVar(valueSelector) ? valueSelector.slice(0).join('.') : valueSelector.slice(1).join('.')
   const isException = isExceptionVariable(variableName, node?.data.type)

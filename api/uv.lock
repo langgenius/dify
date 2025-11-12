@@ -1313,6 +1313,7 @@ name = "dify-api"
 version = "1.9.2"
 source = { virtual = "." }
 dependencies = [
+    { name = "apscheduler" },
     { name = "arize-phoenix-otel" },
     { name = "azure-identity" },
     { name = "beautifulsoup4" },
@@ -1321,6 +1322,7 @@ dependencies = [
     { name = "cachetools" },
     { name = "celery" },
     { name = "chardet" },
+    { name = "croniter" },
     { name = "flask" },
     { name = "flask-compress" },
     { name = "flask-cors" },
@@ -1506,6 +1508,7 @@ vdb = [
 
 [package.metadata]
 requires-dist = [
+    { name = "apscheduler", specifier = ">=3.11.0" },
     { name = "arize-phoenix-otel", specifier = "~=0.9.2" },
     { name = "azure-identity", specifier = "==1.16.1" },
     { name = "beautifulsoup4", specifier = "==4.12.2" },
@@ -1514,6 +1517,7 @@ requires-dist = [
     { name = "cachetools", specifier = "~=5.3.0" },
     { name = "celery", specifier = "~=5.5.2" },
     { name = "chardet", specifier = "~=5.1.0" },
+    { name = "croniter", specifier = ">=6.0.0" },
     { name = "flask", specifier = "~=3.1.2" },
     { name = "flask-compress", specifier = ">=1.17,<1.18" },
     { name = "flask-cors", specifier = "~=6.0.0" },
@@ -5588,14 +5592,14 @@ wheels = [
 
 [[package]]
 name = "scipy-stubs"
-version = "1.16.2.3"
+version = "1.16.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "optype", extra = ["numpy"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6b/47/b165711b36a1afb8d5f408393487586e07f8bdb86f829b5b904c1ddd091f/scipy_stubs-1.16.2.3.tar.gz", hash = "sha256:b1afd21442699b8bdd399508187bddcedc6c29a34b188fd603396cb6754c2a91", size = 355436, upload-time = "2025-10-08T01:38:37.403Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bd/68/c53c3bce6bd069a164015be1be2671c968b526be4af1e85db64c88f04546/scipy_stubs-1.16.3.0.tar.gz", hash = "sha256:d6943c085e47a1ed431309f9ca582b6a206a9db808a036132a0bf01ebc34b506", size = 356462, upload-time = "2025-10-28T22:05:31.198Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/29/9f/3d8f613d0c3be9348cb0c351328249b7a2428f13329447ec6f395628d7b0/scipy_stubs-1.16.2.3-py3-none-any.whl", hash = "sha256:05e93238bdaedb7fa1afedf9c3a2337f94fec3d8c33fb2d403c933e1bcc7412e", size = 556848, upload-time = "2025-10-08T01:38:35.697Z" },
+    { url = "https://files.pythonhosted.org/packages/86/1c/0ba7305fa01cfe7a6f1b8c86ccdd1b7a0d43fa9bd769c059995311e291a2/scipy_stubs-1.16.3.0-py3-none-any.whl", hash = "sha256:90e5d82ced2183ef3c5c0a28a77df8cc227458624364fa0ff975ad24fa89d6ad", size = 557713, upload-time = "2025-10-28T22:05:29.454Z" },
 ]
 
 [[package]]
