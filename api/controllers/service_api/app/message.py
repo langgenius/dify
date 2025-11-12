@@ -194,7 +194,7 @@ class AppGetFeedbacksApi(Resource):
         """
         args = feedback_list_parser.parse_args()
         feedbacks, total = MessageService.get_all_messages_feedbacks(app_model, page=args["page"], limit=args["limit"])
-        
+
         return {
             "data": feedbacks,
             "has_more": len(feedbacks) == args["limit"],

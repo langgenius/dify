@@ -184,10 +184,10 @@ class MessageService:
     def get_all_messages_feedbacks(cls, app_model: App, page: int, limit: int):
         """Get all feedbacks of an app with pagination metadata"""
         offset = (page - 1) * limit
-        
+
         # Get total count
         total = db.session.query(MessageFeedback).where(MessageFeedback.app_id == app_model.id).count()
-        
+
         # Get paginated feedbacks
         feedbacks = (
             db.session.query(MessageFeedback)
