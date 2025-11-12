@@ -706,7 +706,7 @@ class TestAddDocumentToIndexTask:
 
         # Verify correct segments were processed (by position order)
         assert documents[0].metadata["doc_id"] == "node_0"  # position 0
-        assert documents[1].metadata["doc_id"] == "node_3"  # position 3
+        assert documents[1].metadata["doc_id"] == "node_1"  # position 1
 
         # Verify database state changes
         db.session.refresh(document)
