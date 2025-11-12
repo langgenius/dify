@@ -277,7 +277,7 @@ def dispatch_triggered_workflow(
                 logger.error("Trigger event node not found for app %s", plugin_trigger.app_id)
                 continue
 
-            # invoke triger
+            # invoke trigger
             trigger_metadata = PluginTriggerMetadata(
                 plugin_unique_identifier=provider_controller.plugin_unique_identifier or "",
                 endpoint_id=subscription.endpoint_id,
