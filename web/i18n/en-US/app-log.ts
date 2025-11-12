@@ -18,8 +18,9 @@ const translation = {
       status: 'STATUS',
       runtime: 'RUN TIME',
       tokens: 'TOKENS',
-      user: 'End User or Account',
+      user: 'END USER OR ACCOUNT',
       version: 'VERSION',
+      triggered_from: 'TRIGGER BY',
     },
     pagination: {
       previous: 'Prev',
@@ -96,6 +97,15 @@ const translation = {
     iterations: 'Iterations',
     iteration: 'Iteration',
     finalProcessing: 'Final Processing',
+  },
+  triggerBy: {
+    debugging: 'Debugging',
+    appRun: 'WebApp',
+    webhook: 'Webhook',
+    schedule: 'Schedule',
+    plugin: 'Plugin',
+    ragPipelineRun: 'RAG Pipeline',
+    ragPipelineDebugging: 'RAG Debugging',
   },
 }
 
