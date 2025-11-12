@@ -14,7 +14,7 @@ import Splash from '../components/splash'
 
 const Layout = ({ children }: { children: ReactNode }) => {
   return (
-    <Splash>
+    <>
       <GA gaType={GaType.admin} />
       <SwrInitializer>
         <AppContextProvider>
@@ -26,13 +26,14 @@ const Layout = ({ children }: { children: ReactNode }) => {
                 </HeaderWrapper>
                 {children}
                 <GotoAnything />
+                <Splash />
               </ModalContextProvider>
             </ProviderContextProvider>
           </EventEmitterContextProvider>
         </AppContextProvider>
         <Zendesk />
       </SwrInitializer>
-    </Splash>
+    </>
   )
 }
 export default Layout
