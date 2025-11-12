@@ -129,6 +129,7 @@ const PlanComp: FC<Props> = ({
           usage={usage.triggerEvents}
           total={total.triggerEvents}
           unit={triggerEventUnit}
+          tooltip={t('billing.plansCommon.triggerEvents.tooltip') as string}
         />
         <UsageInfo
           Icon={RiSpeedLine}

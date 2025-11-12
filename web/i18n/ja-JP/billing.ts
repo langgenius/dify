@@ -7,7 +7,7 @@ const translation = {
     documentsUploadQuota: 'ドキュメント・アップロード・クォータ',
     vectorSpace: 'ナレッジベースのデータストレージ',
     vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、ナレッジベースのデータストレージのリソースを消費します。ナレッジベースのデータストレージの上限に達すると、新しいドキュメントはアップロードされません。',
-    triggerEvents: 'トリガーイベント',
+    triggerEvents: 'トリガーイベント数',
     perMonth: '月あたり',
   },
   upgradeBtn: {
@@ -71,6 +71,22 @@ const translation = {
       'standard': '標準',
       'priority': '優先',
       'top-priority': '最優先',
+    },
+    triggerEvents: {
+      sandbox: '{{count,number}}のトリガーイベント数',
+      professional: '{{count,number}}のトリガーイベント数/月',
+      unlimited: '無制限のトリガーイベント数',
+      tooltip: 'プラグイントリガー、タイマートリガー、または Webhook トリガーによって自動的にワークフローを起動するイベントの回数です。',
+    },
+    workflowExecution: {
+      standard: '標準ワークフロー実行キュー',
+      faster: '高速ワークフロー実行キュー',
+      priority: '優先度の高いワークフロー実行キュー',
+      tooltip: 'ワークフローの実行キューの優先度と実行速度。',
+    },
+    startNodes: {
+      limited: '各ワークフローにつき、開始ノードは最大{{count}}つまで設定可能',
+      unlimited: '各ワークフローの開始ノード数は無制限',
     },
     logsHistory: '{{days}}のログ履歴',
     customTools: 'カスタムツール',

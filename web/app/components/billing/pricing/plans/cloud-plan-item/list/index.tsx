@@ -64,6 +64,7 @@ const List = ({
               ? t('billing.plansCommon.triggerEvents.sandbox', { count: planInfo.triggerEvents })
               : t('billing.plansCommon.triggerEvents.professional', { count: planInfo.triggerEvents })
         }
+        tooltip={t('billing.plansCommon.triggerEvents.tooltip') as string}
       />
       <Item
         label={
@@ -73,6 +74,7 @@ const List = ({
               ? t('billing.plansCommon.workflowExecution.faster')
               : t('billing.plansCommon.workflowExecution.priority')
         }
+        tooltip={t('billing.plansCommon.workflowExecution.tooltip') as string}
       />
       <Item
         label={

@@ -78,11 +78,13 @@ const translation = {
       sandbox: '{{count,number}} Trigger Events',
       professional: '{{count,number}} Trigger Events/month',
       unlimited: 'Unlimited Trigger Events',
+      tooltip: 'The number of events that automatically start workflows through Plugin, Schedule, or Webhook triggers.',
     },
     workflowExecution: {
       standard: 'Standard Workflow Execution',
       faster: 'Faster Workflow Execution',
       priority: 'Priority Workflow Execution',
+      tooltip: 'Workflow execution queue priority and speed.',
     },
     startNodes: {
       limited: 'Up to {{count}} Start Nodes per Workflow',
