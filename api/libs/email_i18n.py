@@ -40,6 +40,8 @@ class EmailType(StrEnum):
     RESET_PASSWORD_WHEN_ACCOUNT_NOT_EXIST_NO_REGISTER = auto()
     TRIGGER_EVENTS_LIMIT_SANDBOX = auto()
     TRIGGER_EVENTS_LIMIT_PROFESSIONAL = auto()
+    TRIGGER_EVENTS_USAGE_WARNING_SANDBOX = auto()
+    TRIGGER_EVENTS_USAGE_WARNING_PROFESSIONAL = auto()
 
 
 class EmailLanguage(StrEnum):
@@ -469,6 +471,30 @@ def create_default_email_config() -> EmailI18nConfig:
                 subject="您的月度触发事件额度已用尽",
                 template_path="trigger_events_limit_template_zh-CN.html",
                 branded_template_path="without-brand/trigger_events_limit_template_zh-CN.html",
+            ),
+        },
+        EmailType.TRIGGER_EVENTS_USAGE_WARNING_SANDBOX: {
+            EmailLanguage.EN_US: EmailTemplate(
+                subject="You’re nearing your Sandbox Trigger Events limit",
+                template_path="trigger_events_usage_warning_template_en-US.html",
+                branded_template_path="without-brand/trigger_events_usage_warning_template_en-US.html",
+            ),
+            EmailLanguage.ZH_HANS: EmailTemplate(
+                subject="您的 Sandbox 触发事件额度接近上限",
+                template_path="trigger_events_usage_warning_template_zh-CN.html",
+                branded_template_path="without-brand/trigger_events_usage_warning_template_zh-CN.html",
+            ),
+        },
+        EmailType.TRIGGER_EVENTS_USAGE_WARNING_PROFESSIONAL: {
+            EmailLanguage.EN_US: EmailTemplate(
+                subject="You’re nearing your Monthly Trigger Events limit",
+                template_path="trigger_events_usage_warning_template_en-US.html",
+                branded_template_path="without-brand/trigger_events_usage_warning_template_en-US.html",
+            ),
+            EmailLanguage.ZH_HANS: EmailTemplate(
+                subject="您的月度触发事件额度接近上限",
+                template_path="trigger_events_usage_warning_template_zh-CN.html",
+                branded_template_path="without-brand/trigger_events_usage_warning_template_zh-CN.html",
             ),
         },
         EmailType.EMAIL_REGISTER: {
