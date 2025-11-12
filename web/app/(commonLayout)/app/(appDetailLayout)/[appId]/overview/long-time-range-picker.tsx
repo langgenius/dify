@@ -48,7 +48,7 @@ const LongTimeRangePicker: FC<Props> = ({
         },
       })
     }
-  }, [onSelect])
+  }, [onSelect, periodMapping, queryDateFormat, t])
 
   return (
     <SimpleSelect
