@@ -7,8 +7,8 @@ import pytest
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.layers.pause_state_persist_layer import (
-    WorkflowResumptionContext,
     PauseStatePersistenceLayer,
+    WorkflowResumptionContext,
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
