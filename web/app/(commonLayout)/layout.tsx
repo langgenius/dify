@@ -15,25 +15,23 @@ import Splash from '../components/splash'
 const Layout = ({ children }: { children: ReactNode }) => {
   return (
     <Splash>
-      <>
-        <GA gaType={GaType.admin} />
-        <SwrInitializer>
-          <AppContextProvider>
-            <EventEmitterContextProvider>
-              <ProviderContextProvider>
-                <ModalContextProvider>
-                  <HeaderWrapper>
-                    <Header />
-                  </HeaderWrapper>
-                  {children}
-                  <GotoAnything />
-                </ModalContextProvider>
-              </ProviderContextProvider>
-            </EventEmitterContextProvider>
-          </AppContextProvider>
-          <Zendesk />
-        </SwrInitializer>
-      </>
+      <GA gaType={GaType.admin} />
+      <SwrInitializer>
+        <AppContextProvider>
+          <EventEmitterContextProvider>
+            <ProviderContextProvider>
+              <ModalContextProvider>
+                <HeaderWrapper>
+                  <Header />
+                </HeaderWrapper>
+                {children}
+                <GotoAnything />
+              </ModalContextProvider>
+            </ProviderContextProvider>
+          </EventEmitterContextProvider>
+        </AppContextProvider>
+        <Zendesk />
+      </SwrInitializer>
     </Splash>
   )
 }
