@@ -77,8 +77,14 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             all_documents.extend(split_documents)
         return all_documents
 
-    def load(self, dataset: Dataset, documents: list[Document], multimodel_documents: list[Document] | None = None, 
-    with_keywords: bool = True, **kwargs):
+    def load(
+        self,
+        dataset: Dataset,
+        documents: list[Document],
+        multimodel_documents: list[Document] | None = None,
+        with_keywords: bool = True,
+        **kwargs,
+    ):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
@@ -167,6 +173,10 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             preview = []
             for content in chunks:
                 preview.append({"content": content})
-            return {"chunk_structure": IndexStructureType.PARAGRAPH_INDEX, "preview": preview, "total_segments": len(chunks)}
+            return {
+                "chunk_structure": IndexStructureType.PARAGRAPH_INDEX,
+                "preview": preview,
+                "total_segments": len(chunks),
+            }
         else:
             raise ValueError("Chunks is not a list")

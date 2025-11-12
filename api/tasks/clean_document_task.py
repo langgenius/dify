@@ -39,14 +39,11 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
         # Use JOIN to fetch attachments with bindings in a single query
         attachments_with_bindings = db.session.execute(
             select(SegmentAttachmentBinding, UploadFile)
-            .join(
-                UploadFile,
-                UploadFile.id == SegmentAttachmentBinding.attachment_id
-            )
+            .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
             .where(
                 SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
                 SegmentAttachmentBinding.dataset_id == dataset_id,
-                SegmentAttachmentBinding.document_id == document_id
+                SegmentAttachmentBinding.document_id == document_id,
             )
         ).all()
         # check segment is exist

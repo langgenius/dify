@@ -6,7 +6,7 @@ from core.model_runtime.entities.llm_entities import LLMResultChunk
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.rerank_entities import RerankResult
-from core.model_runtime.entities.text_embedding_entities import EmbeddingResult, TextEmbeddingResult
+from core.model_runtime.entities.text_embedding_entities import EmbeddingResult
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
@@ -274,7 +274,7 @@ class PluginModelClient(BasePluginClient):
             return resp
 
         raise ValueError("Failed to invoke text embedding")
-    
+
     def invoke_multimodal_embedding(
         self,
         tenant_id: str,
@@ -402,7 +402,7 @@ class PluginModelClient(BasePluginClient):
             return resp
 
         raise ValueError("Failed to invoke rerank")
-    
+
     def invoke_multimodal_rerank(
         self,
         tenant_id: str,
@@ -443,7 +443,6 @@ class PluginModelClient(BasePluginClient):
             return resp
 
         raise ValueError("Failed to invoke multimodal rerank")
-
 
     def invoke_tts(
         self,

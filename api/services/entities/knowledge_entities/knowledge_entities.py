@@ -131,7 +131,7 @@ class SegmentCreateArgs(BaseModel):
     answer: str | None = None
     keywords: list[str] | None = None
     attachment_ids: list[str] | None = None
-    
+
 
 class SegmentUpdateArgs(BaseModel):
     content: str | None = None

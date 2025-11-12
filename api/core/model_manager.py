@@ -212,7 +212,7 @@ class ModelInstance:
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
             raise Exception("Model type instance is not TextEmbeddingModel")
         return cast(
-            TextEmbeddingResult,
+            EmbeddingResult,
             self._round_robin_invoke(
                 function=self.model_type_instance.invoke,
                 model=self.model,
@@ -227,7 +227,7 @@ class ModelInstance:
         self,
         multimodel_documents: list[dict],
         user: str | None = None,
-        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> EmbeddingResult:
         """
         Invoke large language model
@@ -548,6 +548,7 @@ class ModelManager:
         if model_schema.features and ModelFeature.VISION in model_schema.features:
             return True
         return False
+
 
 class LBModelManager:
     def __init__(

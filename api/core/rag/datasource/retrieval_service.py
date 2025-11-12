@@ -1,6 +1,5 @@
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
-from typing import cast
 
 from flask import Flask, current_app
 from sqlalchemy import select
@@ -11,7 +10,6 @@ from core.file.enums import FileTransferMethod, FileType
 from core.file.models import File
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.model_providers.__base.rerank_model import RerankModel
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -226,25 +224,29 @@ class RetrievalService:
                 vector = Vector(dataset=dataset)
                 documents = []
                 if query_type == QueryType.TEXT_QUERY:
-                    documents.extend(vector.search_by_vector(
-                        query,
-                        search_type="similarity_score_threshold",
-                        top_k=top_k,
-                        score_threshold=score_threshold,
-                        filter={"group_id": [dataset.id]},
-                        document_ids_filter=document_ids_filter,
-                    ))
+                    documents.extend(
+                        vector.search_by_vector(
+                            query,
+                            search_type="similarity_score_threshold",
+                            top_k=top_k,
+                            score_threshold=score_threshold,
+                            filter={"group_id": [dataset.id]},
+                            document_ids_filter=document_ids_filter,
+                        )
+                    )
                 if query_type == QueryType.IMAGE_QUERY:
                     if not dataset.is_multimodal:
                         return
-                    documents.extend(vector.search_by_file(
-                    file_id=query, 
-                    top_k=top_k, 
-                    score_threshold=score_threshold, 
-                    filter={"group_id": [dataset.id]}, 
-                    document_ids_filter=document_ids_filter,
-                    ))
- 
+                    documents.extend(
+                        vector.search_by_file(
+                            file_id=query,
+                            top_k=top_k,
+                            score_threshold=score_threshold,
+                            filter={"group_id": [dataset.id]},
+                            document_ids_filter=document_ids_filter,
+                        )
+                    )
+
                 if documents:
                     if (
                         reranking_model
@@ -385,7 +387,12 @@ class RetrievalService:
                     if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                         # Handle parent-child documents
                         if document.metadata.get("doc_type") == DocType.IMAGE:
-                            attachment_info_dict = cls.get_segment_attachment_info(dataset_document.dataset_id, dataset_document.tenant_id, document.metadata.get("doc_id"), session)
+                            attachment_info_dict = cls.get_segment_attachment_info(
+                                dataset_document.dataset_id,
+                                dataset_document.tenant_id,
+                                document.metadata.get("doc_id"),
+                                session,
+                            )
                             if attachment_info_dict:
                                 attachment_info = attachment_info_dict["attchment_info"]
                                 segment_id = attachment_info_dict["segment_id"]
@@ -397,7 +404,7 @@ class RetrievalService:
                             if not child_chunk:
                                 continue
                             segment_id = child_chunk.segment_id
-                        
+
                         if not segment_id:
                             continue
 
@@ -460,7 +467,12 @@ class RetrievalService:
                         # Handle normal documents
                         segment = None
                         if document.metadata.get("doc_type") == DocType.IMAGE:
-                            attachment_info_dict = cls.get_segment_attachment_info(dataset_document.dataset_id, dataset_document.tenant_id, document.metadata.get("doc_id"), session)
+                            attachment_info_dict = cls.get_segment_attachment_info(
+                                dataset_document.dataset_id,
+                                dataset_document.tenant_id,
+                                document.metadata.get("doc_id"),
+                                session,
+                            )
                             if attachment_info_dict:
                                 attachment_info = attachment_info_dict["attchment_info"]
                                 segment_id = attachment_info_dict["segment_id"]
@@ -532,7 +544,9 @@ class RetrievalService:
                 )
 
                 # Create RetrievalSegments object
-                retrieval_segment = RetrievalSegments(segment=segment, child_chunks=child_chunks, score=score, files=files)
+                retrieval_segment = RetrievalSegments(
+                    segment=segment, child_chunks=child_chunks, score=score, files=files
+                )
                 result.append(retrieval_segment)
 
             return result
@@ -556,7 +570,7 @@ class RetrievalService:
         exceptions: list[str] = [],
     ):
         if not query and not attachment_id:
-            return 
+            return
         all_documents_item: list[Document] = []
         # Optimize multithreading with thread pools
         with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
@@ -653,11 +667,16 @@ class RetrievalService:
         all_documents.extend(all_documents_item)
 
     @classmethod
-    def get_segment_attachment_info(cls, dataset_id: str, tenant_id: str, attachment_id: str, session: Session) -> dict[str, File | str] | None:
-
+    def get_segment_attachment_info(
+        cls, dataset_id: str, tenant_id: str, attachment_id: str, session: Session
+    ) -> dict[str, File | str] | None:
         upload_file = session.query(UploadFile).where(UploadFile.id == attachment_id).first()
         if upload_file:
-            attachment_binding = session.query(SegmentAttachmentBinding).where(SegmentAttachmentBinding.attachment_id == upload_file.id).first()
+            attachment_binding = (
+                session.query(SegmentAttachmentBinding)
+                .where(SegmentAttachmentBinding.attachment_id == upload_file.id)
+                .first()
+            )
             if attachment_binding:
                 attchment_info = File(
                     id=upload_file.id,
@@ -673,8 +692,5 @@ class RetrievalService:
                     storage_key=upload_file.key,
                     url=sign_upload_file(upload_file.id, upload_file.extension),
                 )
-                return {
-                    "attchment_info": attchment_info,
-                    "segment_id": attachment_binding.segment_id
-                }
+                return {"attchment_info": attchment_info, "segment_id": attachment_binding.segment_id}
         return None

@@ -223,10 +223,12 @@ class Vector:
                     attachment_id = document.metadata["doc_id"]
                     doc_type = document.metadata["doc_type"]
                     file_base64_str = FileService(db.engine).get_file_base64(attachment_id)
-                    file_base64_list.append({
-                        "content": file_base64_str,
-                        "content_type": doc_type,
-                    })
+                    file_base64_list.append(
+                        {
+                            "content": file_base64_str,
+                            "content_type": doc_type,
+                        }
+                    )
                     real_batch.append(document)
                 batch_embeddings = self._embeddings.embed_multimodal_documents(file_base64_list)
                 logger.info(
@@ -262,11 +264,13 @@ class Vector:
             return []
         blob = storage.load_once(upload_file.key)
         file_base64_str = base64.b64encode(blob).decode()
-        multimodal_vector = self._embeddings.embed_multimodal_query({
+        multimodal_vector = self._embeddings.embed_multimodal_query(
+            {
                 "content": file_base64_str,
                 "content_type": upload_file.file_type,
                 "file_id": file_id,
-            })
+            }
+        )
         return self._vector_processor.search_by_vector(multimodal_vector, **kwargs)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:

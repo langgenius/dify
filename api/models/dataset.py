@@ -7,7 +7,6 @@ import logging
 import os
 import pickle
 import re
-from sqlalchemy.orm.properties import MappedColumn
 import time
 from datetime import datetime
 from json import JSONDecodeError
@@ -854,20 +853,17 @@ class DocumentSegment(Base):
             offset += len(signed_url) - (end - start)
 
         return text
-    
+
     @property
     def attachments(self) -> list[dict[str, Any]]:
         # Use JOIN to fetch attachments in a single query instead of two separate queries
         attachments_with_bindings = db.session.execute(
             select(SegmentAttachmentBinding, UploadFile)
-            .join(
-                UploadFile,
-                UploadFile.id == SegmentAttachmentBinding.attachment_id
-            )
+            .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
             .where(
                 SegmentAttachmentBinding.tenant_id == self.tenant_id,
                 SegmentAttachmentBinding.dataset_id == self.dataset_id,
-                SegmentAttachmentBinding.document_id == self.document_id
+                SegmentAttachmentBinding.document_id == self.document_id,
             )
         ).all()
         if not attachments_with_bindings:
@@ -885,14 +881,16 @@ class DocumentSegment(Base):
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
             base_url = f"/files/{upload_file_id}/image-preview"
             source_url = f"{base_url}?{params}"
-            attachment_list.append({
-                "id": attachment.id,
-                "name": attachment.name,
-                "size": attachment.size,
-                "extension": attachment.extension,
-                "mime_type": attachment.mime_type,
-                "source_url": source_url,
-            })
+            attachment_list.append(
+                {
+                    "id": attachment.id,
+                    "name": attachment.name,
+                    "size": attachment.size,
+                    "extension": attachment.extension,
+                    "mime_type": attachment.mime_type,
+                    "source_url": source_url,
+                }
+            )
         return attachment_list
 
 
@@ -999,11 +997,13 @@ class DatasetQuery(Base):
             else:
                 return [queries]
         except JSONDecodeError:
-            return [{
-                "content_type": QueryType.TEXT_QUERY,
-                "content": self.content,
-                "file_info": None,
-            }]
+            return [
+                {
+                    "content_type": QueryType.TEXT_QUERY,
+                    "content": self.content,
+                    "file_info": None,
+                }
+            ]
 
 
 class DatasetKeywordTable(Base):

@@ -85,23 +85,24 @@ class HitTestingService:
         end = time.perf_counter()
         logger.debug("Hit testing retrieve in %s seconds", end - start)
         if query:
-            content = {
-                "content_type": QueryType.TEXT_QUERY,
-                "content": query
-            }
+            content = {"content_type": QueryType.TEXT_QUERY, "content": query}
             dataset_query = DatasetQuery(
-                dataset_id=dataset.id, content=json.dumps(content), source="hit_testing", created_by_role="account", created_by=account.id
+                dataset_id=dataset.id,
+                content=json.dumps(content),
+                source="hit_testing",
+                created_by_role="account",
+                created_by=account.id,
             )
             db.session.add(dataset_query)
         if attachment_ids:
             for attachment_id in attachment_ids:
-                content = {
-                    "content_type": QueryType.IMAGE_QUERY,
-                    "content": attachment_id
-                }
+                content = {"content_type": QueryType.IMAGE_QUERY, "content": attachment_id}
                 dataset_query = DatasetQuery(
-                    dataset_id=dataset.id, content=json.dumps(content), source="hit_testing", 
-                    created_by_role="account", created_by=account.id
+                    dataset_id=dataset.id,
+                    content=json.dumps(content),
+                    source="hit_testing",
+                    created_by_role="account",
+                    created_by=account.id,
                 )
                 db.session.add(dataset_query)
         db.session.commit()

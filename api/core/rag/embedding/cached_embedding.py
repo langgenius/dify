@@ -141,7 +141,9 @@ class CacheEmbedding(Embeddings):
                     batch_multimodel_documents = embedding_queue_multimodel_documents[i : i + max_chunks]
 
                     embedding_result = self._model_instance.invoke_multimodal_embedding(
-                        multimodel_documents=batch_multimodel_documents, user=self._user, input_type=EmbeddingInputType.DOCUMENT
+                        multimodel_documents=batch_multimodel_documents,
+                        user=self._user,
+                        input_type=EmbeddingInputType.DOCUMENT,
                     )
 
                     for vector in embedding_result.embeddings:

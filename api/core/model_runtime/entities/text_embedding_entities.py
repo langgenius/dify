@@ -28,6 +28,7 @@ class EmbeddingResult(BaseModel):
     embeddings: list[list[float]]
     usage: EmbeddingUsage
 
+
 class FileEmbeddingResult(BaseModel):
     """
     Model class for file embedding result.

@@ -51,7 +51,9 @@ def delete_segment_from_index_task(
         )
         if dataset.is_multimodal:
             # delete segment attachment binding
-            db.session.query(SegmentAttachmentBinding).filter(SegmentAttachmentBinding.segment_id.in_(segment_ids)).delete()
+            db.session.query(SegmentAttachmentBinding).filter(
+                SegmentAttachmentBinding.segment_id.in_(segment_ids)
+            ).delete()
             db.session.commit()
 
         end_at = time.perf_counter()

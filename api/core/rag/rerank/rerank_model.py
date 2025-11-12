@@ -5,8 +5,9 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_base import BaseRerankRunner
-from services.file_service import FileService
 from extensions.ext_database import db
+from services.file_service import FileService
+
 
 class RerankModelRunner(BaseRerankRunner):
     def __init__(self, rerank_model_instance: ModelInstance):
@@ -43,8 +44,9 @@ class RerankModelRunner(BaseRerankRunner):
             else:
                 return documents
         else:
-            rerank_result, unique_documents = self.fetch_multimodal_rerank(query, documents, score_threshold, 
-            top_n, user, query_type)
+            rerank_result, unique_documents = self.fetch_multimodal_rerank(
+                query, documents, score_threshold, top_n, user, query_type
+            )
 
         rerank_documents = []
         for result in rerank_result.docs:
@@ -62,9 +64,14 @@ class RerankModelRunner(BaseRerankRunner):
         rerank_documents.sort(key=lambda x: x.metadata.get("score", 0.0), reverse=True)
         return rerank_documents[:top_n] if top_n else rerank_documents
 
-    def fetch_text_rerank(self, query: str, 
-    documents: list[Document], score_threshold: float | None = None, 
-    top_n: int | None = None, user: str | None = None) -> tuple[RerankResult, list[Document]]:
+    def fetch_text_rerank(
+        self,
+        query: str,
+        documents: list[Document],
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
+    ) -> tuple[RerankResult, list[Document]]:
         """
         Fetch text rerank
         :param query: search query
@@ -97,10 +104,15 @@ class RerankModelRunner(BaseRerankRunner):
         )
         return rerank_result, unique_documents
 
-    def fetch_multimodal_rerank(self, query: str, 
-    documents: list[Document], score_threshold: float | None = None, 
-    top_n: int | None = None, user: str | None = None,
-     query_type: QueryType = QueryType.TEXT_QUERY) -> tuple[RerankResult, list[Document]]:
+    def fetch_multimodal_rerank(
+        self,
+        query: str,
+        documents: list[Document],
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
+        query_type: QueryType = QueryType.TEXT_QUERY,
+    ) -> tuple[RerankResult, list[Document]]:
         """
         Fetch multimodal rerank
         :param query: search query
@@ -137,10 +149,12 @@ class RerankModelRunner(BaseRerankRunner):
                 unique_documents.append(document)
             elif document.provider == "external":
                 if document not in unique_documents:
-                    docs.append({
-                        "content": document.page_content,
-                        "content_type": document.metadata.get("doc_type") or DocType.TEXT,
-                    })
+                    docs.append(
+                        {
+                            "content": document.page_content,
+                            "content_type": document.metadata.get("doc_type") or DocType.TEXT,
+                        }
+                    )
                     unique_documents.append(document)
 
         documents = unique_documents

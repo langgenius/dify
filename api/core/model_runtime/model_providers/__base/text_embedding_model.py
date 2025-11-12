@@ -1,4 +1,3 @@
-
 from pydantic import ConfigDict
 
 from core.entities.embedding_type import EmbeddingInputType
@@ -43,14 +42,14 @@ class TextEmbeddingModel(AIModel):
             plugin_model_manager = PluginModelClient()
             if texts:
                 return plugin_model_manager.invoke_text_embedding(
-                tenant_id=self.tenant_id,
-                user_id=user or "unknown",
-                plugin_id=self.plugin_id,
-                provider=self.provider_name,
-                model=model,
-                credentials=credentials,
-                texts=texts,
-                input_type=input_type,
+                    tenant_id=self.tenant_id,
+                    user_id=user or "unknown",
+                    plugin_id=self.plugin_id,
+                    provider=self.provider_name,
+                    model=model,
+                    credentials=credentials,
+                    texts=texts,
+                    input_type=input_type,
                 )
             if multimodel_documents:
                 return plugin_model_manager.invoke_multimodal_embedding(

@@ -104,8 +104,14 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
         return all_documents
 
-    def load(self, dataset: Dataset, documents: list[Document], multimodel_documents: list[Document] | None = None, 
-    with_keywords: bool = True, **kwargs):
+    def load(
+        self,
+        dataset: Dataset,
+        documents: list[Document],
+        multimodel_documents: list[Document] | None = None,
+        with_keywords: bool = True,
+        **kwargs,
+    ):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             for document in documents:

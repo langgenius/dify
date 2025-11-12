@@ -74,6 +74,7 @@ class RerankModel(AIModel):
         """
         try:
             from core.plugin.impl.model import PluginModelClient
+
             plugin_model_manager = PluginModelClient()
             return plugin_model_manager.invoke_multimodal_rerank(
                 tenant_id=self.tenant_id,

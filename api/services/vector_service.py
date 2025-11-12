@@ -94,7 +94,9 @@ class VectorService:
         index_processor: BaseIndexProcessor = IndexProcessorFactory(doc_form).init_index_processor()
 
         if len(documents) > 0:
-            index_processor.load(dataset, documents, multimodel_documents, with_keywords=True, keywords_list=keywords_list)
+            index_processor.load(
+                dataset, documents, multimodel_documents, with_keywords=True, keywords_list=keywords_list
+            )
         if len(multimodel_documents) > 0:
             index_processor.load(dataset, multimodel_documents, with_keywords=False)
 
@@ -253,42 +255,40 @@ class VectorService:
     def update_multimodel_vector(cls, segment: DocumentSegment, attachment_ids: list[str], dataset: Dataset):
         if not (dataset.indexing_technique == "high_quality" and dataset.is_multimodal and attachment_ids):
             return
-        
+
         attachments = segment.attachments
         old_attachment_ids = [attachment["id"] for attachment in attachments] if attachments else []
-        
+
         # Check if there's any actual change needed
         if set(attachment_ids) == set(old_attachment_ids):
             return
-        
+
         try:
             vector = Vector(dataset=dataset)
-            
+
             # Delete old vectors if they exist
             if old_attachment_ids:
                 vector.delete_by_ids(old_attachment_ids)
-            
+
             # Delete existing segment attachment bindings in one operation
-            db.session.query(SegmentAttachmentBinding).filter(
-                SegmentAttachmentBinding.segment_id == segment.id
-            ).delete(synchronize_session=False)
-            
+            db.session.query(SegmentAttachmentBinding).filter(SegmentAttachmentBinding.segment_id == segment.id).delete(
+                synchronize_session=False
+            )
+
             # Bulk fetch upload files - only fetch needed fields
-            upload_file_list = db.session.query(UploadFile).filter(
-                UploadFile.id.in_(attachment_ids)
-            ).all()
-            
+            upload_file_list = db.session.query(UploadFile).filter(UploadFile.id.in_(attachment_ids)).all()
+
             if not upload_file_list:
                 db.session.commit()
                 return
-            
+
             # Create a mapping for quick lookup
             upload_file_map = {upload_file.id: upload_file for upload_file in upload_file_list}
-            
+
             # Prepare batch operations
             bindings = []
             documents = []
-            
+
             # Create common metadata base to avoid repetition
             base_metadata = {
                 "doc_hash": "",
@@ -296,40 +296,41 @@ class VectorService:
                 "dataset_id": segment.dataset_id,
                 "doc_type": DocType.IMAGE,
             }
-            
+
             # Process attachments in the order specified by attachment_ids
             for attachment_id in attachment_ids:
                 upload_file = upload_file_map.get(attachment_id)
                 if not upload_file:
                     logger.warning("Upload file not found for attachment_id: %s", attachment_id)
                     continue
-                
+
                 # Create segment attachment binding
-                bindings.append(SegmentAttachmentBinding(
-                    tenant_id=segment.tenant_id,
-                    dataset_id=segment.dataset_id,
-                    document_id=segment.document_id,
-                    segment_id=segment.id,
-                    attachment_id=upload_file.id,
-                ))
-                
+                bindings.append(
+                    SegmentAttachmentBinding(
+                        tenant_id=segment.tenant_id,
+                        dataset_id=segment.dataset_id,
+                        document_id=segment.document_id,
+                        segment_id=segment.id,
+                        attachment_id=upload_file.id,
+                    )
+                )
+
                 # Create document for vector indexing
-                documents.append(Document(
-                    page_content=upload_file.name,
-                    metadata={**base_metadata, "doc_id": upload_file.id}
-                ))
-            
+                documents.append(
+                    Document(page_content=upload_file.name, metadata={**base_metadata, "doc_id": upload_file.id})
+                )
+
             # Bulk insert all bindings at once
             if bindings:
                 db.session.add_all(bindings)
-            
+
             # Add documents to vector store if any
             if documents:
                 vector.add_texts(documents, duplicate_check=True)
-            
+
             # Single commit for all operations
             db.session.commit()
-            
+
         except Exception:
             logger.exception("Failed to update multimodal vector for segment %s", segment.id)
             db.session.rollback()

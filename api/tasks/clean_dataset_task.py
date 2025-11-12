@@ -18,7 +18,6 @@ from models.dataset import (
     DatasetQuery,
     Document,
     DocumentSegment,
-    SegmentAttachment,
     SegmentAttachmentBinding,
 )
 from models.model import UploadFile
@@ -63,14 +62,8 @@ def clean_dataset_task(
         # Use JOIN to fetch attachments with bindings in a single query
         attachments_with_bindings = db.session.execute(
             select(SegmentAttachmentBinding, UploadFile)
-            .join(
-                UploadFile,
-                UploadFile.id == SegmentAttachmentBinding.attachment_id
-            )
-            .where(
-                SegmentAttachmentBinding.tenant_id == tenant_id,
-                SegmentAttachmentBinding.dataset_id == dataset_id
-            )
+            .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+            .where(SegmentAttachmentBinding.tenant_id == tenant_id, SegmentAttachmentBinding.dataset_id == dataset_id)
         ).all()
 
         # Enhanced validation: Check if doc_form is None, empty string, or contains only whitespace
@@ -104,7 +97,7 @@ def clean_dataset_task(
 
             for document in documents:
                 db.session.delete(document)
-                # delete document file 
+                # delete document file
 
             for segment in segments:
                 image_upload_file_ids = get_image_upload_file_ids(segment.content)

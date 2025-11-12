@@ -194,7 +194,6 @@ class DatasetRetrieval:
                 message_id,
                 metadata_filter_document_ids,
                 metadata_condition,
-                
             )
         elif retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             all_documents = self.multiple_retrieve(
@@ -310,7 +309,6 @@ class DatasetRetrieval:
         message_id: str | None = None,
         metadata_filter_document_ids: dict[str, list[str]] | None = None,
         metadata_condition: MetadataCondition | None = None,
-
     ):
         tools = []
         for dataset in available_datasets:
@@ -418,7 +416,7 @@ class DatasetRetrieval:
                     thread = threading.Thread(
                         target=self._on_retrieval_end,
                         kwargs={
-                            "flask_app": current_app._get_current_object(),# type: ignore
+                            "flask_app": current_app._get_current_object(),  # type: ignore
                             "documents": results,
                             "message_id": message_id,
                             "timer": timer,
@@ -488,7 +486,7 @@ class DatasetRetrieval:
                 query_thread = threading.Thread(
                     target=self._multiple_retrieve_thread,
                     kwargs={
-                        "flask_app": current_app._get_current_object(),# type: ignore
+                        "flask_app": current_app._get_current_object(),  # type: ignore
                         "available_datasets": available_datasets,
                         "metadata_condition": metadata_condition,
                         "metadata_filter_document_ids": metadata_filter_document_ids,
@@ -511,7 +509,7 @@ class DatasetRetrieval:
                     attachment_thread = threading.Thread(
                         target=self._multiple_retrieve_thread,
                         kwargs={
-                            "flask_app": current_app._get_current_object(),# type: ignore
+                            "flask_app": current_app._get_current_object(),  # type: ignore
                             "available_datasets": available_datasets,
                             "metadata_condition": metadata_condition,
                             "metadata_filter_document_ids": metadata_filter_document_ids,
@@ -538,7 +536,7 @@ class DatasetRetrieval:
             retrieval_end_thread = threading.Thread(
                 target=self._on_retrieval_end,
                 kwargs={
-                    "flask_app": current_app._get_current_object(),# type: ignore
+                    "flask_app": current_app._get_current_object(),  # type: ignore
                     "documents": all_documents,
                     "message_id": message_id,
                     "timer": timer,
@@ -557,7 +555,9 @@ class DatasetRetrieval:
                 retrieval_resource_list.append(document)
         return retrieval_resource_list
 
-    def _on_retrieval_end(self, flask_app: Flask, documents: list[Document], message_id: str | None = None, timer: dict | None = None):
+    def _on_retrieval_end(
+        self, flask_app: Flask, documents: list[Document], message_id: str | None = None, timer: dict | None = None
+    ):
         """Handle retrieval end."""
         with flask_app.app_context():
             dify_documents = [document for document in documents if document.provider == "dify"]
@@ -573,7 +573,10 @@ class DatasetRetrieval:
                         if dataset_document:
                             if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                                 segment_id = None
-                                if "doc_type" not in document.metadata or document.metadata.get("doc_type") == DocType.TEXT:
+                                if (
+                                    "doc_type" not in document.metadata
+                                    or document.metadata.get("doc_type") == DocType.TEXT
+                                ):
                                     child_chunk_stmt = select(ChildChunk).where(
                                         ChildChunk.index_node_id == document.metadata["doc_id"],
                                         ChildChunk.dataset_id == dataset_document.dataset_id,
@@ -582,9 +585,16 @@ class DatasetRetrieval:
                                     child_chunk = session.scalar(child_chunk_stmt)
                                     if child_chunk:
                                         segment_id = child_chunk.segment_id
-                                elif "doc_type" in document.metadata and document.metadata.get("doc_type") == DocType.IMAGE:
-                                    attachment_info_dict = RetrievalService.get_segment_attachment_info(dataset_document.dataset_id, dataset_document.tenant_id, 
-                                    document.metadata.get("doc_id") or "", session)
+                                elif (
+                                    "doc_type" in document.metadata
+                                    and document.metadata.get("doc_type") == DocType.IMAGE
+                                ):
+                                    attachment_info_dict = RetrievalService.get_segment_attachment_info(
+                                        dataset_document.dataset_id,
+                                        dataset_document.tenant_id,
+                                        document.metadata.get("doc_id") or "",
+                                        session,
+                                    )
                                     if attachment_info_dict:
                                         segment_id = attachment_info_dict["segment_id"]
                                 if segment_id:
@@ -600,34 +610,48 @@ class DatasetRetrieval:
                                         )
                             else:
                                 query = None
-                                if "doc_type" not in document.metadata or document.metadata.get("doc_type") == DocType.TEXT:
+                                if (
+                                    "doc_type" not in document.metadata
+                                    or document.metadata.get("doc_type") == DocType.TEXT
+                                ):
                                     if document.metadata["doc_id"] not in segment_index_node_ids:
-                                        segment = session.query(DocumentSegment).where(
-                                            DocumentSegment.index_node_id == document.metadata["doc_id"]
-                                        ).first()
+                                        segment = (
+                                            session.query(DocumentSegment)
+                                            .where(DocumentSegment.index_node_id == document.metadata["doc_id"])
+                                            .first()
+                                        )
                                         if segment:
                                             segment_index_node_ids.append(document.metadata["doc_id"])
                                             segment_ids.append(segment.id)
                                             query = session.query(DocumentSegment).where(
                                                 DocumentSegment.id == segment.id
                                             )
-                                elif "doc_type" in document.metadata and document.metadata.get("doc_type") == DocType.IMAGE:
-                                    attachment_info_dict = RetrievalService.get_segment_attachment_info(dataset_document.dataset_id, 
-                                    dataset_document.tenant_id, document.metadata.get("doc_id") or "", session)
+                                elif (
+                                    "doc_type" in document.metadata
+                                    and document.metadata.get("doc_type") == DocType.IMAGE
+                                ):
+                                    attachment_info_dict = RetrievalService.get_segment_attachment_info(
+                                        dataset_document.dataset_id,
+                                        dataset_document.tenant_id,
+                                        document.metadata.get("doc_id") or "",
+                                        session,
+                                    )
                                     if attachment_info_dict:
                                         segment_id = attachment_info_dict["segment_id"]
                                         if segment_id not in segment_ids:
                                             segment_ids.append(segment_id)
-                                        query = session.query(DocumentSegment).where(
-                                            DocumentSegment.id == segment_id)
+                                        query = session.query(DocumentSegment).where(DocumentSegment.id == segment_id)
                                 if query:
                                     # if 'dataset_id' in document.metadata:
                                     if "dataset_id" in document.metadata:
-                                        query = query.where(DocumentSegment.dataset_id == document.metadata["dataset_id"])
+                                        query = query.where(
+                                            DocumentSegment.dataset_id == document.metadata["dataset_id"]
+                                        )
 
                                     # add hit count to document segment
                                     query.update(
-                                        {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
+                                        {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
+                                        synchronize_session=False,
                                     )
 
                             db.session.commit()
@@ -643,8 +667,15 @@ class DatasetRetrieval:
                     )
                 )
 
-    def _on_query(self, query: str | None, 
-    attachment_ids: list[str] | None, dataset_ids: list[str], app_id: str, user_from: str, user_id: str):
+    def _on_query(
+        self,
+        query: str | None,
+        attachment_ids: list[str] | None,
+        dataset_ids: list[str],
+        app_id: str,
+        user_from: str,
+        user_id: str,
+    ):
         """
         Handle query.
         """
@@ -653,10 +684,7 @@ class DatasetRetrieval:
         dataset_queries = []
         for dataset_id in dataset_ids:
             if query:
-                content = {
-                    "content_type": QueryType.TEXT_QUERY,
-                    "content": query
-                }
+                content = {"content_type": QueryType.TEXT_QUERY, "content": query}
                 dataset_query = DatasetQuery(
                     dataset_id=dataset_id,
                     content=json.dumps(content),
@@ -668,10 +696,7 @@ class DatasetRetrieval:
                 dataset_queries.append(dataset_query)
             if attachment_ids:
                 for attachment_id in attachment_ids:
-                    content = {
-                        "content_type": QueryType.IMAGE_QUERY,
-                        "content": attachment_id
-                    }
+                    content = {"content_type": QueryType.IMAGE_QUERY, "content": attachment_id}
                     dataset_query = DatasetQuery(
                         dataset_id=dataset_id,
                         content=json.dumps(content),
@@ -1322,18 +1347,19 @@ class DatasetRetrieval:
         return full_text, usage
 
     def _multiple_retrieve_thread(
-        self, 
+        self,
         flask_app: Flask,
         available_datasets: list,
         metadata_condition: MetadataCondition | None,
         metadata_filter_document_ids: dict[str, list[str]] | None,
-        all_documents: list[Document], 
+        all_documents: list[Document],
         tenant_id: str,
         reranking_enable: bool,
         reranking_mode: str,
         reranking_model: dict | None,
         weights: dict[str, Any] | None,
-        top_k: int, score_threshold: float,
+        top_k: int,
+        score_threshold: float,
         query: str | None,
         attachment_id: str | None,
     ):
@@ -1376,11 +1402,19 @@ class DatasetRetrieval:
                 data_post_processor = DataPostProcessor(tenant_id, reranking_mode, reranking_model, weights, False)
                 if query:
                     all_documents_item = data_post_processor.invoke(
-                        query=query, documents=all_documents_item, score_threshold=score_threshold, top_n=top_k, query_type=QueryType.TEXT_QUERY,
+                        query=query,
+                        documents=all_documents_item,
+                        score_threshold=score_threshold,
+                        top_n=top_k,
+                        query_type=QueryType.TEXT_QUERY,
                     )
                 if attachment_id:
                     all_documents_item = data_post_processor.invoke(
-                        documents=all_documents_item, score_threshold=score_threshold, top_n=top_k, query_type=QueryType.IMAGE_QUERY, query=attachment_id,
+                        documents=all_documents_item,
+                        score_threshold=score_threshold,
+                        top_n=top_k,
+                        query_type=QueryType.IMAGE_QUERY,
+                        query=attachment_id,
                     )
             else:
                 if index_type == IndexTechniqueType.ECONOMY:

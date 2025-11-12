@@ -8,7 +8,7 @@ class Embeddings(ABC):
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Embed search docs."""
         raise NotImplementedError
-    
+
     @abstractmethod
     def embed_multimodal_documents(self, multimodel_documents: list[dict]) -> list[list[float]]:
         """Embed file documents."""

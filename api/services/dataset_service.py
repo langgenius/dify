@@ -19,7 +19,6 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
@@ -361,7 +360,7 @@ class DatasetService:
             )
         except ProviderTokenNotInitError as ex:
             raise ValueError(ex.description)
-    
+
     @staticmethod
     def check_is_multimodal_model(tenant_id: str, model_provider: str, model: str):
         try:
@@ -3002,7 +3001,9 @@ class SegmentService:
                 )
                 child_node_ids = [chunk[0] for chunk in child_chunks if chunk[0]]
 
-            delete_segment_from_index_task.delay([segment.index_node_id], dataset.id, document.id, [segment.id], child_node_ids)
+            delete_segment_from_index_task.delay(
+                [segment.index_node_id], dataset.id, document.id, [segment.id], child_node_ids
+            )
 
         db.session.delete(segment)
         # update document word count
@@ -3051,7 +3052,9 @@ class SegmentService:
 
         # Start async cleanup with both parent and child node IDs
         if index_node_ids or child_node_ids:
-            delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id, segment_db_ids, child_node_ids)
+            delete_segment_from_index_task.delay(
+                index_node_ids, dataset.id, document.id, segment_db_ids, child_node_ids
+            )
 
         if document.word_count is None:
             document.word_count = 0
