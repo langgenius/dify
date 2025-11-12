@@ -16,18 +16,18 @@ def is_database_available() -> bool:
         True if database is available, False otherwise.
     """
     try:
-        # Try to establish a database connection
-        conn = psycopg2.connect(
+        # Try to establish a database connection using a context manager
+        with psycopg2.connect(
             host=dify_config.DB_HOST,
             port=dify_config.DB_PORT,
             database=dify_config.DB_DATABASE,
             user=dify_config.DB_USERNAME,
             password=dify_config.DB_PASSWORD,
             connect_timeout=2,  # 2 second timeout
-        )
-        conn.close()
+        ) as conn:
+            pass  # Connection established and will be closed automatically
         return True
-    except (psycopg2.OperationalError, psycopg2.Error, Exception):
+    except (psycopg2.OperationalError, psycopg2.Error):
         return False
 
 
@@ -46,5 +46,3 @@ def skip_if_database_unavailable():
     )
 
 
-# Re-export pytest.skip for convenience
-skip = pytest.skip
