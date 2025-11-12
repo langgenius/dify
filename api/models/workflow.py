@@ -5,7 +5,6 @@ from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from uuid import uuid4
-from typing_extensions import deprecated
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -21,6 +20,7 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
+from typing_extensions import deprecated
 
 from core.file.constants import maybe_file_object
 from core.file.models import File

@@ -3,13 +3,12 @@ Tests for HumanInputForm domain model and repository.
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from core.workflow.entities.human_input_form import HumanInputForm, HumanInputFormStatus, HumanInputSubmissionType
 from core.repositories.sqlalchemy_human_input_form_repository import SQLAlchemyHumanInputFormRepository
+from core.workflow.entities.human_input_form import HumanInputForm, HumanInputFormStatus
 
 
 class TestHumanInputForm:
@@ -201,7 +200,11 @@ class TestSQLAlchemyHumanInputFormRepository:
         """Test converting DB model to domain model."""
         from models.human_input import (
             HumanInputForm as DBForm,
+        )
+        from models.human_input import (
             HumanInputFormStatus as DBStatus,
+        )
+        from models.human_input import (
             HumanInputSubmissionType as DBSubmissionType,
         )
 
@@ -233,9 +236,7 @@ class TestSQLAlchemyHumanInputFormRepository:
     def test_to_db_model(self, repository):
         """Test converting domain model to DB model."""
         from models.human_input import (
-            HumanInputForm as DBForm,
             HumanInputFormStatus as DBStatus,
-            HumanInputSubmissionType as DBSubmissionType,
         )
 
         domain_form = HumanInputForm.create(

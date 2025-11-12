@@ -2,12 +2,9 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Generator
-from typing import Any, Mapping, Union, cast
+from collections.abc import Generator, Mapping
+from typing import Any, Union, cast
 
-from libs.broadcast_channel.channel import Subscription, Topic
-from libs.broadcast_channel.exc import SubscriptionClosedError
-from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -34,6 +31,9 @@ from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBa
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.broadcast_channel.channel import Topic
+from libs.broadcast_channel.exc import SubscriptionClosedError
+from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.enums import CreatorUserRole

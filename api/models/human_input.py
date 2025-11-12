@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated, Any, ClassVar, Literal, Self, final
+from typing import Annotated, Literal, Self, final
 
 import sqlalchemy as sa
 from pydantic import BaseModel, Field
@@ -8,7 +8,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.workflow.nodes.human_input.entities import (
     DeliveryMethodType,
-    EmailRecipientType,
     HumanInputFormStatus,
 )
 from libs.helper import generate_string

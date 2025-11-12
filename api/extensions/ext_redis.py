@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, Union
 import redis
 from redis import RedisError
 from redis.cache import CacheConfig
+from redis.client import PubSub
 from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
 from redis.sentinel import Sentinel
-from redis.client import PubSub
 
 from configs import dify_config
 from dify_app import DifyApp

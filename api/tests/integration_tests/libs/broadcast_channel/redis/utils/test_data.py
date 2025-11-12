@@ -75,7 +75,7 @@ VERY_LARGE_MESSAGES = [
 SPECIAL_MESSAGES = [
     b"",  # Empty message
     b"\x00\x01\x02",  # Binary data with null bytes
-    "unicode_test_你好".encode("utf-8"),  # Unicode
+    "unicode_test_你好".encode(),  # Unicode
     b"special_chars_!@#$%^&*()_+-=[]{}|;':\",./<>?",  # Special characters
     b"newlines\n\r\t",  # Control characters
 ]
@@ -241,8 +241,8 @@ EDGE_CASE_MESSAGES = [
     b"\x00",  # Single null byte
     b"\xff",  # Single max byte value
     b"a",  # Single ASCII character
-    "ä".encode("utf-8"),  # Single unicode character (2 bytes)
-    "𐍈".encode("utf-8"),  # Unicode character outside BMP (4 bytes)
+    "ä".encode(),  # Single unicode character (2 bytes)
+    "𐍈".encode(),  # Unicode character outside BMP (4 bytes)
     b"\x00" * 1000,  # 1000 null bytes
     b"\xff" * 1000,  # 1000 max byte values
 ]

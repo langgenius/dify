@@ -8,7 +8,7 @@ operations, monitoring subscriptions, and measuring performance.
 import logging
 import threading
 import time
-from collections.abc import Callable, Generator
+from collections.abc import Callable
 from typing import Any
 
 _logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ class ConcurrentPublisher:
                     if self.delay > 0:
                         time.sleep(self.delay)
                 except Exception as e:
-                    _logger.error(f"Publisher {thread_id} error: {e}")
+                    _logger.error("Publisher %s error: %s", thread_id, e)
 
             with self._lock:
                 self.published_messages.append(messages)
@@ -280,7 +280,7 @@ def assert_message_order(received: list[bytes], expected: list[bytes]) -> bool:
 
     for i, (recv_msg, exp_msg) in enumerate(zip(received, expected)):
         if recv_msg != exp_msg:
-            _logger.error(f"Message order mismatch at index {i}: expected {exp_msg}, got {recv_msg}")
+            _logger.error("Message order mismatch at index %s: expected %s, got %s", i, exp_msg, recv_msg)
             return False
 
     return True
@@ -309,7 +309,7 @@ def measure_throughput(
             operation()
             count += 1
         except Exception as e:
-            _logger.error(f"Operation failed: {e}")
+            _logger.error("Operation failed: %s", e)
             break
 
     elapsed = time.time() - start_time

@@ -13,18 +13,21 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
-from controllers.web.error import NotFoundError
+from controllers.web.error import InvalidArgumentError, NotFoundError
+from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
+from core.app.apps.message_generator import MessageGenerator
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.workflow.nodes.human_input.entities import FormDefinition
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
-from models.account import Account
+from models import App
 from models.enums import CreatorUserRole
 from models.human_input import HumanInputForm as HumanInputFormModel
-from models.model import App, EndUser
-from models.workflow import WorkflowRun
+from models.model import AppMode
+from models.workflow import Workflow, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.human_input_service import HumanInputService
 
@@ -63,9 +66,6 @@ class ConsoleHumanInputFormApi(Resource):
         form_model = db.session.get(HumanInputFormModel, form_id)
         if form_model is None or form_model.tenant_id != current_tenant_id:
             raise NotFoundError(f"form not found, id={form_id}")
-
-        from models import App
-        from models.workflow import Workflow, WorkflowRun
 
         workflow_run = db.session.get(WorkflowRun, form_model.workflow_run_id)
         if workflow_run is None or workflow_run.tenant_id != current_tenant_id:
@@ -159,7 +159,7 @@ class ConsoleWorkflowEventsApi(Resource):
                 creator_user=user,
             )
 
-            # We'll
+            # TODO: should we just return here? or yield a WorkflowFinishStreamResponse?
             def generate_events() -> Generator[str, None, None]:
                 """Generate SSE events for workflow execution."""
                 try:
@@ -181,10 +181,18 @@ class ConsoleWorkflowEventsApi(Resource):
                     yield f"data: {{'error': 'Stream error: {str(e)}'}}\n\n"
         else:
             # TODO: SSE from Redis PubSub
-            queue = ...
+            msg_generator = MessageGenerator()
+            if app.mode == AppMode.ADVANCED_CHAT:
+                generator = AdvancedChatAppGenerator()
+            elif app.mode == AppMode.WORKFLOW:
+                generator = WorkflowAppGenerator()
+            else:
+                raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 
             def generate_events():
-                yield from []
+                return generator.convert_to_event_stream(
+                    msg_generator.retrieve_events(AppMode(app.mode), workflow_run.id),
+                )
 
         return Response(
             generate_events(),
@@ -210,7 +218,6 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
 
         Returns information about why and where the workflow is paused.
         """
-        from models.workflow import WorkflowRun
 
         # Query WorkflowRun to determine if workflow is suspended
         workflow_run = db.session.get(WorkflowRun, workflow_run_id)
@@ -270,3 +277,5 @@ def _retrieve_app_for_workflow_run(session: Session, workflow_run: WorkflowRun):
             f"App not found for WorkflowRun, workflow_run_id={workflow_run.id}, "
             f"app_id={workflow_run.app_id}, tenant_id={workflow_run.tenant_id}"
         )
+
+    return app

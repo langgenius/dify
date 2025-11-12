@@ -1,9 +1,9 @@
 import contextlib
 import logging
+import uuid
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Annotated, Any, Generator, Literal, Self, TypeAlias, Union, overload
-import uuid
+from typing import Annotated, Any, TypeAlias, Union
 
 from celery import shared_task
 from flask import current_app, json
@@ -12,13 +12,10 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
-from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
 )
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
-from libs.broadcast_channel.redis import BroadcastChannel as RedisBroadcastChannel
 from libs.flask_utils import set_login_user
 from models.account import Account
 from models.model import App, AppMode, EndUser
