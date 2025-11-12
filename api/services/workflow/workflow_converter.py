@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, TypedDict
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -217,7 +217,12 @@ class WorkflowConverter:
 
         return app_config
 
-    def _convert_to_start_node(self, variables: list[VariableEntity]):
+    class _NodeType(TypedDict):
+        id: str
+        position: None
+        data: dict
+
+    def _convert_to_start_node(self, variables: list[VariableEntity]) -> _NodeType:
         """
         Convert to Start Node
         :param variables: list of variables
@@ -326,7 +331,7 @@ class WorkflowConverter:
 
     def _convert_to_knowledge_retrieval_node(
         self, new_app_mode: AppMode, dataset_config: DatasetEntity, model_config: ModelConfigEntity
-    ) -> dict | None:
+    ) -> _NodeType | None:
         """
         Convert datasets to Knowledge Retrieval Node
         :param new_app_mode: new app mode
@@ -384,7 +389,7 @@ class WorkflowConverter:
         prompt_template: PromptTemplateEntity,
         file_upload: FileUploadConfig | None = None,
         external_data_variable_node_mapping: dict[str, str] | None = None,
-    ):
+    ) -> _NodeType:
         """
         Convert to LLM Node
         :param original_app_mode: original app mode
@@ -561,7 +566,7 @@ class WorkflowConverter:
 
         return template
 
-    def _convert_to_end_node(self):
+    def _convert_to_end_node(self) -> _NodeType:
         """
         Convert to End Node
         :return:
@@ -577,7 +582,7 @@ class WorkflowConverter:
             },
         }
 
-    def _convert_to_answer_node(self):
+    def _convert_to_answer_node(self) -> _NodeType:
         """
         Convert to Answer Node
         :return:
