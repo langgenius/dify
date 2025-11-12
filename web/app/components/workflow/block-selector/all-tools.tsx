@@ -195,7 +195,6 @@ const AllTools = ({
     && !isInRAGPipeline
     && activeTab === ToolTypeEnum.All
     && !hasFilter
-    && (featuredLoading || featuredPlugins.length > 0)
   const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
 
   const handleRAGSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
