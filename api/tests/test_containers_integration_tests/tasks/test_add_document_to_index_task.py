@@ -640,7 +640,7 @@ class TestAddDocumentToIndexTask:
             tokens=len(fake.text(max_nb_chars=200).split()) * 2,
             index_node_id="node_1",
             index_node_hash="hash_1",
-            enabled=True,  # Already enabled
+            enabled=False,
             status="completed",
             created_by=document.created_by,
         )
@@ -702,7 +702,7 @@ class TestAddDocumentToIndexTask:
         call_args = mock_external_service_dependencies["index_processor"].load.call_args
         assert call_args is not None
         documents = call_args[0][1]  # Second argument should be documents list
-        assert len(documents) == 2  # Only 2 segments should be processed
+        assert len(documents) == 3  # 3 segments should be processed
 
         # Verify correct segments were processed (by position order)
         assert documents[0].metadata["doc_id"] == "node_0"  # position 0
