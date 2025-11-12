@@ -15,6 +15,7 @@ type Props = {
   usage: number
   total: number
   unit?: string
+  unitPosition?: 'inline' | 'suffix'
 }
 
 const LOW = 50
@@ -27,7 +28,8 @@ const UsageInfo: FC<Props> = ({
   tooltip,
   usage,
   total,
-  unit = '',
+  unit,
+  unitPosition = 'suffix',
 }) => {
   const { t } = useTranslation()
 
@@ -41,6 +43,12 @@ const UsageInfo: FC<Props> = ({
 
     return 'bg-components-progress-error-progress'
   })()
+  const isUnlimited = total === NUM_INFINITE
+  let totalDisplay: string | number = isUnlimited ? t('billing.plansCommon.unlimited') : total
+  if (!isUnlimited && unit && unitPosition === 'inline')
+    totalDisplay = `${total}${unit}`
+  const showUnit = !!unit && !isUnlimited && unitPosition === 'suffix'
+
   return (
     <div className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}>
       <Icon className='h-4 w-4 text-text-tertiary' />
@@ -56,10 +64,17 @@ const UsageInfo: FC<Props> = ({
           />
         )}
       </div>
-      <div className='system-md-semibold flex items-center gap-1  text-text-primary'>
-        {usage}
-        <div className='system-md-regular text-text-quaternary'>/</div>
-        <div>{total === NUM_INFINITE ? t('billing.plansCommon.unlimited') : `${total}${unit}`}</div>
+      <div className='system-md-semibold flex items-center gap-1 text-text-primary'>
+        <div className='flex items-center gap-1'>
+          {usage}
+          <div className='system-md-regular text-text-quaternary'>/</div>
+          <div>{totalDisplay}</div>
+        </div>
+        {showUnit && (
+          <div className='system-xs-medium ml-auto text-text-tertiary'>
+            {unit}
+          </div>
+        )}
       </div>
       <ProgressBar
         percent={percent}

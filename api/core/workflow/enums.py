@@ -22,6 +22,7 @@ class SystemVariableKey(StrEnum):
     APP_ID = "app_id"
     WORKFLOW_ID = "workflow_id"
     WORKFLOW_EXECUTION_ID = "workflow_run_id"
+    TIMESTAMP = "timestamp"
     # RAG Pipeline
     DOCUMENT_ID = "document_id"
     ORIGINAL_DOCUMENT_ID = "original_document_id"
@@ -58,7 +59,30 @@ class NodeType(StrEnum):
     DOCUMENT_EXTRACTOR = "document-extractor"
     LIST_OPERATOR = "list-operator"
     AGENT = "agent"
+    TRIGGER_WEBHOOK = "trigger-webhook"
+    TRIGGER_SCHEDULE = "trigger-schedule"
+    TRIGGER_PLUGIN = "trigger-plugin"
     HUMAN_INPUT = "human-input"
+
+    @property
+    def is_trigger_node(self) -> bool:
+        """Check if this node type is a trigger node."""
+        return self in [
+            NodeType.TRIGGER_WEBHOOK,
+            NodeType.TRIGGER_SCHEDULE,
+            NodeType.TRIGGER_PLUGIN,
+        ]
+
+    @property
+    def is_start_node(self) -> bool:
+        """Check if this node type can serve as a workflow entry point."""
+        return self in [
+            NodeType.START,
+            NodeType.DATASOURCE,
+            NodeType.TRIGGER_WEBHOOK,
+            NodeType.TRIGGER_SCHEDULE,
+            NodeType.TRIGGER_PLUGIN,
+        ]
 
 
 class NodeExecutionType(StrEnum):
@@ -208,6 +232,7 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     CURRENCY = "currency"
     TOOL_INFO = "tool_info"
     AGENT_LOG = "agent_log"
+    TRIGGER_INFO = "trigger_info"
     ITERATION_ID = "iteration_id"
     ITERATION_INDEX = "iteration_index"
     LOOP_ID = "loop_id"

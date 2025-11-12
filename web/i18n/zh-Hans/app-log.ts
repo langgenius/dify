@@ -20,6 +20,7 @@ const translation = {
       tokens: 'TOKENS',
       user: '用户或账户',
       version: '版本',
+      triggered_from: '触发方式',
     },
     pagination: {
       previous: '上一页',
@@ -96,6 +97,15 @@ const translation = {
     iterations: '迭代次数',
     iteration: '迭代',
     finalProcessing: '最终处理',
+  },
+  triggerBy: {
+    debugging: '调试',
+    appRun: '网页应用',
+    webhook: 'Webhook',
+    schedule: '定时任务',
+    plugin: '插件',
+    ragPipelineRun: 'RAG 流水线',
+    ragPipelineDebugging: 'RAG 调试',
   },
 }
 

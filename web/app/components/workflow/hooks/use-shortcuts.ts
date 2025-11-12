@@ -14,7 +14,6 @@ import {
   useWorkflowCanvasMaximize,
   useWorkflowMoveMode,
   useWorkflowOrganize,
-  useWorkflowStartRun,
 } from '.'
 
 export const useShortcuts = (): void => {
@@ -28,7 +27,6 @@ export const useShortcuts = (): void => {
     dimOtherNodes,
     undimAllNodes,
   } = useNodesInteractions()
-  const { handleStartWorkflowRun } = useWorkflowStartRun()
   const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleEdgeDelete } = useEdgesInteractions()
@@ -61,9 +59,8 @@ export const useShortcuts = (): void => {
   }
 
   const shouldHandleShortcut = useCallback((e: KeyboardEvent) => {
-    const { showFeaturesPanel } = workflowStore.getState()
-    return !showFeaturesPanel && !isEventTargetInputArea(e.target as HTMLElement)
-  }, [workflowStore])
+    return !isEventTargetInputArea(e.target as HTMLElement)
+  }, [])
 
   useKeyPress(['delete', 'backspace'], (e) => {
     if (shouldHandleShortcut(e)) {
@@ -99,7 +96,11 @@ export const useShortcuts = (): void => {
   useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, (e) => {
     if (shouldHandleShortcut(e)) {
       e.preventDefault()
-      handleStartWorkflowRun()
+      // @ts-expect-error - Dynamic property added by run-and-history component
+      if (window._toggleTestRunDropdown) {
+        // @ts-expect-error - Dynamic property added by run-and-history component
+        window._toggleTestRunDropdown()
+      }
     }
   }, { exactMatch: true, useCapture: true })
 
