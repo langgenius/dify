@@ -332,7 +332,7 @@ class TestPauseStatePersistenceLayer:
 
 
 def _build_workflow_generate_entity_for_roundtrip() -> WorkflowResumptionContext:
-    """Create a WorkflowAppGenerateEntity with realistic data for ExecutionState tests."""
+    """Create a WorkflowAppGenerateEntity with realistic data for WorkflowResumptionContext tests."""
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant-roundtrip",
         app_id="app-roundtrip",
@@ -359,7 +359,7 @@ def _build_workflow_generate_entity_for_roundtrip() -> WorkflowResumptionContext
 
 
 def _build_advanced_chat_generate_entity_for_roundtrip() -> WorkflowResumptionContext:
-    """Create an AdvancedChatAppGenerateEntity with realistic data for ExecutionState tests."""
+    """Create an AdvancedChatAppGenerateEntity with realistic data for WorkflowResumptionContext tests."""
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant-advanced",
         app_id="app-advanced",
@@ -389,15 +389,22 @@ def _build_advanced_chat_generate_entity_for_roundtrip() -> WorkflowResumptionCo
 @pytest.mark.parametrize(
     "state",
     [
-        _build_advanced_chat_generate_entity_for_roundtrip(),
-        _build_workflow_generate_entity_for_roundtrip(),
+        pytest.param(
+            _build_advanced_chat_generate_entity_for_roundtrip(),
+            id="advanced_chat",
+        ),
+        pytest.param(
+            _build_workflow_generate_entity_for_roundtrip(),
+            id="workflow",
+        ),
     ],
 )
-def test_execution_state_dumps_loads_roundtrip(state: WorkflowResumptionContext):
-    """ExecutionState roundtrip preserves workflow generate entity metadata."""
+def test_workflow_resumption_context_dumps_loads_roundtrip(state: WorkflowResumptionContext):
+    """WorkflowResumptionContext roundtrip preserves workflow generate entity metadata."""
     dumped = state.dumps()
     loaded = WorkflowResumptionContext.loads(dumped)
 
+    assert loaded == state
     assert loaded.serialized_graph_runtime_state == state.serialized_graph_runtime_state
     restored_entity = loaded.get_generate_entity()
     assert isinstance(restored_entity, type(state.generate_entity.entity))
