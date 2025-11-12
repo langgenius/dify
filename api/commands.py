@@ -1422,7 +1422,9 @@ def setup_datasource_oauth_client(provider, client_params):
 
 
 @click.command("transform-datasource-credentials", help="Transform datasource credentials.")
-@click.option("--environment", prompt=True, help="the environment to transform datasource credentials", default="online")
+@click.option(
+    "--environment", prompt=True, help="the environment to transform datasource credentials", default="online"
+)
 def transform_datasource_credentials(environment: str):
     """
     Transform datasource credentials
