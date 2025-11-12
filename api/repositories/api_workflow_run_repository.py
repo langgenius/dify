@@ -479,3 +479,19 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
             [{"date": "2024-01-01", "interactions": 2.5}, ...]
         """
         ...
+
+    def get_workflow_run_by_id_and_tenant_id(self, tenant_id: str, run_id: str) -> WorkflowRun | None:
+        """
+        Get a specific workflow run by its id and the associated tenant id.
+
+        This function does not apply application isolation. It should only be used when
+        the application identifier is not available.
+
+        Args:
+            tenant_id: Tenant identifier for multi-tenant isolation
+            run_id: Workflow run identifier
+
+        Returns:
+            WorkflowRun object if found, None otherwise
+        """
+        ...

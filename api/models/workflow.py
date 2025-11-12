@@ -5,6 +5,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from uuid import uuid4
+from typing_extensions import deprecated
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -405,6 +406,11 @@ class Workflow(Base):  # bug
 
         return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
 
+    @deprecated(
+        "This property is not accurate for determining if a workflow is published as a tool."
+        "It only checks if there's a WorkflowToolProvider for the app, "
+        "not if this specific workflow version is the one being used by the tool."
+    )
     @property
     def tool_published(self) -> bool:
         """
@@ -616,7 +622,7 @@ class WorkflowRun(Base):
     elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"))
     total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
     total_steps: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
-    created_by_role: Mapped[str] = mapped_column(String(255))  # account, end_user
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255))  # account, end_user
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
@@ -631,11 +637,13 @@ class WorkflowRun(Base):
         back_populates="workflow_run",
     )
 
+    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     @property
     def created_by_account(self):
         created_by_role = CreatorUserRole(self.created_by_role)
         return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
 
+    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     @property
     def created_by_end_user(self):
         from .model import EndUser
@@ -655,6 +663,7 @@ class WorkflowRun(Base):
     def outputs_dict(self) -> Mapping[str, Any]:
         return json.loads(self.outputs) if self.outputs else {}
 
+    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     @property
     def message(self):
         from .model import Message
@@ -663,6 +672,7 @@ class WorkflowRun(Base):
             db.session.query(Message).where(Message.app_id == self.app_id, Message.workflow_run_id == self.id).first()
         )
 
+    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     @property
     def workflow(self):
         return db.session.query(Workflow).where(Workflow.id == self.workflow_id).first()

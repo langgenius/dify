@@ -839,6 +839,15 @@ GROUP BY
 
         return cast(list[AverageInteractionStats], response_data)
 
+    def get_workflow_run_by_id_and_tenant_id(self, tenant_id: str, run_id: str) -> WorkflowRun | None:
+        """Get a specific workflow run by its id and the associated tenant id."""
+        with self._session_maker() as session:
+            stmt = select(WorkflowRun).where(
+                WorkflowRun.tenant_id == tenant_id,
+                WorkflowRun.id == run_id,
+            )
+            return session.scalar(stmt)
+
 
 class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
     """

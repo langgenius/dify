@@ -9,15 +9,23 @@ from collections.abc import Generator
 from flask import Response, jsonify
 from flask_restx import Resource, reqparse
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import NotFoundError
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.workflow.nodes.human_input.entities import FormDefinition
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
+from models.account import Account
+from models.enums import CreatorUserRole
 from models.human_input import HumanInputForm as HumanInputFormModel
+from models.model import App, EndUser
+from models.workflow import WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
 from services.human_input_service import HumanInputService
 
 logger = logging.getLogger(__name__)
@@ -31,6 +39,7 @@ def _jsonify_pydantic_model(model: BaseModel) -> Response:
     return Response(model.model_dump_json(), mimetype="application/json")
 
 
+@console_ns.route("/form/human_input/<string:form_id>")
 class ConsoleHumanInputFormApi(Resource):
     """Console API for getting human input form definition."""
 
@@ -78,10 +87,6 @@ class ConsoleHumanInputFormApi(Resource):
 
         return _jsonify_pydantic_model(form.get_definition())
 
-
-class ConsoleHumanInputFormSubmissionApi(Resource):
-    """Console API for submitting human input forms."""
-
     @account_initialization_required
     @login_required
     def post(self, form_id: str):
@@ -114,6 +119,7 @@ class ConsoleHumanInputFormSubmissionApi(Resource):
         return jsonify({})
 
 
+@console_ns.route("/workflow/<string:workflow_run_id>/events")
 class ConsoleWorkflowEventsApi(Resource):
     """Console API for getting workflow execution events after resume."""
 
@@ -128,27 +134,57 @@ class ConsoleWorkflowEventsApi(Resource):
         Returns Server-Sent Events stream.
         """
 
-        events = 
+        user, tenant_id = current_account_with_tenant()
+        session_maker = sessionmaker(db.engine)
+        repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        workflow_run = repo.get_workflow_run_by_id_and_tenant_id(
+            tenant_id=tenant_id,
+            run_id=workflow_run_id,
+        )
+        if workflow_run is None:
+            raise NotFoundError(f"WorkflowRun not found, id={workflow_run_id}")
 
-        def generate_events() -> Generator[str, None, None]:
-            """Generate SSE events for workflow execution."""
-            try:
-                # TODO: Implement actual event streaming
-                # This would connect to the workflow execution engine
-                # and stream real-time events
+        if workflow_run.created_by_role != CreatorUserRole.ACCOUNT:
+            raise NotFoundError(f"WorkflowRun not created by account, id={workflow_run_id}")
 
-                # For demo purposes, send a basic event
-                yield f"data: {{'event': 'workflow_resumed', 'task_id': '{task_id}'}}\n\n"
+        if workflow_run.created_by != user.id:
+            raise NotFoundError(f"WorkflowRun not created by the current account, id={workflow_run_id}")
 
-                # In real implementation, this would:
-                # 1. Connect to workflow execution engine
-                # 2. Stream real-time execution events
-                # 3. Handle client disconnection
-                # 4. Clean up resources on completion
+        with Session(expire_on_commit=False, bind=db.engine) as session:
+            app = _retrieve_app_for_workflow_run(session, workflow_run)
 
-            except Exception as e:
-                logger.exception("Error streaming events for task %s", task_id)
-                yield f"data: {{'error': 'Stream error: {str(e)}'}}\n\n"
+        if workflow_run.finished_at is not None:
+            response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
+                workflow_run=workflow_run,
+                creator_user=user,
+            )
+
+            # We'll
+            def generate_events() -> Generator[str, None, None]:
+                """Generate SSE events for workflow execution."""
+                try:
+                    # TODO: Implement actual event streaming
+                    # This would connect to the workflow execution engine
+                    # and stream real-time events
+
+                    # For demo purposes, send a basic event
+                    yield f"data: {{'event': 'workflow_resumed', 'task_id': '{task_id}'}}\n\n"
+
+                    # In real implementation, this would:
+                    # 1. Connect to workflow execution engine
+                    # 2. Stream real-time execution events
+                    # 3. Handle client disconnection
+                    # 4. Clean up resources on completion
+
+                except Exception as e:
+                    logger.exception("Error streaming events for task %s", task_id)
+                    yield f"data: {{'error': 'Stream error: {str(e)}'}}\n\n"
+        else:
+            # TODO: SSE from Redis PubSub
+            queue = ...
+
+            def generate_events():
+                yield from []
 
         return Response(
             generate_events(),
@@ -160,6 +196,7 @@ class ConsoleWorkflowEventsApi(Resource):
         )
 
 
+@console_ns.route("/workflow/<string:workflow_run_id>/pause-details")
 class ConsoleWorkflowPauseDetailsApi(Resource):
     """Console API for getting workflow pause details."""
 
@@ -222,8 +259,14 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
         return response, 200
 
 
-# Register the APIs
-api.add_resource(ConsoleHumanInputFormApi, "/form/human_input/<string:form_id>")
-api.add_resource(ConsoleHumanInputFormSubmissionApi, "/form/human_input/<string:form_id>", methods=["POST"])
-api.add_resource(ConsoleWorkflowEventsApi, "/workflow/<string:workflow_run_id>/events")
-api.add_resource(ConsoleWorkflowPauseDetailsApi, "/workflow/<string:workflow_run_id>/pause-details")
+def _retrieve_app_for_workflow_run(session: Session, workflow_run: WorkflowRun):
+    query = select(App).where(
+        App.id == workflow_run.app_id,
+        App.tenant_id == workflow_run.tenant_id,
+    )
+    app = session.scalars(query).first()
+    if app is None:
+        raise AssertionError(
+            f"App not found for WorkflowRun, workflow_run_id={workflow_run.id}, "
+            f"app_id={workflow_run.app_id}, tenant_id={workflow_run.tenant_id}"
+        )
