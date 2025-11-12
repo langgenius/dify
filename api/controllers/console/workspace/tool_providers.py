@@ -21,12 +21,14 @@ from core.mcp.auth.auth_flow import auth, handle_callback
 from core.mcp.error import MCPAuthError, MCPError, MCPRefreshTokenError
 from core.mcp.mcp_client import MCPClient
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
-from core.tools.entities.tool_entities import CredentialType
 from extensions.ext_database import db
 from libs.helper import StrLen, alphanumeric, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import ToolProviderID
+
+# from models.provider_ids import ToolProviderID
 from services.plugin.oauth_service import OAuthProxyService
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService

@@ -14,6 +14,7 @@ import Loading from '@/app/components/base/loading'
 import { fetchChatConversations, fetchCompletionConversations } from '@/service/log'
 import { APP_PAGE_LIMIT } from '@/config'
 import type { App } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 export type ILogsProps = {
   appDetail: App
 }
@@ -37,7 +38,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
 
   // Get the app type first
-  const isChatMode = appDetail.mode !== 'completion'
+  const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
 
   const query = {
     page: currPage + 1,
