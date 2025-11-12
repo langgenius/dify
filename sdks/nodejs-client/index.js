@@ -204,7 +204,7 @@ export class CompletionClient extends DifyClient {
     );
   }
 
-  runWorkflow(inputs, user, stream = false, files = null) {
+  runWorkflow(inputs, user, stream = false, _files = null) {
     const data = {
       inputs,
       user,

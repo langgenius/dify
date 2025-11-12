@@ -1282,6 +1282,7 @@ const translation = {
     untitled: 'Untitled',
     deleteAlias: 'Delete alias',
     manageAlias: 'Manage Alias',
+  },
   onboarding: {
     title: 'Select a start node to begin',
     description: 'Different start nodes have different capabilities. Don\'t worry, you can always change them later.',
@@ -1299,4 +1300,5 @@ const translation = {
     },
   },
 }
+
 export default translation

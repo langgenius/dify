@@ -521,6 +521,8 @@ export type WorkflowAliasList = {
   page: number
   limit: number
   has_more: boolean
+}
+
 export const TRIGGER_NODE_TYPES = [
   BlockEnum.TriggerSchedule,
   BlockEnum.TriggerWebhook,
