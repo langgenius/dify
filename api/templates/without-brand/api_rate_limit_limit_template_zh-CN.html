@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <style>
+    body {
+      font-family: 'Inter', 'PingFang SC', 'Arial', sans-serif;
+      background-color: #e9ebf0;
+      margin: 0;
+      padding: 0;
+      color: #000000;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    .card {
+      width: 600px;
+      min-height: 434px;
+      margin: 40px auto;
+      display: flex;
+      flex-direction: column;
+      background: #fcfcfd;
+      border: 1px solid #ffffff;
+      box-shadow: 0px 3px 10px -2px rgba(9, 9, 11, 0.08), 0px 2px 4px -2px rgba(9, 9, 11, 0.06);
+      border-radius: 16px;
+    }
+
+    .card-header {
+      padding: 36px 48px 24px;
+      min-height: 101px;
+    }
+
+    .card-content {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 8px 48px 48px;
+      width: 100%;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+      line-height: 120%;
+      color: #000000;
+    }
+
+    .body-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px 0;
+    }
+
+    .body-text {
+      margin: 0;
+      font-size: 14px;
+      line-height: 20px;
+      letter-spacing: -0.005em;
+      color: #354052;
+    }
+
+    .body-text strong {
+      font-weight: 600;
+      color: #101828;
+    }
+
+    .cta {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      max-width: 504px;
+      height: 32px;
+      padding: 0 16px;
+      gap: 8px;
+      background: #1677ff;
+      border-radius: 6px;
+      text-decoration: none;
+      color: #ffffff !important;
+      font-size: 14px;
+      line-height: 22px;
+      font-weight: 400;
+    }
+
+    .note {
+      margin: 0;
+      font-size: 14px;
+      line-height: 20px;
+      letter-spacing: -0.005em;
+      color: #354052;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <div class="card-header"></div>
+    <div class="card-content">
+      <h1 class="title">您的 API 速率额度已用尽</h1>
+      <div class="body-group">
+        <p class="body-text">
+          您的工作区 <strong>{{workspaceName}}</strong> 已用完 <strong>Monthly API Rate Limit</strong>，触及
+          <strong>{{planName}} 计划（上限：{{planLimit}}）</strong>。
+        </p>
+        <p class="body-text">
+          因此，API 访问已被暂时暂停。
+        </p>
+        <p class="body-text">
+          若要继续使用 Dify API 并解锁更高额度，请升级到付费套餐。
+        </p>
+      </div>
+      <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
+      <p class="note">
+        <strong>{{planName}} 计划的 Monthly API Rate Limit</strong> 将于 <strong>{{resetDate}}</strong> 重置。
+      </p>
+    </div>
+  </div>
+</body>
+
+</html>
