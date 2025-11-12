@@ -211,7 +211,7 @@ class LLMNode(Node):
             context_files: list[File] = []
             for event in generator:
                 context = event.context
-                context_file_ids = event.file_ids or []
+                context_files = event.context_files or []
                 yield event
             if context:
                 node_inputs["#context#"] = context
@@ -657,7 +657,7 @@ class LLMNode(Node):
         context_value_variable = self.graph_runtime_state.variable_pool.get(node_data.context.variable_selector)
         if context_value_variable:
             if isinstance(context_value_variable, StringSegment):
-                yield RunRetrieverResourceEvent(retriever_resources=[], context=context_value_variable.value, file_ids=[])
+                yield RunRetrieverResourceEvent(retriever_resources=[], context=context_value_variable.value, context_files=[])
             elif isinstance(context_value_variable, ArraySegment):
                 context_str = ""
                 original_retriever_resource: list[RetrievalSourceMetadata] = []
