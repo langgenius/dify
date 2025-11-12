@@ -104,6 +104,11 @@ class AppGenerateEntity(BaseModel):
 
     inputs: Mapping[str, Any]
     files: Sequence[File]
+
+    # Unique identifier of the user initiating the execution.
+    # This corresponds to `Account.id` for platform users or `EndUser.id` for end users.
+    #
+    # Note: The `user_id` field does not indicate whether the user is a platform user or an end user.
     user_id: str
 
     # extras
