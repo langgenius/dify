@@ -7,7 +7,7 @@ import time
 import uuid
 from typing import Any
 
-from flask import current_app
+from flask import Flask, current_app
 from sqlalchemy import select
 from sqlalchemy.orm.exc import ObjectDeletedError
 
@@ -635,7 +635,12 @@ class IndexingRunner:
                 db.session.commit()
 
     def _process_chunk(
-        self, flask_app, index_processor, chunk_documents, dataset, dataset_document, embedding_model_instance
+        self, flask_app: Flask, 
+        index_processor: BaseIndexProcessor, 
+        chunk_documents: list[Document], 
+        dataset: Dataset, 
+        dataset_document: DatasetDocument, 
+        embedding_model_instance: ModelInstance | None
     ):
         with flask_app.app_context():
             # check document is paused
@@ -646,8 +651,13 @@ class IndexingRunner:
                 page_content_list = [document.page_content for document in chunk_documents]
                 tokens += sum(embedding_model_instance.get_text_embedding_num_tokens(page_content_list))
 
+            multimodel_documents = []
+            for document in chunk_documents:
+                if document.attachments:
+                    multimodel_documents.extend(document.attachments)
+
             # load index
-            index_processor.load(dataset, chunk_documents, with_keywords=False)
+            index_processor.load(dataset, chunk_documents, multimodel_documents=multimodel_documents, with_keywords=False)
 
             document_ids = [document.metadata["doc_id"] for document in chunk_documents]
             db.session.query(DocumentSegment).where(
@@ -737,14 +747,15 @@ class IndexingRunner:
 
         return documents
 
-    def _load_segments(self, dataset, dataset_document, documents):
+    def _load_segments(self, dataset: Dataset, dataset_document: DatasetDocument, documents: list[Document]):
         # save node to document segment
         doc_store = DatasetDocumentStore(
             dataset=dataset, user_id=dataset_document.created_by, document_id=dataset_document.id
         )
 
         # add document segments
-        doc_store.add_documents(docs=documents, save_child=dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX)
+        doc_store.add_documents(docs=documents, 
+        save_child=dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX)
 
         # update document status to indexing
         cur_time = naive_utc_now()

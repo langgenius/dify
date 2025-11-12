@@ -69,6 +69,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     if document_node.metadata is not None:
                         document_node.metadata["doc_id"] = doc_id
                         document_node.metadata["doc_hash"] = hash
+                    multimodel_documents = self._get_content_files(document_node) if document_node.metadata else None
+                    if multimodel_documents:
+                        document_node.attachments = multimodel_documents
                     # delete Splitter character
                     page_content = remove_leading_symbols(document_node.page_content).strip()
                     if len(page_content) > 0:

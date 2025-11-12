@@ -116,7 +116,7 @@ class QAIndexProcessor(BaseIndexProcessor):
 
         try:
             # Skip the first row
-            df = pd.read_csv(file)
+            df = pd.read_csv(file)# type: ignore
             text_docs = []
             for _, row in df.iterrows():
                 data = Document(page_content=row.iloc[0], metadata={"answer": row.iloc[1]})

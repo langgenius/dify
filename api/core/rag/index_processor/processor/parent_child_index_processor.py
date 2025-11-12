@@ -77,6 +77,9 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             page_content = page_content
                         if len(page_content) > 0:
                             document_node.page_content = page_content
+                            multimodel_documents = self._get_content_files(document_node)
+                            if multimodel_documents:
+                                document_node.attachments = multimodel_documents
                             # parse document to child nodes
                             child_nodes = self._split_child_nodes(
                                 document_node, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")
@@ -87,6 +90,9 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         elif rules.parent_mode == ParentMode.FULL_DOC:
             page_content = "\n".join([document.page_content for document in documents])
             document = Document(page_content=page_content, metadata=documents[0].metadata)
+            multimodel_documents = self._get_content_files(document)
+            if multimodel_documents:
+                document.attachments = multimodel_documents
             # parse document to child nodes
             child_nodes = self._split_child_nodes(
                 document, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")

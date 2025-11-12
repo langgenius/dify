@@ -15,7 +15,18 @@ class ChildDocument(BaseModel):
     """Arbitrary metadata about the page content (e.g., source, relationships to other
         documents, etc.).
     """
-    metadata: dict = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class AttachmentDocument(BaseModel):
+    """Class for storing a piece of text and associated metadata."""
+
+    page_content: str
+
+    provider: str | None = "dify"
+
+    vector: list[float] | None = None
+
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class Document(BaseModel):
@@ -28,11 +39,13 @@ class Document(BaseModel):
     """Arbitrary metadata about the page content (e.g., source, relationships to other
         documents, etc.).
     """
-    metadata: dict = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     provider: str | None = "dify"
 
     children: list[ChildDocument] | None = None
+
+    attachments: list[AttachmentDocument] | None = None
 
 
 class GeneralStructureChunk(BaseModel):

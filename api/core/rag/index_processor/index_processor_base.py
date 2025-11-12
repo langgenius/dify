@@ -2,11 +2,13 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
+import re
 from typing import TYPE_CHECKING, Any, Optional
 
 from configs import dify_config
 from core.rag.extractor.entity.extract_setting import ExtractSetting
-from core.rag.models.document import Document
+from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.models.document import AttachmentDocument, Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.rag.splitter.fixed_text_splitter import (
     EnhanceRecursiveCharacterTextSplitter,
@@ -15,6 +17,8 @@ from core.rag.splitter.fixed_text_splitter import (
 from core.rag.splitter.text_splitter import TextSplitter
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
+from models.model import UploadFile
+from extensions.ext_database import db
 
 if TYPE_CHECKING:
     from core.model_manager import ModelInstance
@@ -103,3 +107,46 @@ class BaseIndexProcessor(ABC):
             )
 
         return character_splitter  # type: ignore
+
+    def _get_content_files(self, document: Document) -> list[AttachmentDocument]:
+        """
+        Get the content files from the document.
+        """
+        multi_model_documents = []
+        text = document.page_content
+        pattern = r"/files/([a-f0-9\-]+)/image-preview(?:\?.*?)?"
+        matches = re.finditer(pattern, text)
+        upload_file_ids = []
+        for match in matches:
+            upload_file_id = match.group(1)
+            upload_file_ids.append(upload_file_id)
+
+        # For data after v0.10.0
+        pattern = r"/files/([a-f0-9\-]+)/file-preview(?:\?.*?)?"
+        matches = re.finditer(pattern, text)
+        for match in matches:
+            upload_file_id = match.group(1)
+            upload_file_ids.append(upload_file_id)
+
+        # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
+        # Match URL including any query parameters up to common URL boundaries (space, parenthesis, quotes)
+        pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?[^\s\)\"\']*)?"
+        matches = re.finditer(pattern, text)
+        for match in matches:
+            upload_file_id = match.group(1)
+            upload_file_ids.append(upload_file_id)
+        upload_files = db.session.query(UploadFile).filter(UploadFile.id.in_(upload_file_ids)).all()
+        if upload_files:
+            for upload_file in upload_files:
+                multi_model_documents.append(Document(
+                    page_content=upload_file.name,
+                    metadata={
+                            "doc_id": upload_file.id,
+                            "doc_hash": "",
+                            "document_id": document.metadata.get("document_id"),
+                            "dataset_id": document.metadata.get("dataset_id"),
+                            "doc_type": DocType.IMAGE,
+                        },
+                    )
+                )
+        return multi_model_documents

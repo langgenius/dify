@@ -45,6 +45,8 @@ class FileApi(Resource):
             "video_file_size_limit": dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
             "audio_file_size_limit": dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
             "workflow_file_upload_limit": dify_config.WORKFLOW_FILE_UPLOAD_LIMIT,
+            "image_file_batch_limit": dify_config.IMAGE_FILE_BATCH_LIMIT,
+            "single_chunk_attachment_limit": dify_config.SINGLE_CHUNK_ATTACHMENT_LIMIT,
         }, 200
 
     @setup_required
