@@ -19,3 +19,9 @@ class ConversationVariableNotExistsError(BaseServiceError):
 
 class ConversationVariableTypeMismatchError(BaseServiceError):
     pass
+
+
+class ConversationClearInProgressError(BaseServiceError):
+    """Raised when a conversation clear operation is already in progress for the same app/mode."""
+
+    pass

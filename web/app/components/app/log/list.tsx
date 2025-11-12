@@ -7,6 +7,7 @@ import {
   HandThumbUpIcon,
 } from '@heroicons/react/24/outline'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
+import Checkbox from '@/app/components/base/checkbox'
 import { get } from 'lodash-es'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
@@ -54,6 +55,8 @@ type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
   appDetail: App
   onRefresh: () => void
+  selectedItems?: string[]
+  onSelectionChange?: (selectedIds: string[]) => void
 }
 
 const defaultValue = 'N/A'
@@ -895,7 +898,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
 /**
    * Conversation list component including basic information
    */
-const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
+const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh, selectedItems = [], onSelectionChange }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const router = useRouter()
@@ -913,6 +916,29 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const pendingConversationCacheRef = useRef<ConversationSelection | undefined>(undefined)
   const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
   const isChatflow = appDetail.mode === 'advanced-chat' // Whether the app is a chatflow app
+
+  // Selection state
+  const isAllSelected = logs?.data.length > 0 && selectedItems.length === logs?.data.length
+  const isSomeSelected = selectedItems.length > 0 && selectedItems.length < (logs?.data.length || 0)
+
+  // Selection handling
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      onSelectionChange?.([])
+    }
+    else {
+      const allIds = logs?.data.map(log => log.id) || []
+      onSelectionChange?.(allIds)
+    }
+  }
+
+  const handleSelectItem = (conversationId: string) => {
+    if (selectedItems.includes(conversationId))
+      onSelectionChange?.(selectedItems.filter(id => id !== conversationId))
+    else
+      onSelectionChange?.([...selectedItems, conversationId])
+  }
+
   const { setShowPromptLogModal, setShowAgentLogModal, setShowMessageLogModal } = useAppStore(useShallow((state: AppStoreState) => ({
     setShowPromptLogModal: state.setShowPromptLogModal,
     setShowAgentLogModal: state.setShowAgentLogModal,
@@ -931,27 +957,6 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     const queryString = params.toString()
     return queryString ? `${pathname}?${queryString}` : pathname
   }, [pathname, searchParams])
-
-  const handleRowClick = useCallback((log: ConversationListItem) => {
-    if (conversationIdInUrl === log.id) {
-      if (!showDrawer)
-        setShowDrawer(true)
-
-      if (!currentConversation || currentConversation.id !== log.id)
-        setCurrentConversation(log)
-      return
-    }
-
-    pendingConversationIdRef.current = log.id
-    pendingConversationCacheRef.current = log
-    if (!showDrawer)
-      setShowDrawer(true)
-
-    if (currentConversation?.id !== log.id)
-      setCurrentConversation(undefined)
-
-    router.push(buildUrlWithConversation(log.id), { scroll: false })
-  }, [buildUrlWithConversation, conversationIdInUrl, currentConversation, router, showDrawer])
 
   const currentConversationId = currentConversation?.id
 
@@ -1031,7 +1036,14 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
         <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>
-            <td className='w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'></td>
+            <td className='w-10 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'>
+              <Checkbox
+                checked={isAllSelected}
+                indeterminate={isSomeSelected}
+                onCheck={handleSelectAll}
+                aria-label={t('appLog.table.header.selectAllConversations')}
+              />
+            </td>
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.endUser')}</td>
             {isChatflow && <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.status')}</td>}
@@ -1049,26 +1061,66 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
             return <tr
               key={log.id}
-              className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', activeConversationId !== log.id ? '' : 'bg-background-default-hover')}
-              onClick={() => handleRowClick(log)}>
-              <td className='h-4'>
-                {!log.read_at && (
-                  <div className='flex items-center p-3 pr-0.5'>
+              className={cn('border-b border-divider-subtle hover:bg-background-default-hover', activeConversationId !== log.id ? '' : 'bg-background-default-hover')}
+            >
+              <td className='h-4 p-3'>
+                <div className='flex items-center gap-2' onClick={e => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedItems.includes(log.id)}
+                    onCheck={() => handleSelectItem(log.id)}
+                    aria-label={t('appLog.table.header.selectConversation')}
+                  />
+                  {!log.read_at && (
                     <span className='inline-block h-1.5 w-1.5 rounded bg-util-colors-blue-blue-500'></span>
-                  </div>
-                )}
+                  )}
+                </div>
               </td>
-              <td className='w-[160px] p-3 pr-2' style={{ maxWidth: isChatMode ? 300 : 200 }}>
+              <td
+                className='w-[160px] cursor-pointer p-3 pr-2'
+                style={{ maxWidth: isChatMode ? 300 : 200 }}
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
                 {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}
               </td>
-              <td className='p-3 pr-2'>{renderTdValue(endUser || defaultValue, !endUser)}</td>
-              {isChatflow && <td className='w-[160px] p-3 pr-2' style={{ maxWidth: isChatMode ? 300 : 200 }}>
+              <td
+                className='cursor-pointer p-3 pr-2'
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
+                {renderTdValue(endUser || defaultValue, !endUser)}
+              </td>
+              {isChatflow && <td
+                className='w-[160px] cursor-pointer p-3 pr-2'
+                style={{ maxWidth: isChatMode ? 300 : 200 }}
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
                 {statusTdRender(log.status_count)}
               </td>}
-              <td className='p-3 pr-2' style={{ maxWidth: isChatMode ? 100 : 200 }}>
+              <td
+                className='cursor-pointer p-3 pr-2'
+                style={{ maxWidth: isChatMode ? 100 : 200 }}
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
                 {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('appLog.table.empty.noOutput')), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
               </td>
-              <td className='p-3 pr-2'>
+              <td
+                className='cursor-pointer p-3 pr-2'
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
                 {(!log.user_feedback_stats.like && !log.user_feedback_stats.dislike)
                   ? renderTdValue(defaultValue, true)
                   : <>
@@ -1077,7 +1129,13 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   </>
                 }
               </td>
-              <td className='p-3 pr-2'>
+              <td
+                className='cursor-pointer p-3 pr-2'
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
                 {(!log.admin_feedback_stats.like && !log.admin_feedback_stats.dislike)
                   ? renderTdValue(defaultValue, true)
                   : <>
@@ -1086,8 +1144,24 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   </>
                 }
               </td>
-              <td className='w-[160px] p-3 pr-2'>{formatTime(log.updated_at, t('appLog.dateTimeFormat') as string)}</td>
-              <td className='w-[160px] p-3 pr-2'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
+              <td
+                className='w-[160px] cursor-pointer p-3 pr-2'
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
+                {formatTime(log.updated_at, t('appLog.dateTimeFormat') as string)}
+              </td>
+              <td
+                className='w-[160px] cursor-pointer p-3 pr-2'
+                onClick={() => {
+                  setShowDrawer(true)
+                  setCurrentConversation(log)
+                }}
+              >
+                {formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}
+              </td>
             </tr>
           })}
         </tbody>
