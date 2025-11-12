@@ -1,5 +1,5 @@
 import math
-from collections import Counter
+from collections import Counter, defaultdict
 
 import numpy as np
 
@@ -35,38 +35,49 @@ class WeightRerankRunner(BaseRerankRunner):
 
         :return:
         """
-        unique_documents = []
-        doc_ids = set()
+
+        query_scores = self._calculate_keyword_score(query, documents)
+        query_vector_scores = self._get_documents_score(documents)
+
+        score_map = defaultdict(float)
+        for document, q_score, q_vector_score in zip(
+            documents, query_scores, query_vector_scores
+        ):
+            if (
+                document.provider == "dify"
+                and document.metadata is not None
+                and "doc_id" in document.metadata
+            ):
+                doc_id = document.metadata["doc_id"]
+                score_map[doc_id] += (
+                    self.weights.keyword_setting.keyword_weight * q_score
+                )
+                score_map[doc_id] += (
+                    self.weights.vector_setting.vector_weight * q_vector_score
+                )
+        uniq_ids = set()
+        rerank_documents = []
         for document in documents:
             if (
                 document.provider == "dify"
                 and document.metadata is not None
-                and document.metadata["doc_id"] not in doc_ids
+                and "doc_id" in document.metadata
             ):
-                doc_ids.add(document.metadata["doc_id"])
-                unique_documents.append(document)
+                doc_id = document.metadata["doc_id"]
+                score = score_map[doc_id]
+                if score_threshold and score < score_threshold:
+                    continue
+                if doc_id not in uniq_ids:
+                    uniq_ids.add(doc_id)
+                    document.metadata["score"] = score
+                    rerank_documents.append(document)
             else:
-                if document not in unique_documents:
-                    unique_documents.append(document)
-
-        documents = unique_documents
-
-        query_scores = self._calculate_keyword_score(query, documents)
-        query_vector_scores = self._calculate_cosine(self.tenant_id, query, documents, self.weights.vector_setting)
-
-        rerank_documents = []
-        for document, query_score, query_vector_score in zip(documents, query_scores, query_vector_scores):
-            score = (
-                self.weights.vector_setting.vector_weight * query_vector_score
-                + self.weights.keyword_setting.keyword_weight * query_score
-            )
-            if score_threshold and score < score_threshold:
-                continue
-            if document.metadata is not None:
-                document.metadata["score"] = score
+                # for other provider documents, keep the original score
                 rerank_documents.append(document)
 
-        rerank_documents.sort(key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True)
+        rerank_documents.sort(
+            key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True
+        )
         return rerank_documents[:top_n] if top_n else rerank_documents
 
     def _calculate_keyword_score(self, query: str, documents: list[Document]) -> list[float]:
@@ -146,46 +157,18 @@ class WeightRerankRunner(BaseRerankRunner):
 
         return similarities
 
-    def _calculate_cosine(
-        self, tenant_id: str, query: str, documents: list[Document], vector_setting: VectorSetting
-    ) -> list[float]:
+    def _get_documents_score(self, documents: list[Document]) -> list[float]:
         """
-        Calculate Cosine scores
-        :param query: search query
+        Extracts scores from the metadata of each document.
         :param documents: documents for reranking
 
-        :return:
+        :return: A list of scores, with 0.0 for documents without a score.
         """
         query_vector_scores = []
-
-        model_manager = ModelManager()
-
-        embedding_model = model_manager.get_model_instance(
-            tenant_id=tenant_id,
-            provider=vector_setting.embedding_provider_name,
-            model_type=ModelType.TEXT_EMBEDDING,
-            model=vector_setting.embedding_model_name,
-        )
-        cache_embedding = CacheEmbedding(embedding_model)
-        query_vector = cache_embedding.embed_query(query)
         for document in documents:
             # calculate cosine similarity
             if document.metadata and "score" in document.metadata:
                 query_vector_scores.append(document.metadata["score"])
             else:
-                # transform to NumPy
-                vec1 = np.array(query_vector)
-                vec2 = np.array(document.vector)
-
-                # calculate dot product
-                dot_product = np.dot(vec1, vec2)
-
-                # calculate norm
-                norm_vec1 = np.linalg.norm(vec1)
-                norm_vec2 = np.linalg.norm(vec2)
-
-                # calculate cosine similarity
-                cosine_sim = dot_product / (norm_vec1 * norm_vec2)
-                query_vector_scores.append(cosine_sim)
-
+                query_vector_scores.append(0)
         return query_vector_scores
