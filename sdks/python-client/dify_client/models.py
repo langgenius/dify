@@ -10,15 +10,15 @@ class BaseResponse:
     """Base response model."""
 
     success: bool = True
-    message: Optional[str] = None
+    message: str | None = None
 
 
 @dataclass
 class ErrorResponse(BaseResponse):
     """Error response model."""
 
-    error_code: Optional[str] = None
-    details: Optional[Dict[str, Any]] = None
+    error_code: str | None = None
+    details: Dict[str, Any] | None = None
     success: bool = False
 
 
@@ -30,8 +30,8 @@ class FileInfo:
     name: str
     size: int
     mime_type: str
-    url: Optional[str] = None
-    created_at: Optional[datetime] = None
+    url: str | None = None
+    created_at: datetime | None = None
 
 
 @dataclass
@@ -40,10 +40,10 @@ class MessageResponse(BaseResponse):
 
     id: str = ""
     answer: str = ""
-    conversation_id: Optional[str] = None
-    created_at: Optional[int] = None
-    metadata: Optional[Dict[str, Any]] = None
-    files: Optional[List[Dict[str, Any]]] = None
+    conversation_id: str | None = None
+    created_at: int | None = None
+    metadata: Dict[str, Any] | None = None
+    files: List[Dict[str, Any]] | None = None
 
 
 @dataclass
@@ -52,10 +52,10 @@ class ConversationResponse(BaseResponse):
 
     id: str = ""
     name: str = ""
-    inputs: Optional[Dict[str, Any]] = None
-    status: Optional[str] = None
-    created_at: Optional[int] = None
-    updated_at: Optional[int] = None
+    inputs: Dict[str, Any] | None = None
+    status: str | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
 
 
 @dataclass
@@ -64,17 +64,17 @@ class DatasetResponse(BaseResponse):
 
     id: str = ""
     name: str = ""
-    description: Optional[str] = None
-    permission: Optional[str] = None
-    indexing_technique: Optional[str] = None
-    embedding_model: Optional[str] = None
-    embedding_model_provider: Optional[str] = None
-    retrieval_model: Optional[Dict[str, Any]] = None
-    document_count: Optional[int] = None
-    word_count: Optional[int] = None
-    app_count: Optional[int] = None
-    created_at: Optional[int] = None
-    updated_at: Optional[int] = None
+    description: str | None = None
+    permission: str | None = None
+    indexing_technique: str | None = None
+    embedding_model: str | None = None
+    embedding_model_provider: str | None = None
+    retrieval_model: Dict[str, Any] | None = None
+    document_count: int | None = None
+    word_count: int | None = None
+    app_count: int | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
 
 
 @dataclass
@@ -83,29 +83,29 @@ class DocumentResponse(BaseResponse):
 
     id: str = ""
     name: str = ""
-    data_source_type: Optional[str] = None
-    data_source_info: Optional[Dict[str, Any]] = None
-    dataset_process_rule_id: Optional[str] = None
-    batch: Optional[str] = None
-    position: Optional[int] = None
-    enabled: Optional[bool] = None
-    disabled_at: Optional[float] = None
-    disabled_by: Optional[str] = None
-    archived: Optional[bool] = None
-    archived_reason: Optional[str] = None
-    archived_at: Optional[float] = None
-    archived_by: Optional[str] = None
-    word_count: Optional[int] = None
-    hit_count: Optional[int] = None
-    doc_form: Optional[str] = None
-    doc_metadata: Optional[Dict[str, Any]] = None
-    created_at: Optional[float] = None
-    updated_at: Optional[float] = None
-    indexing_status: Optional[str] = None
-    completed_at: Optional[float] = None
-    paused_at: Optional[float] = None
-    error: Optional[str] = None
-    stopped_at: Optional[float] = None
+    data_source_type: str | None = None
+    data_source_info: Dict[str, Any] | None = None
+    dataset_process_rule_id: str | None = None
+    batch: str | None = None
+    position: int | None = None
+    enabled: bool | None = None
+    disabled_at: float | None = None
+    disabled_by: str | None = None
+    archived: bool | None = None
+    archived_reason: str | None = None
+    archived_at: float | None = None
+    archived_by: str | None = None
+    word_count: int | None = None
+    hit_count: int | None = None
+    doc_form: str | None = None
+    doc_metadata: Dict[str, Any] | None = None
+    created_at: float | None = None
+    updated_at: float | None = None
+    indexing_status: str | None = None
+    completed_at: float | None = None
+    paused_at: float | None = None
+    error: str | None = None
+    stopped_at: float | None = None
 
 
 @dataclass
@@ -113,26 +113,26 @@ class DocumentSegmentResponse(BaseResponse):
     """Document segment response model."""
 
     id: str = ""
-    position: Optional[int] = None
-    document_id: Optional[str] = None
-    content: Optional[str] = None
-    answer: Optional[str] = None
-    word_count: Optional[int] = None
-    tokens: Optional[int] = None
-    keywords: Optional[List[str]] = None
-    index_node_id: Optional[str] = None
-    index_node_hash: Optional[str] = None
-    hit_count: Optional[int] = None
-    enabled: Optional[bool] = None
-    disabled_at: Optional[float] = None
-    disabled_by: Optional[str] = None
-    status: Optional[str] = None
-    created_by: Optional[str] = None
-    created_at: Optional[float] = None
-    indexing_at: Optional[float] = None
-    completed_at: Optional[float] = None
-    error: Optional[str] = None
-    stopped_at: Optional[float] = None
+    position: int | None = None
+    document_id: str | None = None
+    content: str | None = None
+    answer: str | None = None
+    word_count: int | None = None
+    tokens: int | None = None
+    keywords: List[str] | None = None
+    index_node_id: str | None = None
+    index_node_hash: str | None = None
+    hit_count: int | None = None
+    enabled: bool | None = None
+    disabled_at: float | None = None
+    disabled_by: str | None = None
+    status: str | None = None
+    created_by: str | None = None
+    created_at: float | None = None
+    indexing_at: float | None = None
+    completed_at: float | None = None
+    error: str | None = None
+    stopped_at: float | None = None
 
 
 @dataclass
@@ -140,31 +140,31 @@ class WorkflowRunResponse(BaseResponse):
     """Workflow run response model."""
 
     id: str = ""
-    workflow_id: Optional[str] = None
-    status: Optional[Literal["running", "succeeded", "failed", "stopped"]] = None
-    inputs: Optional[Dict[str, Any]] = None
-    outputs: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-    elapsed_time: Optional[float] = None
-    total_tokens: Optional[int] = None
-    total_steps: Optional[int] = None
-    created_at: Optional[float] = None
-    finished_at: Optional[float] = None
+    workflow_id: str | None = None
+    status: Literal["running", "succeeded", "failed", "stopped"] | None = None
+    inputs: Dict[str, Any] | None = None
+    outputs: Dict[str, Any] | None = None
+    error: str | None = None
+    elapsed_time: float | None = None
+    total_tokens: int | None = None
+    total_steps: int | None = None
+    created_at: float | None = None
+    finished_at: float | None = None
 
 
 @dataclass
 class ApplicationParametersResponse(BaseResponse):
     """Application parameters response model."""
 
-    opening_statement: Optional[str] = None
-    suggested_questions: Optional[List[str]] = None
-    speech_to_text: Optional[Dict[str, Any]] = None
-    text_to_speech: Optional[Dict[str, Any]] = None
-    retriever_resource: Optional[Dict[str, Any]] = None
-    sensitive_word_avoidance: Optional[Dict[str, Any]] = None
-    file_upload: Optional[Dict[str, Any]] = None
-    system_parameters: Optional[Dict[str, Any]] = None
-    user_input_form: Optional[List[Dict[str, Any]]] = None
+    opening_statement: str | None = None
+    suggested_questions: List[str] | None = None
+    speech_to_text: Dict[str, Any] | None = None
+    text_to_speech: Dict[str, Any] | None = None
+    retriever_resource: Dict[str, Any] | None = None
+    sensitive_word_avoidance: Dict[str, Any] | None = None
+    file_upload: Dict[str, Any] | None = None
+    system_parameters: Dict[str, Any] | None = None
+    user_input_form: List[Dict[str, Any]] | None = None
 
 
 @dataclass
@@ -174,12 +174,12 @@ class AnnotationResponse(BaseResponse):
     id: str = ""
     question: str = ""
     answer: str = ""
-    content: Optional[str] = None
-    created_at: Optional[float] = None
-    updated_at: Optional[float] = None
-    created_by: Optional[str] = None
-    updated_by: Optional[str] = None
-    hit_count: Optional[int] = None
+    content: str | None = None
+    created_at: float | None = None
+    updated_at: float | None = None
+    created_by: str | None = None
+    updated_by: str | None = None
+    hit_count: int | None = None
 
 
 @dataclass
@@ -190,7 +190,7 @@ class PaginatedResponse(BaseResponse):
     has_more: bool = False
     limit: int = 0
     total: int = 0
-    page: Optional[int] = None
+    page: int | None = None
 
 
 @dataclass
@@ -209,18 +209,18 @@ class FileUploadResponse(BaseResponse):
     name: str = ""
     size: int = 0
     mime_type: str = ""
-    url: Optional[str] = None
-    created_at: Optional[float] = None
+    url: str | None = None
+    created_at: float | None = None
 
 
 @dataclass
 class AudioResponse(BaseResponse):
     """Audio generation/response model."""
 
-    audio: Optional[str] = None  # Base64 encoded audio data or URL
-    audio_url: Optional[str] = None
-    duration: Optional[float] = None
-    sample_rate: Optional[int] = None
+    audio: str | None = None  # Base64 encoded audio data or URL
+    audio_url: str | None = None
+    duration: float | None = None
+    sample_rate: int | None = None
 
 
 @dataclass
@@ -237,14 +237,14 @@ class AppInfoResponse(BaseResponse):
 
     id: str = ""
     name: str = ""
-    description: Optional[str] = None
-    icon: Optional[str] = None
-    icon_background: Optional[str] = None
-    mode: Optional[str] = None
-    tags: Optional[List[str]] = None
-    enable_site: Optional[bool] = None
-    enable_api: Optional[bool] = None
-    api_token: Optional[str] = None
+    description: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    mode: str | None = None
+    tags: List[str] | None = None
+    enable_site: bool | None = None
+    enable_api: bool | None = None
+    api_token: str | None = None
 
 
 @dataclass
@@ -288,7 +288,7 @@ class ModelProviderResponse(BaseResponse):
     provider_type: str = ""
     models: List[Dict[str, Any]] = field(default_factory=list)
     is_enabled: bool = False
-    credentials: Optional[Dict[str, Any]] = None
+    credentials: Dict[str, Any] | None = None
 
 
 @dataclass
@@ -299,9 +299,9 @@ class FileInfoResponse(BaseResponse):
     name: str = ""
     size: int = 0
     mime_type: str = ""
-    url: Optional[str] = None
-    created_at: Optional[int] = None
-    metadata: Optional[Dict[str, Any]] = None
+    url: str | None = None
+    created_at: int | None = None
+    metadata: Dict[str, Any] | None = None
 
 
 @dataclass
@@ -312,8 +312,8 @@ class WorkflowDraftResponse(BaseResponse):
     app_id: str = ""
     draft_data: Dict[str, Any] = field(default_factory=dict)
     version: int = 0
-    created_at: Optional[int] = None
-    updated_at: Optional[int] = None
+    created_at: int | None = None
+    updated_at: int | None = None
 
 
 @dataclass
@@ -323,9 +323,9 @@ class ApiTokenResponse(BaseResponse):
     id: str = ""
     name: str = ""
     token: str = ""
-    description: Optional[str] = None
-    created_at: Optional[int] = None
-    last_used_at: Optional[int] = None
+    description: str | None = None
+    created_at: int | None = None
+    last_used_at: int | None = None
     is_active: bool = True
 
 
@@ -335,10 +335,10 @@ class JobStatusResponse(BaseResponse):
 
     job_id: str = ""
     job_status: str = ""
-    error_msg: Optional[str] = None
-    progress: Optional[float] = None
-    created_at: Optional[int] = None
-    updated_at: Optional[int] = None
+    error_msg: str | None = None
+    progress: float | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
 
 
 @dataclass
@@ -348,8 +348,8 @@ class DatasetQueryResponse(BaseResponse):
     query: str = ""
     records: List[Dict[str, Any]] = field(default_factory=list)
     total: int = 0
-    search_time: Optional[float] = None
-    retrieval_model: Optional[Dict[str, Any]] = None
+    search_time: float | None = None
+    retrieval_model: Dict[str, Any] | None = None
 
 
 @dataclass
@@ -360,7 +360,7 @@ class DatasetTemplateResponse(BaseResponse):
     display_name: str = ""
     description: str = ""
     category: str = ""
-    icon: Optional[str] = None
+    icon: str | None = None
     config_schema: Dict[str, Any] = field(default_factory=dict)
 
 

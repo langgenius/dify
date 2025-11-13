@@ -255,9 +255,7 @@ class TestResponseModels(unittest.TestCase):
         )
         self.assertTrue(response.success)
         self.assertEqual(response.opening_statement, "Hello! How can I help you?")
-        self.assertEqual(
-            response.suggested_questions, ["What is AI?", "How does this work?"]
-        )
+        self.assertEqual(response.suggested_questions, ["What is AI?", "How does this work?"])
         self.assertTrue(response.speech_to_text["enabled"])
         self.assertFalse(response.text_to_speech["enabled"])
         self.assertEqual(response.text_to_speech["voice"], "alloy")
@@ -632,9 +630,7 @@ class TestResponseModels(unittest.TestCase):
         self.assertTrue(response.success)
         self.assertEqual(response.template_name, "customer_support")
         self.assertEqual(response.display_name, "Customer Support")
-        self.assertEqual(
-            response.description, "Template for customer support knowledge base"
-        )
+        self.assertEqual(response.description, "Template for customer support knowledge base")
         self.assertEqual(response.category, "support")
         self.assertEqual(response.icon, "🎧")
         self.assertEqual(response.config_schema["fields"][0]["name"], "category")

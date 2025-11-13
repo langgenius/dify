@@ -80,10 +80,7 @@ class TestKnowledgeBaseClient(unittest.TestCase):
         client = self._get_dataset_kb_client()
         # Mock the response
         mock_response = Mock()
-        mock_response.json.return_value = {
-            "document": {"id": self.document_id},
-            "batch": self.batch_id
-        }
+        mock_response.json.return_value = {"document": {"id": self.document_id}, "batch": self.batch_id}
         mock_response.status_code = 200
         client._client.request.return_value = mock_response
 
@@ -95,10 +92,7 @@ class TestKnowledgeBaseClient(unittest.TestCase):
         client = self._get_dataset_kb_client()
         # Mock the response
         mock_response = Mock()
-        mock_response.json.return_value = {
-            "document": {"id": self.document_id},
-            "batch": self.batch_id
-        }
+        mock_response.json.return_value = {"document": {"id": self.document_id}, "batch": self.batch_id}
         mock_response.status_code = 200
         client._client.request.return_value = mock_response
 
@@ -111,10 +105,7 @@ class TestKnowledgeBaseClient(unittest.TestCase):
         client = self._get_dataset_kb_client()
         # Mock the response
         mock_response = Mock()
-        mock_response.json.return_value = {
-            "document": {"id": self.document_id},
-            "batch": self.batch_id
-        }
+        mock_response.json.return_value = {"document": {"id": self.document_id}, "batch": self.batch_id}
         mock_response.status_code = 200
         client._client.request.return_value = mock_response
 
@@ -152,10 +143,7 @@ class TestKnowledgeBaseClient(unittest.TestCase):
         client = self._get_dataset_kb_client()
         # Mock the response
         mock_response = Mock()
-        mock_response.json.return_value = {
-            "document": {"id": self.document_id},
-            "batch": self.batch_id
-        }
+        mock_response.json.return_value = {"document": {"id": self.document_id}, "batch": self.batch_id}
         mock_response.status_code = 200
         client._client.request.return_value = mock_response
 
@@ -167,9 +155,7 @@ class TestKnowledgeBaseClient(unittest.TestCase):
         client = self._get_dataset_kb_client()
         # Mock the response
         mock_response = Mock()
-        mock_response.json.return_value = {
-            "data": [{"id": self.segment_id, "content": "test text segment 1"}]
-        }
+        mock_response.json.return_value = {"data": [{"id": self.segment_id, "content": "test text segment 1"}]}
         mock_response.status_code = 200
         client._client.request.return_value = mock_response
 
@@ -182,9 +168,7 @@ class TestKnowledgeBaseClient(unittest.TestCase):
         client = self._get_dataset_kb_client()
         # Mock the response
         mock_response = Mock()
-        mock_response.json.return_value = {
-            "data": [{"id": self.segment_id, "content": "test text segment 1"}]
-        }
+        mock_response.json.return_value = {"data": [{"id": self.segment_id, "content": "test text segment 1"}]}
         mock_response.status_code = 200
         client._client.request.return_value = mock_response
 
@@ -197,9 +181,7 @@ class TestKnowledgeBaseClient(unittest.TestCase):
         client = self._get_dataset_kb_client()
         # Mock the response
         mock_response = Mock()
-        mock_response.json.return_value = {
-            "data": {"id": self.segment_id, "content": "test text segment 1 updated"}
-        }
+        mock_response.json.return_value = {"data": {"id": self.segment_id, "content": "test text segment 1 updated"}}
         mock_response.status_code = 200
         client._client.request.return_value = mock_response
 

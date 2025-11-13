@@ -45,9 +45,7 @@ class DifyClient(BaseClientMixin):
             enable_logging: Whether to enable request logging (default: True)
         """
         # Initialize base client functionality
-        BaseClientMixin.__init__(
-            self, api_key, base_url, timeout, max_retries, retry_delay, enable_logging
-        )
+        BaseClientMixin.__init__(self, api_key, base_url, timeout, max_retries, retry_delay, enable_logging)
 
         self._client = httpx.Client(
             base_url=base_url,
@@ -71,8 +69,8 @@ class DifyClient(BaseClientMixin):
         self,
         method: str,
         endpoint: str,
-        json: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None,
+        json: Dict[str, Any] | None = None,
+        params: Dict[str, Any] | None = None,
         stream: bool = False,
         **kwargs,
     ):
@@ -139,7 +137,6 @@ class DifyClient(BaseClientMixin):
 
     def _handle_error_response(self, response, is_upload_request: bool = False) -> None:
         """Handle HTTP error responses and raise appropriate exceptions."""
-        
 
         if response.status_code < 400:
             return  # Success response
@@ -164,7 +161,7 @@ class DifyClient(BaseClientMixin):
             raise ValidationError(message, response.status_code, error_data)
         elif response.status_code == 400:
             # Check if this is a file upload error based on the URL or context
-            current_url = getattr(response, 'url', '') or ''
+            current_url = getattr(response, "url", "") or ""
             if is_upload_request or "upload" in str(current_url).lower() or "files" in str(current_url).lower():
                 raise FileUploadError(message, response.status_code, error_data)
             else:
@@ -175,9 +172,7 @@ class DifyClient(BaseClientMixin):
         elif response.status_code >= 400:
             raise APIError(message, response.status_code, error_data)
 
-    def _send_request_with_files(
-        self, method: str, endpoint: str, data: dict, files: dict
-    ):
+    def _send_request_with_files(self, method: str, endpoint: str, data: dict, files: dict):
         """Send an HTTP request with file uploads.
 
         Args:
@@ -214,9 +209,7 @@ class DifyClient(BaseClientMixin):
 
         return response
 
-    def message_feedback(
-        self, message_id: str, rating: Literal["like", "dislike"], user: str
-    ):
+    def message_feedback(self, message_id: str, rating: Literal["like", "dislike"], user: str):
         self._validate_params(message_id=message_id, rating=rating, user=user)
         data = {"rating": rating, "user": user}
         return self._send_request("POST", f"/messages/{message_id}/feedbacks", data)
@@ -227,9 +220,7 @@ class DifyClient(BaseClientMixin):
 
     def file_upload(self, user: str, files: dict):
         data = {"user": user}
-        return self._send_request_with_files(
-            "POST", "/files/upload", data=data, files=files
-        )
+        return self._send_request_with_files("POST", "/files/upload", data=data, files=files)
 
     def text_to_audio(self, text: str, user: str, streaming: bool = False):
         data = {"text": text, "user": user, "streaming": streaming}
@@ -289,9 +280,7 @@ class DifyClient(BaseClientMixin):
         url = f"/apps/{app_id}/api-tokens"
         return self._send_request("GET", url)
 
-    def create_app_api_token(
-        self, app_id: str, name: str, description: Optional[str] = None
-    ):
+    def create_app_api_token(self, app_id: str, name: str, description: str | None = None):
         """Create a new API token for an app.
 
         Args:
@@ -326,7 +315,7 @@ class CompletionClient(DifyClient):
         inputs: dict,
         response_mode: Literal["blocking", "streaming"],
         user: str,
-        files: Optional[Dict[str, Any]] = None,
+        files: Dict[str, Any] | None = None,
     ):
         # Validate parameters
         if not isinstance(inputs, dict):
@@ -357,8 +346,8 @@ class ChatClient(DifyClient):
         query: str,
         user: str,
         response_mode: Literal["blocking", "streaming"] = "blocking",
-        conversation_id: Optional[str] = None,
-        files: Optional[Dict[str, Any]] = None,
+        conversation_id: str | None = None,
+        files: Dict[str, Any] | None = None,
     ):
         # Validate parameters
         if not isinstance(inputs, dict):
@@ -389,9 +378,7 @@ class ChatClient(DifyClient):
 
     def get_suggested(self, message_id: str, user: str):
         params = {"user": user}
-        return self._send_request(
-            "GET", f"/messages/{message_id}/suggested", params=params
-        )
+        return self._send_request("GET", f"/messages/{message_id}/suggested", params=params)
 
     def stop_message(self, task_id: str, user: str):
         data = {"user": user}
@@ -400,9 +387,9 @@ class ChatClient(DifyClient):
     def get_conversations(
         self,
         user: str,
-        last_id: Optional[str] = None,
-        limit: Optional[int] = None,
-        pinned: Optional[bool] = None,
+        last_id: str | None = None,
+        limit: int | None = None,
+        pinned: bool | None = None,
     ):
         params = {"user": user, "last_id": last_id, "limit": limit, "pinned": pinned}
         return self._send_request("GET", "/conversations", params=params)
@@ -410,9 +397,9 @@ class ChatClient(DifyClient):
     def get_conversation_messages(
         self,
         user: str,
-        conversation_id: Optional[str] = None,
-        first_id: Optional[str] = None,
-        limit: Optional[int] = None,
+        conversation_id: str | None = None,
+        first_id: str | None = None,
+        limit: int | None = None,
     ):
         params = {"user": user}
 
@@ -425,13 +412,9 @@ class ChatClient(DifyClient):
 
         return self._send_request("GET", "/messages", params=params)
 
-    def rename_conversation(
-        self, conversation_id: str, name: str, auto_generate: bool, user: str
-    ):
+    def rename_conversation(self, conversation_id: str, name: str, auto_generate: bool, user: str):
         data = {"name": name, "auto_generate": auto_generate, "user": user}
-        return self._send_request(
-            "POST", f"/conversations/{conversation_id}/name", data
-        )
+        return self._send_request("POST", f"/conversations/{conversation_id}/name", data)
 
     def delete_conversation(self, conversation_id: str, user: str):
         data = {"user": user}
@@ -458,17 +441,11 @@ class ChatClient(DifyClient):
         }
         return self._send_request("POST", f"/apps/annotation-reply/{action}", json=data)
 
-    def get_annotation_reply_status(
-        self, action: Literal["enable", "disable"], job_id: str
-    ):
+    def get_annotation_reply_status(self, action: Literal["enable", "disable"], job_id: str):
         """Get the status of an annotation reply action job."""
-        return self._send_request(
-            "GET", f"/apps/annotation-reply/{action}/status/{job_id}"
-        )
+        return self._send_request("GET", f"/apps/annotation-reply/{action}/status/{job_id}")
 
-    def list_annotations(
-        self, page: int = 1, limit: int = 20, keyword: Optional[str] = None
-    ):
+    def list_annotations(self, page: int = 1, limit: int = 20, keyword: str | None = None):
         """List annotations for the application."""
         params = {"page": page, "limit": limit, "keyword": keyword}
         return self._send_request("GET", "/apps/annotations", params=params)
@@ -481,9 +458,7 @@ class ChatClient(DifyClient):
     def update_annotation(self, annotation_id: str, question: str, answer: str):
         """Update an existing annotation."""
         data = {"question": question, "answer": answer}
-        return self._send_request(
-            "PUT", f"/apps/annotations/{annotation_id}", json=data
-        )
+        return self._send_request("PUT", f"/apps/annotations/{annotation_id}", json=data)
 
     def delete_annotation(self, annotation_id: str):
         """Delete an annotation."""
@@ -506,9 +481,7 @@ class ChatClient(DifyClient):
         url = f"/conversations/{conversation_id}/variables"
         return self._send_request("GET", url, params=params)
 
-    def update_conversation_variable(
-        self, conversation_id: str, variable_id: str, value: Any, user: str
-    ):
+    def update_conversation_variable(self, conversation_id: str, variable_id: str, value: Any, user: str):
         """Update a specific conversation variable.
 
         Args:
@@ -537,9 +510,7 @@ class ChatClient(DifyClient):
         url = f"/conversations/{conversation_id}/variables"
         return self._send_request("GET", url, params=params)
 
-    def update_conversation_variable_with_response(
-        self, conversation_id: str, variable_id: str, user: str, value: Any
-    ):
+    def update_conversation_variable_with_response(self, conversation_id: str, variable_id: str, user: str, value: Any):
         """Update a conversation variable with full response handling."""
         data = {"value": value, "user": user}
         url = f"/conversations/{conversation_id}/variables/{variable_id}"
@@ -551,9 +522,7 @@ class ChatClient(DifyClient):
         url = f"/apps/annotation-reply/{action}/status/{job_id}"
         return self._send_request("GET", url)
 
-    def list_annotations_with_pagination(
-        self, page: int = 1, limit: int = 20, keyword: Optional[str] = None
-    ):
+    def list_annotations_with_pagination(self, page: int = 1, limit: int = 20, keyword: str | None = None):
         """List annotations with pagination."""
         params = {"page": page, "limit": limit, "keyword": keyword}
         return self._send_request("GET", "/apps/annotations", params=params)
@@ -563,9 +532,7 @@ class ChatClient(DifyClient):
         data = {"question": question, "answer": answer}
         return self._send_request("POST", "/apps/annotations", json=data)
 
-    def update_annotation_with_response(
-        self, annotation_id: str, question: str, answer: str
-    ):
+    def update_annotation_with_response(self, annotation_id: str, question: str, answer: str):
         """Update an annotation with full response handling."""
         data = {"question": question, "answer": answer}
         url = f"/apps/annotations/{annotation_id}"
@@ -592,7 +559,7 @@ class WorkflowClient(DifyClient):
     def get_workflow_logs(
         self,
         keyword: str = None,
-        status: Optional[Literal["succeeded", "failed", "stopped"]] = None,
+        status: Literal["succeeded", "failed", "stopped"] | None = None,
         page: int = 1,
         limit: int = 20,
         created_at__before: str = None,
@@ -675,7 +642,7 @@ class WorkflowClient(DifyClient):
         app_id: str,
         page: int = 1,
         limit: int = 20,
-        status: Optional[Literal["succeeded", "failed", "stopped"]] = None,
+        status: Literal["succeeded", "failed", "stopped"] | None = None,
     ):
         """Get workflow run history.
 
@@ -717,13 +684,9 @@ class WorkspaceClient(DifyClient):
         url = f"/workspaces/current/model-providers/{provider_name}/models"
         return self._send_request("GET", url)
 
-    def validate_model_provider_credentials(
-        self, provider_name: str, credentials: Dict[str, Any]
-    ):
+    def validate_model_provider_credentials(self, provider_name: str, credentials: Dict[str, Any]):
         """Validate model provider credentials."""
-        url = (
-            f"/workspaces/current/model-providers/{provider_name}/credentials/validate"
-        )
+        url = f"/workspaces/current/model-providers/{provider_name}/credentials/validate"
         return self._send_request("POST", url, json=credentials)
 
     # File Management APIs
@@ -748,7 +711,7 @@ class KnowledgeBaseClient(DifyClient):
         self,
         api_key: str,
         base_url: str = "https://api.dify.ai/v1",
-        dataset_id: Optional[str] = None,
+        dataset_id: str | None = None,
     ):
         """
         Construct a KnowledgeBaseClient object.
@@ -771,13 +734,9 @@ class KnowledgeBaseClient(DifyClient):
         return self._send_request("POST", "/datasets", {"name": name}, **kwargs)
 
     def list_datasets(self, page: int = 1, page_size: int = 20, **kwargs):
-        return self._send_request(
-            "GET", "/datasets", params={"page": page, "limit": page_size}, **kwargs
-        )
+        return self._send_request("GET", "/datasets", params={"page": page, "limit": page_size}, **kwargs)
 
-    def create_document_by_text(
-        self, name, text, extra_params: Optional[Dict[str, Any]] = None, **kwargs
-    ):
+    def create_document_by_text(self, name, text, extra_params: Dict[str, Any] | None = None, **kwargs):
         """
         Create a document by text.
 
@@ -819,7 +778,7 @@ class KnowledgeBaseClient(DifyClient):
         document_id: str,
         name: str,
         text: str,
-        extra_params: Optional[Dict[str, Any]] = None,
+        extra_params: Dict[str, Any] | None = None,
         **kwargs,
     ):
         """
@@ -851,16 +810,14 @@ class KnowledgeBaseClient(DifyClient):
         data = {"name": name, "text": text}
         if extra_params is not None and isinstance(extra_params, dict):
             data.update(extra_params)
-        url = (
-            f"/datasets/{self._get_dataset_id()}/documents/{document_id}/update_by_text"
-        )
+        url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/update_by_text"
         return self._send_request("POST", url, json=data, **kwargs)
 
     def create_document_by_file(
         self,
         file_path: str,
-        original_document_id: Optional[str] = None,
-        extra_params: Optional[Dict[str, Any]] = None,
+        original_document_id: str | None = None,
+        extra_params: Dict[str, Any] | None = None,
     ):
         """
         Create a document by file.
@@ -898,15 +855,13 @@ class KnowledgeBaseClient(DifyClient):
             if original_document_id is not None:
                 data["original_document_id"] = original_document_id
             url = f"/datasets/{self._get_dataset_id()}/document/create_by_file"
-            return self._send_request_with_files(
-                "POST", url, {"data": json.dumps(data)}, files
-            )
+            return self._send_request_with_files("POST", url, {"data": json.dumps(data)}, files)
 
     def update_document_by_file(
         self,
         document_id: str,
         file_path: str,
-        extra_params: Optional[Dict[str, Any]] = None,
+        extra_params: Dict[str, Any] | None = None,
     ):
         """
         Update a document by file.
@@ -939,9 +894,7 @@ class KnowledgeBaseClient(DifyClient):
             if extra_params is not None and isinstance(extra_params, dict):
                 data.update(extra_params)
             url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/update_by_file"
-            return self._send_request_with_files(
-                "POST", url, {"data": json.dumps(data)}, files
-            )
+            return self._send_request_with_files("POST", url, {"data": json.dumps(data)}, files)
 
     def batch_indexing_status(self, batch_id: str, **kwargs):
         """
@@ -974,9 +927,9 @@ class KnowledgeBaseClient(DifyClient):
 
     def list_documents(
         self,
-        page: Optional[int] = None,
-        page_size: Optional[int] = None,
-        keyword: Optional[str] = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        keyword: str | None = None,
         **kwargs,
     ):
         """
@@ -1009,8 +962,8 @@ class KnowledgeBaseClient(DifyClient):
     def query_segments(
         self,
         document_id: str,
-        keyword: Optional[str] = None,
-        status: Optional[str] = None,
+        keyword: str | None = None,
+        status: str | None = None,
         **kwargs,
     ):
         """
@@ -1043,9 +996,7 @@ class KnowledgeBaseClient(DifyClient):
         url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/segments/{segment_id}"
         return self._send_request("DELETE", url)
 
-    def update_document_segment(
-        self, document_id: str, segment_id: str, segment_data: dict, **kwargs
-    ):
+    def update_document_segment(self, document_id: str, segment_id: str, segment_data: dict, **kwargs):
         """
         Update a segment in a document.
 
@@ -1094,9 +1045,7 @@ class KnowledgeBaseClient(DifyClient):
         url = f"/datasets/{self._get_dataset_id()}/metadata/built-in"
         return self._send_request("GET", url)
 
-    def manage_built_in_metadata(
-        self, action: str, metadata_data: Dict[str, Any] = None
-    ):
+    def manage_built_in_metadata(self, action: str, metadata_data: Dict[str, Any] = None):
         """Manage built-in metadata with specified action."""
         data = metadata_data or {}
         url = f"/datasets/{self._get_dataset_id()}/metadata/built-in/{action}"
@@ -1173,20 +1122,16 @@ class KnowledgeBaseClient(DifyClient):
             "response_mode": response_mode,
         }
         url = f"/datasets/{self._get_dataset_id()}/pipeline/run"
-        return self._send_request(
-            "POST", url, json=data, stream=response_mode == "streaming"
-        )
+        return self._send_request("POST", url, json=data, stream=response_mode == "streaming")
 
     def upload_pipeline_file(self, file_path: str):
         """Upload file for RAG pipeline."""
         with open(file_path, "rb") as f:
             files = {"file": (os.path.basename(file_path), f)}
-            return self._send_request_with_files(
-                "POST", "/datasets/pipeline/file-upload", {}, files
-            )
+            return self._send_request_with_files("POST", "/datasets/pipeline/file-upload", {}, files)
 
     # Dataset Management APIs
-    def get_dataset(self, dataset_id: Optional[str] = None):
+    def get_dataset(self, dataset_id: str | None = None):
         """Get detailed information about a specific dataset.
 
         Args:
@@ -1206,13 +1151,13 @@ class KnowledgeBaseClient(DifyClient):
 
     def update_dataset(
         self,
-        dataset_id: Optional[str] = None,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        indexing_technique: Optional[str] = None,
-        embedding_model: Optional[str] = None,
-        embedding_model_provider: Optional[str] = None,
-        retrieval_model: Optional[Dict[str, Any]] = None,
+        dataset_id: str | None = None,
+        name: str | None = None,
+        description: str | None = None,
+        indexing_technique: str | None = None,
+        embedding_model: str | None = None,
+        embedding_model_provider: str | None = None,
+        retrieval_model: Dict[str, Any] | None = None,
         **kwargs,
     ):
         """Update dataset configuration.
@@ -1253,7 +1198,7 @@ class KnowledgeBaseClient(DifyClient):
         self,
         action: Literal["enable", "disable", "archive", "un_archive"],
         document_ids: List[str],
-        dataset_id: Optional[str] = None,
+        dataset_id: str | None = None,
     ):
         """Batch update document status (enable/disable/archive/unarchive).
 
@@ -1275,9 +1220,7 @@ class KnowledgeBaseClient(DifyClient):
         return self._send_request("PATCH", url, json=data)
 
     # Enhanced Dataset APIs
-    def create_dataset_from_template(
-        self, template_name: str, name: str, description: Optional[str] = None
-    ):
+    def create_dataset_from_template(self, template_name: str, name: str, description: str | None = None):
         """Create a dataset from a predefined template.
 
         Args:
@@ -1317,9 +1260,7 @@ class KnowledgeBaseClient(DifyClient):
         url = f"/conversations/{conversation_id}/variables"
         return self._send_request("GET", url, params=params)
 
-    def update_conversation_variable_with_response(
-        self, conversation_id: str, variable_id: str, user: str, value: Any
-    ):
+    def update_conversation_variable_with_response(self, conversation_id: str, variable_id: str, user: str, value: Any):
         """Update a conversation variable with full response handling."""
         data = {"value": value, "user": user}
         url = f"/conversations/{conversation_id}/variables/{variable_id}"

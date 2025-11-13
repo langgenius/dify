@@ -26,9 +26,7 @@ class TestDifyClientIntegration(unittest.TestCase):
     def setUp(self):
         self.api_key = "test_api_key"
         self.base_url = "https://api.dify.ai/v1"
-        self.client = DifyClient(
-            api_key=self.api_key, base_url=self.base_url, enable_logging=False
-        )
+        self.client = DifyClient(api_key=self.api_key, base_url=self.base_url, enable_logging=False)
 
     @patch("httpx.Client.request")
     def test_get_app_info_integration(self, mock_request):
@@ -179,9 +177,7 @@ class TestChatClientIntegration(unittest.TestCase):
         ]
         mock_request.return_value = mock_response
 
-        response = self.client.create_chat_message(
-            inputs={}, query="Hello", user="user_123", response_mode="streaming"
-        )
+        response = self.client.create_chat_message(inputs={}, query="Hello", user="user_123", response_mode="streaming")
 
         self.assertEqual(response.status_code, 200)
         lines = list(response.iter_lines())
@@ -222,9 +218,7 @@ class TestChatClientIntegration(unittest.TestCase):
         }
         mock_request.return_value = mock_response
 
-        response = self.client.get_conversation_messages(
-            "user_123", conversation_id="conv_123"
-        )
+        response = self.client.get_conversation_messages("user_123", conversation_id="conv_123")
         data = response.json()
 
         self.assertEqual(response.status_code, 200)
@@ -313,9 +307,7 @@ class TestWorkflowClientIntegration(unittest.TestCase):
         }
         mock_request.return_value = mock_response
 
-        response = self.client.run(
-            inputs={"query": "Test input"}, response_mode="blocking", user="user_123"
-        )
+        response = self.client.run(inputs={"query": "Test input"}, response_mode="blocking", user="user_123")
         data = response.json()
 
         self.assertEqual(response.status_code, 200)
@@ -411,9 +403,7 @@ class TestKnowledgeBaseClientIntegration(unittest.TestCase):
         # Mock dataset_id
         self.client.dataset_id = "dataset_123"
 
-        response = self.client.create_document_by_text(
-            name="Test Document", text="This is test document content."
-        )
+        response = self.client.create_document_by_text(name="Test Document", text="This is test document content.")
         data = response.json()
 
         self.assertEqual(response.status_code, 200)

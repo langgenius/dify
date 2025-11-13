@@ -16,7 +16,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-P = ParamSpec('P')
+P = ParamSpec("P")
 
 from .exceptions import (
     DifyClientError,
@@ -66,9 +66,7 @@ class BaseClientMixin:
         if enable_logging and not self.logger.handlers:
             # Create console handler with formatter
             handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            )
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
             self.logger.setLevel(logging.INFO)
@@ -124,7 +122,13 @@ class BaseClientMixin:
                 status_code=response.status_code,
             )
 
-    def _retry_request(self, request_func: Callable[P, httpx.Response], request_context: Optional[str] = None, *args: P.args, **kwargs: P.kwargs) -> httpx.Response:
+    def _retry_request(
+        self,
+        request_func: Callable[P, httpx.Response],
+        request_context: str | None = None,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> httpx.Response:
         """Retry a request with exponential backoff.
 
         Args:
@@ -161,17 +165,15 @@ class BaseClientMixin:
                     )
                     time.sleep(delay)
                 else:
-                    self.logger.error(
-                        f"Request failed{context_msg} after {self.max_retries + 1} attempts: {e}"
-                    )
+                    self.logger.error(f"Request failed{context_msg} after {self.max_retries + 1} attempts: {e}")
                     # Convert to custom exceptions
                     if isinstance(e, httpx.TimeoutException):
                         from .exceptions import TimeoutError
-                        raise TimeoutError(
-                            f"Request timed out after {self.max_retries} retries{context_msg}"
-                        ) from e
+
+                        raise TimeoutError(f"Request timed out after {self.max_retries} retries{context_msg}") from e
                     else:
                         from .exceptions import NetworkError
+
                         raise NetworkError(
                             f"Network error after {self.max_retries} retries{context_msg}: {str(e)}"
                         ) from e
@@ -223,6 +225,4 @@ class BaseClientMixin:
 
     def _log_response(self, response: httpx.Response) -> None:
         """Log response details."""
-        self.logger.info(
-            f"Received response: {response.status_code} ({len(response.content)} bytes)"
-        )
+        self.logger.info(f"Received response: {response.status_code} ({len(response.content)} bytes)")

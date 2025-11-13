@@ -266,9 +266,7 @@ class TestCompletionClientHttpx(unittest.TestCase):
         mock_httpx_client.return_value = mock_client_instance
 
         with CompletionClient("test-key") as client:
-            response = client.create_completion_message(
-                {"query": "test"}, "blocking", "user123"
-            )
+            response = client.create_completion_message({"query": "test"}, "blocking", "user123")
             self.assertIn("answer", response.text)
 
 
