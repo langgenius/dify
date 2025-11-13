@@ -95,7 +95,6 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
     def post(self, provider):
         """Add a new subscription instance for a trigger provider"""
         user = current_user
-        assert isinstance(user, Account)
         assert user.current_tenant_id is not None
 
         parser = reqparse.RequestParser().add_argument(
@@ -227,7 +226,6 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
     def post(self, provider, subscription_builder_id):
         """Build a subscription instance for a trigger provider"""
         user = current_user
-        assert isinstance(user, Account)
         assert user.current_tenant_id is not None
         parser = (
             reqparse.RequestParser()
