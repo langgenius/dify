@@ -141,8 +141,16 @@ const UpdateDSLModal = ({
     try {
       const data = yamlLoad(content) as any
       const nodes = data?.workflow?.graph?.nodes ?? []
+      const invalidNodes = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
+        ? [
+          BlockEnum.End,
+          BlockEnum.TriggerWebhook,
+          BlockEnum.TriggerSchedule,
+          BlockEnum.TriggerPlugin,
+        ]
+        : [BlockEnum.Answer]
       const hasInvalidNode = nodes.some((node: Node<CommonNodeType>) => {
-        return (appDetail?.mode === AppModeEnum.ADVANCED_CHAT && node?.data?.type === BlockEnum.End) || (appDetail?.mode === AppModeEnum.WORKFLOW && node?.data?.type === BlockEnum.Answer)
+        return invalidNodes.includes(node?.data?.type)
       })
       if (hasInvalidNode) {
         notify({ type: 'error', message: t('workflow.common.importFailure') })
