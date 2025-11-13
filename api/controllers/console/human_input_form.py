@@ -204,68 +204,6 @@ class ConsoleWorkflowEventsApi(Resource):
         )
 
 
-@console_ns.route("/workflow/<string:workflow_run_id>/pause-details")
-class ConsoleWorkflowPauseDetailsApi(Resource):
-    """Console API for getting workflow pause details."""
-
-    @account_initialization_required
-    @login_required
-    def get(self, workflow_run_id: str):
-        """
-        Get workflow pause details.
-
-        GET /console/api/workflow/<workflow_run_id>/pause-details
-
-        Returns information about why and where the workflow is paused.
-        """
-
-        # Query WorkflowRun to determine if workflow is suspended
-        workflow_run = db.session.get(WorkflowRun, workflow_run_id)
-        if not workflow_run:
-            raise NotFoundError("Workflow run not found")
-
-        # Check if workflow is suspended
-        is_suspended = workflow_run.status == "running" and workflow_run.pause_details is not None
-
-        if not is_suspended:
-            return {"is_suspended": False, "paused_at": None, "paused_nodes": [], "pending_human_inputs": []}, 200
-
-        # Get pending Human Input forms for this workflow run
-        service = HumanInputFormService(db.session())
-        pending_forms = service.get_pending_forms_for_workflow_run(workflow_run_id)
-
-        # Build response
-        response = {
-            "is_suspended": True,
-            "paused_at": workflow_run.created_at.isoformat() + "Z" if workflow_run.created_at else None,
-            "paused_nodes": [],
-            "pending_human_inputs": [],
-        }
-
-        # Add pending human input forms
-        for form in pending_forms:
-            form_definition = json.loads(form.form_definition) if form.form_definition else {}
-            response["pending_human_inputs"].append(
-                {
-                    "form_id": form.id,
-                    "node_id": form_definition.get("node_id", "unknown"),
-                    "node_title": form_definition.get("title", "Human Input"),
-                    "created_at": form.created_at.isoformat() + "Z" if form.created_at else None,
-                }
-            )
-
-            # Also add to paused_nodes for backward compatibility
-            response["paused_nodes"].append(
-                {
-                    "node_id": form_definition.get("node_id", "unknown"),
-                    "node_title": form_definition.get("title", "Human Input"),
-                    "pause_type": {"type": "human_input", "form_id": form.id},
-                }
-            )
-
-        return response, 200
-
-
 def _retrieve_app_for_workflow_run(session: Session, workflow_run: WorkflowRun):
     query = select(App).where(
         App.id == workflow_run.app_id,

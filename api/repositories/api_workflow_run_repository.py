@@ -284,6 +284,13 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         # while creating pause.
         ...
 
+    def get_workflow_pause(self, workflow_run_id: str) -> WorkflowPauseEntity | None:
+        """Retrieve the current pause for a workflow execution.
+
+        If there is no current pause, this method would return `None`.
+        """
+        ...
+
     def resume_workflow_pause(
         self,
         workflow_run_id: str,
