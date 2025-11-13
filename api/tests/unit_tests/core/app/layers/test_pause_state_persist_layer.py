@@ -31,7 +31,7 @@ class TestDataFactory:
 
     @staticmethod
     def create_graph_run_paused_event(outputs: dict[str, object] | None = None) -> GraphRunPausedEvent:
-        return GraphRunPausedEvent(reason=SchedulingPause(message="test pause"), outputs=outputs or {})
+        return GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")], outputs=outputs or {})
 
     @staticmethod
     def create_graph_run_started_event() -> GraphRunStartedEvent:
