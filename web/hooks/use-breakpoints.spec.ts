@@ -13,7 +13,7 @@
  * event listeners on unmount to prevent memory leaks.
  */
 import { act, renderHook } from '@testing-library/react'
-import useBreakpoints from './use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from './use-breakpoints'
 
 describe('useBreakpoints', () => {
   const originalInnerWidth = window.innerWidth
