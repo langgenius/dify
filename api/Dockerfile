@@ -73,7 +73,7 @@ COPY --from=packages ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 # Download nltk data
-RUN mkdir -p /usr/local/share/nltk_data && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger')" \
+RUN mkdir -p /usr/local/share/nltk_data && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('stopwords')" \
     && chmod -R 755 /usr/local/share/nltk_data
 
 ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
@@ -95,7 +95,7 @@ RUN groupadd -r -g 1001 dify && \
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
-
+ENV NLTK_DATA=/usr/local/share/nltk_data
 USER 1001
 
 ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
