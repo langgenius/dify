@@ -125,6 +125,7 @@ const Completed: FC<ICompletedProps> = ({
   const [limit, setLimit] = useState(DEFAULT_LIMIT)
   const [fullScreen, setFullScreen] = useState(false)
   const [showNewChildSegmentModal, setShowNewChildSegmentModal] = useState(false)
+  const [isRegenerationModalOpen, setIsRegenerationModalOpen] = useState(false)
 
   const segmentListRef = useRef<HTMLDivElement>(null)
   const childSegmentListRef = useRef<HTMLDivElement>(null)
@@ -679,6 +680,7 @@ const Completed: FC<ICompletedProps> = ({
         onClose={onCloseSegmentDetail}
         showOverlay={false}
         needCheckChunks
+        modal={isRegenerationModalOpen}
       >
         <SegmentDetail
           key={currSegment.segInfo?.id}
@@ -687,6 +689,7 @@ const Completed: FC<ICompletedProps> = ({
           isEditMode={currSegment.isEditMode}
           onUpdate={handleUpdateSegment}
           onCancel={onCloseSegmentDetail}
+          onModalStateChange={setIsRegenerationModalOpen}
         />
       </FullScreenDrawer>
       {/* Create New Segment */}

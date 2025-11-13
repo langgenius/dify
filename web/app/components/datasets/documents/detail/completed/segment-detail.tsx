@@ -37,6 +37,7 @@ type ISegmentDetailProps = {
   onCancel: () => void
   isEditMode?: boolean
   docForm: ChunkingMode
+  onModalStateChange?: (isOpen: boolean) => void
 }
 
 /**
@@ -48,6 +49,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   onCancel,
   isEditMode,
   docForm,
+  onModalStateChange,
 }) => {
   const { t } = useTranslation()
   const [question, setQuestion] = useState(isEditMode ? segInfo?.content || '' : segInfo?.sign_content || '')
@@ -90,11 +92,19 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
 
   const handleRegeneration = useCallback(() => {
     setShowRegenerationModal(true)
-  }, [])
+    onModalStateChange?.(true)
+  }, [onModalStateChange])
 
   const onCancelRegeneration = useCallback(() => {
     setShowRegenerationModal(false)
-  }, [])
+    onModalStateChange?.(false)
+  }, [onModalStateChange])
+
+  const onCloseAfterRegeneration = useCallback(() => {
+    setShowRegenerationModal(false)
+    onModalStateChange?.(false)
+    onCancel() // Close the edit drawer
+  }, [onCancel, onModalStateChange])
 
   const onConfirmRegeneration = useCallback(() => {
     onUpdate(segInfo?.id || '', question, answer, keywords, attachments, true)
@@ -201,7 +211,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
             isShow={showRegenerationModal}
             onConfirm={onConfirmRegeneration}
             onCancel={onCancelRegeneration}
-            onClose={onCancelRegeneration}
+            onClose={onCloseAfterRegeneration}
           />
         )
       }
