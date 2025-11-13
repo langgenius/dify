@@ -24,7 +24,7 @@ import type { AnnotationReplyConfig } from '@/models/debug'
 import { sleep } from '@/utils'
 import { useProviderContext } from '@/context/provider-context'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
-import type { App } from '@/types/app'
+import { type App, AppModeEnum } from '@/types/app'
 import cn from '@/utils/classnames'
 import { delAnnotations } from '@/service/annotation'
 
@@ -37,7 +37,7 @@ const Annotation: FC<Props> = (props) => {
   const { t } = useTranslation()
   const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
-  const [isChatApp] = useState(appDetail.mode !== 'completion')
+  const [isChatApp] = useState(appDetail.mode !== AppModeEnum.COMPLETION)
   const [controlRefreshSwitch, setControlRefreshSwitch] = useState(() => Date.now())
   const { plan, enableBilling } = useProviderContext()
   const isAnnotationFull = enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse

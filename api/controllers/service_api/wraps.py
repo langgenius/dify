@@ -20,7 +20,8 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken, App, DefaultEndUserSessionID, EndUser
+from models.model import ApiToken, App
+from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
 P = ParamSpec("P")
@@ -84,7 +85,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                 if user_id:
                     user_id = str(user_id)
 
-                end_user = create_or_update_end_user_for_user_id(app_model, user_id)
+                end_user = EndUserService.get_or_create_end_user(app_model, user_id)
                 kwargs["end_user"] = end_user
 
                 # Set EndUser as current logged-in user for flask_login.current_user
@@ -329,39 +330,6 @@ def validate_and_get_api_token(scope: str | None = None):
             session.commit()
 
     return api_token
-
-
-def create_or_update_end_user_for_user_id(app_model: App, user_id: str | None = None) -> EndUser:
-    """
-    Create or update session terminal based on user ID.
-    """
-    if not user_id:
-        user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
-
-    with Session(db.engine, expire_on_commit=False) as session:
-        end_user = (
-            session.query(EndUser)
-            .where(
-                EndUser.tenant_id == app_model.tenant_id,
-                EndUser.app_id == app_model.id,
-                EndUser.session_id == user_id,
-                EndUser.type == "service_api",
-            )
-            .first()
-        )
-
-        if end_user is None:
-            end_user = EndUser(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                type="service_api",
-                is_anonymous=user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID,
-                session_id=user_id,
-            )
-            session.add(end_user)
-            session.commit()
-
-    return end_user
 
 
 class DatasetApiResource(Resource):

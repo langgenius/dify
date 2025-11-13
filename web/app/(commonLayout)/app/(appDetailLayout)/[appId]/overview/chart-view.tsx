@@ -7,6 +7,9 @@ import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, MessagesChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/app-chart'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import TimeRangePicker from './time-range-picker'
+import { TIME_PERIOD_MAPPING as LONG_TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
+import { IS_CLOUD_EDITION } from '@/config'
+import LongTimeRangePicker from './long-time-range-picker'
 
 dayjs.extend(quarterOfYear)
 
@@ -30,7 +33,10 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const appDetail = useAppStore(state => state.appDetail)
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
-  const [period, setPeriod] = useState<PeriodParams>({ name: t('appLog.filter.period.today'), query: { start: today.startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } })
+  const [period, setPeriod] = useState<PeriodParams>(IS_CLOUD_EDITION
+    ? { name: t('appLog.filter.period.today'), query: { start: today.startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } }
+    : { name: t('appLog.filter.period.last7days'), query: { start: today.subtract(7, 'day').startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } },
+  )
 
   if (!appDetail)
     return null
@@ -40,11 +46,20 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
       <div className='mb-4'>
         <div className='system-xl-semibold mb-2 text-text-primary'>{t('common.appMenus.overview')}</div>
         <div className='flex items-center justify-between'>
-          <TimeRangePicker
-            ranges={TIME_PERIOD_MAPPING}
-            onSelect={setPeriod}
-            queryDateFormat={queryDateFormat}
-          />
+          {IS_CLOUD_EDITION ? (
+            <TimeRangePicker
+              ranges={TIME_PERIOD_MAPPING}
+              onSelect={setPeriod}
+              queryDateFormat={queryDateFormat}
+            />
+          ) : (
+            <LongTimeRangePicker
+              periodMapping={LONG_TIME_PERIOD_MAPPING}
+              onSelect={setPeriod}
+              queryDateFormat={queryDateFormat}
+            />
+          )}
+
           {headerRight}
         </div>
       </div>
