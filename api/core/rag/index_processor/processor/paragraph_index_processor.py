@@ -11,9 +11,10 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
+from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
-from core.rag.models.document import Document
+from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
@@ -146,8 +147,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return docs
 
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any):
+        documents: list[Any] = []
+        all_multimodal_documents: list[Any] = []
         if isinstance(chunks, list):
-            documents = []
             for content in chunks:
                 metadata = {
                     "dataset_id": dataset.id,
@@ -156,20 +158,53 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     "doc_hash": helper.generate_text_hash(content),
                 }
                 doc = Document(page_content=content, metadata=metadata)
+                attachments = self._get_content_files(doc)
+                if attachments:
+                    doc.attachments = attachments
+                    all_multimodal_documents.extend(attachments)
                 documents.append(doc)
-            if documents:
-                # save node to document segment
-                doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
-                # add document segments
-                doc_store.add_documents(docs=documents, save_child=False)
-                if dataset.indexing_technique == "high_quality":
-                    vector = Vector(dataset)
-                    vector.create(documents)
-                elif dataset.indexing_technique == "economy":
-                    keyword = Keyword(dataset)
-                    keyword.add_texts(documents)
         else:
-            raise ValueError("Chunks is not a list")
+            multimodal_general_structure = MultimodalGeneralStructureChunk.model_validate(chunks)
+            for general_chunk in multimodal_general_structure.general_chunks:
+                metadata = {
+                    "dataset_id": dataset.id,
+                    "document_id": document.id,
+                    "doc_id": str(uuid.uuid4()),
+                    "doc_hash": helper.generate_text_hash(general_chunk.content),
+                }
+                doc = Document(page_content=general_chunk.content, metadata=metadata)
+                if general_chunk.files:
+                    attachments = []
+                    for file in general_chunk.files:
+                        file_metadata = {
+                            "doc_id": file.id,
+                            "doc_hash": "",
+                            "document_id": document.id,
+                            "dataset_id": dataset.id,
+                            "doc_type": DocType.IMAGE,
+                        }
+                        file_document = AttachmentDocument(page_content=file.name, metadata=file_metadata)
+                        attachments.append(file_document)
+                        all_multimodal_documents.append(file_document)
+                    doc.attachments = attachments
+                else:
+                    doc.attachments = self._get_content_files(doc)
+                    if doc.attachments:
+                        all_multimodal_documents.extend(doc.attachments)
+                documents.append(doc)
+        if documents:
+            # save node to document segment
+            doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
+            # add document segments
+            doc_store.add_documents(docs=documents, save_child=False)
+            if dataset.indexing_technique == "high_quality":
+                vector = Vector(dataset)
+                vector.create(documents)
+                if all_multimodal_documents:
+                    vector.create_multimodel(all_multimodal_documents)
+            elif dataset.indexing_technique == "economy":
+                keyword = Keyword(dataset)
+                keyword.add_texts(documents)
 
     def format_preview(self, chunks: Any) -> Mapping[str, Any]:
         if isinstance(chunks, list):

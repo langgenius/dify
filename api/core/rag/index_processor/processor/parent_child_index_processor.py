@@ -13,9 +13,10 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
+from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
-from core.rag.models.document import ChildDocument, Document, ParentChildStructureChunk
+from core.rag.models.document import AttachmentDocument, ChildDocument, Document, ParentChildStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from libs import helper
@@ -259,6 +260,21 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 }
                 child_documents.append(ChildDocument(page_content=child, metadata=child_metadata))
             doc = Document(page_content=parent_child.parent_content, metadata=metadata, children=child_documents)
+            if parent_child.files:
+                attachments = []
+                for file in parent_child.files:
+                    file_metadata = {
+                        "doc_id": file.id,
+                        "doc_hash": "",
+                        "document_id": document.id,
+                        "dataset_id": dataset.id,
+                        "doc_type": DocType.IMAGE,
+                    }
+                    file_document = AttachmentDocument(page_content=file.name, metadata=file_metadata)
+                    attachments.append(file_document)
+                doc.attachments = attachments
+            else:
+                doc.attachments = self._get_content_files(doc)
             documents.append(doc)
         if documents:
             # update document parent mode
@@ -282,12 +298,17 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             doc_store.add_documents(docs=documents, save_child=True)
             if dataset.indexing_technique == "high_quality":
                 all_child_documents = []
+                all_multimodal_documents = []
                 for doc in documents:
                     if doc.children:
                         all_child_documents.extend(doc.children)
+                    if doc.attachments:
+                        all_multimodal_documents.extend(doc.attachments)
+                vector = Vector(dataset)
                 if all_child_documents:
-                    vector = Vector(dataset)
                     vector.create(all_child_documents)
+                if all_multimodal_documents:
+                    vector.create_multimodel(all_multimodal_documents)
 
     def format_preview(self, chunks: Any) -> Mapping[str, Any]:
         parent_childs = ParentChildStructureChunk.model_validate(chunks)
