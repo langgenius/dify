@@ -253,7 +253,7 @@ class VectorService:
 
     @classmethod
     def update_multimodel_vector(cls, segment: DocumentSegment, attachment_ids: list[str], dataset: Dataset):
-        if not (dataset.indexing_technique == "high_quality" and dataset.is_multimodal and attachment_ids):
+        if dataset.indexing_technique != "high_quality":
             return
 
         attachments = segment.attachments
@@ -265,15 +265,19 @@ class VectorService:
 
         try:
             vector = Vector(dataset=dataset)
-
-            # Delete old vectors if they exist
-            if old_attachment_ids:
-                vector.delete_by_ids(old_attachment_ids)
+            if dataset.is_multimodal:
+                # Delete old vectors if they exist
+                if old_attachment_ids:
+                    vector.delete_by_ids(old_attachment_ids)
 
             # Delete existing segment attachment bindings in one operation
             db.session.query(SegmentAttachmentBinding).filter(SegmentAttachmentBinding.segment_id == segment.id).delete(
                 synchronize_session=False
             )
+
+            if not attachment_ids:
+                db.session.commit()
+                return
 
             # Bulk fetch upload files - only fetch needed fields
             upload_file_list = db.session.query(UploadFile).filter(UploadFile.id.in_(attachment_ids)).all()
@@ -325,7 +329,7 @@ class VectorService:
                 db.session.add_all(bindings)
 
             # Add documents to vector store if any
-            if documents:
+            if documents and dataset.is_multimodal:
                 vector.add_texts(documents, duplicate_check=True)
 
             # Single commit for all operations

@@ -2964,9 +2964,8 @@ class SegmentService:
                 elif document.doc_form in (IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.QA_INDEX):
                     # update segment vector index
                     VectorService.update_segment_vector(args.keywords, segment, dataset)
-            if dataset.is_multimodal:
-                # update multimodel vector index
-                VectorService.update_multimodel_vector(segment, args.attachment_ids or [], dataset)
+            # update multimodel vector index
+            VectorService.update_multimodel_vector(segment, args.attachment_ids or [], dataset)
         except Exception as e:
             logger.exception("update segment index failed")
             segment.enabled = False
