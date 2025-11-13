@@ -18,8 +18,7 @@ type Props = {
   unitPosition?: 'inline' | 'suffix'
 }
 
-const LOW = 50
-const MIDDLE = 80
+const WARNING_THRESHOLD = 80
 
 const UsageInfo: FC<Props> = ({
   className,
@@ -34,15 +33,9 @@ const UsageInfo: FC<Props> = ({
   const { t } = useTranslation()
 
   const percent = usage / total * 100
-  const color = (() => {
-    if (percent < LOW)
-      return 'bg-components-progress-bar-progress-solid'
-
-    if (percent < MIDDLE)
-      return 'bg-components-progress-warning-progress'
-
-    return 'bg-components-progress-error-progress'
-  })()
+  const color = percent >= 100
+    ? 'bg-components-progress-error-progress'
+    : (percent >= WARNING_THRESHOLD ? 'bg-components-progress-warning-progress' : 'bg-components-progress-bar-progress-solid')
   const isUnlimited = total === NUM_INFINITE
   let totalDisplay: string | number = isUnlimited ? t('billing.plansCommon.unlimited') : total
   if (!isUnlimited && unit && unitPosition === 'inline')
