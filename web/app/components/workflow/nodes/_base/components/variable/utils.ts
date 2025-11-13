@@ -42,7 +42,7 @@ import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
 import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
-
+import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
 import {
   AGENT_OUTPUT_STRUCT,
   FILE_STRUCT,
