@@ -73,7 +73,7 @@ const translation = {
     ragAPIRequestTooltip: 'Fait référence au nombre d\'appels API invoquant uniquement les capacités de traitement de la base de connaissances de Dify.',
     receiptInfo: 'Seuls le propriétaire de l\'équipe et l\'administrateur de l\'équipe peuvent s\'abonner et consulter les informations de facturation',
     annotationQuota: 'Quota d’annotation',
-    apiRateLimitUnit: '{{count,number}}/mois',
+    apiRateLimitUnit: '{{count,number}}',
     priceTip: 'par espace de travail/',
     freeTrialTipSuffix: 'Aucune carte de crédit requise',
     teamWorkspace: '{{count,number}} Espace de travail d\'équipe',

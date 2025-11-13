@@ -48,8 +48,9 @@ const List = ({
       />
       <Item
         label={
-          planInfo.apiRateLimit === NUM_INFINITE ? `${t('billing.plansCommon.unlimitedApiRate')}`
-            : `${t('billing.plansCommon.apiRateLimitUnit', { count: planInfo.apiRateLimit })} ${t('billing.plansCommon.apiRateLimit')}`
+          planInfo.apiRateLimit === NUM_INFINITE
+            ? t('billing.plansCommon.unlimitedApiRate')
+            : `${t('billing.plansCommon.apiRateLimitUnit', { count: planInfo.apiRateLimit })} ${t('billing.plansCommon.apiRateLimit')} / ${t('billing.plansCommon.month')}`
         }
         tooltip={planInfo.apiRateLimit === NUM_INFINITE ? undefined : t('billing.plansCommon.apiRateLimitTooltip') as string}
       />
