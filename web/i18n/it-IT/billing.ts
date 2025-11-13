@@ -88,7 +88,7 @@ const translation = {
     freeTrialTipPrefix: 'Iscriviti e ricevi un',
     teamMember_one: '{{count,number}} membro del team',
     documents: '{{count,number}} Documenti di Conoscenza',
-    apiRateLimitUnit: '{{count,number}}/giorno',
+    apiRateLimitUnit: '{{count,number}}/mese',
     documentsRequestQuota: '{{count,number}}/min Limite di richiesta di conoscenza',
     teamMember_other: '{{count,number}} membri del team',
     freeTrialTip: 'prova gratuita di 200 chiamate OpenAI.',
