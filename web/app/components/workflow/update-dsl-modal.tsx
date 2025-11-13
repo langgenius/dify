@@ -24,6 +24,7 @@ import type {
   CommonNodeType,
   Node,
 } from './types'
+import { AppModeEnum } from '@/types/app'
 import {
   initialEdges,
   initialNodes,
@@ -141,7 +142,7 @@ const UpdateDSLModal = ({
       const data = yamlLoad(content) as any
       const nodes = data?.workflow?.graph?.nodes ?? []
       const hasInvalidNode = nodes.some((node: Node<CommonNodeType>) => {
-        return (appDetail?.mode === 'advanced-chat' && node?.data?.type === BlockEnum.End) || (appDetail?.mode === 'workflow' && node?.data?.type === BlockEnum.Answer)
+        return (appDetail?.mode === AppModeEnum.ADVANCED_CHAT && node?.data?.type === BlockEnum.End) || (appDetail?.mode === AppModeEnum.WORKFLOW && node?.data?.type === BlockEnum.Answer)
       })
       if (hasInvalidNode) {
         notify({ type: 'error', message: t('workflow.common.importFailure') })
