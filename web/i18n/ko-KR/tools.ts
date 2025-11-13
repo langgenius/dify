@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: '커스텀 도구 만들기',
   customToolTip: 'Dify 커스텀 도구에 대해 더 알아보기',
   type: {
-    all: '모두',
     builtIn: '내장',
     custom: '커스텀',
     workflow: '워크플로우',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: '자격 증명을 구성한 후에 워크스페이스의 모든 멤버가 이 도구를 사용하여 애플리케이션을 조작할 수 있습니다.',
   },
   includeToolNum: '{{num}}개의 도구가 포함되어 있습니다',
-  addTool: '도구 추가',
   addToolModal: {
     type: '타입',
     category: '카테고리',
-    add: '추가',
     added: '추가됨',
-    manageInTools: '도구에서 관리',
     custom: {
       title: '사용자 정의 도구 없음',
       tip: '사용자 정의 도구 생성',
