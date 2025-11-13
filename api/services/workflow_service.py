@@ -903,10 +903,10 @@ class WorkflowService:
 
     def validate_graph_structure(self, graph: Mapping[str, Any]):
         """
-        Validate workflow graph structure by instantiating the Graph object.
+        Validate workflow graph structure.
 
-        This leverages the built-in graph validators (including trigger/UserInput exclusivity)
-        and raises any structural errors before persisting the workflow.
+        This performs a lightweight validation on the graph, checking for structural
+        inconsistencies such as the coexistence of start and trigger nodes.
         """
         node_configs = graph.get("nodes", [])
         node_configs = cast(list[dict[str, Any]], node_configs)
