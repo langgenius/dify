@@ -86,7 +86,7 @@ const translation = {
     teamMember_one: '{{count,number}} član ekipe',
     teamMember_other: '{{count,number}} Članov ekipe',
     documentsRequestQuota: '{{count,number}}/min Omejitev stopnje zahtev po znanju',
-    apiRateLimitUnit: '{{count,number}}/dan',
+    apiRateLimitUnit: '{{count,number}}/mesec',
     priceTip: 'na delovnem prostoru/',
     freeTrialTipPrefix: 'Prijavite se in prejmite',
     cloud: 'Oblačna storitev',

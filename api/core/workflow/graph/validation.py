@@ -114,9 +114,45 @@ class GraphValidator:
             raise GraphValidationError(issues)
 
 
+@dataclass(frozen=True, slots=True)
+class _TriggerStartExclusivityValidator:
+    """Ensures trigger nodes do not coexist with UserInput (start) nodes."""
+
+    conflict_code: str = "TRIGGER_START_NODE_CONFLICT"
+
+    def validate(self, graph: Graph) -> Sequence[GraphValidationIssue]:
+        start_node_id: str | None = None
+        trigger_node_ids: list[str] = []
+
+        for node in graph.nodes.values():
+            node_type = getattr(node, "node_type", None)
+            if not isinstance(node_type, NodeType):
+                continue
+
+            if node_type == NodeType.START:
+                start_node_id = node.id
+            elif node_type.is_trigger_node:
+                trigger_node_ids.append(node.id)
+
+        if start_node_id and trigger_node_ids:
+            trigger_list = ", ".join(trigger_node_ids)
+            return [
+                GraphValidationIssue(
+                    code=self.conflict_code,
+                    message=(
+                        f"UserInput (start) node '{start_node_id}' cannot coexist with trigger nodes: {trigger_list}."
+                    ),
+                    node_id=start_node_id,
+                )
+            ]
+
+        return []
+
+
 _DEFAULT_RULES: tuple[GraphValidationRule, ...] = (
     _EdgeEndpointValidator(),
     _RootNodeValidator(),
+    _TriggerStartExclusivityValidator(),
 )
 
 
