@@ -624,7 +624,6 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     def get(self):
-        # check if the user is admin or owner
         current_user, tenant_id = current_account_with_tenant()
         user_id = current_user.id
 

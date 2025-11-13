@@ -725,7 +725,6 @@ class ToolPluginOAuthApi(Resource):
         plugin_id = tool_provider.plugin_id
         provider_name = tool_provider.provider_name
 
-        # todo check permission
         user, tenant_id = current_account_with_tenant()
 
         oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id=tenant_id, provider=provider)

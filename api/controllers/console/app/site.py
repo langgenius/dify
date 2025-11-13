@@ -135,7 +135,6 @@ class AppSiteAccessTokenReset(Resource):
     @get_app_model
     @marshal_with(app_site_fields)
     def post(self, app_model):
-        # The role of the current user in the ta table must be admin or owner
         current_user, _ = current_account_with_tenant()
         site = db.session.query(Site).where(Site.app_id == app_model.id).first()
 

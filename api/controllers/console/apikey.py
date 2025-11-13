@@ -111,7 +111,6 @@ class BaseApiKeyResource(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
 
-        # The role of the current user in the ta table must be admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 

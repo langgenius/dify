@@ -758,7 +758,6 @@ class DatasetApiKeyApi(Resource):
     @account_initialization_required
     @marshal_with(api_key_fields)
     def post(self):
-        # The role of the current user in the ta table must be admin or owner
         _, current_tenant_id = current_account_with_tenant()
 
         current_key_count = (
