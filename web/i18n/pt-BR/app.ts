@@ -163,6 +163,14 @@ const translation = {
       title: 'Monitoramento em Nuvem',
       description: 'A plataforma de observabilidade totalmente gerenciada e sem manutenção fornecida pela Alibaba Cloud, permite monitoramento, rastreamento e avaliação prontos para uso de aplicações Dify.',
     },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Plataforma LLMOps de código aberto para rastreamento de experimentos, observabilidade e avaliação, para construir aplicações de IA/LLM com confiança.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks oferece MLflow totalmente gerenciado com forte governança e segurança para armazenar dados de rastreamento.',
+    },
     tencent: {
       title: 'Tencent APM',
       description: 'O Monitoramento de Desempenho de Aplicações da Tencent fornece rastreamento abrangente e análise multidimensional para aplicações LLM.',

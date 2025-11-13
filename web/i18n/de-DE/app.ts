@@ -160,6 +160,14 @@ const translation = {
       title: 'Cloud-Monitor',
       description: 'Die vollständig verwaltete und wartungsfreie Observability-Plattform von Alibaba Cloud ermöglicht eine sofortige Überwachung, Verfolgung und Bewertung von Dify-Anwendungen.',
     },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Open-Source-LLMOps-Plattform mit Experiment-Tracking, Observability und Evaluierungen für die sichere Entwicklung von AI/LLM-Anwendungen.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks bietet vollständig verwaltetes MLflow mit starker Governance und Sicherheit für die Speicherung von Trace-Daten.',
+    },
     tencent: {
       title: 'Tencent APM',
       description: 'Tencent Application Performance Monitoring bietet umfassendes Tracing und multidimensionale Analyse für LLM-Anwendungen.',
