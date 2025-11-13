@@ -1,4 +1,5 @@
 const { codeInspectorPlugin } = require('code-inspector-plugin')
+const path = require('path')
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
@@ -87,6 +88,12 @@ const hasSetWebPrefix = process.env.NEXT_PUBLIC_WEB_PREFIX
 const port = process.env.PORT || 3000
 const locImageURLs = !hasSetWebPrefix ? [new URL(`http://localhost:${port}/**`), new URL(`http://127.0.0.1:${port}/**`)] : []
 const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WEB_PREFIX}/**`) : '', ...locImageURLs].filter(item => !!item)
+const editionPath =
+  process.env.NEXT_PUBLIC_EDITION === 'CLOUD'
+    ? './app/edition/saas/test.tsx'
+    : './app/edition/community/test.tsx'
+path.resolve(__dirname, editionPath, '*')
+console.log(editionPath)
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -95,7 +102,10 @@ const nextConfig = {
   turbopack: {
     rules: codeInspectorPlugin({
       bundler: 'turbopack'
-    })
+    }),
+    // resolveAlias: {
+    //   '@edition/test': editionPath,
+    // }
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx

@@ -29,6 +29,9 @@
       ],
       "~@/*": [
         "./*"
+      ],
+      "@edition/*": [
+        "./app/edition/community/*"
       ]
     }
   },
