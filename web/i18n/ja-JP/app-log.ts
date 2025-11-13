@@ -20,6 +20,7 @@ const translation = {
       tokens: 'トークン',
       user: 'エンドユーザーまたはアカウント',
       version: 'バージョン',
+      triggered_from: 'トリガー方法',
     },
     pagination: {
       previous: '前へ',
@@ -96,6 +97,15 @@ const translation = {
     iterations: '反復',
     iteration: '反復',
     finalProcessing: '最終処理',
+  },
+  triggerBy: {
+    debugging: 'デバッグ',
+    appRun: 'ウェブアプリ',
+    webhook: 'Webhook',
+    schedule: 'スケジュール',
+    plugin: 'プラグイン',
+    ragPipelineRun: 'RAGパイプライン',
+    ragPipelineDebugging: 'RAGデバッグ',
   },
 }
 

@@ -30,23 +30,25 @@ def _parse_workflow_run_list_args():
     Returns:
         Parsed arguments containing last_id, limit, status, and triggered_from filters
     """
-    parser = reqparse.RequestParser()
-    parser.add_argument("last_id", type=uuid_value, location="args")
-    parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-    parser.add_argument(
-        "status",
-        type=str,
-        choices=WORKFLOW_RUN_STATUS_CHOICES,
-        location="args",
-        required=False,
-    )
-    parser.add_argument(
-        "triggered_from",
-        type=str,
-        choices=["debugging", "app-run"],
-        location="args",
-        required=False,
-        help="Filter by trigger source: debugging or app-run",
+    parser = (
+        reqparse.RequestParser()
+        .add_argument("last_id", type=uuid_value, location="args")
+        .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        .add_argument(
+            "status",
+            type=str,
+            choices=WORKFLOW_RUN_STATUS_CHOICES,
+            location="args",
+            required=False,
+        )
+        .add_argument(
+            "triggered_from",
+            type=str,
+            choices=["debugging", "app-run"],
+            location="args",
+            required=False,
+            help="Filter by trigger source: debugging or app-run",
+        )
     )
     return parser.parse_args()
 
@@ -58,28 +60,30 @@ def _parse_workflow_run_count_args():
     Returns:
         Parsed arguments containing status, time_range, and triggered_from filters
     """
-    parser = reqparse.RequestParser()
-    parser.add_argument(
-        "status",
-        type=str,
-        choices=WORKFLOW_RUN_STATUS_CHOICES,
-        location="args",
-        required=False,
-    )
-    parser.add_argument(
-        "time_range",
-        type=time_duration,
-        location="args",
-        required=False,
-        help="Time range filter (e.g., 7d, 4h, 30m, 30s)",
-    )
-    parser.add_argument(
-        "triggered_from",
-        type=str,
-        choices=["debugging", "app-run"],
-        location="args",
-        required=False,
-        help="Filter by trigger source: debugging or app-run",
+    parser = (
+        reqparse.RequestParser()
+        .add_argument(
+            "status",
+            type=str,
+            choices=WORKFLOW_RUN_STATUS_CHOICES,
+            location="args",
+            required=False,
+        )
+        .add_argument(
+            "time_range",
+            type=time_duration,
+            location="args",
+            required=False,
+            help="Time range filter (e.g., 7d, 4h, 30m, 30s)",
+        )
+        .add_argument(
+            "triggered_from",
+            type=str,
+            choices=["debugging", "app-run"],
+            location="args",
+            required=False,
+            help="Filter by trigger source: debugging or app-run",
+        )
     )
     return parser.parse_args()
 

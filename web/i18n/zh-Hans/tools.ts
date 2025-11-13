@@ -61,7 +61,7 @@ const translation = {
     exampleOptions: {
       json: '天气 (JSON)',
       yaml: '宠物商店 (YAML)',
-      blankTemplate: '空白模版',
+      blankTemplate: '空白模板',
     },
     availableTools: {
       title: '可用工具',
