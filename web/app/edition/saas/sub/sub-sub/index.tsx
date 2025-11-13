@@ -1,10 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import s from '../sub-c.module.css'
 
 const SubSub: FC = () => {
   return (
-    <div>
+    <div className={s.bg}>
       Sub Sub
     </div>
   )
