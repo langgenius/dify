@@ -406,12 +406,12 @@ class Workflow(Base):  # bug
 
         return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
 
+    @property
     @deprecated(
         "This property is not accurate for determining if a workflow is published as a tool."
         "It only checks if there's a WorkflowToolProvider for the app, "
         "not if this specific workflow version is the one being used by the tool."
     )
-    @property
     def tool_published(self) -> bool:
         """
         DEPRECATED: This property is not accurate for determining if a workflow is published as a tool.

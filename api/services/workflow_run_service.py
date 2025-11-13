@@ -5,6 +5,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
 import contexts
+from core.workflow.entities.workflow_pause import PauseDetail
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import (
@@ -159,3 +160,9 @@ class WorkflowRunService:
             app_id=app_model.id,
             workflow_run_id=run_id,
         )
+
+    def get_pause_details(self, workflow_run_id: str) -> Sequence[PauseDetail]:
+        pause = self._workflow_run_repo.get_workflow_pause(workflow_run_id)
+        if pause is None:
+            return []
+        return pause.get_pause_details()

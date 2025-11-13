@@ -6,9 +6,39 @@ by the core workflow module. These models are independent of the storage mechani
 and don't contain implementation details like tenant_id, app_id, etc.
 """
 
+import enum
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from datetime import datetime
+from typing import Annotated, Literal, TypeAlias
+
+from pydantic import BaseModel, Field
+from sqlalchemy import Sequence
+
+
+class _PauseTypeEnum(enum.StrEnum):
+    human_input = enum.auto()
+    breakpoint = enum.auto()
+    scheduling = enum.auto()
+
+
+class HumanInputPause(BaseModel):
+    type: Literal[_PauseTypeEnum.human_input] = _PauseTypeEnum.human_input
+    form_id: str
+
+
+class SchedulingPause(BaseModel):
+    type: Literal[_PauseTypeEnum.scheduling] = _PauseTypeEnum.scheduling
+
+
+PauseType: TypeAlias = Annotated[HumanInputPause | SchedulingPause, Field(discriminator="type")]
+
+
+class PauseDetail(BaseModel):
+    node_id: str
+    node_title: str
+    pause_type: PauseType
+
 
 from core.workflow.entities.pause_reason import PauseReason
 
