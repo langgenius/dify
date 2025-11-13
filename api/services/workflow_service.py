@@ -914,7 +914,7 @@ class WorkflowService:
         # is empty graph
         if not node_configs:
             return
-        
+
         node_types: set[NodeType] = set()
         for node in node_configs:
             node_type = node.get("data", {}).get("type")
