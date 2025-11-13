@@ -115,7 +115,7 @@ const translation = {
     memberAfter: 'メンバー',
     messageRequest: {
       title: '{{count,number}}メッセージクレジット',
-      titlePerMonth: '{{count,number}}メッセージクレジット/月',
+      titlePerMonth: '{{count,number}}メッセージクレジット / 月',
       tooltip: 'メッセージクレジットは、Dify でさまざまな OpenAI モデルを簡単にお試しいただくためのものです。モデルタイプに応じてクレジットが消費され、使い切った後はご自身の OpenAI API キーに切り替えていただけます。',
     },
     annotatedResponse: {

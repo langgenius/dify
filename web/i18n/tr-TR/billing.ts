@@ -65,7 +65,7 @@ const translation = {
     messageRequest: {
       title: 'Mesaj Kredileri',
       tooltip: 'OpenAI modellerini (gpt4 hariç) kullanarak çeşitli planlar için mesaj çağrı kotaları. Limitin üzerindeki mesajlar OpenAI API Anahtarınızı kullanır.',
-      titlePerMonth: '{{count,number}} mesaj/ay',
+      titlePerMonth: '{{count,number}} mesaj / ay',
     },
     annotatedResponse: {
       title: 'Ek Açıklama Kota Sınırları',

@@ -70,7 +70,7 @@ const translation = {
       title: 'Crediti Messaggi',
       tooltip:
         'Quote di invocazione dei messaggi per vari piani utilizzando i modelli OpenAI (eccetto gpt4). I messaggi oltre il limite utilizzeranno la tua chiave API OpenAI.',
-      titlePerMonth: '{{count,number}} messaggi/mese',
+      titlePerMonth: '{{count,number}} messaggi / mese',
     },
     annotatedResponse: {
       title: 'Limiti di Quota di Annotazione',

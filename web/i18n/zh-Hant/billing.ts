@@ -64,7 +64,7 @@ const translation = {
     messageRequest: {
       title: '訊息額度',
       tooltip: '為不同方案提供基於 OpenAI 模型的訊息響應額度。',
-      titlePerMonth: '{{count,number}} 消息/月',
+      titlePerMonth: '{{count,number}} 消息 / 月',
     },
     annotatedResponse: {
       title: '標註回覆數',

@@ -61,7 +61,7 @@ const translation = {
     messageRequest: {
       title: 'Créditos de Mensagem',
       tooltip: 'Cotas de invocação de mensagens para vários planos usando modelos da OpenAI (exceto gpt4). Mensagens além do limite usarão sua Chave de API da OpenAI.',
-      titlePerMonth: '{{count,number}} mensagens/mês',
+      titlePerMonth: '{{count,number}} mensagens / mês',
     },
     annotatedResponse: {
       title: 'Limites de Cota de Anotação',

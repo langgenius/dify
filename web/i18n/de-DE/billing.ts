@@ -64,7 +64,7 @@ const translation = {
     messageRequest: {
       title: 'Nachrichtenguthaben',
       tooltip: 'Nachrichtenaufrufkontingente für verschiedene Tarife unter Verwendung von OpenAI-Modellen (außer gpt4).Nachrichten über dem Limit verwenden Ihren OpenAI-API-Schlüssel.',
-      titlePerMonth: '{{count,number}} Nachrichten/Monat',
+      titlePerMonth: '{{count,number}} Nachrichten / Monat',
     },
     annotatedResponse: {
       title: 'Kontingentgrenzen für Annotationen',

@@ -64,7 +64,7 @@ const translation = {
     messageRequest: {
       title: 'Credite de mesaje',
       tooltip: 'Cote de invocare a mesajelor pentru diferite planuri utilizând modele OpenAI (cu excepția gpt4). Mesajele peste limită vor utiliza cheia API OpenAI.',
-      titlePerMonth: '{{count,number}} mesaje/lună',
+      titlePerMonth: '{{count,number}} mesaje / lună',
     },
     annotatedResponse: {
       title: 'Limite de cotă de anotare',
