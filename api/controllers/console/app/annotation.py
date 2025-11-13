@@ -251,6 +251,13 @@ class AnnotationExportApi(Resource):
         return response, 200
 
 
+parser = (
+    reqparse.RequestParser()
+    .add_argument("question", required=True, type=str, location="json")
+    .add_argument("answer", required=True, type=str, location="json")
+)
+
+
 @console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
 class AnnotationUpdateDeleteApi(Resource):
     @api.doc("update_delete_annotation")
@@ -259,6 +266,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @api.response(200, "Annotation updated successfully", annotation_fields)
     @api.response(204, "Annotation deleted successfully")
     @api.response(403, "Insufficient permissions")
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -268,11 +276,6 @@ class AnnotationUpdateDeleteApi(Resource):
     def post(self, app_id, annotation_id):
         app_id = str(app_id)
         annotation_id = str(annotation_id)
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("question", required=True, type=str, location="json")
-            .add_argument("answer", required=True, type=str, location="json")
-        )
         args = parser.parse_args()
         annotation = AppAnnotationService.update_app_annotation_directly(args, app_id, annotation_id)
         return annotation

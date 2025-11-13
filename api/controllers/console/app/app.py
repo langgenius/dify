@@ -353,12 +353,15 @@ class AppExportApi(Resource):
         }
 
 
+parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json", help="Name to check")
+
+
 @console_ns.route("/apps/<uuid:app_id>/name")
 class AppNameApi(Resource):
     @api.doc("check_app_name")
     @api.doc(description="Check if app name is available")
     @api.doc(params={"app_id": "Application ID"})
-    @api.expect(api.parser().add_argument("name", type=str, required=True, location="args", help="Name to check"))
+    @api.expect(parser)
     @api.response(200, "Name availability checked")
     @setup_required
     @login_required
@@ -367,7 +370,6 @@ class AppNameApi(Resource):
     @marshal_with(app_detail_fields)
     @edit_permission_required
     def post(self, app_model):
-        parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
 
         app_service = AppService()

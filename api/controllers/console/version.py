@@ -11,16 +11,16 @@ from . import api, console_ns
 
 logger = logging.getLogger(__name__)
 
+parser = reqparse.RequestParser().add_argument(
+    "current_version", type=str, required=True, location="args", help="Current application version"
+)
+
 
 @console_ns.route("/version")
 class VersionApi(Resource):
     @api.doc("check_version_update")
     @api.doc(description="Check for application version updates")
-    @api.expect(
-        api.parser().add_argument(
-            "current_version", type=str, required=True, location="args", help="Current application version"
-        )
-    )
+    @api.expect(parser)
     @api.response(
         200,
         "Success",
@@ -37,7 +37,6 @@ class VersionApi(Resource):
     )
     def get(self):
         """Check for application version updates"""
-        parser = reqparse.RequestParser().add_argument("current_version", type=str, required=True, location="args")
         args = parser.parse_args()
         check_update_url = dify_config.CHECK_UPDATE_URL
 

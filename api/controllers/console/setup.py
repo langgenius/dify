@@ -49,6 +49,7 @@ class SetupApi(Resource):
                 "email": fields.String(required=True, description="Admin email address"),
                 "name": fields.String(required=True, description="Admin name (max 30 characters)"),
                 "password": fields.String(required=True, description="Admin password"),
+                "language": fields.String(required=False, description="Admin language"),
             },
         )
     )
