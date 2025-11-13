@@ -325,10 +325,8 @@ def is_admin_or_owner_required(f: Callable[P, R]):
         from libs.login import current_user
         from models import Account
 
-        user = current_user._get_current_object()  # type: ignore
-        if not isinstance(user, Account):
-            raise Forbidden()
-        if not current_user.is_admin_or_owner:
+        user = current_user._get_current_object()
+        if not isinstance(user, Account) or not user.is_admin_or_owner:
             raise Forbidden()
         return f(*args, **kwargs)
 
