@@ -6,16 +6,15 @@ import { useRouter } from 'next/navigation'
 import {
   RiBook2Line,
   RiFileEditLine,
-  RiFlashlightLine,
   RiGraduationCapLine,
   RiGroupLine,
-  RiSpeedLine,
 } from '@remixicon/react'
 import { Plan, SelfHostedPlan } from '../type'
 import { NUM_INFINITE } from '../config'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
 import AppsInfo from '../usage-info/apps-info'
 import UpgradeBtn from '../upgrade-btn'
+import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import { useProviderContext } from '@/context/provider-context'
 import { useAppContext } from '@/context/app-context'
 import Button from '@/app/components/base/button'
@@ -125,7 +124,7 @@ const PlanComp: FC<Props> = ({
           total={total.annotatedResponse}
         />
         <UsageInfo
-          Icon={RiFlashlightLine}
+          Icon={TriggerAll}
           name={t('billing.usagePage.triggerEvents')}
           usage={usage.triggerEvents}
           total={total.triggerEvents}
@@ -133,7 +132,7 @@ const PlanComp: FC<Props> = ({
           tooltip={t('billing.plansCommon.triggerEvents.tooltip') as string}
         />
         <UsageInfo
-          Icon={RiSpeedLine}
+          Icon={ApiAggregate}
           name={t('billing.plansCommon.apiRateLimit')}
           usage={usage.apiRateLimit}
           total={total.apiRateLimit}
