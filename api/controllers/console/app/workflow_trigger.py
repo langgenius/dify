@@ -3,12 +3,12 @@ import logging
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from extensions.ext_database import db
 from fields.workflow_trigger_fields import trigger_fields, triggers_list_fields, webhook_trigger_fields
 from libs.login import current_user, login_required
@@ -94,6 +94,7 @@ class AppTriggerEnableApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @get_app_model(mode=AppMode.WORKFLOW)
     @marshal_with(trigger_fields)
     def post(self, app_model: App):
@@ -105,10 +106,7 @@ class AppTriggerEnableApi(Resource):
         )
         args = parser.parse_args()
 
-        assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
         trigger_id = args["trigger_id"]
 
