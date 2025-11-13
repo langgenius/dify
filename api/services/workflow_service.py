@@ -2,6 +2,7 @@ import json
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
+from datetime import datetime, timezone
 from typing import Any, cast
 
 from sqlalchemy import exists, select
@@ -1032,7 +1033,7 @@ def _setup_variable_pool(
         system_variable = SystemVariable(
             user_id=user_id,
             app_id=workflow.app_id,
-            timestamp=int(naive_utc_now().timestamp()),
+            timestamp=int(datetime.now(timezone.utc).timestamp()),
             workflow_id=workflow.id,
             files=files or [],
             workflow_execution_id=str(uuid.uuid4()),
