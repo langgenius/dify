@@ -20,6 +20,7 @@ type MixedVariableTextInputProps = {
   onChange?: (text: string) => void
   showManageInputField?: boolean
   onManageInputField?: () => void
+  disableVariableInsertion?: boolean
 }
 const MixedVariableTextInput = ({
   readOnly = false,
@@ -29,6 +30,7 @@ const MixedVariableTextInput = ({
   onChange,
   showManageInputField,
   onManageInputField,
+  disableVariableInsertion = false,
 }: MixedVariableTextInputProps) => {
   const { t } = useTranslation()
   const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
@@ -37,7 +39,7 @@ const MixedVariableTextInput = ({
     <PromptEditor
       key={controlPromptEditorRerenderKey}
       wrapperClassName={cn(
-        'w-full rounded-lg border border-transparent bg-components-input-bg-normal px-2 py-1',
+        'min-h-8 w-full rounded-lg border border-transparent bg-components-input-bg-normal px-2 py-1',
         'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
         'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
       )}
@@ -45,7 +47,7 @@ const MixedVariableTextInput = ({
       editable={!readOnly}
       value={value}
       workflowVariableBlock={{
-        show: true,
+        show: !disableVariableInsertion,
         variables: nodesOutputVars || [],
         workflowNodesMap: availableNodes.reduce((acc, node) => {
           acc[node.id] = {
@@ -63,7 +65,7 @@ const MixedVariableTextInput = ({
         showManageInputField,
         onManageInputField,
       }}
-      placeholder={<Placeholder />}
+      placeholder={<Placeholder disableVariableInsertion={disableVariableInsertion} />}
       onChange={onChange}
     />
   )
