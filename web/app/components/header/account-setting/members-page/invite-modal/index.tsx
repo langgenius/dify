@@ -61,9 +61,6 @@ const InviteModal = ({
     setIsSubmitting()
     if (emails.map((email: string) => emailRegex.test(email)).every(Boolean)) {
       try {
-        // test code
-        // await sleep(3000)
-        // console.log('invitation sent')
         const { result, invitation_results } = await inviteMember({
           url: '/workspaces/current/members/invite-email',
           body: { emails, role, language: locale },
