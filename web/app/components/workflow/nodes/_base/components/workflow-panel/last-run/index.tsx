@@ -60,6 +60,19 @@ const LastRun: FC<Props> = ({
   const noLastRun = (error as any)?.status === 404
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || lastRunResult || {}
 
+  const resolvedStatus = useMemo(() => {
+    if (isPaused)
+      return NodeRunningStatus.Stopped
+
+    if (oneStepRunRunningStatus === NodeRunningStatus.Stopped)
+      return NodeRunningStatus.Stopped
+
+    if (oneStepRunRunningStatus === NodeRunningStatus.Listening)
+      return NodeRunningStatus.Listening
+
+    return (runResult as any).status || otherResultPanelProps.status
+  }, [isPaused, oneStepRunRunningStatus, runResult, otherResultPanelProps.status])
+
   const resetHidePageStatus = useCallback(() => {
     setPageHasHide(false)
     setPageShowed(false)
@@ -104,18 +117,18 @@ const LastRun: FC<Props> = ({
 
   if (isRunning)
     return <ResultPanel status='running' showSteps={false} />
-
   if (!isPaused && (noLastRun || !runResult)) {
     return (
       <NoData canSingleRun={canSingleRun} onSingleRun={onSingleRunClicked} />
     )
   }
+
   return (
     <div>
       <ResultPanel
         {...runResult as any}
         {...otherResultPanelProps}
-        status={isPaused ? NodeRunningStatus.Stopped : ((runResult as any).status || otherResultPanelProps.status)}
+        status={resolvedStatus}
         total_tokens={(runResult as any)?.execution_metadata?.total_tokens || otherResultPanelProps?.total_tokens}
         created_by={(runResult as any)?.created_by_account?.created_by || otherResultPanelProps?.created_by}
         nodeInfo={runResult as NodeTracing}

@@ -8,7 +8,7 @@ import {
   useMarketplacePlugins,
 } from '@/app/components/plugins/marketplace/hooks'
 import type { Plugin } from '@/app/components/plugins/types'
-import { PluginType } from '@/app/components/plugins/types'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/utils'
 
 export const useMarketplaceAllPlugins = (providers: any[], searchText: string) => {
@@ -38,7 +38,7 @@ export const useMarketplaceAllPlugins = (providers: any[], searchText: string) =
     if (searchText) {
       queryPluginsWithDebounced({
         query: searchText,
-        category: PluginType.datasource,
+        category: PluginCategoryEnum.datasource,
         exclude,
         type: 'plugin',
         sortBy: 'install_count',
@@ -48,7 +48,7 @@ export const useMarketplaceAllPlugins = (providers: any[], searchText: string) =
     else {
       queryPlugins({
         query: '',
-        category: PluginType.datasource,
+        category: PluginCategoryEnum.datasource,
         type: 'plugin',
         pageSize: 1000,
         exclude,
