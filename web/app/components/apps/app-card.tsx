@@ -282,21 +282,23 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           </>
         )}
         {
-          (!systemFeatures.webapp_auth.enabled)
-            ? <>
-              <Divider className="my-1" />
-              <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
-                <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
-              </button>
-            </>
-            : !(isGettingUserCanAccessApp || !userCanAccessApp?.result) && (
-              <>
+          !app.has_draft_trigger && (
+            (!systemFeatures.webapp_auth.enabled)
+              ? <>
                 <Divider className="my-1" />
                 <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
                   <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
                 </button>
               </>
-            )
+              : !(isGettingUserCanAccessApp || !userCanAccessApp?.result) && (
+                <>
+                  <Divider className="my-1" />
+                  <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
+                    <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
+                  </button>
+                </>
+              )
+          )
         }
         <Divider className="my-1" />
         {
