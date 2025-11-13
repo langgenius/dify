@@ -268,20 +268,20 @@ def _assert_not_empty(*, value: object) -> bool:
 def _normalize_numeric_values(value: int | float, expected: object) -> tuple[int | float, int | float]:
     """
     Normalize value and expected to compatible numeric types for comparison.
-    
+
     Args:
         value: The actual numeric value (int or float)
         expected: The expected value (int, float, or str)
-    
+
     Returns:
         A tuple of (normalized_value, normalized_expected) with compatible types
-    
+
     Raises:
         ValueError: If expected cannot be converted to a number
     """
     if not isinstance(expected, (int, float, str)):
         raise ValueError(f"Cannot convert {type(expected)} to number")
-    
+
     # Convert expected to appropriate numeric type
     if isinstance(expected, str):
         # Try to convert to float first to handle decimal strings
@@ -289,7 +289,7 @@ def _normalize_numeric_values(value: int | float, expected: object) -> tuple[int
             expected_float = float(expected)
         except ValueError as e:
             raise ValueError(f"Cannot convert '{expected}' to number") from e
-        
+
         # If value is int and expected is a whole number, keep as int comparison
         if isinstance(value, int) and expected_float.is_integer():
             return value, int(expected_float)
