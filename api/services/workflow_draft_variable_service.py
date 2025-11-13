@@ -808,7 +808,11 @@ class DraftVariableSaver:
             # We only save conversation variable here.
             if selector[0] != CONVERSATION_VARIABLE_NODE_ID:
                 continue
-            segment = WorkflowDraftVariable.build_segment_with_type(segment_type=item.value_type, value=item.new_value)
+            # Conversation variables are exposed as NUMBER in the UI even if their
+            # persisted type is INTEGER. Allow float updates by loosening the type
+            # to NUMBER here so downstream storage infers the precise subtype.
+            segment_type = SegmentType.NUMBER if item.value_type == SegmentType.INTEGER else item.value_type
+            segment = WorkflowDraftVariable.build_segment_with_type(segment_type=segment_type, value=item.new_value)
             draft_vars.append(
                 WorkflowDraftVariable.new_conversation_variable(
                     app_id=self._app_id,
