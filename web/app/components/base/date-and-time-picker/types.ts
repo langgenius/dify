@@ -1,4 +1,5 @@
 import type { Dayjs } from 'dayjs'
+import type { Placement } from '@floating-ui/react'
 
 export enum ViewType {
   date = 'date',
@@ -65,6 +66,10 @@ export type TimePickerProps = {
   title?: string
   minuteFilter?: (minutes: string[]) => string[]
   popupClassName?: string
+  notClearable?: boolean
+  triggerFullWidth?: boolean
+  showTimezone?: boolean
+  placement?: Placement
 }
 
 export type TimePickerFooterProps = {

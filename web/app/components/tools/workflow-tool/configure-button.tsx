@@ -29,6 +29,7 @@ type Props = {
   outputs?: Variable[]
   handlePublish: (params?: PublishWorkflowParams) => Promise<void>
   onRefreshData?: () => void
+  disabledReason?: string
 }
 
 const WorkflowToolConfigureButton = ({
@@ -43,6 +44,7 @@ const WorkflowToolConfigureButton = ({
   outputs,
   handlePublish,
   onRefreshData,
+  disabledReason,
 }: Props) => {
   const { t } = useTranslation()
   const router = useRouter()
@@ -220,7 +222,8 @@ const WorkflowToolConfigureButton = ({
                     {t('workflow.common.configureRequired')}
                   </span>
                 )}
-              </div>)
+              </div>
+            )
             : (
               <div
                 className='flex items-center justify-start gap-2 p-2 pl-2.5'
@@ -234,6 +237,11 @@ const WorkflowToolConfigureButton = ({
                 </div>
               </div>
             )}
+          {disabledReason && (
+            <div className='mt-1 px-2.5 pb-2 text-xs leading-[18px] text-text-tertiary'>
+              {disabledReason}
+            </div>
+          )}
           {published && (
             <div className='border-t-[0.5px] border-divider-regular px-2.5 py-2'>
               <div className='flex justify-between gap-x-2'>
@@ -241,7 +249,7 @@ const WorkflowToolConfigureButton = ({
                   size='small'
                   className='w-[140px]'
                   onClick={() => setShowModal(true)}
-                  disabled={!isCurrentWorkspaceManager}
+                  disabled={!isCurrentWorkspaceManager || disabled}
                 >
                   {t('workflow.common.configure')}
                   {outdated && <Indicator className='ml-1' color={'yellow'} />}
@@ -250,14 +258,17 @@ const WorkflowToolConfigureButton = ({
                   size='small'
                   className='w-[140px]'
                   onClick={() => router.push('/tools?category=workflow')}
+                  disabled={disabled}
                 >
                   {t('workflow.common.manageInTools')}
                   <RiArrowRightUpLine className='ml-1 h-4 w-4' />
                 </Button>
               </div>
-              {outdated && <div className='mt-1 text-xs leading-[18px] text-text-warning'>
-                {t('workflow.common.workflowAsToolTip')}
-              </div>}
+              {outdated && (
+                <div className='mt-1 text-xs leading-[18px] text-text-warning'>
+                  {t('workflow.common.workflowAsToolTip')}
+                </div>
+              )}
             </div>
           )}
         </div>

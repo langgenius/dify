@@ -4,7 +4,14 @@ from unittest.mock import Mock
 
 import pytest
 
-from core.app.layers.pause_state_persist_layer import PauseStatePersistenceLayer
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.layers.pause_state_persist_layer import (
+    PauseStatePersistenceLayer,
+    WorkflowResumptionContext,
+    _AdvancedChatAppGenerateEntityWrapper,
+    _WorkflowGenerateEntityWrapper,
+)
 from core.variables.segments import Segment
 from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.graph_engine.entities.commands import GraphEngineCommand
@@ -15,6 +22,7 @@ from core.workflow.graph_events.graph import (
     GraphRunSucceededEvent,
 )
 from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
+from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 
 
@@ -170,6 +178,25 @@ class MockCommandChannel:
 class TestPauseStatePersistenceLayer:
     """Unit tests for PauseStatePersistenceLayer."""
 
+    @staticmethod
+    def _create_generate_entity(workflow_execution_id: str = "run-123") -> WorkflowAppGenerateEntity:
+        app_config = WorkflowUIBasedAppConfig(
+            tenant_id="tenant-123",
+            app_id="app-123",
+            app_mode=AppMode.WORKFLOW,
+            workflow_id="workflow-123",
+        )
+        return WorkflowAppGenerateEntity(
+            task_id="task-123",
+            app_config=app_config,
+            inputs={},
+            files=[],
+            user_id="user-123",
+            stream=False,
+            invoke_from=InvokeFrom.DEBUGGER,
+            workflow_execution_id=workflow_execution_id,
+        )
+
     def test_init_with_dependency_injection(self):
         session_factory = Mock(name="session_factory")
         state_owner_user_id = "user-123"
@@ -177,6 +204,7 @@ class TestPauseStatePersistenceLayer:
         layer = PauseStatePersistenceLayer(
             session_factory=session_factory,
             state_owner_user_id=state_owner_user_id,
+            generate_entity=self._create_generate_entity(),
         )
 
         assert layer._session_maker is session_factory
@@ -186,7 +214,11 @@ class TestPauseStatePersistenceLayer:
 
     def test_initialize_sets_dependencies(self):
         session_factory = Mock(name="session_factory")
-        layer = PauseStatePersistenceLayer(session_factory=session_factory, state_owner_user_id="owner")
+        layer = PauseStatePersistenceLayer(
+            session_factory=session_factory,
+            state_owner_user_id="owner",
+            generate_entity=self._create_generate_entity(),
+        )
 
         graph_runtime_state = MockReadOnlyGraphRuntimeState()
         command_channel = MockCommandChannel()
@@ -198,7 +230,12 @@ class TestPauseStatePersistenceLayer:
 
     def test_on_event_with_graph_run_paused_event(self, monkeypatch: pytest.MonkeyPatch):
         session_factory = Mock(name="session_factory")
-        layer = PauseStatePersistenceLayer(session_factory=session_factory, state_owner_user_id="owner-123")
+        generate_entity = self._create_generate_entity(workflow_execution_id="run-123")
+        layer = PauseStatePersistenceLayer(
+            session_factory=session_factory,
+            state_owner_user_id="owner-123",
+            generate_entity=generate_entity,
+        )
 
         mock_repo = Mock()
         mock_factory = Mock(return_value=mock_repo)
@@ -221,12 +258,20 @@ class TestPauseStatePersistenceLayer:
         mock_repo.create_workflow_pause.assert_called_once_with(
             workflow_run_id="run-123",
             state_owner_user_id="owner-123",
-            state=expected_state,
+            state=mock_repo.create_workflow_pause.call_args.kwargs["state"],
         )
+        serialized_state = mock_repo.create_workflow_pause.call_args.kwargs["state"]
+        resumption_context = WorkflowResumptionContext.loads(serialized_state)
+        assert resumption_context.serialized_graph_runtime_state == expected_state
+        assert resumption_context.get_generate_entity().model_dump() == generate_entity.model_dump()
 
     def test_on_event_ignores_non_paused_events(self, monkeypatch: pytest.MonkeyPatch):
         session_factory = Mock(name="session_factory")
-        layer = PauseStatePersistenceLayer(session_factory=session_factory, state_owner_user_id="owner-123")
+        layer = PauseStatePersistenceLayer(
+            session_factory=session_factory,
+            state_owner_user_id="owner-123",
+            generate_entity=self._create_generate_entity(),
+        )
 
         mock_repo = Mock()
         mock_factory = Mock(return_value=mock_repo)
@@ -250,7 +295,11 @@ class TestPauseStatePersistenceLayer:
 
     def test_on_event_raises_attribute_error_when_graph_runtime_state_is_none(self):
         session_factory = Mock(name="session_factory")
-        layer = PauseStatePersistenceLayer(session_factory=session_factory, state_owner_user_id="owner-123")
+        layer = PauseStatePersistenceLayer(
+            session_factory=session_factory,
+            state_owner_user_id="owner-123",
+            generate_entity=self._create_generate_entity(),
+        )
 
         event = TestDataFactory.create_graph_run_paused_event()
 
@@ -259,7 +308,11 @@ class TestPauseStatePersistenceLayer:
 
     def test_on_event_asserts_when_workflow_execution_id_missing(self, monkeypatch: pytest.MonkeyPatch):
         session_factory = Mock(name="session_factory")
-        layer = PauseStatePersistenceLayer(session_factory=session_factory, state_owner_user_id="owner-123")
+        layer = PauseStatePersistenceLayer(
+            session_factory=session_factory,
+            state_owner_user_id="owner-123",
+            generate_entity=self._create_generate_entity(),
+        )
 
         mock_repo = Mock()
         mock_factory = Mock(return_value=mock_repo)
@@ -276,3 +329,82 @@ class TestPauseStatePersistenceLayer:
 
         mock_factory.assert_not_called()
         mock_repo.create_workflow_pause.assert_not_called()
+
+
+def _build_workflow_generate_entity_for_roundtrip() -> WorkflowResumptionContext:
+    """Create a WorkflowAppGenerateEntity with realistic data for WorkflowResumptionContext tests."""
+    app_config = WorkflowUIBasedAppConfig(
+        tenant_id="tenant-roundtrip",
+        app_id="app-roundtrip",
+        app_mode=AppMode.WORKFLOW,
+        workflow_id="workflow-roundtrip",
+    )
+    serialized_state = json.dumps({"state": "workflow"})
+
+    return WorkflowResumptionContext(
+        serialized_graph_runtime_state=serialized_state,
+        generate_entity=_WorkflowGenerateEntityWrapper(
+            entity=WorkflowAppGenerateEntity(
+                task_id="workflow-task",
+                app_config=app_config,
+                inputs={"input_key": "input_value"},
+                files=[],
+                user_id="user-roundtrip",
+                stream=False,
+                invoke_from=InvokeFrom.DEBUGGER,
+                workflow_execution_id="workflow-exec-roundtrip",
+            )
+        ),
+    )
+
+
+def _build_advanced_chat_generate_entity_for_roundtrip() -> WorkflowResumptionContext:
+    """Create an AdvancedChatAppGenerateEntity with realistic data for WorkflowResumptionContext tests."""
+    app_config = WorkflowUIBasedAppConfig(
+        tenant_id="tenant-advanced",
+        app_id="app-advanced",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-advanced",
+    )
+    serialized_state = json.dumps({"state": "workflow"})
+
+    return WorkflowResumptionContext(
+        serialized_graph_runtime_state=serialized_state,
+        generate_entity=_AdvancedChatAppGenerateEntityWrapper(
+            entity=AdvancedChatAppGenerateEntity(
+                task_id="advanced-task",
+                app_config=app_config,
+                inputs={"topic": "roundtrip"},
+                files=[],
+                user_id="advanced-user",
+                stream=False,
+                invoke_from=InvokeFrom.DEBUGGER,
+                workflow_run_id="advanced-run-id",
+                query="Explain serialization behavior",
+            )
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        pytest.param(
+            _build_advanced_chat_generate_entity_for_roundtrip(),
+            id="advanced_chat",
+        ),
+        pytest.param(
+            _build_workflow_generate_entity_for_roundtrip(),
+            id="workflow",
+        ),
+    ],
+)
+def test_workflow_resumption_context_dumps_loads_roundtrip(state: WorkflowResumptionContext):
+    """WorkflowResumptionContext roundtrip preserves workflow generate entity metadata."""
+    dumped = state.dumps()
+    loaded = WorkflowResumptionContext.loads(dumped)
+
+    assert loaded == state
+    assert loaded.serialized_graph_runtime_state == state.serialized_graph_runtime_state
+    restored_entity = loaded.get_generate_entity()
+    assert isinstance(restored_entity, type(state.generate_entity.entity))
