@@ -42,7 +42,7 @@ class GraphExecutionState(BaseModel):
     completed: bool = Field(default=False)
     aborted: bool = Field(default=False)
     paused: bool = Field(default=False)
-    pause_reason: PauseReason | None = Field(default=None)
+    pause_reasons: list[PauseReason] = Field(default_factory=list)
     error: GraphExecutionErrorState | None = Field(default=None)
     exceptions_count: int = Field(default=0)
     node_executions: list[NodeExecutionState] = Field(default_factory=list[NodeExecutionState])
@@ -107,7 +107,7 @@ class GraphExecution:
     completed: bool = False
     aborted: bool = False
     paused: bool = False
-    pause_reason: PauseReason | None = None
+    pause_reasons: list[PauseReason] = field(default_factory=list)
     error: Exception | None = None
     node_executions: dict[str, NodeExecution] = field(default_factory=dict[str, NodeExecution])
     exceptions_count: int = 0
@@ -137,10 +137,8 @@ class GraphExecution:
             raise RuntimeError("Cannot pause execution that has completed")
         if self.aborted:
             raise RuntimeError("Cannot pause execution that has been aborted")
-        if self.paused:
-            return
         self.paused = True
-        self.pause_reason = reason
+        self.pause_reasons.append(reason)
 
     def fail(self, error: Exception) -> None:
         """Mark the graph execution as failed."""
@@ -195,7 +193,7 @@ class GraphExecution:
             completed=self.completed,
             aborted=self.aborted,
             paused=self.paused,
-            pause_reason=self.pause_reason,
+            pause_reasons=self.pause_reasons,
             error=_serialize_error(self.error),
             exceptions_count=self.exceptions_count,
             node_executions=node_states,
@@ -221,7 +219,7 @@ class GraphExecution:
         self.completed = state.completed
         self.aborted = state.aborted
         self.paused = state.paused
-        self.pause_reason = state.pause_reason
+        self.pause_reasons = state.pause_reasons
         self.error = _deserialize_error(state.error)
         self.exceptions_count = state.exceptions_count
         self.node_executions = {

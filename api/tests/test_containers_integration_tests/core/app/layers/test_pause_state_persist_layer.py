@@ -319,7 +319,7 @@ class TestPauseStatePersistenceLayerTestContainers:
 
         # Create pause event
         event = GraphRunPausedEvent(
-            reason=SchedulingPause(message="test pause"),
+            reasons=[SchedulingPause(message="test pause")],
             outputs={"intermediate": "result"},
         )
 
@@ -381,7 +381,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         command_channel = _TestCommandChannelImpl()
         layer.initialize(graph_runtime_state, command_channel)
 
-        event = GraphRunPausedEvent(reason=SchedulingPause(message="test pause"))
+        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
 
         # Act - Save pause state
         layer.on_event(event)
@@ -414,7 +414,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         command_channel = _TestCommandChannelImpl()
         layer.initialize(graph_runtime_state, command_channel)
 
-        event = GraphRunPausedEvent(reason=SchedulingPause(message="test pause"))
+        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
 
         # Act
         layer.on_event(event)
@@ -448,7 +448,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         command_channel = _TestCommandChannelImpl()
         layer.initialize(graph_runtime_state, command_channel)
 
-        event = GraphRunPausedEvent(reason=SchedulingPause(message="test pause"))
+        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
 
         # Act
         layer.on_event(event)
@@ -514,7 +514,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         command_channel = _TestCommandChannelImpl()
         layer.initialize(graph_runtime_state, command_channel)
 
-        event = GraphRunPausedEvent(reason=SchedulingPause(message="test pause"))
+        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
 
         # Act
         layer.on_event(event)
@@ -570,7 +570,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         layer = self._create_pause_state_persistence_layer()
         # Don't initialize - graph_runtime_state should not be set
 
-        event = GraphRunPausedEvent(reason=SchedulingPause(message="test pause"))
+        event = GraphRunPausedEvent(reasons=[SchedulingPause(message="test pause")])
 
         # Act & Assert - Should raise AttributeError
         with pytest.raises(AttributeError):
