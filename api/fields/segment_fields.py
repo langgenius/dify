@@ -14,6 +14,7 @@ child_chunk_fields = {
 }
 
 attachment_fields = {
+    "id": fields.String,
     "name": fields.String,
     "size": fields.Integer,
     "extension": fields.String,
