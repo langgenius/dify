@@ -16,6 +16,7 @@ import cn from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
 import { useModalContext } from '@/context/modal-context'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { getDocDownloadUrl } from '@/service/common'
 
 enum DocName {
@@ -38,7 +39,7 @@ const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
     if (isFreePlan)
       setShowPricingModal()
     else
-      setShowAccountSettingModal({ payload: 'billing' })
+      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
   const { isPending, mutate: downloadCompliance } = useMutation({

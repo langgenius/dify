@@ -56,6 +56,31 @@ const List = ({
       <Item
         label={[t(`billing.plansCommon.priority.${planInfo.documentProcessingPriority}`), t('billing.plansCommon.documentProcessingPriority')].join('')}
       />
+      <Item
+        label={
+          planInfo.triggerEvents === NUM_INFINITE
+            ? t('billing.plansCommon.triggerEvents.unlimited')
+            : plan === Plan.sandbox
+              ? t('billing.plansCommon.triggerEvents.sandbox', { count: planInfo.triggerEvents })
+              : t('billing.plansCommon.triggerEvents.professional', { count: planInfo.triggerEvents })
+        }
+      />
+      <Item
+        label={
+          plan === Plan.sandbox
+            ? t('billing.plansCommon.workflowExecution.standard')
+            : plan === Plan.professional
+              ? t('billing.plansCommon.workflowExecution.faster')
+              : t('billing.plansCommon.workflowExecution.priority')
+        }
+      />
+      <Item
+        label={
+          plan === Plan.sandbox
+            ? t('billing.plansCommon.startNodes.limited', { count: 2 })
+            : t('billing.plansCommon.startNodes.unlimited')
+        }
+      />
       <Divider bgStyle='gradient' />
       <Item
         label={t('billing.plansCommon.annotatedResponse.title', { count: planInfo.annotatedResponse })}

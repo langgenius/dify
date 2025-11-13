@@ -15,6 +15,7 @@ import { useLanguage } from '../hooks'
 import PopupItem from './popup-item'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { useModalContext } from '@/context/modal-context'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { tooltipManager } from '@/app/components/base/tooltip/TooltipManager'
 
@@ -129,7 +130,7 @@ const Popup: FC<PopupProps> = ({
       </div>
       <div className='sticky bottom-0 flex cursor-pointer items-center rounded-b-lg border-t border-divider-subtle bg-components-panel-bg px-4 py-2 text-text-accent-light-mode-only' onClick={() => {
         onHide()
-        setShowAccountSettingModal({ payload: 'provider' })
+        setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
       }}>
         <span className='system-xs-medium'>{t('common.model.settingsLink')}</span>
         <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
