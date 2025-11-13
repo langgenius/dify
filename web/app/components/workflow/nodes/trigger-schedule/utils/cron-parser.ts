@@ -1,5 +1,10 @@
 import { CronExpressionParser } from 'cron-parser'
 
+// Minimal representation of the CronDate object returned by cron-parser.
+type CronDateLike = {
+  toDate: () => Date
+}
+
 // Convert a UTC date from cron-parser to user timezone representation
 // This ensures consistency with other execution time calculations
 const convertToUserTimezoneRepresentation = (utcDate: Date, timezone: string): Date => {
@@ -42,7 +47,7 @@ export const parseCronExpression = (cronExpression: string, timezone: string = '
     })
 
     // Get the next 5 execution times using the take() method
-    const nextCronDates = interval.take(5)
+    const nextCronDates: CronDateLike[] = interval.take(5)
 
     // Convert CronDate objects to Date objects and ensure they represent
     // the time in user timezone (consistent with execution-time-calculator.ts)
