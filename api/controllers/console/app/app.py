@@ -108,9 +108,7 @@ class AppListApi(Resource):
                     app.access_mode = res[str(app.id)].access_mode
 
         workflow_capable_app_ids = [
-            str(app.id)
-            for app in app_pagination.items
-            if app.mode in {"workflow", "advanced-chat"}
+            str(app.id) for app in app_pagination.items if app.mode in {"workflow", "advanced-chat"}
         ]
         draft_trigger_app_ids: set[str] = set()
         if workflow_capable_app_ids:
