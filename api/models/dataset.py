@@ -870,6 +870,7 @@ class DocumentSegment(Base):
                 SegmentAttachmentBinding.tenant_id == self.tenant_id,
                 SegmentAttachmentBinding.dataset_id == self.dataset_id,
                 SegmentAttachmentBinding.document_id == self.document_id,
+                SegmentAttachmentBinding.segment_id == self.id,
             )
         ).all()
         if not attachments_with_bindings:
@@ -885,7 +886,8 @@ class DocumentSegment(Base):
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            base_url = f"/files/{upload_file_id}/image-preview"
+            reference_url = dify_config.CONSOLE_API_URL or ""
+            base_url = f"{reference_url}/files/{upload_file_id}/image-preview"
             source_url = f"{base_url}?{params}"
             attachment_list.append(
                 {

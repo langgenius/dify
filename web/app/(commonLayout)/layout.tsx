@@ -12,6 +12,7 @@ import GotoAnything from '@/app/components/goto-anything'
 import Zendesk from '@/app/components/base/zendesk'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
 import Splash from '../components/splash'
+import PartnerStack from '../components/billing/partner-stack'
 
 const Layout = ({ children }: { children: ReactNode }) => {
   return (
@@ -27,6 +28,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                 </HeaderWrapper>
                 {children}
                 <ReadmePanel />
+                <PartnerStack />
                 <GotoAnything />
                 <Splash />
               </ModalContextProvider>

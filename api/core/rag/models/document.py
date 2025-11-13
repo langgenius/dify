@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from core.file import File
+
 
 class ChildDocument(BaseModel):
     """Class for storing a piece of text and associated metadata."""
@@ -16,6 +18,7 @@ class ChildDocument(BaseModel):
         documents, etc.).
     """
     metadata: dict[str, Any] = Field(default_factory=dict)
+
 
 class AttachmentDocument(BaseModel):
     """Class for storing a piece of text and associated metadata."""
@@ -48,6 +51,23 @@ class Document(BaseModel):
     attachments: list[AttachmentDocument] | None = None
 
 
+class GeneralChunk(BaseModel):
+    """
+    General Chunk.
+    """
+
+    content: str
+    files: list[File] | None = None
+
+
+class MultimodalGeneralStructureChunk(BaseModel):
+    """
+    Multimodal General Structure Chunk.
+    """
+
+    general_chunks: list[GeneralChunk]
+
+
 class GeneralStructureChunk(BaseModel):
     """
     General Structure Chunk.
@@ -63,6 +83,7 @@ class ParentChildChunk(BaseModel):
 
     parent_content: str
     child_contents: list[str]
+    files: list[File] | None = None
 
 
 class ParentChildStructureChunk(BaseModel):
