@@ -84,7 +84,6 @@ const MetadataFilter = ({
                   popupClassName='!w-[387px]'
                   isInWorkflow
                   isAdvancedMode={true}
-                  mode={metadataModelConfig?.mode || 'chat'}
                   provider={metadataModelConfig?.provider || ''}
                   completionParams={metadataModelConfig?.completion_params || { temperature: 0.7 }}
                   modelId={metadataModelConfig?.name || ''}

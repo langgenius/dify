@@ -101,8 +101,9 @@ const useInvalidToolsKeyMap: Record<string, QueryKey> = {
   [CollectionType.workflow]: useAllWorkflowToolsKey,
   [CollectionType.mcp]: useAllMCPToolsKey,
 }
-export const useInvalidToolsByType = (type: CollectionType | string) => {
-  return useInvalid(useInvalidToolsKeyMap[type])
+export const useInvalidToolsByType = (type?: CollectionType | string) => {
+  const queryKey = type ? useInvalidToolsKeyMap[type] : undefined
+  return useInvalid(queryKey)
 }
 
 const toolsQueryConfig: Record<'builtin' | 'custom' | 'workflow' | 'mcp', { key: QueryKey; fetcher: () => Promise<ToolWithProvider[]> }> = {
@@ -392,4 +393,54 @@ export const useRAGRecommendedPlugins = () => {
 
 export const useInvalidateRAGRecommendedPlugins = () => {
   return useInvalid(useRAGRecommendedPluginListKey)
+}
+
+// App Triggers API hooks
+export type AppTrigger = {
+  id: string
+  trigger_type: 'trigger-webhook' | 'trigger-schedule' | 'trigger-plugin'
+  title: string
+  node_id: string
+  provider_name: string
+  icon: string
+  status: 'enabled' | 'disabled' | 'unauthorized'
+  created_at: string
+  updated_at: string
+}
+
+export const useAppTriggers = (appId: string | undefined, options?: any) => {
+  return useQuery<{ data: AppTrigger[] }>({
+    queryKey: [NAME_SPACE, 'app-triggers', appId],
+    queryFn: () => get<{ data: AppTrigger[] }>(`/apps/${appId}/triggers`),
+    enabled: !!appId,
+    ...options, // Merge additional options while maintaining backward compatibility
+  })
+}
+
+export const useInvalidateAppTriggers = () => {
+  const queryClient = useQueryClient()
+  return (appId: string) => {
+    queryClient.invalidateQueries({
+      queryKey: [NAME_SPACE, 'app-triggers', appId],
+    })
+  }
+}
+
+export const useUpdateTriggerStatus = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'update-trigger-status'],
+    mutationFn: (payload: {
+      appId: string
+      triggerId: string
+      enableTrigger: boolean
+    }) => {
+      const { appId, triggerId, enableTrigger } = payload
+      return post<AppTrigger>(`/apps/${appId}/trigger-enable`, {
+        body: {
+          trigger_id: triggerId,
+          enable_trigger: enableTrigger,
+        },
+      })
+    },
+  })
 }

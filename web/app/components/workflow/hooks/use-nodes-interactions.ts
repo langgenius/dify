@@ -21,9 +21,9 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import type { DataSourceDefaultValue, ToolDefaultValue } from '../block-selector/types'
+import type { PluginDefaultValue } from '../block-selector/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
-import { BlockEnum } from '../types'
+import { BlockEnum, isTriggerNode } from '../types'
 import { useWorkflowStore } from '../store'
 import {
   CUSTOM_EDGE,
@@ -71,6 +71,15 @@ import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
 type UseNodesInteractionsOptions = {
   getVisibleNodeIds?: () => Set<string> | undefined;
 }
+
+// Entry node deletion restriction has been removed to allow empty workflows
+
+// Entry node (Start/Trigger) wrapper offsets for alignment
+// Must match the values in use-helpline.ts
+const ENTRY_NODE_WRAPPER_OFFSET = {
+  x: 0,
+  y: 21, // Adjusted based on visual testing feedback
+} as const
 
 export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
   const { t } = useTranslation()
@@ -157,18 +166,30 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
     if (!primaryCurrentNode)
       return
 
+    const getEntryOffset = (node: Node | undefined, axis: 'x' | 'y') => {
+      if (!node)
+        return 0
+      return (isTriggerNode(node.data.type as any) || node.data.type === BlockEnum.Start)
+        ? ENTRY_NODE_WRAPPER_OFFSET[axis]
+        : 0
+    }
+
     const resolveAxisPosition = (
       axis: 'x' | 'y',
       candidate: number,
       restrict?: number,
       loopRestrict?: number,
       helplineNodes?: Node[],
+      nodeForOffset?: Node,
     ) => {
       if (helplineNodes && helplineNodes.length > 0) {
         const helplineNode = helplineNodes[0]
-        return axis === 'x'
+        const targetPosition = axis === 'x'
           ? helplineNode.position.x
           : helplineNode.position.y
+        const targetOffset = getEntryOffset(helplineNode, axis)
+        const currentOffset = getEntryOffset(nodeForOffset, axis)
+        return targetPosition + targetOffset - currentOffset
       }
 
       if (restrict !== undefined)
@@ -204,6 +225,7 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
       restrictPosition.x,
       restrictLoopPosition.x,
       showVerticalHelpLineNodes,
+      primaryCurrentNode,
     )
     const nextPrimaryY = resolveAxisPosition(
       'y',
@@ -211,6 +233,7 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
       restrictPosition.y,
       restrictLoopPosition.y,
       showHorizontalHelpLineNodes,
+      primaryCurrentNode,
     )
 
     const correctedDelta = {
@@ -534,6 +557,7 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
       if (node.type === CUSTOM_ITERATION_START_NODE) return
       if (node.type === CUSTOM_LOOP_START_NODE) return
       if (node.data.type === BlockEnum.DataSourceEmpty) return
+      if (node.data._pluginInstallLocked) return
       handleNodeSelect(node.id)
     },
     [handleNodeSelect],
@@ -912,7 +936,7 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
         nodeType,
         sourceHandle = 'source',
         targetHandle = 'target',
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       { prevNodeId, prevNodeSourceHandle, nextNodeId, nextNodeTargetHandle },
     ) => {
@@ -933,7 +957,7 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
               nodesWithSameType.length > 0
                 ? `${defaultValue.title} ${nodesWithSameType.length + 1}`
                 : defaultValue.title,
-            ...toolDefaultValue,
+            ...pluginDefaultValue,
             selected: true,
             _showAddVariablePopup:
               (nodeType === BlockEnum.VariableAssigner
@@ -1463,7 +1487,7 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
       currentNodeId: string,
       nodeType: BlockEnum,
       sourceHandle: string,
-      toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue,
+      pluginDefaultValue?: PluginDefaultValue,
     ) => {
       if (getNodesReadOnly()) return
 
@@ -1487,7 +1511,7 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
             nodesWithSameType.length > 0
               ? `${defaultValue.title} ${nodesWithSameType.length + 1}`
               : defaultValue.title,
-          ...toolDefaultValue,
+          ...pluginDefaultValue,
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
           selected: currentNode.data.selected,
@@ -1833,7 +1857,7 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
 
     const nodes = getNodes()
     const bundledNodes = nodes.filter(
-      node => node.data._isBundled && node.data.type !== BlockEnum.Start,
+      node => node.data._isBundled,
     )
 
     if (bundledNodes.length) {
@@ -1846,7 +1870,7 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
     if (edgeSelected) return
 
     const selectedNode = nodes.find(
-      node => node.data.selected && node.data.type !== BlockEnum.Start,
+      node => node.data.selected,
     )
 
     if (selectedNode) handleNodeDelete(selectedNode.id)

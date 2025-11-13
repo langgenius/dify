@@ -78,7 +78,7 @@ const translation = {
     freeTrialTipPrefix: 'Kaydolun ve bir',
     priceTip: 'iş alanı başına/',
     documentsRequestQuota: '{{count,number}}/dakika Bilgi İsteği Oran Limiti',
-    apiRateLimitUnit: '{{count,number}}/gün',
+    apiRateLimitUnit: '{{count,number}}/ay',
     documents: '{{count,number}} Bilgi Belgesi',
     comparePlanAndFeatures: 'Planları ve özellikleri karşılaştır',
     self: 'Kendi Barındırılan',
