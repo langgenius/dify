@@ -16,8 +16,6 @@ from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
-from core.tools.signature import sign_upload_file
-from extensions.ext_database import db
 from core.model_runtime.entities import (
     ImagePromptMessageContent,
     PromptMessage,
@@ -48,6 +46,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.tools.signature import sign_upload_file
 from core.variables import (
     ArrayFileSegment,
     ArraySegment,
@@ -77,6 +76,7 @@ from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, Variabl
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.runtime import VariablePool
+from extensions.ext_database import db
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
 

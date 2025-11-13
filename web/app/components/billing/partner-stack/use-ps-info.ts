@@ -1,0 +1,47 @@
+import { PARTNER_STACK_CONFIG } from '@/config'
+import { useBindPartnerStackInfo } from '@/service/use-billing'
+import Cookies from 'js-cookie'
+import { useSearchParams } from 'next/navigation'
+import { useCallback } from 'react'
+
+const usePSInfo = () => {
+  const searchParams = useSearchParams()
+  const psInfoInCookie = JSON.parse(Cookies.get(PARTNER_STACK_CONFIG.cookieName) || '{}')
+  const psPartnerKey = searchParams.get('ps_partner_key') || psInfoInCookie?.partnerKey
+  const psClickId = searchParams.get('ps_xid') || psInfoInCookie?.clickId
+  const isPSChanged = psInfoInCookie?.partnerKey !== psPartnerKey || psInfoInCookie?.clickId !== psClickId
+  const { mutateAsync } = useBindPartnerStackInfo()
+
+  const saveOrUpdate = useCallback(() => {
+    if(!psPartnerKey || !psClickId)
+      return
+    if(!isPSChanged)
+      return
+    Cookies.set(PARTNER_STACK_CONFIG.cookieName, JSON.stringify({
+      partnerKey: psPartnerKey,
+      clickId: psClickId,
+    }), {
+      expires: PARTNER_STACK_CONFIG.saveCookieDays,
+      path: '/',
+        // Save to top domain. cloud.dify.ai => .dify.ai
+      domain: globalThis.location.hostname.replace('cloud', ''),
+    })
+  }, [psPartnerKey, psClickId, isPSChanged])
+
+  const bind = useCallback(async () => {
+    if (psPartnerKey && psClickId) {
+      await mutateAsync({
+        partnerKey: psPartnerKey,
+        clickId: psClickId,
+      })
+      Cookies.remove(PARTNER_STACK_CONFIG.cookieName, { path: '/' })
+    }
+  }, [psPartnerKey, psClickId, mutateAsync])
+  return {
+    psPartnerKey,
+    psClickId,
+    saveOrUpdate,
+    bind,
+  }
+}
+export default usePSInfo

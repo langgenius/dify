@@ -17,6 +17,7 @@ class ChildDocument(BaseModel):
     """
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+
 class AttachmentDocument(BaseModel):
     """Class for storing a piece of text and associated metadata."""
 

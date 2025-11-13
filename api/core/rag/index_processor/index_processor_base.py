@@ -1,8 +1,8 @@
 """Abstract interface for document loader implementations."""
 
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-import re
 from typing import TYPE_CHECKING, Any, Optional
 
 from configs import dify_config
@@ -15,10 +15,10 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
+from extensions.ext_database import db
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
-from extensions.ext_database import db
 
 if TYPE_CHECKING:
     from core.model_manager import ModelInstance
