@@ -33,7 +33,11 @@
       "@edition/*": [
         "./app/edition/saas/*",
         "./app/edition/community/*",
-      ]
+      ],
+      "~@edition/*": [
+        "./app/edition/saas/*",
+        "./app/edition/community/*",
+      ],
     }
   },
   "include": [

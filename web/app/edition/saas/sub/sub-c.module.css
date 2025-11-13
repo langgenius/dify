@@ -1,3 +1,21 @@
 .bg {
   background-color: red;
 }
+
+.bgImg {
+  background-repeat: no-repeat;
+  background-repeat: left center;
+  background-image: url(~@/app/components/develop/secret-key/assets/play.svg);
+}
+
+.bgCopied {
+  background-repeat: no-repeat;
+  background-repeat: left center;
+  background-image: url(../copied.svg);
+}
+
+.bgCopied2 {
+  background-repeat: no-repeat;
+  background-repeat: left center;
+  background-image: url(~@edition/copied.svg);
+}

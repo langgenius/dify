@@ -106,7 +106,7 @@ const editionPaths = (() => {
         walk(fullPath)
       } else if (supportPostfixReg.test(file)) {
         const relPath = path.relative(editionDir, fullPath)
-        const key = `@edition/${relPath.replace(/\\/g, '/')}`.replace(/\.(ts|tsx|css)$/, '')
+        const key = `@edition/${relPath.replace(/\\/g, '/')}`.replace(supportPostfixReg, '')
         const fullPathWithoutPrefix = `./${fullPath.replace(supportPostfixReg, '')}`
         result[key] = fullPathWithoutPrefix
         if (key.endsWith('/index')) {
@@ -124,7 +124,7 @@ const editionPaths = (() => {
   return result
 })()
 
-console.log(JSON.stringify(editionPaths, null, 2))
+// console.log(JSON.stringify(editionPaths, null, 2))
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
