@@ -4,7 +4,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from constants.languages import supported_language
 from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from extensions.ext_database import db
 from fields.app_fields import app_site_fields
 from libs.datetime_utils import naive_utc_now
@@ -130,16 +130,13 @@ class AppSiteAccessTokenReset(Resource):
     @api.response(404, "App or site not found")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     @get_app_model
     @marshal_with(app_site_fields)
     def post(self, app_model):
         # The role of the current user in the ta table must be admin or owner
         current_user, _ = current_account_with_tenant()
-
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
         site = db.session.query(Site).where(Site.app_id == app_model.id).first()
 
         if not site:
