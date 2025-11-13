@@ -668,7 +668,7 @@ class AgentNode(Node):
 
                         dict_metadata["icon"] = icon
                         dict_metadata["icon_dark"] = icon_dark
-                        message.message.metadata = dict_metadata               
+                        message.message.metadata = dict_metadata
                 agent_log = AgentLogEvent(
                     message_id=message.message.id,
                     node_execution_id=node_execution_id,
