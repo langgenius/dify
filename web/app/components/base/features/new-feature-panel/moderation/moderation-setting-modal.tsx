@@ -26,6 +26,7 @@ import { CustomConfigurationStatusEnum } from '@/app/components/header/account-s
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 const systemTypes = ['openai_moderation', 'keywords', 'api']
 
@@ -55,7 +56,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const { setShowAccountSettingModal } = useModalContext()
   const handleOpenSettingsModal = () => {
     setShowAccountSettingModal({
-      payload: 'provider',
+      payload: ACCOUNT_SETTING_TAB.PROVIDER,
       onCancelCallback: () => {
         mutate()
       },
