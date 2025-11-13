@@ -5,7 +5,7 @@ export const mediaTypeMap = {
   mobile: 'mobile',
   tablet: 'tablet',
   pc: 'pc',
-}
+} as const
 
 export type MediaType = keyof typeof mediaTypeMap
 
