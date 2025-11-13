@@ -802,7 +802,7 @@ class LLMNode(Node):
         variable_pool: VariablePool,
         jinja2_variables: Sequence[VariableSelector],
         tenant_id: str,
-        context_files: list[File] | None = None,
+        context_files: list["File"] | None = None,
     ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
         prompt_messages: list[PromptMessage] = []
 
