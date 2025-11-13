@@ -1643,6 +1643,9 @@ class ApiToken(Base):
     token: Mapped[str] = mapped_column(String(255), nullable=False)
     last_used_at = mapped_column(sa.DateTime, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    # New fields for tracking token creator
+    created_by_account_id = mapped_column(StringUUID, nullable=False, index=True)
+    created_by_role = mapped_column(String(16), nullable=False)
 
     @staticmethod
     def generate_api_key(prefix: str, n: int) -> str:

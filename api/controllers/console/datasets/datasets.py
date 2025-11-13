@@ -779,6 +779,9 @@ class DatasetApiKeyApi(Resource):
         api_token.tenant_id = current_tenant_id
         api_token.token = key
         api_token.type = self.resource_type
+        # Add fields to track who created the token
+        api_token.created_by_account_id = current_user.id
+        api_token.created_by_role = current_user.current_role
         db.session.add(api_token)
         db.session.commit()
         return api_token, 200

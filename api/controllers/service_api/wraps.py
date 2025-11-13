@@ -259,26 +259,30 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                 if not dataset.enable_api:
                     raise Forbidden("Dataset api access is not enabled.")
             api_token = validate_and_get_api_token("dataset")
-            tenant_account_join = (
-                db.session.query(Tenant, TenantAccountJoin)
-                .where(Tenant.id == api_token.tenant_id)
-                .where(TenantAccountJoin.tenant_id == Tenant.id)
-                .where(TenantAccountJoin.role.in_(["owner"]))
-                .where(Tenant.status == TenantStatus.NORMAL)
-                .one_or_none()
-            )  # TODO: only owner information is required, so only one is returned.
-            if tenant_account_join:
-                tenant, ta = tenant_account_join
-                account = db.session.query(Account).where(Account.id == ta.account_id).first()
-                # Login admin
-                if account:
-                    account.current_tenant = tenant
-                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
-                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
-                else:
-                    raise Unauthorized("Tenant owner account does not exist.")
-            else:
+
+            # Get the tenant
+            tenant = (
+                db.session.query(Tenant)
+                .where(Tenant.id == api_token.tenant_id, Tenant.status == TenantStatus.NORMAL)
+                .first()
+            )
+
+            if not tenant:
                 raise Unauthorized("Tenant does not exist.")
+
+            # Get the account that created the API token
+            account = db.session.query(Account).where(Account.id == api_token.created_by_account_id).first()
+
+            if not account:
+                raise Unauthorized("Token creator account does not exist.")
+
+            # Set the current tenant and role for the account
+            account.current_tenant = tenant
+            account.current_tenant_id = tenant.id
+
+            # Login the account that created the token, not the owner
+            current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+            user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
             return view(api_token.tenant_id, *args, **kwargs)
 
         return decorated
