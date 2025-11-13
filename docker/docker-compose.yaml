@@ -8,6 +8,7 @@ x-shared-env: &shared-api-worker-env
   CONSOLE_API_URL: ${CONSOLE_API_URL:-}
   CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-}
   SERVICE_API_URL: ${SERVICE_API_URL:-}
+  TRIGGER_URL: ${TRIGGER_URL:-http://localhost}
   APP_API_URL: ${APP_API_URL:-}
   APP_WEB_URL: ${APP_WEB_URL:-}
   FILES_URL: ${FILES_URL:-}
@@ -435,6 +436,7 @@ x-shared-env: &shared-api-worker-env
   HTTP_REQUEST_MAX_CONNECT_TIMEOUT: ${HTTP_REQUEST_MAX_CONNECT_TIMEOUT:-10}
   HTTP_REQUEST_MAX_READ_TIMEOUT: ${HTTP_REQUEST_MAX_READ_TIMEOUT:-600}
   HTTP_REQUEST_MAX_WRITE_TIMEOUT: ${HTTP_REQUEST_MAX_WRITE_TIMEOUT:-600}
+  WEBHOOK_REQUEST_BODY_MAX_SIZE: ${WEBHOOK_REQUEST_BODY_MAX_SIZE:-10485760}
   RESPECT_XFORWARD_HEADERS_ENABLED: ${RESPECT_XFORWARD_HEADERS_ENABLED:-false}
   SSRF_PROXY_HTTP_URL: ${SSRF_PROXY_HTTP_URL:-http://ssrf_proxy:3128}
   SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-http://ssrf_proxy:3128}
@@ -614,11 +616,16 @@ x-shared-env: &shared-api-worker-env
   ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: ${ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK:-false}
   ENABLE_DATASETS_QUEUE_MONITOR: ${ENABLE_DATASETS_QUEUE_MONITOR:-false}
   ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: ${ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK:-true}
+  ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK: ${ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:-true}
+  WORKFLOW_SCHEDULE_POLLER_INTERVAL: ${WORKFLOW_SCHEDULE_POLLER_INTERVAL:-1}
+  WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE: ${WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE:-100}
+  WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK: ${WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK:-0}
+  TENANT_ISOLATED_TASK_CONCURRENCY: ${TENANT_ISOLATED_TASK_CONCURRENCY:-1}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.9.2
+    image: langgenius/dify-api:1.10.0-rc1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -645,14 +652,14 @@ services:
       - default
 
   # worker service
-  # The Celery worker for processing the queue.
+  # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.9.2
+    image: langgenius/dify-api:1.10.0-rc1
     restart: always
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
-      # Startup mode, 'worker' starts the Celery worker for processing the queue.
+      # Startup mode, 'worker' starts the Celery worker for processing all queues.
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
@@ -674,7 +681,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.9.2
+    image: langgenius/dify-api:1.10.0-rc1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -692,7 +699,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.9.2
+    image: langgenius/dify-web:1.10.0-rc1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -798,7 +805,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.3.3-local
+    image: langgenius/dify-plugin-daemon:0.4.0-local
     restart: always
     environment:
       # Use the shared environment variables.
