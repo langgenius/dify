@@ -174,6 +174,33 @@ class CodeExecutionSandboxConfig(BaseSettings):
     )
 
 
+class TriggerConfig(BaseSettings):
+    """
+    Configuration for trigger
+    """
+
+    WEBHOOK_REQUEST_BODY_MAX_SIZE: PositiveInt = Field(
+        description="Maximum allowed size for webhook request bodies in bytes",
+        default=10485760,
+    )
+
+
+class AsyncWorkflowConfig(BaseSettings):
+    """
+    Configuration for async workflow
+    """
+
+    ASYNC_WORKFLOW_SCHEDULER_GRANULARITY: int = Field(
+        description="Granularity for async workflow scheduler, "
+        "sometime, few users could block the queue due to some time-consuming tasks, "
+        "to avoid this, workflow can be suspended if needed, to achieve"
+        "this, a time-based checker is required, every granularity seconds, "
+        "the checker will check the workflow queue and suspend the workflow",
+        default=120,
+        ge=1,
+    )
+
+
 class PluginConfig(BaseSettings):
     """
     Plugin configs
@@ -262,6 +289,8 @@ class EndpointConfig(BaseSettings):
     ENDPOINT_URL_TEMPLATE: str = Field(
         description="Template url for endpoint plugin", default="http://localhost:5002/e/{hook_id}"
     )
+
+    TRIGGER_URL: str = Field(description="Template url for triggers", default="http://localhost:5001")
 
 
 class FileAccessConfig(BaseSettings):
@@ -1025,6 +1054,44 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Enable check upgradable plugin task",
         default=True,
     )
+    ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK: bool = Field(
+        description="Enable workflow schedule poller task",
+        default=True,
+    )
+    WORKFLOW_SCHEDULE_POLLER_INTERVAL: int = Field(
+        description="Workflow schedule poller interval in minutes",
+        default=1,
+    )
+    WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE: int = Field(
+        description="Maximum number of schedules to process in each poll batch",
+        default=100,
+    )
+    WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK: int = Field(
+        description="Maximum schedules to dispatch per tick (0=unlimited, circuit breaker)",
+        default=0,
+    )
+
+    # Trigger provider refresh (simple version)
+    ENABLE_TRIGGER_PROVIDER_REFRESH_TASK: bool = Field(
+        description="Enable trigger provider refresh poller",
+        default=True,
+    )
+    TRIGGER_PROVIDER_REFRESH_INTERVAL: int = Field(
+        description="Trigger provider refresh poller interval in minutes",
+        default=1,
+    )
+    TRIGGER_PROVIDER_REFRESH_BATCH_SIZE: int = Field(
+        description="Max trigger subscriptions to process per tick",
+        default=200,
+    )
+    TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS: int = Field(
+        description="Proactive credential refresh threshold in seconds",
+        default=180,
+    )
+    TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS: int = Field(
+        description="Proactive subscription refresh threshold in seconds",
+        default=60 * 60,
+    )
 
 
 class PositionConfig(BaseSettings):
@@ -1123,7 +1190,7 @@ class AccountConfig(BaseSettings):
 
 
 class WorkflowLogConfig(BaseSettings):
-    WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(default=True, description="Enable workflow run log cleanup")
+    WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(default=False, description="Enable workflow run log cleanup")
     WORKFLOW_LOG_RETENTION_DAYS: int = Field(default=30, description="Retention days for workflow run logs")
     WORKFLOW_LOG_CLEANUP_BATCH_SIZE: int = Field(
         default=100, description="Batch size for workflow run log cleanup operations"
@@ -1155,6 +1222,8 @@ class FeatureConfig(
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
     BillingConfig,
     CodeExecutionSandboxConfig,
+    TriggerConfig,
+    AsyncWorkflowConfig,
     PluginConfig,
     MarketplaceConfig,
     DataSetConfig,
