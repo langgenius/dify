@@ -1305,10 +1305,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.IfElse: {
-      res
-        = (data as IfElseNodeType).conditions?.map((c) => {
-          return c.variable_selector || []
-        }) || []
+      res = []
       res.push(
         ...((data as IfElseNodeType).cases || [])
           .flatMap(c => c.conditions || [])
@@ -1480,9 +1477,8 @@ export const getNodeUsedVarPassToServerKey = (
       break
     }
     case BlockEnum.IfElse: {
-      const targetVar = (data as IfElseNodeType).conditions?.find(
-        c => c.variable_selector?.join('.') === valueSelector.join('.'),
-      )
+      const targetVar = ((data as IfElseNodeType).cases || [])
+        .flatMap(c => c.conditions || []).find(c => c.variable_selector?.join('.') === valueSelector.join('.'))
       if (targetVar) res = `#${valueSelector.join('.')}#`
       break
     }
@@ -1634,13 +1630,6 @@ export const updateNodeVars = (
       }
       case BlockEnum.IfElse: {
         const payload = data as IfElseNodeType
-        if (payload.conditions) {
-          payload.conditions = payload.conditions.map((c) => {
-            if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
-              c.variable_selector = newVarSelector
-            return c
-          })
-        }
         if (payload.cases) {
           payload.cases = payload.cases.map((caseItem) => {
             if (caseItem.conditions) {
