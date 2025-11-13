@@ -12,6 +12,8 @@ import GotoAnything from '@/app/components/goto-anything'
 import Zendesk from '@/app/components/base/zendesk'
 import Splash from '../components/splash'
 import Test from '@edition/test'
+import SubSubIndex from '@edition/sub/sub-sub/index'
+import SubSub from '@edition/sub/sub-sub'
 
 const Layout = ({ children }: { children: ReactNode }) => {
   return (
@@ -23,6 +25,8 @@ const Layout = ({ children }: { children: ReactNode }) => {
             <ProviderContextProvider>
               <ModalContextProvider>
                 <Test />
+                <SubSubIndex />
+                <SubSub />
                 <HeaderWrapper>
                   <Header />
                 </HeaderWrapper>

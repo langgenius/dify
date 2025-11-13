@@ -31,7 +31,8 @@
         "./*"
       ],
       "@edition/*": [
-        "./app/edition/community/*"
+        "./app/edition/saas/*",
+        "./app/edition/community/*",
       ]
     }
   },
