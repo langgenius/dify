@@ -1,14 +1,9 @@
 import math
 from collections import Counter, defaultdict
 
-import numpy as np
-
-from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
-from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.models.document import Document
-from core.rag.rerank.entity.weight import VectorSetting, Weights
+from core.rag.rerank.entity.weight import Weights
 from core.rag.rerank.rerank_base import BaseRerankRunner
 
 
@@ -40,29 +35,15 @@ class WeightRerankRunner(BaseRerankRunner):
         query_vector_scores = self._get_documents_score(documents)
 
         score_map = defaultdict(float)
-        for document, q_score, q_vector_score in zip(
-            documents, query_scores, query_vector_scores
-        ):
-            if (
-                document.provider == "dify"
-                and document.metadata is not None
-                and "doc_id" in document.metadata
-            ):
+        for document, q_score, q_vector_score in zip(documents, query_scores, query_vector_scores):
+            if document.provider == "dify" and document.metadata is not None and "doc_id" in document.metadata:
                 doc_id = document.metadata["doc_id"]
-                score_map[doc_id] += (
-                    self.weights.keyword_setting.keyword_weight * q_score
-                )
-                score_map[doc_id] += (
-                    self.weights.vector_setting.vector_weight * q_vector_score
-                )
+                score_map[doc_id] += self.weights.keyword_setting.keyword_weight * q_score
+                score_map[doc_id] += self.weights.vector_setting.vector_weight * q_vector_score
         uniq_ids = set()
         rerank_documents = []
         for document in documents:
-            if (
-                document.provider == "dify"
-                and document.metadata is not None
-                and "doc_id" in document.metadata
-            ):
+            if document.provider == "dify" and document.metadata is not None and "doc_id" in document.metadata:
                 doc_id = document.metadata["doc_id"]
                 score = score_map[doc_id]
                 if score_threshold and score < score_threshold:
@@ -75,9 +56,7 @@ class WeightRerankRunner(BaseRerankRunner):
                 # for other provider documents, keep the original score
                 rerank_documents.append(document)
 
-        rerank_documents.sort(
-            key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True
-        )
+        rerank_documents.sort(key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True)
         return rerank_documents[:top_n] if top_n else rerank_documents
 
     def _calculate_keyword_score(self, query: str, documents: list[Document]) -> list[float]:
