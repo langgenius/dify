@@ -25,14 +25,14 @@ export const useUpload = () => {
     if (!fileUploadConfigResponse) {
       return {
         imageFileSizeLimit: 10,
-        imageFileBatchLimit: 5,
+        imageFileBatchLimit: 10,
         singleChunkAttachmentLimit: 10,
       }
     }
     const {
       image_file_size_limit,
-      image_file_batch_limit = 5,
-      single_chunk_attachment_limit = 10,
+      image_file_batch_limit,
+      single_chunk_attachment_limit,
     } = fileUploadConfigResponse
     return {
       imageFileSizeLimit: Number(image_file_size_limit),

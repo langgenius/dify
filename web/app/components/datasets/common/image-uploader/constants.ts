@@ -1,1 +1,1 @@
-export const ACCEPT_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+export const ACCEPT_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']

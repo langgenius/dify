@@ -74,22 +74,19 @@ const ImageUploaderInChunk = ({
 export type ImageUploaderInChunkWrapperProps = {
   value?: FileEntity[]
   onChange: (files: FileEntity[]) => void
-  disabled?: boolean
-  className?: string
-}
+} & ImageUploaderInChunkProps
 
 const ImageUploaderInChunkWrapper = ({
   value,
   onChange,
-  disabled,
-  className,
+  ...props
 }: ImageUploaderInChunkWrapperProps) => {
   return (
     <FileContextProvider
       value={value}
       onChange={onChange}
     >
-      <ImageUploaderInChunk disabled={disabled} className={className} />
+      <ImageUploaderInChunk {...props} />
     </FileContextProvider>
   )
 }
