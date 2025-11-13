@@ -1477,8 +1477,22 @@ export const getNodeUsedVarPassToServerKey = (
       break
     }
     case BlockEnum.IfElse: {
-      const targetVar = ((data as IfElseNodeType).cases || [])
-        .flatMap(c => c.conditions || []).find(c => c.variable_selector?.join('.') === valueSelector.join('.'))
+      const findConditionInCases = (cases: CaseItem[]): Condition | undefined => {
+        for (const caseItem of cases) {
+          for (const condition of caseItem.conditions || []) {
+            if (condition.variable_selector?.join('.') === valueSelector.join('.'))
+              return condition
+
+            if (condition.sub_variable_condition) {
+              const found = findConditionInCases([condition.sub_variable_condition])
+              if (found)
+                return found
+            }
+          }
+        }
+        return undefined
+      }
+      const targetVar = findConditionInCases((data as IfElseNodeType).cases || [])
       if (targetVar) res = `#${valueSelector.join('.')}#`
       break
     }
