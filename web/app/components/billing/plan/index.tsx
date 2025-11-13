@@ -12,6 +12,7 @@ import {
   RiSpeedLine,
 } from '@remixicon/react'
 import { Plan, SelfHostedPlan } from '../type'
+import { NUM_INFINITE } from '../config'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
 import AppsInfo from '../usage-info/apps-info'
 import UpgradeBtn from '../upgrade-btn'
@@ -137,6 +138,7 @@ const PlanComp: FC<Props> = ({
           usage={usage.apiRateLimit}
           total={total.apiRateLimit}
           unit={perMonthUnit}
+          tooltip={total.apiRateLimit === NUM_INFINITE ? undefined : t('billing.plansCommon.apiRateLimitTooltip') as string}
         />
 
       </div>
