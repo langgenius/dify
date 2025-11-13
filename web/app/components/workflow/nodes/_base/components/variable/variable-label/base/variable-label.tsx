@@ -11,6 +11,7 @@ import VariableIcon from './variable-icon'
 import VariableName from './variable-name'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
+import { isConversationVar, isENV, isGlobalVar, isRagVariableVar } from '../../utils'
 
 const VariableLabel = ({
   nodeType,
@@ -27,6 +28,7 @@ const VariableLabel = ({
   rightSlot,
 }: VariablePayload) => {
   const varColorClassName = useVarColor(variables, isExceptionVariable)
+  const isHideNodeLabel = !(isENV(variables) || isConversationVar(variables) || isGlobalVar(variables) || isRagVariableVar(variables))
   return (
     <div
       className={cn(
@@ -36,10 +38,12 @@ const VariableLabel = ({
       onClick={onClick}
       ref={ref}
     >
-      <VariableNodeLabel
-        nodeType={nodeType}
-        nodeTitle={nodeTitle}
-      />
+      { isHideNodeLabel && (
+        <VariableNodeLabel
+          nodeType={nodeType}
+          nodeTitle={nodeTitle}
+        />
+      )}
       {
         notShowFullPath && (
           <>
@@ -51,7 +55,6 @@ const VariableLabel = ({
       <VariableIcon
         variables={variables}
         className={varColorClassName}
-        isMemoryVariable={isMemoryVariable}
       />
       <VariableName
         variables={variables}

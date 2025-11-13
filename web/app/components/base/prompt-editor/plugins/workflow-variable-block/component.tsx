@@ -19,7 +19,7 @@ import {
   DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND,
   UPDATE_WORKFLOW_NODES_MAP,
 } from './index'
-import { isConversationVar as isConversationVariable, isENV, isMemoryVariable, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isConversationVar, isENV, isGlobalVar, isMemoryVariable, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
@@ -85,28 +85,35 @@ const WorkflowVariableBlockComponent = ({
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
   const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
-  const isEnv = isENV(variables)
-  const isConversationVar = isConversationVariable(variables)
-  const isMemoryVar = isMemoryVariable(variables)
-  const isException = isExceptionVariable(varName, node?.type)
 
-  let variableValid = true
-  if (isEnv) {
-    variableValid = environmentVariables.some(v =>
-      v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-  }
-  else if (isConversationVar) {
-    variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-  }
-  else if (isMemoryVar) {
-    variableValid = memoryVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-  }
-  else if (isRagVar) {
-    variableValid = ragVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}.${variables?.[2] ?? ''}`)
-  }
-  else {
-    variableValid = !!node
-  }
+  const isException = isExceptionVariable(varName, node?.type)
+  const variableValid = useMemo(() => {
+    let variableValid = true
+    const isEnv = isENV(variables)
+    const isChatVar = isConversationVar(variables)
+    const isMemoryVar = isMemoryVariable(variables)
+    const isGlobal = isGlobalVar(variables)
+    if (isGlobal)
+      return true
+
+    if (isEnv) {
+      variableValid
+        = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+    }
+    else if (isChatVar) {
+      variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+    }
+    else if (isMemoryVar) {
+      variableValid = memoryVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+    }
+    else if (isRagVar) {
+      variableValid = ragVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}.${variables?.[2] ?? ''}`)
+    }
+    else {
+      variableValid = !!node
+    }
+    return variableValid
+  }, [variables, node, environmentVariables, conversationVariables, isRagVar, ragVariables])
 
   const reactflow = useReactFlow()
   const store = useStoreApi()

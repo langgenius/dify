@@ -35,7 +35,7 @@ const Empty = ({
   const hasTitle = t(`tools.addToolModal.${renderType}.title`) !== `tools.addToolModal.${renderType}.title`
 
   return (
-    <div className='flex h-[336px] flex-col items-center justify-center'>
+    <div className='flex flex-col items-center justify-center'>
       <NoToolPlaceholder className={theme === 'dark' ? 'invert' : ''} />
       <div className='mb-1 mt-2 text-[13px] font-medium leading-[18px] text-text-primary'>
         {hasTitle ? t(`tools.addToolModal.${renderType}.title`) : 'No tools available'}

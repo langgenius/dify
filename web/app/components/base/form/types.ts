@@ -6,6 +6,7 @@ import type {
   AnyFormApi,
   FieldValidators,
 } from '@tanstack/react-form'
+import type { Locale } from '@/i18n-config'
 
 export type TypeWithI18N<T = string> = {
   en_US: T
@@ -46,7 +47,7 @@ export enum FormTypeEnum {
 }
 
 export type FormOption = {
-  label: TypeWithI18N | string
+  label: string | TypeWithI18N | Record<Locale, string>
   value: string
   show_on?: FormShowOnObject[]
   icon?: string
@@ -54,19 +55,28 @@ export type FormOption = {
 
 export type AnyValidators = FieldValidators<any, any, any, any, any, any, any, any, any, any, any, any>
 
+export enum FormItemValidateStatusEnum {
+  Success = 'success',
+  Warning = 'warning',
+  Error = 'error',
+  Validating = 'validating',
+}
+
 export type FormSchema = {
   type: FormTypeEnum | ((form: AnyFormApi) => FormTypeEnum)
   name: string
-  label: string | ReactNode | TypeWithI18N
+  label: string | ReactNode | TypeWithI18N | Record<Locale, string>
   required: boolean
+  multiple?: boolean
   default?: any
-  tooltip?: string | TypeWithI18N
+  description?: string | TypeWithI18N | Record<Locale, string>
+  tooltip?: string | TypeWithI18N | Record<Locale, string>
   show_on?: FormShowOnObject[] | ((form: AnyFormApi) => FormShowOnObject[])
   more_on?: FormShowOnObject[] | ((form: AnyFormApi) => FormShowOnObject[])
   url?: string
   scope?: string
-  help?: string | TypeWithI18N
-  placeholder?: string | TypeWithI18N
+  help?: string | TypeWithI18N | Record<Locale, string>
+  placeholder?: string | TypeWithI18N | Record<Locale, string>
   options?: FormOption[]
   fieldClassName?: string
   labelClassName?: string
@@ -77,6 +87,14 @@ export type FormSchema = {
   onChange?: (form: AnyFormApi, v: any) => void
   showRadioUI?: boolean
   disabled?: boolean
+  showCopy?: boolean
+  dynamicSelectParams?: {
+    plugin_id: string
+    provider: string
+    action: string
+    parameter: string
+    credential_id: string
+  }
 }
 
 export type FormValues = Record<string, any>
@@ -85,11 +103,25 @@ export type GetValuesOptions = {
   needTransformWhenSecretFieldIsPristine?: boolean
   needCheckValidatedValues?: boolean
 }
+
+export type FieldState = {
+  validateStatus?: FormItemValidateStatusEnum
+  help?: string | ReactNode
+  errors?: string[]
+  warnings?: string[]
+}
+
+export type SetFieldsParam = {
+  name: string
+  value?: any
+} & FieldState
+
 export type FormRefObject = {
   getForm: () => AnyFormApi
   getFormValues: (obj: GetValuesOptions) => {
     values: Record<string, any>
     isCheckValidated: boolean
   }
+  setFields: (fields: SetFieldsParam[]) => void
 }
 export type FormRef = ForwardedRef<FormRefObject>

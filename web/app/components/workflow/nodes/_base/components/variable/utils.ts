@@ -40,6 +40,10 @@ import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/v
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { MemoryVariable } from '@/app/components/workflow/types'
+import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
+import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
+
 import {
   AGENT_OUTPUT_STRUCT,
   FILE_STRUCT,
@@ -51,6 +55,7 @@ import {
   SUPPORT_OUTPUT_VARS_NODE,
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
+  getGlobalVars,
 } from '@/app/components/workflow/constants'
 import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
@@ -59,9 +64,19 @@ import type { PromptItem } from '@/models/debug'
 import { VAR_REGEX } from '@/config'
 import type { AgentNodeType } from '../../../agent/types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
+import { AppModeEnum } from '@/types/app'
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
+}
+
+export const isGlobalVar = (valueSelector: ValueSelector) => {
+  if(!isSystemVar(valueSelector)) return false
+  const second = valueSelector[1]
+
+  if(['query', 'files'].includes(second))
+    return false
+  return true
 }
 
 export const isENV = (valueSelector: ValueSelector) => {
@@ -352,34 +367,29 @@ const formatItem = (
           variable: 'sys.query',
           type: VarType.string,
         })
-        res.vars.push({
-          variable: 'sys.dialogue_count',
-          type: VarType.number,
-        })
-        res.vars.push({
-          variable: 'sys.conversation_id',
-          type: VarType.string,
-        })
       }
-      res.vars.push({
-        variable: 'sys.user_id',
-        type: VarType.string,
-      })
       res.vars.push({
         variable: 'sys.files',
         type: VarType.arrayFile,
       })
-      res.vars.push({
-        variable: 'sys.app_id',
-        type: VarType.string,
-      })
-      res.vars.push({
-        variable: 'sys.workflow_id',
-        type: VarType.string,
-      })
-      res.vars.push({
-        variable: 'sys.workflow_run_id',
-        type: VarType.string,
+      break
+    }
+
+    case BlockEnum.TriggerWebhook: {
+      const {
+        variables = [],
+      } = data as WebhookTriggerNodeType
+      res.vars = variables.map((v) => {
+        const type = v.value_type || VarType.string
+        const varRes: Var = {
+          variable: v.variable,
+          type,
+          isParagraph: false,
+          isSelect: false,
+          options: v.options,
+          required: v.required,
+        }
+        return varRes
       })
 
       break
@@ -616,6 +626,17 @@ const formatItem = (
       break
     }
 
+    case BlockEnum.TriggerPlugin: {
+      const outputSchema = PluginTriggerNodeDefault.getOutputVars?.(
+        data as PluginTriggerNodeType,
+        allPluginInfoList,
+        [],
+        { schemaTypeDefinitions },
+      ) || []
+      res.vars = outputSchema
+      break
+    }
+
     case 'env': {
       res.vars = data.envList.map((env: EnvironmentVariable) => {
         return {
@@ -647,6 +668,11 @@ const formatItem = (
           }
         }) as Var[],
       ]
+      break
+    }
+
+    case 'global': {
+      res.vars = data.globalVarList
       break
     }
 
@@ -795,6 +821,15 @@ export const toNodeOutputVars = (
       chatVarList: conversationVariables,
     },
   }
+  // GLOBAL_VAR_NODE data format
+  const GLOBAL_VAR_NODE = {
+    id: 'global',
+    data: {
+      title: 'SYSTEM',
+      type: 'global',
+      globalVarList: getGlobalVars(isChatMode),
+    },
+  }
   // RAG_PIPELINE_NODE data format
   const RAG_PIPELINE_NODE = {
     id: 'rag',
@@ -814,61 +849,51 @@ export const toNodeOutputVars = (
     if (b.data.type === 'env') return -1
     if (a.data.type === 'conversation') return 1
     if (b.data.type === 'conversation') return -1
-    if (a.data.type === 'memory_block') return 1
-    if (b.data.type === 'memory_block') return -1
+    if (a.data.type === 'global') return 1
+    if (b.data.type === 'global') return -1
     // sort nodes by x position
     return (b.position?.x || 0) - (a.position?.x || 0)
   })
 
-  let nodeList = []
-  if (conversationVariablesFirst) {
-    nodeList = [
-      ...((isChatMode && (conversationVariables.length > 0 || memoryVariables.length > 0)) ? [CHAT_VAR_NODE] : []),
-      ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
-      ...sortedNodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type)),
-      ...(RAG_PIPELINE_NODE.data.ragVariables.length > 0
-        ? [RAG_PIPELINE_NODE]
-        : []),
-    ]
-  }
-  else {
-    nodeList = [
-      ...sortedNodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type)),
-      ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
-      ...((isChatMode && (conversationVariables.length > 0 || memoryVariables.length > 0)) ? [CHAT_VAR_NODE] : []),
-      ...(RAG_PIPELINE_NODE.data.ragVariables.length > 0
-        ? [RAG_PIPELINE_NODE]
-        : []),
-    ]
-  }
-
-  const res = nodeList.map((node) => {
-    let ragVariablesInDataSource: RAGPipelineVariable[] = []
-    if (node.data.type === BlockEnum.DataSource) {
-      ragVariablesInDataSource = ragVariables.filter(
-        ragVariable => ragVariable.belong_to_node_id === node.id,
-      )
-    }
-    return {
-      ...formatItem(
-        node,
-        isChatMode,
-        filterVar,
-        allPluginInfoList,
-        ragVariablesInDataSource.map(
-          (ragVariable: RAGPipelineVariable) =>
-            ({
-              variable: `rag.${node.id}.${ragVariable.variable}`,
-              type: inputVarTypeToVarType(ragVariable.type as any),
-              description: ragVariable.label,
-              isRagVariable: true,
-            } as Var),
+  const res = [
+    ...sortedNodes.filter(node =>
+      SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type),
+    ),
+    ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
+    ...(isChatMode && conversationVariables.length > 0 ? [CHAT_VAR_NODE] : []),
+    GLOBAL_VAR_NODE,
+    ...(RAG_PIPELINE_NODE.data.ragVariables.length > 0
+      ? [RAG_PIPELINE_NODE]
+      : []),
+  ]
+    .map((node) => {
+      let ragVariablesInDataSource: RAGPipelineVariable[] = []
+      if (node.data.type === BlockEnum.DataSource) {
+        ragVariablesInDataSource = ragVariables.filter(
+          ragVariable => ragVariable.belong_to_node_id === node.id,
+        )
+      }
+      return {
+        ...formatItem(
+          node,
+          isChatMode,
+          filterVar,
+          allPluginInfoList,
+          ragVariablesInDataSource.map(
+            (ragVariable: RAGPipelineVariable) =>
+              ({
+                variable: `rag.${node.id}.${ragVariable.variable}`,
+                type: inputVarTypeToVarType(ragVariable.type as any),
+                description: ragVariable.label,
+                isRagVariable: true,
+              } as Var),
+          ),
+          schemaTypeDefinitions,
         ),
-        schemaTypeDefinitions,
-      ),
-      isStartNode: node.data.type === BlockEnum.Start,
-    }
-  }).filter(item => item.vars.length > 0)
+        isStartNode: node.data.type === BlockEnum.Start,
+      }
+    })
+    .filter(item => item.vars.length > 0)
   return res
 }
 
@@ -1063,7 +1088,8 @@ export const getVarType = ({
     if (valueSelector[1] === 'index') return VarType.number
   }
 
-  const isSystem = isSystemVar(valueSelector)
+  const isGlobal = isGlobalVar(valueSelector)
+  const isInStartNodeSysVar = isSystemVar(valueSelector) && !isGlobal
   const isEnv = isENV(valueSelector)
   const isChatVar = isConversationVar(valueSelector)
   const isSharedRagVariable
@@ -1076,7 +1102,8 @@ export const getVarType = ({
   })
 
   const targetVarNodeId = (() => {
-    if (isSystem) return startNode?.id
+    if (isInStartNodeSysVar) return startNode?.id
+    if (isGlobal) return 'global'
     if (isInNodeRagVariable) return valueSelector[1]
     return valueSelector[0]
   })()
@@ -1089,7 +1116,7 @@ export const getVarType = ({
   let type: VarType = VarType.string
   let curr: any = targetVar.vars
 
-  if (isSystem || isEnv || isChatVar || isSharedRagVariable) {
+  if (isInStartNodeSysVar || isEnv || isChatVar || isSharedRagVariable || isGlobal) {
     return curr.find(
       (v: any) => v.variable === (valueSelector as ValueSelector).join('.'),
     )?.type
@@ -1287,7 +1314,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     }
     case BlockEnum.LLM: {
       const payload = data as LLMNodeType
-      const isChatModel = payload.model?.mode === 'chat'
+      const isChatModel = payload.model?.mode === AppModeEnum.CHAT
       let prompts: string[] = []
       if (isChatModel) {
         prompts
@@ -1590,7 +1617,7 @@ export const updateNodeVars = (
       }
       case BlockEnum.LLM: {
         const payload = data as LLMNodeType
-        const isChatModel = payload.model?.mode === 'chat'
+        const isChatModel = payload.model?.mode === AppModeEnum.CHAT
         if (isChatModel) {
           payload.prompt_template = (
             payload.prompt_template as PromptItem[]

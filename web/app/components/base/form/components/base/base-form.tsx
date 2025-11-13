@@ -3,6 +3,7 @@ import {
   useCallback,
   useImperativeHandle,
   useMemo,
+  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -13,9 +14,12 @@ import {
   useForm,
   useStore,
 } from '@tanstack/react-form'
-import type {
-  FormRef,
-  FormSchema,
+import {
+  type FieldState,
+  FormItemValidateStatusEnum,
+  type FormRef,
+  type FormSchema,
+  type SetFieldsParam,
 } from '@/app/components/base/form/types'
 import {
   BaseField,
@@ -37,9 +41,10 @@ export type BaseFormProps = {
   ref?: FormRef
   disabled?: boolean
   formFromProps?: AnyFormApi
-  onSubmit?: (values: Record<string, any>) => void
   onCancel?: () => void
   onChange?: (field: string, value: any) => void
+  onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void
+  preventDefaultSubmit?: boolean
 } & Pick<BaseFieldProps, 'fieldClassName' | 'labelClassName' | 'inputContainerClassName' | 'inputClassName'>
 
 const BaseForm = ({
@@ -53,9 +58,10 @@ const BaseForm = ({
   ref,
   disabled,
   formFromProps,
-  onSubmit,
   onCancel,
   onChange,
+  onSubmit,
+  preventDefaultSubmit = false,
 }: BaseFormProps) => {
   const { t } = useTranslation()
   const initialDefaultValues = useMemo(() => {
@@ -74,6 +80,8 @@ const BaseForm = ({
   const form: any = formFromProps || formFromHook
   const { getFormValues } = useGetFormValues(form, formSchemas)
   const { getValidators } = useGetValidators()
+
+  const [fieldStates, setFieldStates] = useState<Record<string, FieldState>>({})
 
   const showOnValues = useStore(form.store, (s: any) => {
     const result: Record<string, any> = {}
@@ -102,6 +110,34 @@ const BaseForm = ({
     return result
   })
 
+  const setFields = useCallback((fields: SetFieldsParam[]) => {
+    const newFieldStates: Record<string, FieldState> = { ...fieldStates }
+
+    for (const field of fields) {
+      const { name, value, errors, warnings, validateStatus, help } = field
+
+      if (value !== undefined)
+        form.setFieldValue(name, value)
+
+      let finalValidateStatus = validateStatus
+      if (!finalValidateStatus) {
+        if (errors && errors.length > 0)
+          finalValidateStatus = FormItemValidateStatusEnum.Error
+        else if (warnings && warnings.length > 0)
+          finalValidateStatus = FormItemValidateStatusEnum.Warning
+      }
+
+      newFieldStates[name] = {
+        validateStatus: finalValidateStatus,
+        help,
+        errors,
+        warnings,
+      }
+    }
+
+    setFieldStates(newFieldStates)
+  }, [form, fieldStates])
+
   useImperativeHandle(ref, () => {
     return {
       getForm() {
@@ -110,8 +146,9 @@ const BaseForm = ({
       getFormValues: (option) => {
         return getFormValues(option)
       },
+      setFields,
     }
-  }, [form, getFormValues])
+  }, [form, getFormValues, setFields])
 
   const renderField = useCallback((field: AnyFieldApi) => {
     const formSchema = formSchemas?.find(schema => schema.name === field.name)
@@ -128,18 +165,19 @@ const BaseForm = ({
         <BaseField
           field={field}
           formSchema={formSchema}
-          fieldClassName={cn(fieldClassName, !more ? 'absolute top-[-9999px]' : '')}
-          labelClassName={labelClassName}
+          fieldClassName={cn(fieldClassName ?? formSchema.fieldClassName, !more ? 'absolute top-[-9999px]' : '')}
+          labelClassName={labelClassName ?? formSchema.labelClassName}
           inputContainerClassName={inputContainerClassName}
           inputClassName={inputClassName}
           disabled={disabled}
           onChange={onChange}
+          fieldState={fieldStates[field.name]}
         />
       )
     }
 
     return null
-  }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName, disabled, onChange, moreOnValues])
+  }, [formSchemas, fieldClassName, labelClassName, inputContainerClassName, inputClassName, disabled, onChange, moreOnValues, fieldStates])
 
   const renderFieldWrapper = useCallback((formSchema: FormSchema) => {
     const validators = getValidators(formSchema)
@@ -170,9 +208,18 @@ const BaseForm = ({
   if (!formSchemas?.length)
     return null
 
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    if (preventDefaultSubmit) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    onSubmit?.(e)
+  }
+
   return (
     <form
       className={cn(formClassName)}
+      onSubmit={handleSubmit}
     >
       {formSchemas.map(renderFieldWrapper)}
       {

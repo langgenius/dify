@@ -6,7 +6,7 @@ import cn from 'classnames'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import { ActionButton } from '@/app/components/base/action-button'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
-import { AppType } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import type { GenRes } from '@/service/debug'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import { useHooksStore } from '../../../hooks-store'
@@ -44,7 +44,7 @@ const PromptGeneratorBtn: FC<Props> = ({
       </ActionButton>
       {showAutomatic && (
         <GetAutomaticResModal
-          mode={AppType.chat}
+          mode={AppModeEnum.CHAT}
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}
