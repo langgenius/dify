@@ -16,11 +16,11 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
     monkeypatch.setenv("HTTP_REQUEST_MAX_WRITE_TIMEOUT", "30")  # Custom value for testing
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("POSTGRES_USER", "postgres")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "postgres")
+    monkeypatch.setenv("POSTGRES_HOST", "localhost")
+    monkeypatch.setenv("POSTGRES_PORT", "5432")
+    monkeypatch.setenv("POSTGRES_DATABASE", "dify")
     monkeypatch.setenv("HTTP_REQUEST_MAX_READ_TIMEOUT", "300")  # Custom value for testing
 
     # load dotenv file with pydantic-settings
@@ -51,11 +51,11 @@ def test_http_timeout_defaults(monkeypatch: pytest.MonkeyPatch):
     os.environ.clear()
 
     # Set minimal required env vars
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("POSTGRES_USER", "postgres")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "postgres")
+    monkeypatch.setenv("POSTGRES_HOST", "localhost")
+    monkeypatch.setenv("POSTGRES_PORT", "5432")
+    monkeypatch.setenv("POSTGRES_DATABASE", "dify")
 
     config = DifyConfig()
 
@@ -75,11 +75,11 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     # Set environment variables using monkeypatch
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("POSTGRES_USER", "postgres")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "postgres")
+    monkeypatch.setenv("POSTGRES_HOST", "localhost")
+    monkeypatch.setenv("POSTGRES_PORT", "5432")
+    monkeypatch.setenv("POSTGRES_DATABASE", "dify")
     monkeypatch.setenv("WEB_API_CORS_ALLOW_ORIGINS", "http://127.0.0.1:3000,*")
     monkeypatch.setenv("CODE_EXECUTION_ENDPOINT", "http://127.0.0.1:8194/")
 
@@ -120,15 +120,78 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     assert str(URL(str(config["CODE_EXECUTION_ENDPOINT"])) / "v1") == "http://127.0.0.1:8194/v1"
 
 
+def test_flask_configs_mysql(monkeypatch: pytest.MonkeyPatch):
+    """Test Flask configuration with MySQL database type"""
+    flask_app = Flask("app")
+    # clear system environment variables
+    os.environ.clear()
+
+    # Set environment variables using monkeypatch for MySQL
+    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
+    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
+    monkeypatch.setenv("DB_TYPE", "mysql")
+    monkeypatch.setenv("MYSQL_USER", "root")
+    monkeypatch.setenv("MYSQL_PASSWORD", "mysql123")
+    monkeypatch.setenv("MYSQL_HOST", "mysql-host")
+    monkeypatch.setenv("MYSQL_PORT", "3306")
+    monkeypatch.setenv("MYSQL_DATABASE", "dify_mysql")
+    monkeypatch.setenv("WEB_API_CORS_ALLOW_ORIGINS", "http://127.0.0.1:3000,*")
+    monkeypatch.setenv("CODE_EXECUTION_ENDPOINT", "http://127.0.0.1:8194/")
+
+    flask_app.config.from_mapping(DifyConfig().model_dump())  # pyright: ignore
+    config = flask_app.config
+
+    # configs read from pydantic-settings
+    assert config["LOG_LEVEL"] == "INFO"
+    assert config["COMMIT_SHA"] == ""
+    assert config["EDITION"] == "SELF_HOSTED"
+    assert config["API_COMPRESSION_ENABLED"] is False
+    assert config["SENTRY_TRACES_SAMPLE_RATE"] == 1.0
+
+    # value from env file
+    assert config["CONSOLE_API_URL"] == "https://example.com"
+    # fallback to alias choices value as CONSOLE_API_URL
+    assert config["FILES_URL"] == "https://example.com"
+
+    # Test MySQL database configuration
+    assert config["DB_TYPE"] == "mysql"
+    assert config["SQLALCHEMY_DATABASE_URI"] == "mysql+pymysql://root:mysql123@mysql-host:3306/dify_mysql"
+    assert config["SQLALCHEMY_DATABASE_URI_SCHEME"] == "mysql+pymysql"
+    assert config["SQLALCHEMY_ENGINE_OPTIONS"] == {
+        "connect_args": {},  # MySQL doesn't have PostgreSQL-specific options
+        "max_overflow": 10,
+        "pool_pre_ping": False,
+        "pool_recycle": 3600,
+        "pool_size": 30,
+        "pool_use_lifo": False,
+        "pool_reset_on_return": None,
+        "pool_timeout": 30,
+    }
+
+    # Test computed fields for MySQL
+    assert config["DB_HOST"] == "mysql-host"
+    assert config["DB_PORT"] == 3306
+    assert config["DB_USERNAME"] == "root"
+    assert config["DB_PASSWORD"] == "mysql123"
+    assert config["DB_DATABASE"] == "dify_mysql"
+
+    assert config["CONSOLE_WEB_URL"] == "https://example.com"
+    assert config["CONSOLE_CORS_ALLOW_ORIGINS"] == ["https://example.com"]
+    assert config["WEB_API_CORS_ALLOW_ORIGINS"] == ["http://127.0.0.1:3000", "*"]
+
+    assert str(config["CODE_EXECUTION_ENDPOINT"]) == "http://127.0.0.1:8194/"
+    assert str(URL(str(config["CODE_EXECUTION_ENDPOINT"])) / "v1") == "http://127.0.0.1:8194/v1"
+
+
 def test_inner_api_config_exist(monkeypatch: pytest.MonkeyPatch):
     # Set environment variables using monkeypatch
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("POSTGRES_USER", "postgres")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "postgres")
+    monkeypatch.setenv("POSTGRES_HOST", "localhost")
+    monkeypatch.setenv("POSTGRES_PORT", "5432")
+    monkeypatch.setenv("POSTGRES_DATABASE", "dify")
     monkeypatch.setenv("INNER_API_KEY", "test-inner-api-key")
 
     config = DifyConfig()
@@ -140,11 +203,11 @@ def test_inner_api_config_exist(monkeypatch: pytest.MonkeyPatch):
 def test_db_extras_options_merging(monkeypatch: pytest.MonkeyPatch):
     """Test that DB_EXTRAS options are properly merged with default timezone setting"""
     # Set environment variables
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("POSTGRES_USER", "postgres")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "postgres")
+    monkeypatch.setenv("POSTGRES_HOST", "localhost")
+    monkeypatch.setenv("POSTGRES_PORT", "5432")
+    monkeypatch.setenv("POSTGRES_DATABASE", "dify")
     monkeypatch.setenv("DB_EXTRAS", "options=-c search_path=myschema")
 
     # Create config
@@ -199,11 +262,11 @@ def test_celery_broker_url_with_special_chars_password(
     # Set up basic required environment variables (following existing pattern)
     monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
     monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("POSTGRES_USER", "postgres")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "postgres")
+    monkeypatch.setenv("POSTGRES_HOST", "localhost")
+    monkeypatch.setenv("POSTGRES_PORT", "5432")
+    monkeypatch.setenv("POSTGRES_DATABASE", "dify")
 
     # Set the CELERY_BROKER_URL to test
     monkeypatch.setenv("CELERY_BROKER_URL", broker_url)

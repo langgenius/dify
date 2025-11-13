@@ -105,30 +105,150 @@ class KeywordStoreConfig(BaseSettings):
 
 
 class DatabaseConfig(BaseSettings):
-    DB_HOST: str = Field(
-        description="Hostname or IP address of the database server.",
+    # Database type selector
+    DB_TYPE: Literal["postgresql", "mysql", "oceanbase"] = Field(
+        description="Database type to use. OceanBase is MySQL-compatible.",
+        default="postgresql",
+    )
+
+    # PostgreSQL configuration
+    POSTGRES_HOST: str = Field(
+        description="PostgreSQL hostname or IP address.",
         default="localhost",
     )
 
-    DB_PORT: PositiveInt = Field(
-        description="Port number for database connection.",
+    POSTGRES_PORT: PositiveInt = Field(
+        description="PostgreSQL port number.",
         default=5432,
     )
 
-    DB_USERNAME: str = Field(
-        description="Username for database authentication.",
+    POSTGRES_USER: str = Field(
+        description="PostgreSQL username.",
         default="postgres",
     )
 
-    DB_PASSWORD: str = Field(
-        description="Password for database authentication.",
-        default="",
+    POSTGRES_PASSWORD: str = Field(
+        description="PostgreSQL password.",
+        default="difyai123456",
     )
 
-    DB_DATABASE: str = Field(
-        description="Name of the database to connect to.",
+    POSTGRES_DATABASE: str = Field(
+        description="PostgreSQL database name.",
         default="dify",
     )
+
+    # MySQL configuration
+    MYSQL_HOST: str = Field(
+        description="MySQL hostname or IP address.",
+        default="localhost",
+    )
+
+    MYSQL_PORT: PositiveInt = Field(
+        description="MySQL port number.",
+        default=3306,
+    )
+
+    MYSQL_USER: str = Field(
+        description="MySQL username.",
+        default="root",
+    )
+
+    MYSQL_PASSWORD: str = Field(
+        description="MySQL password.",
+        default="difyai123456",
+    )
+
+    MYSQL_DATABASE: str = Field(
+        description="MySQL database name.",
+        default="dify",
+    )
+
+    # OceanBase configuration(MySQL-compatible)
+    OCEANBASE_HOST: str = Field(
+        description="OceanBase hostname or IP address.",
+        default="localhost",
+    )
+
+    OCEANBASE_PORT: PositiveInt = Field(
+        description="OceanBase port number.",
+        default=2881,
+    )
+
+    OCEANBASE_USER: str = Field(
+        description="OceanBase username.",
+        default="root@test",
+    )
+
+    OCEANBASE_PASSWORD: str = Field(
+        description="OceanBase password.",
+        default="difyai123456",
+    )
+
+    OCEANBASE_DATABASE: str = Field(
+        description="OceanBase database name.",
+        default="test",
+    )
+
+    # Dynamic properties based on DB_TYPE
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def DB_HOST(self) -> str:
+        if self.DB_TYPE == "postgresql":
+            return self.POSTGRES_HOST
+        elif self.DB_TYPE == "mysql":
+            return self.MYSQL_HOST
+        elif self.DB_TYPE == "oceanbase":
+            return self.OCEANBASE_HOST
+        else:
+            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def DB_PORT(self) -> int:
+        if self.DB_TYPE == "postgresql":
+            return self.POSTGRES_PORT
+        elif self.DB_TYPE == "mysql":
+            return self.MYSQL_PORT
+        elif self.DB_TYPE == "oceanbase":
+            return self.OCEANBASE_PORT
+        else:
+            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def DB_USERNAME(self) -> str:
+        if self.DB_TYPE == "postgresql":
+            return self.POSTGRES_USER
+        elif self.DB_TYPE == "mysql":
+            return self.MYSQL_USER
+        elif self.DB_TYPE == "oceanbase":
+            return self.OCEANBASE_USER
+        else:
+            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def DB_PASSWORD(self) -> str:
+        if self.DB_TYPE == "postgresql":
+            return self.POSTGRES_PASSWORD
+        elif self.DB_TYPE == "mysql":
+            return self.MYSQL_PASSWORD
+        elif self.DB_TYPE == "oceanbase":
+            return self.OCEANBASE_PASSWORD
+        else:
+            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def DB_DATABASE(self) -> str:
+        if self.DB_TYPE == "postgresql":
+            return self.POSTGRES_DATABASE
+        elif self.DB_TYPE == "mysql":
+            return self.MYSQL_DATABASE
+        elif self.DB_TYPE == "oceanbase":
+            return self.OCEANBASE_DATABASE
+        else:
+            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
 
     DB_CHARSET: str = Field(
         description="Character set for database connection.",
@@ -140,10 +260,10 @@ class DatabaseConfig(BaseSettings):
         default="",
     )
 
-    SQLALCHEMY_DATABASE_URI_SCHEME: str = Field(
-        description="Database URI scheme for SQLAlchemy connection.",
-        default="postgresql",
-    )
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def SQLALCHEMY_DATABASE_URI_SCHEME(self) -> str:
+        return "postgresql" if self.DB_TYPE == "postgresql" else "mysql+pymysql"
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -204,15 +324,15 @@ class DatabaseConfig(BaseSettings):
         # Parse DB_EXTRAS for 'options'
         db_extras_dict = dict(parse_qsl(self.DB_EXTRAS))
         options = db_extras_dict.get("options", "")
-        # Always include timezone
-        timezone_opt = "-c timezone=UTC"
-        if options:
-            # Merge user options and timezone
-            merged_options = f"{options} {timezone_opt}"
-        else:
-            merged_options = timezone_opt
-
-        connect_args = {"options": merged_options}
+        connect_args = {}
+        # Use the dynamic SQLALCHEMY_DATABASE_URI_SCHEME property
+        if self.SQLALCHEMY_DATABASE_URI_SCHEME.startswith("postgresql"):
+            timezone_opt = "-c timezone=UTC"
+            if options:
+                merged_options = f"{options} {timezone_opt}"
+            else:
+                merged_options = timezone_opt
+            connect_args = {"options": merged_options}
 
         return {
             "pool_size": self.SQLALCHEMY_POOL_SIZE,

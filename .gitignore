@@ -186,6 +186,7 @@ docker/volumes/couchbase/*
 docker/volumes/oceanbase/*
 docker/volumes/plugin_daemon/*
 docker/volumes/matrixone/*
+docker/volumes/mysql/data/*
 !docker/volumes/oceanbase/init.d
 
 docker/nginx/conf.d/default.conf

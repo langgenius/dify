@@ -7,29 +7,29 @@ class OceanBaseVectorConfig(BaseSettings):
     Configuration settings for OceanBase Vector database
     """
 
-    OCEANBASE_VECTOR_HOST: str | None = Field(
-        description="Hostname or IP address of the OceanBase Vector server (e.g. 'localhost')",
-        default=None,
+    OCEANBASE_HOST: str = Field(
+        description="OceanBase hostname or IP address.",
+        default="localhost",
     )
 
-    OCEANBASE_VECTOR_PORT: PositiveInt | None = Field(
-        description="Port number on which the OceanBase Vector server is listening (default is 2881)",
+    OCEANBASE_PORT: PositiveInt = Field(
+        description="OceanBase port number.",
         default=2881,
     )
 
-    OCEANBASE_VECTOR_USER: str | None = Field(
-        description="Username for authenticating with the OceanBase Vector database",
-        default=None,
+    OCEANBASE_USER: str = Field(
+        description="OceanBase username.",
+        default="root@test",
     )
 
-    OCEANBASE_VECTOR_PASSWORD: str | None = Field(
-        description="Password for authenticating with the OceanBase Vector database",
-        default=None,
+    OCEANBASE_PASSWORD: str = Field(
+        description="OceanBase password.",
+        default="difyai123456",
     )
 
-    OCEANBASE_VECTOR_DATABASE: str | None = Field(
-        description="Name of the OceanBase Vector database to connect to",
-        default=None,
+    OCEANBASE_DATABASE: str = Field(
+        description="OceanBase database name.",
+        default="test",
     )
 
     OCEANBASE_ENABLE_HYBRID_SEARCH: bool = Field(

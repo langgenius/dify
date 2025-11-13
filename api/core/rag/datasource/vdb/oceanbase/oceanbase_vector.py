@@ -37,13 +37,13 @@ class OceanBaseVectorConfig(BaseModel):
     @classmethod
     def validate_config(cls, values: dict):
         if not values["host"]:
-            raise ValueError("config OCEANBASE_VECTOR_HOST is required")
+            raise ValueError("config OCEANBASE_HOST is required")
         if not values["port"]:
-            raise ValueError("config OCEANBASE_VECTOR_PORT is required")
+            raise ValueError("config OCEANBASE_PORT is required")
         if not values["user"]:
-            raise ValueError("config OCEANBASE_VECTOR_USER is required")
+            raise ValueError("config OCEANBASE_USER is required")
         if not values["database"]:
-            raise ValueError("config OCEANBASE_VECTOR_DATABASE is required")
+            raise ValueError("config OCEANBASE_DATABASE is required")
         return values
 
 
@@ -316,11 +316,11 @@ class OceanBaseVectorFactory(AbstractVectorFactory):
         return OceanBaseVector(
             collection_name,
             OceanBaseVectorConfig(
-                host=dify_config.OCEANBASE_VECTOR_HOST or "",
-                port=dify_config.OCEANBASE_VECTOR_PORT or 0,
-                user=dify_config.OCEANBASE_VECTOR_USER or "",
-                password=(dify_config.OCEANBASE_VECTOR_PASSWORD or ""),
-                database=dify_config.OCEANBASE_VECTOR_DATABASE or "",
+                host=dify_config.OCEANBASE_HOST or "",
+                port=dify_config.OCEANBASE_PORT or 0,
+                user=dify_config.OCEANBASE_USER or "",
+                password=(dify_config.OCEANBASE_PASSWORD or ""),
+                database=dify_config.OCEANBASE_DATABASE or "",
                 enable_hybrid_search=dify_config.OCEANBASE_ENABLE_HYBRID_SEARCH or False,
             ),
         )
