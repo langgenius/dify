@@ -89,8 +89,6 @@ class DifyClient(BaseClientMixin):
         Returns:
             httpx.Response object
         """
-        import time
-
         # Validate parameters
         if json:
             self._validate_params(**json)
@@ -102,73 +100,42 @@ class DifyClient(BaseClientMixin):
             "Content-Type": "application/json",
         }
 
-        last_exception = None
+        def make_request():
+            """Inner function to perform the actual HTTP request."""
+            # Log request if logging is enabled
+            if self.enable_logging:
+                self.logger.info(f"Sending {method} request to {endpoint}")
+                # Debug logging for detailed information
+                if self.logger.isEnabledFor(logging.DEBUG):
+                    if json:
+                        self.logger.debug(f"Request body: {json}")
+                    if params:
+                        self.logger.debug(f"Request params: {params}")
 
-        for attempt in range(self.max_retries + 1):  # +1 for initial attempt
-            try:
-                # Log request if logging is enabled
-                if self.enable_logging:
-                    self.logger.info(
-                        f"Sending {method} request to {endpoint} (attempt {attempt + 1}/{self.max_retries + 1})"
-                    )
-                    # Debug logging for detailed information
-                    if self.logger.isEnabledFor(logging.DEBUG):
-                        if json:
-                            self.logger.debug(f"Request body: {json}")
-                        if params:
-                            self.logger.debug(f"Request params: {params}")
+            # httpx.Client automatically prepends base_url
+            response = self._client.request(
+                method,
+                endpoint,
+                json=json,
+                params=params,
+                headers=headers,
+                **kwargs,
+            )
 
-                # httpx.Client automatically prepends base_url
-                response = self._client.request(
-                    method,
-                    endpoint,
-                    json=json,
-                    params=params,
-                    headers=headers,
-                    **kwargs,
-                )
+            # Log response if logging is enabled
+            if self.enable_logging:
+                self.logger.info(f"Received response: {response.status_code}")
 
-                # Log response if logging is enabled
-                if self.enable_logging:
-                    self.logger.info(f"Received response: {response.status_code}")
+            return response
 
-                # Handle error responses
-                self._handle_error_response(response)
+        # Use the retry mechanism from base client
+        request_context = f"{method} {endpoint}"
+        response = self._retry_request(make_request, request_context)
 
-                # Handle error responses and immediately return/raise
-                # Don't retry API errors - only network/timeout errors should retry
-                return response
+        # Handle error responses (API errors don't retry)
+        self._handle_error_response(response)
 
-            except (httpx.NetworkError, httpx.TimeoutException) as e:
-                last_exception = e
-                if self.enable_logging:
-                    self.logger.error(f"Request failed (attempt {attempt + 1}): {str(e)}")
-
-                if attempt < self.max_retries:
-                    retry_delay = self.retry_delay * (2**attempt)
-                    if hasattr(self, "enable_logging") and self.enable_logging:
-                        self.logger.info(f"Retrying in {retry_delay:.2f} seconds")
-                    time.sleep(retry_delay)  # Exponential backoff
-                    continue
-                else:
-                    # Convert to our custom exceptions
-                    if isinstance(e, httpx.TimeoutException):
-                        from dify_client.exceptions import TimeoutError
-
-                        raise TimeoutError(
-                            f"Request timed out after {self.max_retries} retries"
-                        ) from e
-                    else:
-                        from dify_client.exceptions import NetworkError
-
-                        raise NetworkError(
-                            f"Network error after {self.max_retries} retries: {str(e)}"
-                        ) from e
-
-        # This should not be reached, but just in case
-        if last_exception:
-            raise last_exception
-        raise RuntimeError("Unexpected state in retry logic")
+        return response
 
     def _handle_error_response(self, response, is_upload_request: bool = False) -> None:
         """Handle HTTP error responses and raise appropriate exceptions."""

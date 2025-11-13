@@ -3,10 +3,20 @@
 import json
 import time
 import logging
-from typing import Dict, Callable
+from typing import Dict, Callable, Optional
+
+try:
+    # Python 3.10+
+    from typing import ParamSpec
+except ImportError:
+    # Python < 3.10
+    from typing_extensions import ParamSpec
+
 from urllib.parse import urljoin
 
 import httpx
+
+P = ParamSpec('P')
 
 from .exceptions import (
     DifyClientError,
@@ -114,43 +124,57 @@ class BaseClientMixin:
                 status_code=response.status_code,
             )
 
-    def _retry_request(self, request_func: Callable, *args, **kwargs) -> httpx.Response:
-        """Retry a request with exponential backoff."""
+    def _retry_request(self, request_func: Callable[P, httpx.Response], request_context: Optional[str] = None, *args: P.args, **kwargs: P.kwargs) -> httpx.Response:
+        """Retry a request with exponential backoff.
+
+        Args:
+            request_func: Function that performs the HTTP request
+            request_context: Context description for logging (e.g., "GET /v1/messages")
+            *args: Positional arguments to pass to request_func
+            **kwargs: Keyword arguments to pass to request_func
+
+        Returns:
+            httpx.Response: Successful response
+
+        Raises:
+            NetworkError: On network failures after retries
+            TimeoutError: On timeout failures after retries
+            APIError: On API errors (4xx/5xx responses)
+            DifyClientError: On unexpected failures
+        """
         last_exception = None
 
         for attempt in range(self.max_retries + 1):
             try:
                 response = request_func(*args, **kwargs)
-                return self._handle_response(response)
+                return response  # Let caller handle response processing
 
-            except (RateLimitError, NetworkError, TimeoutError) as e:
+            except (httpx.NetworkError, httpx.TimeoutException) as e:
                 last_exception = e
+                context_msg = f" {request_context}" if request_context else ""
 
                 if attempt < self.max_retries:
                     delay = self.retry_delay * (2**attempt)  # Exponential backoff
                     self.logger.warning(
-                        f"Request failed (attempt {attempt + 1}/{self.max_retries + 1}): {e}. "
+                        f"Request failed{context_msg} (attempt {attempt + 1}/{self.max_retries + 1}): {e}. "
                         f"Retrying in {delay:.2f} seconds..."
                     )
                     time.sleep(delay)
                 else:
                     self.logger.error(
-                        f"Request failed after {self.max_retries + 1} attempts: {e}"
+                        f"Request failed{context_msg} after {self.max_retries + 1} attempts: {e}"
                     )
-
-            except APIError as e:
-                # Don't retry client errors (4xx)
-                if e.status_code and 400 <= e.status_code < 500:
-                    raise
-                last_exception = e
-
-                if attempt < self.max_retries:
-                    delay = self.retry_delay * (2**attempt)
-                    self.logger.warning(
-                        f"Server error (attempt {attempt + 1}/{self.max_retries + 1}): {e}. "
-                        f"Retrying in {delay:.2f} seconds..."
-                    )
-                    time.sleep(delay)
+                    # Convert to custom exceptions
+                    if isinstance(e, httpx.TimeoutException):
+                        from .exceptions import TimeoutError
+                        raise TimeoutError(
+                            f"Request timed out after {self.max_retries} retries{context_msg}"
+                        ) from e
+                    else:
+                        from .exceptions import NetworkError
+                        raise NetworkError(
+                            f"Network error after {self.max_retries} retries{context_msg}: {str(e)}"
+                        ) from e
 
         if last_exception:
             raise last_exception
