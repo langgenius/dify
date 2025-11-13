@@ -31,7 +31,7 @@ from sqlalchemy import and_, delete, func, null, or_, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
-from core.workflow.entities.workflow_pause import WorkflowPauseEntity
+from core.workflow.entities.workflow_pause import PauseDetail, WorkflowPauseEntity
 from core.workflow.enums import WorkflowExecutionStatus
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
@@ -40,8 +40,8 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
+from models.workflow import PauseMetadata, WorkflowRun
 from models.workflow import WorkflowPause as WorkflowPauseModel
-from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.types import (
     AverageInteractionStats,
@@ -867,3 +867,7 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
     @property
     def resumed_at(self) -> datetime | None:
         return self._pause_model.resumed_at
+
+    def get_pause_details(self) -> Sequence[PauseDetail]:
+        metadata = PauseMetadata.model_validate_json(self._pause_model.pause_metadata)
+        return metadata.details

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
+from pydantic import BaseModel, Field
 from sqlalchemy import DateTime, Select, exists, orm, select
 
 from core.file.constants import maybe_file_object
@@ -17,6 +18,7 @@ from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from core.workflow.entities.workflow_pause import PauseDetail
 from core.workflow.enums import NodeType
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
@@ -1658,6 +1660,19 @@ def is_system_variable_editable(name: str) -> bool:
     return name in _EDITABLE_SYSTEM_VARIABLE
 
 
+class PauseMetadata(BaseModel):
+    """
+    PauseMetadata stores metadata related to a specific pause event during workflow execution.
+
+    Attributes:
+        details: A list containing detailed information about the pause,
+            such as the reason for pausing, the node responsible for the pause, and any
+            additional context relevant to the paused state.
+    """
+
+    details: list[PauseDetail] = Field(default_factory=list)
+
+
 class WorkflowPause(DefaultFieldsMixin, Base):
     """
     WorkflowPause records the paused state and related metadata for a specific workflow run.
@@ -1711,6 +1726,12 @@ class WorkflowPause(DefaultFieldsMixin, Base):
     # of the `GraphEngine`. This object captures the complete execution context of the
     # workflow at the moment it was paused, enabling accurate resumption.
     state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
+
+    # pause_metadata stores metadata related to a specific pause event during workflow execution.
+    # The content is a JSON-serialized string of the `PauseMetadata` model.
+    #
+    # Limit the size of pause_metadata to 64KB to prevent excessive data storage.
+    pause_metadata: Mapped[str] = mapped_column(sa.String(65535), nullable=False, default="{}")
 
     # Relationship to WorkflowRun
     workflow_run: Mapped["WorkflowRun"] = orm.relationship(
