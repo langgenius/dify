@@ -47,16 +47,9 @@ const List = ({
         tooltip={t('billing.plansCommon.documentsRequestQuotaTooltip')}
       />
       <Item
-        label={
-          planInfo.apiRateLimit === NUM_INFINITE
-            ? t('billing.plansCommon.unlimitedApiRate')
-            : `${t('billing.plansCommon.apiRateLimitUnit', { count: planInfo.apiRateLimit })} ${t('billing.plansCommon.apiRateLimit')} / ${t('billing.plansCommon.month')}`
-        }
-        tooltip={planInfo.apiRateLimit === NUM_INFINITE ? undefined : t('billing.plansCommon.apiRateLimitTooltip') as string}
-      />
-      <Item
         label={[t(`billing.plansCommon.priority.${planInfo.documentProcessingPriority}`), t('billing.plansCommon.documentProcessingPriority')].join('')}
       />
+      <Divider bgStyle='gradient' />
       <Item
         label={
           planInfo.triggerEvents === NUM_INFINITE
@@ -70,19 +63,19 @@ const List = ({
       <Item
         label={
           plan === Plan.sandbox
+            ? t('billing.plansCommon.startNodes.limited', { count: 2 })
+            : t('billing.plansCommon.startNodes.unlimited')
+        }
+      />
+      <Item
+        label={
+          plan === Plan.sandbox
             ? t('billing.plansCommon.workflowExecution.standard')
             : plan === Plan.professional
               ? t('billing.plansCommon.workflowExecution.faster')
               : t('billing.plansCommon.workflowExecution.priority')
         }
         tooltip={t('billing.plansCommon.workflowExecution.tooltip') as string}
-      />
-      <Item
-        label={
-          plan === Plan.sandbox
-            ? t('billing.plansCommon.startNodes.limited', { count: 2 })
-            : t('billing.plansCommon.startNodes.unlimited')
-        }
       />
       <Divider bgStyle='gradient' />
       <Item
@@ -91,6 +84,14 @@ const List = ({
       />
       <Item
         label={t('billing.plansCommon.logsHistory', { days: planInfo.logHistory === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.logHistory} ${t('billing.plansCommon.days')}` })}
+      />
+      <Item
+        label={
+          planInfo.apiRateLimit === NUM_INFINITE
+            ? t('billing.plansCommon.unlimitedApiRate')
+            : `${t('billing.plansCommon.apiRateLimitUnit', { count: planInfo.apiRateLimit })} ${t('billing.plansCommon.apiRateLimit')} / ${t('billing.plansCommon.month')}`
+        }
+        tooltip={planInfo.apiRateLimit === NUM_INFINITE ? undefined : t('billing.plansCommon.apiRateLimitTooltip') as string}
       />
       <Divider bgStyle='gradient' />
       <Item
