@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Contexto',
       noData: 'Puedes importar Conocimiento como contexto',
-      words: 'Palabras',
-      textBlocks: 'Bloques de Texto',
       selectTitle: 'Seleccionar Conocimiento de referencia',
       selected: 'Conocimiento seleccionado',
       noDataSet: 'No se encontró Conocimiento',
