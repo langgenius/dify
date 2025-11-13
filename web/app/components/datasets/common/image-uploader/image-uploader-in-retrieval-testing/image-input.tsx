@@ -66,7 +66,7 @@ const ImageUploader = () => {
         <Tooltip
           popupContent={t('datasetHitTesting.imageUploader.tooltip', {
             size: fileUploadConfig.imageFileSizeLimit,
-            batchCount: fileUploadConfig.batchCountLimit,
+            batchCount: fileUploadConfig.imageFileBatchLimit,
           })}
           popupClassName='system-xs-medium p-1.5 rounded-lg text-text-secondary'
           position='top'
@@ -84,7 +84,7 @@ const ImageUploader = () => {
               <span className='system-sm-regular text-text-quaternary group-hover:text-text-tertiary'>
                 {t('datasetHitTesting.imageUploader.tip', {
                   size: fileUploadConfig.imageFileSizeLimit,
-                  batchCount: fileUploadConfig.batchCountLimit,
+                  batchCount: fileUploadConfig.imageFileBatchLimit,
                 })}
               </span>
             )}

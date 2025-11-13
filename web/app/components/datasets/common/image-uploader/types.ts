@@ -13,5 +13,6 @@ export type FileEntity = {
 
 export type FileUploadConfig = {
   imageFileSizeLimit: number
-  batchCountLimit: number
+  imageFileBatchLimit: number
+  singleChunkAttachmentLimit: number
 }

@@ -232,6 +232,8 @@ export type PluginProvider = {
 export type FileUploadConfigResponse = {
   batch_count_limit: number
   image_file_size_limit?: number | string // default is 10MB
+  image_file_batch_limit: number // default is 5
+  single_chunk_attachment_limit: number // default is 10
   file_size_limit: number // default is 15MB
   audio_file_size_limit?: number // default is 50MB
   video_file_size_limit?: number // default is 100MB

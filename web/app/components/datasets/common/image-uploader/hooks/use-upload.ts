@@ -25,13 +25,19 @@ export const useUpload = () => {
     if (!fileUploadConfigResponse) {
       return {
         imageFileSizeLimit: 10,
-        batchCountLimit: 5, // todo: need to replace with image_file_batch_limit
+        imageFileBatchLimit: 5,
+        singleChunkAttachmentLimit: 10,
       }
     }
-    const { image_file_size_limit, batch_count_limit } = fileUploadConfigResponse
+    const {
+      image_file_size_limit,
+      image_file_batch_limit = 5,
+      single_chunk_attachment_limit = 10,
+    } = fileUploadConfigResponse
     return {
       imageFileSizeLimit: Number(image_file_size_limit),
-      batchCountLimit: batch_count_limit,
+      imageFileBatchLimit: Number(image_file_batch_limit),
+      singleChunkAttachmentLimit: Number(single_chunk_attachment_limit),
     }
   }, [fileUploadConfigResponse])
 
@@ -187,7 +193,14 @@ export const useUpload = () => {
             handleUpdateFile({ ...uploadingFile, progress })
           },
           onSuccessCallback: (res) => {
-            handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
+            handleUpdateFile({
+              ...uploadingFile,
+              extension: res.extension,
+              mimeType: res.mime_type,
+              size: res.size,
+              uploadedId: res.id,
+              progress: 100,
+            })
           },
           onErrorCallback: (error?: any) => {
             const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)
@@ -209,16 +222,24 @@ export const useUpload = () => {
   }, [Toast, t, handleAddFile, handleUpdateFile])
 
   const handleFileUpload = useCallback((newFiles: File[]) => {
+    const { files } = fileStore.getState()
+    const { singleChunkAttachmentLimit } = fileUploadConfig
     if (newFiles.length === 0) return
-    for (let i = 0; i < newFiles.length; i++)
-      handleLocalFileUpload(newFiles[i])
+    if (files.length + newFiles.length > singleChunkAttachmentLimit) {
+      Toast.notify({
+        type: 'error',
+        message: t('datasetHitTesting.imageUploader.singleChunkAttachmentLimitTooltip', { limit: singleChunkAttachmentLimit }),
+      })
+      return
+    }
+    for (const file of newFiles)
+      handleLocalFileUpload(file)
   }, [fileUploadConfig])
 
   const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { batchCountLimit } = fileUploadConfig
-    const files = Array.from(e.target.files ?? []).slice(0, batchCountLimit)
+    const { imageFileBatchLimit } = fileUploadConfig
+    const files = Array.from(e.target.files ?? []).slice(0, imageFileBatchLimit)
     const validFiles = getValidFiles(files)
-    console.log('🚀 ~ ImageUploader ~ validFiles:', validFiles)
     handleFileUpload(validFiles)
   }, [getValidFiles, handleFileUpload])
 
@@ -235,9 +256,8 @@ export const useUpload = () => {
         return f ? Promise.resolve([f]) : Promise.resolve([])
       }),
     )
-    const files = nested.flat().slice(0, fileUploadConfig.batchCountLimit)
+    const files = nested.flat().slice(0, fileUploadConfig.imageFileBatchLimit)
     const validFiles = getValidFiles(files)
-    console.log('🚀 ~ ImageUploader ~ validFiles:', validFiles)
     handleFileUpload(validFiles)
   }, [fileUploadConfig, handleFileUpload])
 

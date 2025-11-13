@@ -169,7 +169,7 @@ const ImagePreviewer = ({
         <Loading type='app' />
       )}
       {cachedImages[currentImage.url].status === 'error' && (
-        <div className='system-sm-regular flex flex-col items-center gap-y-2 text-text-tertiary'>
+        <div className='system-sm-regular flex max-w-sm flex-col items-center gap-y-2 text-text-tertiary'>
           <span>{`Failed to load image: ${currentImage.url}. Please try again.`}</span>
           <Button
             variant='secondary'

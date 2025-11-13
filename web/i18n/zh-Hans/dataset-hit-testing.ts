@@ -34,6 +34,7 @@ const translation = {
     tip: '上传或拖拽图片 (最多 {{batchCount}} 个，每个大小不超过 {{size}}MB)',
     tooltip: '上传图片 (最多 {{batchCount}} 个，每个大小不超过 {{size}}MB)',
     dropZoneTip: '拖拽文件到这里上传',
+    singleChunkAttachmentLimitTooltip: '单个分段附件数量不能超过 {{limit}}',
   },
 }
 

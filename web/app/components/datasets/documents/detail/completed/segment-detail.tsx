@@ -21,10 +21,19 @@ import Divider from '@/app/components/base/divider'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
+import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
+import { v4 as uuid4 } from 'uuid'
 
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
-  onUpdate: (segmentId: string, q: string, a: string, k: string[], needRegenerate?: boolean) => void
+  onUpdate: (
+    segmentId: string,
+    q: string,
+    a: string,
+    k: string[],
+    attachments: FileEntity[],
+    needRegenerate?: boolean,
+  ) => void
   onCancel: () => void
   isEditMode?: boolean
   docForm: ChunkingMode
@@ -43,6 +52,18 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const { t } = useTranslation()
   const [question, setQuestion] = useState(isEditMode ? segInfo?.content || '' : segInfo?.sign_content || '')
   const [answer, setAnswer] = useState(segInfo?.answer || '')
+  const [attachments, setAttachments] = useState<FileEntity[]>(() => {
+    return segInfo?.attachments?.map(item => ({
+      id: uuid4(),
+      name: item.name,
+      size: item.size,
+      mimeType: item.mime_type,
+      extension: item.extension,
+      sourceUrl: item.source_url,
+      uploadedId: item.id,
+      progress: 100,
+    })) || []
+  })
   const [keywords, setKeywords] = useState<string[]>(segInfo?.keywords || [])
   const { eventEmitter } = useEventEmitterContextContext()
   const [loading, setLoading] = useState(false)
@@ -51,7 +72,6 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
   const parentMode = useDocumentContext(s => s.parentMode)
   const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
-  const isMultimodal = useDatasetDetailContextWithSelector(s => !!s.dataset?.is_multimodal)
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'update-segment')
@@ -65,8 +85,8 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   }, [onCancel])
 
   const handleSave = useCallback(() => {
-    onUpdate(segInfo?.id || '', question, answer, keywords)
-  }, [onUpdate, segInfo?.id, question, answer, keywords])
+    onUpdate(segInfo?.id || '', question, answer, keywords, attachments)
+  }, [onUpdate, segInfo?.id, question, answer, keywords, attachments])
 
   const handleRegeneration = useCallback(() => {
     setShowRegenerationModal(true)
@@ -77,8 +97,12 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   }, [])
 
   const onConfirmRegeneration = useCallback(() => {
-    onUpdate(segInfo?.id || '', question, answer, keywords, true)
-  }, [onUpdate, segInfo?.id, question, answer, keywords])
+    onUpdate(segInfo?.id || '', question, answer, keywords, attachments, true)
+  }, [onUpdate, segInfo?.id, question, answer, keywords, attachments])
+
+  const onAttachmentsChange = useCallback((attachments: FileEntity[]) => {
+    setAttachments(attachments)
+  }, [])
 
   const wordCountText = useMemo(() => {
     const contentLength = docForm === ChunkingMode.qa ? (question.length + answer.length) : question.length
@@ -116,7 +140,11 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
             </>
           )}
           <div className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={toggleFullScreen}>
-            {fullScreen ? <RiCollapseDiagonalLine className='h-4 w-4 text-text-tertiary' /> : <RiExpandDiagonalLine className='h-4 w-4 text-text-tertiary' />}
+            {
+              fullScreen
+                ? <RiCollapseDiagonalLine className='h-4 w-4 text-text-tertiary' />
+                : <RiExpandDiagonalLine className='h-4 w-4 text-text-tertiary' />
+            }
           </div>
           <div className='flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={onCancel}>
             <RiCloseLine className='h-4 w-4 text-text-tertiary' />
@@ -140,14 +168,10 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
         </div>
 
         <div className={cn('flex flex-col', fullScreen ? 'w-[320px] gap-y-2' : 'w-full gap-y-1')}>
-          {isMultimodal && (
-            <ImageUploaderInChunk
-              value={[]}
-              onChange={() => {
-                console.log('🚀 ~ onChange:')
-              }}
-            />
-          )}
+          <ImageUploaderInChunk
+            value={attachments}
+            onChange={onAttachmentsChange}
+          />
           {isECOIndexing && (
             <Keywords
               className='w-full'

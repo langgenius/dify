@@ -52,7 +52,7 @@ const ImageUploader = () => {
           {t('dataset.imageUploader.tip', {
             size: fileUploadConfig.imageFileSizeLimit,
             supportTypes: ACCEPT_TYPES.join(', '),
-            batchCount: fileUploadConfig.batchCountLimit,
+            batchCount: fileUploadConfig.imageFileBatchLimit,
           })}
         </div>
         {dragging && <div ref={dragRef} className='absolute inset-0' />}

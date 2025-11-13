@@ -34,6 +34,18 @@ const ImageItem = ({
     onPreview?.(id)
   }, [onPreview, id])
 
+  const handleRemove = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    e.preventDefault()
+    onRemove?.(id)
+  }, [onRemove, id])
+
+  const handleReUpload = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    e.preventDefault()
+    onReUpload?.(id)
+  }, [onReUpload, id])
+
   return (
     <div
       className='group/file-image relative cursor-pointer'
@@ -43,7 +55,7 @@ const ImageItem = ({
         showDeleteAction && (
           <Button
             className='absolute -right-1.5 -top-1.5 z-[11] hidden h-5 w-5 rounded-full p-0 group-hover/file-image:flex'
-            onClick={() => onRemove?.(id)}
+            onClick={handleRemove}
           >
             <RiCloseLine className='h-4 w-4 text-components-button-secondary-text' />
           </Button>
@@ -68,11 +80,11 @@ const ImageItem = ({
       }
       {
         progress === -1 && (
-          <div className='absolute inset-0 z-10 flex items-center justify-center border-[2px] border-state-destructive-border bg-background-overlay-destructive'>
-            <ReplayLine
-              className='h-5 w-5'
-              onClick={() => onReUpload?.(id)}
-            />
+          <div
+            className='absolute inset-0 z-10 flex items-center justify-center border-[2px] border-state-destructive-border bg-background-overlay-destructive'
+            onClick={handleReUpload}
+          >
+            <ReplayLine className='size-5 text-text-primary-on-surface' />
           </div>
         )
       }

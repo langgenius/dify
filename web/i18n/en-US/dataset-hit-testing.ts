@@ -33,6 +33,7 @@ const translation = {
     tip: 'Upload or drop images (Max {{batchCount}}, {{size}}MB each)',
     tooltip: 'Upload images (Max {{batchCount}}, {{size}}MB each)',
     dropZoneTip: 'Drag file here to upload',
+    singleChunkAttachmentLimitTooltip: 'The number of single chunk attachments cannot exceed {{limit}}',
   },
 }
 
