@@ -74,6 +74,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
   const parentMode = useDocumentContext(s => s.parentMode)
   const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
+  const runtimeMode = useDatasetDetailContextWithSelector(s => s.dataset?.runtime_mode)
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'update-segment')
@@ -145,6 +146,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
                 handleRegeneration={handleRegeneration}
                 handleSave={handleSave}
                 loading={loading}
+                showRegenerationButton={runtimeMode === 'general'}
               />
               <Divider type='vertical' className='ml-4 mr-2 h-3.5 bg-divider-regular' />
             </>
@@ -202,6 +204,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
             handleRegeneration={handleRegeneration}
             handleSave={handleSave}
             loading={loading}
+            showRegenerationButton={runtimeMode === 'general'}
           />
         </div>
       )}
