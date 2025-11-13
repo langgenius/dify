@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "1.9.2",
+  "version": "1.10.0-rc1",
   "private": true,
   "packageManager": "pnpm@10.19.0+sha512.c9fc7236e92adf5c8af42fd5bf1612df99c2ceb62f27047032f4720b33f8eacdde311865e91c411f2774f618d82f320808ecb51718bfa82c060c4ba7c76a32b8",
   "engines": {
@@ -73,6 +73,7 @@
     "classnames": "^2.5.1",
     "cmdk": "^1.1.1",
     "copy-to-clipboard": "^3.3.3",
+    "cron-parser": "^5.4.0",
     "dayjs": "^1.11.19",
     "decimal.js": "^10.6.0",
     "dompurify": "^3.3.0",
@@ -198,6 +199,7 @@
     "sass": "^1.93.2",
     "storybook": "9.1.13",
     "tailwindcss": "^3.4.18",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "uglify-js": "^3.19.3"
   },

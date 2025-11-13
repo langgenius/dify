@@ -92,7 +92,7 @@ class WeaviateVector(BaseVector):
 
         # Parse gRPC configuration
         if config.grpc_endpoint:
-            # Urls without scheme won't be parsed correctly in some python verions,
+            # Urls without scheme won't be parsed correctly in some python versions,
             # see https://bugs.python.org/issue27657
             grpc_endpoint_with_scheme = (
                 config.grpc_endpoint if "://" in config.grpc_endpoint else f"grpc://{config.grpc_endpoint}"

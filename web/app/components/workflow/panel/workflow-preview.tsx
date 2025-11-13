@@ -31,6 +31,7 @@ const WorkflowPreview = () => {
   const { t } = useTranslation()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore(s => s.workflowRunningData)
+  const isListening = useStore(s => s.isListening)
   const showInputsPanel = useStore(s => s.showInputsPanel)
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const panelWidth = useStore(s => s.previewPanelWidth)
@@ -48,7 +49,16 @@ const WorkflowPreview = () => {
   }, [showDebugAndPreviewPanel, showInputsPanel])
 
   useEffect(() => {
-    if ((workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded || workflowRunningData?.result.status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText && !workflowRunningData.result.files?.length)
+    if (isListening)
+      switchTab('DETAIL')
+  }, [isListening])
+
+  useEffect(() => {
+    const status = workflowRunningData?.result.status
+    if (!workflowRunningData)
+      return
+
+    if ((status === WorkflowRunningStatus.Succeeded || status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText && !workflowRunningData.result.files?.length)
       switchTab('DETAIL')
   }, [workflowRunningData])
 
