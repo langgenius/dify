@@ -3,8 +3,8 @@ from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
-from controllers.console.wraps import is_admin_or_owner_required
 from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
@@ -104,13 +104,16 @@ class BaseApiKeyResource(Resource):
     resource_model: type | None = None
     resource_id_field: str | None = None
 
-    @is_admin_or_owner_required
     def delete(self, resource_id, api_key_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         api_key_id = str(api_key_id)
         current_user, current_tenant_id = current_account_with_tenant()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
+
+        # The role of the current user in the ta table must be admin or owner
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
 
         key = (
             db.session.query(ApiToken)

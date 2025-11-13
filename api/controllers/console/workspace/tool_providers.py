@@ -840,10 +840,10 @@ class ToolOAuthCustomClient(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider):
+    def post(self, provider: str):
         args = parser_custom.parse_args()
 
-        user, tenant_id = current_account_with_tenant()
+        _, tenant_id = current_account_with_tenant()
 
         return BuiltinToolManageService.save_custom_oauth_client_params(
             tenant_id=tenant_id,
