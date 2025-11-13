@@ -4,6 +4,7 @@ import React from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import useSWR from 'swr'
+import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import { get } from 'lodash-es'
 import Decimal from 'decimal.js'
@@ -78,6 +79,16 @@ export type PeriodParams = {
   }
 }
 
+export type TimeRange = {
+  start: Dayjs
+  end: Dayjs
+}
+
+export type PeriodParamsWithTimeRange = {
+  name: string
+  query?: TimeRange
+}
+
 export type IBizChartProps = {
   period: PeriodParams
   id: string
@@ -107,7 +118,8 @@ const Chart: React.FC<IChartProps> = ({
   const { t } = useTranslation()
   const statistics = chartData.data
   const statisticsLen = statistics.length
-  const extraDataForMarkLine = new Array(statisticsLen >= 2 ? statisticsLen - 2 : statisticsLen).fill('1')
+  const markLineLength = statisticsLen >= 2 ? statisticsLen - 2 : statisticsLen
+  const extraDataForMarkLine = Array.from({ length: markLineLength }, () => '1')
   extraDataForMarkLine.push('')
   extraDataForMarkLine.unshift('')
 
@@ -214,9 +226,7 @@ const Chart: React.FC<IChartProps> = ({
           formatter(params) {
             return `<div style='color:#6B7280;font-size:12px'>${params.name}</div>
                           <div style='font-size:14px;color:#1F2A37'>${valueFormatter((params.data as any)[yField])}
-                              ${!CHART_TYPE_CONFIG[chartType].showTokens
-                                ? ''
-                                : `<span style='font-size:12px'>
+                              ${!CHART_TYPE_CONFIG[chartType].showTokens ? '' : `<span style='font-size:12px'>
                                   <span style='margin-left:4px;color:#6B7280'>(</span>
                                   <span style='color:#FF8A4C'>~$${get(params.data, 'total_price', 0)}</span>
                                   <span style='color:#6B7280'>)</span>

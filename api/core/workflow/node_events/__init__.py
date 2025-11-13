@@ -14,6 +14,7 @@ from .loop import (
 )
 from .node import (
     ModelInvokeCompletedEvent,
+    PauseRequestedEvent,
     RunRetrieverResourceEvent,
     RunRetryEvent,
     StreamChunkEvent,
@@ -33,6 +34,7 @@ __all__ = [
     "ModelInvokeCompletedEvent",
     "NodeEventBase",
     "NodeRunResult",
+    "PauseRequestedEvent",
     "RunRetrieverResourceEvent",
     "RunRetryEvent",
     "StreamChunkEvent",

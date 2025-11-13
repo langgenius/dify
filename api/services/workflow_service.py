@@ -30,7 +30,7 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
-from models.account import Account
+from models import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
@@ -210,6 +210,9 @@ class WorkflowService:
         # validate features structure
         self.validate_features_structure(app_model=app_model, features=features)
 
+        # validate graph structure
+        self.validate_graph_structure(graph=graph)
+
         # create draft workflow if not found
         if not workflow:
             workflow = Workflow(
@@ -265,6 +268,9 @@ class WorkflowService:
 
         if FeatureService.get_system_features().plugin_manager.enabled:
             self._validate_workflow_credentials(draft_workflow)
+
+        # validate graph structure
+        self.validate_graph_structure(graph=draft_workflow.graph_dict)
 
         # create new workflow
         workflow = Workflow.new(
@@ -622,7 +628,7 @@ class WorkflowService:
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
         node_data = node_config.get("data", {})
-        if node_type == NodeType.START:
+        if node_type.is_start_node:
             with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
                 conversation_id = draft_var_srv.get_or_create_conversation(
@@ -630,10 +636,11 @@ class WorkflowService:
                     app=app_model,
                     workflow=draft_workflow,
                 )
-                start_data = StartNodeData.model_validate(node_data)
-                user_inputs = _rebuild_file_for_user_inputs_in_start_node(
-                    tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
-                )
+                if node_type is NodeType.START:
+                    start_data = StartNodeData.model_validate(node_data)
+                    user_inputs = _rebuild_file_for_user_inputs_in_start_node(
+                        tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
+                    )
                 # init variable pool
                 variable_pool = _setup_variable_pool(
                     query=query,
@@ -894,6 +901,31 @@ class WorkflowService:
 
         return new_app
 
+    def validate_graph_structure(self, graph: Mapping[str, Any]):
+        """
+        Validate workflow graph structure.
+
+        This performs a lightweight validation on the graph, checking for structural
+        inconsistencies such as the coexistence of start and trigger nodes.
+        """
+        node_configs = graph.get("nodes", [])
+        node_configs = cast(list[dict[str, Any]], node_configs)
+
+        # is empty graph
+        if not node_configs:
+            return
+
+        node_types: set[NodeType] = set()
+        for node in node_configs:
+            node_type = node.get("data", {}).get("type")
+            if node_type:
+                node_types.add(NodeType(node_type))
+
+        # start node and trigger node cannot coexist
+        if NodeType.START in node_types:
+            if any(nt.is_trigger_node for nt in node_types):
+                raise ValueError("Start node and trigger nodes cannot coexist in the same workflow")
+
     def validate_features_structure(self, app_model: App, features: dict):
         if app_model.mode == AppMode.ADVANCED_CHAT:
             return AdvancedChatAppConfigManager.config_validate(
@@ -996,17 +1028,18 @@ def _setup_variable_pool(
     conversation_variables: list[Variable],
 ):
     # Only inject system variables for START node type.
-    if node_type == NodeType.START:
+    if node_type == NodeType.START or node_type.is_trigger_node:
         system_variable = SystemVariable(
             user_id=user_id,
             app_id=workflow.app_id,
+            timestamp=int(naive_utc_now().timestamp()),
             workflow_id=workflow.id,
             files=files or [],
             workflow_execution_id=str(uuid.uuid4()),
         )
 
         # Only add chatflow-specific variables for non-workflow types
-        if workflow.type != WorkflowType.WORKFLOW.value:
+        if workflow.type != WorkflowType.WORKFLOW:
             system_variable.query = query
             system_variable.conversation_id = conversation_id
             system_variable.dialogue_count = 1

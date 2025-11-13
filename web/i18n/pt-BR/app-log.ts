@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'Trimestre até hoje',
       yearToDate: 'Ano até hoje',
       allTime: 'Todo o tempo',
+      custom: 'Personalizado',
+      last30days: 'Últimos 30 Dias',
     },
     annotation: {
       all: 'Tudo',
@@ -82,6 +84,7 @@ const translation = {
     workflowTitle: 'Detalhes do Registro',
     fileListLabel: 'Detalhes do arquivo',
     fileListDetail: 'Detalhe',
+    testWithParams: 'Teste com parâmetros',
   },
   promptLog: 'Registro de Prompt',
   agentLog: 'Registro do agente',

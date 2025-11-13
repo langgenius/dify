@@ -18,7 +18,7 @@ from ..common.impl import conversation_variable_updater_factory
 from .node_data import VariableAssignerData, WriteMode
 
 if TYPE_CHECKING:
-    from core.workflow.entities import GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 
 _CONV_VAR_UPDATER_FACTORY: TypeAlias = Callable[[], ConversationVariableUpdater]

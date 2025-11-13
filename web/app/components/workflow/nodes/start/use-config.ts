@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useBoolean } from 'ahooks'
 import type { StartNodeType } from './types'
 import { ChangeType } from '@/app/components/workflow/types'

@@ -3,7 +3,7 @@ import logging
 import operator
 from typing import Any, cast
 
-import requests
+import httpx
 
 from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
@@ -92,7 +92,7 @@ class NotionExtractor(BaseExtractor):
             if next_cursor:
                 current_query["start_cursor"] = next_cursor
 
-            res = requests.post(
+            res = httpx.post(
                 DATABASE_URL_TMPL.format(database_id=database_id),
                 headers={
                     "Authorization": "Bearer " + self._notion_access_token,
@@ -160,7 +160,7 @@ class NotionExtractor(BaseExtractor):
         while True:
             query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
             try:
-                res = requests.request(
+                res = httpx.request(
                     "GET",
                     block_url,
                     headers={
@@ -173,7 +173,7 @@ class NotionExtractor(BaseExtractor):
                 if res.status_code != 200:
                     raise ValueError(f"Error fetching Notion block data: {res.text}")
                 data = res.json()
-            except requests.RequestException as e:
+            except httpx.HTTPError as e:
                 raise ValueError("Error fetching Notion block data") from e
             if "results" not in data or not isinstance(data["results"], list):
                 raise ValueError("Error fetching Notion block data")
@@ -222,7 +222,7 @@ class NotionExtractor(BaseExtractor):
         while True:
             query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
 
-            res = requests.request(
+            res = httpx.request(
                 "GET",
                 block_url,
                 headers={
@@ -282,7 +282,7 @@ class NotionExtractor(BaseExtractor):
         while not done:
             query_dict: dict[str, Any] = {} if not start_cursor else {"start_cursor": start_cursor}
 
-            res = requests.request(
+            res = httpx.request(
                 "GET",
                 block_url,
                 headers={
@@ -354,7 +354,7 @@ class NotionExtractor(BaseExtractor):
 
         query_dict: dict[str, Any] = {}
 
-        res = requests.request(
+        res = httpx.request(
             "GET",
             retrieve_page_url,
             headers={

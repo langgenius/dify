@@ -1,8 +1,10 @@
 'use client'
-import React, { useRef, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid } from 'uuid'
 import { getDomain } from 'tldts'
 import { RiCloseLine, RiEditLine } from '@remixicon/react'
+import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIcon from '@/app/components/base/app-icon'
@@ -10,6 +12,7 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import HeadersInput from './headers-input'
+import type { HeaderItem } from './headers-input'
 import type { AppIconType } from '@/types/app'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { noop } from 'lodash-es'
@@ -17,6 +20,10 @@ import Toast from '@/app/components/base/toast'
 import { uploadRemoteFileInfo } from '@/service/common'
 import cn from '@/utils/classnames'
 import { useHover } from 'ahooks'
+import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
+import TabSlider from '@/app/components/base/tab-slider'
+import { MCPAuthMethod } from '@/app/components/tools/types'
+import Switch from '@/app/components/base/switch'
 
 export type DuplicateAppModalProps = {
   data?: ToolWithProvider
@@ -28,14 +35,22 @@ export type DuplicateAppModalProps = {
     icon: string
     icon_background?: string | null
     server_identifier: string
-    timeout: number
-    sse_read_timeout: number
     headers?: Record<string, string>
+    is_dynamic_registration?: boolean
+    authentication?: {
+      client_id?: string
+      client_secret?: string
+      grant_type?: string
+    }
+    configuration: {
+      timeout: number
+      sse_read_timeout: number
+    }
   }) => void
   onHide: () => void
 }
 
-const DEFAULT_ICON = { type: 'emoji', icon: '🧿', background: '#EFF1F5' }
+const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' }
 const extractFileId = (url: string) => {
   const match = url.match(/files\/(.+?)\/file-preview/)
   return match ? match[1] : null
@@ -61,21 +76,39 @@ const MCPModal = ({
   const { t } = useTranslation()
   const isCreate = !data
 
+  const authMethods = [
+    {
+      text: t('tools.mcp.modal.authentication'),
+      value: MCPAuthMethod.authentication,
+    },
+    {
+      text: t('tools.mcp.modal.headers'),
+      value: MCPAuthMethod.headers,
+    },
+    {
+      text: t('tools.mcp.modal.configurations'),
+      value: MCPAuthMethod.configurations,
+    },
+  ]
   const originalServerUrl = data?.server_url
   const originalServerID = data?.server_identifier
   const [url, setUrl] = React.useState(data?.server_url || '')
   const [name, setName] = React.useState(data?.name || '')
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(getIcon(data))
+  const [appIcon, setAppIcon] = useState<AppIconSelection>(() => getIcon(data))
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = React.useState(data?.server_identifier || '')
   const [timeout, setMcpTimeout] = React.useState(data?.timeout || 30)
   const [sseReadTimeout, setSseReadTimeout] = React.useState(data?.sse_read_timeout || 300)
-  const [headers, setHeaders] = React.useState<Record<string, string>>(
-    data?.masked_headers || {},
+  const [headers, setHeaders] = React.useState<HeaderItem[]>(
+    Object.entries(data?.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value })),
   )
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
   const isHovering = useHover(appIconRef)
+  const [authMethod, setAuthMethod] = useState(MCPAuthMethod.authentication)
+  const [isDynamicRegistration, setIsDynamicRegistration] = useState(isCreate ? true : data?.is_dynamic_registration)
+  const [clientID, setClientID] = useState(data?.authentication?.client_id || '')
+  const [credentials, setCredentials] = useState(data?.authentication?.client_secret || '')
 
   // Update states when data changes (for edit mode)
   React.useEffect(() => {
@@ -85,8 +118,11 @@ const MCPModal = ({
       setServerIdentifier(data.server_identifier || '')
       setMcpTimeout(data.timeout || 30)
       setSseReadTimeout(data.sse_read_timeout || 300)
-      setHeaders(data.masked_headers || {})
+      setHeaders(Object.entries(data.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value })))
       setAppIcon(getIcon(data))
+      setIsDynamicRegistration(data.is_dynamic_registration)
+      setClientID(data.authentication?.client_id || '')
+      setCredentials(data.authentication?.client_secret || '')
     }
     else {
       // Reset for create mode
@@ -95,15 +131,18 @@ const MCPModal = ({
       setServerIdentifier('')
       setMcpTimeout(30)
       setSseReadTimeout(300)
-      setHeaders({})
+      setHeaders([])
       setAppIcon(DEFAULT_ICON as AppIconSelection)
+      setIsDynamicRegistration(true)
+      setClientID('')
+      setCredentials('')
     }
   }, [data])
 
   const isValidUrl = (string: string) => {
     try {
-      const urlPattern = /^(https?:\/\/)((([a-z\d]([a-z\d-]*[a-z\d])*)\.)+[a-z]{2,}|((\d{1,3}\.){3}\d{1,3})|localhost)(:\d+)?(\/[-a-z\d%_.~+]*)*(\?[;&a-z\d%_.~+=-]*)?/i
-      return urlPattern.test(string)
+      const url = new URL(string)
+      return url.protocol === 'http:' || url.protocol === 'https:'
     }
     catch {
       return false
@@ -148,6 +187,11 @@ const MCPModal = ({
       Toast.notify({ type: 'error', message: 'invalid server identifier' })
       return
     }
+    const formattedHeaders = headers.reduce((acc, item) => {
+      if (item.key.trim())
+        acc[item.key.trim()] = item.value
+      return acc
+    }, {} as Record<string, string>)
     await onConfirm({
       server_url: originalServerUrl === url ? '[__HIDDEN__]' : url.trim(),
       name,
@@ -155,13 +199,24 @@ const MCPModal = ({
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       server_identifier: serverIdentifier.trim(),
-      timeout: timeout || 30,
-      sse_read_timeout: sseReadTimeout || 300,
-      headers: Object.keys(headers).length > 0 ? headers : undefined,
+      headers: Object.keys(formattedHeaders).length > 0 ? formattedHeaders : undefined,
+      is_dynamic_registration: isDynamicRegistration,
+      authentication: {
+        client_id: clientID,
+        client_secret: credentials,
+      },
+      configuration: {
+        timeout: timeout || 30,
+        sse_read_timeout: sseReadTimeout || 300,
+      },
     })
     if(isCreate)
       onHide()
   }
+
+  const handleAuthMethodChange = useCallback((value: string) => {
+    setAuthMethod(value as MCPAuthMethod)
+  }, [])
 
   return (
     <>
@@ -208,6 +263,7 @@ const MCPModal = ({
                 icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
                 background={appIcon.type === 'emoji' ? appIcon.background : undefined}
                 imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                innerIcon={shouldUseMcpIconForAppIcon(appIcon.type, appIcon.type === 'emoji' ? appIcon.icon : '') ? <Mcp className='h-8 w-8 text-text-primary-on-surface' /> : undefined}
                 size='xxl'
                 className='relative cursor-pointer rounded-2xl'
                 coverElement={
@@ -236,42 +292,101 @@ const MCPModal = ({
               </div>
             )}
           </div>
-          <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.timeout')}</span>
-            </div>
-            <Input
-              type='number'
-              value={timeout}
-              onChange={e => setMcpTimeout(Number(e.target.value))}
-              onBlur={e => handleBlur(e.target.value.trim())}
-              placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
-            />
-          </div>
-          <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.sseReadTimeout')}</span>
-            </div>
-            <Input
-              type='number'
-              value={sseReadTimeout}
-              onChange={e => setSseReadTimeout(Number(e.target.value))}
-              onBlur={e => handleBlur(e.target.value.trim())}
-              placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
-            />
-          </div>
-          <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.headers')}</span>
-            </div>
-            <div className='body-xs-regular mb-2 text-text-tertiary'>{t('tools.mcp.modal.headersTip')}</div>
-            <HeadersInput
-              headers={headers}
-              onChange={setHeaders}
-              readonly={false}
-              isMasked={!isCreate && Object.keys(headers).length > 0}
-            />
-          </div>
+          <TabSlider
+            className='w-full'
+            itemClassName={(isActive) => {
+              return `flex-1 ${isActive && 'text-text-accent-light-mode-only'}`
+            }}
+            value={authMethod}
+            onChange={handleAuthMethodChange}
+            options={authMethods}
+          />
+          {
+            authMethod === MCPAuthMethod.authentication && (
+              <>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <Switch
+                      className='mr-2'
+                      defaultValue={isDynamicRegistration}
+                      onChange={setIsDynamicRegistration}
+                    />
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.useDynamicClientRegistration')}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.clientID')}</span>
+                  </div>
+                  <Input
+                    value={clientID}
+                    onChange={e => setClientID(e.target.value)}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('tools.mcp.modal.clientID')}
+                    disabled={isDynamicRegistration}
+                  />
+                </div>
+                <div>
+                  <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.clientSecret')}</span>
+                  </div>
+                  <Input
+                    value={credentials}
+                    onChange={e => setCredentials(e.target.value)}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('tools.mcp.modal.clientSecretPlaceholder')}
+                    disabled={isDynamicRegistration}
+                  />
+                </div>
+              </>
+            )
+          }
+          {
+            authMethod === MCPAuthMethod.headers && (
+              <div>
+                <div className='mb-1 flex h-6 items-center'>
+                  <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.headers')}</span>
+                </div>
+                <div className='body-xs-regular mb-2 text-text-tertiary'>{t('tools.mcp.modal.headersTip')}</div>
+                <HeadersInput
+                  headersItems={headers}
+                  onChange={setHeaders}
+                  readonly={false}
+                  isMasked={!isCreate && headers.filter(item => item.key.trim()).length > 0}
+                />
+              </div>
+            )
+          }
+          {
+            authMethod === MCPAuthMethod.configurations && (
+              <>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.timeout')}</span>
+                  </div>
+                  <Input
+                    type='number'
+                    value={timeout}
+                    onChange={e => setMcpTimeout(Number(e.target.value))}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
+                  />
+                </div>
+                <div>
+                  <div className='mb-1 flex h-6 items-center'>
+                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.sseReadTimeout')}</span>
+                  </div>
+                  <Input
+                    type='number'
+                    value={sseReadTimeout}
+                    onChange={e => setSseReadTimeout(Number(e.target.value))}
+                    onBlur={e => handleBlur(e.target.value.trim())}
+                    placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
+                  />
+                </div>
+              </>
+            )
+          }
         </div>
         <div className='flex flex-row-reverse pt-5'>
           <Button disabled={!name || !url || !serverIdentifier || isFetchingIcon} className='ml-2' variant='primary' onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.modal.confirm')}</Button>

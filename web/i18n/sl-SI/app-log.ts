@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'Četrtletje do danes',
       yearToDate: 'Leto do danes',
       allTime: 'Vse obdobje',
+      last30days: 'Zadnjih 30 dni',
+      custom: 'Po meri',
     },
     annotation: {
       all: 'Vse',
@@ -82,6 +84,7 @@ const translation = {
     workflowTitle: 'Podrobnosti dnevnika',
     fileListDetail: 'Podrobnosti',
     fileListLabel: 'Podrobnosti o datoteki',
+    testWithParams: 'Preizkus s parametri',
   },
   promptLog: 'Dnevnik PROMPT-ov',
   agentLog: 'Dnevnik pomočnika',

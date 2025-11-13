@@ -74,7 +74,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
         tenant_id = extract_tenant_id(user)
         if not tenant_id:
             raise ValueError("User must have a tenant_id or current_tenant_id")
-        self._tenant_id = tenant_id  # type: ignore[assignment]  # We've already checked tenant_id is not None
+        self._tenant_id = tenant_id
 
         # Store app context
         self._app_id = app_id
@@ -108,7 +108,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             execution_data = execution.model_dump()
 
             # Queue the save operation as a Celery task (fire and forget)
-            save_workflow_execution_task.delay(
+            save_workflow_execution_task.delay(  # type: ignore
                 execution_data=execution_data,
                 tenant_id=self._tenant_id,
                 app_id=self._app_id or "",

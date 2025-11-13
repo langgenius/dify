@@ -323,7 +323,6 @@ const translation = {
     timeoutExceeded: 'ผลลัพธ์จะไม่แสดงเนื่องจากหมดเวลา โปรดดูบันทึกเพื่อรวบรวมผลลัพธ์ที่สมบูรณ์',
   },
   variableTable: {
-    optional: 'เสริม',
     key: 'ปุ่มตัวแปร',
     typeString: 'เชือก',
     typeSelect: 'เลือก',

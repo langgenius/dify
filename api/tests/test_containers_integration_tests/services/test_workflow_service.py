@@ -44,27 +44,26 @@ class TestWorkflowService:
             Account: Created test account instance
         """
         fake = fake or Faker()
-        account = Account()
-        account.id = fake.uuid4()
-        account.email = fake.email()
-        account.name = fake.name()
-        account.avatar_url = fake.url()
-        account.tenant_id = fake.uuid4()
-        account.status = "active"
-        account.type = "normal"
-        account.role = "owner"
-        account.interface_language = "en-US"  # Set interface language for Site creation
+        account = Account(
+            email=fake.email(),
+            name=fake.name(),
+            avatar=fake.url(),
+            status="active",
+            interface_language="en-US",  # Set interface language for Site creation
+        )
         account.created_at = fake.date_time_this_year()
+        account.id = fake.uuid4()
         account.updated_at = account.created_at
 
         # Create a tenant for the account
         from models.account import Tenant
 
-        tenant = Tenant()
-        tenant.id = account.tenant_id
-        tenant.name = f"Test Tenant {fake.company()}"
-        tenant.plan = "basic"
-        tenant.status = "active"
+        tenant = Tenant(
+            name=f"Test Tenant {fake.company()}",
+            plan="basic",
+            status="active",
+        )
+        tenant.id = account.current_tenant_id
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
 
@@ -91,20 +90,21 @@ class TestWorkflowService:
             App: Created test app instance
         """
         fake = fake or Faker()
-        app = App()
-        app.id = fake.uuid4()
-        app.tenant_id = fake.uuid4()
-        app.name = fake.company()
-        app.description = fake.text()
-        app.mode = AppMode.WORKFLOW
-        app.icon_type = "emoji"
-        app.icon = "🤖"
-        app.icon_background = "#FFEAD5"
-        app.enable_site = True
-        app.enable_api = True
-        app.created_by = fake.uuid4()
+        app = App(
+            id=fake.uuid4(),
+            tenant_id=fake.uuid4(),
+            name=fake.company(),
+            description=fake.text(),
+            mode=AppMode.WORKFLOW,
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FFEAD5",
+            enable_site=True,
+            enable_api=True,
+            created_by=fake.uuid4(),
+            workflow_id=None,  # Will be set when workflow is created
+        )
         app.updated_by = app.created_by
-        app.workflow_id = None  # Will be set when workflow is created
 
         from extensions.ext_database import db
 
@@ -126,19 +126,20 @@ class TestWorkflowService:
             Workflow: Created test workflow instance
         """
         fake = fake or Faker()
-        workflow = Workflow()
-        workflow.id = fake.uuid4()
-        workflow.tenant_id = app.tenant_id
-        workflow.app_id = app.id
-        workflow.type = WorkflowType.WORKFLOW.value
-        workflow.version = Workflow.VERSION_DRAFT
-        workflow.graph = json.dumps({"nodes": [], "edges": []})
-        workflow.features = json.dumps({"features": []})
-        # unique_hash is a computed property based on graph and features
-        workflow.created_by = account.id
-        workflow.updated_by = account.id
-        workflow.environment_variables = []
-        workflow.conversation_variables = []
+        workflow = Workflow(
+            id=fake.uuid4(),
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=WorkflowType.WORKFLOW,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps({"nodes": [], "edges": []}),
+            features=json.dumps({"features": []}),
+            # unique_hash is a computed property based on graph and features
+            created_by=account.id,
+            updated_by=account.id,
+            environment_variables=[],
+            conversation_variables=[],
+        )
 
         from extensions.ext_database import db
 
@@ -175,7 +176,7 @@ class TestWorkflowService:
         node_execution.node_type = "test_node"
         node_execution.title = "Test Node"  # Required field
         node_execution.status = "succeeded"
-        node_execution.created_by_role = CreatorUserRole.ACCOUNT.value  # Required field
+        node_execution.created_by_role = CreatorUserRole.ACCOUNT  # Required field
         node_execution.created_by = account.id  # Required field
         node_execution.created_at = fake.date_time_this_year()
 
@@ -583,7 +584,16 @@ class TestWorkflowService:
         account = self._create_test_account(db_session_with_containers, fake)
         app = self._create_test_app(db_session_with_containers, fake)
 
-        graph = {"nodes": [{"id": "start", "type": "start"}], "edges": []}
+        graph = {
+            "nodes": [
+                {
+                    "id": "start",
+                    "type": "start",
+                    "data": {"type": "start", "title": "Start"},
+                }
+            ],
+            "edges": [],
+        }
         features = {"features": ["feature1", "feature2"]}
         # Don't pre-calculate hash, let the service generate it
         unique_hash = None
@@ -631,7 +641,25 @@ class TestWorkflowService:
         # Get the actual hash that was generated
         original_hash = existing_workflow.unique_hash
 
-        new_graph = {"nodes": [{"id": "start", "type": "start"}, {"id": "end", "type": "end"}], "edges": []}
+        new_graph = {
+            "nodes": [
+                {
+                    "id": "start",
+                    "type": "start",
+                    "data": {"type": "start", "title": "Start"},
+                },
+                {
+                    "id": "end",
+                    "type": "end",
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        "outputs": [{"variable": "output", "value_selector": ["start", "text"]}],
+                    },
+                },
+            ],
+            "edges": [],
+        }
         new_features = {"features": ["feature1", "feature2", "feature3"]}
 
         environment_variables = []
@@ -678,7 +706,16 @@ class TestWorkflowService:
         # Get the actual hash that was generated
         original_hash = existing_workflow.unique_hash
 
-        new_graph = {"nodes": [{"id": "start", "type": "start"}], "edges": []}
+        new_graph = {
+            "nodes": [
+                {
+                    "id": "start",
+                    "type": "start",
+                    "data": {"type": "start", "title": "Start"},
+                }
+            ],
+            "edges": [],
+        }
         new_features = {"features": ["feature1"]}
         # Use a different hash to trigger the error
         mismatched_hash = "different_hash_12345"

@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'Izberi vse',
     deSelectAll: 'Odberi vse',
     config: 'Konfiguracija',
+    no: 'Ne',
+    confirmAction: 'Prosimo, potrdite svoje dejanje.',
+    deleteConfirmTitle: 'Izbrisati?',
+    yes: 'Da',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -161,7 +165,6 @@ const translation = {
     workspace: 'Delovni prostor',
     createWorkspace: 'Ustvari delovni prostor',
     helpCenter: 'Pomoč',
-    communityFeedback: 'Povratne informacije',
     roadmap: 'Načrt razvoja',
     community: 'Skupnost',
     about: 'O nas',
@@ -169,6 +172,8 @@ const translation = {
     support: 'Podpora',
     github: 'GitHub',
     compliance: 'Skladnost',
+    contactUs: 'Kontaktirajte nas',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'SPLOŠNO',
@@ -586,6 +591,7 @@ const translation = {
       customModelCredentials: 'Poverilnice modela po meri',
     },
     parametersInvalidRemoved: 'Nekateri parametri so neveljavni in so bili odstranjeni.',
+    installDataSourceProvider: 'Namestite ponudnike podatkovnih virov',
   },
   dataSource: {
     notion: {
@@ -786,6 +792,7 @@ const translation = {
     uploadFromComputer: 'Lokalno nalaganje',
     uploadFromComputerLimit: 'Nalaganje {{type}} ne sme presegati {{size}}',
     uploadFromComputerReadError: 'Branje datoteke ni uspelo, poskusite znova.',
+    fileExtensionBlocked: 'Ta vrsta datoteke je zaradi varnostnih razlogov blokirana',
   },
   tag: {
     addTag: 'Dodajanje oznak',

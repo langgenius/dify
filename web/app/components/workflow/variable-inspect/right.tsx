@@ -24,14 +24,14 @@ import useNodeInfo from '../nodes/_base/hooks/use-node-info'
 import { useBoolean } from 'ahooks'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import GetCodeGeneratorResModal from '../../app/configuration/config/code-generator/get-code-generator-res'
-import { AppType } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import { useHooksStore } from '../hooks-store'
 import { useCallback, useMemo } from 'react'
 import { useNodesInteractions, useToolIcon } from '../hooks'
 import { CodeLanguage } from '../nodes/code/types'
 import useNodeCrud from '../nodes/_base/hooks/use-node-crud'
 import type { GenRes } from '@/service/debug'
-import produce from 'immer'
+import { produce } from 'immer'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '../../base/prompt-editor/plugins/update-block'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
@@ -282,7 +282,7 @@ const Right = ({
         isCodeBlock
           ? <GetCodeGeneratorResModal
             isShow
-            mode={AppType.chat}
+            mode={AppModeEnum.CHAT}
             onClose={handleHidePromptGenerator}
             flowId={configsMap?.flowId || ''}
             nodeId={nodeId}
@@ -291,7 +291,7 @@ const Right = ({
             onFinished={handleUpdatePrompt}
           />
           : <GetAutomaticResModal
-            mode={AppType.chat}
+            mode={AppModeEnum.CHAT}
             isShow
             onClose={handleHidePromptGenerator}
             onFinished={handleUpdatePrompt}

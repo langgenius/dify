@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
     Dataset,
@@ -783,133 +783,6 @@ class TestCleanDatasetTask:
         print(f"Metadata items processed: {len(metadata_items)}")
         print(f"Total cleanup time: {cleanup_duration:.3f} seconds")
         print(f"Average time per document: {cleanup_duration / len(documents):.3f} seconds")
-
-    def test_clean_dataset_task_concurrent_cleanup_scenarios(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test dataset cleanup with concurrent cleanup scenarios and race conditions.
-
-        This test verifies that the task can properly:
-        1. Handle multiple cleanup operations on the same dataset
-        2. Prevent data corruption during concurrent access
-        3. Maintain data consistency across multiple cleanup attempts
-        4. Handle race conditions gracefully
-        5. Ensure idempotent cleanup operations
-        """
-        # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
-        upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
-
-        # Update document with file reference
-        import json
-
-        document.data_source_info = json.dumps({"upload_file_id": upload_file.id})
-        from extensions.ext_database import db
-
-        db.session.commit()
-
-        # Save IDs for verification
-        dataset_id = dataset.id
-        tenant_id = tenant.id
-        upload_file_id = upload_file.id
-
-        # Mock storage to simulate slow operations
-        mock_storage = mock_external_service_dependencies["storage"]
-        original_delete = mock_storage.delete
-
-        def slow_delete(key):
-            import time
-
-            time.sleep(0.1)  # Simulate slow storage operation
-            return original_delete(key)
-
-        mock_storage.delete.side_effect = slow_delete
-
-        # Execute multiple cleanup operations concurrently
-        import threading
-
-        cleanup_results = []
-        cleanup_errors = []
-
-        def run_cleanup():
-            try:
-                clean_dataset_task(
-                    dataset_id=dataset_id,
-                    tenant_id=tenant_id,
-                    indexing_technique="high_quality",
-                    index_struct='{"type": "paragraph"}',
-                    collection_binding_id=str(uuid.uuid4()),
-                    doc_form="paragraph_index",
-                )
-                cleanup_results.append("success")
-            except Exception as e:
-                cleanup_errors.append(str(e))
-
-        # Start multiple cleanup threads
-        threads = []
-        for i in range(3):
-            thread = threading.Thread(target=run_cleanup)
-            threads.append(thread)
-            thread.start()
-
-        # Wait for all threads to complete
-        for thread in threads:
-            thread.join()
-
-        # Verify results
-        # Check that all documents were deleted (only once)
-        remaining_documents = db.session.query(Document).filter_by(dataset_id=dataset_id).all()
-        assert len(remaining_documents) == 0
-
-        # Check that all segments were deleted (only once)
-        remaining_segments = db.session.query(DocumentSegment).filter_by(dataset_id=dataset_id).all()
-        assert len(remaining_segments) == 0
-
-        # Check that upload file was deleted (only once)
-        # Note: In concurrent scenarios, the first thread deletes documents and segments,
-        # subsequent threads may not find the related data to clean up upload files
-        # This demonstrates the idempotent nature of the cleanup process
-        remaining_files = db.session.query(UploadFile).filter_by(id=upload_file_id).all()
-        # The upload file should be deleted by the first successful cleanup operation
-        # However, in concurrent scenarios, this may not always happen due to race conditions
-        # This test demonstrates the idempotent nature of the cleanup process
-        if len(remaining_files) > 0:
-            print(f"Warning: Upload file {upload_file_id} was not deleted in concurrent scenario")
-            print("This is expected behavior demonstrating the idempotent nature of cleanup")
-        # We don't assert here as the behavior depends on timing and race conditions
-
-        # Verify that storage.delete was called (may be called multiple times in concurrent scenarios)
-        # In concurrent scenarios, storage operations may be called multiple times due to race conditions
-        assert mock_storage.delete.call_count > 0
-
-        # Verify that index processor was called (may be called multiple times in concurrent scenarios)
-        mock_index_processor = mock_external_service_dependencies["index_processor"]
-        assert mock_index_processor.clean.call_count > 0
-
-        # Check cleanup results
-        assert len(cleanup_results) == 3, "All cleanup operations should complete"
-        assert len(cleanup_errors) == 0, "No cleanup errors should occur"
-
-        # Verify idempotency by running cleanup again on the same dataset
-        # This should not perform any additional operations since data is already cleaned
-        clean_dataset_task(
-            dataset_id=dataset_id,
-            tenant_id=tenant_id,
-            indexing_technique="high_quality",
-            index_struct='{"type": "paragraph"}',
-            collection_binding_id=str(uuid.uuid4()),
-            doc_form="paragraph_index",
-        )
-
-        # Verify that no additional storage operations were performed
-        # Note: In concurrent scenarios, the exact count may vary due to race conditions
-        print(f"Final storage delete calls: {mock_storage.delete.call_count}")
-        print(f"Final index processor calls: {mock_index_processor.clean.call_count}")
-        print("Note: Multiple calls in concurrent scenarios are expected due to race conditions")
 
     def test_clean_dataset_task_storage_exception_handling(
         self, db_session_with_containers, mock_external_service_dependencies

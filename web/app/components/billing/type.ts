@@ -27,6 +27,7 @@ export type PlanInfo = {
   documentProcessingPriority: Priority
   logHistory: number
   messageRequest: number
+  triggerEvents: number
   annotatedResponse: number
 }
 
@@ -52,7 +53,7 @@ export type SelfHostedPlanInfo = {
   annotatedResponse: number
 }
 
-export type UsagePlanInfo = Pick<PlanInfo, 'buildApps' | 'teamMembers' | 'annotatedResponse' | 'documentsUploadQuota'> & { vectorSpace: number }
+export type UsagePlanInfo = Pick<PlanInfo, 'buildApps' | 'teamMembers' | 'annotatedResponse' | 'documentsUploadQuota' | 'apiRateLimit' | 'triggerEvents'> & { vectorSpace: number }
 
 export enum DocumentProcessingPriority {
   standard = 'standard',
@@ -84,6 +85,14 @@ export type CurrentPlanInfoBackend = {
     limit: number // total. 0 means unlimited
   }
   documents_upload_quota: {
+    size: number
+    limit: number // total. 0 means unlimited
+  }
+  api_rate_limit?: {
+    size: number
+    limit: number // total. 0 means unlimited
+  }
+  trigger_events?: {
     size: number
     limit: number // total. 0 means unlimited
   }

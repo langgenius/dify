@@ -1,7 +1,7 @@
 import {
   memo,
 } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   useReactFlow,
   useStoreApi,
@@ -12,7 +12,7 @@ import {
   useStore,
   useWorkflowStore,
 } from './store'
-import { WorkflowHistoryEvent, useNodesInteractions, useWorkflowHistory } from './hooks'
+import { WorkflowHistoryEvent, useAutoGenerateWebhookUrl, useNodesInteractions, useNodesSyncDraft, useWorkflowHistory } from './hooks'
 import { CUSTOM_NODE } from './constants'
 import { getIterationStartNode, getLoopStartNode } from './utils'
 import CustomNode from './nodes'
@@ -29,6 +29,8 @@ const CandidateNode = () => {
   const { zoom } = useViewport()
   const { handleNodeSelect } = useNodesInteractions()
   const { saveStateToHistory } = useWorkflowHistory()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
 
   useEventListener('click', (e) => {
     const { candidateNode, mousePosition } = workflowStore.getState()
@@ -70,6 +72,12 @@ const CandidateNode = () => {
 
       if (candidateNode.type === CUSTOM_NOTE_NODE)
         handleNodeSelect(candidateNode.id)
+
+      if (candidateNode.data.type === BlockEnum.TriggerWebhook) {
+        handleSyncWorkflowDraft(true, true, {
+          onSuccess: () => autoGenerateWebhookUrl(candidateNode.id),
+        })
+      }
     }
   })
 

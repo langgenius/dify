@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base
+from .base import Base, TypeBase
 from .engine import db
 from .types import StringUUID
 
@@ -41,7 +41,7 @@ class ProviderQuotaType(StrEnum):
         raise ValueError(f"No matching enum found for value '{value}'")
 
 
-class Provider(Base):
+class Provider(TypeBase):
     """
     Provider model representing the API providers and their configurations.
     """
@@ -55,24 +55,28 @@ class Provider(Base):
         ),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=text("uuidv7()"), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     provider_type: Mapped[str] = mapped_column(
-        String(40), nullable=False, server_default=text("'custom'::character varying")
+        String(40), nullable=False, server_default=text("'custom'::character varying"), default="custom"
     )
-    is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"))
-    last_used: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"), default=False)
+    last_used: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, init=False)
+    credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
     quota_type: Mapped[str | None] = mapped_column(
-        String(40), nullable=True, server_default=text("''::character varying")
+        String(40), nullable=True, server_default=text("''::character varying"), default=""
     )
-    quota_limit: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True)
-    quota_used: Mapped[int | None] = mapped_column(sa.BigInteger, default=0)
+    quota_limit: Mapped[int | None] = mapped_column(sa.BigInteger, nullable=True, default=None)
+    quota_used: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, default=0)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
+    )
 
     def __repr__(self):
         return (
@@ -107,7 +111,7 @@ class Provider(Base):
         """
         Returns True if the provider is enabled.
         """
-        if self.provider_type == ProviderType.SYSTEM.value:
+        if self.provider_type == ProviderType.SYSTEM:
             return self.is_valid
         else:
             return self.is_valid and self.token_is_set
@@ -135,7 +139,9 @@ class ProviderModel(Base):
     credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
     @cached_property
     def credential(self):
@@ -170,7 +176,9 @@ class TenantDefaultModel(Base):
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
 
 class TenantPreferredModelProvider(Base):
@@ -185,7 +193,9 @@ class TenantPreferredModelProvider(Base):
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     preferred_provider_type: Mapped[str] = mapped_column(String(40), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
 
 class ProviderOrder(Base):
@@ -212,7 +222,9 @@ class ProviderOrder(Base):
     pay_failed_at: Mapped[datetime | None] = mapped_column(DateTime)
     refunded_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
 
 class ProviderModelSetting(Base):
@@ -234,7 +246,9 @@ class ProviderModelSetting(Base):
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("true"))
     load_balancing_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
 
 class LoadBalancingModelConfig(Base):
@@ -259,7 +273,9 @@ class LoadBalancingModelConfig(Base):
     credential_source_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
 
 class ProviderCredential(Base):
@@ -279,7 +295,9 @@ class ProviderCredential(Base):
     credential_name: Mapped[str] = mapped_column(String(255), nullable=False)
     encrypted_config: Mapped[str] = mapped_column(sa.Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
 
 class ProviderModelCredential(Base):
@@ -307,4 +325,6 @@ class ProviderModelCredential(Base):
     credential_name: Mapped[str] = mapped_column(String(255), nullable=False)
     encrypted_config: Mapped[str] = mapped_column(sa.Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
