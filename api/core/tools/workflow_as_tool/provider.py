@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 from pydantic import Field
 from sqlalchemy.orm import Session
@@ -7,7 +8,9 @@ from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.__base.tool_provider import ToolProviderController
-from core.tools.__base.tool_runtime import ToolRuntime
+
+if TYPE_CHECKING:
+    from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ToolDescription,
@@ -175,6 +178,9 @@ class WorkflowToolProviderController(ToolProviderController):
                     "description": "",
                 }
         output_schema = {"type": "object", "properties": properties}
+
+        # Import ToolRuntime locally to avoid circular import
+        from core.tools.__base.tool_runtime import ToolRuntime
 
         return WorkflowTool(
             workflow_as_tool_id=db_provider.id,

@@ -1,8 +1,11 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from core.plugin.impl.tool import PluginToolManager
-from core.tools.__base.tool_runtime import ToolRuntime
+
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
+
+if TYPE_CHECKING:
+    from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin, ToolProviderType
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.plugin_tool.tool import PluginTool
@@ -55,6 +58,9 @@ class PluginToolProviderController(BuiltinToolProviderController):
         if not tool_entity:
             raise ValueError(f"Tool with name {tool_name} not found")
 
+        # Import ToolRuntime locally to avoid circular import
+        from core.tools.__base.tool_runtime import ToolRuntime
+
         return PluginTool(
             entity=tool_entity,
             runtime=ToolRuntime(tenant_id=self.tenant_id),
@@ -67,6 +73,9 @@ class PluginToolProviderController(BuiltinToolProviderController):
         """
         get all tools
         """
+        # Import ToolRuntime locally to avoid circular import
+        from core.tools.__base.tool_runtime import ToolRuntime
+
         return [
             PluginTool(
                 entity=tool_entity,

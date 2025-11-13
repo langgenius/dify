@@ -4,9 +4,8 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from core.tools.__base.tool_runtime import ToolRuntime
     from models.model import File
-
-from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
     ToolEntity,
     ToolInvokeMessage,
@@ -20,11 +19,11 @@ class Tool(ABC):
     The base class of a tool
     """
 
-    def __init__(self, entity: ToolEntity, runtime: ToolRuntime):
+    def __init__(self, entity: ToolEntity, runtime: "ToolRuntime"):
         self.entity = entity
         self.runtime = runtime
 
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "Tool":
+    def fork_tool_runtime(self, runtime: "ToolRuntime") -> "Tool":
         """
         fork a new tool with metadata
         :return: the new tool

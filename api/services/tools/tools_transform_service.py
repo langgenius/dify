@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Mapping
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
 from pydantic import ValidationError
 from yarl import URL
@@ -11,8 +11,11 @@ from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.mcp.types import Tool as MCPTool
 from core.plugin.entities.plugin_daemon import CredentialType, PluginDatasourceProviderEntity
 from core.tools.__base.tool import Tool
-from core.tools.__base.tool_runtime import ToolRuntime
+
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
+
+if TYPE_CHECKING:
+    from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity, ToolProviderCredentialApiEntity
 from core.tools.entities.common_entities import I18nObject
@@ -356,6 +359,8 @@ class ToolTransformService:
         """
         if isinstance(tool, Tool):
             # fork tool runtime
+            from core.tools.__base.tool_runtime import ToolRuntime
+
             tool = tool.fork_tool_runtime(
                 runtime=ToolRuntime(
                     credentials={},

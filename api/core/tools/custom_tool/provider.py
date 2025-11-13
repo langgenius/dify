@@ -1,10 +1,13 @@
 from pydantic import Field
 from sqlalchemy import select
+from typing import TYPE_CHECKING
 
 from core.entities.provider_entities import ProviderConfig
 from core.tools.__base.tool_provider import ToolProviderController
-from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.tool import ApiTool
+
+if TYPE_CHECKING:
+    from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
@@ -130,6 +133,9 @@ class ApiToolProviderController(ToolProviderController):
         :param tool_bundle: the tool bundle
         :return: the tool
         """
+        # Import ToolRuntime locally to avoid circular import
+        from core.tools.__base.tool_runtime import ToolRuntime
+
         return ApiTool(
             api_bundle=tool_bundle,
             provider_id=self.provider_id,

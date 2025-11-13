@@ -1,13 +1,16 @@
 from abc import abstractmethod
 from os import listdir, path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from core.entities.provider_entities import ProviderConfig
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool_provider import ToolProviderController
-from core.tools.__base.tool_runtime import ToolRuntime
+
 from core.tools.builtin_tool.tool import BuiltinTool
+
+if TYPE_CHECKING:
+    from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
     OAuthSchema,
     ToolEntity,
@@ -87,6 +90,9 @@ class BuiltinToolProviderController(ToolProviderController):
                 parent_type=BuiltinTool,
             )
             tool["identity"]["provider"] = provider
+            # Import ToolRuntime locally to avoid circular import
+            from core.tools.__base.tool_runtime import ToolRuntime
+
             tools.append(
                 assistant_tool_class(
                     provider=provider,

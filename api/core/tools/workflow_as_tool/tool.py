@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from flask import has_request_context
 from sqlalchemy import select
@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from core.tools.__base.tool import Tool
-from core.tools.__base.tool_runtime import ToolRuntime
+
+if TYPE_CHECKING:
+    from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
     ToolEntity,
     ToolInvokeMessage,
@@ -41,7 +43,7 @@ class WorkflowTool(Tool):
         workflow_entities: dict[str, Any],
         workflow_call_depth: int,
         entity: ToolEntity,
-        runtime: ToolRuntime,
+        runtime: "ToolRuntime",
         label: str = "Workflow",
     ):
         self.workflow_app_id = workflow_app_id
@@ -181,7 +183,7 @@ class WorkflowTool(Tool):
                             return found
         return None
 
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "WorkflowTool":
+    def fork_tool_runtime(self, runtime: "ToolRuntime") -> "WorkflowTool":
         """
         fork a new tool with metadata
 
