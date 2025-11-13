@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'ایجاد ابزار سفارشی',
   customToolTip: 'بیشتر در مورد ابزارهای سفارشی Dify بیاموزید',
   type: {
-    all: 'همه',
     builtIn: 'سفارشی شده',
     custom: 'سفارشی',
     workflow: 'جریان کار',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: 'پس از پیکربندی اعتبارنامه‌ها، همه اعضای موجود در فضای کاری می‌توانند از این ابزار هنگام هماهنگی برنامه‌ها استفاده کنند.',
   },
   includeToolNum: '{{num}} ابزار شامل شد',
-  addTool: 'افزودن ابزار',
   addToolModal: {
     type: 'نوع',
     category: 'دسته‌بندی',
-    add: 'افزودن',
     added: 'افزوده شد',
-    manageInTools: 'مدیریت در ابزارها',
     custom: {
       title: 'هیچ ابزار سفارشی موجود نیست',
       tip: 'یک ابزار سفارشی ایجاد کنید',
