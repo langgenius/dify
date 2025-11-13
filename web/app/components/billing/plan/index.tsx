@@ -45,8 +45,6 @@ const PlanComp: FC<Props> = ({
     usage,
     total,
   } = plan
-  const perMonthUnit = ` ${t('billing.usagePage.perMonth')}`
-  const triggerEventUnit = plan.type === Plan.sandbox ? undefined : perMonthUnit
 
   const [showModal, setShowModal] = React.useState(false)
   const { mutateAsync } = useEducationVerify()
@@ -127,7 +125,6 @@ const PlanComp: FC<Props> = ({
           name={t('billing.usagePage.triggerEvents')}
           usage={usage.triggerEvents}
           total={total.triggerEvents}
-          unit={triggerEventUnit}
           tooltip={t('billing.plansCommon.triggerEvents.tooltip') as string}
         />
         <UsageInfo
@@ -135,7 +132,6 @@ const PlanComp: FC<Props> = ({
           name={t('billing.plansCommon.apiRateLimit')}
           usage={usage.apiRateLimit}
           total={total.apiRateLimit}
-          unit={perMonthUnit}
           tooltip={total.apiRateLimit === NUM_INFINITE ? undefined : t('billing.plansCommon.apiRateLimitTooltip') as string}
         />
 
