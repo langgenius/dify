@@ -98,8 +98,9 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
         assert isinstance(user, Account)
         assert user.current_tenant_id is not None
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("credential_type", type=str, required=False, nullable=True, location="json")
+        parser = reqparse.RequestParser().add_argument(
+            "credential_type", type=str, required=False, nullable=True, location="json"
+        )
         args = parser.parse_args()
 
         try:
