@@ -17,8 +17,9 @@ import type { InvitationResult } from '@/models/common'
 import I18n from '@/context/i18n'
 import 'react-multi-email/dist/style.css'
 import { noop } from 'lodash-es'
-
 import { useProviderContextSelector } from '@/context/provider-context'
+import { useBoolean } from 'ahooks'
+
 type IInviteModalProps = {
   isEmailSetup: boolean
   onCancel: () => void
@@ -49,11 +50,20 @@ const InviteModal = ({
   const { locale } = useContext(I18n)
   const [role, setRole] = useState<string>('normal')
 
+  const [isSubmitting, {
+    setTrue: setIsSubmitting,
+    setFalse: setIsSubmitted,
+  }] = useBoolean(false)
+
   const handleSend = useCallback(async () => {
-    if (isLimitExceeded)
+    if (isLimitExceeded || isSubmitting)
       return
+    setIsSubmitting()
     if (emails.map((email: string) => emailRegex.test(email)).every(Boolean)) {
       try {
+        // test code
+        // await sleep(3000)
+        // console.log('invitation sent')
         const { result, invitation_results } = await inviteMember({
           url: '/workspaces/current/members/invite-email',
           body: { emails, role, language: locale },
@@ -70,7 +80,8 @@ const InviteModal = ({
     else {
       notify({ type: 'error', message: t('common.members.emailInvalid') })
     }
-  }, [isLimitExceeded, emails, role, locale, onCancel, onSend, notify, t])
+    setIsSubmitted()
+  }, [isLimitExceeded, emails, role, locale, onCancel, onSend, notify, t, isSubmitting])
 
   return (
     <div className={cn(s.wrap)}>
@@ -133,7 +144,7 @@ const InviteModal = ({
             tabIndex={0}
             className='w-full'
             onClick={handleSend}
-            disabled={!emails.length || isLimitExceeded}
+            disabled={!emails.length || isLimitExceeded || isSubmitting}
             variant='primary'
           >
             {t('common.members.sendInvite')}
