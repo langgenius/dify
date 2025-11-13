@@ -65,7 +65,7 @@ const translation = {
     documentsRequestQuotaTooltip: 'Specifies the total number of actions a workspace can perform per minute within the knowledge base, including dataset creation, deletion, updates, document uploads, modifications, archiving, and knowledge base queries. This metric is used to evaluate the performance of knowledge base requests. For example, if a Sandbox user performs 10 consecutive hit tests within one minute, their workspace will be temporarily restricted from performing the following actions for the next minute: dataset creation, deletion, updates, and document uploads or modifications. ',
     apiRateLimit: 'API Rate Limit',
     apiRateLimitUnit: '{{count,number}}',
-    unlimitedApiRate: 'No API Rate Limit',
+    unlimitedApiRate: 'No Dify API Rate Limit',
     apiRateLimitTooltip: 'API Rate Limit applies to all requests made through the Dify API, including text generation, chat conversations, workflow executions, and document processing.',
     documentProcessingPriority: ' Document Processing',
     documentProcessingPriorityUpgrade: 'Process more data with higher accuracy at faster speeds.',
