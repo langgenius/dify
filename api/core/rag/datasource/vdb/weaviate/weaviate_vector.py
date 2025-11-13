@@ -167,7 +167,11 @@ class WeaviateVector(BaseVector):
 
             try:
                 if not self._client.collections.exists(self._collection_name):
-                    tokenization = wc.Tokenization(dify_config.WEAVIATE_TOKENIZATION) if dify_config.WEAVIATE_TOKENIZATION else wc.Tokenization.WORD
+                    tokenization = (
+                        wc.Tokenization(dify_config.WEAVIATE_TOKENIZATION)
+                        if dify_config.WEAVIATE_TOKENIZATION
+                        else wc.Tokenization.WORD
+                    )
                     self._client.collections.create(
                         name=self._collection_name,
                         properties=[
