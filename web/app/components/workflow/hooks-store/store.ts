@@ -32,8 +32,9 @@ export type CommonHooksFnMap = {
     callback?: {
       onSuccess?: () => void
       onError?: () => void
-      onSettled?: () => void,
+      onSettled?: () => void
     },
+    forceUpload?: boolean,
   ) => Promise<void>
   syncWorkflowDraftWhenPageClose: () => void
   handleRefreshWorkflowDraft: () => void

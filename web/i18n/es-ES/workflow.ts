@@ -203,6 +203,38 @@ const translation = {
     nodeDescriptionChange: 'Descripción del nodo cambiada',
     nodeResize: 'Nodo redimensionado',
   },
+  comments: {
+    panelTitle: 'Comentario',
+    loading: 'Cargando…',
+    reply: 'Responder',
+    noComments: 'Aún no hay comentarios',
+    placeholder: {
+      add: 'Añadir un comentario',
+      reply: 'Responder',
+      editReply: 'Editar respuesta',
+    },
+    confirm: {
+      deleteThreadTitle: '¿Eliminar esta conversación?',
+      deleteThreadDesc: 'Esta acción eliminará permanentemente la conversación y todas sus respuestas. No se puede deshacer.',
+      deleteReplyTitle: '¿Eliminar esta respuesta?',
+      deleteReplyDesc: 'Esta respuesta se eliminará de forma permanente.',
+    },
+    aria: {
+      deleteComment: 'Eliminar comentario',
+      resolveComment: 'Resolver comentario',
+      previousComment: 'Comentario anterior',
+      nextComment: 'Comentario siguiente',
+      closeComment: 'Cerrar comentario',
+      replyActions: 'Acciones de respuesta',
+    },
+    actions: {
+      editReply: 'Editar respuesta',
+      deleteReply: 'Eliminar respuesta',
+    },
+    fallback: {
+      user: 'Usuario',
+    },
+  },
   errorMsg: {
     fieldRequired: 'Se requiere {{field}}',
     authRequired: 'Se requiere autorización',
@@ -307,6 +339,9 @@ const translation = {
     zoomTo50: 'Zoom al 50%',
     zoomTo100: 'Zoom al 100%',
     zoomToFit: 'Ajustar al tamaño',
+    showUserComments: 'Comentarios',
+    showUserCursors: 'Cursores de colaboradores',
+    showMiniMap: 'Minimapa',
     alignTop: 'Arriba',
     alignBottom: 'Abajo',
     alignNodes: 'Alinear nodos',

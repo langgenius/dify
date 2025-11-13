@@ -205,6 +205,38 @@ const translation = {
     edgeDelete: '區塊已斷開連接',
     noteDelete: '註釋已刪除',
   },
+  comments: {
+    panelTitle: '評論',
+    loading: '載入中…',
+    reply: '回覆',
+    noComments: '暫無評論',
+    placeholder: {
+      add: '新增評論',
+      reply: '回覆',
+      editReply: '編輯回覆',
+    },
+    confirm: {
+      deleteThreadTitle: '刪除此討論串？',
+      deleteThreadDesc: '此操作會永久刪除該討論串及其所有回覆，且無法復原。',
+      deleteReplyTitle: '刪除此回覆？',
+      deleteReplyDesc: '此回覆將被永久刪除。',
+    },
+    aria: {
+      deleteComment: '刪除評論',
+      resolveComment: '解決評論',
+      previousComment: '上一則評論',
+      nextComment: '下一則評論',
+      closeComment: '關閉評論',
+      replyActions: '回覆操作',
+    },
+    actions: {
+      editReply: '編輯回覆',
+      deleteReply: '刪除回覆',
+    },
+    fallback: {
+      user: '使用者',
+    },
+  },
   errorMsg: {
     fieldRequired: '{{field}} 不能為空',
     authRequired: '請先授權',
@@ -313,6 +345,9 @@ const translation = {
     zoomTo50: '縮放到 50%',
     zoomTo100: '放大到 100%',
     zoomToFit: '自適應視圖',
+    showUserComments: '評論',
+    showUserCursors: '協作者游標',
+    showMiniMap: '小地圖',
     alignNodes: '對齊節點',
     distributeVertical: '垂直等間距',
     alignLeft: '左對齊',

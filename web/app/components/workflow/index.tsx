@@ -2,6 +2,7 @@
 
 import type { FC } from 'react'
 import {
+  Fragment,
   memo,
   useCallback,
   useEffect,
@@ -9,6 +10,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { setAutoFreeze } from 'immer'
 import {
   useEventListener,
@@ -66,11 +68,15 @@ import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
 import HelpLine from './help-line'
 import CandidateNode from './candidate-node'
+import CommentManager from './comment-manager'
 import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
 import SelectionContextmenu from './selection-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
 import { setupScrollToNodeListener } from './utils/node-navigation'
+import { CommentCursor, CommentIcon, CommentInput, CommentThread } from './comment'
+import { useWorkflowComment } from './hooks/use-workflow-comment'
+import UserCursors from './collaboration/components/user-cursors'
 import {
   useStore,
   useWorkflowStore,
@@ -120,6 +126,9 @@ export type WorkflowProps = {
   viewport?: Viewport
   children?: React.ReactNode
   onWorkflowDataUpdate?: (v: any) => void
+  cursors?: Record<string, any>
+  myUserId?: string | null
+  onlineUsers?: any[]
 }
 export const Workflow: FC<WorkflowProps> = memo(({
   nodes: originalNodes,
@@ -127,10 +136,14 @@ export const Workflow: FC<WorkflowProps> = memo(({
   viewport,
   children,
   onWorkflowDataUpdate,
+  cursors,
+  myUserId,
+  onlineUsers,
 }) => {
   const workflowContainerRef = useRef<HTMLDivElement>(null)
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
+  const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false)
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
   const controlMode = useStore(s => s.controlMode)
@@ -175,6 +188,29 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const { workflowReadOnly } = useWorkflowReadOnly()
   const { nodesReadOnly } = useNodesReadOnly()
   const { eventEmitter } = useEventEmitterContextContext()
+  const {
+    comments,
+    pendingComment,
+    activeComment,
+    activeCommentLoading,
+    replySubmitting,
+    replyUpdating,
+    handleCommentSubmit,
+    handleCommentCancel,
+    handleCommentIconClick,
+    handleActiveCommentClose,
+    handleCommentResolve,
+    handleCommentDelete,
+    handleCommentNavigate,
+    handleCommentReply,
+    handleCommentReplyUpdate,
+    handleCommentReplyDelete,
+    handleCommentPositionUpdate,
+  } = useWorkflowComment()
+  const showUserComments = useStore(s => s.showUserComments)
+  const showUserCursors = useStore(s => s.showUserCursors)
+  const isCommentPreviewHovering = useStore(s => s.isCommentPreviewHovering)
+  const { t } = useTranslation()
 
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === WORKFLOW_DATA_UPDATE) {
@@ -215,6 +251,33 @@ export const Workflow: FC<WorkflowProps> = memo(({
       setTimeout(() => handleRefreshWorkflowDraft(), 500)
   }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft])
 
+  // Optimized comment deletion using showConfirm
+  const handleCommentDeleteClick = useCallback((commentId: string) => {
+    if (!showConfirm) {
+      setShowConfirm({
+        title: t('workflow.comments.confirm.deleteThreadTitle'),
+        desc: t('workflow.comments.confirm.deleteThreadDesc'),
+        onConfirm: async () => {
+          await handleCommentDelete(commentId)
+          setShowConfirm(undefined)
+        },
+      })
+    }
+  }, [showConfirm, setShowConfirm, handleCommentDelete, t])
+
+  const handleCommentReplyDeleteClick = useCallback((commentId: string, replyId: string) => {
+    if (!showConfirm) {
+      setShowConfirm({
+        title: t('workflow.comments.confirm.deleteReplyTitle'),
+        desc: t('workflow.comments.confirm.deleteReplyDesc'),
+        onConfirm: async () => {
+          await handleCommentReplyDelete(commentId, replyId)
+          setShowConfirm(undefined)
+        },
+      })
+    }
+  }, [showConfirm, setShowConfirm, handleCommentReplyDelete, t])
+
   useEffect(() => {
     document.addEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
 
@@ -245,6 +308,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
           elementY: e.clientY - containerClientRect.top,
         },
       })
+      const target = e.target as HTMLElement
+      const onPane = !!target?.closest('.react-flow__pane')
+      setIsMouseOverCanvas(onPane)
     }
   })
 
@@ -345,7 +411,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     <div
       id='workflow-container'
       className={cn(
-        'relative h-full w-full min-w-[960px]',
+        'relative h-full w-full min-w-[960px] overflow-hidden',
         workflowReadOnly && 'workflow-panel-animation',
         nodeAnimation && 'workflow-node-animation',
       )}
@@ -353,8 +419,9 @@ export const Workflow: FC<WorkflowProps> = memo(({
     >
       <SyncingDataModal />
       <CandidateNode />
+      <CommentManager />
       <div
-        className='pointer-events-none absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2'
+        className='pointer-events-none absolute left-0 top-0 z-[65] flex w-12 items-center justify-center p-1 pl-2'
         style={{ height: controlHeight }}
       >
         <Control />
@@ -364,23 +431,81 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <NodeContextmenu />
       <SelectionContextmenu />
       <HelpLine />
-      {
-        !!showConfirm && (
-          <Confirm
-            isShow
-            onCancel={() => setShowConfirm(undefined)}
-            onConfirm={showConfirm.onConfirm}
-            title={showConfirm.title}
-            content={showConfirm.desc}
+      {!!showConfirm && (
+        <Confirm
+          isShow
+          onCancel={() => setShowConfirm(undefined)}
+          onConfirm={showConfirm.onConfirm}
+          title={showConfirm.title}
+          content={showConfirm.desc}
+        />
+      )}
+      {controlMode === ControlMode.Comment && isMouseOverCanvas && (
+        <CommentCursor />
+      )}
+      {pendingComment && (
+        <CommentInput
+          position={{
+            x: pendingComment.elementX,
+            y: pendingComment.elementY,
+          }}
+          onSubmit={handleCommentSubmit}
+          onCancel={handleCommentCancel}
+        />
+      )}
+      {comments.map((comment, index) => {
+        const isActive = activeComment?.id === comment.id
+
+        if (isActive && activeComment) {
+          const canGoPrev = index > 0
+          const canGoNext = index < comments.length - 1
+          return (
+            <Fragment key={comment.id}>
+              <CommentIcon
+                key={`${comment.id}-icon`}
+                comment={comment}
+                onClick={() => handleCommentIconClick(comment)}
+                isActive={true}
+                onPositionUpdate={position => handleCommentPositionUpdate(comment.id, position)}
+              />
+              <CommentThread
+                key={`${comment.id}-thread`}
+                comment={activeComment}
+                loading={activeCommentLoading}
+                replySubmitting={replySubmitting}
+                replyUpdating={replyUpdating}
+                onClose={handleActiveCommentClose}
+                onResolve={() => handleCommentResolve(comment.id)}
+                onDelete={() => handleCommentDeleteClick(comment.id)}
+                onPrev={canGoPrev ? () => handleCommentNavigate('prev') : undefined}
+                onNext={canGoNext ? () => handleCommentNavigate('next') : undefined}
+                onReply={(content, ids) => handleCommentReply(comment.id, content, ids ?? [])}
+                onReplyEdit={(replyId, content, ids) => handleCommentReplyUpdate(comment.id, replyId, content, ids ?? [])}
+                onReplyDelete={replyId => handleCommentReplyDeleteClick(comment.id, replyId)}
+                onReplyDeleteDirect={replyId => handleCommentReplyDelete(comment.id, replyId)}
+                canGoPrev={canGoPrev}
+                canGoNext={canGoNext}
+              />
+            </Fragment>
+          )
+        }
+
+        return (showUserComments || controlMode === ControlMode.Comment) ? (
+          <CommentIcon
+            key={comment.id}
+            comment={comment}
+            onClick={() => handleCommentIconClick(comment)}
+            onPositionUpdate={position => handleCommentPositionUpdate(comment.id, position)}
           />
-        )
-      }
+        ) : null
+      })}
       {children}
       <ReactFlow
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         nodes={nodes}
         edges={edges}
+        className={controlMode === ControlMode.Comment ? 'comment-mode-flow' : ''}
         onNodeDragStart={handleNodeDragStart}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}
@@ -405,13 +530,13 @@ export const Workflow: FC<WorkflowProps> = memo(({
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
         deleteKeyCode={null}
-        nodesDraggable={!nodesReadOnly}
+        nodesDraggable={!nodesReadOnly && controlMode !== ControlMode.Comment}
         nodesConnectable={!nodesReadOnly}
         nodesFocusable={!nodesReadOnly}
         edgesFocusable={!nodesReadOnly}
         panOnScroll={false}
         panOnDrag={controlMode === ControlMode.Hand}
-        zoomOnPinch={true}
+        zoomOnPinch={!isCommentPreviewHovering}
         zoomOnScroll={true}
         zoomOnDoubleClick={true}
         isValidConnection={isValidConnection}
@@ -426,6 +551,13 @@ export const Workflow: FC<WorkflowProps> = memo(({
           className="bg-workflow-canvas-workflow-bg"
           color='var(--color-workflow-canvas-workflow-dot-color)'
         />
+        {showUserCursors && cursors && (
+          <UserCursors
+            cursors={cursors}
+            myUserId={myUserId || null}
+            onlineUsers={onlineUsers || []}
+          />
+        )}
       </ReactFlow>
     </div>
   )
@@ -433,14 +565,25 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
 type WorkflowWithInnerContextProps = WorkflowProps & {
   hooksStore?: Partial<HooksStoreShape>
+  cursors?: Record<string, any>
+  myUserId?: string | null
+  onlineUsers?: any[]
 }
 export const WorkflowWithInnerContext = memo(({
   hooksStore,
+  cursors,
+  myUserId,
+  onlineUsers,
   ...restProps
 }: WorkflowWithInnerContextProps) => {
   return (
     <HooksStoreContextProvider {...hooksStore}>
-      <Workflow {...restProps} />
+      <Workflow
+        {...restProps}
+        cursors={cursors}
+        myUserId={myUserId}
+        onlineUsers={onlineUsers}
+      />
     </HooksStoreContextProvider>
   )
 })

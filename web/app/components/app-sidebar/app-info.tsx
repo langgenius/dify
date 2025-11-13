@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -16,7 +16,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import { copyApp, deleteApp, exportAppConfig, fetchAppDetail, updateAppInfo } from '@/service/apps'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -31,6 +31,8 @@ import AppOperations from './app-operations'
 import dynamic from 'next/dynamic'
 import cn from '@/utils/classnames'
 import { AppModeEnum } from '@/types/app'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,
@@ -74,6 +76,19 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const [showExportWarning, setShowExportWarning] = useState(false)
 
+  const emitAppMetaUpdate = useCallback(() => {
+    if (!appDetail?.id)
+      return
+    const socket = webSocketClient.getSocket(appDetail.id)
+    if (socket) {
+      socket.emit('collaboration_event', {
+        type: 'app_meta_update',
+        data: { timestamp: Date.now() },
+        timestamp: Date.now(),
+      })
+    }
+  }, [appDetail?.id])
+
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
     icon_type,
@@ -102,11 +117,12 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         message: t('app.editDone'),
       })
       setAppDetail(app)
+      emitAppMetaUpdate()
     }
     catch {
       notify({ type: 'error', message: t('app.editFailed') })
     }
-  }, [appDetail, notify, setAppDetail, t])
+  }, [appDetail, notify, setAppDetail, t, emitAppMetaUpdate])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     if (!appDetail)
@@ -202,6 +218,23 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     }
     setShowConfirmDelete(false)
   }, [appDetail, notify, onPlanInfoChanged, replace, setAppDetail, t])
+
+  useEffect(() => {
+    if (!appDetail?.id)
+      return
+
+    const unsubscribe = collaborationManager.onAppMetaUpdate(async () => {
+      try {
+        const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
+        setAppDetail({ ...res })
+      }
+      catch (error) {
+        console.error('failed to refresh app detail from collaboration update:', error)
+      }
+    })
+
+    return unsubscribe
+  }, [appDetail?.id, setAppDetail])
 
   const { isCurrentWorkspaceEditor } = useAppContext()
 

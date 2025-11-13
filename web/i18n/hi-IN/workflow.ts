@@ -206,6 +206,38 @@ const translation = {
     nodePaste: 'नोड चिपका हुआ',
     nodeDescriptionChange: 'नोड का वर्णन बदल गया',
   },
+  comments: {
+    panelTitle: 'टिप्पणी',
+    loading: 'लोड हो रहा है…',
+    reply: 'जवाब दें',
+    noComments: 'अभी तक कोई टिप्पणी नहीं',
+    placeholder: {
+      add: 'टिप्पणी जोड़ें',
+      reply: 'जवाब दें',
+      editReply: 'जवाब संपादित करें',
+    },
+    confirm: {
+      deleteThreadTitle: 'इस थ्रेड को हटाएं?',
+      deleteThreadDesc: 'यह क्रिया थ्रेड और उसकी सभी प्रतिक्रियाओं को स्थायी रूप से हटा देगी। इसे पूर्ववत नहीं किया जा सकता।',
+      deleteReplyTitle: 'इस जवाब को हटाएं?',
+      deleteReplyDesc: 'यह जवाब हमेशा के लिए हटा दिया जाएगा।',
+    },
+    aria: {
+      deleteComment: 'टिप्पणी हटाएं',
+      resolveComment: 'टिप्पणी समाधान करें',
+      previousComment: 'पिछली टिप्पणी',
+      nextComment: 'अगली टिप्पणी',
+      closeComment: 'टिप्पणी बंद करें',
+      replyActions: 'जवाब क्रियाएं',
+    },
+    actions: {
+      editReply: 'जवाब संपादित करें',
+      deleteReply: 'जवाब हटाएं',
+    },
+    fallback: {
+      user: 'उपयोगकर्ता',
+    },
+  },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
     authRequired: 'प्राधिकरण आवश्यक है',
@@ -318,6 +350,9 @@ const translation = {
     zoomTo50: '50% पर ज़ूम करें',
     zoomTo100: '100% पर ज़ूम करें',
     zoomToFit: 'फिट करने के लिए ज़ूम करें',
+    showUserComments: 'टिप्पणियाँ',
+    showUserCursors: 'सहयोगी कर्सर',
+    showMiniMap: 'मिनी मानचित्र',
     alignRight: 'दाएं',
     alignLeft: 'बाएं',
     alignTop: 'शीर्ष',

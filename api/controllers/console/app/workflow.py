@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
+from configs import dify_config
 from controllers.console import api, console_ns
 from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
@@ -31,7 +32,9 @@ from core.trigger.debug.event_selectors import (
 from core.workflow.enums import NodeType
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from factories import file_factory, variable_factory
+from fields.online_user_fields import online_user_list_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
@@ -144,6 +147,7 @@ class DraftWorkflowApi(Resource):
                 .add_argument("hash", type=str, required=False, location="json")
                 .add_argument("environment_variables", type=list, required=True, location="json")
                 .add_argument("conversation_variables", type=list, required=False, location="json")
+                .add_argument("force_upload", type=bool, required=False, default=False, location="json")
             )
             args = parser.parse_args()
         elif "text/plain" in content_type:
@@ -161,6 +165,7 @@ class DraftWorkflowApi(Resource):
                     "hash": data.get("hash"),
                     "environment_variables": data.get("environment_variables"),
                     "conversation_variables": data.get("conversation_variables"),
+                    "force_upload": data.get("force_upload", False),
                 }
             except json.JSONDecodeError:
                 return {"message": "Invalid JSON data"}, 400
@@ -185,6 +190,7 @@ class DraftWorkflowApi(Resource):
                 account=current_user,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
+                force_upload=args.get("force_upload", False),
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
@@ -756,6 +762,46 @@ class ConvertToWorkflowApi(Resource):
         }
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/config")
+class WorkflowConfigApi(Resource):
+    """Resource for workflow configuration."""
+
+    @api.doc("get_workflow_config")
+    @api.doc(description="Get workflow configuration")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.response(200, "Workflow configuration retrieved successfully")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, app_model: App):
+        return {
+            "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
+        }
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/features")
+class WorkflowFeaturesApi(Resource):
+    """Update draft workflow features."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        current_user, _ = current_account_with_tenant()
+
+        parser = reqparse.RequestParser().add_argument("features", type=dict, required=True, location="json")
+        args = parser.parse_args()
+
+        features = args.get("features")
+
+        workflow_service = WorkflowService()
+        workflow_service.update_draft_workflow_features(app_model=app_model, features=features, account=current_user)
+
+        return {"result": "success"}
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
     @api.doc("get_all_published_workflows")
@@ -1168,3 +1214,30 @@ class DraftWorkflowTriggerRunAllApi(Resource):
                     "status": "error",
                 }
             ), 400
+
+
+@console_ns.route("/apps/workflows/online-users")
+class WorkflowOnlineUsersApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(online_user_list_fields)
+    def get(self):
+        parser = reqparse.RequestParser().add_argument("workflow_ids", type=str, required=True, location="args")
+        args = parser.parse_args()
+
+        workflow_ids = [workflow_id.strip() for workflow_id in args["workflow_ids"].split(",")]
+
+        results = []
+        for workflow_id in workflow_ids:
+            users_json = redis_client.hgetall(f"workflow_online_users:{workflow_id}")
+
+            users = []
+            for _, user_info_json in users_json.items():
+                try:
+                    users.append(json.loads(user_info_json))
+                except Exception:
+                    continue
+            results.append({"workflow_id": workflow_id, "users": users})
+
+        return {"data": results}

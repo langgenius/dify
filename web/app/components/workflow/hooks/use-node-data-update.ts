@@ -4,6 +4,7 @@ import { useStoreApi } from 'reactflow'
 import type { SyncCallback } from './use-nodes-sync-draft'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
+import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 
 type NodeDataUpdatePayload = {
   id: string
@@ -14,13 +15,11 @@ export const useNodeDataUpdate = () => {
   const store = useStoreApi()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getNodesReadOnly } = useNodesReadOnly()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
   const handleNodeDataUpdate = useCallback(({ id, data }: NodeDataUpdatePayload) => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
+    const newNodes = produce(nodes, (draft) => {
       const currentNode = draft.find(node => node.id === id)!
 
       if (currentNode)

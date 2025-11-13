@@ -211,6 +211,38 @@ const translation = {
     edgeDelete: '노드가 연결이 끊어졌습니다.',
     nodeTitleChange: '노드 제목이 변경됨',
   },
+  comments: {
+    panelTitle: '댓글',
+    loading: '불러오는 중…',
+    reply: '답글',
+    noComments: '아직 댓글이 없습니다',
+    placeholder: {
+      add: '댓글 추가',
+      reply: '답글',
+      editReply: '답글 편집',
+    },
+    confirm: {
+      deleteThreadTitle: '이 스레드를 삭제하시겠습니까?',
+      deleteThreadDesc: '이 작업을 수행하면 스레드와 모든 답글이 영구적으로 삭제되며 되돌릴 수 없습니다.',
+      deleteReplyTitle: '이 답글을 삭제하시겠습니까?',
+      deleteReplyDesc: '이 답글은 영구적으로 삭제됩니다.',
+    },
+    aria: {
+      deleteComment: '댓글 삭제',
+      resolveComment: '댓글 해결',
+      previousComment: '이전 댓글',
+      nextComment: '다음 댓글',
+      closeComment: '댓글 닫기',
+      replyActions: '답글 작업',
+    },
+    actions: {
+      editReply: '답글 편집',
+      deleteReply: '답글 삭제',
+    },
+    fallback: {
+      user: '사용자',
+    },
+  },
   errorMsg: {
     fieldRequired: '{{field}}가 필요합니다',
     authRequired: '인증이 필요합니다',
@@ -328,6 +360,9 @@ const translation = {
     zoomTo50: '50% 로 확대',
     zoomTo100: '100% 로 확대',
     zoomToFit: '화면에 맞게 확대',
+    showUserComments: '댓글',
+    showUserCursors: '협업자 커서',
+    showMiniMap: '미니맵',
     alignCenter: '중앙',
     alignRight: '오른쪽',
     alignLeft: '왼쪽',

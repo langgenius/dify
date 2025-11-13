@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppCard from '@/app/components/app/overview/app-card'
@@ -24,6 +24,8 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppWorkflow } from '@/service/use-workflow'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import { isTriggerNode } from '@/app/components/workflow/types'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 
 export type ICardViewProps = {
   appId: string
@@ -63,14 +65,43 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
 
     message ||= (type === 'success' ? 'modifiedSuccessfully' : 'modifiedUnsuccessfully')
 
-    if (type === 'success')
+    if (type === 'success') {
       updateAppDetail()
+
+      // Emit collaboration event to notify other clients of app state changes
+      const socket = webSocketClient.getSocket(appId)
+      if (socket) {
+        socket.emit('collaboration_event', {
+          type: 'app_state_update',
+          data: { timestamp: Date.now() },
+          timestamp: Date.now(),
+        })
+      }
+    }
 
     notify({
       type,
       message: t(`common.actionMsg.${message}`),
     })
   }
+
+  // Listen for collaborative app state updates from other clients
+  useEffect(() => {
+    if (!appId) return
+
+    const unsubscribe = collaborationManager.onAppStateUpdate(async (update: any) => {
+      try {
+        console.log('Received app state update from collaboration:', update)
+        // Update app detail when other clients modify app state
+        await updateAppDetail()
+      }
+      catch (error) {
+        console.error('app state update failed:', error)
+      }
+    })
+
+    return unsubscribe
+  }, [appId])
 
   const onChangeSiteStatus = async (value: boolean) => {
     const [err] = await asyncRunSafe<App>(

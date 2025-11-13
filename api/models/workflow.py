@@ -392,7 +392,7 @@ class Workflow(Base):
 
         :return: hash
         """
-        entity = {"graph": self.graph_dict, "features": self.features_dict}
+        entity = {"graph": self.graph_dict}
 
         return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
 

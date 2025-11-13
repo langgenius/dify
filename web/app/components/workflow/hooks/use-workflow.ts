@@ -5,7 +5,6 @@ import { uniqBy } from 'lodash-es'
 import {
   getIncomers,
   getOutgoers,
-  useStoreApi,
 } from 'reactflow'
 import type {
   Connection,
@@ -37,6 +36,8 @@ import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_b
 import { useAvailableBlocks } from './use-available-blocks'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { useNodesMetaData } from '.'
@@ -49,26 +50,18 @@ export const useIsChatMode = () => {
 }
 
 export const useWorkflow = () => {
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const { getAvailableBlocks } = useAvailableBlocks()
   const { nodesMap } = useNodesMetaData()
 
   const getNodeById = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-    } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = collaborativeWorkflow.getState()
     const currentNode = nodes.find(node => node.id === nodeId)
     return currentNode
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const getTreeLeafNodes = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
-    const nodes = getNodes()
-    // let startNode = getWorkflowEntryNode(nodes)
+    const { nodes, edges } = collaborativeWorkflow.getState()
     const currentNode = nodes.find(node => node.id === nodeId)
 
     let startNodes = nodes.filter(node => nodesMap?.[node.data.type as BlockEnum]?.metaData.isStart) || []
@@ -111,14 +104,11 @@ export const useWorkflow = () => {
     return uniqBy(list, 'id').filter((item: Node) => {
       return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
     })
-  }, [store, nodesMap])
+  }, [collaborativeWorkflow, nodesMap])
 
   const getBeforeNodesInSameBranch = useCallback((nodeId: string, newNodes?: Node[], newEdges?: Edge[]) => {
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
-    const nodes = newNodes || getNodes()
+    const { nodes: oldNodes, edges } = collaborativeWorkflow.getState()
+    const nodes = newNodes || oldNodes
     const currentNode = nodes.find(node => node.id === nodeId)
 
     const list: Node[] = []
@@ -161,14 +151,11 @@ export const useWorkflow = () => {
     }
 
     return []
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const getBeforeNodesInSameBranchIncludeParent = useCallback((nodeId: string, newNodes?: Node[], newEdges?: Edge[]) => {
     const nodes = getBeforeNodesInSameBranch(nodeId, newNodes, newEdges)
-    const {
-      getNodes,
-    } = store.getState()
-    const allNodes = getNodes()
+    const { nodes: allNodes } = collaborativeWorkflow.getState()
     const node = allNodes.find(n => n.id === nodeId)
     const parentNodeId = node?.parentId
     const parentNode = allNodes.find(n => n.id === parentNodeId)
@@ -176,14 +163,10 @@ export const useWorkflow = () => {
       nodes.push(parentNode)
 
     return nodes
-  }, [getBeforeNodesInSameBranch, store])
+  }, [getBeforeNodesInSameBranch, collaborativeWorkflow])
 
   const getAfterNodesInSameBranch = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
-    const nodes = getNodes()
+    const { nodes, edges } = collaborativeWorkflow.getState()
     const currentNode = nodes.find(node => node.id === nodeId)!
 
     if (!currentNode)
@@ -207,40 +190,29 @@ export const useWorkflow = () => {
     })
 
     return uniqBy(list, 'id')
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const getBeforeNodeById = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
-    const nodes = getNodes()
+    const { nodes, edges } = collaborativeWorkflow.getState()
     const node = nodes.find(node => node.id === nodeId)!
 
     return getIncomers(node, nodes, edges)
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const getIterationNodeChildren = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-    } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = collaborativeWorkflow.getState()
 
     return nodes.filter(node => node.parentId === nodeId)
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const getLoopNodeChildren = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-    } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = collaborativeWorkflow.getState()
 
     return nodes.filter(node => node.parentId === nodeId)
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const isFromStartNode = useCallback((nodeId: string) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = collaborativeWorkflow.getState()
     const currentNode = nodes.find(node => node.id === nodeId)
 
     if (!currentNode)
@@ -263,11 +235,10 @@ export const useWorkflow = () => {
     }
 
     return checkPreviousNodes(currentNode)
-  }, [store, getBeforeNodeById])
+  }, [collaborativeWorkflow, getBeforeNodeById])
 
   const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
-    const { getNodes, setNodes } = store.getState()
-    const allNodes = getNodes()
+    const { nodes: allNodes, setNodes } = collaborativeWorkflow.getState()
     const affectedNodes = findUsedVarNodes(oldValeSelector, allNodes)
     if (affectedNodes.length > 0) {
       const newNodes = allNodes.map((node) => {
@@ -278,7 +249,7 @@ export const useWorkflow = () => {
       })
       setNodes(newNodes)
     }
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const isVarUsedInNodes = useCallback((varSelector: ValueSelector) => {
     const nodeId = varSelector[0]
@@ -289,11 +260,11 @@ export const useWorkflow = () => {
 
   const removeUsedVarInNodes = useCallback((varSelector: ValueSelector) => {
     const nodeId = varSelector[0]
-    const { getNodes, setNodes } = store.getState()
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
     const afterNodes = getAfterNodesInSameBranch(nodeId)
     const effectNodes = findUsedVarNodes(varSelector, afterNodes)
     if (effectNodes.length > 0) {
-      const newNodes = getNodes().map((node) => {
+      const newNodes = nodes.map((node) => {
         if (effectNodes.find(n => n.id === node.id))
           return updateNodeVars(node, varSelector, [])
 
@@ -301,7 +272,7 @@ export const useWorkflow = () => {
       })
       setNodes(newNodes)
     }
-  }, [getAfterNodesInSameBranch, store])
+  }, [getAfterNodesInSameBranch, collaborativeWorkflow])
 
   const isNodeVarsUsedInNodes = useCallback((node: Node, isChatMode: boolean) => {
     const outputVars = getNodeOutputVars(node, isChatMode)
@@ -312,11 +283,7 @@ export const useWorkflow = () => {
   }, [isVarUsedInNodes])
 
   const getRootNodesById = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
-    const nodes = getNodes()
+    const { nodes, edges } = collaborativeWorkflow.getState()
     const currentNode = nodes.find(node => node.id === nodeId)
 
     const rootNodes: Node[] = []
@@ -356,7 +323,7 @@ export const useWorkflow = () => {
       return uniqBy(rootNodes, 'id')
 
     return []
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const getStartNodes = useCallback((nodes: Node[], currentNode?: Node) => {
     const { id, parentId } = currentNode || {}
@@ -382,11 +349,7 @@ export const useWorkflow = () => {
   }, [nodesMap, getRootNodesById])
 
   const isValidConnection = useCallback(({ source, sourceHandle: _sourceHandle, target }: Connection) => {
-    const {
-      edges,
-      getNodes,
-    } = store.getState()
-    const nodes = getNodes()
+    const { nodes, edges } = collaborativeWorkflow.getState()
     const sourceNode: Node = nodes.find(node => node.id === source)!
     const targetNode: Node = nodes.find(node => node.id === target)!
 
@@ -422,14 +385,13 @@ export const useWorkflow = () => {
     }
 
     return !hasCycle(targetNode)
-  }, [store, getAvailableBlocks])
+  }, [collaborativeWorkflow, getAvailableBlocks])
 
   const getNode = useCallback((nodeId?: string) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = collaborativeWorkflow.getState()
 
     return nodes.find(node => node.id === nodeId) || getWorkflowEntryNode(nodes)
-  }, [store])
+  }, [collaborativeWorkflow])
 
   return {
     getNodeById,
@@ -489,13 +451,10 @@ export const useNodesReadOnly = () => {
 }
 
 export const useIsNodeInIteration = (iterationId: string) => {
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
   const isNodeInIteration = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-    } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = collaborativeWorkflow.getState()
     const node = nodes.find(node => node.id === nodeId)
 
     if (!node)
@@ -505,20 +464,17 @@ export const useIsNodeInIteration = (iterationId: string) => {
       return true
 
     return false
-  }, [iterationId, store])
+  }, [iterationId, collaborativeWorkflow])
   return {
     isNodeInIteration,
   }
 }
 
 export const useIsNodeInLoop = (loopId: string) => {
-  const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
   const isNodeInLoop = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-    } = store.getState()
-    const nodes = getNodes()
+    const { nodes } = collaborativeWorkflow.getState()
     const node = nodes.find(node => node.id === nodeId)
 
     if (!node)
@@ -528,7 +484,7 @@ export const useIsNodeInLoop = (loopId: string) => {
       return true
 
     return false
-  }, [loopId, store])
+  }, [loopId, collaborativeWorkflow])
   return {
     isNodeInLoop,
   }

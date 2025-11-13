@@ -112,6 +112,20 @@ export type AppVoicesListResponse = [{
   value: string
 }]
 
+export type WorkflowOnlineUser = {
+  user_id?: string
+  username?: string
+  avatar?: string | null
+  sid?: string
+}
+
+export type WorkflowOnlineUsersResponse = {
+  data: Record<string, WorkflowOnlineUser[]> | Array<{
+    workflow_id: string
+    users: WorkflowOnlineUser[]
+  }>
+}
+
 export type TracingStatus = {
   enabled: boolean
   tracing_provider: TracingProvider | null

@@ -3,9 +3,6 @@ import {
   useCallback,
   useState,
 } from 'react'
-import {
-  useStoreApi,
-} from 'reactflow'
 import { RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
@@ -19,30 +16,24 @@ import type {
   ConversationVariable,
 } from '@/app/components/workflow/types'
 import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { useDocLink } from '@/context/i18n'
 import cn from '@/utils/classnames'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { updateConversationVariables } from '@/service/workflow'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 
 const ChatVariablePanel = () => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const store = useStoreApi()
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
   const updateChatVarList = useStore(s => s.setConversationVariables)
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const appId = useStore(s => s.appId) as string
   const {
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
-  const handleVarChanged = useCallback(() => {
-    doSyncWorkflowDraft(false, {
-      onSuccess() {
-        invalidateConversationVarValues()
-      },
-    })
-  }, [doSyncWorkflowDraft, invalidateConversationVarValues])
 
   const [showTip, setShowTip] = useState(true)
   const [showVariableModal, setShowVariableModal] = useState(false)
@@ -50,40 +41,63 @@ const ChatVariablePanel = () => {
 
   const [showRemoveVarConfirm, setShowRemoveConfirm] = useState(false)
   const [cacheForDelete, setCacheForDelete] = useState<ConversationVariable>()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
   const getEffectedNodes = useCallback((chatVar: ConversationVariable) => {
-    const { getNodes } = store.getState()
-    const allNodes = getNodes()
+    const { nodes: allNodes } = collaborativeWorkflow.getState()
     return findUsedVarNodes(
       ['conversation', chatVar.name],
       allNodes,
     )
-  }, [store])
+  }, [collaborativeWorkflow])
 
   const removeUsedVarInNodes = useCallback((chatVar: ConversationVariable) => {
-    const { getNodes, setNodes } = store.getState()
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
     const effectedNodes = getEffectedNodes(chatVar)
-    const newNodes = getNodes().map((node) => {
+    const newNodes = nodes.map((node) => {
       if (effectedNodes.find(n => n.id === node.id))
         return updateNodeVars(node, ['conversation', chatVar.name], [])
 
       return node
     })
     setNodes(newNodes)
-  }, [getEffectedNodes, store])
+  }, [getEffectedNodes, collaborativeWorkflow])
 
   const handleEdit = (chatVar: ConversationVariable) => {
     setCurrentVar(chatVar)
     setShowVariableModal(true)
   }
 
-  const handleDelete = useCallback((chatVar: ConversationVariable) => {
+  const handleDelete = useCallback(async (chatVar: ConversationVariable) => {
     removeUsedVarInNodes(chatVar)
-    updateChatVarList(varList.filter(v => v.id !== chatVar.id))
+    const newVarList = varList.filter(v => v.id !== chatVar.id)
+    updateChatVarList(newVarList)
     setCacheForDelete(undefined)
     setShowRemoveConfirm(false)
-    handleVarChanged()
-  }, [handleVarChanged, removeUsedVarInNodes, updateChatVarList, varList])
+
+    // Use new dedicated conversation variables API instead of workflow draft sync
+    try {
+      await updateConversationVariables({
+        appId,
+        conversationVariables: newVarList,
+      })
+
+      // Emit update event to other connected clients
+      const socket = webSocketClient.getSocket(appId)
+      if (socket) {
+        socket.emit('collaboration_event', {
+          type: 'vars_and_features_update',
+        })
+      }
+
+      invalidateConversationVarValues()
+    }
+    catch (error) {
+      console.error('Failed to update conversation variables:', error)
+      // Revert local state on error
+      updateChatVarList(varList)
+    }
+  }, [removeUsedVarInNodes, updateChatVarList, varList, appId, invalidateConversationVarValues])
 
   const deleteCheck = useCallback((chatVar: ConversationVariable) => {
     const effectedNodes = getEffectedNodes(chatVar)
@@ -97,21 +111,46 @@ const ChatVariablePanel = () => {
   }, [getEffectedNodes, handleDelete])
 
   const handleSave = useCallback(async (chatVar: ConversationVariable) => {
-    // add chatVar
+    let newList: ConversationVariable[]
+
     if (!currentVar) {
-      const newList = [chatVar, ...varList]
+      // Adding new conversation variable
+      newList = [chatVar, ...varList]
       updateChatVarList(newList)
-      handleVarChanged()
+
+      // Use new dedicated conversation variables API
+      try {
+        await updateConversationVariables({
+          appId,
+          conversationVariables: newList,
+        })
+
+        const socket = webSocketClient.getSocket(appId)
+        if (socket) {
+          socket.emit('collaboration_event', {
+            type: 'vars_and_features_update',
+          })
+        }
+
+        invalidateConversationVarValues()
+      }
+      catch (error) {
+        console.error('Failed to update conversation variables:', error)
+        // Revert local state on error
+        updateChatVarList(varList)
+      }
       return
     }
-    // edit chatVar
-    const newList = varList.map(v => v.id === currentVar.id ? chatVar : v)
+
+    // Updating existing conversation variable
+    newList = varList.map(v => v.id === currentVar.id ? chatVar : v)
     updateChatVarList(newList)
-    // side effects of rename env
+
+    // side effects of rename conversation variable
     if (currentVar.name !== chatVar.name) {
-      const { getNodes, setNodes } = store.getState()
+      const { nodes, setNodes } = collaborativeWorkflow.getState()
       const effectedNodes = getEffectedNodes(currentVar)
-      const newNodes = getNodes().map((node) => {
+      const newNodes = nodes.map((node) => {
         if (effectedNodes.find(n => n.id === node.id))
           return updateNodeVars(node, ['conversation', currentVar.name], ['conversation', chatVar.name])
 
@@ -119,8 +158,29 @@ const ChatVariablePanel = () => {
       })
       setNodes(newNodes)
     }
-    handleVarChanged()
-  }, [currentVar, getEffectedNodes, handleVarChanged, store, updateChatVarList, varList])
+
+    // Use new dedicated conversation variables API
+    try {
+      await updateConversationVariables({
+        appId,
+        conversationVariables: newList,
+      })
+
+      const socket = webSocketClient.getSocket(appId)
+      if (socket) {
+        socket.emit('collaboration_event', {
+          type: 'vars_and_features_update',
+        })
+      }
+
+      invalidateConversationVarValues()
+    }
+    catch (error) {
+      console.error('Failed to update conversation variables:', error)
+      // Revert local state on error
+      updateChatVarList(varList)
+    }
+  }, [currentVar, getEffectedNodes, collaborativeWorkflow, updateChatVarList, varList, appId, invalidateConversationVarValues])
 
   return (
     <div

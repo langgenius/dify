@@ -389,3 +389,7 @@ export const resetEmail = (body: { new_email: string; token: string }) =>
 
 export const checkEmailExisted = (body: { email: string }) =>
   post<CommonResponse>('/account/change-email/check-email-unique', { body }, { silent: true })
+
+export const getAvatar: Fetcher<{ avatar_url: string }, { avatar: string }> = ({ avatar }) => {
+  return get<{ avatar_url: string }>(`/account/avatar?avatar=${avatar}`)
+}

@@ -16,6 +16,7 @@ import {
   useUpdateMCPServer,
 } from '@/service/use-tools'
 import cn from '@/utils/classnames'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 
 export type ModalProps = {
   appID: string
@@ -59,6 +60,21 @@ const MCPServerModal = ({
     return res
   }
 
+  const emitMcpServerUpdate = (action: 'created' | 'updated') => {
+    const socket = webSocketClient.getSocket(appID)
+    if (!socket) return
+
+    const timestamp = Date.now()
+    socket.emit('collaboration_event', {
+      type: 'mcp_server_update',
+      data: {
+        action,
+        timestamp,
+      },
+      timestamp,
+    })
+  }
+
   const submit = async () => {
     if (!data) {
       const payload: any = {
@@ -71,6 +87,7 @@ const MCPServerModal = ({
 
       await createMCPServer(payload)
       invalidateMCPServerDetail(appID)
+      emitMcpServerUpdate('created')
       onHide()
     }
     else {
@@ -83,6 +100,7 @@ const MCPServerModal = ({
       payload.description = description
       await updateMCPServer(payload)
       invalidateMCPServerDetail(appID)
+      emitMcpServerUpdate('updated')
       onHide()
     }
   }
@@ -92,6 +110,7 @@ const MCPServerModal = ({
       isShow={show}
       onClose={onHide}
       className={cn('relative !max-w-[520px] !p-0')}
+      highPriority
     >
       <div className='absolute right-5 top-5 z-10 cursor-pointer p-1.5' onClick={onHide}>
         <RiCloseLine className='h-5 w-5 text-text-tertiary' />

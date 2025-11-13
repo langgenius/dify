@@ -157,6 +157,9 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         const checkData = getCheckData(node.data)
         const validator = nodesExtraData?.[node.data.type as BlockEnum]?.checkValid
         let errorMessage = validator ? validator(checkData, t, moreDataForCheckValid).errorMessage : undefined
+        // temp fix nodeMetaData is undefined
+        // const nodeMetaData = nodesExtraData?.[node.data.type]
+        // let { errorMessage } = nodeMetaData?.checkValid ? nodeMetaData.checkValid(checkData, t, moreDataForCheckValid) : { errorMessage: undefined }
 
         if (!errorMessage) {
           const availableVars = map[node.id].availableVars

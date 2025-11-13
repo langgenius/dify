@@ -6,6 +6,8 @@ import {
   useState,
 } from 'react'
 import {
+  RiCheckLine,
+  RiFullscreenLine,
   RiZoomInLine,
   RiZoomOutLine,
 } from '@remixicon/react'
@@ -28,6 +30,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 enum ZoomType {
   zoomIn = 'zoomIn',
@@ -38,9 +41,30 @@ enum ZoomType {
   zoomTo75 = 'zoomTo75',
   zoomTo100 = 'zoomTo100',
   zoomTo200 = 'zoomTo200',
+  toggleUserComments = 'toggleUserComments',
+  toggleUserCursors = 'toggleUserCursors',
+  toggleMiniMap = 'toggleMiniMap',
 }
 
-const ZoomInOut: FC = () => {
+type ZoomInOutProps = {
+  showMiniMap?: boolean
+  onToggleMiniMap?: () => void
+  showUserCursors?: boolean
+  onToggleUserCursors?: () => void
+  showUserComments?: boolean
+  onToggleUserComments?: () => void
+  isCommentMode?: boolean
+}
+
+const ZoomInOut: FC<ZoomInOutProps> = ({
+  showMiniMap = true,
+  onToggleMiniMap,
+  showUserCursors = true,
+  onToggleUserCursors,
+  showUserComments = true,
+  onToggleUserComments,
+  isCommentMode = false,
+}) => {
   const { t } = useTranslation()
   const {
     zoomIn,
@@ -55,6 +79,7 @@ const ZoomInOut: FC = () => {
     workflowReadOnly,
     getWorkflowReadOnly,
   } = useWorkflowReadOnly()
+  const isCollaborationEnabled = useGlobalPublicStore(s => s.systemFeatures.enable_collaboration_mode)
 
   const ZOOM_IN_OUT_OPTIONS = [
     [
@@ -78,13 +103,32 @@ const ZoomInOut: FC = () => {
         key: ZoomType.zoomTo25,
         text: '25%',
       },
-    ],
-    [
       {
         key: ZoomType.zoomToFit,
         text: t('workflow.operator.zoomToFit'),
       },
     ],
+    isCollaborationEnabled
+      ? [
+        {
+          key: ZoomType.toggleUserComments,
+          text: t('workflow.operator.showUserComments'),
+        },
+        {
+          key: ZoomType.toggleUserCursors,
+          text: t('workflow.operator.showUserCursors'),
+        },
+        {
+          key: ZoomType.toggleMiniMap,
+          text: t('workflow.operator.showMiniMap'),
+        },
+      ]
+      : [
+        {
+          key: ZoomType.toggleMiniMap,
+          text: t('workflow.operator.showMiniMap'),
+        },
+      ],
   ]
 
   const handleZoom = (type: string) => {
@@ -108,6 +152,23 @@ const ZoomInOut: FC = () => {
 
     if (type === ZoomType.zoomTo200)
       zoomTo(2)
+
+    if (type === ZoomType.toggleUserComments) {
+      if (!isCommentMode)
+        onToggleUserComments?.()
+
+      return
+    }
+
+    if (type === ZoomType.toggleUserCursors) {
+      onToggleUserCursors?.()
+      return
+    }
+
+    if (type === ZoomType.toggleMiniMap) {
+      onToggleMiniMap?.()
+      return
+    }
 
     handleSyncWorkflowDraft()
   }
@@ -177,8 +238,8 @@ const ZoomInOut: FC = () => {
           </div>
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
-        <div className='w-[145px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
+      <PortalToFollowElemContent className='z-[60]'>
+        <div className='w-[192px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
           {
             ZOOM_IN_OUT_OPTIONS.map((options, i) => (
               <Fragment key={i}>
@@ -192,10 +253,43 @@ const ZoomInOut: FC = () => {
                     options.map(option => (
                       <div
                         key={option.key}
-                        className='system-md-regular flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg py-1.5 pl-3 pr-2 text-text-secondary hover:bg-state-base-hover'
+                        className={`system-md-regular flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover ${
+                          option.key === ZoomType.toggleUserComments && isCommentMode
+                            ? 'cursor-not-allowed opacity-50'
+                            : ''
+                        }`}
                         onClick={() => handleZoom(option.key)}
                       >
-                        <span>{option.text}</span>
+                        <div className='flex items-center space-x-2'>
+                          {option.key === ZoomType.toggleUserComments && showUserComments && (
+                            <RiCheckLine className='h-4 w-4 text-text-accent' />
+                          )}
+                          {option.key === ZoomType.toggleUserComments && !showUserComments && (
+                            <div className='h-4 w-4' />
+                          )}
+                          {option.key === ZoomType.toggleUserCursors && showUserCursors && (
+                            <RiCheckLine className='h-4 w-4 text-text-accent' />
+                          )}
+                          {option.key === ZoomType.toggleUserCursors && !showUserCursors && (
+                            <div className='h-4 w-4' />
+                          )}
+                          {option.key === ZoomType.toggleMiniMap && showMiniMap && (
+                            <RiCheckLine className='h-4 w-4 text-text-accent' />
+                          )}
+                          {option.key === ZoomType.toggleMiniMap && !showMiniMap && (
+                            <div className='h-4 w-4' />
+                          )}
+                          {option.key === ZoomType.zoomToFit && (
+                            <RiFullscreenLine className='h-4 w-4 text-text-tertiary' />
+                          )}
+                          {option.key !== ZoomType.toggleUserComments
+                           && option.key !== ZoomType.toggleUserCursors
+                           && option.key !== ZoomType.toggleMiniMap
+                           && option.key !== ZoomType.zoomToFit && (
+                            <div className='h-4 w-4' />
+                          )}
+                          <span>{option.text}</span>
+                        </div>
                         <div className='flex items-center space-x-0.5'>
                           {
                             option.key === ZoomType.zoomToFit && (

@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next'
 import type { NodeProps } from '@/app/components/workflow/types'
 import {
   BlockEnum,
+  ControlMode,
   NodeRunningStatus,
   isTriggerNode,
 } from '@/app/components/workflow/types'
@@ -41,8 +42,12 @@ import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-c
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { ToolTypeEnum } from '@/app/components/workflow/block-selector/types'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { ToolTypeEnum } from '../../block-selector/types'
+import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { useAppContext } from '@/context/app-context'
+import { useStore } from '@/app/components/workflow/store'
+import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 
 type NodeChildProps = {
   id: string
@@ -67,6 +72,36 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)
+  const { userProfile } = useAppContext()
+  const appId = useStore(s => s.appId)
+  const { nodePanelPresence } = useCollaboration(appId as string)
+  const controlMode = useStore(s => s.controlMode)
+
+  const currentUserPresence = useMemo(() => {
+    const userId = userProfile?.id || ''
+    const username = userProfile?.name || userProfile?.email || 'User'
+    const avatar = userProfile?.avatar_url || userProfile?.avatar || null
+
+    return {
+      userId,
+      username,
+      avatar,
+    }
+  }, [userProfile?.avatar, userProfile?.avatar_url, userProfile?.email, userProfile?.id, userProfile?.name])
+
+  const viewingUsers = useMemo(() => {
+    const presence = nodePanelPresence?.[id]
+    if (!presence)
+      return []
+
+    return Object.values(presence)
+      .filter(viewer => viewer.userId && viewer.userId !== currentUserPresence.userId)
+      .map(viewer => ({
+        id: viewer.userId,
+        name: viewer.username,
+        avatar_url: viewer.avatar || null,
+      }))
+  }, [currentUserPresence.userId, id, nodePanelPresence])
 
   useEffect(() => {
     if (nodeRef.current && data.selected && data.isInIteration) {
@@ -176,6 +211,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         className={cn(
           'group relative pb-1 shadow-xs',
           'rounded-[15px] border border-transparent',
+          (controlMode === ControlMode.Comment) && 'hover:cursor-none',
           (data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop) && 'w-[240px] bg-workflow-block-bg',
           (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && 'flex h-full w-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
           !data._runningStatus && 'hover:shadow-lg',
@@ -250,7 +286,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           />
           <div
             title={data.title}
-            className='system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary'
+            className='system-sm-semibold-uppercase mr-1 flex grow items-center justify-between truncate text-text-primary'
           >
             <div>
               {data.title}
@@ -271,6 +307,15 @@ const BaseNode: FC<BaseNodeProps> = ({
                 </Tooltip>
               )
             }
+            {viewingUsers.length > 0 && (
+              <div className='ml-3 shrink-0'>
+                <UserAvatarList
+                  users={viewingUsers}
+                  maxVisible={3}
+                  size={24}
+                />
+              </div>
+            )}
           </div>
           {
             data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running && (

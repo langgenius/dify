@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   useRouter,
 } from 'next/navigation'
 import useSWRInfinite from 'swr/infinite'
+import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
 import {
@@ -19,8 +20,8 @@ import AppCard from './app-card'
 import NewAppCard from './new-app-card'
 import useAppsQueryState from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
-import type { AppListResponse } from '@/models/app'
-import { fetchAppList } from '@/service/apps'
+import type { AppListResponse, WorkflowOnlineUser } from '@/models/app'
+import { fetchAppList, fetchWorkflowOnlineUsers } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { CheckModal } from '@/hooks/use-pay'
@@ -112,6 +113,36 @@ const List = () => {
       errorRetryCount: 3,
     },
   )
+
+  const apps = useMemo(() => data?.flatMap(page => page.data) ?? [], [data])
+
+  const workflowIds = useMemo(() => {
+    const ids = new Set<string>()
+    apps.forEach((appItem) => {
+      const workflowId = appItem.id
+      if (!workflowId)
+        return
+
+      if (appItem.mode === 'workflow' || appItem.mode === 'advanced-chat')
+        ids.add(workflowId)
+    })
+    return Array.from(ids)
+  }, [apps])
+
+  const { data: onlineUsersByWorkflow, mutate: refreshOnlineUsers } = useSWR<Record<string, WorkflowOnlineUser[]>>(
+    workflowIds.length ? { workflowIds } : null,
+    fetchWorkflowOnlineUsers,
+  )
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      mutate()
+      if (workflowIds.length)
+        refreshOnlineUsers()
+    }, 10000)
+
+    return () => window.clearInterval(timer)
+  }, [workflowIds.join(','), mutate, refreshOnlineUsers])
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
@@ -222,7 +253,12 @@ const List = () => {
             {isCurrentWorkspaceEditor
               && <NewAppCard ref={newAppCardRef} onSuccess={mutate} selectedAppType={activeTab} />}
             {data.map(({ data: apps }) => apps.map(app => (
-              <AppCard key={app.id} app={app} onRefresh={mutate} />
+              <AppCard
+                key={app.id}
+                app={app}
+                onRefresh={mutate}
+                onlineUsers={onlineUsersByWorkflow?.[app.id] ?? []}
+              />
             )))}
           </div>
           : <div className='relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>

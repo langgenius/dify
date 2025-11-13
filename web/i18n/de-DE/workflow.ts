@@ -203,6 +203,38 @@ const translation = {
     nodeDragStop: 'Knoten verschoben',
     nodeDelete: 'Knoten gelöscht',
   },
+  comments: {
+    panelTitle: 'Kommentar',
+    loading: 'Laden…',
+    reply: 'Antworten',
+    noComments: 'Noch keine Kommentare',
+    placeholder: {
+      add: 'Kommentar hinzufügen',
+      reply: 'Antworten',
+      editReply: 'Antwort bearbeiten',
+    },
+    confirm: {
+      deleteThreadTitle: 'Diesen Thread löschen?',
+      deleteThreadDesc: 'Dadurch werden der Thread und alle Antworten dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.',
+      deleteReplyTitle: 'Diese Antwort löschen?',
+      deleteReplyDesc: 'Diese Antwort wird dauerhaft entfernt.',
+    },
+    aria: {
+      deleteComment: 'Kommentar löschen',
+      resolveComment: 'Kommentar abschließen',
+      previousComment: 'Vorheriger Kommentar',
+      nextComment: 'Nächster Kommentar',
+      closeComment: 'Kommentar schließen',
+      replyActions: 'Antwortaktionen',
+    },
+    actions: {
+      editReply: 'Antwort bearbeiten',
+      deleteReply: 'Antwort löschen',
+    },
+    fallback: {
+      user: 'Benutzer',
+    },
+  },
   errorMsg: {
     fieldRequired: '{{field}} ist erforderlich',
     authRequired: 'Autorisierung ist erforderlich',
@@ -307,6 +339,9 @@ const translation = {
     zoomTo50: 'Auf 50% vergrößern',
     zoomTo100: 'Auf 100% vergrößern',
     zoomToFit: 'An Bildschirm anpassen',
+    showUserComments: 'Kommentare',
+    showUserCursors: 'Cursor von Mitarbeitenden',
+    showMiniMap: 'Minikarte',
     selectionAlignment: 'Ausrichtung der Auswahl',
     alignLeft: 'Links',
     alignTop: 'Nach oben',

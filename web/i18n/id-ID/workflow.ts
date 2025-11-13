@@ -199,6 +199,38 @@ const translation = {
     edgeDelete: 'Node terputus',
     nodeChange: 'Node diubah',
   },
+  comments: {
+    panelTitle: 'Komentar',
+    loading: 'Memuat…',
+    reply: 'Balas',
+    noComments: 'Belum ada komentar',
+    placeholder: {
+      add: 'Tambahkan komentar',
+      reply: 'Balas',
+      editReply: 'Edit balasan',
+    },
+    confirm: {
+      deleteThreadTitle: 'Hapus percakapan ini?',
+      deleteThreadDesc: 'Tindakan ini akan menghapus percakapan dan semua balasannya secara permanen. Tidak dapat dibatalkan.',
+      deleteReplyTitle: 'Hapus balasan ini?',
+      deleteReplyDesc: 'Balasan ini akan dihapus secara permanen.',
+    },
+    aria: {
+      deleteComment: 'Hapus komentar',
+      resolveComment: 'Selesaikan komentar',
+      previousComment: 'Komentar sebelumnya',
+      nextComment: 'Komentar berikutnya',
+      closeComment: 'Tutup komentar',
+      replyActions: 'Aksi balasan',
+    },
+    actions: {
+      editReply: 'Edit balasan',
+      deleteReply: 'Hapus balasan',
+    },
+    fallback: {
+      user: 'Pengguna',
+    },
+  },
   errorMsg: {
     fields: {
       variable: 'Nama Variabel',
@@ -298,6 +330,9 @@ const translation = {
     alignCenter: 'Pusat',
     zoomOut: 'Perkecil',
     zoomToFit: 'Perbesar agar sesuai',
+    showUserComments: 'Komentar',
+    showUserCursors: 'Kursor kolaborator',
+    showMiniMap: 'Peta mini',
     vertical: 'Vertikal',
     alignTop: 'Puncak',
     alignMiddle: 'Tengah',

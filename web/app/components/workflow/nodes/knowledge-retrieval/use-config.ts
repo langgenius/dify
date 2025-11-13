@@ -215,21 +215,39 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
   const [selectedDatasetsLoaded, setSelectedDatasetsLoaded] = useState(false)
   // datasets
+  // Fetch details whenever dataset IDs change so create/delete stays consistent across collaborators.
   useEffect(() => {
-    (async () => {
-      const inputs = inputRef.current
-      const datasetIds = inputs.dataset_ids
-      if (datasetIds?.length > 0) {
-        const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } as any })
-        setSelectedDatasets(dataSetsWithDetail)
+    let aborted = false
+    const datasetIds = inputs.dataset_ids
+    const loadDatasets = async () => {
+      if (!datasetIds || datasetIds.length === 0) {
+        if (!aborted) {
+          setSelectedDatasets([])
+          setSelectedDatasetsLoaded(true)
+        }
+        return
       }
-      const newInputs = produce(inputs, (draft) => {
-        draft.dataset_ids = datasetIds
-      })
-      setInputs(newInputs)
-      setSelectedDatasetsLoaded(true)
-    })()
-  }, [])
+      setSelectedDatasetsLoaded(false)
+      try {
+        const { data: dataSetsWithDetail } = await fetchDatasets({
+          url: '/datasets',
+          params: { page: 1, ids: datasetIds } as any,
+        })
+        if (aborted)
+          return
+        setSelectedDatasets(dataSetsWithDetail)
+        updateDatasetsDetail(dataSetsWithDetail)
+      }
+      finally {
+        if (!aborted)
+          setSelectedDatasetsLoaded(true)
+      }
+    }
+    loadDatasets()
+    return () => {
+      aborted = true
+    }
+  }, [inputs.dataset_ids, updateDatasetsDetail])
 
   useEffect(() => {
     const inputs = inputRef.current

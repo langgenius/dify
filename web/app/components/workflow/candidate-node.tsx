@@ -4,7 +4,6 @@ import {
 import { produce } from 'immer'
 import {
   useReactFlow,
-  useStoreApi,
   useViewport,
 } from 'reactflow'
 import { useEventListener } from 'ahooks'
@@ -19,9 +18,9 @@ import CustomNode from './nodes'
 import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import { BlockEnum } from './types'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 
 const CandidateNode = () => {
-  const store = useStoreApi()
   const reactflow = useReactFlow()
   const workflowStore = useWorkflowStore()
   const candidateNode = useStore(s => s.candidateNode)
@@ -31,18 +30,15 @@ const CandidateNode = () => {
   const { saveStateToHistory } = useWorkflowHistory()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
   useEventListener('click', (e) => {
     const { candidateNode, mousePosition } = workflowStore.getState()
 
     if (candidateNode) {
       e.preventDefault()
-      const {
-        getNodes,
-        setNodes,
-      } = store.getState()
+      const { nodes, setNodes } = collaborativeWorkflow.getState()
       const { screenToFlowPosition } = reactflow
-      const nodes = getNodes()
       const { x, y } = screenToFlowPosition({ x: mousePosition.pageX, y: mousePosition.pageY })
       const newNodes = produce(nodes, (draft) => {
         draft.push({

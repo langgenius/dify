@@ -42,6 +42,9 @@ import type { InputVar } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
@@ -148,6 +151,7 @@ const AppPublisher = ({
 
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  const invalidateAppWorkflow = useInvalidateAppWorkflow()
 
   const noAccessPermission = useMemo(() => systemFeatures.webapp_auth.enabled && appDetail && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result, [systemFeatures, appDetail, userCanAccessApp])
   const disabledFunctionButton = useMemo(() => (!publishedAt || missingStartNode || noAccessPermission), [publishedAt, missingStartNode, noAccessPermission])
@@ -182,11 +186,27 @@ const AppPublisher = ({
     try {
       await onPublish?.(params)
       setPublished(true)
+
+      const appId = appDetail?.id
+      const socket = appId ? webSocketClient.getSocket(appId) : null
+      if (appId)
+        invalidateAppWorkflow(appId)
+      if (socket) {
+        const timestamp = Date.now()
+        socket.emit('collaboration_event', {
+          type: 'app_publish_update',
+          data: {
+            action: 'published',
+            timestamp,
+          },
+          timestamp,
+        })
+      }
     }
     catch {
       setPublished(false)
     }
-  }, [onPublish])
+  }, [appDetail?.id, onPublish, invalidateAppWorkflow])
 
   const handleRestore = useCallback(async () => {
     try {
@@ -242,6 +262,18 @@ const AppPublisher = ({
       return
     handlePublish()
   }, { exactMatch: true, useCapture: true })
+
+  useEffect(() => {
+    const appId = appDetail?.id
+    if (!appId) return
+
+    const unsubscribe = collaborationManager.onAppPublishUpdate((update: any) => {
+      if (update?.data?.action === 'published')
+        invalidateAppWorkflow(appId)
+    })
+
+    return unsubscribe
+  }, [appDetail?.id, invalidateAppWorkflow])
 
   const hasPublishedVersion = !!publishedAt
   const workflowToolDisabled = !hasPublishedVersion || !workflowToolAvailable

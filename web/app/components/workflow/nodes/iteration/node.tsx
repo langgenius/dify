@@ -60,7 +60,7 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
         )
       }
       {
-        data._children!.length === 1 && (
+        data._children?.length === 1 && (
           <AddBlock
             iterationNodeId={id}
             iterationNodeData={data}

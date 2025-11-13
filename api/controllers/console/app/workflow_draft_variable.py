@@ -19,8 +19,8 @@ from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db
+from factories import variable_factory
 from factories.file_factory import build_from_mapping, build_from_mappings
-from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
 from models import Account, App, AppMode
 from models.workflow import WorkflowDraftVariable
@@ -355,7 +355,7 @@ class VariableApi(Resource):
                 if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
                     raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
                 raw_value = build_from_mappings(mappings=raw_value, tenant_id=app_model.tenant_id)
-            new_value = build_segment_with_type(variable.value_type, raw_value)
+            new_value = variable_factory.build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         db.session.commit()
         return variable
@@ -448,8 +448,35 @@ class ConversationVariableCollectionApi(Resource):
         db.session.commit()
         return _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
 
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=AppMode.ADVANCED_CHAT)
+    def post(self, app_model: App):
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/draft/system-variables")
+        parser = reqparse.RequestParser()
+        parser.add_argument("conversation_variables", type=list, required=True, location="json")
+        args = parser.parse_args()
+
+        workflow_service = WorkflowService()
+
+        conversation_variables_list = args.get("conversation_variables") or []
+        conversation_variables = [
+            variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
+        ]
+
+        workflow_service.update_draft_workflow_conversation_variables(
+            app_model=app_model,
+            account=current_user,
+            conversation_variables=conversation_variables,
+        )
+
+        return {"result": "success"}
+
+
 class SystemVariableCollectionApi(Resource):
     @api.doc("get_system_variables")
     @api.doc(description="Get system variables for workflow")
@@ -499,3 +526,44 @@ class EnvironmentVariableCollectionApi(Resource):
             )
 
         return {"items": env_vars_list}
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App):
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("environment_variables", type=list, required=True, location="json")
+        args = parser.parse_args()
+
+        workflow_service = WorkflowService()
+
+        environment_variables_list = args.get("environment_variables") or []
+        environment_variables = [
+            variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
+        ]
+
+        workflow_service.update_draft_workflow_environment_variables(
+            app_model=app_model,
+            account=current_user,
+            environment_variables=environment_variables,
+        )
+
+        return {"result": "success"}
+
+
+api.add_resource(
+    WorkflowVariableCollectionApi,
+    "/apps/<uuid:app_id>/workflows/draft/variables",
+)
+api.add_resource(NodeVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/variables")
+api.add_resource(VariableApi, "/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>")
+api.add_resource(VariableResetApi, "/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>/reset")
+
+api.add_resource(ConversationVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/conversation-variables")
+api.add_resource(SystemVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/system-variables")
+api.add_resource(EnvironmentVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/environment-variables")

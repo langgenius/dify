@@ -9,6 +9,7 @@ export type AvatarProps = {
   className?: string
   textClassName?: string
   onError?: (x: boolean) => void
+  backgroundColor?: string
 }
 const Avatar = ({
   name,
@@ -17,9 +18,18 @@ const Avatar = ({
   className,
   textClassName,
   onError,
+  backgroundColor,
 }: AvatarProps) => {
-  const avatarClassName = 'shrink-0 flex items-center rounded-full bg-primary-600'
-  const style = { width: `${size}px`, height: `${size}px`, fontSize: `${size}px`, lineHeight: `${size}px` }
+  const avatarClassName = backgroundColor
+    ? 'shrink-0 flex items-center rounded-full'
+    : 'shrink-0 flex items-center rounded-full bg-primary-600'
+  const style = {
+    width: `${size}px`,
+    height: `${size}px`,
+    fontSize: `${size}px`,
+    lineHeight: `${size}px`,
+    ...(backgroundColor && !avatar ? { backgroundColor } : {}),
+  }
   const [imgError, setImgError] = useState(false)
 
   const handleError = () => {
@@ -35,14 +45,18 @@ const Avatar = ({
 
   if (avatar && !imgError) {
     return (
-      <img
+      <span
         className={cn(avatarClassName, className)}
         style={style}
-        alt={name}
-        src={avatar}
-        onError={handleError}
-        onLoad={() => onError?.(false)}
-      />
+      >
+        <img
+          className='h-full w-full rounded-full object-cover'
+          alt={name}
+          src={avatar}
+          onError={handleError}
+          onLoad={() => onError?.(false)}
+        />
+      </span>
     )
   }
 

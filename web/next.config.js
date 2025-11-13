@@ -94,11 +94,23 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
-  transpilePackages: ['echarts', 'zrender'],
   turbopack: {
     rules: codeInspectorPlugin({
       bundler: 'turbopack'
     })
+  },
+  webpack: (config, { dev, isServer }) => {
+    config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
+
+    config.experiments = {
+      asyncWebAssembly: true,
+      layers: true,
+    }
+    config.output.environment = {
+      asyncFunction: true,
+    }
+
+    return config
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
@@ -115,6 +127,10 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: [
+      '@heroicons/react'
+    ],
+    optimizePackageImports: [
+      '@remixicon/react',
       '@heroicons/react'
     ],
   },

@@ -11,6 +11,7 @@ import {
   RiHand,
   RiStickyNoteAddLine,
 } from '@remixicon/react'
+import { Comment } from '@/app/components/base/icons/src/public/other'
 import {
   useNodesReadOnly,
   useWorkflowCanvasMaximize,
@@ -32,7 +33,12 @@ const Control = () => {
   const { t } = useTranslation()
   const controlMode = useStore(s => s.controlMode)
   const maximizeCanvas = useStore(s => s.maximizeCanvas)
-  const { handleModePointer, handleModeHand } = useWorkflowMoveMode()
+  const {
+    handleModePointer,
+    handleModeHand,
+    handleModeComment,
+    isCommentModeAvailable,
+  } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
   const { handleAddNote } = useOperator()
   const {
@@ -88,6 +94,20 @@ const Control = () => {
           <RiHand className='h-4 w-4' />
         </div>
       </TipPopup>
+      {isCommentModeAvailable && (
+        <TipPopup title={t('workflow.common.commentMode')} shortcuts={['c']}>
+          <div
+            className={cn(
+              'ml-[1px] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
+              controlMode === ControlMode.Comment ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
+              `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            )}
+            onClick={handleModeComment}
+          >
+            <Comment className='h-4 w-4' />
+          </div>
+        </TipPopup>
+      )}
       <Divider className='my-1 w-3.5' />
       <TipPopup title={t('workflow.panel.organizeBlocks')} shortcuts={['ctrl', 'o']}>
         <div

@@ -203,6 +203,38 @@ const translation = {
     nodeAdd: 'Nœud ajouté',
     nodeDescriptionChange: 'La description du nœud a changé',
   },
+  comments: {
+    panelTitle: 'Commentaire',
+    loading: 'Chargement…',
+    reply: 'Répondre',
+    noComments: 'Aucun commentaire pour l’instant',
+    placeholder: {
+      add: 'Ajouter un commentaire',
+      reply: 'Répondre',
+      editReply: 'Modifier la réponse',
+    },
+    confirm: {
+      deleteThreadTitle: 'Supprimer cette conversation ?',
+      deleteThreadDesc: 'Cette action supprimera définitivement la conversation et toutes ses réponses. Cette opération est irréversible.',
+      deleteReplyTitle: 'Supprimer cette réponse ?',
+      deleteReplyDesc: 'Cette réponse sera supprimée définitivement.',
+    },
+    aria: {
+      deleteComment: 'Supprimer le commentaire',
+      resolveComment: 'Résoudre le commentaire',
+      previousComment: 'Commentaire précédent',
+      nextComment: 'Commentaire suivant',
+      closeComment: 'Fermer le commentaire',
+      replyActions: 'Actions de réponse',
+    },
+    actions: {
+      editReply: 'Modifier la réponse',
+      deleteReply: 'Supprimer la réponse',
+    },
+    fallback: {
+      user: 'Utilisateur',
+    },
+  },
   errorMsg: {
     fieldRequired: '{{field}} est requis',
     authRequired: 'Autorisation requise',
@@ -307,6 +339,9 @@ const translation = {
     zoomTo50: 'Zoomer à 50%',
     zoomTo100: 'Zoomer à 100%',
     zoomToFit: 'Zoomer pour ajuster',
+    showUserComments: 'Commentaires',
+    showUserCursors: 'Curseurs des collaborateurs',
+    showMiniMap: 'Mini-carte',
     alignBottom: 'Bas',
     alignLeft: 'Gauche',
     alignCenter: 'Centre',

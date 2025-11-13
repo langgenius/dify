@@ -32,6 +32,7 @@ from controllers.console.wraps import (
     only_edition_cloud,
     setup_required,
 )
+from core.file import helpers as file_helpers
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.datetime_utils import naive_utc_now
@@ -128,6 +129,17 @@ class AccountNameApi(Resource):
 
 @console_ns.route("/account/avatar")
 class AccountAvatarApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("avatar", type=str, required=True, location="args")
+        args = parser.parse_args()
+
+        avatar_url = file_helpers.get_signed_file_url(args["avatar"])
+        return {"avatar_url": avatar_url}
+    
     @setup_required
     @login_required
     @account_initialization_required
