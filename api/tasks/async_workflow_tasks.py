@@ -13,13 +13,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.layers.timeslice_layer import TimeSliceLayer
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from extensions.ext_database import db
 from models.account import Account
-from models.enums import CreatorUserRole, WorkflowTriggerStatus
+from models.enums import AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
 from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow
@@ -81,6 +81,19 @@ def execute_workflow_sandbox(task_data_dict: dict[str, Any]):
     )
 
 
+def _build_generator_args(trigger_data: TriggerData) -> dict[str, Any]:
+    """Build args passed into WorkflowAppGenerator.generate for Celery executions."""
+    args: dict[str, Any] = {
+        "inputs": dict(trigger_data.inputs),
+        "files": list(trigger_data.files),
+    }
+
+    if trigger_data.trigger_type == AppTriggerType.TRIGGER_WEBHOOK:
+        args[SKIP_PREPARE_USER_INPUTS_KEY] = True  # Webhooks already provide structured inputs
+
+    return args
+
+
 def _execute_workflow_common(
     task_data: WorkflowTaskData,
     cfs_plan_scheduler: AsyncWorkflowCFSPlanScheduler,
@@ -128,7 +141,7 @@ def _execute_workflow_common(
             generator = WorkflowAppGenerator()
 
             # Prepare args matching AppGenerateService.generate format
-            args: dict[str, Any] = {"inputs": dict(trigger_data.inputs), "files": list(trigger_data.files)}
+            args = _build_generator_args(trigger_data)
 
             # If workflow_id was specified, add it to args
             if trigger_data.workflow_id:
