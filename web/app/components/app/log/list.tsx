@@ -42,6 +42,7 @@ import { getProcessedFilesFromResponse } from '@/app/components/base/file-upload
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
 import PromptLogModal from '../../base/prompt-log-modal'
+import { WorkflowContextProvider } from '@/app/components/workflow/context'
 
 type AppStoreState = ReturnType<typeof useAppStore.getState>
 type ConversationListItem = ChatConversationGeneralDetail | CompletionConversationGeneralDetail
@@ -779,15 +780,17 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         }
       </div>
       {showMessageLogModal && (
-        <MessageLogModal
-          width={width}
-          currentLogItem={currentLogItem}
-          onCancel={() => {
-            setCurrentLogItem()
-            setShowMessageLogModal(false)
-          }}
-          defaultTab={currentLogModalActiveTab}
-        />
+        <WorkflowContextProvider>
+          <MessageLogModal
+            width={width}
+            currentLogItem={currentLogItem}
+            onCancel={() => {
+              setCurrentLogItem()
+              setShowMessageLogModal(false)
+            }}
+            defaultTab={currentLogModalActiveTab}
+          />
+        </WorkflowContextProvider>
       )}
       {!isChatMode && showPromptLogModal && (
         <PromptLogModal
