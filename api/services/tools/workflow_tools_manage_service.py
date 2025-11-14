@@ -293,6 +293,10 @@ class WorkflowToolManageService:
         if len(workflow_tools) == 0:
             raise ValueError(f"Tool {db_tool.id} not found")
 
+        tool_entity = tool.get_tools(db_tool.tenant_id)[0].entity
+        # get output schema from workflow tool entity
+        output_schema = tool_entity.output_schema
+
         return {
             "name": db_tool.name,
             "label": db_tool.label,
@@ -301,6 +305,7 @@ class WorkflowToolManageService:
             "icon": json.loads(db_tool.icon),
             "description": db_tool.description,
             "parameters": jsonable_encoder(db_tool.parameter_configurations),
+            "output_schema": output_schema,
             "tool": ToolTransformService.convert_tool_entity_to_api_entity(
                 tool=tool.get_tools(db_tool.tenant_id)[0],
                 labels=ToolLabelManager.get_tool_labels(tool),
