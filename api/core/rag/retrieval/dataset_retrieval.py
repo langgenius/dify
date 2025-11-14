@@ -38,6 +38,7 @@ from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.rag.entities.context_entities import DocumentContext
 from core.rag.entities.metadata_entities import Condition, MetadataCondition
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
@@ -962,13 +963,39 @@ class DatasetRetrieval:
             output = re.sub(r"[\r\n\t]+", " ", output).strip()
         return output
 
-    def _automatic_metadata_filter_func(
-        self, dataset_ids: list, query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
-    ) -> list[dict[str, Any]] | None:
-        # get all metadata field
+    def _get_all_metadata_fields(self, dataset_ids: list) -> list[str]:
+        """
+        Get all metadata field names for the given datasets, including both custom and built-in fields.
+
+        :param dataset_ids: list of dataset IDs
+        :return: list of metadata field names
+        """
+        # Get custom metadata fields
         metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
         metadata_fields = db.session.scalars(metadata_stmt).all()
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
+
+        # Check if any dataset has built-in fields enabled
+        datasets_stmt = select(Dataset).where(Dataset.id.in_(dataset_ids))
+        datasets = db.session.scalars(datasets_stmt).all()
+        built_in_enabled = any(dataset.built_in_field_enabled for dataset in datasets)
+
+        # Add built-in fields if enabled
+        if built_in_enabled:
+            built_in_fields = [field.value for field in BuiltInField]
+            all_metadata_fields.extend(built_in_fields)
+
+        return all_metadata_fields
+
+    def _automatic_metadata_filter_func(
+        self, dataset_ids: list, query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
+    ) -> list[dict[str, Any]] | None:
+        # Get all metadata fields (custom + built-in if enabled)
+        all_metadata_fields = self._get_all_metadata_fields(dataset_ids)
+
+        if not all_metadata_fields:
+            return None
+
         # get metadata model config
         if metadata_model_config is None:
             raise ValueError("metadata_model_config is required")
@@ -1007,14 +1034,16 @@ class DatasetRetrieval:
             if "metadata_map" in result_text_json:
                 metadata_map = result_text_json["metadata_map"]
                 for item in metadata_map:
-                    if item.get("metadata_field_name") in all_metadata_fields:
+                    field_name = item.get("metadata_field_name")
+                    if field_name in all_metadata_fields:
                         automatic_metadata_filters.append(
                             {
-                                "metadata_name": item.get("metadata_field_name"),
+                                "metadata_name": field_name,
                                 "value": item.get("metadata_field_value"),
                                 "condition": item.get("comparison_operator"),
                             }
                         )
+
         except Exception:
             return None
         return automatic_metadata_filters
