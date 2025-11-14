@@ -204,6 +204,35 @@ class SegmentType(StrEnum):
             raise ValueError(f"element_type is only supported by array type, got {self}")
         return _ARRAY_ELEMENT_TYPES_MAPPING.get(self)
 
+    @staticmethod
+    def get_zero_value(t: "SegmentType"):
+        # Lazy import to avoid circular dependency
+        from factories import variable_factory
+
+        match t:
+            case (
+                SegmentType.ARRAY_OBJECT
+                | SegmentType.ARRAY_ANY
+                | SegmentType.ARRAY_STRING
+                | SegmentType.ARRAY_NUMBER
+                | SegmentType.ARRAY_BOOLEAN
+            ):
+                return variable_factory.build_segment_with_type(t, [])
+            case SegmentType.OBJECT:
+                return variable_factory.build_segment({})
+            case SegmentType.STRING:
+                return variable_factory.build_segment("")
+            case SegmentType.INTEGER:
+                return variable_factory.build_segment(0)
+            case SegmentType.FLOAT:
+                return variable_factory.build_segment(0.0)
+            case SegmentType.NUMBER:
+                return variable_factory.build_segment(0)
+            case SegmentType.BOOLEAN:
+                return variable_factory.build_segment(False)
+            case _:
+                raise ValueError(f"unsupported variable type: {t}")
+
 
 _ARRAY_ELEMENT_TYPES_MAPPING: Mapping[SegmentType, SegmentType] = {
     # ARRAY_ANY does not have corresponding element type.

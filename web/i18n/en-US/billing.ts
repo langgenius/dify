@@ -7,6 +7,8 @@ const translation = {
     documentsUploadQuota: 'Documents Upload Quota',
     vectorSpace: 'Knowledge Data Storage',
     vectorSpaceTooltip: 'Documents with the High Quality indexing mode will consume Knowledge Data Storage resources. When Knowledge Data Storage reaches the limit, new documents will not be uploaded.',
+    triggerEvents: 'Trigger Events',
+    perMonth: 'per month',
   },
   teamMembers: 'Team Members',
   upgradeBtn: {
@@ -62,7 +64,7 @@ const translation = {
     documentsRequestQuota: '{{count,number}}/min Knowledge Request Rate Limit',
     documentsRequestQuotaTooltip: 'Specifies the total number of actions a workspace can perform per minute within the knowledge base, including dataset creation, deletion, updates, document uploads, modifications, archiving, and knowledge base queries. This metric is used to evaluate the performance of knowledge base requests. For example, if a Sandbox user performs 10 consecutive hit tests within one minute, their workspace will be temporarily restricted from performing the following actions for the next minute: dataset creation, deletion, updates, and document uploads or modifications. ',
     apiRateLimit: 'API Rate Limit',
-    apiRateLimitUnit: '{{count,number}}/day',
+    apiRateLimitUnit: '{{count,number}}/month',
     unlimitedApiRate: 'No API Rate Limit',
     apiRateLimitTooltip: 'API Rate Limit applies to all requests made through the Dify API, including text generation, chat conversations, workflow executions, and document processing.',
     documentProcessingPriority: ' Document Processing',
@@ -71,6 +73,20 @@ const translation = {
       'standard': 'Standard',
       'priority': 'Priority',
       'top-priority': 'Top Priority',
+    },
+    triggerEvents: {
+      sandbox: '{{count,number}} Trigger Events',
+      professional: '{{count,number}} Trigger Events/month',
+      unlimited: 'Unlimited Trigger Events',
+    },
+    workflowExecution: {
+      standard: 'Standard Workflow Execution',
+      faster: 'Faster Workflow Execution',
+      priority: 'Priority Workflow Execution',
+    },
+    startNodes: {
+      limited: 'Up to {{count}} Start Nodes per Workflow',
+      unlimited: 'Unlimited Start Nodes per Workflow',
     },
     logsHistory: '{{days}} Log history',
     customTools: 'Custom Tools',
