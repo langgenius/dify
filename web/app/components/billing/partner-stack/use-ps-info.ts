@@ -34,11 +34,20 @@ const usePSInfo = () => {
 
   const bind = useCallback(async () => {
     if (psPartnerKey && psClickId && !hasBind) {
-      await mutateAsync({
-        partnerKey: psPartnerKey,
-        clickId: psClickId,
-      })
-      Cookies.remove(PARTNER_STACK_CONFIG.cookieName, { path: '/' })
+      let shouldRemoveCookie = false
+      try {
+        await mutateAsync({
+          partnerKey: psPartnerKey,
+          clickId: psClickId,
+        })
+        shouldRemoveCookie = true
+      }
+      catch (error: unknown) {
+        if((error as { status: number })?.status === 400)
+          shouldRemoveCookie = true
+      }
+      if (shouldRemoveCookie)
+        Cookies.remove(PARTNER_STACK_CONFIG.cookieName, { path: '/' })
       setBind()
     }
   }, [psPartnerKey, psClickId, mutateAsync, hasBind, setBind])
