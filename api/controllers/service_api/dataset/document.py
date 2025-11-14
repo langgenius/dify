@@ -2,6 +2,7 @@ import json
 
 from flask import request
 from flask_restx import marshal, reqparse
+from pydantic import BaseModel
 from sqlalchemy import desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -51,15 +52,17 @@ document_text_create_parser = (
     .add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
 )
 
-document_text_update_parser = (
-    reqparse.RequestParser()
-    .add_argument("name", type=str, required=False, nullable=True, location="json")
-    .add_argument("text", type=str, required=False, nullable=True, location="json")
-    .add_argument("process_rule", type=dict, required=False, nullable=True, location="json")
-    .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
-    .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
-    .add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
-)
+
+class DocumentTextUpdate(BaseModel):
+    name: str | None
+    text: str | None
+    process_rule: dict | None
+    doc_form: str = "text_model"
+    doc_language: str = "English"
+    retrieval_model: dict
+
+
+service_api_ns.add_model(DocumentTextUpdate.__name__, DocumentTextUpdate.model_json_schema())
 
 
 @service_api_ns.route(
@@ -160,7 +163,7 @@ class DocumentAddByTextApi(DatasetApiResource):
 class DocumentUpdateByTextApi(DatasetApiResource):
     """Resource for update documents."""
 
-    @service_api_ns.expect(document_text_update_parser)
+    @service_api_ns.expect(service_api_ns.models[DocumentTextUpdate.__name__])
     @service_api_ns.doc("update_document_by_text")
     @service_api_ns.doc(description="Update an existing document by providing text content")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
@@ -173,11 +176,9 @@ class DocumentUpdateByTextApi(DatasetApiResource):
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id, document_id):
+    def post(self, tenant_id: str, dataset_id: str, document_id: str):
         """Update document by text."""
-        args = document_text_update_parser.parse_args()
-        dataset_id = str(dataset_id)
-        tenant_id = str(tenant_id)
+        args = service_api_ns.payload
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
