@@ -8,6 +8,7 @@ from sqlalchemy import Engine
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
@@ -1090,3 +1091,237 @@ class TestFileService:
 
             assert upload_file is not None
             assert upload_file.extension == ""
+
+    # Test delete_file method
+    def test_delete_file_success(self, db_session_with_containers, engine, mock_external_service_dependencies):
+        """
+        Test successful file deletion.
+        """
+        fake = Faker()
+        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
+        upload_file = self._create_test_upload_file(
+            db_session_with_containers, mock_external_service_dependencies, account
+        )
+
+        file_id = upload_file.id
+        file_key = upload_file.key
+
+        # Delete the file
+        FileService(engine).delete_file(file_id)
+
+        # Verify storage.delete was called with correct key
+        mock_external_service_dependencies["storage"].delete.assert_called_once_with(file_key)
+
+        # Verify file is deleted from database
+        from extensions.ext_database import db
+
+        deleted_file = db.session.query(UploadFile).filter_by(id=file_id).first()
+        assert deleted_file is None
+
+    def test_delete_file_not_found(self, db_session_with_containers, engine, mock_external_service_dependencies):
+        """
+        Test deleting non-existent file raises NotFound.
+        """
+        fake = Faker()
+        non_existent_id = str(fake.uuid4())
+
+        with pytest.raises(NotFound, match="File not found"):
+            FileService(engine).delete_file(non_existent_id)
+
+        # Verify storage.delete was not called
+        mock_external_service_dependencies["storage"].delete.assert_not_called()
+
+    def test_delete_file_storage_failure_rollback(
+        self, db_session_with_containers, engine, mock_external_service_dependencies
+    ):
+        """
+        Test that storage deletion failure triggers database rollback.
+        """
+        fake = Faker()
+        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
+        upload_file = self._create_test_upload_file(
+            db_session_with_containers, mock_external_service_dependencies, account
+        )
+
+        file_id = upload_file.id
+
+        # Mock storage.delete to raise an error
+        mock_external_service_dependencies["storage"].delete.side_effect = Exception("Storage deletion failed")
+
+        with pytest.raises(Exception, match="Storage deletion failed"):
+            FileService(engine).delete_file(file_id)
+
+        # Verify file still exists in database (transaction was rolled back)
+        from extensions.ext_database import db
+
+        file_still_exists = db.session.query(UploadFile).filter_by(id=file_id).first()
+        assert file_still_exists is not None
+        assert file_still_exists.id == file_id
+
+    def test_delete_file_with_different_extensions(
+        self, db_session_with_containers, engine, mock_external_service_dependencies
+    ):
+        """
+        Test deleting files with different extensions.
+        """
+        fake = Faker()
+        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
+
+        # Test with different file types
+        file_types = [
+            ("test_image.jpg", "image/jpeg", "jpg"),
+            ("test_document.pdf", "application/pdf", "pdf"),
+            ("test_video.mp4", "video/mp4", "mp4"),
+            ("test_audio.mp3", "audio/mpeg", "mp3"),
+        ]
+
+        for filename, mimetype, extension in file_types:
+            content = b"test content for " + filename.encode()
+
+            upload_file = FileService(engine).upload_file(
+                filename=filename,
+                content=content,
+                mimetype=mimetype,
+                user=account,
+            )
+
+            file_id = upload_file.id
+
+            # Delete the file
+            FileService(engine).delete_file(file_id)
+
+            # Verify file is deleted from database
+            from extensions.ext_database import db
+
+            deleted_file = db.session.query(UploadFile).filter_by(id=file_id).first()
+            assert deleted_file is None
+
+    def test_delete_file_used_file(self, db_session_with_containers, engine, mock_external_service_dependencies):
+        """
+        Test deleting a file that has been marked as used.
+        """
+        fake = Faker()
+        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
+        upload_file = self._create_test_upload_file(
+            db_session_with_containers, mock_external_service_dependencies, account
+        )
+
+        # Mark file as used
+        upload_file.used = True
+        upload_file.used_by = account.id
+        upload_file.used_at = naive_utc_now()
+
+        from extensions.ext_database import db
+
+        db.session.commit()
+
+        file_id = upload_file.id
+
+        # Should still be able to delete used files
+        FileService(engine).delete_file(file_id)
+
+        # Verify file is deleted
+        deleted_file = db.session.query(UploadFile).filter_by(id=file_id).first()
+        assert deleted_file is None
+
+    def test_delete_file_multiple_sequential(
+        self, db_session_with_containers, engine, mock_external_service_dependencies
+    ):
+        """
+        Test deleting multiple files sequentially.
+        """
+        fake = Faker()
+        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
+
+        # Create multiple files
+        file_ids = []
+        for i in range(3):
+            upload_file = FileService(engine).upload_file(
+                filename=f"test_file_{i}.txt",
+                content=f"test content {i}".encode(),
+                mimetype="text/plain",
+                user=account,
+            )
+            file_ids.append(upload_file.id)
+
+        # Delete all files sequentially
+        for file_id in file_ids:
+            FileService(engine).delete_file(file_id)
+
+        # Verify all files are deleted
+        from extensions.ext_database import db
+
+        for file_id in file_ids:
+            deleted_file = db.session.query(UploadFile).filter_by(id=file_id).first()
+            assert deleted_file is None
+
+        # Verify storage.delete was called for each file
+        assert mock_external_service_dependencies["storage"].delete.call_count == 3
+
+    def test_delete_file_with_datasets_source(
+        self, db_session_with_containers, engine, mock_external_service_dependencies
+    ):
+        """
+        Test deleting a file that was uploaded with datasets source.
+        """
+        fake = Faker()
+        account = self._create_test_account(db_session_with_containers, mock_external_service_dependencies)
+
+        filename = "test_dataset_file.pdf"
+        content = b"test dataset content"
+        mimetype = "application/pdf"
+
+        upload_file = FileService(engine).upload_file(
+            filename=filename,
+            content=content,
+            mimetype=mimetype,
+            user=account,
+            source="datasets",
+            source_url="https://example.com/dataset",
+        )
+
+        file_id = upload_file.id
+
+        # Delete the file
+        FileService(engine).delete_file(file_id)
+
+        # Verify file is deleted
+        from extensions.ext_database import db
+
+        deleted_file = db.session.query(UploadFile).filter_by(id=file_id).first()
+        assert deleted_file is None
+
+    def test_delete_file_created_by_end_user(
+        self, db_session_with_containers, engine, mock_external_service_dependencies
+    ):
+        """
+        Test deleting a file created by an end user.
+        """
+        fake = Faker()
+        end_user = self._create_test_end_user(db_session_with_containers, mock_external_service_dependencies)
+
+        filename = "end_user_file.jpg"
+        content = b"end user content"
+        mimetype = "image/jpeg"
+
+        upload_file = FileService(engine).upload_file(
+            filename=filename,
+            content=content,
+            mimetype=mimetype,
+            user=end_user,
+        )
+
+        file_id = upload_file.id
+
+        # Verify file was created by end user
+        assert upload_file.created_by_role == CreatorUserRole.END_USER
+        assert upload_file.created_by == end_user.id
+
+        # Delete the file
+        FileService(engine).delete_file(file_id)
+
+        # Verify file is deleted
+        from extensions.ext_database import db
+
+        deleted_file = db.session.query(UploadFile).filter_by(id=file_id).first()
+        assert deleted_file is None
