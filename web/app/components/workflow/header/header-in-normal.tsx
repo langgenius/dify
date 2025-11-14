@@ -76,8 +76,6 @@ const HeaderInNormal = ({
         <OnlineUsers />
         {components?.left}
         <Divider type='vertical' className='mx-auto h-3.5' />
-        <EnvButton disabled={nodesReadOnly} />
-        <Divider type='vertical' className='mx-auto h-3.5' />
         <RunAndHistory {...runAndHistoryProps} />
         <div className='shrink-0 cursor-pointer rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px]'>
           {components?.chatVariableTrigger}
