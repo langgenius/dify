@@ -1,5 +1,7 @@
 import { TransferMethod } from '@/types/app'
 
+export const CUSTOM_NODE_TYPE = 'custom'
+
 export const FILE_TYPE_OPTIONS = [
   { value: 'image', i18nKey: 'image' },
   { value: 'document', i18nKey: 'doc' },

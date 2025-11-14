@@ -16,6 +16,7 @@ from fields.annotation_fields import (
     annotation_fields,
     annotation_hit_history_fields,
 )
+from libs.helper import uuid_value
 from libs.login import login_required
 from services.annotation_service import AppAnnotationService
 
@@ -175,8 +176,10 @@ class AnnotationApi(Resource):
         api.model(
             "CreateAnnotationRequest",
             {
-                "question": fields.String(required=True, description="Question text"),
-                "answer": fields.String(required=True, description="Answer text"),
+                "message_id": fields.String(description="Message ID (optional)"),
+                "question": fields.String(description="Question text (required when message_id not provided)"),
+                "answer": fields.String(description="Answer text (use 'answer' or 'content')"),
+                "content": fields.String(description="Content text (use 'answer' or 'content')"),
                 "annotation_reply": fields.Raw(description="Annotation reply data"),
             },
         )
@@ -193,11 +196,14 @@ class AnnotationApi(Resource):
         app_id = str(app_id)
         parser = (
             reqparse.RequestParser()
-            .add_argument("question", required=True, type=str, location="json")
-            .add_argument("answer", required=True, type=str, location="json")
+            .add_argument("message_id", required=False, type=uuid_value, location="json")
+            .add_argument("question", required=False, type=str, location="json")
+            .add_argument("answer", required=False, type=str, location="json")
+            .add_argument("content", required=False, type=str, location="json")
+            .add_argument("annotation_reply", required=False, type=dict, location="json")
         )
         args = parser.parse_args()
-        annotation = AppAnnotationService.insert_app_annotation_directly(args, app_id)
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(args, app_id)
         return annotation
 
     @setup_required
@@ -245,6 +251,13 @@ class AnnotationExportApi(Resource):
         return response, 200
 
 
+parser = (
+    reqparse.RequestParser()
+    .add_argument("question", required=True, type=str, location="json")
+    .add_argument("answer", required=True, type=str, location="json")
+)
+
+
 @console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
 class AnnotationUpdateDeleteApi(Resource):
     @api.doc("update_delete_annotation")
@@ -253,6 +266,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @api.response(200, "Annotation updated successfully", annotation_fields)
     @api.response(204, "Annotation deleted successfully")
     @api.response(403, "Insufficient permissions")
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -262,11 +276,6 @@ class AnnotationUpdateDeleteApi(Resource):
     def post(self, app_id, annotation_id):
         app_id = str(app_id)
         annotation_id = str(annotation_id)
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("question", required=True, type=str, location="json")
-            .add_argument("answer", required=True, type=str, location="json")
-        )
         args = parser.parse_args()
         annotation = AppAnnotationService.update_app_annotation_directly(args, app_id, annotation_id)
         return annotation

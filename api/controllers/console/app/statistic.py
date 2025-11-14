@@ -1,9 +1,7 @@
-from datetime import datetime
 from decimal import Decimal
 
-import pytz
 import sqlalchemy as sa
-from flask import jsonify
+from flask import abort, jsonify
 from flask_restx import Resource, fields, reqparse
 
 from controllers.console import api, console_ns
@@ -11,6 +9,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
+from libs.datetime_utils import parse_time_range
 from libs.helper import DatetimeString
 from libs.login import current_account_with_tenant, login_required
 from models import AppMode, Message
@@ -56,26 +55,16 @@ WHERE
         arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
 
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
-
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
+        if start_datetime_utc:
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
+        if end_datetime_utc:
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
 
@@ -91,16 +80,19 @@ WHERE
         return jsonify({"data": response_data})
 
 
+parser = (
+    reqparse.RequestParser()
+    .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args", help="Start date (YYYY-MM-DD HH:MM)")
+    .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args", help="End date (YYYY-MM-DD HH:MM)")
+)
+
+
 @console_ns.route("/apps/<uuid:app_id>/statistics/daily-conversations")
 class DailyConversationStatistic(Resource):
     @api.doc("get_daily_conversation_statistics")
     @api.doc(description="Get daily conversation statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.parser()
-        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
-        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
-    )
+    @api.expect(parser)
     @api.response(
         200,
         "Daily conversation statistics retrieved successfully",
@@ -113,15 +105,13 @@ class DailyConversationStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        )
         args = parser.parse_args()
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
+
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
         stmt = (
             sa.select(
@@ -134,18 +124,10 @@ class DailyConversationStatistic(Resource):
             .where(Message.app_id == app_model.id, Message.invoke_from != InvokeFrom.DEBUGGER)
         )
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
+        if start_datetime_utc:
             stmt = stmt.where(Message.created_at >= start_datetime_utc)
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
+        if end_datetime_utc:
             stmt = stmt.where(Message.created_at < end_datetime_utc)
 
         stmt = stmt.group_by("date").order_by("date")
@@ -164,11 +146,7 @@ class DailyTerminalsStatistic(Resource):
     @api.doc("get_daily_terminals_statistics")
     @api.doc(description="Get daily terminal/end-user statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.parser()
-        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
-        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
-    )
+    @api.expect(parser)
     @api.response(
         200,
         "Daily terminal statistics retrieved successfully",
@@ -181,11 +159,6 @@ class DailyTerminalsStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -198,26 +171,17 @@ WHERE
     AND invoke_from != :invoke_from"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
+        if start_datetime_utc:
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
+        if end_datetime_utc:
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
 
@@ -238,11 +202,7 @@ class DailyTokenCostStatistic(Resource):
     @api.doc("get_daily_token_cost_statistics")
     @api.doc(description="Get daily token cost statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.parser()
-        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
-        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
-    )
+    @api.expect(parser)
     @api.response(
         200,
         "Daily token cost statistics retrieved successfully",
@@ -255,11 +215,6 @@ class DailyTokenCostStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -273,26 +228,17 @@ WHERE
     AND invoke_from != :invoke_from"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
+        if start_datetime_utc:
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
+        if end_datetime_utc:
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
 
@@ -315,11 +261,7 @@ class AverageSessionInteractionStatistic(Resource):
     @api.doc("get_average_session_interaction_statistics")
     @api.doc(description="Get average session interaction statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.parser()
-        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
-        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
-    )
+    @api.expect(parser)
     @api.response(
         200,
         "Average session interaction statistics retrieved successfully",
@@ -332,11 +274,6 @@ class AverageSessionInteractionStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -357,26 +294,17 @@ FROM
             AND m.invoke_from != :invoke_from"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
+        if start_datetime_utc:
             sql_query += " AND c.created_at >= :start"
             arg_dict["start"] = start_datetime_utc
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
+        if end_datetime_utc:
             sql_query += " AND c.created_at < :end"
             arg_dict["end"] = end_datetime_utc
 
@@ -408,11 +336,7 @@ class UserSatisfactionRateStatistic(Resource):
     @api.doc("get_user_satisfaction_rate_statistics")
     @api.doc(description="Get user satisfaction rate statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.parser()
-        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
-        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
-    )
+    @api.expect(parser)
     @api.response(
         200,
         "User satisfaction rate statistics retrieved successfully",
@@ -425,11 +349,6 @@ class UserSatisfactionRateStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -446,26 +365,17 @@ WHERE
     AND m.invoke_from != :invoke_from"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
+        if start_datetime_utc:
             sql_query += " AND m.created_at >= :start"
             arg_dict["start"] = start_datetime_utc
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
+        if end_datetime_utc:
             sql_query += " AND m.created_at < :end"
             arg_dict["end"] = end_datetime_utc
 
@@ -491,11 +401,7 @@ class AverageResponseTimeStatistic(Resource):
     @api.doc("get_average_response_time_statistics")
     @api.doc(description="Get average response time statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.parser()
-        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
-        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
-    )
+    @api.expect(parser)
     @api.response(
         200,
         "Average response time statistics retrieved successfully",
@@ -508,11 +414,6 @@ class AverageResponseTimeStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -525,26 +426,17 @@ WHERE
     AND invoke_from != :invoke_from"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
+        if start_datetime_utc:
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
+        if end_datetime_utc:
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
 
@@ -565,11 +457,7 @@ class TokensPerSecondStatistic(Resource):
     @api.doc("get_tokens_per_second_statistics")
     @api.doc(description="Get tokens per second statistics for an application")
     @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.parser()
-        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
-        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
-    )
+    @api.expect(parser)
     @api.response(
         200,
         "Tokens per second statistics retrieved successfully",
@@ -581,12 +469,6 @@ class TokensPerSecondStatistic(Resource):
     @account_initialization_required
     def get(self, app_model):
         account, _ = current_account_with_tenant()
-
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        )
         args = parser.parse_args()
 
         sql_query = """SELECT
@@ -602,26 +484,17 @@ WHERE
     AND invoke_from != :invoke_from"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id, "invoke_from": InvokeFrom.DEBUGGER}
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
+        if start_datetime_utc:
             sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
+        if end_datetime_utc:
             sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
 
