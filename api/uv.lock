@@ -1588,7 +1588,7 @@ requires-dist = [
     { name = "tiktoken", specifier = "~=0.9.0" },
     { name = "transformers", specifier = "~=4.56.1" },
     { name = "unstructured", extras = ["docx", "epub", "md", "ppt", "pptx"], specifier = "~=0.16.1" },
-    { name = "weave", specifier = "~=0.51.0" },
+    { name = "weave", specifier = ">=0.52.16" },
     { name = "weaviate-client", specifier = "==4.17.0" },
     { name = "webvtt-py", specifier = "~=0.5.1" },
     { name = "yarl", specifier = "~=1.18.3" },
@@ -3536,15 +3536,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a6/01/67cf210d50bfefbb9224b9a5c465857c1767388dade1004c903c8e22a991/mysql_connector_python-9.5.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:a6e0a4a0274d15e3d4c892ab93f58f46431222117dba20608178dfb2cc4d5fd8", size = 34102899, upload-time = "2025-10-22T09:02:00.291Z" },
     { url = "https://files.pythonhosted.org/packages/cd/ef/3d1a67d503fff38cc30e11d111cf28f0976987fb175f47b10d44494e1080/mysql_connector_python-9.5.0-cp312-cp312-win_amd64.whl", hash = "sha256:b6c69cb37600b7e22f476150034e2afbd53342a175e20aea887f8158fc5e3ff6", size = 16512684, upload-time = "2025-10-22T09:02:02.411Z" },
     { url = "https://files.pythonhosted.org/packages/95/e1/45373c06781340c7b74fe9b88b85278ac05321889a307eaa5be079a997d4/mysql_connector_python-9.5.0-py2.py3-none-any.whl", hash = "sha256:ace137b88eb6fdafa1e5b2e03ac76ce1b8b1844b3a4af1192a02ae7c1a45bdee", size = 479047, upload-time = "2025-10-22T09:02:27.809Z" },
-]
-
-[[package]]
-name = "nest-asyncio"
-version = "1.6.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/83/f8/51569ac65d696c8ecbee95938f89d4abf00f47d58d48f6fbabfe8f0baefe/nest_asyncio-1.6.0.tar.gz", hash = "sha256:6f172d5449aca15afd6c646851f4e31e02c598d553a667e38cafa997cfec55fe", size = 7418, upload-time = "2024-01-21T14:25:19.227Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/c4/c2971a3ba4c6103a3d10c4b0f24f461ddc027f0f09763220cf35ca1401b3/nest_asyncio-1.6.0-py3-none-any.whl", hash = "sha256:87af6efd6b5e897c81050477ef65c62e2b2f35d51703cae01aff2905b1852e1c", size = 5195, upload-time = "2024-01-21T14:25:17.223Z" },
 ]
 
 [[package]]
@@ -6906,7 +6897,7 @@ wheels = [
 
 [[package]]
 name = "weave"
-version = "0.51.59"
+version = "0.52.16"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -6914,18 +6905,17 @@ dependencies = [
     { name = "eval-type-backport" },
     { name = "gql", extra = ["aiohttp", "requests"] },
     { name = "jsonschema" },
-    { name = "nest-asyncio" },
     { name = "packaging" },
     { name = "polyfile-weave" },
     { name = "pydantic" },
-    { name = "rich" },
     { name = "sentry-sdk" },
     { name = "tenacity" },
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
     { name = "wandb" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/53/1b0350a64837df3e29eda6149a542f3a51e706122086f82547153820e982/weave-0.51.59.tar.gz", hash = "sha256:fad34c0478f3470401274cba8fa2bfd45d14a187db0a5724bd507e356761b349", size = 480572, upload-time = "2025-07-25T22:05:07.458Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/be/30/b795b5a857e8a908e68f3ed969587bb2bc63527ef2260f72ac1a6fd983e8/weave-0.52.16.tar.gz", hash = "sha256:7bb8fdce0393007e9c40fb1769d0606bfe55401c4cd13146457ccac4b49c695d", size = 607024, upload-time = "2025-11-07T19:45:30.898Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/bc/fa5ffb887a1ee28109b29c62416c9e0f41da8e75e6871671208b3d42b392/weave-0.51.59-py3-none-any.whl", hash = "sha256:2238578574ecdf6285efdf028c78987769720242ac75b7b84b1dbc59060468ce", size = 612468, upload-time = "2025-07-25T22:05:05.088Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/87/a54513796605dfaef2c3c23c2733bcb4b24866a623635c057b2ffdb74052/weave-0.52.16-py3-none-any.whl", hash = "sha256:85985b8cf233032c6d915dfac95b3bcccb1304444d99a6b4a61f3666b58146ce", size = 764366, upload-time = "2025-11-07T19:45:28.878Z" },
 ]
 
 [[package]]
