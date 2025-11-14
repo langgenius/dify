@@ -91,6 +91,7 @@ const locImageURLs = !hasSetWebPrefix ? [new URL(`http://localhost:${port}/**`),
 const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WEB_PREFIX}/**`) : '', ...locImageURLs].filter(item => !!item)
 
 const isSaaS = process.env.NEXT_PUBLIC_EDITION === 'CLOUD'
+console.log(isSaaS)
 const supportPostfixReg = /\.(ts|tsx|css|svg|jpg|jpeg|png)$/
 const editionPaths = (() => {
   const editionDir = `./app/edition/${isSaaS ? 'saas' : 'community'}`
@@ -134,9 +135,9 @@ const nextConfig = {
     rules: codeInspectorPlugin({
       bundler: 'turbopack'
     }),
-    resolveAlias: {
-      ...editionPaths,
-    }
+    // resolveAlias: {
+    //   ...editionPaths,
+    // }
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
@@ -166,6 +167,7 @@ const nextConfig = {
   typescript: {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
+    tsconfigPath: isSaaS ? 'tsconfig.json' : 'tsconfig.ce.json',
   },
   reactStrictMode: true,
   async redirects() {

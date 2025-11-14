@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@edition/*": [
+        "./app/edition/community/*"
+      ],
+      "~@edition/*": [
+        "./app/edition/community/*"
+      ]
+    }
+  }
+}
