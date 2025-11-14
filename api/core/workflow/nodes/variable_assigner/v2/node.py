@@ -16,7 +16,6 @@ from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNod
 from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
 
 from . import helpers
-from .constants import EMPTY_VALUE_MAPPING
 from .entities import VariableAssignerNodeData, VariableOperationItem
 from .enums import InputType, Operation
 from .exc import (
@@ -249,7 +248,7 @@ class VariableAssignerNode(Node):
             case Operation.OVER_WRITE:
                 return value
             case Operation.CLEAR:
-                return EMPTY_VALUE_MAPPING[variable.value_type]
+                return SegmentType.get_zero_value(variable.value_type).to_object()
             case Operation.APPEND:
                 return variable.value + [value]
             case Operation.EXTEND:

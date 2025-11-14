@@ -5,7 +5,7 @@ This factory is specifically designed for DifyAPI repositories that handle
 service-layer operations with dependency injection patterns.
 """
 
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.repositories import DifyCoreRepositoryFactory, RepositoryImportError
@@ -25,7 +25,7 @@ class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
 
     @classmethod
     def create_api_workflow_node_execution_repository(
-        cls, session_maker: sessionmaker
+        cls, session_maker: sessionmaker[Session]
     ) -> DifyAPIWorkflowNodeExecutionRepository:
         """
         Create a DifyAPIWorkflowNodeExecutionRepository instance based on configuration.
@@ -55,7 +55,7 @@ class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
             ) from e
 
     @classmethod
-    def create_api_workflow_run_repository(cls, session_maker: sessionmaker) -> APIWorkflowRunRepository:
+    def create_api_workflow_run_repository(cls, session_maker: sessionmaker[Session]) -> APIWorkflowRunRepository:
         """
         Create an APIWorkflowRunRepository instance based on configuration.
 
