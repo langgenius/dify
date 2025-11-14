@@ -453,6 +453,7 @@ class LLMNode(Node):
         usage = LLMUsage.empty_usage()
         finish_reason = None
         full_text_buffer = io.StringIO()
+        reasoning_content_buffer = io.StringIO()
 
         # Initialize streaming metrics tracking
         start_time = request_start_time if request_start_time is not None else time.perf_counter()
@@ -487,6 +488,15 @@ class LLMNode(Node):
                             is_final=False,
                         )
 
+                    # Handle reasoning content from delta (e.g., Ollama's thinking field)
+                    if result.delta.reasoning_content:
+                        reasoning_content_buffer.write(result.delta.reasoning_content)
+                        yield StreamChunkEvent(
+                            selector=[node_id, "reasoning_content"],
+                            chunk=result.delta.reasoning_content,
+                            is_final=False,
+                        )
+
                     # Update the whole metadata
                     if not model and result.model:
                         model = result.model
@@ -503,6 +513,7 @@ class LLMNode(Node):
 
         # Extract reasoning content from <think> tags in the main text
         full_text = full_text_buffer.getvalue()
+        streamed_reasoning_content = reasoning_content_buffer.getvalue()
 
         if reasoning_format == "tagged":
             # Keep <think> tags in text for backward compatibility
@@ -510,7 +521,8 @@ class LLMNode(Node):
             reasoning_content = ""
         else:
             # Extract clean text and reasoning from <think> tags
-            clean_text, reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
+            clean_text, extracted_reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
+            reasoning_content = streamed_reasoning_content or extracted_reasoning_content
 
         # Calculate streaming metrics
         end_time = time.perf_counter()
@@ -1120,7 +1132,8 @@ class LLMNode(Node):
             reasoning_content = ""
         else:
             # Extract clean text and reasoning from <think> tags
-            clean_text, reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
+            clean_text, extracted_reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
+            reasoning_content = invoke_result.reasoning_content or extracted_reasoning_content
 
         event = ModelInvokeCompletedEvent(
             # Use clean_text for separated mode, full_text for tagged mode
