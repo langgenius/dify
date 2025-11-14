@@ -15,6 +15,7 @@ const usePSInfo = () => {
     setTrue: setBind,
   }] = useBoolean(false)
   const { mutateAsync } = useBindPartnerStackInfo()
+  // Save to top domain. cloud.dify.ai => .dify.ai
   const domain = globalThis.location.hostname.replace('cloud', '')
 
   const saveOrUpdate = useCallback(() => {
@@ -28,7 +29,6 @@ const usePSInfo = () => {
     }), {
       expires: PARTNER_STACK_CONFIG.saveCookieDays,
       path: '/',
-        // Save to top domain. cloud.dify.ai => .dify.ai
       domain,
     })
   }, [psPartnerKey, psClickId, isPSChanged])
