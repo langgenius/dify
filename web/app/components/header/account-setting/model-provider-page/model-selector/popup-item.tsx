@@ -114,21 +114,23 @@ const PopupItem: FC<PopupItemProps> = ({
                     </ModelBadge>
                   )}
                 </div>
-                {modelItem.model_type === ModelTypeEnum.textGeneration && modelItem.features?.some(feature => [ModelFeatureEnum.vision, ModelFeatureEnum.audio, ModelFeatureEnum.video, ModelFeatureEnum.document].includes(feature)) && (
-                  <div className='pt-2'>
-                    <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('common.model.capabilities')}</div>
-                    <div className='flex flex-wrap gap-1'>
-                      {modelItem.features?.map(feature => (
-                        <FeatureIcon
-                          key={feature}
-                          feature={feature}
-                          showFeaturesLabel
-                        />
-                      ))
-                      }
+                {[ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank].includes(modelItem.model_type as ModelTypeEnum)
+                  && modelItem.features?.some(feature => [ModelFeatureEnum.vision, ModelFeatureEnum.audio, ModelFeatureEnum.video, ModelFeatureEnum.document].includes(feature))
+                  && (
+                    <div className='pt-2'>
+                      <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('common.model.capabilities')}</div>
+                      <div className='flex flex-wrap gap-1'>
+                        {modelItem.features?.map(feature => (
+                          <FeatureIcon
+                            key={feature}
+                            feature={feature}
+                            showFeaturesLabel
+                          />
+                        ))
+                        }
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
             }
           >
