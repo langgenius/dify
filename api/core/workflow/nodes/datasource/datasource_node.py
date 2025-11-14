@@ -20,9 +20,8 @@ from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.variables.segments import ArrayAnySegment
 from core.variables.variables import ArrayAnyVariable
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType, SystemVariableKey
+from core.workflow.enums import NodeExecutionType, NodeType, SystemVariableKey
 from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.nodes.tool.exc import ToolFileError
@@ -38,7 +37,7 @@ from .entities import DatasourceNodeData
 from .exc import DatasourceNodeError, DatasourceParameterError
 
 
-class DatasourceNode(Node):
+class DatasourceNode(Node[DatasourceNodeData]):
     """
     Datasource Node
     """
@@ -46,27 +45,6 @@ class DatasourceNode(Node):
     _node_data: DatasourceNodeData
     node_type = NodeType.DATASOURCE
     execution_type = NodeExecutionType.ROOT
-
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self._node_data = DatasourceNodeData.model_validate(data)
-
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
 
     def _run(self) -> Generator:
         """

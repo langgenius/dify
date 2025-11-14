@@ -55,7 +55,6 @@ from core.variables import (
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import (
-    ErrorStrategy,
     NodeType,
     SystemVariableKey,
     WorkflowNodeExecutionMetadataKey,
@@ -69,7 +68,7 @@ from core.workflow.node_events import (
     StreamChunkEvent,
     StreamCompletedEvent,
 )
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
+from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.runtime import VariablePool
@@ -100,7 +99,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class LLMNode(Node):
+class LLMNode(Node[LLMNodeData]):
     node_type = NodeType.LLM
 
     _node_data: LLMNodeData
@@ -138,27 +137,6 @@ class LLMNode(Node):
                 tenant_id=graph_init_params.tenant_id,
             )
         self._llm_file_saver = llm_file_saver
-
-    def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = LLMNodeData.model_validate(data)
-
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
 
     @classmethod
     def version(cls) -> str:
