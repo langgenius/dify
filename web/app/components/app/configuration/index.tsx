@@ -109,7 +109,8 @@ const Configuration: FC = () => {
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   const isLoading = !hasFetchedDetail
   const pathname = usePathname()
-  const matched = pathname.match(/\/app\/([^/]+)/)
+  const appIdRegex = /\/app\/([^/]+)/
+  const matched = appIdRegex.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const [mode, setMode] = useState<AppModeEnum>(AppModeEnum.CHAT)
   const [publishedConfig, setPublishedConfig] = useState<PublishConfig | null>(null)
