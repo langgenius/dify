@@ -5,7 +5,7 @@ description = "A package for interacting with the Dify Service-API"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "httpx>=0.27.0",
+    "httpx[http2]>=0.27.0",
     "aiofiles>=23.0.0",
 ]
 authors = [
