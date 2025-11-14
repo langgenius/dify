@@ -65,13 +65,82 @@ const groupByCategory = (entries: IconEntry[]) => entries.reduce((acc, entry) =>
   return acc
 }, {} as Record<string, IconEntry[]>)
 
-const scheduleCopiedReset = (
-  value: string,
-  setter: React.Dispatch<React.SetStateAction<string | null>>,
-) => {
-  window.setTimeout(() => {
-    setter(prev => (prev === value ? null : prev))
-  }, 1200)
+const containerStyle: React.CSSProperties = {
+  padding: 24,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 24,
+}
+
+const headerStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+}
+
+const controlsStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  flexWrap: 'wrap',
+}
+
+const searchInputStyle: React.CSSProperties = {
+  padding: '8px 12px',
+  minWidth: 280,
+  borderRadius: 6,
+  border: '1px solid #d0d0d5',
+}
+
+const toggleButtonStyle: React.CSSProperties = {
+  padding: '8px 12px',
+  borderRadius: 6,
+  border: '1px solid #d0d0d5',
+  background: '#fff',
+  cursor: 'pointer',
+}
+
+const emptyTextStyle: React.CSSProperties = { color: '#5f5f66' }
+
+const sectionStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+}
+
+const gridStyle: React.CSSProperties = {
+  display: 'grid',
+  gap: 12,
+  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+}
+
+const cardStyle: React.CSSProperties = {
+  border: '1px solid #e1e1e8',
+  borderRadius: 8,
+  padding: 12,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  minHeight: 140,
+}
+
+const previewBaseStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  minHeight: 48,
+  borderRadius: 6,
+}
+
+const nameButtonBaseStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  padding: 0,
+  border: 'none',
+  background: 'transparent',
+  font: 'inherit',
+  cursor: 'pointer',
+  textAlign: 'left',
+  fontWeight: 600,
 }
 
 const PREVIEW_SIZE = 40
@@ -90,33 +159,38 @@ const IconGalleryStory = () => {
     [grouped],
   )
 
+  React.useEffect(() => {
+    if (!copiedPath)
+      return undefined
+
+    const timerId = window.setTimeout(() => {
+      setCopiedPath(null)
+    }, 1200)
+
+    return () => window.clearTimeout(timerId)
+  }, [copiedPath])
+
   const handleCopy = React.useCallback((text: string) => {
     navigator.clipboard?.writeText(text)
       .then(() => {
         setCopiedPath(text)
-        scheduleCopiedReset(text, setCopiedPath)
       })
-      .catch(() => {
-        setCopiedPath(null)
+      .catch((err) => {
+        console.error('Failed to copy icon path:', err)
       })
   }, [])
 
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <header style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={containerStyle}>
+      <header style={headerStyle}>
         <h1 style={{ margin: 0 }}>Icon Gallery</h1>
         <p style={{ margin: 0, color: '#5f5f66' }}>
           Browse all icon components sourced from <code>app/components/base/icons/src</code>. Use the search bar
           to filter by name or path.
         </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={controlsStyle}>
           <input
-            style={{
-              padding: '8px 12px',
-              minWidth: 280,
-              borderRadius: 6,
-              border: '1px solid #d0d0d5',
-            }}
+            style={searchInputStyle}
             placeholder="Search icons"
             value={query}
             onChange={event => setQuery(event.target.value)}
@@ -125,52 +199,25 @@ const IconGalleryStory = () => {
           <button
             type="button"
             onClick={() => setPreviewTheme(prev => (prev === 'light' ? 'dark' : 'light'))}
-            style={{
-              padding: '8px 12px',
-              borderRadius: 6,
-              border: '1px solid #d0d0d5',
-              background: '#fff',
-              cursor: 'pointer',
-            }}
+            style={toggleButtonStyle}
           >
             Toggle {previewTheme === 'light' ? 'dark' : 'light'} preview
           </button>
         </div>
       </header>
       {categoryOrder.length === 0 && (
-        <p style={{ color: '#5f5f66' }}>No icons match the current filter.</p>
+        <p style={emptyTextStyle}>No icons match the current filter.</p>
       )}
       {categoryOrder.map(category => (
-        <section key={category} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <section key={category} style={sectionStyle}>
           <h2 style={{ margin: 0, fontSize: 18 }}>{category}</h2>
-          <div
-            style={{
-              display: 'grid',
-              gap: 12,
-              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-            }}
-          >
+          <div style={gridStyle}>
             {grouped[category].map(entry => (
-              <div
-                key={entry.path}
-                style={{
-                  border: '1px solid #e1e1e8',
-                  borderRadius: 8,
-                  padding: 12,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                  minHeight: 140,
-                }}
-              >
+              <div key={entry.path} style={cardStyle}>
                 <div
                   style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    minHeight: 48,
+                    ...previewBaseStyle,
                     background: previewTheme === 'dark' ? '#1f2024' : '#fff',
-                    borderRadius: 6,
                   }}
                 >
                   <entry.Component style={{ width: PREVIEW_SIZE, height: PREVIEW_SIZE }} />
@@ -179,15 +226,8 @@ const IconGalleryStory = () => {
                   type="button"
                   onClick={() => handleCopy(entry.path)}
                   style={{
-                    display: 'inline-flex',
-                    padding: 0,
-                    border: 'none',
-                    background: 'transparent',
-                    font: 'inherit',
-                    cursor: 'pointer',
-                    textAlign: 'left',
+                    ...nameButtonBaseStyle,
                     color: copiedPath === entry.path ? '#00754a' : '#24262c',
-                    fontWeight: 600,
                   }}
                 >
                   {copiedPath === entry.path ? 'Copied!' : entry.name}
