@@ -9,7 +9,7 @@ from .base import Base
 from .types import StringUUID
 
 
-class DatasourceOauthParamConfig(Base):  # type: ignore[name-defined]
+class DatasourceOauthParamConfig(TypeBase):  # type: ignore[name-defined]
     __tablename__ = "datasource_oauth_params"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="datasource_oauth_config_pkey"),
@@ -22,7 +22,7 @@ class DatasourceOauthParamConfig(Base):  # type: ignore[name-defined]
     system_credentials: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
 
-class DatasourceProvider(Base):
+class DatasourceProvider(TypeBase):
     __tablename__ = "datasource_providers"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="datasource_provider_pkey"),
@@ -46,7 +46,7 @@ class DatasourceProvider(Base):
     )
 
 
-class DatasourceOauthTenantParamConfig(Base):
+class DatasourceOauthTenantParamConfig(TypeBase):
     __tablename__ = "datasource_oauth_tenant_params"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="datasource_oauth_tenant_config_pkey"),
