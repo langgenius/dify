@@ -129,7 +129,10 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
 
   return (
     <div className={'flex h-full flex-col'}>
-      <div className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}>
+      <div className={cn(
+        'flex shrink-0 items-center justify-between',
+        fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3',
+      )}>
         <div className='flex flex-col'>
           <div className='system-xl-semibold text-text-primary'>{titleText}</div>
           <div className='flex items-center gap-x-2'>
@@ -166,9 +169,12 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
       <div className={cn(
         'flex grow',
         fullScreen ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6' : 'flex-col gap-y-1 px-4 py-3',
-        !isEditMode && 'overflow-hidden pb-0',
+        !isEditMode && 'pb-0',
       )}>
-        <div className={cn(isEditMode ? 'overflow-hidden whitespace-pre-line break-all' : 'overflow-y-auto', fullScreen ? 'w-1/2' : 'grow')}>
+        <div className={cn(
+          isEditMode ? 'overflow-hidden whitespace-pre-line break-all' : 'overflow-y-auto',
+          fullScreen ? 'w-1/2' : 'h-0 grow',
+        )}>
           <ChunkContent
             docForm={docForm}
             question={question}
@@ -179,8 +185,9 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
           />
         </div>
 
-        <div className={cn('flex flex-col', fullScreen ? 'w-[320px] gap-y-2' : 'w-full gap-y-1')}>
+        <div className={cn('flex shrink-0 flex-col', fullScreen ? 'w-[320px] gap-y-2' : 'w-full gap-y-1')}>
           <ImageUploaderInChunk
+            disabled={!isEditMode}
             value={attachments}
             onChange={onAttachmentsChange}
           />
@@ -195,7 +202,6 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
             />
           )}
         </div>
-
       </div>
       {isEditMode && !fullScreen && (
         <div className='flex items-center justify-end border-t-[1px] border-t-divider-subtle p-4 pt-3'>
