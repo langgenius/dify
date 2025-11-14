@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppCard from '@/app/components/app/overview/app-card'
@@ -24,6 +24,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppWorkflow } from '@/service/use-workflow'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import { isTriggerNode } from '@/app/components/workflow/types'
+import { useDocLink } from '@/context/i18n'
 
 export type ICardViewProps = {
   appId: string
@@ -33,6 +34,7 @@ export type ICardViewProps = {
 
 const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
@@ -54,15 +56,34 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   }, [isWorkflowApp, currentWorkflow])
   const shouldRenderAppCards = !isWorkflowApp || hasTriggerNode === false
   const disableAppCards = !shouldRenderAppCards
+
+  const triggerDocUrl = docLink('/guides/workflow/node/start')
+  const buildTriggerModeMessage = useCallback((featureName: string) => (
+    <div className='flex flex-col gap-1'>
+      <div className='text-xs text-text-secondary'>
+        {t('appOverview.overview.disableTooltip.triggerMode', { feature: featureName })}
+      </div>
+      <div
+        className='cursor-pointer text-xs font-medium text-text-accent hover:underline'
+        onClick={(event) => {
+          event.stopPropagation()
+          window.open(triggerDocUrl, '_blank')
+        }}
+      >
+        {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
+      </div>
+    </div>
+  ), [t, triggerDocUrl])
+
   const disableWebAppTooltip = disableAppCards
-    ? t('appOverview.overview.disableTooltip.triggerMode', { feature: t('appOverview.overview.appInfo.title') })
-    : ''
+    ? buildTriggerModeMessage(t('appOverview.overview.appInfo.title'))
+    : null
   const disableApiTooltip = disableAppCards
-    ? t('appOverview.overview.disableTooltip.triggerMode', { feature: t('appOverview.overview.apiInfo.title') })
-    : ''
+    ? buildTriggerModeMessage(t('appOverview.overview.apiInfo.title'))
+    : null
   const disableMcpTooltip = disableAppCards
-    ? t('appOverview.overview.disableTooltip.triggerMode', { feature: t('tools.mcp.server.title') })
-    : ''
+    ? buildTriggerModeMessage(t('tools.mcp.server.title'))
+    : null
 
   const updateAppDetail = async () => {
     try {
