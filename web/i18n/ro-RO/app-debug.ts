@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Context',
       noData: 'Puteți importa Cunoștințe ca context',
-      words: 'Cuvinte',
-      textBlocks: 'Blocuri de text',
       selectTitle: 'Selectați Cunoștințe de referință',
       selected: 'Cunoștințe selectate',
       noDataSet: 'Nu s-au găsit Cunoștințe',

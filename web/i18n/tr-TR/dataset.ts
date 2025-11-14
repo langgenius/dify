@@ -19,7 +19,6 @@ const translation = {
   intro5: 'bağımsız bir ChatGPT dizin eklentisi olarak oluşturulabilir',
   intro6: ' ve yayınlanabilir.',
   unavailable: 'Kullanılamıyor',
-  unavailableTip: 'Yerleştirme modeli mevcut değil, varsayılan yerleştirme modelinin yapılandırılması gerekiyor',
   datasets: 'BİLGİ',
   datasetsApi: 'API ERİŞİMİ',
   retrieval: {

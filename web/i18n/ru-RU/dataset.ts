@@ -19,7 +19,6 @@ const translation = {
   intro5: 'можно создать',
   intro6: ' как отдельный плагин индекса ChatGPT для публикации',
   unavailable: 'Недоступно',
-  unavailableTip: 'Модель встраивания недоступна, необходимо настроить модель встраивания по умолчанию',
   datasets: 'БАЗЫ ЗНАНИЙ',
   datasetsApi: 'ДОСТУП К API',
   retrieval: {
