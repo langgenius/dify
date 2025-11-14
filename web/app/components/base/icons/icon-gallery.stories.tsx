@@ -79,6 +79,7 @@ const PREVIEW_SIZE = 40
 const IconGalleryStory = () => {
   const [query, setQuery] = React.useState('')
   const [copiedPath, setCopiedPath] = React.useState<string | null>(null)
+  const [previewTheme, setPreviewTheme] = React.useState<'light' | 'dark'>('light')
 
   const filtered = React.useMemo(() => filterEntries(sortedEntries, query), [query])
 
@@ -121,6 +122,19 @@ const IconGalleryStory = () => {
             onChange={event => setQuery(event.target.value)}
           />
           <span style={{ color: '#5f5f66' }}>{filtered.length} icons</span>
+          <button
+            type="button"
+            onClick={() => setPreviewTheme(prev => (prev === 'light' ? 'dark' : 'light'))}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: '1px solid #d0d0d5',
+              background: '#fff',
+              cursor: 'pointer',
+            }}
+          >
+            Toggle {previewTheme === 'light' ? 'dark' : 'light'} preview
+          </button>
         </div>
       </header>
       {categoryOrder.length === 0 && (
@@ -149,7 +163,16 @@ const IconGalleryStory = () => {
                   minHeight: 140,
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 48 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    minHeight: 48,
+                    background: previewTheme === 'dark' ? '#1f2024' : '#fff',
+                    borderRadius: 6,
+                  }}
+                >
                   <entry.Component style={{ width: PREVIEW_SIZE, height: PREVIEW_SIZE }} />
                 </div>
                 <button
