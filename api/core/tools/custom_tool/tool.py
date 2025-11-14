@@ -2,7 +2,7 @@ import json
 from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 from urllib.parse import urlencode
 
 import httpx
@@ -10,7 +10,9 @@ import httpx
 from core.file.file_manager import download
 from core.helper import ssrf_proxy
 from core.tools.__base.tool import Tool
-from core.tools.__base.tool_runtime import ToolRuntime
+
+if TYPE_CHECKING:
+    from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
@@ -40,12 +42,12 @@ class ApiTool(Tool):
     Api tool
     """
 
-    def __init__(self, entity: ToolEntity, api_bundle: ApiToolBundle, runtime: ToolRuntime, provider_id: str):
+    def __init__(self, entity: ToolEntity, api_bundle: ApiToolBundle, runtime: "ToolRuntime", provider_id: str):
         super().__init__(entity, runtime)
         self.api_bundle = api_bundle
         self.provider_id = provider_id
 
-    def fork_tool_runtime(self, runtime: ToolRuntime):
+    def fork_tool_runtime(self, runtime: "ToolRuntime"):
         """
         fork a new tool with metadata
         :return: the new tool

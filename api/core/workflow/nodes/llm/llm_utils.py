@@ -18,7 +18,7 @@ from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegme
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.llm.entities import ModelConfig
 from core.workflow.runtime import VariablePool
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from libs.datetime_utils import naive_utc_now
 from models.model import Conversation
 from models.provider import Provider, ProviderType
@@ -136,7 +136,8 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
             used_quota = 1
 
     if used_quota is not None and system_configuration.current_quota_type is not None:
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             stmt = (
                 update(Provider)
                 .where(

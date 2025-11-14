@@ -2,7 +2,6 @@ import uuid
 
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, abort
 
 from controllers.console import api, console_ns
@@ -16,7 +15,7 @@ from controllers.console.wraps import (
 )
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.workflow.enums import NodeType
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from fields.app_fields import app_detail_fields, app_detail_fields_with_site, app_pagination_fields
 from libs.login import current_account_with_tenant, login_required
 from libs.validators import validate_description_length
@@ -324,7 +323,8 @@ class AppCopyApi(Resource):
         )
         args = parser.parse_args()
 
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
             result = import_service.import_app(
