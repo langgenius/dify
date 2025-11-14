@@ -30,7 +30,7 @@ services:
           "CMD",
           "pg_isready",
           "-h",
-          "db-postgres",
+          "db_postgres",
           "-U",
           "${PGUSER:-postgres}",
           "-d",
@@ -49,7 +49,7 @@ services:
       - ./middleware.env
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-difyai123456}
-      MYSQL_DATABASE: ${MYSQL_DB:-dify}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-dify}
     command: >
       --max_connections=1000
       --innodb_buffer_pool_size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}

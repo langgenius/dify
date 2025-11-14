@@ -111,144 +111,30 @@ class DatabaseConfig(BaseSettings):
         default="postgresql",
     )
 
-    # PostgreSQL configuration
-    POSTGRES_HOST: str = Field(
-        description="PostgreSQL hostname or IP address.",
+    DB_HOST: str = Field(
+        description="Hostname or IP address of the database server.",
         default="localhost",
     )
 
-    POSTGRES_PORT: PositiveInt = Field(
-        description="PostgreSQL port number.",
+    DB_PORT: PositiveInt = Field(
+        description="Port number for database connection.",
         default=5432,
     )
 
-    POSTGRES_USER: str = Field(
-        description="PostgreSQL username.",
+    DB_USERNAME: str = Field(
+        description="Username for database authentication.",
         default="postgres",
     )
 
-    POSTGRES_PASSWORD: str = Field(
-        description="PostgreSQL password.",
-        default="difyai123456",
+    DB_PASSWORD: str = Field(
+        description="Password for database authentication.",
+        default="",
     )
 
-    POSTGRES_DATABASE: str = Field(
-        description="PostgreSQL database name.",
+    DB_DATABASE: str = Field(
+        description="Name of the database to connect to.",
         default="dify",
     )
-
-    # MySQL configuration
-    MYSQL_HOST: str = Field(
-        description="MySQL hostname or IP address.",
-        default="localhost",
-    )
-
-    MYSQL_PORT: PositiveInt = Field(
-        description="MySQL port number.",
-        default=3306,
-    )
-
-    MYSQL_USER: str = Field(
-        description="MySQL username.",
-        default="root",
-    )
-
-    MYSQL_PASSWORD: str = Field(
-        description="MySQL password.",
-        default="difyai123456",
-    )
-
-    MYSQL_DATABASE: str = Field(
-        description="MySQL database name.",
-        default="dify",
-    )
-
-    # OceanBase configuration(MySQL-compatible)
-    OCEANBASE_HOST: str = Field(
-        description="OceanBase hostname or IP address.",
-        default="localhost",
-    )
-
-    OCEANBASE_PORT: PositiveInt = Field(
-        description="OceanBase port number.",
-        default=2881,
-    )
-
-    OCEANBASE_USER: str = Field(
-        description="OceanBase username.",
-        default="root@test",
-    )
-
-    OCEANBASE_PASSWORD: str = Field(
-        description="OceanBase password.",
-        default="difyai123456",
-    )
-
-    OCEANBASE_DATABASE: str = Field(
-        description="OceanBase database name.",
-        default="test",
-    )
-
-    # Dynamic properties based on DB_TYPE
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def DB_HOST(self) -> str:
-        if self.DB_TYPE == "postgresql":
-            return self.POSTGRES_HOST
-        elif self.DB_TYPE == "mysql":
-            return self.MYSQL_HOST
-        elif self.DB_TYPE == "oceanbase":
-            return self.OCEANBASE_HOST
-        else:
-            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def DB_PORT(self) -> int:
-        if self.DB_TYPE == "postgresql":
-            return self.POSTGRES_PORT
-        elif self.DB_TYPE == "mysql":
-            return self.MYSQL_PORT
-        elif self.DB_TYPE == "oceanbase":
-            return self.OCEANBASE_PORT
-        else:
-            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def DB_USERNAME(self) -> str:
-        if self.DB_TYPE == "postgresql":
-            return self.POSTGRES_USER
-        elif self.DB_TYPE == "mysql":
-            return self.MYSQL_USER
-        elif self.DB_TYPE == "oceanbase":
-            return self.OCEANBASE_USER
-        else:
-            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def DB_PASSWORD(self) -> str:
-        if self.DB_TYPE == "postgresql":
-            return self.POSTGRES_PASSWORD
-        elif self.DB_TYPE == "mysql":
-            return self.MYSQL_PASSWORD
-        elif self.DB_TYPE == "oceanbase":
-            return self.OCEANBASE_PASSWORD
-        else:
-            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def DB_DATABASE(self) -> str:
-        if self.DB_TYPE == "postgresql":
-            return self.POSTGRES_DATABASE
-        elif self.DB_TYPE == "mysql":
-            return self.MYSQL_DATABASE
-        elif self.DB_TYPE == "oceanbase":
-            return self.OCEANBASE_DATABASE
-        else:
-            raise ValueError(f"Unsupported DB_TYPE: {self.DB_TYPE}")
 
     DB_CHARSET: str = Field(
         description="Character set for database connection.",

@@ -132,7 +132,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
-      POSTGRES_DB: ${DB_DATABASE:-dify}
+      POSTGRES_DB: ${POSTGRES_DB:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     command: >
       postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
@@ -170,7 +170,7 @@ services:
       - ./middleware.env
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-difyai123456}
-      MYSQL_DATABASE: ${DB_DATABASE:-dify}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-dify}
     command: >
       --max_connections=1000
       --innodb_buffer_pool_size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}
@@ -178,8 +178,6 @@ services:
       --innodb_flush_log_at_trx_commit=${MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT:-2}
     volumes:
       - ${MYSQL_HOST_VOLUME:-./volumes/mysql/data}:/var/lib/mysql
-    ports:
-      - "${MYSQL_PORT:-3306}:3306"
     healthcheck:
       test:
         [
@@ -431,19 +429,19 @@ services:
       - ./volumes/oceanbase/init.d:/root/boot/init.d
     environment:
       OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
-      OB_SYS_PASSWORD: ${OCEANBASE_PASSWORD:-difyai123456}
-      OB_TENANT_PASSWORD: ${OCEANBASE_PASSWORD:-difyai123456}
+      OB_SYS_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
       OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
       OB_SERVER_IP: 127.0.0.1
       MODE: mini
       LANG: en_US.UTF-8
     ports:
-      - "${OCEANBASE_PORT:-2881}:2881"
+      - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          'obclient -h127.0.0.1 -P2881 -uroot@test -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"',
+          'obclient -h127.0.0.1 -P2881 -uroot@test -p${OCEANBASE_VECTOR_PASSWORD} -e "SELECT 1;"',
         ]
       interval: 10s
       retries: 30
