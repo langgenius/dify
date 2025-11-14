@@ -20,4 +20,4 @@ class RetrievalSegments(BaseModel):
     segment: DocumentSegment
     child_chunks: list[RetrievalChildChunk] | None = None
     score: float | None = None
-    files: list[File] | None = None
+    files: list[dict[str, str | int]] | None = None

@@ -13,6 +13,7 @@ from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.embedding.embedding_base import Embeddings
+from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -268,7 +269,7 @@ class Vector:
         multimodal_vector = self._embeddings.embed_multimodal_query(
             {
                 "content": file_base64_str,
-                "content_type": upload_file.file_type,
+                "content_type": DocType.IMAGE,
                 "file_id": file_id,
             }
         )

@@ -132,7 +132,7 @@ class RerankModelRunner(BaseRerankRunner):
                 and document.metadata is not None
                 and document.metadata["doc_id"] not in doc_ids
             ):
-                if document.metadata["doc_type"] == DocType.IMAGE:
+                if document.metadata.get("doc_type") == DocType.IMAGE:
                     document_file_base64 = AttachmentService(db.engine).get_file_base64(document.metadata["doc_id"])
                     document_file_dict = {
                         "content": document_file_base64,
@@ -142,7 +142,7 @@ class RerankModelRunner(BaseRerankRunner):
                 else:
                     document_text_dict = {
                         "content": document.page_content,
-                        "content_type": document.metadata["doc_type"],
+                        "content_type": document.metadata.get("doc_type") or DocType.TEXT,
                     }
                     docs.append(document_text_dict)
                 doc_ids.add(document.metadata["doc_id"])

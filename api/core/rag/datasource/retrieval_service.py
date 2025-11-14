@@ -70,6 +70,7 @@ class RetrievalService:
                 futures.append(
                     executor.submit(
                         retrieval_service._retrieve,
+                        flask_app=current_app._get_current_object(),  # type: ignore
                         retrieval_method=retrieval_method,
                         dataset=dataset,
                         query=query,
@@ -89,6 +90,7 @@ class RetrievalService:
                     futures.append(
                         executor.submit(
                             retrieval_service._retrieve,
+                            flask_app=current_app._get_current_object(),  # type: ignore
                             retrieval_method=retrieval_method,
                             dataset=dataset,
                             query=None,
@@ -390,7 +392,7 @@ class RetrievalService:
                             attachment_info_dict = cls.get_segment_attachment_info(
                                 dataset_document.dataset_id,
                                 dataset_document.tenant_id,
-                                document.metadata.get("doc_id"),
+                                document.metadata.get("doc_id") or "",
                                 session,
                             )
                             if attachment_info_dict:
@@ -470,7 +472,7 @@ class RetrievalService:
                             attachment_info_dict = cls.get_segment_attachment_info(
                                 dataset_document.dataset_id,
                                 dataset_document.tenant_id,
-                                document.metadata.get("doc_id"),
+                                document.metadata.get("doc_id") or "",
                                 session,
                             )
                             if attachment_info_dict:
@@ -556,6 +558,7 @@ class RetrievalService:
 
     def _retrieve(
         self,
+        flask_app: Flask,
         retrieval_method: RetrievalMethod,
         dataset: Dataset,
         query: str | None = None,
@@ -571,28 +574,63 @@ class RetrievalService:
     ):
         if not query and not attachment_id:
             return
-        all_documents_item: list[Document] = []
-        # Optimize multithreading with thread pools
-        with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
-            futures = []
-            if retrieval_method == RetrievalMethod.KEYWORD_SEARCH and query:
-                futures.append(
-                    executor.submit(
-                        self.keyword_search,
-                        flask_app=current_app._get_current_object(),  # type: ignore
-                        dataset_id=dataset.id,
-                        query=query,
-                        top_k=top_k,
-                        all_documents=all_documents_item,
-                        exceptions=exceptions,
-                        document_ids_filter=document_ids_filter,
-                    )
-                )
-            if RetrievalMethod.is_support_semantic_search(retrieval_method):
-                if query:
+        with flask_app.app_context():
+            all_documents_item: list[Document] = []
+            # Optimize multithreading with thread pools
+            with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
+                futures = []
+                if retrieval_method == RetrievalMethod.KEYWORD_SEARCH and query:
                     futures.append(
                         executor.submit(
-                            self.embedding_search,
+                            self.keyword_search,
+                            flask_app=current_app._get_current_object(),  # type: ignore
+                            dataset_id=dataset.id,
+                            query=query,
+                            top_k=top_k,
+                            all_documents=all_documents_item,
+                            exceptions=exceptions,
+                            document_ids_filter=document_ids_filter,
+                        )
+                    )
+                if RetrievalMethod.is_support_semantic_search(retrieval_method):
+                    if query:
+                        futures.append(
+                            executor.submit(
+                                self.embedding_search,
+                                flask_app=current_app._get_current_object(),  # type: ignore
+                                dataset_id=dataset.id,
+                                query=query,
+                                top_k=top_k,
+                                score_threshold=score_threshold,
+                                reranking_model=reranking_model,
+                                all_documents=all_documents_item,
+                                retrieval_method=retrieval_method,
+                                exceptions=exceptions,
+                                document_ids_filter=document_ids_filter,
+                                query_type=QueryType.TEXT_QUERY,
+                            )
+                        )
+                    if attachment_id:
+                        futures.append(
+                            executor.submit(
+                                self.embedding_search,
+                                flask_app=current_app._get_current_object(),  # type: ignore
+                                dataset_id=dataset.id,
+                                query=attachment_id,
+                                top_k=top_k,
+                                score_threshold=score_threshold,
+                                reranking_model=reranking_model,
+                                all_documents=all_documents_item,
+                                retrieval_method=retrieval_method,
+                                exceptions=exceptions,
+                                document_ids_filter=document_ids_filter,
+                                query_type=QueryType.IMAGE_QUERY,
+                            )
+                        )
+                if RetrievalMethod.is_support_fulltext_search(retrieval_method) and query:
+                    futures.append(
+                        executor.submit(
+                            self.full_text_index_search,
                             flask_app=current_app._get_current_object(),  # type: ignore
                             dataset_id=dataset.id,
                             query=query,
@@ -603,73 +641,39 @@ class RetrievalService:
                             retrieval_method=retrieval_method,
                             exceptions=exceptions,
                             document_ids_filter=document_ids_filter,
-                            query_type=QueryType.TEXT_QUERY,
                         )
                     )
-                if attachment_id:
-                    futures.append(
-                        executor.submit(
-                            self.embedding_search,
-                            flask_app=current_app._get_current_object(),  # type: ignore
-                            dataset_id=dataset.id,
-                            query=attachment_id,
-                            top_k=top_k,
-                            score_threshold=score_threshold,
-                            reranking_model=reranking_model,
-                            all_documents=all_documents_item,
-                            retrieval_method=retrieval_method,
-                            exceptions=exceptions,
-                            document_ids_filter=document_ids_filter,
-                            query_type=QueryType.IMAGE_QUERY,
-                        )
-                    )
-            if RetrievalMethod.is_support_fulltext_search(retrieval_method) and query:
-                futures.append(
-                    executor.submit(
-                        self.full_text_index_search,
-                        flask_app=current_app._get_current_object(),  # type: ignore
-                        dataset_id=dataset.id,
-                        query=query,
-                        top_k=top_k,
-                        score_threshold=score_threshold,
-                        reranking_model=reranking_model,
-                        all_documents=all_documents_item,
-                        retrieval_method=retrieval_method,
-                        exceptions=exceptions,
-                        document_ids_filter=document_ids_filter,
-                    )
+                concurrent.futures.wait(futures, timeout=300, return_when=concurrent.futures.ALL_COMPLETED)
+
+            if exceptions:
+                raise ValueError(";\n".join(exceptions))
+
+            # Deduplicate documents for hybrid search to avoid duplicate chunks
+            if retrieval_method == RetrievalMethod.HYBRID_SEARCH:
+                if attachment_id and reranking_mode == RerankMode.WEIGHTED_SCORE:
+                    all_documents.extend(all_documents_item)
+                all_documents_item = self._deduplicate_documents(all_documents_item)
+                data_post_processor = DataPostProcessor(
+                    str(dataset.tenant_id), reranking_mode, reranking_model, weights, False
                 )
-            concurrent.futures.wait(futures, timeout=300, return_when=concurrent.futures.ALL_COMPLETED)
 
-        if exceptions:
-            raise ValueError(";\n".join(exceptions))
+                query = query or attachment_id
+                if not query:
+                    return
+                all_documents_item = data_post_processor.invoke(
+                    query=query,
+                    documents=all_documents_item,
+                    score_threshold=score_threshold,
+                    top_n=top_k,
+                    query_type=QueryType.TEXT_QUERY if query else QueryType.IMAGE_QUERY,
+                )
 
-        # Deduplicate documents for hybrid search to avoid duplicate chunks
-        if retrieval_method == RetrievalMethod.HYBRID_SEARCH:
-            if attachment_id and reranking_mode == RerankMode.WEIGHTED_SCORE:
-                all_documents.extend(all_documents_item)
-            all_documents_item = self._deduplicate_documents(all_documents_item)
-            data_post_processor = DataPostProcessor(
-                str(dataset.tenant_id), reranking_mode, reranking_model, weights, False
-            )
-
-            query = query or attachment_id
-            if not query:
-                return
-            all_documents_item = data_post_processor.invoke(
-                query=query,
-                documents=all_documents_item,
-                score_threshold=score_threshold,
-                top_n=top_k,
-                query_type=QueryType.TEXT_QUERY if query else QueryType.IMAGE_QUERY,
-            )
-
-        all_documents.extend(all_documents_item)
+            all_documents.extend(all_documents_item)
 
     @classmethod
     def get_segment_attachment_info(
         cls, dataset_id: str, tenant_id: str, attachment_id: str, session: Session
-    ) -> dict[str, File | str] | None:
+    ) -> dict[str, dict[str, str | int] | str] | None:
         upload_file = session.query(UploadFile).where(UploadFile.id == attachment_id).first()
         if upload_file:
             attachment_binding = (
@@ -678,19 +682,13 @@ class RetrievalService:
                 .first()
             )
             if attachment_binding:
-                attchment_info = File(
-                    id=upload_file.id,
-                    filename=upload_file.name,
-                    extension="." + upload_file.extension,
-                    mime_type=upload_file.mime_type,
-                    tenant_id=tenant_id,
-                    type=FileType.CUSTOM,
-                    transfer_method=FileTransferMethod.LOCAL_FILE,
-                    remote_url=upload_file.source_url,
-                    related_id=upload_file.id,
-                    size=upload_file.size,
-                    storage_key=upload_file.key,
-                    url=sign_upload_file(upload_file.id, upload_file.extension),
-                )
+                attchment_info = {
+                    "id": upload_file.id,
+                    "name": upload_file.name,
+                    "extension": "." + upload_file.extension,
+                    "mime_type": upload_file.mime_type,
+                    "source_url": sign_upload_file(upload_file.id, upload_file.extension),
+                    "size": upload_file.size,
+                }
                 return {"attchment_info": attchment_info, "segment_id": attachment_binding.segment_id}
         return None
