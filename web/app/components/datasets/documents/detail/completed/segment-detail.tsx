@@ -167,7 +167,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
         </div>
       </div>
       <div className={cn(
-        'flex grow',
+        'flex h-0 grow',
         fullScreen ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6' : 'flex-col gap-y-1 px-4 py-3',
         !isEditMode && 'pb-0',
       )}>
