@@ -411,6 +411,10 @@ class DatasetInitApi(Resource):
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=args["embedding_model"],
                 )
+                is_multimodal = DatasetService.check_is_multimodal_model(
+                current_tenant_id, args["embedding_model_provider"], args["embedding_model"]
+                )
+                knowledge_config.is_multimodal = is_multimodal
             except InvokeAuthorizationError:
                 raise ProviderNotInitializeError(
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."

@@ -2259,6 +2259,7 @@ class DocumentService:
             embedding_model_provider=knowledge_config.embedding_model_provider,
             collection_binding_id=dataset_collection_binding_id,
             retrieval_model=retrieval_model.model_dump() if retrieval_model else None,
+            is_multimodal=knowledge_config.is_multimodal,
         )
 
         db.session.add(dataset)

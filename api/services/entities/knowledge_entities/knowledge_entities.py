@@ -124,6 +124,7 @@ class KnowledgeConfig(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
     name: str | None = None
+    is_multimodal: bool = False
 
 
 class SegmentCreateArgs(BaseModel):
