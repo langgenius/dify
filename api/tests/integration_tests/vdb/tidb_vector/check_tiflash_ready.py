@@ -4,6 +4,7 @@ import pymysql
 
 
 def check_tiflash_ready() -> bool:
+    connection = None
     try:
         connection = pymysql.connect(
             host="localhost",
@@ -28,7 +29,10 @@ def check_tiflash_ready() -> bool:
         return False
     finally:
         if connection:
-            connection.close()
+            try:
+                connection.close()
+            except Exception:
+                pass
 
 
 def main():
