@@ -84,27 +84,23 @@ class HitTestingService:
 
         end = time.perf_counter()
         logger.debug("Hit testing retrieve in %s seconds", end - start)
+        dataset_queries = []
         if query:
             content = {"content_type": QueryType.TEXT_QUERY, "content": query}
+            dataset_queries.append(content)
+        if attachment_ids:
+            for attachment_id in attachment_ids:
+                content = {"content_type": QueryType.IMAGE_QUERY, "content": attachment_id}
+                dataset_queries.append(content)
+        if dataset_queries:
             dataset_query = DatasetQuery(
                 dataset_id=dataset.id,
-                content=json.dumps(content),
+                content=json.dumps(dataset_queries),
                 source="hit_testing",
                 created_by_role="account",
                 created_by=account.id,
             )
             db.session.add(dataset_query)
-        if attachment_ids:
-            for attachment_id in attachment_ids:
-                content = {"content_type": QueryType.IMAGE_QUERY, "content": attachment_id}
-                dataset_query = DatasetQuery(
-                    dataset_id=dataset.id,
-                    content=json.dumps(content),
-                    source="hit_testing",
-                    created_by_role="account",
-                    created_by=account.id,
-                )
-                db.session.add(dataset_query)
         db.session.commit()
 
         return cls.compact_retrieve_response(query, all_documents)

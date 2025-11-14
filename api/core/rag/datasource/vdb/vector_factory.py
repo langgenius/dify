@@ -227,6 +227,7 @@ class Vector:
                         {
                             "content": file_base64_str,
                             "content_type": doc_type,
+                            "file_id": attachment_id,
                         }
                     )
                     real_batch.append(document)
