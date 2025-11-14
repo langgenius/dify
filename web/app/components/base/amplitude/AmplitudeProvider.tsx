@@ -27,7 +27,7 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
         fileDownloads: true,
       },
       // Enable debug logs in development environment
-      logLevel: process.env.NODE_ENV === 'development' ? amplitude.Types.LogLevel.Debug : amplitude.Types.LogLevel.Warn,
+      logLevel: amplitude.Types.LogLevel.Warn,
     })
 
     // Log initialization success in development

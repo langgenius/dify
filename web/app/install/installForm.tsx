@@ -19,7 +19,6 @@ import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/c
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useDocLink } from '@/context/i18n'
 import { validPassword } from '@/config'
-import { trackEvent } from '@/app/components/base/amplitude'
 
 const accountFormSchema = z.object({
   email: z
@@ -74,15 +73,6 @@ const InstallForm = () => {
 
     // Store tokens and redirect to apps if login successful
     if (loginRes.result === 'success') {
-      // Track initial setup completion
-      trackEvent('user_registration_success', {
-        method: 'initial_setup',
-      })
-      trackEvent('user_login_success', {
-        method: 'initial_setup',
-        is_invite: false,
-      })
-
       router.replace('/apps')
     }
     else {

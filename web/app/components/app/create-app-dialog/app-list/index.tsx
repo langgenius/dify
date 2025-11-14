@@ -144,12 +144,12 @@ const Apps = ({
       })
 
       // Track app creation from template
-      trackEvent('app_created', {
+      trackEvent('create_app_with_template', {
         app_mode: mode,
-        creation_method: 'template',
         template_id: currApp?.app.id,
         template_name: currApp?.app.name,
-        has_description: !!description,
+        time: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+        has_description: description,
       })
 
       setIsShowCreateModal(false)

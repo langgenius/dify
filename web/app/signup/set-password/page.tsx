@@ -58,6 +58,7 @@ const ChangePasswordForm = () => {
         // Track registration success event
         trackEvent('user_registration_success', {
           method: 'email',
+          time: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
         })
 
         Toast.notify({

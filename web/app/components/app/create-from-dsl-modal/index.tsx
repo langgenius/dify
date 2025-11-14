@@ -114,7 +114,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
         // Track app creation from DSL import
-        trackEvent('app_created', {
+        trackEvent('create_app_with_dsl', {
           app_mode,
           creation_method: currentTab === CreateFromDSLModalTab.FROM_FILE ? 'dsl_file' : 'dsl_url',
           has_warnings: status === DSLImportStatus.COMPLETED_WITH_WARNINGS,
