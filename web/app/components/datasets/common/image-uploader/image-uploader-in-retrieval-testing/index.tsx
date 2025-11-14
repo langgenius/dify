@@ -58,30 +58,19 @@ const ImageUploaderInRetrievalTesting = ({
 export type ImageUploaderInRetrievalTestingWrapperProps = {
   value?: FileEntity[]
   onChange: (files: FileEntity[]) => void
-  textArea: React.ReactNode
 } & ImageUploaderInRetrievalTestingProps
 
 const ImageUploaderInRetrievalTestingWrapper = ({
   value,
   onChange,
-  textArea,
-  actionButton,
-  showUploader,
-  className,
-  actionAreaClassName,
+  ...props
 }: ImageUploaderInRetrievalTestingWrapperProps) => {
   return (
     <FileContextProvider
       value={value}
       onChange={onChange}
     >
-      <ImageUploaderInRetrievalTesting
-        textArea={textArea}
-        actionButton={actionButton}
-        showUploader={showUploader}
-        className={className}
-        actionAreaClassName={actionAreaClassName}
-      />
+      <ImageUploaderInRetrievalTesting {...props} />
     </FileContextProvider>
   )
 }

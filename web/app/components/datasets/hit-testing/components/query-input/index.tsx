@@ -22,7 +22,6 @@ import type { UseMutateAsyncFunction } from '@tanstack/react-query'
 import ImageUploaderInRetrievalTesting from '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing'
 import Textarea from './textarea'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { produce } from 'immer'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import { v4 as uuid4 } from 'uuid'
 
@@ -70,7 +69,12 @@ const QueryInput = ({
     score_threshold: 0.5,
     score_threshold_enabled: false,
   })
-  const [initialImages] = useState<FileEntity[]>(() => {
+
+  const text = useMemo(() => {
+    return queries.find(query => query.content_type === 'text_query')?.content ?? ''
+  }, [queries])
+
+  const images = useMemo(() => {
     return queries.filter(query => query.content_type === 'image_query').map(query => query.file_info!).map(item => ({
       id: uuid4(),
       name: item.name,
@@ -81,11 +85,11 @@ const QueryInput = ({
       uploadedId: item.id,
       progress: 100,
     })) || []
-  })
-
-  const text = useMemo(() => {
-    return queries.find(query => query.content_type === 'text_query')?.content ?? ''
   }, [queries])
+
+  const isAllUploaded = useMemo(() => {
+    return images.every(image => !!image.uploadedId)
+  }, [images])
 
   const handleSaveExternalRetrievalSettings = useCallback((data: {
     top_k: number
@@ -97,8 +101,37 @@ const QueryInput = ({
   }, [])
 
   const handleTextChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
-    const newQueries = produce(queries, (draft) => {
-      draft.find(query => query.content_type === 'text_query')!.content = event.target.value
+    const newQueries = [...queries]
+    const textQuery = newQueries.find(query => query.content_type === 'text_query')
+    if (!textQuery) {
+      newQueries.push({
+        content: event.target.value,
+        content_type: 'text_query',
+        file_info: null,
+      })
+    }
+    else {
+      textQuery.content = event.target.value
+    }
+    setQueries(newQueries)
+  }, [queries, setQueries])
+
+  const handleImageChange = useCallback((files: FileEntity[]) => {
+    let newQueries = [...queries]
+    newQueries = newQueries.filter(query => query.content_type !== 'image_query')
+    files.forEach((file) => {
+      newQueries.push({
+        content: file.sourceUrl || '',
+        content_type: 'image_query',
+        file_info: {
+          id: file.uploadedId || '',
+          mime_type: file.mimeType,
+          source_url: file.sourceUrl || '',
+          name: file.name,
+          size: file.size,
+          extension: file.extension,
+        },
+      })
     })
     setQueries(newQueries)
   }, [queries, setQueries])
@@ -106,7 +139,7 @@ const QueryInput = ({
   const onSubmit = useCallback(async () => {
     await hitTestingMutation({
       query: text,
-      attachment_ids: [],
+      attachment_ids: images.map(image => image.uploadedId),
       retrieval_model: {
         ...retrievalConfig,
         search_method: isEconomy ? RETRIEVE_METHOD.keywordSearch : retrievalConfig.search_method,
@@ -140,10 +173,12 @@ const QueryInput = ({
   const retrievalMethod = isEconomy ? RETRIEVE_METHOD.keywordSearch : retrievalConfig.search_method
   const icon = <Image className='size-3.5 text-util-colors-purple-purple-600' src={getIcon(retrievalMethod)} alt='' />
   const TextAreaComp = useMemo(() => {
-    return <Textarea
-      text={text}
-      handleTextChange={handleTextChange}
-    />
+    return (
+      <Textarea
+        text={text}
+        handleTextChange={handleTextChange}
+      />
+    )
   }, [text, handleTextChange])
   const ActionButtonComp = useMemo(() => {
     return (
@@ -151,7 +186,7 @@ const QueryInput = ({
         onClick={isExternal ? externalRetrievalTestingOnSubmit : onSubmit}
         variant='primary'
         loading={loading}
-        disabled={(!text?.length || text?.length > 200)}
+        disabled={(text.length === 0 && images.length === 0) || text.length > 200 || (images.length > 0 && !isAllUploaded)}
         className='w-[88px]'
       >
         <RiPlayCircleLine className='mr-1 size-4' />
@@ -203,10 +238,8 @@ const QueryInput = ({
         <ImageUploaderInRetrievalTesting
           textArea={TextAreaComp}
           actionButton={ActionButtonComp}
-          onChange={(files) => {
-            console.log(files)
-          }}
-          value={initialImages}
+          onChange={handleImageChange}
+          value={images}
           showUploader={isMultimodal}
           className='grow'
           actionAreaClassName='px-4 py-2 shrink-0 bg-background-default'

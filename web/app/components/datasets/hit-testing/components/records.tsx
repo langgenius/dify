@@ -67,7 +67,7 @@ const Records = ({
           {sortedRecords.map((record) => {
             const { id, source, created_at, queries } = record
             const SourceIcon = record.source === 'app' ? RiApps2Line : RiFocus2Line
-            const content = queries.find(query => query.content_type === 'text_query')?.content
+            const content = queries.find(query => query.content_type === 'text_query')?.content || ''
             const imageQueries = queries.filter(query => query.content_type === 'image_query')?.map(query => query.file_info!)
             const images = getImageList(imageQueries)
             return (

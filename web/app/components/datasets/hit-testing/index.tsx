@@ -50,11 +50,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>() // 初始化记录为空数组
   const [externalHitResult, setExternalHitResult] = useState<ExternalKnowledgeBaseHitTestingResponse | undefined>()
-  const [queries, setQueries] = useState<Query[]>([{
-    content: '',
-    content_type: 'text_query',
-    file_info: null,
-  }])
+  const [queries, setQueries] = useState<Query[]>([])
   const [queryInputKey, setQueryInputKey] = useState(Date.now())
 
   const [currPage, setCurrPage] = useState<number>(0)
