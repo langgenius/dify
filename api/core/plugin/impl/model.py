@@ -298,7 +298,7 @@ class PluginModelClient(BasePluginClient):
                     "user_id": user_id,
                     "data": {
                         "provider": provider,
-                        "model_type": "multimodal_embedding",
+                        "model_type": "text_embedding",
                         "model": model,
                         "credentials": credentials,
                         "documents": documents,
@@ -428,7 +428,7 @@ class PluginModelClient(BasePluginClient):
                     "user_id": user_id,
                     "data": {
                         "provider": provider,
-                        "model_type": "multimodal_rerank",
+                        "model_type": "rerank",
                         "model": model,
                         "credentials": credentials,
                         "query": query,
