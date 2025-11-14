@@ -92,7 +92,7 @@ class Node:
         Run node
         :return:
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
         # Generate a single node execution ID to use for all events

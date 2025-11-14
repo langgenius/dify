@@ -60,7 +60,7 @@ class TestFileUploadSecurity:
             file = request.files["file"]
             if not file.filename:
                 with pytest.raises(FilenameNotExistsError):
-                    raise FilenameNotExistsError
+                    raise FilenameNotExistsError()
 
     # Test 2: Security - Filename sanitization
     def test_should_detect_path_traversal_in_filename(self):

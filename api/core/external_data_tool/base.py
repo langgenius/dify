@@ -30,7 +30,7 @@ class ExternalDataTool(Extensible, ABC):
         :param config: the form config data
         :return:
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def query(self, inputs: dict, query: str | None = None) -> str:
@@ -41,4 +41,4 @@ class ExternalDataTool(Extensible, ABC):
         :param query: the query of chat app
         :return: the tool query result
         """
-        raise NotImplementedError
+        raise NotImplementedError()
