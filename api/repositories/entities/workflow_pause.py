@@ -6,8 +6,48 @@ by the core workflow module. These models are independent of the storage mechani
 and don't contain implementation details like tenant_id, app_id, etc.
 """
 
+import enum
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from datetime import datetime
+from typing import Annotated, Literal, TypeAlias
+
+from pydantic import BaseModel, Field
+
+
+class _PauseTypeEnum(enum.StrEnum):
+    human_input = enum.auto()
+    scheduling = enum.auto()
+
+
+class HumanInputPause(BaseModel):
+    type: Literal[_PauseTypeEnum.human_input] = _PauseTypeEnum.human_input
+
+    form_id: str
+
+
+class SchedulingPause(BaseModel):
+    type: Literal[_PauseTypeEnum.scheduling] = _PauseTypeEnum.scheduling
+
+
+PauseType: TypeAlias = Annotated[HumanInputPause | SchedulingPause, Field(discriminator="type")]
+
+
+class PauseDetail(BaseModel):
+    pause_type: PauseType
+
+
+class PauseMetadata(BaseModel):
+    """
+    PauseMetadata stores metadata related to a specific pause event during workflow execution.
+
+    Attributes:
+        details: A list containing detailed information about the pause,
+            such as the reason for pausing, the node responsible for the pause, and any
+            additional context relevant to the paused state.
+    """
+
+    details: list[PauseDetail] = Field(default_factory=list)
 
 
 class WorkflowPauseEntity(ABC):
@@ -59,3 +99,15 @@ class WorkflowPauseEntity(ABC):
         the pause is not resumed yet.
         """
         pass
+
+    @abstractmethod
+    def get_pause_details(self) -> Sequence[PauseDetail]:
+        """
+        Retrieve detailed reasons for this pause.
+
+        Returns a sequence of `PauseDetail` objects describing the specific nodes and
+        reasons for which the workflow execution was paused.
+        This information is related to, but distinct from, the `PauseReason` type
+        defined in `api/core/workflow/entities/pause_reason.py`.
+        """
+        ...

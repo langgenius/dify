@@ -1720,6 +1720,12 @@ class WorkflowPause(DefaultFieldsMixin, Base):
     # workflow at the moment it was paused, enabling accurate resumption.
     state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
 
+    # pause_metadata stores metadata related to a specific pause event during workflow execution.
+    # The content is a JSON-serialized string of the `PauseMetadata` model.
+    #
+    # Limit the size of pause_metadata to 64KB to prevent excessive data storage.
+    pause_metadata: Mapped[str] = mapped_column(sa.String(65535), nullable=False, default="{}")
+
     # Relationship to WorkflowRun
     workflow_run: Mapped["WorkflowRun"] = orm.relationship(
         foreign_keys=[workflow_run_id],
