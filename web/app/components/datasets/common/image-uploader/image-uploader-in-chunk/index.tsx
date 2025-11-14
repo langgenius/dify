@@ -45,7 +45,7 @@ const ImageUploaderInChunk = ({
 
   return (
     <div className={cn('w-full', className)}>
-      <ImageInput />
+      {!disabled && <ImageInput />}
       <div className='mt-1 flex flex-wrap gap-2'>
         {
           files.map(file => (
