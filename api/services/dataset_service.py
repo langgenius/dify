@@ -19,7 +19,7 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.helper.name_generator import generate_incremental_name
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.built_in_field import BuiltInField, get_safe_data_source_value
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from enums.cloud_plan import CloudPlan
@@ -2017,10 +2017,10 @@ class DocumentService:
         if dataset.built_in_field_enabled:
             doc_metadata = {
                 BuiltInField.document_name: name,
-                BuiltInField.uploader: account.name,
+                BuiltInField.uploader: account.name or "Unknown",
                 BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
                 BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.source: data_source_type,
+                BuiltInField.source: get_safe_data_source_value(data_source_type),
             }
         if doc_metadata:
             document.doc_metadata = doc_metadata
