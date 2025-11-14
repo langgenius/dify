@@ -11,6 +11,8 @@ export const useBindPartnerStackInfo = () => {
         body: {
           click_id: data.clickId,
         },
+      }, {
+        silent: true,
       })
     },
   })

@@ -1,5 +1,6 @@
 import { PARTNER_STACK_CONFIG } from '@/config'
 import { useBindPartnerStackInfo } from '@/service/use-billing'
+import { useBoolean } from 'ahooks'
 import Cookies from 'js-cookie'
 import { useSearchParams } from 'next/navigation'
 import { useCallback } from 'react'
@@ -10,6 +11,9 @@ const usePSInfo = () => {
   const psPartnerKey = searchParams.get('ps_partner_key') || psInfoInCookie?.partnerKey
   const psClickId = searchParams.get('ps_xid') || psInfoInCookie?.clickId
   const isPSChanged = psInfoInCookie?.partnerKey !== psPartnerKey || psInfoInCookie?.clickId !== psClickId
+  const [hasBind, {
+    setTrue: setBind,
+  }] = useBoolean(false)
   const { mutateAsync } = useBindPartnerStackInfo()
 
   const saveOrUpdate = useCallback(() => {
@@ -29,14 +33,15 @@ const usePSInfo = () => {
   }, [psPartnerKey, psClickId, isPSChanged])
 
   const bind = useCallback(async () => {
-    if (psPartnerKey && psClickId) {
+    if (psPartnerKey && psClickId && !hasBind) {
       await mutateAsync({
         partnerKey: psPartnerKey,
         clickId: psClickId,
       })
       Cookies.remove(PARTNER_STACK_CONFIG.cookieName, { path: '/' })
+      setBind()
     }
-  }, [psPartnerKey, psClickId, mutateAsync])
+  }, [psPartnerKey, psClickId, mutateAsync, hasBind, setBind])
   return {
     psPartnerKey,
     psClickId,

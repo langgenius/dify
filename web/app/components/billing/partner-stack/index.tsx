@@ -13,7 +13,7 @@ const PartnerStack: FC = () => {
     saveOrUpdate()
     // bind PartnerStack info after user logged in
     bind()
-  }, [saveOrUpdate, bind])
+  }, [])
 
   return (
     <>

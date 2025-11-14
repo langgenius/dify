@@ -12,7 +12,7 @@ const SignIn = () => {
 
   useEffect(() => {
     saveOrUpdate()
-  }, [saveOrUpdate])
+  }, [])
 
   if (step === 'next')
     return <OneMoreStep />
