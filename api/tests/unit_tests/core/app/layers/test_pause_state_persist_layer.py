@@ -23,6 +23,13 @@ from core.workflow.graph_events.graph import (
 )
 from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from models.model import AppMode
+from repositories.entities.workflow_pause import (
+    PauseDetail,
+    PauseMetadata,
+)
+from repositories.entities.workflow_pause import (
+    SchedulingPause as RepositorySchedulingPause,
+)
 from repositories.factory import DifyAPIRepositoryFactory
 
 
@@ -255,15 +262,17 @@ class TestPauseStatePersistenceLayer:
         layer.on_event(event)
 
         mock_factory.assert_called_once_with(session_factory)
-        mock_repo.create_workflow_pause.assert_called_once_with(
-            workflow_run_id="run-123",
-            state_owner_user_id="owner-123",
-            state=mock_repo.create_workflow_pause.call_args.kwargs["state"],
-        )
-        serialized_state = mock_repo.create_workflow_pause.call_args.kwargs["state"]
+        assert mock_repo.create_workflow_pause.call_count == 1
+        call_kwargs = mock_repo.create_workflow_pause.call_args.kwargs
+        assert call_kwargs["workflow_run_id"] == "run-123"
+        assert call_kwargs["state_owner_user_id"] == "owner-123"
+        serialized_state = call_kwargs["state"]
         resumption_context = WorkflowResumptionContext.loads(serialized_state)
         assert resumption_context.serialized_graph_runtime_state == expected_state
         assert resumption_context.get_generate_entity().model_dump() == generate_entity.model_dump()
+        pause_metadata = call_kwargs["pause_metadata"]
+        assert isinstance(pause_metadata, PauseMetadata)
+        assert pause_metadata.details == [PauseDetail(pause_type=RepositorySchedulingPause())]
 
     def test_on_event_ignores_non_paused_events(self, monkeypatch: pytest.MonkeyPatch):
         session_factory = Mock(name="session_factory")

@@ -31,7 +31,6 @@ from sqlalchemy import and_, delete, func, null, or_, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
-from core.workflow.entities.workflow_pause import PauseDetail, WorkflowPauseEntity
 from core.workflow.enums import WorkflowExecutionStatus
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
@@ -40,9 +39,10 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import PauseMetadata, WorkflowRun
 from models.workflow import WorkflowPause as WorkflowPauseModel
+from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.entities.workflow_pause import PauseDetail, PauseMetadata, WorkflowPauseEntity
 from repositories.types import (
     AverageInteractionStats,
     DailyRunsStats,
@@ -318,6 +318,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         workflow_run_id: str,
         state_owner_user_id: str,
         state: str,
+        pause_metadata: PauseMetadata,
     ) -> WorkflowPauseEntity:
         """
         Create a new workflow pause state.
@@ -371,6 +372,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             pause_model.workflow_run_id = workflow_run.id
             pause_model.state_object_key = state_obj_key
             pause_model.created_at = naive_utc_now()
+            pause_model.pause_metadata = pause_metadata.model_dump_json()
 
             # Update workflow run status
             workflow_run.status = WorkflowExecutionStatus.PAUSED

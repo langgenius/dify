@@ -36,6 +36,13 @@ from models import WorkflowPause as WorkflowPauseModel
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import UploadFile
 from models.workflow import Workflow, WorkflowRun
+from repositories.entities.workflow_pause import (
+    PauseDetail,
+    PauseMetadata,
+)
+from repositories.entities.workflow_pause import (
+    SchedulingPause as RepositorySchedulingPause,
+)
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     _WorkflowRunError,
@@ -300,6 +307,16 @@ class TestWorkflowPauseIntegration:
             }
         )
 
+    def _create_pause_metadata(self, details: list[PauseDetail] | None = None) -> PauseMetadata:
+        """
+        Create pause metadata for tests.
+
+        Defaults to a scheduling pause entry so we can verify roundtrip persistence.
+        """
+        if details is None or not details:
+            details = [PauseDetail(pause_type=RepositorySchedulingPause())]
+        return PauseMetadata(details=list(details))
+
     def _get_workflow_run_repository(self):
         """Get workflow run repository instance for testing."""
         # Create session factory from the test session
@@ -330,16 +347,19 @@ class TestWorkflowPauseIntegration:
         repository = self._get_workflow_run_repository()
 
         # Act - Create pause state
+        pause_metadata = self._create_pause_metadata()
         pause_entity = repository.create_workflow_pause(
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
+            pause_metadata=pause_metadata,
         )
 
         # Assert - Pause state created
         assert pause_entity is not None
         assert pause_entity.id is not None
         assert pause_entity.workflow_execution_id == workflow_run.id
+        assert list(pause_entity.get_pause_details()) == pause_metadata.details
         # Convert both to strings for comparison
         retrieved_state = pause_entity.get_state()
         if isinstance(retrieved_state, bytes):
@@ -366,6 +386,7 @@ class TestWorkflowPauseIntegration:
         if isinstance(retrieved_state, bytes):
             retrieved_state = retrieved_state.decode()
         assert retrieved_state == test_state
+        assert list(retrieved_entity.get_pause_details()) == pause_metadata.details
 
         # Act - Resume workflow
         resumed_entity = repository.resume_workflow_pause(
@@ -402,6 +423,7 @@ class TestWorkflowPauseIntegration:
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
+            pause_metadata=self._create_pause_metadata(),
         )
 
         assert pause_entity is not None
@@ -432,6 +454,7 @@ class TestWorkflowPauseIntegration:
                 workflow_run_id=workflow_run.id,
                 state_owner_user_id=self.test_user_id,
                 state=test_state,
+                pause_metadata=self._create_pause_metadata(),
             )
 
     @pytest.mark.parametrize("test_case", resume_workflow_success_cases(), ids=lambda tc: tc.name)
@@ -449,6 +472,7 @@ class TestWorkflowPauseIntegration:
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
+            pause_metadata=self._create_pause_metadata(),
         )
 
         self.session.refresh(workflow_run)
@@ -480,6 +504,7 @@ class TestWorkflowPauseIntegration:
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
+            pause_metadata=self._create_pause_metadata(),
         )
 
         self.session.refresh(workflow_run)
@@ -503,6 +528,7 @@ class TestWorkflowPauseIntegration:
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
+            pause_metadata=self._create_pause_metadata(),
         )
         pause_model = self.session.get(WorkflowPauseModel, pause_entity.id)
         pause_model.resumed_at = naive_utc_now()
@@ -530,6 +556,7 @@ class TestWorkflowPauseIntegration:
                 workflow_run_id=nonexistent_id,
                 state_owner_user_id=self.test_user_id,
                 state=test_state,
+                pause_metadata=self._create_pause_metadata(),
             )
 
     def test_resume_nonexistent_workflow_run(self):
@@ -543,6 +570,7 @@ class TestWorkflowPauseIntegration:
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
+            pause_metadata=self._create_pause_metadata(),
         )
 
         nonexistent_id = str(uuid.uuid4())
@@ -570,6 +598,7 @@ class TestWorkflowPauseIntegration:
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
+            pause_metadata=self._create_pause_metadata(),
         )
 
         # Manually adjust timestamps for testing
@@ -648,6 +677,7 @@ class TestWorkflowPauseIntegration:
                 workflow_run_id=workflow_run.id,
                 state_owner_user_id=self.test_user_id,
                 state=test_state,
+                pause_metadata=self._create_pause_metadata(),
             )
             pause_entities.append(pause_entity)
 
@@ -750,6 +780,7 @@ class TestWorkflowPauseIntegration:
             workflow_run_id=workflow_run1.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
+            pause_metadata=self._create_pause_metadata(),
         )
 
         # Try to access pause from tenant 2 using tenant 1's repository
@@ -762,6 +793,7 @@ class TestWorkflowPauseIntegration:
             workflow_run_id=workflow_run2.id,
             state_owner_user_id=account2.id,
             state=test_state,
+            pause_metadata=self._create_pause_metadata(),
         )
 
         # Assert - Both pauses should exist and be separate
@@ -782,6 +814,7 @@ class TestWorkflowPauseIntegration:
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
+            pause_metadata=self._create_pause_metadata(),
         )
 
         # Verify pause is properly scoped
@@ -802,6 +835,7 @@ class TestWorkflowPauseIntegration:
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
+            pause_metadata=self._create_pause_metadata(),
         )
 
         # Assert - Verify file was uploaded to storage
@@ -831,6 +865,7 @@ class TestWorkflowPauseIntegration:
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=test_state,
+            pause_metadata=self._create_pause_metadata(),
         )
 
         # Get file info before deletion
@@ -868,6 +903,7 @@ class TestWorkflowPauseIntegration:
             workflow_run_id=workflow_run.id,
             state_owner_user_id=self.test_user_id,
             state=large_state_json,
+            pause_metadata=self._create_pause_metadata(),
         )
 
         # Assert
@@ -905,6 +941,7 @@ class TestWorkflowPauseIntegration:
                 workflow_run_id=workflow_run.id,
                 state_owner_user_id=self.test_user_id,
                 state=state,
+                pause_metadata=self._create_pause_metadata(),
             )
             assert pause_entity is not None
 

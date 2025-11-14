@@ -38,11 +38,11 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
 
-from core.workflow.entities.workflow_pause import WorkflowPauseEntity
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun
+from repositories.entities.workflow_pause import PauseMetadata, WorkflowPauseEntity
 from repositories.types import (
     AverageInteractionStats,
     DailyRunsStats,
@@ -257,6 +257,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         workflow_run_id: str,
         state_owner_user_id: str,
         state: str,
+        pause_metadata: PauseMetadata,
     ) -> WorkflowPauseEntity:
         """
         Create a new workflow pause state.

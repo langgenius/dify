@@ -22,6 +22,7 @@ class _PauseTypeEnum(enum.StrEnum):
 
 class HumanInputPause(BaseModel):
     type: Literal[_PauseTypeEnum.human_input] = _PauseTypeEnum.human_input
+
     form_id: str
 
 
@@ -33,9 +34,20 @@ PauseType: TypeAlias = Annotated[HumanInputPause | SchedulingPause, Field(discri
 
 
 class PauseDetail(BaseModel):
-    node_id: str
-    node_title: str
     pause_type: PauseType
+
+
+class PauseMetadata(BaseModel):
+    """
+    PauseMetadata stores metadata related to a specific pause event during workflow execution.
+
+    Attributes:
+        details: A list containing detailed information about the pause,
+            such as the reason for pausing, the node responsible for the pause, and any
+            additional context relevant to the paused state.
+    """
+
+    details: list[PauseDetail] = Field(default_factory=list)
 
 
 class WorkflowPauseEntity(ABC):
