@@ -298,7 +298,7 @@ class PluginModelClient(BasePluginClient):
                     "user_id": user_id,
                     "data": {
                         "provider": provider,
-                        "model_type": "embedding",
+                        "model_type": "text-embedding",
                         "model": model,
                         "credentials": credentials,
                         "documents": documents,
