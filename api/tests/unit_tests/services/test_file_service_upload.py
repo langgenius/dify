@@ -2,7 +2,7 @@ import importlib
 import sys
 import types
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -54,17 +54,17 @@ class DummySessionMaker:
         return False
 
 
-@pytest.fixture()
+@pytest.fixture
 def session_maker():
     return DummySessionMaker()
 
 
-@pytest.fixture()
+@pytest.fixture
 def fixed_uuid():
     return uuid.UUID("00000000-0000-0000-0000-000000000001")
 
-@pytest.fixture()
 
+@pytest.fixture
 def common_patches(fixed_uuid):
     mod, _ = _import_file_service_with_stubs()
     # Patch the imported sessionmaker symbol to our dummy to satisfy isinstance checks
@@ -93,6 +93,7 @@ def _dummy_user():
 
 # 1. derives category as 'knowledge' when source is 'datasets'
 
+
 def test_upload_file_derives_knowledge_for_datasets(session_maker, common_patches):
     service = _build_service(session_maker)
 
@@ -113,6 +114,7 @@ def test_upload_file_derives_knowledge_for_datasets(session_maker, common_patche
 
 # 2. uses the provided valid category when source is not 'datasets'
 
+
 def test_upload_file_uses_valid_category_when_not_datasets(session_maker, common_patches):
     service = _build_service(session_maker)
 
@@ -132,6 +134,7 @@ def test_upload_file_uses_valid_category_when_not_datasets(session_maker, common
 
 # 3. defaults to 'public' when invalid category provided and source is not 'datasets'
 
+
 def test_upload_file_defaults_public_on_invalid_category(session_maker, common_patches):
     service = _build_service(session_maker)
 
@@ -149,6 +152,7 @@ def test_upload_file_defaults_public_on_invalid_category(session_maker, common_p
 
 
 # 4. raises UnsupportedFileTypeError when category is 'profiles' and file extension is not an image
+
 
 def test_upload_file_profiles_rejects_non_image(session_maker, common_patches):
     service = _build_service(session_maker)
@@ -168,6 +172,7 @@ def test_upload_file_profiles_rejects_non_image(session_maker, common_patches):
 
 
 # 5. correctly constructs the file_key with the derived category in the path
+
 
 def test_upload_file_constructs_file_key_with_derived_category(session_maker, common_patches, fixed_uuid):
     service = _build_service(session_maker)

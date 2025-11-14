@@ -30,7 +30,7 @@ PREVIEW_WORDS_LIMIT = 3000
 
 class FileService:
     _session_maker: sessionmaker
-    ALLOWED_CATEGORIES = {'knowledge', 'profiles', 'public'}
+    ALLOWED_CATEGORIES = {"knowledge", "profiles", "public"}
 
     def __init__(self, session_factory: sessionmaker | Engine | None = None):
         if isinstance(session_factory, Engine):
@@ -49,7 +49,7 @@ class FileService:
         user: Union[Account, EndUser],
         source: Literal["datasets"] | None = None,
         source_url: str = "",
-        category: Optional[str] = None,
+        category: str | None = None,
     ) -> UploadFile:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
@@ -91,7 +91,7 @@ class FileService:
 
         current_tenant_id = extract_tenant_id(user)
         file_key = "/".join(
-            filter(None, ['upload_files', derived_category, current_tenant_id, f'{file_uuid}.{extension}'])
+            filter(None, ["upload_files", derived_category, current_tenant_id, f"{file_uuid}.{extension}"])
         )
 
         # save file to storage
