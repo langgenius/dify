@@ -24,7 +24,7 @@ const ResultItem = ({
   payload,
 }: ResultItemProps) => {
   const { t } = useTranslation()
-  const { segment, score, child_chunks, files = [] } = payload
+  const { segment, score, child_chunks, files } = payload
   const data = segment
   const { position, word_count, content, sign_content, keywords, document } = data
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
@@ -41,6 +41,7 @@ const ResultItem = ({
   }] = useBoolean(false)
 
   const images = useMemo(() => {
+    if (!files) return []
     return files.map(file => ({
       name: file.name,
       mimeType: file.mime_type,
