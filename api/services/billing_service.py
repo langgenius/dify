@@ -3,6 +3,7 @@ from typing import Literal
 
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
+from werkzeug.exceptions import InternalServerError
 
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
@@ -69,6 +70,13 @@ class BillingService:
         response = httpx.request(method, url, json=json, params=params, headers=headers)
         if method == "GET" and response.status_code != httpx.codes.OK:
             raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
+        if method == "PUT":
+            if response.status_code == httpx.codes.INTERNAL_SERVER_ERROR:
+                raise InternalServerError(
+                    "Unable to process billing request. Please try again later or contact support."
+                )
+            if response.status_code != httpx.codes.OK:
+                raise ValueError("Invalid arguments.")
         return response.json()
 
     @staticmethod
