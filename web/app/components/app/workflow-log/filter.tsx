@@ -8,7 +8,6 @@ import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import type { QueryParam } from './index'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
-import { trackEvent } from '../../base/amplitude/utils'
 dayjs.extend(quarterOfYear)
 
 const today = dayjs()
@@ -38,9 +37,6 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
         value={queryParams.status || 'all'}
         onSelect={(item) => {
           setQueryParams({ ...queryParams, status: item.value as string })
-          trackEvent('workflow_log_filter_status_selected', {
-            workflow_log_filter_status: item.value as string,
-          })
         }}
         onClear={() => setQueryParams({ ...queryParams, status: 'all' })}
         items={[{ value: 'all', name: 'All' },

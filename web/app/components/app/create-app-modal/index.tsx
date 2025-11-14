@@ -85,10 +85,10 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       })
 
       // Track app creation success
-      trackEvent('app_created', {
+      trackEvent('create_app', {
         app_mode: appMode,
-        creation_method: 'blank',
-        has_description: !!description,
+        time: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+        description,
       })
 
       notify({ type: 'success', message: t('app.newApp.appCreated') })
