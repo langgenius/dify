@@ -22,8 +22,10 @@ import {
   LoopEnd,
   ParameterExtractor,
   QuestionClassifier,
+  Schedule,
   TemplatingTransform,
   VariableX,
+  WebhookLine,
 } from '@/app/components/base/icons/src/vender/workflow'
 import AppIcon from '@/app/components/base/app-icon'
 import cn from '@/utils/classnames'
@@ -39,36 +41,46 @@ const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
   sm: 'w-5 h-5 rounded-md shadow-xs',
   md: 'w-6 h-6 rounded-lg shadow-md',
 }
+
+const DEFAULT_ICON_MAP: Record<BlockEnum, React.ComponentType<{ className: string }>> = {
+  [BlockEnum.Start]: Home,
+  [BlockEnum.LLM]: Llm,
+  [BlockEnum.Code]: Code,
+  [BlockEnum.End]: End,
+  [BlockEnum.IfElse]: IfElse,
+  [BlockEnum.HttpRequest]: Http,
+  [BlockEnum.Answer]: Answer,
+  [BlockEnum.KnowledgeRetrieval]: KnowledgeRetrieval,
+  [BlockEnum.QuestionClassifier]: QuestionClassifier,
+  [BlockEnum.TemplateTransform]: TemplatingTransform,
+  [BlockEnum.VariableAssigner]: VariableX,
+  [BlockEnum.VariableAggregator]: VariableX,
+  [BlockEnum.Assigner]: Assigner,
+  [BlockEnum.Tool]: VariableX,
+  [BlockEnum.IterationStart]: VariableX,
+  [BlockEnum.Iteration]: Iteration,
+  [BlockEnum.LoopStart]: VariableX,
+  [BlockEnum.Loop]: Loop,
+  [BlockEnum.LoopEnd]: LoopEnd,
+  [BlockEnum.ParameterExtractor]: ParameterExtractor,
+  [BlockEnum.DocExtractor]: DocsExtractor,
+  [BlockEnum.ListFilter]: ListFilter,
+  [BlockEnum.Agent]: Agent,
+  [BlockEnum.KnowledgeBase]: KnowledgeBase,
+  [BlockEnum.DataSource]: Datasource,
+  [BlockEnum.DataSourceEmpty]: () => null,
+  [BlockEnum.TriggerSchedule]: Schedule,
+  [BlockEnum.TriggerWebhook]: WebhookLine,
+  [BlockEnum.TriggerPlugin]: VariableX,
+  [BlockEnum.HumanInput]: HumanInLoop,
+}
+
 const getIcon = (type: BlockEnum, className: string) => {
-  return {
-    [BlockEnum.Start]: <Home className={className} />,
-    [BlockEnum.LLM]: <Llm className={className} />,
-    [BlockEnum.Code]: <Code className={className} />,
-    [BlockEnum.End]: <End className={className} />,
-    [BlockEnum.IfElse]: <IfElse className={className} />,
-    [BlockEnum.HttpRequest]: <Http className={className} />,
-    [BlockEnum.Answer]: <Answer className={className} />,
-    [BlockEnum.KnowledgeRetrieval]: <KnowledgeRetrieval className={className} />,
-    [BlockEnum.QuestionClassifier]: <QuestionClassifier className={className} />,
-    [BlockEnum.TemplateTransform]: <TemplatingTransform className={className} />,
-    [BlockEnum.VariableAssigner]: <VariableX className={className} />,
-    [BlockEnum.VariableAggregator]: <VariableX className={className} />,
-    [BlockEnum.Assigner]: <Assigner className={className} />,
-    [BlockEnum.Tool]: <VariableX className={className} />,
-    [BlockEnum.IterationStart]: <VariableX className={className} />,
-    [BlockEnum.Iteration]: <Iteration className={className} />,
-    [BlockEnum.LoopStart]: <VariableX className={className} />,
-    [BlockEnum.Loop]: <Loop className={className} />,
-    [BlockEnum.LoopEnd]: <LoopEnd className={className} />,
-    [BlockEnum.ParameterExtractor]: <ParameterExtractor className={className} />,
-    [BlockEnum.DocExtractor]: <DocsExtractor className={className} />,
-    [BlockEnum.ListFilter]: <ListFilter className={className} />,
-    [BlockEnum.Agent]: <Agent className={className} />,
-    [BlockEnum.HumanInput]: <HumanInLoop className={className} />,
-    [BlockEnum.KnowledgeBase]: <KnowledgeBase className={className} />,
-    [BlockEnum.DataSource]: <Datasource className={className} />,
-    [BlockEnum.DataSourceEmpty]: <></>,
-  }[type]
+  const DefaultIcon = DEFAULT_ICON_MAP[type]
+  if (!DefaultIcon)
+    return null
+
+  return <DefaultIcon className={className} />
 }
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.Start]: 'bg-util-colors-blue-brand-blue-brand-500',
@@ -95,6 +107,9 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.HumanInput]: 'bg-util-colors-cyan-cyan-500',
   [BlockEnum.KnowledgeBase]: 'bg-util-colors-warning-warning-500',
   [BlockEnum.DataSource]: 'bg-components-icon-bg-midnight-solid',
+  [BlockEnum.TriggerSchedule]: 'bg-util-colors-violet-violet-500',
+  [BlockEnum.TriggerWebhook]: 'bg-util-colors-blue-blue-500',
+  [BlockEnum.TriggerPlugin]: 'bg-util-colors-blue-blue-500',
 }
 const BlockIcon: FC<BlockIconProps> = ({
   type,
@@ -102,8 +117,8 @@ const BlockIcon: FC<BlockIconProps> = ({
   className,
   toolIcon,
 }) => {
-  const isToolOrDataSource = type === BlockEnum.Tool || type === BlockEnum.DataSource
-  const showDefaultIcon = !isToolOrDataSource || !toolIcon
+  const isToolOrDataSourceOrTriggerPlugin = type === BlockEnum.Tool || type === BlockEnum.DataSource || type === BlockEnum.TriggerPlugin
+  const showDefaultIcon = !isToolOrDataSourceOrTriggerPlugin || !toolIcon
 
   return (
     <div className={
@@ -117,11 +132,15 @@ const BlockIcon: FC<BlockIconProps> = ({
     >
       {
         showDefaultIcon && (
-          getIcon(type, size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5')
+          getIcon(type,
+            (type === BlockEnum.TriggerSchedule || type === BlockEnum.TriggerWebhook)
+              ? (size === 'xs' ? 'w-4 h-4' : 'w-4.5 h-4.5')
+              : (size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'),
+          )
         )
       }
       {
-        isToolOrDataSource && toolIcon && (
+        !showDefaultIcon && (
           <>
             {
               typeof toolIcon === 'string'

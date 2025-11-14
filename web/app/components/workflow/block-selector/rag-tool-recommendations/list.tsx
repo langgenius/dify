@@ -1,7 +1,4 @@
-import {
-  useMemo,
-  useRef,
-} from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import type { BlockEnum, ToolWithProvider } from '../../types'
 import type { ToolDefaultValue } from '../types'
 import { ViewType } from '../view-type-select'
@@ -12,9 +9,10 @@ import ToolListTreeView from '../tool/tool-list-tree-view/list'
 import ToolListFlatView from '../tool/tool-list-flat-view/list'
 import UninstalledItem from './uninstalled-item'
 import type { Plugin } from '@/app/components/plugins/types'
+import type { OnSelectBlock } from '@/app/components/workflow/types'
 
 type ListProps = {
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: OnSelectBlock
   tools: ToolWithProvider[]
   viewType: ViewType
   unInstalledPlugins: Plugin[]
@@ -62,6 +60,10 @@ const List = ({
 
   const toolRefs = useRef({})
 
+  const handleSelect = useCallback((type: BlockEnum, tool: ToolDefaultValue) => {
+    onSelect(type, tool)
+  }, [onSelect])
+
   return (
     <div className={cn('max-w-[100%] p-1', className)}>
       {!!tools.length && (
@@ -72,7 +74,7 @@ const List = ({
             payload={listViewToolData}
             isShowLetterIndex={false}
             hasSearchText={false}
-            onSelect={onSelect}
+            onSelect={handleSelect}
             canNotSelectMultiple
             indexBar={null}
           />
@@ -80,7 +82,7 @@ const List = ({
           <ToolListTreeView
             payload={treeViewToolsData}
             hasSearchText={false}
-            onSelect={onSelect}
+            onSelect={handleSelect}
             canNotSelectMultiple
           />
         )

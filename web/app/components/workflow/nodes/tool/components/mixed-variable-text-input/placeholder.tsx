@@ -7,11 +7,12 @@ import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/cust
 import Badge from '@/app/components/base/badge'
 import cn from '@/utils/classnames'
 
-type Props = {
+type PlaceholderProps = {
+  disableVariableInsertion?: boolean
   hideBadge?: boolean
 }
 
-const Placeholder = ({ hideBadge }: Props) => {
+const Placeholder = ({ disableVariableInsertion = false, hideBadge = false }: PlaceholderProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
 
@@ -36,17 +37,21 @@ const Placeholder = ({ hideBadge }: Props) => {
     >
       <div className='flex grow items-center'>
         {t('workflow.nodes.tool.insertPlaceholder1')}
-        <div className='system-kbd mx-0.5 flex h-4 w-4 items-center justify-center rounded bg-components-kbd-bg-gray text-text-placeholder'>/</div>
-        <div
-          className='system-sm-regular cursor-pointer text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary'
-          onMouseDown={((e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            handleInsert('/')
-          })}
-        >
-          {t('workflow.nodes.tool.insertPlaceholder2')}
-        </div>
+        {(!disableVariableInsertion) && (
+          <>
+            <div className='system-kbd mx-0.5 flex h-4 w-4 items-center justify-center rounded bg-components-kbd-bg-gray text-text-placeholder'>/</div>
+            <div
+              className='system-sm-regular cursor-pointer text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary'
+              onMouseDown={((e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleInsert('/')
+              })}
+            >
+              {t('workflow.nodes.tool.insertPlaceholder2')}
+            </div>
+          </>
+        )}
       </div>
       {!hideBadge && (
         <Badge

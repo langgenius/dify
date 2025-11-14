@@ -423,6 +423,8 @@ export const ZENDESK_FIELD_IDS = {
 }
 export const APP_VERSION = pkg.version
 
+export const IS_MARKETPLACE = globalThis.document?.body?.getAttribute('data-is-marketplace') === 'true'
+
 export const RAG_PIPELINE_PREVIEW_CHUNK_NUM = 20
 
 export const PROVIDER_WITH_PRESET_TONE = ['langgenius/openai/openai', 'langgenius/azure_openai/azure_openai']

@@ -1,16 +1,19 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import DetailPanel from './detail'
+import TriggerByDisplay from './trigger-by-display'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse } from '@/models/log'
-import type { App } from '@/types/app'
+import { type App, AppModeEnum } from '@/types/app'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
 import Indicator from '@/app/components/header/indicator'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import cn from '@/utils/classnames'
+import type { WorkflowRunTriggeredFrom } from '@/models/log'
 
 type ILogs = {
   logs?: WorkflowLogsResponse
@@ -29,6 +32,28 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false)
   const [currentLog, setCurrentLog] = useState<WorkflowAppLogDetail | undefined>()
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [localLogs, setLocalLogs] = useState<WorkflowAppLogDetail[]>(logs?.data || [])
+
+  useEffect(() => {
+    if (!logs?.data) {
+      setLocalLogs([])
+      return
+    }
+
+    const sortedLogs = [...logs.data].sort((a, b) => {
+      const result = a.created_at - b.created_at
+      return sortOrder === 'asc' ? result : -result
+    })
+
+    setLocalLogs(sortedLogs)
+  }, [logs?.data, sortOrder])
+
+  const handleSort = () => {
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+  }
+
+  const isWorkflow = appDetail?.mode === AppModeEnum.WORKFLOW
 
   const statusTdRender = (status: string) => {
     if (status === 'succeeded') {
@@ -43,7 +68,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
       return (
         <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
           <Indicator color={'red'} />
-          <span className='text-util-colors-red-red-600'>Fail</span>
+          <span className='text-util-colors-red-red-600'>Failure</span>
         </div>
       )
     }
@@ -96,15 +121,26 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>
             <td className='w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'></td>
-            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.startTime')}</td>
+            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>
+              <div className='flex cursor-pointer items-center hover:text-text-secondary' onClick={handleSort}>
+                {t('appLog.table.header.startTime')}
+                <ArrowDownIcon
+                  className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 transition-all',
+                    'text-text-tertiary',
+                    sortOrder === 'asc' ? 'rotate-180' : '',
+                  )}
+                />
+              </div>
+            </td>
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.status')}</td>
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.runtime')}</td>
             <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.tokens')}</td>
-            <td className='whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.user')}</td>
+            <td className={cn('whitespace-nowrap bg-background-section-burn py-1.5 pl-3', !isWorkflow ? 'rounded-r-lg' : '')}>{t('appLog.table.header.user')}</td>
+            {isWorkflow && <td className='whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.triggered_from')}</td>}
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
-          {logs.data.map((log: WorkflowAppLogDetail) => {
+          {localLogs.map((log: WorkflowAppLogDetail) => {
             const endUser = log.created_by_end_user ? log.created_by_end_user.session_id : log.created_by_account ? log.created_by_account.name : defaultValue
             return <tr
               key={log.id}
@@ -133,6 +169,11 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   {endUser}
                 </div>
               </td>
+              {isWorkflow && (
+                <td className='p-3 pr-2'>
+                  <TriggerByDisplay triggeredFrom={log.workflow_run.triggered_from as WorkflowRunTriggeredFrom} triggerMetadata={log.details?.trigger_metadata} />
+                </td>
+              )}
             </tr>
           })}
         </tbody>
@@ -144,7 +185,11 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         footer={null}
         panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-components-panel-border'
       >
-        <DetailPanel onClose={onCloseDrawer} runID={currentLog?.workflow_run.id || ''} />
+        <DetailPanel
+          onClose={onCloseDrawer}
+          runID={currentLog?.workflow_run.id || ''}
+          canReplay={currentLog?.workflow_run.triggered_from === 'app-run' || currentLog?.workflow_run.triggered_from === 'debugging'}
+        />
       </Drawer>
     </div>
   )

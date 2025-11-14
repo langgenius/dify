@@ -18,10 +18,11 @@ import {
 import RemoveButton from '../remove-button'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import VarReferencePopup from './var-reference-popup'
-import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVar, removeFileVars, varTypeToStructType } from './utils'
+import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar, removeFileVars, varTypeToStructType } from './utils'
 import ConstantField from './constant-field'
 import cn from '@/utils/classnames'
 import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { type CredentialFormSchema, type FormOption, FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -38,6 +39,7 @@ import {
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+// import type { BaseResource, BaseResourceProvider } from '@/app/components/workflow/nodes/_base/types'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import AddButton from '@/app/components/base/button/add-button'
 import Badge from '@/app/components/base/badge'
@@ -45,9 +47,10 @@ import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from './var-full-path-panel'
 import { noop } from 'lodash-es'
-import { useFetchDynamicOptions } from '@/service/use-plugins'
 import type { Tool } from '@/app/components/tools/types'
+import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 
@@ -79,7 +82,7 @@ type Props = {
   popupFor?: 'assigned' | 'toAssigned'
   zIndex?: number
   currentTool?: Tool
-  currentProvider?: ToolWithProvider
+  currentProvider?: ToolWithProvider | TriggerWithProvider
   preferSchemaType?: boolean
 }
 
@@ -205,6 +208,9 @@ const VarReferencePicker: FC<Props> = ({
   const varName = useMemo(() => {
     if (!hasValue)
       return ''
+    const showName = VAR_SHOW_NAME_MAP[(value as ValueSelector).join('.')]
+    if(showName)
+      return showName
 
     const isSystem = isSystemVar(value as ValueSelector)
     const varName = Array.isArray(value) ? value[(value as ValueSelector).length - 1] : ''
@@ -293,15 +299,17 @@ const VarReferencePicker: FC<Props> = ({
     preferSchemaType,
   })
 
-  const { isEnv, isChatVar, isRagVar, isValidVar, isException } = useMemo(() => {
+  const { isEnv, isChatVar, isGlobal, isRagVar, isValidVar, isException } = useMemo(() => {
     const isEnv = isENV(value as ValueSelector)
     const isChatVar = isConversationVar(value as ValueSelector)
+    const isGlobal = isGlobalVar(value as ValueSelector)
     const isRagVar = isRagVariableVar(value as ValueSelector)
-    const isValidVar = Boolean(outputVarNode) || isEnv || isChatVar || isRagVar
+    const isValidVar = Boolean(outputVarNode) || isEnv || isChatVar || isGlobal || isRagVar
     const isException = isExceptionVariable(varName, outputVarNode?.type)
     return {
       isEnv,
       isChatVar,
+      isGlobal,
       isRagVar,
       isValidVar,
       isException,
@@ -394,10 +402,11 @@ const VarReferencePicker: FC<Props> = ({
   const variableCategory = useMemo(() => {
     if (isEnv) return 'environment'
     if (isChatVar) return 'conversation'
+    if (isGlobal) return 'global'
     if (isLoopVar) return 'loop'
     if (isRagVar) return 'rag'
     return 'system'
-  }, [isEnv, isChatVar, isLoopVar, isRagVar])
+  }, [isEnv, isChatVar, isGlobal, isLoopVar, isRagVar])
 
   return (
     <div className={cn(className, !readonly && 'cursor-pointer')}>
@@ -477,7 +486,7 @@ const VarReferencePicker: FC<Props> = ({
                               {hasValue
                                 ? (
                                   <>
-                                    {isShowNodeName && !isEnv && !isChatVar && !isRagVar && (
+                                    {isShowNodeName && !isEnv && !isChatVar && !isGlobal && !isRagVar && (
                                       <div className='flex items-center' onClick={(e) => {
                                         if (e.metaKey || e.ctrlKey) {
                                           e.stopPropagation()
@@ -505,10 +514,11 @@ const VarReferencePicker: FC<Props> = ({
                                     <div className='flex items-center text-text-accent'>
                                       {isLoading && <RiLoader4Line className='h-3.5 w-3.5 animate-spin text-text-secondary' />}
                                       <VariableIconWithColor
+                                        variables={value as ValueSelector}
                                         variableCategory={variableCategory}
                                         isExceptionVariable={isException}
                                       />
-                                      <div className={cn('ml-0.5 truncate text-xs font-medium', isEnv && '!text-text-secondary', isChatVar && 'text-util-colors-teal-teal-700', isException && 'text-text-warning')} title={varName} style={{
+                                      <div className={cn('ml-0.5 truncate text-xs font-medium', isEnv && '!text-text-secondary', isChatVar && 'text-util-colors-teal-teal-700', isException && 'text-text-warning', isGlobal && 'text-util-colors-orange-orange-600')} title={varName} style={{
                                         maxWidth: maxVarNameWidth,
                                       }}>{varName}</div>
                                     </div>
