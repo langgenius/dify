@@ -53,6 +53,16 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     })
   }, [isWorkflowApp, currentWorkflow])
   const shouldRenderAppCards = !isWorkflowApp || hasTriggerNode === false
+  const disableAppCards = !shouldRenderAppCards
+  const disableWebAppTooltip = disableAppCards
+    ? t('appOverview.overview.disableTooltip.triggerMode', { feature: t('appOverview.overview.appInfo.title') })
+    : ''
+  const disableApiTooltip = disableAppCards
+    ? t('appOverview.overview.disableTooltip.triggerMode', { feature: t('appOverview.overview.apiInfo.title') })
+    : ''
+  const disableMcpTooltip = disableAppCards
+    ? t('appOverview.overview.disableTooltip.triggerMode', { feature: t('tools.mcp.server.title') })
+    : ''
 
   const updateAppDetail = async () => {
     try {
@@ -124,39 +134,48 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   if (!appDetail)
     return <Loading />
 
-  return (
-    <div className={className || 'mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'}>
-      {
-        shouldRenderAppCards && (
-          <>
-            <AppCard
-              appInfo={appDetail}
-              cardType="webapp"
-              isInPanel={isInPanel}
-              onChangeStatus={onChangeSiteStatus}
-              onGenerateCode={onGenerateCode}
-              onSaveSiteConfig={onSaveSiteConfig}
-            />
-            <AppCard
-              cardType="api"
-              appInfo={appDetail}
-              isInPanel={isInPanel}
-              onChangeStatus={onChangeApiStatus}
-            />
-            {showMCPCard && (
-              <MCPServiceCard
-                appInfo={appDetail}
-              />
-            )}
-          </>
-        )
-      }
-      {showTriggerCard && (
-        <TriggerCard
+  const appCards = (
+    <>
+      <AppCard
+        appInfo={appDetail}
+        cardType="webapp"
+        isInPanel={isInPanel}
+        triggerModeDisabled={disableAppCards}
+        triggerModeMessage={disableWebAppTooltip}
+        onChangeStatus={onChangeSiteStatus}
+        onGenerateCode={onGenerateCode}
+        onSaveSiteConfig={onSaveSiteConfig}
+      />
+      <AppCard
+        cardType="api"
+        appInfo={appDetail}
+        isInPanel={isInPanel}
+        triggerModeDisabled={disableAppCards}
+        triggerModeMessage={disableApiTooltip}
+        onChangeStatus={onChangeApiStatus}
+      />
+      {showMCPCard && (
+        <MCPServiceCard
           appInfo={appDetail}
-          onToggleResult={handleCallbackResult}
+          triggerModeDisabled={disableAppCards}
+          triggerModeMessage={disableMcpTooltip}
         />
       )}
+    </>
+  )
+
+  const triggerCardNode = showTriggerCard ? (
+    <TriggerCard
+      appInfo={appDetail}
+      onToggleResult={handleCallbackResult}
+    />
+  ) : null
+
+  return (
+    <div className={className || 'mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'}>
+      {disableAppCards && triggerCardNode}
+      {appCards}
+      {!disableAppCards && triggerCardNode}
     </div>
   )
 }
