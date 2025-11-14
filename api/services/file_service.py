@@ -1,7 +1,7 @@
 import hashlib
 import os
 import uuid
-from typing import Literal, Optional, Union
+from typing import Literal, Union
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
