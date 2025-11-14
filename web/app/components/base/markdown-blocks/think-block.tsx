@@ -72,10 +72,14 @@ const ThinkBlock = ({ children, ...props }: ThinkBlockProps) => {
   const { elapsedTime, isComplete } = useThinkTimer(children)
   const displayContent = removeEndThink(children)
   const { t } = useTranslation()
+  const { showReasoning } = useChatContext()
   const { 'data-think': isThink = false, className, open, ...rest } = props
 
   if (!isThink)
     return (<details {...props}>{children}</details>)
+
+  if (showReasoning === false)
+    return null
 
   return (
     <details
