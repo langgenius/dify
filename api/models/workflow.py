@@ -19,7 +19,7 @@ from core.variables.variables import FloatVariable, IntegerVariable, StringVaria
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     MEMORY_BLOCK_VARIABLE_NODE_ID,
-    SYSTEM_VARIABLE_NODE_ID
+    SYSTEM_VARIABLE_NODE_ID,
 )
 from core.workflow.enums import NodeType, WorkflowExecutionStatus
 from extensions.ext_storage import Storage
