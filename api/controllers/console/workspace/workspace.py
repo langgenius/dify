@@ -128,7 +128,7 @@ class TenantApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(tenant_fields)
-    def get(self):
+    def post(self):
         if request.path == "/info":
             logger.warning("Deprecated URL /info was used.")
 
