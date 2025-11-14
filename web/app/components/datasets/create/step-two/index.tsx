@@ -44,7 +44,7 @@ import { DataSourceProvider } from '@/models/common'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { RETRIEVE_METHOD } from '@/types/app'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import { useDefaultModel, useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { LanguagesSupported } from '@/i18n-config/language'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -151,7 +151,7 @@ const StepTwo = ({
   const docLink = useDocLink()
   const { locale } = useContext(I18n)
   const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
 
   const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const mutateDatasetRes = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)

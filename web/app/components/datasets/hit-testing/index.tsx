@@ -21,7 +21,7 @@ import FloatRightContainer from '@/app/components/base/float-right-container'
 import { fetchTestingRecords } from '@/service/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import type { RetrievalConfig } from '@/types/app'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
@@ -47,7 +47,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { formatTime } = useTimestamp()
 
   const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>() // 初始化记录为空数组
   const [externalHitResult, setExternalHitResult] = useState<ExternalKnowledgeBaseHitTestingResponse | undefined>()

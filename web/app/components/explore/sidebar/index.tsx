@@ -11,7 +11,7 @@ import cn from '@/utils/classnames'
 import ExploreContext from '@/context/explore-context'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 
 const SelectedDiscoveryIcon = () => (
@@ -43,7 +43,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
   const { mutateAsync: updatePinStatus } = useUpdateAppPinStatus()
 
   const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
 
   const [showConfirm, setShowConfirm] = useState(false)
   const [currId, setCurrId] = useState('')

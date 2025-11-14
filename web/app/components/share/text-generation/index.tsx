@@ -12,7 +12,7 @@ import TabHeader from '../../base/tab-header'
 import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
 import { fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
 import type { SiteInfo } from '@/models/share'
@@ -75,7 +75,7 @@ const TextGeneration: FC<IMainProps> = ({
 
   const { t } = useTranslation()
   const media = useBreakpoints()
-  const isPC = media === MediaType.pc
+  const isPC = media === mediaTypeMap.pc
 
   const searchParams = useSearchParams()
   const mode = searchParams.get('mode') || 'create'

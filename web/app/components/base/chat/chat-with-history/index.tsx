@@ -16,7 +16,7 @@ import HeaderInMobile from './header-in-mobile'
 import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import cn from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
 
@@ -104,7 +104,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   className,
 }) => {
   const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
   const themeBuilder = useThemeContext()
 
   const {

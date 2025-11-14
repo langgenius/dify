@@ -9,7 +9,7 @@ import {
 import CSVReader from './csv-reader'
 import CSVDownload from './csv-download'
 import Button from '@/app/components/base/button'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import cn from '@/utils/classnames'
 export type IRunBatchProps = {
   vars: { name: string }[]
@@ -24,7 +24,7 @@ const RunBatch: FC<IRunBatchProps> = ({
 }) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
-  const isPC = media === MediaType.pc
+  const isPC = media === mediaTypeMap.pc
 
   const [csvData, setCsvData] = React.useState<string[][]>([])
   const [isParsed, setIsParsed] = React.useState(false)

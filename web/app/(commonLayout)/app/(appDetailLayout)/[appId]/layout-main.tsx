@@ -23,7 +23,7 @@ import type { NavIcon } from '@/app/components/app-sidebar/navLink'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import { type App, AppModeEnum } from '@/types/app'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
@@ -47,7 +47,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const router = useRouter()
   const pathname = usePathname()
   const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
   const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
   const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,

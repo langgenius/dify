@@ -4,7 +4,7 @@ import React, { useRef } from 'react'
 import { RiCloseLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 
 type Props = {
   isShow: boolean
@@ -45,7 +45,7 @@ const DrawerPlus: FC<Props> = ({
 }) => {
   const ref = useRef(null)
   const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
 
   if (!isShow)
     return null

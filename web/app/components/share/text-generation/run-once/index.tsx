@@ -15,7 +15,7 @@ import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import cn from '@/utils/classnames'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -42,7 +42,7 @@ const RunOnce: FC<IRunOnceProps> = ({
 }) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
-  const isPC = media === MediaType.pc
+  const isPC = media === mediaTypeMap.pc
   const [isInitialized, setIsInitialized] = useState(false)
 
   const onClear = () => {

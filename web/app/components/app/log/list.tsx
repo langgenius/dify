@@ -28,7 +28,7 @@ import Chat from '@/app/components/base/chat/chat'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
 import ModelInfo from '@/app/components/app/log/model-info'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { mediaTypeMap } from '@/hooks/use-breakpoints'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import MessageLogModal from '@/app/components/base/message-log-modal'
@@ -904,7 +904,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const conversationIdInUrl = searchParams.get('conversation_id') ?? undefined
 
   const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isMobile = media === mediaTypeMap.mobile
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false) // Whether to display the chat details drawer
   const [currentConversation, setCurrentConversation] = useState<ConversationSelection | undefined>() // Currently selected conversation
