@@ -2,7 +2,7 @@ import json
 from collections.abc import MutableMapping, Sequence
 from typing import Literal, Optional, overload
 
-from sqlalchemy import Row, Select, and_, func, select
+from sqlalchemy import Row, Select, and_, desc, func, select
 from sqlalchemy.orm import Session
 
 from core.memory.entities import ChatflowConversationMetadata
@@ -46,6 +46,58 @@ class ChatflowHistoryService:
             return [PromptMessage.model_validate_json(it.data) for it in visible_messages]
 
     @staticmethod
+    def get_latest_chat_history_for_app(
+        app_id: str,
+        tenant_id: str,
+        node_id: Optional[str] = None,
+        max_visible_count: Optional[int] = None
+    ) -> Sequence[PromptMessage]:
+        """
+        Get the latest chat history for an app
+
+        Args:
+            app_id: Application ID
+            tenant_id: Tenant ID
+            node_id: Node ID (None for APP level)
+            max_visible_count: Maximum number of visible messages (optional)
+
+        Returns:
+            PromptMessage sequence, empty list if no history exists
+        """
+        with Session(db.engine) as session:
+            # Query the most recently updated chatflow conversation
+            stmt = select(ChatflowConversation).where(
+                ChatflowConversation.tenant_id == tenant_id,
+                ChatflowConversation.app_id == app_id,
+                ChatflowConversation.node_id == (node_id or None)
+            ).order_by(desc(ChatflowConversation.updated_at)).limit(1)
+
+            chatflow_conv_row = session.execute(stmt).first()
+            if not chatflow_conv_row:
+                return []
+
+            chatflow_conv = chatflow_conv_row[0]
+
+            # Get visible messages for this conversation
+            metadata = ChatflowConversationMetadata.model_validate_json(
+                chatflow_conv.conversation_metadata
+            )
+            visible_count: int = max_visible_count or metadata.visible_count
+
+            stmt = select(ChatflowMessage).where(
+                ChatflowMessage.conversation_id == chatflow_conv.id
+            ).order_by(ChatflowMessage.index.asc(), ChatflowMessage.version.desc())
+
+            raw_messages: Sequence[Row[tuple[ChatflowMessage]]] = session.execute(stmt).all()
+            sorted_messages = ChatflowHistoryService._filter_latest_messages(
+                [it[0] for it in raw_messages]
+            )
+
+            visible_count = min(visible_count, len(sorted_messages))
+            visible_messages = sorted_messages[-visible_count:]
+            return [PromptMessage.model_validate_json(it.data) for it in visible_messages]
+
+    @staticmethod
     def save_message(
         prompt_message: PromptMessage,
         conversation_id: str,
@@ -76,7 +128,7 @@ class ChatflowHistoryService:
             session.add(new_message)
             session.commit()
 
-            # 添加：每次保存消息后简单增长visible_count
+            # Increment visible_count after each message save
             current_metadata = ChatflowConversationMetadata.model_validate_json(chatflow_conv.conversation_metadata)
             new_visible_count = current_metadata.visible_count + 1
             new_metadata = ChatflowConversationMetadata(visible_count=new_visible_count)

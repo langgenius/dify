@@ -1,8 +1,8 @@
 import json
 import logging
 import re
-from collections.abc import Sequence
-from typing import Protocol, cast
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, Protocol, cast
 
 import json_repair
 
@@ -14,6 +14,10 @@ from core.llm_generator.prompts import (
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
     LLM_MODIFY_CODE_SYSTEM,
     LLM_MODIFY_PROMPT_SYSTEM,
+    MEMORY_INSTRUCTION_EDIT_SYSTEM_PROMPT,
+    MEMORY_INSTRUCTION_GENERATION_SYSTEM_PROMPT,
+    MEMORY_TEMPLATE_EDIT_SYSTEM_PROMPT,
+    MEMORY_TEMPLATE_GENERATION_SYSTEM_PROMPT,
     MEMORY_UPDATE_PROMPT,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
@@ -509,16 +513,17 @@ class LLMGenerator:
         node_type: str,
         ideal_output: str | None,
     ):
-        LAST_RUN = "{{#last_run#}}"
-        CURRENT = "{{#current#}}"
-        ERROR_MESSAGE = "{{#error_message#}}"
-        injected_instruction = instruction
-        if LAST_RUN in injected_instruction:
-            injected_instruction = injected_instruction.replace(LAST_RUN, json.dumps(last_run))
-        if CURRENT in injected_instruction:
-            injected_instruction = injected_instruction.replace(CURRENT, current or "null")
-        if ERROR_MESSAGE in injected_instruction:
-            injected_instruction = injected_instruction.replace(ERROR_MESSAGE, error_message or "null")
+        # Use unified variable injector
+        variable_providers = {
+            "last_run": lambda: json.dumps(last_run) if last_run else "null",
+            "current": lambda: current or "null",
+            "error_message": lambda: error_message or "null",
+        }
+
+        injected_instruction = LLMGenerator.__inject_variables(
+            instruction=instruction,
+            variable_providers=variable_providers
+        )
         model_instance = ModelManager().get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
@@ -597,3 +602,392 @@ class LLMGenerator:
             stream=False,
         )
         return llm_result.message.get_text_content()
+
+    @staticmethod
+    def generate_memory_template(
+        tenant_id: str,
+        instruction: str,
+        model_config: dict,
+    ) -> dict:
+        """
+        Generate Memory Template
+
+        Uses MEMORY_TEMPLATE_GENERATION_SYSTEM_PROMPT
+        """
+        model_instance = ModelManager().get_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
+            provider=model_config.get("provider", ""),
+            model=model_config.get("name", ""),
+        )
+
+        prompt_messages: list[PromptMessage] = [
+            SystemPromptMessage(content=MEMORY_TEMPLATE_GENERATION_SYSTEM_PROMPT),
+            UserPromptMessage(content=instruction),
+        ]
+
+        try:
+            response = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters={"temperature": 0.7},
+                stream=False,
+            )
+
+            generated_template = response.message.get_text_content()
+            return {"template": generated_template}
+
+        except Exception as e:
+            logger.exception("Failed to generate memory template")
+            return {"error": f"Failed to generate memory template: {str(e)}"}
+
+    @staticmethod
+    def generate_memory_instruction(
+        tenant_id: str,
+        instruction: str,
+        model_config: dict,
+    ) -> dict:
+        """
+        Generate Memory Instruction
+
+        Uses MEMORY_INSTRUCTION_GENERATION_SYSTEM_PROMPT
+        """
+        model_instance = ModelManager().get_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
+            provider=model_config.get("provider", ""),
+            model=model_config.get("name", ""),
+        )
+
+        prompt_messages: list[PromptMessage] = [
+            SystemPromptMessage(content=MEMORY_INSTRUCTION_GENERATION_SYSTEM_PROMPT),
+            UserPromptMessage(content=instruction),
+        ]
+
+        try:
+            response = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters={"temperature": 0.7},
+                stream=False,
+            )
+
+            generated_instruction = response.message.get_text_content()
+            return {"instruction": generated_instruction}
+
+        except Exception as e:
+            logger.exception("Failed to generate memory instruction")
+            return {"error": f"Failed to generate memory instruction: {str(e)}"}
+
+    @staticmethod
+    def edit_memory_template(
+        tenant_id: str,
+        flow_id: str,
+        node_id: str | None,
+        current: str,
+        instruction: str,
+        model_config: dict,
+        ideal_output: str | None = None,
+    ) -> dict:
+        """
+        Edit Memory Template
+
+        Supports variable references: {{#history#}}, {{#system_prompt#}}
+        """
+        # Use unified variable injector
+        variable_providers = {
+            "history": lambda: LLMGenerator.__get_history_json(flow_id, node_id, tenant_id),
+            "system_prompt": lambda: json.dumps(
+                LLMGenerator.__get_system_prompt(flow_id, node_id, tenant_id),
+                ensure_ascii=False
+            ),
+        }
+
+        injected_instruction = LLMGenerator.__inject_variables(
+            instruction=instruction,
+            variable_providers=variable_providers
+        )
+
+        model_instance = ModelManager().get_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
+            provider=model_config.get("provider", ""),
+            model=model_config.get("name", ""),
+        )
+
+        system_prompt = MEMORY_TEMPLATE_EDIT_SYSTEM_PROMPT
+        user_content = json.dumps({
+            "current_template": current,
+            "instruction": injected_instruction,
+            "ideal_output": ideal_output,
+        })
+
+        prompt_messages: list[PromptMessage] = [
+            SystemPromptMessage(content=system_prompt),
+            UserPromptMessage(content=user_content),
+        ]
+
+        try:
+            response = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters={"temperature": 0.4},
+                stream=False,
+            )
+
+            generated_raw = response.message.get_text_content()
+            # Extract JSON
+            first_brace = generated_raw.find("{")
+            last_brace = generated_raw.rfind("}")
+            result = json.loads(generated_raw[first_brace : last_brace + 1])
+
+            return {
+                "modified": result.get("modified", ""),
+                "message": result.get("message", "Template updated successfully"),
+            }
+
+        except Exception as e:
+            logger.exception("Failed to edit memory template")
+            return {"error": f"Failed to edit memory template: {str(e)}"}
+
+    @staticmethod
+    def edit_memory_instruction(
+        tenant_id: str,
+        flow_id: str,
+        node_id: str | None,
+        current: str,
+        instruction: str,
+        model_config: dict,
+        ideal_output: str | None = None,
+    ) -> dict:
+        """
+        Edit Memory Instruction
+
+        Supports variable references: {{#history#}}, {{#system_prompt#}}
+        """
+        # Use unified variable injector
+        variable_providers = {
+            "history": lambda: LLMGenerator.__get_history_json(flow_id, node_id, tenant_id),
+            "system_prompt": lambda: json.dumps(
+                LLMGenerator.__get_system_prompt(flow_id, node_id, tenant_id),
+                ensure_ascii=False
+            ),
+        }
+
+        injected_instruction = LLMGenerator.__inject_variables(
+            instruction=instruction,
+            variable_providers=variable_providers
+        )
+
+        model_instance = ModelManager().get_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
+            provider=model_config.get("provider", ""),
+            model=model_config.get("name", ""),
+        )
+
+        system_prompt = MEMORY_INSTRUCTION_EDIT_SYSTEM_PROMPT
+        user_content = json.dumps({
+            "current_instruction": current,
+            "instruction": injected_instruction,
+            "ideal_output": ideal_output,
+        })
+
+        prompt_messages: list[PromptMessage] = [
+            SystemPromptMessage(content=system_prompt),
+            UserPromptMessage(content=user_content),
+        ]
+
+        try:
+            response = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters={"temperature": 0.4},
+                stream=False,
+            )
+
+            generated_raw = response.message.get_text_content()
+            # Extract JSON
+            first_brace = generated_raw.find("{")
+            last_brace = generated_raw.rfind("}")
+            result = json.loads(generated_raw[first_brace : last_brace + 1])
+
+            return {
+                "modified": result.get("modified", ""),
+                "message": result.get("message", "Instruction updated successfully"),
+            }
+
+        except Exception as e:
+            logger.exception("Failed to edit memory instruction")
+            return {"error": f"Failed to edit memory instruction: {str(e)}"}
+
+    # ==================== Unified variable injector (private method) ====================
+
+    @staticmethod
+    def __inject_variables(
+        instruction: str,
+        variable_providers: Mapping[str, Callable[[], str]]
+    ) -> str:
+        """
+        Unified variable injector (private method)
+
+        Replaces variable placeholders {{#variable_name#}} in instruction with actual values
+
+        Args:
+            instruction: User's original instruction
+            variable_providers: Mapping of variable name -> getter function
+                Example: {"last_run": lambda: json.dumps(data), "history": lambda: get_history()}
+
+        Returns:
+            Instruction with injected variables
+
+        Features:
+        1. Lazy loading: Only calls getter function when placeholder is present
+        2. Fault tolerance: Failure of one variable doesn't affect others
+        3. Extensible: New variables can be added through variable_providers parameter
+        """
+        injected = instruction
+
+        for var_name, provider_func in variable_providers.items():
+            placeholder = f"{{{{#{var_name}#}}}}"
+
+            if placeholder in injected:
+                try:
+                    # Lazy loading: only call when needed
+                    value = provider_func()
+                    injected = injected.replace(placeholder, value)
+                except Exception as e:
+                    logger.warning("Failed to inject variable '%s': %s", var_name, e)
+                    # Use default value on failure, don't block the request
+                    default_value = "[]" if var_name == "history" else '""'
+                    injected = injected.replace(placeholder, default_value)
+
+        return injected
+
+    @staticmethod
+    def __get_history_json(
+        flow_id: str,
+        node_id: str | None,
+        tenant_id: str
+    ) -> str:
+        """
+        Get conversation history as JSON string (private method)
+
+        Args:
+            flow_id: Application ID
+            node_id: Node ID (optional, None indicates APP level)
+            tenant_id: Tenant ID
+
+        Returns:
+            JSON array string in format: [{"role": "user", "content": "..."}, ...]
+            Returns "[]" if no history exists
+        """
+        from services.chatflow_history_service import ChatflowHistoryService
+
+        app = db.session.query(App).filter_by(id=flow_id).first()
+        if not app:
+            return "[]"
+
+        visible_messages = ChatflowHistoryService.get_latest_chat_history_for_app(
+            app_id=app.id,
+            tenant_id=tenant_id,
+            node_id=node_id or None
+        )
+
+        history_json = [
+            {"role": msg.role.value, "content": msg.content}
+            for msg in visible_messages
+        ]
+
+        return json.dumps(history_json, ensure_ascii=False)
+
+    @staticmethod
+    def __get_system_prompt(
+        flow_id: str,
+        node_id: str | None,
+        tenant_id: str
+    ) -> str:
+        """
+        Get system prompt (private method)
+
+        Args:
+            flow_id: Application ID
+            node_id: Node ID (optional)
+            tenant_id: Tenant ID
+
+        Returns:
+            System prompt string, returns "" if none exists
+        """
+        from services.workflow_service import WorkflowService
+
+        app = db.session.query(App).filter_by(id=flow_id).first()
+        if not app:
+            return ""
+
+        # Legacy app
+        if app.mode in {"chat", "completion"}:
+            try:
+                app_model_config = app.app_model_config_dict
+                return app_model_config.get("pre_prompt", "")
+            except Exception:
+                return ""
+
+        # Workflow app
+        try:
+            workflow = WorkflowService().get_draft_workflow(app_model=app)
+            if not workflow:
+                return ""
+
+            nodes = workflow.graph_dict.get("nodes", [])
+
+            if node_id:
+                # Get system prompt for specified node
+                node = next((n for n in nodes if n["id"] == node_id), None)
+                if not node or node["data"]["type"] not in ["llm", "agent"]:
+                    return ""
+
+                prompt_template = node["data"].get("prompt_template")
+                return LLMGenerator.__extract_system_prompt_from_template(prompt_template)
+            else:
+                # APP level: find the main LLM node (connected to END node)
+                edges = workflow.graph_dict.get("edges", [])
+                llm_nodes = [n for n in nodes if n["data"]["type"] in ["llm", "agent"]]
+
+                for edge in edges:
+                    if edge.get("target") == "end":
+                        source_node = next((n for n in llm_nodes if n["id"] == edge.get("source")), None)
+                        if source_node:
+                            prompt_template = source_node["data"].get("prompt_template")
+                            system_prompt = LLMGenerator.__extract_system_prompt_from_template(prompt_template)
+                            if system_prompt:
+                                return system_prompt
+
+                # Fallback: return system prompt from first LLM node
+                if llm_nodes:
+                    prompt_template = llm_nodes[0]["data"].get("prompt_template")
+                    return LLMGenerator.__extract_system_prompt_from_template(prompt_template)
+
+                return ""
+        except Exception as e:
+            logger.warning("Failed to get system prompt: %s", e)
+            return ""
+
+    @staticmethod
+    def __extract_system_prompt_from_template(prompt_template: Any) -> str:
+        """
+        Extract system prompt from prompt_template (private method)
+
+        Args:
+            prompt_template: LLM node's prompt_template (may be list or dict)
+
+        Returns:
+            System prompt string
+        """
+        if not prompt_template:
+            return ""
+
+        if isinstance(prompt_template, list):
+            # Chat model: [{"role": "system", "text": "..."}, ...]
+            system_msg = next((m for m in prompt_template if m.get("role") == "system"), None)
+            return system_msg.get("text", "") if system_msg else ""
+        elif isinstance(prompt_template, dict):
+            # Completion model: {"text": "..."}
+            return prompt_template.get("text", "")
+        else:
+            return ""

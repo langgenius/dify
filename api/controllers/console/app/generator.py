@@ -1,5 +1,3 @@
-from collections.abc import Sequence
-
 from flask_restx import Resource, fields, reqparse
 
 from controllers.console import api, console_ns
@@ -11,13 +9,9 @@ from controllers.console.app.error import (
 )
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
-from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_runtime.errors.invoke import InvokeError
-from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
-from models import App
 from services.workflow_service import WorkflowService
 
 
@@ -177,11 +171,29 @@ class InstructionGenerateApi(Resource):
         api.model(
             "InstructionGenerateRequest",
             {
-                "flow_id": fields.String(required=True, description="Workflow/Flow ID"),
-                "node_id": fields.String(description="Node ID for workflow context"),
-                "current": fields.String(description="Current instruction text"),
-                "language": fields.String(default="javascript", description="Programming language (javascript/python)"),
-                "instruction": fields.String(required=True, description="Instruction for generation"),
+                "type": fields.String(
+                    required=True,
+                    description="Request type",
+                    enum=[
+                        "legacy_prompt_generate",
+                        "workflow_prompt_generate",
+                        "workflow_code_generate",
+                        "workflow_prompt_edit",
+                        "workflow_code_edit",
+                        "memory_template_generate",
+                        "memory_instruction_generate",
+                        "memory_template_edit",
+                        "memory_instruction_edit",
+                    ]
+                ),
+                "flow_id": fields.String(description="Workflow/Flow ID"),
+                "node_id": fields.String(description="Node ID (optional)"),
+                "current": fields.String(description="Current content"),
+                "language": fields.String(
+                    default="javascript",
+                    description="Programming language (javascript/python)"
+                ),
+                "instruction": fields.String(required=True, description="User instruction"),
                 "model_config": fields.Raw(required=True, description="Model configuration"),
                 "ideal_output": fields.String(description="Expected ideal output"),
             },
@@ -196,7 +208,8 @@ class InstructionGenerateApi(Resource):
     def post(self):
         parser = (
             reqparse.RequestParser()
-            .add_argument("flow_id", type=str, required=True, default="", location="json")
+            .add_argument("type", type=str, required=True, nullable=False, location="json")
+            .add_argument("flow_id", type=str, required=False, default="", location="json")
             .add_argument("node_id", type=str, required=False, default="", location="json")
             .add_argument("current", type=str, required=False, default="", location="json")
             .add_argument("language", type=str, required=False, default="javascript", location="json")
@@ -206,72 +219,16 @@ class InstructionGenerateApi(Resource):
         )
         args = parser.parse_args()
         _, current_tenant_id = current_account_with_tenant()
-        code_template = (
-            Python3CodeProvider.get_default_code()
-            if args["language"] == "python"
-            else (JavascriptCodeProvider.get_default_code())
-            if args["language"] == "javascript"
-            else ""
-        )
+
         try:
-            # Generate from nothing for a workflow node
-            if (args["current"] == code_template or args["current"] == "") and args["node_id"] != "":
-                app = db.session.query(App).where(App.id == args["flow_id"]).first()
-                if not app:
-                    return {"error": f"app {args['flow_id']} not found"}, 400
-                workflow = WorkflowService().get_draft_workflow(app_model=app)
-                if not workflow:
-                    return {"error": f"workflow {args['flow_id']} not found"}, 400
-                nodes: Sequence = workflow.graph_dict["nodes"]
-                node = [node for node in nodes if node["id"] == args["node_id"]]
-                if len(node) == 0:
-                    return {"error": f"node {args['node_id']} not found"}, 400
-                node_type = node[0]["data"]["type"]
-                match node_type:
-                    case "llm":
-                        return LLMGenerator.generate_rule_config(
-                            current_tenant_id,
-                            instruction=args["instruction"],
-                            model_config=args["model_config"],
-                            no_variable=True,
-                        )
-                    case "agent":
-                        return LLMGenerator.generate_rule_config(
-                            current_tenant_id,
-                            instruction=args["instruction"],
-                            model_config=args["model_config"],
-                            no_variable=True,
-                        )
-                    case "code":
-                        return LLMGenerator.generate_code(
-                            tenant_id=current_tenant_id,
-                            instruction=args["instruction"],
-                            model_config=args["model_config"],
-                            code_language=args["language"],
-                        )
-                    case _:
-                        return {"error": f"invalid node type: {node_type}"}
-            if args["node_id"] == "" and args["current"] != "":  # For legacy app without a workflow
-                return LLMGenerator.instruction_modify_legacy(
-                    tenant_id=current_tenant_id,
-                    flow_id=args["flow_id"],
-                    current=args["current"],
-                    instruction=args["instruction"],
-                    model_config=args["model_config"],
-                    ideal_output=args["ideal_output"],
-                )
-            if args["node_id"] != "" and args["current"] != "":  # For workflow node
-                return LLMGenerator.instruction_modify_workflow(
-                    tenant_id=current_tenant_id,
-                    flow_id=args["flow_id"],
-                    node_id=args["node_id"],
-                    current=args["current"],
-                    instruction=args["instruction"],
-                    model_config=args["model_config"],
-                    ideal_output=args["ideal_output"],
-                    workflow_service=WorkflowService(),
-                )
-            return {"error": "incompatible parameters"}, 400
+            # Validate parameters
+            is_valid, error_message = self._validate_params(args["type"], args)
+            if not is_valid:
+                return {"error": error_message}, 400
+
+            # Route based on type
+            return self._handle_by_type(args["type"], args, current_tenant_id)
+
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -280,6 +237,131 @@ class InstructionGenerateApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
+
+    def _validate_params(self, request_type: str, args: dict) -> tuple[bool, str]:
+        """
+        Validate request parameters
+
+        Returns:
+            (is_valid, error_message)
+        """
+        # All types require instruction and model_config
+        if not args.get("instruction"):
+            return False, "instruction is required"
+        if not args.get("model_config"):
+            return False, "model_config is required"
+
+        # Edit types require flow_id and current
+        if request_type.endswith("_edit"):
+            if not args.get("flow_id"):
+                return False, f"{request_type} requires flow_id"
+            if not args.get("current"):
+                return False, f"{request_type} requires current content"
+
+        # Code generate requires language
+        if request_type == "workflow_code_generate":
+            if args.get("language") not in ["python", "javascript"]:
+                return False, "language must be 'python' or 'javascript'"
+
+        return True, ""
+
+    def _handle_by_type(self, request_type: str, args: dict, tenant_id: str):
+        """
+        Route handling based on type
+        """
+        match request_type:
+            case "legacy_prompt_generate":
+                # Legacy prompt generation doesn't exist, this is actually an edit
+                if not args.get("flow_id"):
+                    return {"error": "legacy_prompt_generate requires flow_id"}, 400
+                return LLMGenerator.instruction_modify_legacy(
+                    tenant_id=tenant_id,
+                    flow_id=args["flow_id"],
+                    current=args["current"],
+                    instruction=args["instruction"],
+                    model_config=args["model_config"],
+                    ideal_output=args["ideal_output"],
+                )
+
+            case "workflow_prompt_generate":
+                return LLMGenerator.generate_rule_config(
+                    tenant_id,
+                    instruction=args["instruction"],
+                    model_config=args["model_config"],
+                    no_variable=True,
+                )
+
+            case "workflow_code_generate":
+                return LLMGenerator.generate_code(
+                    tenant_id=tenant_id,
+                    instruction=args["instruction"],
+                    model_config=args["model_config"],
+                    code_language=args["language"],
+                )
+
+            case "workflow_prompt_edit":
+                return LLMGenerator.instruction_modify_workflow(
+                    tenant_id=tenant_id,
+                    flow_id=args["flow_id"],
+                    node_id=args["node_id"],
+                    current=args["current"],
+                    instruction=args["instruction"],
+                    model_config=args["model_config"],
+                    ideal_output=args["ideal_output"],
+                    workflow_service=WorkflowService(),
+                )
+
+            case "workflow_code_edit":
+                # Code edit uses the same workflow edit logic
+                return LLMGenerator.instruction_modify_workflow(
+                    tenant_id=tenant_id,
+                    flow_id=args["flow_id"],
+                    node_id=args["node_id"],
+                    current=args["current"],
+                    instruction=args["instruction"],
+                    model_config=args["model_config"],
+                    ideal_output=args["ideal_output"],
+                    workflow_service=WorkflowService(),
+                )
+
+            case "memory_template_generate":
+                return LLMGenerator.generate_memory_template(
+                    tenant_id=tenant_id,
+                    instruction=args["instruction"],
+                    model_config=args["model_config"],
+                )
+
+            case "memory_instruction_generate":
+                return LLMGenerator.generate_memory_instruction(
+                    tenant_id=tenant_id,
+                    instruction=args["instruction"],
+                    model_config=args["model_config"],
+                )
+
+            case "memory_template_edit":
+                return LLMGenerator.edit_memory_template(
+                    tenant_id=tenant_id,
+                    flow_id=args["flow_id"],
+                    node_id=args.get("node_id") or None,
+                    current=args["current"],
+                    instruction=args["instruction"],
+                    model_config=args["model_config"],
+                    ideal_output=args["ideal_output"],
+                )
+
+            case "memory_instruction_edit":
+                return LLMGenerator.edit_memory_instruction(
+                    tenant_id=tenant_id,
+                    flow_id=args["flow_id"],
+                    node_id=args.get("node_id") or None,
+                    current=args["current"],
+                    instruction=args["instruction"],
+                    model_config=args["model_config"],
+                    ideal_output=args["ideal_output"],
+                )
+
+            case _:
+                return {"error": f"Invalid request type: {request_type}"}, 400
 
 
 @console_ns.route("/instruction-generate/template")
