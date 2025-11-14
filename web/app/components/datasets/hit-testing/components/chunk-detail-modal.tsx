@@ -27,7 +27,7 @@ const ChunkDetailModal = ({
   onHide,
 }: ChunkDetailModalProps) => {
   const { t } = useTranslation()
-  const { segment, score, child_chunks, attachments = [] } = payload
+  const { segment, score, child_chunks, files = [] } = payload
   const { position, content, sign_content, keywords, document, answer } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
@@ -35,14 +35,14 @@ const ChunkDetailModal = ({
   const labelPrefix = isParentChildRetrieval ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
 
   const images = useMemo(() => {
-    return attachments.map(attachment => ({
-      name: attachment.name,
-      mimeType: attachment.mime_type,
-      sourceUrl: attachment.source_url,
-      size: attachment.size,
-      extension: attachment.extension,
+    return files.map(file => ({
+      name: file.name,
+      mimeType: file.mime_type,
+      sourceUrl: file.source_url,
+      size: file.size,
+      extension: file.extension,
     }))
-  }, [attachments])
+  }, [files])
 
   const showImages = images.length > 0
   const showKeywords = !isParentChildRetrieval && keywords && keywords.length > 0

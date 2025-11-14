@@ -15,27 +15,36 @@ import type {
   ExternalKnowledgeBaseHitTestingResponse,
   HitTestingRequest,
   HitTestingResponse,
+  Query,
 } from '@/models/datasets'
 import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
 import type { UseMutateAsyncFunction } from '@tanstack/react-query'
 import ImageUploaderInRetrievalTesting from '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing'
 import Textarea from './textarea'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { produce } from 'immer'
+import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
+import { v4 as uuid4 } from 'uuid'
 
 type QueryInputProps = {
   onUpdateList: () => void
   setHitResult: (res: HitTestingResponse) => void
   setExternalHitResult: (res: ExternalKnowledgeBaseHitTestingResponse) => void
   loading: boolean
-  text: string
-  setText: (v: string) => void
+  queries: Query[]
+  setQueries: (v: Query[]) => void
   isExternal?: boolean
   onClickRetrievalMethod: () => void
   retrievalConfig: RetrievalConfig
   isEconomy: boolean
   onSubmit?: () => void
   hitTestingMutation: UseMutateAsyncFunction<HitTestingResponse, Error, HitTestingRequest, unknown>
-  externalKnowledgeBaseHitTestingMutation: UseMutateAsyncFunction<ExternalKnowledgeBaseHitTestingResponse, Error, ExternalKnowledgeBaseHitTestingRequest, unknown>
+  externalKnowledgeBaseHitTestingMutation: UseMutateAsyncFunction<
+    ExternalKnowledgeBaseHitTestingResponse,
+    Error,
+    ExternalKnowledgeBaseHitTestingRequest,
+    unknown
+  >
 }
 
 const QueryInput = ({
@@ -43,8 +52,8 @@ const QueryInput = ({
   setHitResult,
   setExternalHitResult,
   loading,
-  text,
-  setText,
+  queries,
+  setQueries,
   isExternal = false,
   onClickRetrievalMethod,
   retrievalConfig,
@@ -61,19 +70,38 @@ const QueryInput = ({
     score_threshold: 0.5,
     score_threshold_enabled: false,
   })
+  const [initialImages] = useState<FileEntity[]>(() => {
+    return queries.filter(query => query.content_type === 'image_query').map(query => query.file_info!).map(item => ({
+      id: uuid4(),
+      name: item.name,
+      size: item.size,
+      mimeType: item.mime_type,
+      extension: item.extension,
+      sourceUrl: item.source_url,
+      uploadedId: item.id,
+      progress: 100,
+    })) || []
+  })
 
-  const handleSaveExternalRetrievalSettings = (data: {
+  const text = useMemo(() => {
+    return queries.find(query => query.content_type === 'text_query')?.content ?? ''
+  }, [queries])
+
+  const handleSaveExternalRetrievalSettings = useCallback((data: {
     top_k: number
     score_threshold: number
     score_threshold_enabled: boolean
   }) => {
     setExternalRetrievalSettings(data)
     setIsSettingsOpen(false)
-  }
+  }, [])
 
   const handleTextChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
-    setText(event.target.value)
-  }, [setText])
+    const newQueries = produce(queries, (draft) => {
+      draft.find(query => query.content_type === 'text_query')!.content = event.target.value
+    })
+    setQueries(newQueries)
+  }, [queries, setQueries])
 
   const onSubmit = useCallback(async () => {
     await hitTestingMutation({
@@ -178,7 +206,7 @@ const QueryInput = ({
           onChange={(files) => {
             console.log(files)
           }}
-          value={[]}
+          value={initialImages}
           showUploader={isMultimodal}
           className='grow'
           actionAreaClassName='px-4 py-2 shrink-0 bg-background-default'

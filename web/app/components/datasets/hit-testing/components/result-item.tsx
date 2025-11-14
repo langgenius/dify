@@ -24,7 +24,7 @@ const ResultItem = ({
   payload,
 }: ResultItemProps) => {
   const { t } = useTranslation()
-  const { segment, score, child_chunks, attachments = [] } = payload
+  const { segment, score, child_chunks, files = [] } = payload
   const data = segment
   const { position, word_count, content, sign_content, keywords, document } = data
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
@@ -41,14 +41,14 @@ const ResultItem = ({
   }] = useBoolean(false)
 
   const images = useMemo(() => {
-    return attachments.map(attachment => ({
-      name: attachment.name,
-      mimeType: attachment.mime_type,
-      sourceUrl: attachment.source_url,
-      size: attachment.size,
-      extension: attachment.extension,
+    return files.map(file => ({
+      name: file.name,
+      mimeType: file.mime_type,
+      sourceUrl: file.source_url,
+      size: file.size,
+      extension: file.extension,
     }))
-  }, [attachments])
+  }, [files])
 
   return (
     <div className={cn('cursor-pointer rounded-xl bg-chat-bubble-bg pt-3 hover:shadow-lg')} onClick={showDetailModal}>

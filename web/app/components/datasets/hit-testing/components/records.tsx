@@ -30,13 +30,13 @@ const Records = ({
     })
   }, [records, sortTimeOrder])
 
-  const getImageList = (attachments: Attachment[]) => {
-    return attachments.map(attachment => ({
-      name: attachment.name,
-      mimeType: attachment.mime_type,
-      sourceUrl: attachment.source_url,
-      size: attachment.size,
-      extension: attachment.extension,
+  const getImageList = (images: Attachment[]) => {
+    return images.map(image => ({
+      name: image.name,
+      mimeType: image.mime_type,
+      sourceUrl: image.source_url,
+      size: image.size,
+      extension: image.extension,
     }))
   }
 
@@ -65,9 +65,11 @@ const Records = ({
         </thead>
         <tbody>
           {sortedRecords.map((record) => {
-            const { id, content, source, created_at, attachments = [] } = record
+            const { id, source, created_at, queries } = record
             const SourceIcon = record.source === 'app' ? RiApps2Line : RiFocus2Line
-            const images = getImageList(attachments)
+            const content = queries.find(query => query.content_type === 'text_query')?.content
+            const imageQueries = queries.filter(query => query.content_type === 'image_query')?.map(query => query.file_info!)
+            const images = getImageList(imageQueries)
             return (
               <tr
                 key={id}
@@ -76,9 +78,11 @@ const Records = ({
               >
                 <td className='max-w-xs p-3 pr-2'>
                   <div className='flex flex-col gap-y-1'>
-                    <div className='line-clamp-2'>
-                      {content}
-                    </div>
+                    {content && (
+                      <div className='line-clamp-2'>
+                        {content}
+                      </div>
+                    )}
                     {images.length > 0 && (
                       <ImageList
                         images={images}

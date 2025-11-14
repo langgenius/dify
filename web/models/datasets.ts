@@ -587,15 +587,20 @@ export type SegmentsResponse = {
   page: number
 }
 
+export type Query = {
+  content: string
+  content_type: 'text_query' | 'image_query',
+  file_info: Attachment | null
+}
+
 export type HitTestingRecord = {
   id: string
-  content: string
   source: 'app' | 'hit_testing' | 'plugin'
   source_app_id: string
   created_by_role: 'account' | 'end_user'
   created_by: string
   created_at: number
-  attachments: Attachment[]
+  queries: Query[]
 }
 
 export type HitTestingChildChunk = {
@@ -610,7 +615,7 @@ export type HitTesting = {
   score: number
   tsne_position: TsnePosition
   child_chunks: HitTestingChildChunk[] | null
-  attachments: Attachment[]
+  files: Attachment[]
 }
 
 export type ExternalKnowledgeBaseHitTesting = {

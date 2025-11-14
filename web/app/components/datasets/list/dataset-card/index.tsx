@@ -203,13 +203,30 @@ const DatasetCard = ({
               {isExternalProvider && <span>{t('dataset.externalKnowledgeBase')}</span>}
               {!isExternalProvider && isShowDocModeInfo && (
                 <>
-                  {dataset.doc_form && <span>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</span>}
+                  {dataset.doc_form && (
+                    <span
+                      className='min-w-0 max-w-full truncate'
+                      title={t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}
+                    >
+                      {t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}
+                    </span>
+                  )}
                   {dataset.indexing_technique && (
-                    <span>
+                    <span
+                      className='min-w-0 max-w-full truncate'
+                      title={formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}
+                    >
                       {formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}
                     </span>
                   )}
-                  {dataset.is_multimodal && <span>{t('dataset.multimodal')}</span>}
+                  {dataset.is_multimodal && (
+                    <span
+                      className='min-w-0 max-w-full truncate'
+                      title={t('dataset.multimodal')}
+                    >
+                      {t('dataset.multimodal')}
+                    </span>
+                  )}
                 </>
               )}
             </div>

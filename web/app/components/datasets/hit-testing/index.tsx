@@ -16,6 +16,7 @@ import type {
   HitTesting,
   HitTestingRecord,
   HitTestingResponse,
+  Query,
 } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
@@ -49,9 +50,14 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>() // 初始化记录为空数组
   const [externalHitResult, setExternalHitResult] = useState<ExternalKnowledgeBaseHitTestingResponse | undefined>()
-  const [text, setText] = useState('')
+  const [queries, setQueries] = useState<Query[]>([{
+    content: '',
+    content_type: 'text_query',
+    file_info: null,
+  }])
+  const [queryInputKey, setQueryInputKey] = useState(Date.now())
 
-  const [currPage, setCurrPage] = React.useState<number>(0)
+  const [currPage, setCurrPage] = useState<number>(0)
   const { data: recordsRes, isLoading: isRecordsLoading } = useHitTestingRecords({ datasetId, page: currPage + 1, limit })
   const invalidateHitTestingRecords = useInvalidateHitTestingRecords(datasetId)
 
@@ -105,7 +111,9 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   )
 
   const handleClickRecord = useCallback((record: HitTestingRecord) => {
-    setText(record.content)
+    const { queries } = record
+    setQueries(queries)
+    setQueryInputKey(Date.now())
   }, [])
 
   useEffect(() => {
@@ -120,13 +128,14 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           <p className='mt-0.5 text-[13px] font-normal leading-4 text-text-tertiary'>{t('datasetHitTesting.desc')}</p>
         </div>
         <QueryInput
+          key={queryInputKey}
           setHitResult={setHitResult}
           setExternalHitResult={setExternalHitResult}
           onSubmit={showRightPanel}
           onUpdateList={invalidateHitTestingRecords}
           loading={isRetrievalLoading}
-          setText={setText}
-          text={text}
+          queries={queries}
+          setQueries={setQueries}
           isExternal={isExternal}
           onClickRetrievalMethod={() => setIsShowModifyRetrievalModal(true)}
           retrievalConfig={retrievalConfig}
