@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 
-from core.file.models import File
 from models.dataset import DocumentSegment
 
 

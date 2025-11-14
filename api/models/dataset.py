@@ -21,6 +21,7 @@ from configs import dify_config
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.tools.signature import sign_upload_file
 from extensions.ext_storage import storage
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 
@@ -997,6 +998,7 @@ class DatasetQuery(Base):
                                 "size": file_info.size,
                                 "extension": file_info.extension,
                                 "mime_type": file_info.mime_type,
+                                "source_url": sign_upload_file(file_info.id, file_info.extension),
                             }
                     else:
                         query["file_info"] = None

@@ -31,11 +31,11 @@ def sign_upload_file(upload_file_id: str, extension: str) -> str:
     """
     # Use internal URL for plugin/tool file access in Docker environments
     base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
-    file_preview_url = f"{base_url}/files/{upload_file_id}{extension}"
+    file_preview_url = f"{base_url}/files/{upload_file_id}/image-preview"
 
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
-    data_to_sign = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
+    data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
     secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
     sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()

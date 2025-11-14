@@ -105,6 +105,7 @@ file_info_fields = {
     "size": fields.Integer,
     "extension": fields.String,
     "mime_type": fields.String,
+    "source_url": fields.String,
 }
 
 content_fields = {
