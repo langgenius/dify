@@ -1,4 +1,7 @@
 const translation = {
+  title: 'Anotasi',
+  name: 'Balasan Anotasi',
+  editBy: 'Jawaban diedit oleh {{author}}',
   noData: {
     title: 'Tidak ada anotasi',
     description: 'Anda dapat mengedit anotasi selama penelusuran kesalahan aplikasi atau mengimpor anotasi secara massal di sini untuk respons berkualitas tinggi.',
@@ -89,8 +92,6 @@ const translation = {
     title: 'Pengaturan Awal Balasan Anotasi',
     configConfirmBtn: 'Simpan',
   },
-  title: 'Anotasi',
-  name: 'Balas Anotasi',
   embeddingModelSwitchTip: 'Model vektorisasi teks anotasi, model switching akan disematkan kembali, menghasilkan biaya tambahan.',
 }
 

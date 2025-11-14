@@ -28,10 +28,12 @@ const translation = {
       loading: '가공... 기다리세요',
       viewDetails: '세부 정보보기',
       error: '실행 중 오류가 발생했습니다.',
+      footerTip: 'The preview is the result of the last run',
     },
   },
   ragToolSuggestions: {
     title: 'RAG에 대한 제안',
+    noRecommendationPluginsInstalled: 'No recommendation plugins installed',
   },
 }
 

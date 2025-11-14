@@ -35,10 +35,6 @@ const translation = {
       description: '전체 텍스트 검색과 벡터 검색을 동시에 실행하고 사용자 쿼리에 가장 적합한 매치를 선택하기 위해 다시 랭크를 매깁니다. 재랭크 모델 API 설정이 필요합니다.',
       recommend: '추천',
     },
-    invertedIndex: {
-      title: '역 인덱스',
-      description: '효율적인 검색에 사용되는 구조입니다. 각 용어는 문서나 웹 페이지에 포함된 것을 가리키며, 용어마다 체계적으로 정리되어 있습니다.',
-    },
     change: '변경',
     changeRetrievalMethod: '검색 방법 변경',
     keyword_search: {
@@ -236,6 +232,10 @@ const translation = {
     title: '서비스 API',
     disabled: '장애인',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

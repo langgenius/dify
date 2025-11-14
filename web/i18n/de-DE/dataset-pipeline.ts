@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'Dokument-Einstellungen',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Alle Dateien',
@@ -128,7 +128,7 @@ const translation = {
     notSupportedFileType: 'Dieser Dateityp wird nicht unterstützt',
     emptyFolder: 'Dieser Ordner ist leer',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'Bestätigung',
@@ -149,6 +149,7 @@ const translation = {
   pipelineNameAndIcon: 'Name und Symbol der Pipeline',
   knowledgeDescriptionPlaceholder: 'Beschreiben Sie, was in dieser Wissensdatenbank enthalten ist. Eine detaillierte Beschreibung ermöglicht es der KI, genauer auf den Inhalt des Datensatzes zuzugreifen. Wenn das Feld leer ist, verwendet Dify die Standard-Trefferstrategie. (Fakultativ)',
   knowledgeNameAndIconPlaceholder: 'Bitte geben Sie den Namen der Knowledge Base ein.',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

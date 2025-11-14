@@ -42,11 +42,6 @@ const translation = {
         'पूर्ण-पाठ खोज और वेक्टर खोजों को एक साथ निष्पादित करें, पुनः रैंकिंग करें और उपयोगकर्ता के प्रश्न के लिए सर्वोत्तम मिलान का चयन करें। रीरैंक मॉडल APIs की कॉन्फ़िगरेशन आवश्यक।',
       recommend: 'सिफारिश',
     },
-    invertedIndex: {
-      title: 'उल्टा सूचकांक',
-      description:
-        'उल्टा सूचकांक एक ऐसी संरचना है जो कुशल पुनर्प्राप्ति के लिए उपयोग की जाती है। यह शब्दों द्वारा व्यवस्थित होती है, प्रत्येक शब्द उन दस्तावेज़ों या वेब पेजों की ओर इंगित करता है जिनमें वह होता है।',
-    },
     change: 'बदलें',
     changeRetrievalMethod: 'पुनर्प्राप्ति विधि बदलें',
     keyword_search: {
@@ -244,6 +239,10 @@ const translation = {
     disabled: 'अक्षम',
     title: 'सेवा एपीआई',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

@@ -28,10 +28,12 @@ const translation = {
       viewDetails: 'विवरण देखें',
       error: 'कार्यवाही के दौरान त्रुटि हुई',
       loading: 'प्रसंस्करण हो रहा है... कृपया प्रतीक्षा करें',
+      footerTip: 'The preview is the result of the last run',
     },
   },
   ragToolSuggestions: {
     title: 'आरएजी के लिए सुझाव',
+    noRecommendationPluginsInstalled: 'No recommendation plugins installed',
   },
 }
 
