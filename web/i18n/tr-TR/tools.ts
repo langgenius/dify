@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'Özel Araç Oluştur',
   customToolTip: 'Dify özel araçları hakkında daha fazla bilgi edinin',
   type: {
-    all: 'Hepsi',
     builtIn: 'Yerleşik',
     custom: 'Özel',
     workflow: 'Workflow',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: 'Kimlik bilgilerini yapılandırdıktan sonra, çalışma alanındaki tüm üyeler uygulamaları düzenlerken bu aracı kullanabilir.',
   },
   includeToolNum: '{{num}} araç dahil',
-  addTool: 'Araç Ekle',
   addToolModal: {
     type: 'Tür',
     category: 'Kategori',
-    add: 'Ekle',
     added: 'Eklendi',
-    manageInTools: 'Araçlarda Yönet',
     custom: {
       title: 'Mevcut özel araç yok',
       tip: 'Özel bir araç oluşturun',
