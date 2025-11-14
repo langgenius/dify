@@ -10,7 +10,7 @@ from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.__base.tool_provider import ToolProviderController
 
 if TYPE_CHECKING:
-    from core.tools.__base.tool_runtime import ToolRuntime
+    pass
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ToolDescription,

@@ -52,7 +52,7 @@ def _setup_gevent_compatibility():
     _gevent_compatibility_setup = True
 
 
-_session_maker: Optional[sessionmaker[Session]] = None
+_session_maker: sessionmaker[Session] | None = None
 
 
 def get_session_maker() -> sessionmaker[Session]:

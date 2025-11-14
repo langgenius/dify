@@ -6,11 +6,10 @@ from core.entities.provider_entities import ProviderConfig
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool_provider import ToolProviderController
-
 from core.tools.builtin_tool.tool import BuiltinTool
 
 if TYPE_CHECKING:
-    from core.tools.__base.tool_runtime import ToolRuntime
+    pass
 from core.tools.entities.tool_entities import (
     OAuthSchema,
     ToolEntity,

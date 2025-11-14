@@ -1,11 +1,10 @@
 from typing import TYPE_CHECKING, Any
 
 from core.plugin.impl.tool import PluginToolManager
-
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 
 if TYPE_CHECKING:
-    from core.tools.__base.tool_runtime import ToolRuntime
+    pass
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin, ToolProviderType
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.plugin_tool.tool import PluginTool
