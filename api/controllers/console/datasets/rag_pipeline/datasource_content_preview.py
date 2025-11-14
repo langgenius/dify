@@ -13,18 +13,18 @@ from models.dataset import Pipeline
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
-class parser(BaseModel):
+class Parser(BaseModel):
     inputs: dict
     datasource_type: str
     credential_id: str | None
 
 
-console_ns.add_model(parser.__name__, parser.model_json_schema())
+console_ns.add_model(Parser.__name__, Parser.model_json_schema())
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview")
 class DataSourceContentPreviewApi(Resource):
-    @api.expect(console_ns.models[parser.__name__], validate=True)
+    @api.expect(console_ns.models[Parser.__name__], validate=True)
     @setup_required
     @login_required
     @account_initialization_required
@@ -36,7 +36,7 @@ class DataSourceContentPreviewApi(Resource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        args = parser.model_validate(api.payload)
+        args = Parser.model_validate(api.payload)
 
         inputs = args.inputs
         datasource_type = args.datasource_type
