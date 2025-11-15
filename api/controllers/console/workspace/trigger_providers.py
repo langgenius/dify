@@ -1,3 +1,4 @@
+from controllers.console import console_ns
 import logging
 
 from flask import make_response, redirect, request
