@@ -33,7 +33,7 @@ from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService
-from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
+from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
 
 # Define parsers for document operations
@@ -53,17 +53,20 @@ document_text_create_parser = (
     .add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
 )
 
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
 
 class DocumentTextUpdate(BaseModel):
     name: str | None = None
     text: str | None = None
-    process_rule: dict | None = None
+    process_rule: ProcessRule | None = None
     doc_form: str = "text_model"
     doc_language: str = "English"
-    retrieval_model: dict | None = None
+    retrieval_model: RetrievalModel | None = None
 
 
-service_api_ns.schema_model(DocumentTextUpdate.__name__, DocumentTextUpdate.model_json_schema())
+for m in [ProcessRule, RetrievalModel, DocumentTextUpdate]:
+    service_api_ns.schema_model(m.__name__, m.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
 
 @service_api_ns.route(

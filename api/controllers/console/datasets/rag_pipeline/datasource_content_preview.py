@@ -12,6 +12,8 @@ from models import Account
 from models.dataset import Pipeline
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
 
 class Parser(BaseModel):
     inputs: dict
@@ -19,7 +21,7 @@ class Parser(BaseModel):
     credential_id: str | None = None
 
 
-console_ns.schema_model(Parser.__name__, Parser.model_json_schema())
+console_ns.schema_model(Parser.__name__, Parser.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview")
