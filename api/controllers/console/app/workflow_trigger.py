@@ -1,4 +1,3 @@
-from controllers.console import console_ns
 import logging
 
 from flask_restx import Resource, marshal_with, reqparse
@@ -7,6 +6,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db

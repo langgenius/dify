@@ -1,4 +1,3 @@
-from controllers.console import console_ns
 import logging
 
 from flask import make_response, redirect, request
@@ -7,6 +6,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import NotFoundError
 from core.model_runtime.utils.encoders import jsonable_encoder
