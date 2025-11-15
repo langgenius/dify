@@ -18,6 +18,7 @@ type Props = {
   unitPosition?: 'inline' | 'suffix'
   resetHint?: string
   resetInDays?: number
+  hideIcon?: boolean
 }
 
 const WARNING_THRESHOLD = 80
@@ -33,6 +34,7 @@ const UsageInfo: FC<Props> = ({
   unitPosition = 'suffix',
   resetHint,
   resetInDays,
+  hideIcon = false,
 }) => {
   const { t } = useTranslation()
 
@@ -60,7 +62,9 @@ const UsageInfo: FC<Props> = ({
 
   return (
     <div className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}>
-      <Icon className='h-4 w-4 text-text-tertiary' />
+      {!hideIcon && Icon && (
+        <Icon className='h-4 w-4 text-text-tertiary' />
+      )}
       <div className='flex items-center gap-1'>
         <div className='system-xs-medium text-text-tertiary'>{name}</div>
         {tooltip && (

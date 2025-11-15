@@ -11,6 +11,13 @@ const translation = {
     perMonth: '月あたり',
     resetsIn: '{{count,number}}日後にリセット',
   },
+  triggerLimitModal: {
+    title: 'さらにトリガーイベントを利用するにはアップグレードしてください',
+    description: 'このプランのワークフロー・トリガーイベントの上限に達しました。',
+    dismiss: '閉じる',
+    upgrade: 'アップグレード',
+    usageTitle: 'TRIGGER EVENTS',
+  },
   upgradeBtn: {
     plain: 'プランをアップグレード',
     encourage: '今すぐアップグレード',

@@ -11,6 +11,13 @@ const translation = {
     perMonth: '每月',
     resetsIn: '{{count,number}} 天后重置',
   },
+  triggerLimitModal: {
+    title: '升级以解锁更多触发事件额度',
+    description: '当前套餐的工作流触发事件额度已达上限。',
+    dismiss: '知道了',
+    upgrade: '升级',
+    usageTitle: '触发事件额度',
+  },
   upgradeBtn: {
     plain: '查看套餐',
     encourage: '立即升级',
