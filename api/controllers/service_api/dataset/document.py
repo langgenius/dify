@@ -215,7 +215,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
             }
             args["data_source"] = data_source
         # validate args
-        args["original_document_id"] = document_id
+        args["original_document_id"] = str(document_id)
         knowledge_config = KnowledgeConfig.model_validate(args)
         DocumentService.document_create_args_validate(knowledge_config)
 
