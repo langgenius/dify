@@ -20,10 +20,7 @@ import type { AppIconType, RetrievalConfig } from '@/types/app'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import {
-  useModelList,
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fetchMembers } from '@/service/common'
@@ -79,9 +76,7 @@ const Form = () => {
         model: '',
       },
   )
-  const {
-    modelList: rerankModelList,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const previousAppIcon = useRef(DEFAULT_APP_ICON)
 

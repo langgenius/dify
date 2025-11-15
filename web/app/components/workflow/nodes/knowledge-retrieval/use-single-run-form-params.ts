@@ -23,6 +23,8 @@ const useSingleRunFormParams = ({
 }: Params) => {
   const { t } = useTranslation()
   const query = runInputData.query
+  const queryAttachment = runInputData.queryAttachment
+
   const setQuery = useCallback((newQuery: string) => {
     setRunInputData({
       ...runInputData,
@@ -30,27 +32,44 @@ const useSingleRunFormParams = ({
     })
   }, [runInputData, setRunInputData])
 
+  const setQueryAttachment = useCallback((newQueryAttachment: string) => {
+    setRunInputData({
+      ...runInputData,
+      queryAttachment: newQueryAttachment,
+    })
+  }, [runInputData, setRunInputData])
+
   const forms = useMemo(() => {
     return [
       {
         inputs: [{
-          label: t(`${i18nPrefix}.queryVariable`)!,
+          label: t(`${i18nPrefix}.queryText`)!,
           variable: 'query',
           type: InputVarType.paragraph,
-          required: true,
         }],
         values: { query },
         onChange: (keyValue: Record<string, any>) => setQuery(keyValue.query),
+      },
+      {
+        inputs: [{
+          label: t(`${i18nPrefix}.queryAttachment`)!,
+          variable: 'queryAttachment',
+          type: InputVarType.singleFile,
+        }],
+        values: { queryAttachment },
+        onChange: (keyValue: Record<string, any>) => setQueryAttachment(keyValue.queryAttachment),
       },
     ]
   }, [query, setQuery, t])
 
   const getDependentVars = () => {
-    return [payload.query_variable_selector]
+    return [payload.query_variable_selector, payload.query_attachment_selector]
   }
   const getDependentVar = (variable: string) => {
-    if(variable === 'query')
+    if (variable === 'query')
       return payload.query_variable_selector
+    if (variable === 'queryAttachment')
+      return payload.query_attachment_selector
   }
 
   return {

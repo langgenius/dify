@@ -556,6 +556,8 @@ const translation = {
     },
     knowledgeRetrieval: {
       queryVariable: 'Query Variable',
+      queryText: 'Query Text',
+      queryAttachment: 'Query Images',
       knowledge: 'Knowledge',
       outputVars: {
         output: 'Retrieval segmented data',
@@ -564,6 +566,7 @@ const translation = {
         icon: 'Segmented icon',
         url: 'Segmented URL',
         metadata: 'Other metadata',
+        files: 'Retrieved files',
       },
       metadata: {
         title: 'Metadata Filtering',
