@@ -5,7 +5,7 @@ from flask_restx import Resource, marshal_with, reqparse
 
 import services
 from configs import dify_config
-from controllers.console import console_ns
+from controllers.console import api, console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
     EmailCodeError,
@@ -48,20 +48,25 @@ class MemberListApi(Resource):
         return {"result": "success", "accounts": members}, 200
 
 
+parser_invite = (
+    reqparse.RequestParser()
+    .add_argument("emails", type=list, required=True, location="json")
+    .add_argument("role", type=str, required=True, default="admin", location="json")
+    .add_argument("language", type=str, required=False, location="json")
+)
+
+
 @console_ns.route("/workspaces/current/members/invite-email")
 class MemberInviteEmailApi(Resource):
     """Invite a new member by email."""
 
+    @api.expect(parser_invite)
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("members")
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("emails", type=list, required=True, location="json")
-        parser.add_argument("role", type=str, required=True, default="admin", location="json")
-        parser.add_argument("language", type=str, required=False, location="json")
-        args = parser.parse_args()
+        args = parser_invite.parse_args()
 
         invitee_emails = args["emails"]
         invitee_role = args["role"]
@@ -141,17 +146,19 @@ class MemberCancelInviteApi(Resource):
         }, 200
 
 
+parser_update = reqparse.RequestParser().add_argument("role", type=str, required=True, location="json")
+
+
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/update-role")
 class MemberUpdateRoleApi(Resource):
     """Update member role."""
 
+    @api.expect(parser_update)
     @setup_required
     @login_required
     @account_initialization_required
     def put(self, member_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("role", type=str, required=True, location="json")
-        args = parser.parse_args()
+        args = parser_update.parse_args()
         new_role = args["role"]
 
         if not TenantAccountRole.is_valid_role(new_role):
@@ -190,18 +197,20 @@ class DatasetOperatorMemberListApi(Resource):
         return {"result": "success", "accounts": members}, 200
 
 
+parser_send = reqparse.RequestParser().add_argument("language", type=str, required=False, location="json")
+
+
 @console_ns.route("/workspaces/current/members/send-owner-transfer-confirm-email")
 class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
+    @api.expect(parser_send)
     @setup_required
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("language", type=str, required=False, location="json")
-        args = parser.parse_args()
+        args = parser_send.parse_args()
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
@@ -229,17 +238,22 @@ class SendOwnerTransferEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
+parser_owner = (
+    reqparse.RequestParser()
+    .add_argument("code", type=str, required=True, location="json")
+    .add_argument("token", type=str, required=True, nullable=False, location="json")
+)
+
+
 @console_ns.route("/workspaces/current/members/owner-transfer-check")
 class OwnerTransferCheckApi(Resource):
+    @api.expect(parser_owner)
     @setup_required
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("code", type=str, required=True, location="json")
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
-        args = parser.parse_args()
+        args = parser_owner.parse_args()
         # check if the current user is the owner of the workspace
         current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
@@ -274,16 +288,20 @@ class OwnerTransferCheckApi(Resource):
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
+parser_owner_transfer = reqparse.RequestParser().add_argument(
+    "token", type=str, required=True, nullable=False, location="json"
+)
+
+
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
 class OwnerTransfer(Resource):
+    @api.expect(parser_owner_transfer)
     @setup_required
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self, member_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
-        args = parser.parse_args()
+        args = parser_owner_transfer.parse_args()
 
         # check if the current user is the owner of the workspace
         current_user, _ = current_account_with_tenant()

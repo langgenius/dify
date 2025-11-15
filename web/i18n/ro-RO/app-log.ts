@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'Trimestrul curent',
       yearToDate: 'Anul curent',
       allTime: 'Tot timpul',
+      custom: 'Personalizat',
+      last30days: 'Ultimele 30 de zile',
     },
     annotation: {
       all: 'Toate',
@@ -82,6 +84,7 @@ const translation = {
     workflowTitle: 'Detalii jurnal',
     fileListDetail: 'Amănunt',
     fileListLabel: 'Detalii fișier',
+    testWithParams: 'Test cu parametri',
   },
   promptLog: 'Jurnal prompt',
   agentLog: 'Jurnal agent',

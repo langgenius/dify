@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useParams } from 'next/navigation'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiRobot2Fill,
   RiRobot2Line,
@@ -19,6 +19,7 @@ import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
 import type { AppListResponse } from '@/models/app'
 import { useAppContext } from '@/context/app-context'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { AppModeEnum } from '@/types/app'
 
 const getKey = (
   pageIndex: number,
@@ -79,7 +80,7 @@ const AppNav = () => {
             return `/app/${app.id}/overview`
           }
           else {
-            if (app.mode === 'workflow' || app.mode === 'advanced-chat')
+            if (app.mode === AppModeEnum.WORKFLOW || app.mode === AppModeEnum.ADVANCED_CHAT)
               return `/app/${app.id}/workflow`
             else
               return `/app/${app.id}/configuration`

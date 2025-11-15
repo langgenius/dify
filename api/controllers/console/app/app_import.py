@@ -1,11 +1,12 @@
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
 
+from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
+    edit_permission_required,
     setup_required,
 )
 from extensions.ext_database import db
@@ -18,30 +19,32 @@ from services.feature_service import FeatureService
 
 from .. import console_ns
 
+parser = (
+    reqparse.RequestParser()
+    .add_argument("mode", type=str, required=True, location="json")
+    .add_argument("yaml_content", type=str, location="json")
+    .add_argument("yaml_url", type=str, location="json")
+    .add_argument("name", type=str, location="json")
+    .add_argument("description", type=str, location="json")
+    .add_argument("icon_type", type=str, location="json")
+    .add_argument("icon", type=str, location="json")
+    .add_argument("icon_background", type=str, location="json")
+    .add_argument("app_id", type=str, location="json")
+)
+
 
 @console_ns.route("/apps/imports")
 class AppImportApi(Resource):
+    @api.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(app_import_fields)
     @cloud_edition_billing_resource_check("apps")
+    @edit_permission_required
     def post(self):
         # Check user role first
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("mode", type=str, required=True, location="json")
-        parser.add_argument("yaml_content", type=str, location="json")
-        parser.add_argument("yaml_url", type=str, location="json")
-        parser.add_argument("name", type=str, location="json")
-        parser.add_argument("description", type=str, location="json")
-        parser.add_argument("icon_type", type=str, location="json")
-        parser.add_argument("icon", type=str, location="json")
-        parser.add_argument("icon_background", type=str, location="json")
-        parser.add_argument("app_id", type=str, location="json")
         args = parser.parse_args()
 
         # Create service with session
@@ -80,11 +83,10 @@ class AppImportConfirmApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(app_import_fields)
+    @edit_permission_required
     def post(self, import_id):
         # Check user role first
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
         # Create service with session
         with Session(db.engine) as session:
@@ -107,11 +109,8 @@ class AppImportCheckDependenciesApi(Resource):
     @get_app_model
     @account_initialization_required
     @marshal_with(app_import_check_dependencies_fields)
+    @edit_permission_required
     def get(self, app_model: App):
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         with Session(db.engine) as session:
             import_service = AppDslService(session)
             result = import_service.check_dependencies(app_model=app_model)

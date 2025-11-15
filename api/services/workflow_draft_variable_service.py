@@ -32,8 +32,7 @@ from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
-from models import App, Conversation
-from models.account import Account
+from models import Account, App, Conversation
 from models.enums import DraftVariableType
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, is_system_variable_editable
 from repositories.factory import DifyAPIRepositoryFactory
@@ -809,7 +808,11 @@ class DraftVariableSaver:
             # We only save conversation variable here.
             if selector[0] != CONVERSATION_VARIABLE_NODE_ID:
                 continue
-            segment = WorkflowDraftVariable.build_segment_with_type(segment_type=item.value_type, value=item.new_value)
+            # Conversation variables are exposed as NUMBER in the UI even if their
+            # persisted type is INTEGER. Allow float updates by loosening the type
+            # to NUMBER here so downstream storage infers the precise subtype.
+            segment_type = SegmentType.NUMBER if item.value_type == SegmentType.INTEGER else item.value_type
+            segment = WorkflowDraftVariable.build_segment_with_type(segment_type=segment_type, value=item.new_value)
             draft_vars.append(
                 WorkflowDraftVariable.new_conversation_variable(
                     app_id=self._app_id,
@@ -1027,7 +1030,7 @@ class DraftVariableSaver:
             return
         if self._node_type == NodeType.VARIABLE_ASSIGNER:
             draft_vars = self._build_from_variable_assigner_mapping(process_data=process_data)
-        elif self._node_type == NodeType.START:
+        elif self._node_type == NodeType.START or self._node_type.is_trigger_node:
             draft_vars = self._build_variables_from_start_mapping(outputs)
         else:
             draft_vars = self._build_variables_from_mapping(outputs)

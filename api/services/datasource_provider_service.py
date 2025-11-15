@@ -11,18 +11,27 @@ from core.helper import encrypter
 from core.helper.name_generator import generate_incremental_name
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.model_runtime.entities.provider_entities import FormType
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
-from core.tools.entities.tool_entities import CredentialType
 from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from libs.login import current_account_with_tenant
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID
 from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
+
+
+def get_current_user():
+    from libs.login import current_user
+    from models.account import Account
+    from models.model import EndUser
+
+    if not isinstance(current_user._get_current_object(), (Account, EndUser)):  # type: ignore
+        raise TypeError(f"current_user must be Account or EndUser, got {type(current_user).__name__}")
+    return current_user
 
 
 class DatasourceProviderService:
@@ -93,8 +102,6 @@ class DatasourceProviderService:
         """
         get credential by id
         """
-        current_user, _ = current_account_with_tenant()
-
         with Session(db.engine) as session:
             if credential_id:
                 datasource_provider = (
@@ -111,6 +118,7 @@ class DatasourceProviderService:
                 return {}
             # refresh the credentials
             if datasource_provider.expires_at != -1 and (datasource_provider.expires_at - 60) < int(time.time()):
+                current_user = get_current_user()
                 decrypted_credentials = self.decrypt_datasource_provider_credentials(
                     tenant_id=tenant_id,
                     datasource_provider=datasource_provider,
@@ -159,8 +167,6 @@ class DatasourceProviderService:
         """
         get all datasource credentials by provider
         """
-        current_user, _ = current_account_with_tenant()
-
         with Session(db.engine) as session:
             datasource_providers = (
                 session.query(DatasourceProvider)
@@ -170,6 +176,7 @@ class DatasourceProviderService:
             )
             if not datasource_providers:
                 return []
+            current_user = get_current_user()
             # refresh the credentials
             real_credentials_list = []
             for datasource_provider in datasource_providers:
@@ -331,7 +338,7 @@ class DatasourceProviderService:
                     key: value if value != HIDDEN_VALUE else original_params.get(key, UNKNOWN_VALUE)
                     for key, value in client_params.items()
                 }
-                tenant_oauth_client_params.client_params = encrypter.encrypt(new_params)
+                tenant_oauth_client_params.client_params = dict(encrypter.encrypt(new_params))
 
             if enabled is not None:
                 tenant_oauth_client_params.enabled = enabled
@@ -367,7 +374,7 @@ class DatasourceProviderService:
 
     def get_tenant_oauth_client(
         self, tenant_id: str, datasource_provider_id: DatasourceProviderID, mask: bool = False
-    ) -> dict[str, Any] | None:
+    ) -> Mapping[str, Any] | None:
         """
         get tenant oauth client
         """
@@ -383,7 +390,7 @@ class DatasourceProviderService:
         if tenant_oauth_client_params:
             encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
             if mask:
-                return encrypter.mask_tool_credentials(encrypter.decrypt(tenant_oauth_client_params.client_params))
+                return encrypter.mask_plugin_credentials(encrypter.decrypt(tenant_oauth_client_params.client_params))
             else:
                 return encrypter.decrypt(tenant_oauth_client_params.client_params)
         return None
@@ -427,7 +434,7 @@ class DatasourceProviderService:
             )
             if tenant_oauth_client_params:
                 encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
-                return encrypter.decrypt(tenant_oauth_client_params.client_params)
+                return dict(encrypter.decrypt(tenant_oauth_client_params.client_params))
 
             provider_controller = self.provider_manager.fetch_datasource_provider(
                 tenant_id=tenant_id, provider_id=str(datasource_provider_id)
@@ -608,7 +615,6 @@ class DatasourceProviderService:
         """
         provider_name = provider_id.provider_name
         plugin_id = provider_id.plugin_id
-        current_user, _ = current_account_with_tenant()
 
         with Session(db.engine) as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{CredentialType.API_KEY}"
@@ -630,6 +636,7 @@ class DatasourceProviderService:
                     raise ValueError("Authorization name is already exists")
 
                 try:
+                    current_user = get_current_user()
                     self.provider_manager.validate_provider_credentials(
                         tenant_id=tenant_id,
                         user_id=current_user.id,
@@ -907,7 +914,6 @@ class DatasourceProviderService:
         """
         update datasource credentials.
         """
-        current_user, _ = current_account_with_tenant()
 
         with Session(db.engine) as session:
             datasource_provider = (
@@ -944,6 +950,7 @@ class DatasourceProviderService:
                     for key, value in credentials.items()
                 }
                 try:
+                    current_user = get_current_user()
                     self.provider_manager.validate_provider_credentials(
                         tenant_id=tenant_id,
                         user_id=current_user.id,

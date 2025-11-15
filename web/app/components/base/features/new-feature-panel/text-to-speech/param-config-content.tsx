@@ -1,6 +1,6 @@
 'use client'
 import useSWR from 'swr'
-import produce from 'immer'
+import { produce } from 'immer'
 import React, { Fragment } from 'react'
 import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'

@@ -35,37 +35,31 @@ from services.entities.knowledge_entities.knowledge_entities import KnowledgeCon
 from services.file_service import FileService
 
 # Define parsers for document operations
-document_text_create_parser = reqparse.RequestParser()
-document_text_create_parser.add_argument("name", type=str, required=True, nullable=False, location="json")
-document_text_create_parser.add_argument("text", type=str, required=True, nullable=False, location="json")
-document_text_create_parser.add_argument("process_rule", type=dict, required=False, nullable=True, location="json")
-document_text_create_parser.add_argument("original_document_id", type=str, required=False, location="json")
-document_text_create_parser.add_argument(
-    "doc_form", type=str, default="text_model", required=False, nullable=False, location="json"
-)
-document_text_create_parser.add_argument(
-    "doc_language", type=str, default="English", required=False, nullable=False, location="json"
-)
-document_text_create_parser.add_argument(
-    "indexing_technique", type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False, location="json"
-)
-document_text_create_parser.add_argument("retrieval_model", type=dict, required=False, nullable=True, location="json")
-document_text_create_parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
-document_text_create_parser.add_argument(
-    "embedding_model_provider", type=str, required=False, nullable=True, location="json"
+document_text_create_parser = (
+    reqparse.RequestParser()
+    .add_argument("name", type=str, required=True, nullable=False, location="json")
+    .add_argument("text", type=str, required=True, nullable=False, location="json")
+    .add_argument("process_rule", type=dict, required=False, nullable=True, location="json")
+    .add_argument("original_document_id", type=str, required=False, location="json")
+    .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
+    .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
+    .add_argument(
+        "indexing_technique", type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False, location="json"
+    )
+    .add_argument("retrieval_model", type=dict, required=False, nullable=True, location="json")
+    .add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
+    .add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
 )
 
-document_text_update_parser = reqparse.RequestParser()
-document_text_update_parser.add_argument("name", type=str, required=False, nullable=True, location="json")
-document_text_update_parser.add_argument("text", type=str, required=False, nullable=True, location="json")
-document_text_update_parser.add_argument("process_rule", type=dict, required=False, nullable=True, location="json")
-document_text_update_parser.add_argument(
-    "doc_form", type=str, default="text_model", required=False, nullable=False, location="json"
+document_text_update_parser = (
+    reqparse.RequestParser()
+    .add_argument("name", type=str, required=False, nullable=True, location="json")
+    .add_argument("text", type=str, required=False, nullable=True, location="json")
+    .add_argument("process_rule", type=dict, required=False, nullable=True, location="json")
+    .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
+    .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
+    .add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
 )
-document_text_update_parser.add_argument(
-    "doc_language", type=str, default="English", required=False, nullable=False, location="json"
-)
-document_text_update_parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
 
 
 @service_api_ns.route(
@@ -598,7 +592,7 @@ class DocumentApi(DatasetApiResource):
                 "name": document.name,
                 "created_from": document.created_from,
                 "created_by": document.created_by,
-                "created_at": document.created_at.timestamp(),
+                "created_at": int(document.created_at.timestamp()),
                 "tokens": document.tokens,
                 "indexing_status": document.indexing_status,
                 "completed_at": int(document.completed_at.timestamp()) if document.completed_at else None,
@@ -631,7 +625,7 @@ class DocumentApi(DatasetApiResource):
                 "name": document.name,
                 "created_from": document.created_from,
                 "created_by": document.created_by,
-                "created_at": document.created_at.timestamp(),
+                "created_at": int(document.created_at.timestamp()),
                 "tokens": document.tokens,
                 "indexing_status": document.indexing_status,
                 "completed_at": int(document.completed_at.timestamp()) if document.completed_at else None,

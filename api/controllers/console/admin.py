@@ -15,6 +15,7 @@ from constants.languages import supported_language
 from controllers.console import api, console_ns
 from controllers.console.wraps import only_edition_cloud
 from extensions.ext_database import db
+from libs.token import extract_access_token
 from models.model import App, InstalledApp, RecommendedApp
 
 
@@ -24,19 +25,9 @@ def admin_required(view: Callable[P, R]):
         if not dify_config.ADMIN_API_KEY:
             raise Unauthorized("API key is invalid.")
 
-        auth_header = request.headers.get("Authorization")
-        if auth_header is None:
+        auth_token = extract_access_token(request)
+        if not auth_token:
             raise Unauthorized("Authorization header is missing.")
-
-        if " " not in auth_header:
-            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
-        auth_scheme, auth_token = auth_header.split(None, 1)
-        auth_scheme = auth_scheme.lower()
-
-        if auth_scheme != "bearer":
-            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
         if auth_token != dify_config.ADMIN_API_KEY:
             raise Unauthorized("API key is invalid.")
 
@@ -70,15 +61,17 @@ class InsertExploreAppListApi(Resource):
     @only_edition_cloud
     @admin_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("app_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("desc", type=str, location="json")
-        parser.add_argument("copyright", type=str, location="json")
-        parser.add_argument("privacy_policy", type=str, location="json")
-        parser.add_argument("custom_disclaimer", type=str, location="json")
-        parser.add_argument("language", type=supported_language, required=True, nullable=False, location="json")
-        parser.add_argument("category", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("position", type=int, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("app_id", type=str, required=True, nullable=False, location="json")
+            .add_argument("desc", type=str, location="json")
+            .add_argument("copyright", type=str, location="json")
+            .add_argument("privacy_policy", type=str, location="json")
+            .add_argument("custom_disclaimer", type=str, location="json")
+            .add_argument("language", type=supported_language, required=True, nullable=False, location="json")
+            .add_argument("category", type=str, required=True, nullable=False, location="json")
+            .add_argument("position", type=int, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         app = db.session.execute(select(App).where(App.id == args["app_id"])).scalar_one_or_none()

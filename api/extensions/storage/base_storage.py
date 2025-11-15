@@ -8,7 +8,7 @@ class BaseStorage(ABC):
     """Interface for file storage."""
 
     @abstractmethod
-    def save(self, filename, data):
+    def save(self, filename: str, data: bytes):
         raise NotImplementedError
 
     @abstractmethod

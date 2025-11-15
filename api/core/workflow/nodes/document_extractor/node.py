@@ -10,10 +10,10 @@ from typing import Any
 import chardet
 import docx
 import pandas as pd
-import pypandoc  # type: ignore
-import pypdfium2  # type: ignore
-import webvtt  # type: ignore
-import yaml  # type: ignore
+import pypandoc
+import pypdfium2
+import webvtt
+import yaml
 from docx.document import Document
 from docx.oxml.table import CT_Tbl
 from docx.oxml.text.paragraph import CT_P
@@ -171,6 +171,7 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             ".txt"
             | ".markdown"
             | ".md"
+            | ".mdx"
             | ".html"
             | ".htm"
             | ".xml"

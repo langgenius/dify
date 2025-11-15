@@ -88,7 +88,7 @@ const translation = {
     freeTrialTip: '200 회의 OpenAI 호출 무료 체험을 받으세요. ',
     annualBilling: '연간 청구',
     getStarted: '시작하기',
-    apiRateLimitUnit: '{{count,number}}/일',
+    apiRateLimitUnit: '{{count,number}}/월',
     freeTrialTipSuffix: '신용카드 없음',
     teamWorkspace: '{{count,number}} 팀 작업 공간',
     self: '자체 호스팅',
