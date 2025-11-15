@@ -19,7 +19,7 @@ class Parser(BaseModel):
     credential_id: str | None = None
 
 
-console_ns.model(Parser.__name__, Parser.model_json_schema(), strict=True)
+console_ns.schema_model(Parser.__name__, Parser.model_json_schema())
 
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview")
