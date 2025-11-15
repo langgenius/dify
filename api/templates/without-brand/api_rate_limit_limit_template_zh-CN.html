@@ -18,9 +18,10 @@
     .card {
       width: 600px;
       min-height: 434px;
-      margin: 40px auto;
+      margin: 40px auto 0;
       display: flex;
       flex-direction: column;
+      align-items: flex-start;
       background: #fcfcfd;
       border: 1px solid #ffffff;
       box-shadow: 0px 3px 10px -2px rgba(9, 9, 11, 0.08), 0px 2px 4px -2px rgba(9, 9, 11, 0.06);
@@ -28,15 +29,22 @@
     }
 
     .card-header {
-      padding: 36px 48px 24px;
-      min-height: 101px;
+      display: flex;
+      padding: 36px 48px 24px 48px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      align-self: stretch;
     }
+
 
     .card-content {
       display: flex;
+      padding: 8px 48px 48px 48px;
       flex-direction: column;
+      align-items: flex-start;
       gap: 16px;
-      padding: 8px 48px 48px;
+      align-self: stretch;
       width: 100%;
     }
 
@@ -52,7 +60,7 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      padding: 16px 0;
+      padding: 16px 0 0;
     }
 
     .body-text {
@@ -93,17 +101,53 @@
       letter-spacing: -0.005em;
       color: #354052;
     }
+
+    .signature {
+      margin-top: 28px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .signature-text {
+      margin: 0;
+      font-size: 14px;
+      line-height: 20px;
+      letter-spacing: -0.005em;
+      color: #354052;
+    }
+
+    .email-footer {
+      margin: 20px auto 40px;
+      max-width: 600px;
+      color: #676f83;
+      text-align: center;
+      font-family: 'Inter', 'PingFang SC', 'Arial', sans-serif;
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 16px;
+      letter-spacing: -0.06px;
+      flex: 1 0 0;
+    }
   </style>
 </head>
 
 <body>
   <div class="card">
-    <div class="card-header"></div>
+    <div class="card-header">
+    </div>
     <div class="card-content">
       <h1 class="title">您的 API 速率额度已用尽</h1>
       <div class="body-group">
         <p class="body-text">
-        您的工作区 <strong>{{workspaceName}}</strong> 已用完 <strong>月度 API 速率额度</strong>，触及
+          <strong>亲爱的 {{ recipientName | default(workspaceName, true) }}，</strong>
+        </p>
+        <p class="body-text">
+          您的工作区 <strong>{{workspaceName}}</strong> 已用完 <strong>月度 API 速率额度</strong>，触及
           <strong>{{planName}} 计划（上限：{{planLimit}}）</strong>。
         </p>
         <p class="body-text">
@@ -112,13 +156,17 @@
         <p class="body-text">
           若要继续使用 Dify API 并解锁更高额度，请升级到付费套餐。
         </p>
+        <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
+        <p class="note">
+          <strong>{{planName}} 计划的月度 API 速率额度</strong> 将于 <strong>{{resetDate}}</strong> 重置。</p>
       </div>
-      <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
-      <p class="note">
-        <strong>{{planName}} 计划的月度 API 速率额度</strong> 将于 <strong>{{resetDate}}</strong> 重置。
-      </p>
+      <div class="signature">
+        <p class="signature-text">此致敬礼，</p>
+        <p class="signature-text">Dify 团队</p>
+      </div>
     </div>
   </div>
+  <p class="email-footer">请勿直接回复此邮件，该邮件由系统自动发送。</p>
 </body>
 
 </html>

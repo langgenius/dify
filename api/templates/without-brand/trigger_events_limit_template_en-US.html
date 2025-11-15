@@ -18,9 +18,10 @@
     .card {
       width: 600px;
       min-height: 454px;
-      margin: 40px auto;
+      margin: 40px auto 0;
       display: flex;
       flex-direction: column;
+      align-items: flex-start;
       background: #fcfcfd;
       border: 1px solid #ffffff;
       box-shadow: 0px 3px 10px -2px rgba(9, 9, 11, 0.08), 0px 2px 4px -2px rgba(9, 9, 11, 0.06);
@@ -28,22 +29,22 @@
     }
 
     .card-header {
-      padding: 36px 48px 24px;
       display: flex;
+      padding: 36px 48px 24px 48px;
       flex-direction: column;
+      align-items: flex-start;
       gap: 8px;
+      align-self: stretch;
     }
 
-    .card-header img {
-      width: 68px;
-      height: auto;
-    }
 
     .card-content {
       display: flex;
+      padding: 8px 48px 48px 48px;
       flex-direction: column;
+      align-items: flex-start;
       gap: 16px;
-      padding: 8px 48px 48px;
+      align-self: stretch;
       width: 100%;
     }
 
@@ -59,7 +60,7 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      padding: 16px 0;
+      padding: 16px 0 0;
     }
 
     .body-text {
@@ -100,38 +101,79 @@
       letter-spacing: -0.005em;
       color: #354052;
     }
+
+    .signature {
+      margin-top: 28px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .signature-text {
+      margin: 0;
+      font-size: 14px;
+      line-height: 20px;
+      letter-spacing: -0.005em;
+      color: #354052;
+    }
+
+    .email-footer {
+      margin: 20px auto 40px;
+      max-width: 600px;
+      color: #676f83;
+      text-align: center;
+      font-family: 'Inter', 'Arial', sans-serif;
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 16px;
+      letter-spacing: -0.06px;
+      flex: 1 0 0;
+    }
   </style>
 </head>
 
 <body>
   <div class="card">
-    <div class="card-header"></div>
+    <div class="card-header">
+    </div>
     <div class="card-content">
       <h1 class="title">You’ve reached your trigger events limit</h1>
       <div class="body-group">
-      <p class="body-text">
-        Your workspace <strong>{{workspaceName}}</strong> has used all available <strong>{{usageScope | default('Trigger Events')}}</strong> for the
-        <strong>{{planName}} Plan (limit: {{planLimit}})</strong>.
-      </p>
+        <p class="body-text">
+          <strong>Dear {{ recipientName | default(workspaceName ~ ' team', true) }},</strong>
+        </p>
+        <p class="body-text">
+          Your workspace <strong>{{workspaceName}}</strong> has used all available <strong>{{usageScope | default('Trigger Events')}}</strong> for the
+          <strong>{{planName}} Plan (limit: {{planLimit}})</strong>.
+        </p>
         <p class="body-text">
           Workflows triggered by <strong>{{triggerSources}}</strong> events have been temporarily paused.
         </p>
         <p class="body-text">
           To keep your workflows running without interruption, please upgrade your plan to unlock more Trigger Events.
         </p>
+        <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
+        <p class="note">
+          <strong>
+            {% if resetLine is defined %}
+              {{ resetLine }}
+            {% else %}
+              Trigger Events for the {{planName}} Plan {{resetDescription}}
+            {% endif %}
+          </strong>
+        </p>
       </div>
-      <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
-      <p class="note">
-        <strong>
-          {% if resetLine is defined %}
-            {{ resetLine }}
-          {% else %}
-            Trigger Events for the {{planName}} Plan {{resetDescription}}
-          {% endif %}
-        </strong>
-      </p>
+      <div class="signature">
+        <p class="signature-text">Best regards,</p>
+        <p class="signature-text">The Dify Team</p>
+      </div>
     </div>
   </div>
+  <p class="email-footer">Please do not reply directly to this email, it is automatically sent by the system.</p>
 </body>
 
 </html>
