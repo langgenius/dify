@@ -7,7 +7,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.apikey import api_key_fields, api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
@@ -768,7 +768,7 @@ class DatasetApiKeyApi(Resource):
         )
 
         if current_key_count >= self.max_keys:
-            api.abort(
+            console_ns.abort(
                 400,
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
                 code="max_keys_exceeded",
@@ -814,7 +814,7 @@ class DatasetApiDeleteApi(Resource):
         )
 
         if key is None:
-            api.abort(404, message="API key not found")
+            console_ns.abort(404, message="API key not found")
 
         db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
         db.session.commit()

@@ -1,7 +1,7 @@
 from flask_restx import Resource, fields, marshal_with, reqparse
 
 from constants import HIDDEN_VALUE
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.api_based_extension_fields import api_based_extension_fields
 from libs.login import current_account_with_tenant, login_required
@@ -68,7 +68,7 @@ class APIBasedExtensionAPI(Resource):
     @account_initialization_required
     @marshal_with(api_based_extension_fields)
     def post(self):
-        args = api.payload
+        args = console_ns.payload
         _, current_tenant_id = current_account_with_tenant()
 
         extension_data = APIBasedExtension(
@@ -121,7 +121,7 @@ class APIBasedExtensionDetailAPI(Resource):
 
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
 
-        args = api.payload
+        args = console_ns.payload
 
         extension_data_from_db.name = args["name"]
         extension_data_from_db.api_endpoint = args["api_endpoint"]
