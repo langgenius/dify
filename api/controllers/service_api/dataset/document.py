@@ -66,7 +66,7 @@ class DocumentTextUpdate(BaseModel):
 
 
 for m in [ProcessRule, RetrievalModel, DocumentTextUpdate]:
-    service_api_ns.schema_model(m.__name__, m.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)) # type: ignore
+    service_api_ns.schema_model(m.__name__, m.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))  # type: ignore
 
 
 @service_api_ns.route(
