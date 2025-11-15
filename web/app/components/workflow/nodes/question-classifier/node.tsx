@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import type { NodeProps } from 'reactflow'
@@ -11,11 +11,9 @@ import {
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import ReadonlyInputWithSelectVar from '../_base/components/readonly-input-with-select-var'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
-const MAX_VISIBLE_CLASSES = 5
 const MAX_CLASS_TEXT_LENGTH = 50
 
 type TruncatedClassItemProps = {
@@ -65,7 +63,6 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
 
 const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
   const { t } = useTranslation()
-  const [showAll, setShowAll] = useState(false)
 
   const { data, id } = props
   const { provider, name: modelId } = data.model
@@ -78,9 +75,6 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
 
   if (!hasSetModel && !topics.length)
     return null
-
-  const visibleTopics = showAll ? topics : topics.slice(0, MAX_VISIBLE_CLASSES)
-  const hasMoreTopics = topics.length > MAX_VISIBLE_CLASSES
 
   return (
     <div className='mb-1 px-3 py-1'>
@@ -95,10 +89,10 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
       {
         !!topics.length && (
           <div className='mt-2 space-y-0.5'>
-            <div className={cn('space-y-0.5', hasMoreTopics && !showAll && 'max-h-[200px] overflow-hidden')}>
-              {visibleTopics.map((topic, index) => (
+            <div className='space-y-0.5'>
+              {topics.map((topic, index) => (
                 <div
-                  key={index}
+                  key={topic.id}
                   className='relative'
                 >
                   <TruncatedClassItem
@@ -115,17 +109,6 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
                 </div>
               ))}
             </div>
-            {hasMoreTopics && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowAll(!showAll)
-                }}
-                className='system-xs-medium w-full py-1 text-center text-text-accent hover:text-text-accent-hover'
-              >
-                {showAll ? t(`${i18nPrefix}.showLess`) : t(`${i18nPrefix}.showMore`, { count: topics.length - MAX_VISIBLE_CLASSES })}
-              </button>
-            )}
           </div>
         )
       }
