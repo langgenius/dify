@@ -7,7 +7,6 @@ Create Date: 2023-12-12 06:58:41.054544
 """
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 from sqlalchemy.dialects import postgresql
 
 import models.types
@@ -40,7 +39,7 @@ def upgrade():
         )
     else:
         op.create_table('app_annotation_hit_histories',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('annotation_id', models.types.StringUUID(), nullable=False),
         sa.Column('source', models.types.LongText(), nullable=False),

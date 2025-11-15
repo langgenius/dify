@@ -1,7 +1,9 @@
 name: DB Migration Test
 
 on:
-  workflow_call:
+  push:
+    branches:
+      - mysql-adapt
 
 concurrency:
   group: db-migration-test-${{ github.ref }}

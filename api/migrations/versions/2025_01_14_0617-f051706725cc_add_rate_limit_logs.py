@@ -9,7 +9,6 @@ from alembic import op
 import models as models
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-from uuid import uuid4
 
 
 def _is_pg(conn):
@@ -37,7 +36,7 @@ def upgrade():
         )
     else:
         op.create_table('rate_limit_logs',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('subscription_plan', sa.String(length=255), nullable=False),
         sa.Column('operation', sa.String(length=255), nullable=False),

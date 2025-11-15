@@ -7,7 +7,6 @@ Create Date: 2024-01-09 11:42:50.664797
 """
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 from sqlalchemy.dialects import postgresql
 
 import models.types
@@ -52,7 +51,7 @@ def upgrade():
         )
     else:
         op.create_table('tool_model_invokes',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('user_id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('provider', sa.String(length=40), nullable=False),

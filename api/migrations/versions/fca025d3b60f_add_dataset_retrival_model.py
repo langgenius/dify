@@ -33,7 +33,7 @@ def upgrade():
             batch_op.create_index('retrieval_model_idx', ['retrieval_model'], unique=False, postgresql_using='gin')
     else:
         with op.batch_alter_table('datasets', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('retrieval_model', sa.JSON(), nullable=True))
+            batch_op.add_column(sa.Column('retrieval_model', models.types.AdjustedJSON(astext_type=sa.Text()), nullable=True))
 
     # ### end Alembic commands ###
 

@@ -7,7 +7,6 @@ Create Date: 2024-05-14 07:31:29.702766
 """
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 
 import models.types
 
@@ -42,7 +41,7 @@ def upgrade():
     else:
         # MySQL: Use compatible syntax
         op.create_table('data_source_api_key_auth_bindings',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('category', sa.String(length=255), nullable=False),
         sa.Column('provider', sa.String(length=255), nullable=False),

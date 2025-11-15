@@ -7,7 +7,6 @@ Create Date: 2023-09-13 22:16:48.027810
 """
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 from sqlalchemy.dialects import postgresql
 
 import models.types
@@ -38,7 +37,7 @@ def upgrade():
         )
     else:
         op.create_table('dataset_collection_bindings',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('provider_name', sa.String(length=40), nullable=False),
         sa.Column('model_name', sa.String(length=40), nullable=False),
         sa.Column('collection_name', sa.String(length=64), nullable=False),

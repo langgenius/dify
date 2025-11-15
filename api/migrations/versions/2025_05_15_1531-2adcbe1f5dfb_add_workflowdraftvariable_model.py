@@ -8,7 +8,6 @@ Create Date: 2025-05-15 15:31:03.128680
 
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 
 import models as models
 
@@ -49,7 +48,7 @@ def upgrade():
     else:
         op.create_table(
             "workflow_draft_variables",
-            sa.Column("id", models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+            sa.Column("id", models.types.StringUUID(), nullable=False),
             sa.Column("created_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
             sa.Column("updated_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
             sa.Column("app_id", models.types.StringUUID(), nullable=False),

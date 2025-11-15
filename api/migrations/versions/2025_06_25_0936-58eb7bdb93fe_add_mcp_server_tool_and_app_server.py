@@ -8,7 +8,6 @@ Create Date: 2025-06-25 09:36:07.510570
 from alembic import op
 import models as models
 import sqlalchemy as sa
-from uuid import uuid4
 
 
 def _is_pg(conn):
@@ -44,7 +43,7 @@ def upgrade():
         )
     else:
         op.create_table('app_mcp_servers',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
@@ -80,7 +79,7 @@ def upgrade():
         )
     else:
         op.create_table('tool_mcp_providers',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('name', sa.String(length=40), nullable=False),
         sa.Column('server_identifier', sa.String(length=24), nullable=False),
         sa.Column('server_url', models.types.LongText(), nullable=False),

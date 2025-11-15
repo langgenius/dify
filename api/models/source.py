@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import TypeBase
 
-from .types import LongText, StringUUID
+from .types import AdjustedJSON, LongText, StringUUID, adjusted_json_index
 
 
 class DataSourceOauthBinding(TypeBase):
@@ -16,13 +16,14 @@ class DataSourceOauthBinding(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="source_binding_pkey"),
         sa.Index("source_binding_tenant_id_idx", "tenant_id"),
+        adjusted_json_index("source_info_idx", "source_info"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     access_token: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
-    source_info: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    source_info: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )

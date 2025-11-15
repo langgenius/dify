@@ -2,11 +2,14 @@ import enum
 import uuid
 from typing import Any, Generic, TypeVar
 
+import sqlalchemy as sa
 from sqlalchemy import CHAR, TEXT, VARCHAR, LargeBinary, TypeDecorator
 from sqlalchemy.dialects.mysql import LONGBLOB, LONGTEXT
-from sqlalchemy.dialects.postgresql import BYTEA, UUID
+from sqlalchemy.dialects.postgresql import BYTEA, JSONB, UUID
 from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.sql.type_api import TypeEngine
+
+from configs import dify_config
 
 
 class StringUUID(TypeDecorator[uuid.UUID | str | None]):
@@ -81,6 +84,32 @@ class BinaryData(TypeDecorator[bytes | None]):
         return value
 
 
+class AdjustedJSON(TypeDecorator[dict | list | None]):
+    impl = sa.JSON
+    cache_ok = True
+
+    def __init__(self, astext_type=None):
+        self.astext_type = astext_type
+        super().__init__()
+
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
+        if dialect.name == "postgresql":
+            if self.astext_type:
+                return dialect.type_descriptor(JSONB(astext_type=self.astext_type))
+            else:
+                return dialect.type_descriptor(JSONB())
+        elif dialect.name == "mysql":
+            return dialect.type_descriptor(sa.JSON())
+        else:
+            return dialect.type_descriptor(sa.JSON())
+
+    def process_bind_param(self, value: dict | list | None, dialect: Dialect) -> dict | list | None:
+        return value
+
+    def process_result_value(self, value: dict | list | None, dialect: Dialect) -> dict | list | None:
+        return value
+
+
 _E = TypeVar("_E", bound=enum.StrEnum)
 
 
@@ -124,3 +153,11 @@ class EnumText(TypeDecorator[_E | None], Generic[_E]):
         if x is None or y is None:
             return x is y
         return x == y
+
+
+def adjusted_json_index(index_name, column_name):
+    index_name = index_name or f"{column_name}_idx"
+    if dify_config.DB_TYPE == "postgresql":
+        return sa.Index(index_name, column_name, postgresql_using="gin")
+    else:
+        return None

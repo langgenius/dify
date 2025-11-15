@@ -178,12 +178,12 @@ def timezone(timezone_string):
 
 
 def convert_datetime_to_date(field, target_timezone: str = ":tz"):
-    if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
+    if dify_config.DB_TYPE == "postgresql":
         return f"DATE(DATE_TRUNC('day', {field} AT TIME ZONE 'UTC' AT TIME ZONE {target_timezone}))"
-    elif "mysql" in dify_config.SQLALCHEMY_DATABASE_URI_SCHEME:
+    elif dify_config.DB_TYPE == "mysql":
         return f"DATE(CONVERT_TZ({field}, 'UTC', {target_timezone}))"
     else:
-        raise NotImplementedError(f"Unsupported database URI scheme: {dify_config.SQLALCHEMY_DATABASE_URI_SCHEME}")
+        raise NotImplementedError(f"Unsupported database type: {dify_config.DB_TYPE}")
 
 
 def generate_string(n):

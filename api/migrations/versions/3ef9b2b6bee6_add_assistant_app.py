@@ -7,7 +7,6 @@ Create Date: 2024-01-05 15:26:25.117551
 """
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 from sqlalchemy.dialects import postgresql
 
 import models.types
@@ -43,7 +42,7 @@ def upgrade():
     else:
         # MySQL: Use compatible syntax
         op.create_table('tool_api_providers',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('name', sa.String(length=40), nullable=False),
         sa.Column('schema', models.types.LongText(), nullable=False),
         sa.Column('schema_type_str', sa.String(length=40), nullable=False),
@@ -69,7 +68,7 @@ def upgrade():
     else:
         # MySQL: Use compatible syntax
         op.create_table('tool_builtin_providers',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=True),
         sa.Column('user_id', models.types.StringUUID(), nullable=False),
         sa.Column('provider', sa.String(length=40), nullable=False),
@@ -100,7 +99,7 @@ def upgrade():
     else:
         # MySQL: Use compatible syntax
         op.create_table('tool_published_apps',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('user_id', models.types.StringUUID(), nullable=False),
         sa.Column('description', models.types.LongText(), nullable=False),

@@ -9,7 +9,6 @@ from alembic import op
 import models as models
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-from uuid import uuid4
 
 
 def _is_pg(conn):
@@ -27,7 +26,6 @@ def upgrade():
     conn = op.get_bind()
     
     if _is_pg(conn):
-        # PostgreSQL: Keep original syntax
         op.create_table('dataset_metadata_bindings',
         sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
@@ -39,9 +37,8 @@ def upgrade():
         sa.PrimaryKeyConstraint('id', name='dataset_metadata_binding_pkey')
         )
     else:
-        # MySQL: Use compatible syntax
         op.create_table('dataset_metadata_bindings',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('dataset_id', models.types.StringUUID(), nullable=False),
         sa.Column('metadata_id', models.types.StringUUID(), nullable=False),
@@ -74,7 +71,7 @@ def upgrade():
     else:
         # MySQL: Use compatible syntax
         op.create_table('dataset_metadatas',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('dataset_id', models.types.StringUUID(), nullable=False),
         sa.Column('type', sa.String(length=255), nullable=False),

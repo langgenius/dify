@@ -8,7 +8,6 @@ Create Date: 2023-05-13 14:26:59.085018
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
-from uuid import uuid4
 
 import models.types
 
@@ -47,7 +46,7 @@ def upgrade():
         )
     else:
         op.create_table('account_integrates',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('account_id', models.types.StringUUID(), nullable=False),
         sa.Column('provider', sa.String(length=16), nullable=False),
         sa.Column('open_id', sa.String(length=255), nullable=False),
@@ -79,7 +78,7 @@ def upgrade():
         )
     else:
         op.create_table('accounts',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('email', sa.String(length=255), nullable=False),
         sa.Column('password', sa.String(length=255), nullable=True),
@@ -113,7 +112,7 @@ def upgrade():
         )
     else:
         op.create_table('api_requests',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('api_token_id', models.types.StringUUID(), nullable=False),
         sa.Column('path', sa.String(length=255), nullable=False),
@@ -139,7 +138,7 @@ def upgrade():
         )
     else:
         op.create_table('api_tokens',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=True),
         sa.Column('dataset_id', models.types.StringUUID(), nullable=True),
         sa.Column('type', sa.String(length=16), nullable=False),
@@ -162,7 +161,7 @@ def upgrade():
         )
     else:
         op.create_table('app_dataset_joins',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('dataset_id', models.types.StringUUID(), nullable=False),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
@@ -192,7 +191,7 @@ def upgrade():
         )
     else:
         op.create_table('app_model_configs',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('provider', sa.String(length=255), nullable=False),
         sa.Column('model_id', sa.String(length=255), nullable=False),
@@ -234,7 +233,7 @@ def upgrade():
         )
     else:
         op.create_table('apps',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('mode', sa.String(length=255), nullable=False),
@@ -342,7 +341,7 @@ def upgrade():
         )
     else:
         op.create_table('conversations',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('app_model_config_id', models.types.StringUUID(), nullable=False),
         sa.Column('model_provider', sa.String(length=255), nullable=False),
@@ -378,7 +377,7 @@ def upgrade():
         )
     else:
         op.create_table('dataset_keyword_tables',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('dataset_id', models.types.StringUUID(), nullable=False),
         sa.Column('keyword_table', models.types.LongText(), nullable=False),
         sa.PrimaryKeyConstraint('id', name='dataset_keyword_table_pkey'),
@@ -399,7 +398,7 @@ def upgrade():
         )
     else:
         op.create_table('dataset_process_rules',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('dataset_id', models.types.StringUUID(), nullable=False),
         sa.Column('mode', sa.String(length=255), server_default=sa.text("'automatic'"), nullable=False),
         sa.Column('rules', models.types.LongText(), nullable=True),
@@ -424,7 +423,7 @@ def upgrade():
         )
     else:
         op.create_table('dataset_queries',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('dataset_id', models.types.StringUUID(), nullable=False),
         sa.Column('content', models.types.LongText(), nullable=False),
         sa.Column('source', sa.String(length=255), nullable=False),
@@ -456,7 +455,7 @@ def upgrade():
         )
     else:
         op.create_table('datasets',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('description', models.types.LongText(), nullable=True),
@@ -514,7 +513,7 @@ def upgrade():
         )
     else:
         op.create_table('document_segments',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('dataset_id', models.types.StringUUID(), nullable=False),
         sa.Column('document_id', models.types.StringUUID(), nullable=False),
@@ -589,7 +588,7 @@ def upgrade():
         )
     else:
         op.create_table('documents',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('dataset_id', models.types.StringUUID(), nullable=False),
         sa.Column('position', sa.Integer(), nullable=False),
@@ -644,7 +643,7 @@ def upgrade():
         )
     else:
         op.create_table('embeddings',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('hash', sa.String(length=64), nullable=False),
         sa.Column('embedding', models.types.BinaryData(), nullable=False),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
@@ -667,7 +666,7 @@ def upgrade():
         )
     else:
         op.create_table('end_users',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=True),
         sa.Column('type', sa.String(length=255), nullable=False),
@@ -698,7 +697,7 @@ def upgrade():
         )
     else:
         op.create_table('installed_apps',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('app_owner_tenant_id', models.types.StringUUID(), nullable=False),
@@ -771,7 +770,7 @@ def upgrade():
         )
     else:
         op.create_table('message_agent_thoughts',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('message_id', models.types.StringUUID(), nullable=False),
         sa.Column('message_chain_id', models.types.StringUUID(), nullable=False),
         sa.Column('position', sa.Integer(), nullable=False),
@@ -811,7 +810,7 @@ def upgrade():
         )
     else:
         op.create_table('message_chains',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('message_id', models.types.StringUUID(), nullable=False),
         sa.Column('type', sa.String(length=255), nullable=False),
         sa.Column('input', models.types.LongText(), nullable=True),
@@ -839,7 +838,7 @@ def upgrade():
         )
     else:
         op.create_table('message_feedbacks',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('conversation_id', models.types.StringUUID(), nullable=False),
         sa.Column('message_id', models.types.StringUUID(), nullable=False),
@@ -871,7 +870,7 @@ def upgrade():
         )
     else:
         op.create_table('operation_logs',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('account_id', models.types.StringUUID(), nullable=False),
         sa.Column('action', sa.String(length=255), nullable=False),
@@ -895,7 +894,7 @@ def upgrade():
         )
     else:
         op.create_table('pinned_conversations',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('conversation_id', models.types.StringUUID(), nullable=False),
         sa.Column('created_by', models.types.StringUUID(), nullable=False),
@@ -924,7 +923,7 @@ def upgrade():
         )
     else:
         op.create_table('providers',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('provider_name', sa.String(length=40), nullable=False),
         sa.Column('provider_type', sa.String(length=40), nullable=False, server_default=sa.text("'custom'")),
@@ -959,7 +958,7 @@ def upgrade():
         )
     else:
         op.create_table('recommended_apps',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('description', sa.JSON(), nullable=False),
         sa.Column('copyright', sa.String(length=255), nullable=False),
@@ -987,7 +986,7 @@ def upgrade():
         )
     else:
         op.create_table('saved_messages',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('message_id', models.types.StringUUID(), nullable=False),
         sa.Column('created_by', models.types.StringUUID(), nullable=False),
@@ -1037,7 +1036,7 @@ def upgrade():
         )
     else:
         op.create_table('sites',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('title', sa.String(length=255), nullable=False),
         sa.Column('icon', sa.String(length=255), nullable=True),
@@ -1073,7 +1072,7 @@ def upgrade():
         )
     else:
         op.create_table('tenant_account_joins',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('account_id', models.types.StringUUID(), nullable=False),
         sa.Column('role', sa.String(length=16), server_default='normal', nullable=False),
@@ -1100,7 +1099,7 @@ def upgrade():
         )
     else:
         op.create_table('tenants',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('encrypt_public_key', models.types.LongText(), nullable=True),
         sa.Column('plan', sa.String(length=255), server_default=sa.text("'basic'"), nullable=False),
@@ -1129,7 +1128,7 @@ def upgrade():
         )
     else:
         op.create_table('upload_files',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('storage_type', sa.String(length=255), nullable=False),
         sa.Column('key', sa.String(length=255), nullable=False),
@@ -1162,7 +1161,7 @@ def upgrade():
         )
     else:
         op.create_table('message_annotations',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('conversation_id', models.types.StringUUID(), nullable=False),
         sa.Column('message_id', models.types.StringUUID(), nullable=False),
@@ -1206,7 +1205,7 @@ def upgrade():
         )
     else:
         op.create_table('messages',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('model_provider', sa.String(length=255), nullable=False),
         sa.Column('model_id', sa.String(length=255), nullable=False),

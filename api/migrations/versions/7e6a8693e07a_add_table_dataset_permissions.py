@@ -7,7 +7,6 @@ Create Date: 2024-06-25 03:20:46.012193
 """
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 
 import models.types
 
@@ -37,7 +36,7 @@ def upgrade():
         )
     else:
         op.create_table('dataset_permissions',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('dataset_id', models.types.StringUUID(), nullable=False),
         sa.Column('account_id', models.types.StringUUID(), nullable=False),
         sa.Column('has_permission', sa.Boolean(), server_default=sa.text('true'), nullable=False),

@@ -40,7 +40,7 @@ def upgrade():
         )
     else:
         op.create_table('oauth_provider_apps',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuidv7()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_icon', sa.String(length=255), nullable=False),
         sa.Column('app_label', sa.JSON(), default='{}', nullable=False),
         sa.Column('client_id', sa.String(length=255), nullable=False),

@@ -7,7 +7,6 @@ Create Date: 2024-05-14 09:27:18.857890
 """
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 
 import models.types
 
@@ -36,7 +35,7 @@ def upgrade():
         )
     else:
         op.create_table('tool_label_bindings',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tool_id', sa.String(length=64), nullable=False),
         sa.Column('tool_type', sa.String(length=40), nullable=False),
         sa.Column('label_name', sa.String(length=40), nullable=False),

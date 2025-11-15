@@ -7,7 +7,6 @@ Create Date: 2024-05-10 12:08:09.812736
 """
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 
 import models.types
 
@@ -42,7 +41,7 @@ def upgrade():
         )
     else:
         op.create_table('load_balancing_model_configs',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('provider_name', sa.String(length=255), nullable=False),
         sa.Column('model_name', sa.String(length=255), nullable=False),
@@ -73,7 +72,7 @@ def upgrade():
         )
     else:
         op.create_table('provider_model_settings',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('provider_name', sa.String(length=255), nullable=False),
         sa.Column('model_name', sa.String(length=255), nullable=False),

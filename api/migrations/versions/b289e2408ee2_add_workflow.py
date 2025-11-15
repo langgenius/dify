@@ -7,7 +7,6 @@ Create Date: 2024-02-19 12:47:24.646954
 """
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 from sqlalchemy.dialects import postgresql
 
 import models.types
@@ -42,7 +41,7 @@ def upgrade():
         )
     else:
         op.create_table('workflow_app_logs',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('workflow_id', models.types.StringUUID(), nullable=False),
@@ -84,7 +83,7 @@ def upgrade():
         )
     else:
         op.create_table('workflow_node_executions',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('workflow_id', models.types.StringUUID(), nullable=False),
@@ -138,7 +137,7 @@ def upgrade():
         )
     else:
         op.create_table('workflow_runs',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('sequence_number', sa.Integer(), nullable=False),
@@ -180,7 +179,7 @@ def upgrade():
         )
     else:
         op.create_table('workflows',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('type', sa.String(length=255), nullable=False),

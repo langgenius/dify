@@ -6,8 +6,7 @@ Create Date: 2024-04-11 06:17:34.278594
 
 """
 import sqlalchemy as sa
-from alembic import op
-from uuid import uuid4
+from alembic import op 
 from sqlalchemy.dialects import postgresql
 
 import models.types
@@ -39,7 +38,7 @@ def upgrade():
         )
     else:
         op.create_table('tag_bindings',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=True),
         sa.Column('tag_id', models.types.StringUUID(), nullable=True),
         sa.Column('target_id', models.types.StringUUID(), nullable=True),
@@ -64,7 +63,7 @@ def upgrade():
         )
     else:
         op.create_table('tags',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=True),
         sa.Column('type', sa.String(length=16), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),

@@ -7,7 +7,6 @@ Create Date: 2023-06-06 19:58:33.103819
 """
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 from sqlalchemy.dialects import postgresql
 
 import models.types
@@ -41,11 +40,11 @@ def upgrade():
         )
     else:
         op.create_table('data_source_bindings',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('access_token', sa.String(length=255), nullable=False),
         sa.Column('provider', sa.String(length=255), nullable=False),
-        sa.Column('source_info', sa.JSON(), nullable=False),
+        sa.Column('source_info', models.types.AdjustedJSON(astext_type=sa.Text()), nullable=False),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
         sa.Column('disabled', sa.Boolean(), server_default=sa.text('false'), nullable=True),

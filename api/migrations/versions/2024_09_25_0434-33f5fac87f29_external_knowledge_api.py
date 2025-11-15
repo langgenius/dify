@@ -9,7 +9,6 @@ from alembic import op
 import models as models
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-from uuid import uuid4
 
 
 def _is_pg(conn):
@@ -41,7 +40,7 @@ def upgrade():
         )
     else:
         op.create_table('external_knowledge_apis',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('description', sa.String(length=255), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
@@ -72,7 +71,7 @@ def upgrade():
         )
     else:
         op.create_table('external_knowledge_bindings',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('external_knowledge_api_id', models.types.StringUUID(), nullable=False),
         sa.Column('dataset_id', models.types.StringUUID(), nullable=False),

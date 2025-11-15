@@ -8,7 +8,6 @@ Create Date: 2025-06-24 17:05:43.118647
 from alembic import op
 import models as models
 import sqlalchemy as sa
-from uuid import uuid4
 
 
 def _is_pg(conn):
@@ -37,7 +36,7 @@ def upgrade():
         )
     else:
         op.create_table('tool_oauth_system_clients',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('plugin_id', sa.String(length=512), nullable=False),
         sa.Column('provider', sa.String(length=255), nullable=False),
         sa.Column('encrypted_oauth_params', models.types.LongText(), nullable=False),
@@ -57,7 +56,7 @@ def upgrade():
         )
     else:
         op.create_table('tool_oauth_tenant_clients',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('plugin_id', sa.String(length=255), nullable=False),
         sa.Column('provider', sa.String(length=255), nullable=False),

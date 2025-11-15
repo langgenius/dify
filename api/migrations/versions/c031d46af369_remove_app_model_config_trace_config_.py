@@ -8,7 +8,6 @@ Create Date: 2024-06-17 10:01:00.255189
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
-from uuid import uuid4
 
 import models.types
 
@@ -40,7 +39,7 @@ def upgrade():
         )
     else:
         op.create_table('trace_app_config',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('tracing_provider', sa.String(length=255), nullable=True),
         sa.Column('tracing_config', sa.JSON(), nullable=True),

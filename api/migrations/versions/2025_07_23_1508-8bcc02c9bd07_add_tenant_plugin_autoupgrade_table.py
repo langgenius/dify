@@ -9,7 +9,6 @@ from alembic import op
 import models as models
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-from uuid import uuid4
 
 
 def _is_pg(conn):
@@ -42,7 +41,7 @@ def upgrade():
         )
     else:
         op.create_table('tenant_plugin_auto_upgrade_strategies',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('strategy_setting', sa.String(length=16), server_default='fix_only', nullable=False),
         sa.Column('upgrade_time_of_day', sa.Integer(), nullable=False),

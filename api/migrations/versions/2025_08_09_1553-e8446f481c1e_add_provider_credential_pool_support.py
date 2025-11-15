@@ -39,7 +39,7 @@ def upgrade():
         )
     else:
         op.create_table('provider_credentials',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuidv7()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('provider_name', sa.String(length=255), nullable=False),
         sa.Column('credential_name', sa.String(length=255), nullable=False),

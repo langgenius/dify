@@ -7,7 +7,6 @@ Create Date: 2023-08-06 16:57:51.248337
 """
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 from sqlalchemy.dialects import postgresql
 
 import models.types
@@ -43,7 +42,7 @@ def upgrade():
         )
     else:
         op.create_table('provider_models',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('provider_name', sa.String(length=40), nullable=False),
         sa.Column('model_name', sa.String(length=40), nullable=False),
@@ -72,7 +71,7 @@ def upgrade():
         )
     else:
         op.create_table('tenant_default_models',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('provider_name', sa.String(length=40), nullable=False),
         sa.Column('model_name', sa.String(length=40), nullable=False),
@@ -97,7 +96,7 @@ def upgrade():
         )
     else:
         op.create_table('tenant_preferred_model_providers',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('provider_name', sa.String(length=40), nullable=False),
         sa.Column('preferred_provider_type', sa.String(length=40), nullable=False),

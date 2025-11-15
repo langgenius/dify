@@ -7,7 +7,6 @@ Create Date: 2024-05-04 09:47:19.366961
 """
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 
 import models.types
 
@@ -46,7 +45,7 @@ def upgrade():
     else:
         # MySQL: Use compatible syntax
         op.create_table('tool_workflow_providers',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('name', sa.String(length=40), nullable=False),
         sa.Column('icon', sa.String(length=255), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),

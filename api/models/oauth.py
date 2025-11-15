@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from libs.uuid_utils import uuidv7
 
 from .base import Base
-from .types import LongText, StringUUID
+from .types import AdjustedJSON, LongText, StringUUID
 
 
 class DatasourceOauthParamConfig(Base):  # type: ignore[name-defined]
@@ -20,7 +20,7 @@ class DatasourceOauthParamConfig(Base):  # type: ignore[name-defined]
     id = mapped_column(StringUUID, default=lambda: str(uuidv7()))
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    system_credentials: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    system_credentials: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
 
 
 class DatasourceProvider(Base):
@@ -36,7 +36,7 @@ class DatasourceProvider(Base):
     provider: Mapped[str] = mapped_column(sa.String(128), nullable=False)
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     auth_type: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    encrypted_credentials: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    encrypted_credentials: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
     avatar_url: Mapped[str] = mapped_column(LongText, nullable=True, default="default")
     is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     expires_at: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="-1")
@@ -58,7 +58,7 @@ class DatasourceOauthTenantParamConfig(Base):
     tenant_id = mapped_column(StringUUID, nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    client_params: Mapped[dict] = mapped_column(sa.JSON, nullable=False, default={})
+    client_params: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False, default={})
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
 
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())

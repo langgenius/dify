@@ -7,7 +7,6 @@ Create Date: 2023-11-09 11:39:00.006432
 """
 import sqlalchemy as sa
 from alembic import op
-from uuid import uuid4
 from sqlalchemy.dialects import postgresql
 
 import models.types
@@ -42,7 +41,7 @@ def upgrade():
         )
     else:
         op.create_table('message_files',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('message_id', models.types.StringUUID(), nullable=False),
         sa.Column('type', sa.String(length=255), nullable=False),
         sa.Column('transfer_method', sa.String(length=255), nullable=False),

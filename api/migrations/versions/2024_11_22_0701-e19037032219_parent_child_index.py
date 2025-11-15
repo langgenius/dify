@@ -8,7 +8,6 @@ Create Date: 2024-11-22 07:01:17.550037
 from alembic import op
 import models as models
 import sqlalchemy as sa
-from uuid import uuid4
 
 
 def _is_pg(conn):
@@ -50,7 +49,7 @@ def upgrade():
         )
     else:
         op.create_table('child_chunks',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('dataset_id', models.types.StringUUID(), nullable=False),
         sa.Column('document_id', models.types.StringUUID(), nullable=False),

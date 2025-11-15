@@ -43,7 +43,7 @@ def upgrade():
             sa.Column("workflow_run_id", models.types.StringUUID(), nullable=False),
             sa.Column("resumed_at", sa.DateTime(), nullable=True),
             sa.Column("state_object_key", sa.String(length=255), nullable=False),
-            sa.Column("id", models.types.StringUUID(), default=lambda: str(uuidv7()), nullable=False),
+            sa.Column("id", models.types.StringUUID(), nullable=False),
             sa.Column("created_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
             sa.Column("updated_at", sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
             sa.PrimaryKeyConstraint("id", name=op.f("workflow_pauses_pkey")),

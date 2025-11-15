@@ -8,7 +8,6 @@ Create Date: 2025-10-30 15:18:49.549156
 from alembic import op
 import models as models
 import sqlalchemy as sa
-from uuid import uuid4
 from libs.uuid_utils import uuidv7
 
 from models.enums import AppTriggerStatus, AppTriggerType
@@ -43,7 +42,7 @@ def upgrade():
         )
     else:
         op.create_table('app_triggers',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuidv7()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('node_id', sa.String(length=64), nullable=False),
@@ -71,7 +70,7 @@ def upgrade():
         )
     else:
         op.create_table('trigger_oauth_system_clients',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('plugin_id', sa.String(length=512), nullable=False),
         sa.Column('provider', sa.String(length=255), nullable=False),
         sa.Column('encrypted_oauth_params', models.types.LongText(), nullable=False),
@@ -95,7 +94,7 @@ def upgrade():
         )
     else:
         op.create_table('trigger_oauth_tenant_clients',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('plugin_id', sa.String(length=255), nullable=False),
         sa.Column('provider', sa.String(length=255), nullable=False),
@@ -127,7 +126,7 @@ def upgrade():
         )
     else:
         op.create_table('trigger_subscriptions',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False, comment='Subscription instance name'),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('user_id', models.types.StringUUID(), nullable=False),
@@ -165,7 +164,7 @@ def upgrade():
         )
     else:
         op.create_table('workflow_plugin_triggers',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('node_id', sa.String(length=64), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
@@ -196,7 +195,7 @@ def upgrade():
         )
     else:
         op.create_table('workflow_schedule_plans',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuidv7()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('node_id', sa.String(length=64), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
@@ -240,7 +239,7 @@ def upgrade():
         )
     else:
         op.create_table('workflow_trigger_logs',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuidv7()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('workflow_id', models.types.StringUUID(), nullable=False),
@@ -288,7 +287,7 @@ def upgrade():
         )
     else:
         op.create_table('workflow_webhook_triggers',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuidv7()), nullable=False),
+        sa.Column('id', models.types.StringUUID(), nullable=False),
         sa.Column('app_id', models.types.StringUUID(), nullable=False),
         sa.Column('node_id', sa.String(length=64), nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), nullable=False),

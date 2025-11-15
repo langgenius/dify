@@ -9,7 +9,6 @@ from alembic import op
 import models as models
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-from uuid import uuid4
 
 
 def _is_pg(conn):
@@ -46,7 +45,7 @@ def downgrade():
         )
     else:
         op.create_table('tool_providers',
-        sa.Column('id', models.types.StringUUID(), default=lambda: str(uuid4()), autoincrement=False, nullable=False),
+        sa.Column('id', models.types.StringUUID(), autoincrement=False, nullable=False),
         sa.Column('tenant_id', models.types.StringUUID(), autoincrement=False, nullable=False),
         sa.Column('tool_name', sa.VARCHAR(length=40), autoincrement=False, nullable=False),
         sa.Column('encrypted_credentials', models.types.LongText(), autoincrement=False, nullable=True),
