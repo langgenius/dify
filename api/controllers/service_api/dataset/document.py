@@ -1,9 +1,10 @@
+from typing import Self
 import json
 from uuid import UUID
 
 from flask import request
 from flask_restx import marshal, reqparse
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from sqlalchemy import desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -63,6 +64,12 @@ class DocumentTextUpdate(BaseModel):
     doc_form: str = "text_model"
     doc_language: str = "English"
     retrieval_model: RetrievalModel | None = None
+
+    @model_validator(mode="after")
+    def check_text_and_name(self) -> Self:
+        if self.text is not None and self.name is None:
+            raise ValueError("name is required when text is provided")
+        return self
 
 
 for m in [ProcessRule, RetrievalModel, DocumentTextUpdate]:
@@ -204,10 +211,8 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         args["indexing_technique"] = dataset.indexing_technique
 
         if args["text"]:
-            text = args.get("text")
-            name = args.get("name")
-            if text is None or name is None:
-                raise ValueError("Both text and name must be strings.")
+            text = args["text"]
+            name = args["name"]
             if not current_user:
                 raise ValueError("current_user is required")
             upload_file = FileService(db.engine).upload_text(
