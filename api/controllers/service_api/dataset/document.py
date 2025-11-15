@@ -182,7 +182,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
         """Update document by text."""
-        args = DocumentTextUpdate.model_validate(service_api_ns.payload).model_dump()
+        args = DocumentTextUpdate.model_validate(service_api_ns.payload).model_dump(exclude_unset=True)
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).first()
 
         if not dataset:
