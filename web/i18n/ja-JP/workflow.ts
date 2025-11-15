@@ -119,6 +119,11 @@ const translation = {
     tagBound: 'このタグを使用しているアプリの数',
     moreActions: 'さらにアクション',
   },
+  publishLimit: {
+    startNodeTitlePrefix: 'アップグレードして',
+    startNodeTitleSuffix: '開始ノードの上限を解除',
+    startNodeDesc: '現在のプランでは開始ノードは2個までです。公開するにはプランをアップグレードしてください。',
+  },
   env: {
     envPanelTitle: '環境変数',
     envDescription: '環境変数は、個人情報や認証情報を格納するために使用することができます。これらは読み取り専用であり、DSL ファイルからエクスポートする際には分離されます。',

@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { CSSProperties, FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '../../base/premium-badge'
@@ -9,6 +9,7 @@ import { useModalContext } from '@/context/modal-context'
 
 type Props = {
   className?: string
+  style?: CSSProperties
   isFull?: boolean
   size?: 'md' | 'lg'
   isPlain?: boolean
@@ -18,6 +19,8 @@ type Props = {
 }
 
 const UpgradeBtn: FC<Props> = ({
+  className,
+  style,
   isPlain = false,
   isShort = false,
   onClick: _onClick,
@@ -42,7 +45,11 @@ const UpgradeBtn: FC<Props> = ({
 
   if (isPlain) {
     return (
-      <Button onClick={onClick}>
+      <Button
+        className={className}
+        style={style}
+        onClick={onClick}
+      >
         {t('billing.upgradeBtn.plain')}
       </Button>
     )
@@ -54,6 +61,8 @@ const UpgradeBtn: FC<Props> = ({
       color='blue'
       allowHover={true}
       onClick={onClick}
+      className={className}
+      style={style}
     >
       <SparklesSoft className='flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0' />
       <div className='system-xs-medium'>
