@@ -1,16 +1,33 @@
+from dataclasses import asdict
 from unittest.mock import MagicMock, patch
 
 import pytest
 from faker import Faker
 
+from core.entities.document_task import DocumentTask
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
-from tasks.document_indexing_task import document_indexing_task
+from tasks.document_indexing_task import (
+    _document_indexing,  # Core function
+    _document_indexing_with_tenant_queue,  # Tenant queue wrapper function
+    document_indexing_task,  # Deprecated old interface
+    normal_document_indexing_task,  # New normal task
+    priority_document_indexing_task,  # New priority task
+)
 
 
-class TestDocumentIndexingTask:
-    """Integration tests for document_indexing_task using testcontainers."""
+class TestDocumentIndexingTasks:
+    """Integration tests for document indexing tasks using testcontainers.
+
+    This test class covers:
+    - Core _document_indexing function
+    - Deprecated document_indexing_task function
+    - New normal_document_indexing_task function
+    - New priority_document_indexing_task function
+    - Tenant queue wrapper _document_indexing_with_tenant_queue function
+    """
 
     @pytest.fixture
     def mock_external_service_dependencies(self):
@@ -197,7 +214,7 @@ class TestDocumentIndexingTask:
         # Configure billing features
         mock_external_service_dependencies["features"].billing.enabled = billing_enabled
         if billing_enabled:
-            mock_external_service_dependencies["features"].billing.subscription.plan = "sandbox"
+            mock_external_service_dependencies["features"].billing.subscription.plan = CloudPlan.SANDBOX
             mock_external_service_dependencies["features"].vector_space.limit = 100
             mock_external_service_dependencies["features"].vector_space.size = 50
 
@@ -223,7 +240,7 @@ class TestDocumentIndexingTask:
         document_ids = [doc.id for doc in documents]
 
         # Act: Execute the task
-        document_indexing_task(dataset.id, document_ids)
+        _document_indexing(dataset.id, document_ids)
 
         # Assert: Verify the expected outcomes
         # Verify indexing runner was called correctly
@@ -231,10 +248,11 @@ class TestDocumentIndexingTask:
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
         # Verify documents were updated to parsing status
-        for document in documents:
-            db.session.refresh(document)
-            assert document.indexing_status == "parsing"
-            assert document.processing_started_at is not None
+        # Re-query documents from database since _document_indexing uses a different session
+        for doc_id in document_ids:
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
+            assert updated_document.indexing_status == "parsing"
+            assert updated_document.processing_started_at is not None
 
         # Verify the run method was called with correct documents
         call_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args
@@ -260,7 +278,7 @@ class TestDocumentIndexingTask:
         document_ids = [fake.uuid4() for _ in range(3)]
 
         # Act: Execute the task with non-existent dataset
-        document_indexing_task(non_existent_dataset_id, document_ids)
+        _document_indexing(non_existent_dataset_id, document_ids)
 
         # Assert: Verify no processing occurred
         mock_external_service_dependencies["indexing_runner"].assert_not_called()
@@ -290,17 +308,18 @@ class TestDocumentIndexingTask:
         all_document_ids = existing_document_ids + non_existent_document_ids
 
         # Act: Execute the task with mixed document IDs
-        document_indexing_task(dataset.id, all_document_ids)
+        _document_indexing(dataset.id, all_document_ids)
 
         # Assert: Verify only existing documents were processed
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
         # Verify only existing documents were updated
-        for document in documents:
-            db.session.refresh(document)
-            assert document.indexing_status == "parsing"
-            assert document.processing_started_at is not None
+        # Re-query documents from database since _document_indexing uses a different session
+        for doc_id in existing_document_ids:
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
+            assert updated_document.indexing_status == "parsing"
+            assert updated_document.processing_started_at is not None
 
         # Verify the run method was called with only existing documents
         call_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args
@@ -332,7 +351,7 @@ class TestDocumentIndexingTask:
         )
 
         # Act: Execute the task
-        document_indexing_task(dataset.id, document_ids)
+        _document_indexing(dataset.id, document_ids)
 
         # Assert: Verify exception was handled gracefully
         # The task should complete without raising exceptions
@@ -340,10 +359,11 @@ class TestDocumentIndexingTask:
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
         # Verify documents were still updated to parsing status before the exception
-        for document in documents:
-            db.session.refresh(document)
-            assert document.indexing_status == "parsing"
-            assert document.processing_started_at is not None
+        # Re-query documents from database since _document_indexing close the session
+        for doc_id in document_ids:
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
+            assert updated_document.indexing_status == "parsing"
+            assert updated_document.processing_started_at is not None
 
     def test_document_indexing_task_mixed_document_states(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -406,17 +426,18 @@ class TestDocumentIndexingTask:
         document_ids = [doc.id for doc in all_documents]
 
         # Act: Execute the task with mixed document states
-        document_indexing_task(dataset.id, document_ids)
+        _document_indexing(dataset.id, document_ids)
 
         # Assert: Verify processing
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
         # Verify all documents were updated to parsing status
-        for document in all_documents:
-            db.session.refresh(document)
-            assert document.indexing_status == "parsing"
-            assert document.processing_started_at is not None
+        # Re-query documents from database since _document_indexing uses a different session
+        for doc_id in document_ids:
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
+            assert updated_document.indexing_status == "parsing"
+            assert updated_document.processing_started_at is not None
 
         # Verify the run method was called with all documents
         call_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args
@@ -442,7 +463,7 @@ class TestDocumentIndexingTask:
         )
 
         # Configure sandbox plan with batch limit
-        mock_external_service_dependencies["features"].billing.subscription.plan = "sandbox"
+        mock_external_service_dependencies["features"].billing.subscription.plan = CloudPlan.SANDBOX
 
         # Create more documents than sandbox plan allows (limit is 1)
         fake = Faker()
@@ -469,15 +490,16 @@ class TestDocumentIndexingTask:
         document_ids = [doc.id for doc in all_documents]
 
         # Act: Execute the task with too many documents for sandbox plan
-        document_indexing_task(dataset.id, document_ids)
+        _document_indexing(dataset.id, document_ids)
 
         # Assert: Verify error handling
-        for document in all_documents:
-            db.session.refresh(document)
-            assert document.indexing_status == "error"
-            assert document.error is not None
-            assert "batch upload" in document.error
-            assert document.stopped_at is not None
+        # Re-query documents from database since _document_indexing uses a different session
+        for doc_id in document_ids:
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
+            assert updated_document.indexing_status == "error"
+            assert updated_document.error is not None
+            assert "batch upload" in updated_document.error
+            assert updated_document.stopped_at is not None
 
         # Verify no indexing runner was called
         mock_external_service_dependencies["indexing_runner"].assert_not_called()
@@ -502,17 +524,18 @@ class TestDocumentIndexingTask:
         document_ids = [doc.id for doc in documents]
 
         # Act: Execute the task with billing disabled
-        document_indexing_task(dataset.id, document_ids)
+        _document_indexing(dataset.id, document_ids)
 
         # Assert: Verify successful processing
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
         # Verify documents were updated to parsing status
-        for document in documents:
-            db.session.refresh(document)
-            assert document.indexing_status == "parsing"
-            assert document.processing_started_at is not None
+        # Re-query documents from database since _document_indexing uses a different session
+        for doc_id in document_ids:
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
+            assert updated_document.indexing_status == "parsing"
+            assert updated_document.processing_started_at is not None
 
     def test_document_indexing_task_document_is_paused_error(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -540,7 +563,7 @@ class TestDocumentIndexingTask:
         )
 
         # Act: Execute the task
-        document_indexing_task(dataset.id, document_ids)
+        _document_indexing(dataset.id, document_ids)
 
         # Assert: Verify exception was handled gracefully
         # The task should complete without raising exceptions
@@ -548,7 +571,317 @@ class TestDocumentIndexingTask:
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
         # Verify documents were still updated to parsing status before the exception
-        for document in documents:
-            db.session.refresh(document)
-            assert document.indexing_status == "parsing"
-            assert document.processing_started_at is not None
+        # Re-query documents from database since _document_indexing uses a different session
+        for doc_id in document_ids:
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
+            assert updated_document.indexing_status == "parsing"
+            assert updated_document.processing_started_at is not None
+
+    # ==================== NEW TESTS FOR REFACTORED FUNCTIONS ====================
+    def test_old_document_indexing_task_success(self, db_session_with_containers, mock_external_service_dependencies):
+        """
+        Test document_indexing_task basic functionality.
+
+        This test verifies:
+        - Task function calls the wrapper correctly
+        - Basic parameter passing works
+        """
+        # Arrange: Create test data
+        dataset, documents = self._create_test_dataset_and_documents(
+            db_session_with_containers, mock_external_service_dependencies, document_count=1
+        )
+        document_ids = [doc.id for doc in documents]
+
+        # Act: Execute the deprecated task (it only takes 2 parameters)
+        document_indexing_task(dataset.id, document_ids)
+
+        # Assert: Verify processing occurred (core logic is tested in _document_indexing tests)
+        mock_external_service_dependencies["indexing_runner"].assert_called_once()
+        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+
+    def test_normal_document_indexing_task_success(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test normal_document_indexing_task basic functionality.
+
+        This test verifies:
+        - Task function calls the wrapper correctly
+        - Basic parameter passing works
+        """
+        # Arrange: Create test data
+        dataset, documents = self._create_test_dataset_and_documents(
+            db_session_with_containers, mock_external_service_dependencies, document_count=1
+        )
+        document_ids = [doc.id for doc in documents]
+        tenant_id = dataset.tenant_id
+
+        # Act: Execute the new normal task
+        normal_document_indexing_task(tenant_id, dataset.id, document_ids)
+
+        # Assert: Verify processing occurred (core logic is tested in _document_indexing tests)
+        mock_external_service_dependencies["indexing_runner"].assert_called_once()
+        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+
+    def test_priority_document_indexing_task_success(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test priority_document_indexing_task basic functionality.
+
+        This test verifies:
+        - Task function calls the wrapper correctly
+        - Basic parameter passing works
+        """
+        # Arrange: Create test data
+        dataset, documents = self._create_test_dataset_and_documents(
+            db_session_with_containers, mock_external_service_dependencies, document_count=1
+        )
+        document_ids = [doc.id for doc in documents]
+        tenant_id = dataset.tenant_id
+
+        # Act: Execute the new priority task
+        priority_document_indexing_task(tenant_id, dataset.id, document_ids)
+
+        # Assert: Verify processing occurred (core logic is tested in _document_indexing tests)
+        mock_external_service_dependencies["indexing_runner"].assert_called_once()
+        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+
+    def test_document_indexing_with_tenant_queue_success(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test _document_indexing_with_tenant_queue function with no waiting tasks.
+
+        This test verifies:
+        - Core indexing logic execution (same as _document_indexing)
+        - Tenant queue cleanup when no waiting tasks
+        - Task function parameter passing
+        - Queue management after processing
+        """
+        # Arrange: Create test data
+        dataset, documents = self._create_test_dataset_and_documents(
+            db_session_with_containers, mock_external_service_dependencies, document_count=2
+        )
+        document_ids = [doc.id for doc in documents]
+        tenant_id = dataset.tenant_id
+
+        # Mock the task function
+        from unittest.mock import MagicMock
+
+        mock_task_func = MagicMock()
+
+        # Act: Execute the wrapper function
+        _document_indexing_with_tenant_queue(tenant_id, dataset.id, document_ids, mock_task_func)
+
+        # Assert: Verify core processing occurred (same as _document_indexing)
+        mock_external_service_dependencies["indexing_runner"].assert_called_once()
+        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+
+        # Verify documents were updated (same as _document_indexing)
+        # Re-query documents from database since _document_indexing uses a different session
+        for doc_id in document_ids:
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
+            assert updated_document.indexing_status == "parsing"
+            assert updated_document.processing_started_at is not None
+
+        # Verify the run method was called with correct documents
+        call_args = mock_external_service_dependencies["indexing_runner_instance"].run.call_args
+        assert call_args is not None
+        processed_documents = call_args[0][0]
+        assert len(processed_documents) == 2
+
+        # Verify task function was not called (no waiting tasks)
+        mock_task_func.delay.assert_not_called()
+
+    def test_document_indexing_with_tenant_queue_with_waiting_tasks(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test _document_indexing_with_tenant_queue function with waiting tasks in queue using real Redis.
+
+        This test verifies:
+        - Core indexing logic execution
+        - Real Redis-based tenant queue processing of waiting tasks
+        - Task function calls for waiting tasks
+        - Queue management with multiple tasks using actual Redis operations
+        """
+        # Arrange: Create test data
+        dataset, documents = self._create_test_dataset_and_documents(
+            db_session_with_containers, mock_external_service_dependencies, document_count=1
+        )
+        document_ids = [doc.id for doc in documents]
+        tenant_id = dataset.tenant_id
+        dataset_id = dataset.id
+
+        # Mock the task function
+        from unittest.mock import MagicMock
+
+        mock_task_func = MagicMock()
+
+        # Use real Redis for TenantIsolatedTaskQueue
+        from core.rag.pipeline.queue import TenantIsolatedTaskQueue
+
+        # Create real queue instance
+        queue = TenantIsolatedTaskQueue(tenant_id, "document_indexing")
+
+        # Add waiting tasks to the real Redis queue
+        waiting_tasks = [
+            DocumentTask(tenant_id=tenant_id, dataset_id=dataset.id, document_ids=["waiting-doc-1"]),
+            DocumentTask(tenant_id=tenant_id, dataset_id=dataset.id, document_ids=["waiting-doc-2"]),
+        ]
+        # Convert DocumentTask objects to dictionaries for serialization
+        waiting_task_dicts = [asdict(task) for task in waiting_tasks]
+        queue.push_tasks(waiting_task_dicts)
+
+        # Act: Execute the wrapper function
+        _document_indexing_with_tenant_queue(tenant_id, dataset.id, document_ids, mock_task_func)
+
+        # Assert: Verify core processing occurred
+        mock_external_service_dependencies["indexing_runner"].assert_called_once()
+        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+
+        # Verify task function was called for each waiting task
+        assert mock_task_func.delay.call_count == 1
+
+        # Verify correct parameters for each call
+        calls = mock_task_func.delay.call_args_list
+        assert calls[0][1] == {"tenant_id": tenant_id, "dataset_id": dataset_id, "document_ids": ["waiting-doc-1"]}
+
+        # Verify queue is empty after processing (tasks were pulled)
+        remaining_tasks = queue.pull_tasks(count=10)  # Pull more than we added
+        assert len(remaining_tasks) == 1
+
+    def test_document_indexing_with_tenant_queue_error_handling(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test error handling in _document_indexing_with_tenant_queue using real Redis.
+
+        This test verifies:
+        - Exception handling during core processing
+        - Tenant queue cleanup even on errors using real Redis
+        - Proper error logging
+        - Function completes without raising exceptions
+        - Queue management continues despite core processing errors
+        """
+        # Arrange: Create test data
+        dataset, documents = self._create_test_dataset_and_documents(
+            db_session_with_containers, mock_external_service_dependencies, document_count=1
+        )
+        document_ids = [doc.id for doc in documents]
+        tenant_id = dataset.tenant_id
+        dataset_id = dataset.id
+
+        # Mock IndexingRunner to raise an exception
+        mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = Exception("Test error")
+
+        # Mock the task function
+        from unittest.mock import MagicMock
+
+        mock_task_func = MagicMock()
+
+        # Use real Redis for TenantIsolatedTaskQueue
+        from core.rag.pipeline.queue import TenantIsolatedTaskQueue
+
+        # Create real queue instance
+        queue = TenantIsolatedTaskQueue(tenant_id, "document_indexing")
+
+        # Add waiting task to the real Redis queue
+        waiting_task = DocumentTask(tenant_id=tenant_id, dataset_id=dataset.id, document_ids=["waiting-doc-1"])
+        queue.push_tasks([asdict(waiting_task)])
+
+        # Act: Execute the wrapper function
+        _document_indexing_with_tenant_queue(tenant_id, dataset.id, document_ids, mock_task_func)
+
+        # Assert: Verify error was handled gracefully
+        # The function should not raise exceptions
+        mock_external_service_dependencies["indexing_runner"].assert_called_once()
+        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+
+        # Verify documents were still updated to parsing status before the exception
+        # Re-query documents from database since _document_indexing uses a different session
+        for doc_id in document_ids:
+            updated_document = db.session.query(Document).where(Document.id == doc_id).first()
+            assert updated_document.indexing_status == "parsing"
+            assert updated_document.processing_started_at is not None
+
+        # Verify waiting task was still processed despite core processing error
+        mock_task_func.delay.assert_called_once()
+
+        # Verify correct parameters for the call
+        call = mock_task_func.delay.call_args
+        assert call[1] == {"tenant_id": tenant_id, "dataset_id": dataset_id, "document_ids": ["waiting-doc-1"]}
+
+        # Verify queue is empty after processing (task was pulled)
+        remaining_tasks = queue.pull_tasks(count=10)
+        assert len(remaining_tasks) == 0
+
+    def test_document_indexing_with_tenant_queue_tenant_isolation(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        """
+        Test tenant isolation in _document_indexing_with_tenant_queue using real Redis.
+
+        This test verifies:
+        - Different tenants have isolated queues
+        - Tasks from one tenant don't affect another tenant's queue
+        - Queue operations are properly scoped to tenant
+        """
+        # Arrange: Create test data for two different tenants
+        dataset1, documents1 = self._create_test_dataset_and_documents(
+            db_session_with_containers, mock_external_service_dependencies, document_count=1
+        )
+        dataset2, documents2 = self._create_test_dataset_and_documents(
+            db_session_with_containers, mock_external_service_dependencies, document_count=1
+        )
+
+        tenant1_id = dataset1.tenant_id
+        tenant2_id = dataset2.tenant_id
+        dataset1_id = dataset1.id
+        dataset2_id = dataset2.id
+        document_ids1 = [doc.id for doc in documents1]
+        document_ids2 = [doc.id for doc in documents2]
+
+        # Mock the task function
+        from unittest.mock import MagicMock
+
+        mock_task_func = MagicMock()
+
+        # Use real Redis for TenantIsolatedTaskQueue
+        from core.rag.pipeline.queue import TenantIsolatedTaskQueue
+
+        # Create queue instances for both tenants
+        queue1 = TenantIsolatedTaskQueue(tenant1_id, "document_indexing")
+        queue2 = TenantIsolatedTaskQueue(tenant2_id, "document_indexing")
+
+        # Add waiting tasks to both queues
+        waiting_task1 = DocumentTask(tenant_id=tenant1_id, dataset_id=dataset1.id, document_ids=["tenant1-doc-1"])
+        waiting_task2 = DocumentTask(tenant_id=tenant2_id, dataset_id=dataset2.id, document_ids=["tenant2-doc-1"])
+
+        queue1.push_tasks([asdict(waiting_task1)])
+        queue2.push_tasks([asdict(waiting_task2)])
+
+        # Act: Execute the wrapper function for tenant1 only
+        _document_indexing_with_tenant_queue(tenant1_id, dataset1.id, document_ids1, mock_task_func)
+
+        # Assert: Verify core processing occurred for tenant1
+        mock_external_service_dependencies["indexing_runner"].assert_called_once()
+        mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
+
+        # Verify only tenant1's waiting task was processed
+        mock_task_func.delay.assert_called_once()
+        call = mock_task_func.delay.call_args
+        assert call[1] == {"tenant_id": tenant1_id, "dataset_id": dataset1_id, "document_ids": ["tenant1-doc-1"]}
+
+        # Verify tenant1's queue is empty
+        remaining_tasks1 = queue1.pull_tasks(count=10)
+        assert len(remaining_tasks1) == 0
+
+        # Verify tenant2's queue still has its task (isolation)
+        remaining_tasks2 = queue2.pull_tasks(count=10)
+        assert len(remaining_tasks2) == 1
+
+        # Verify queue keys are different
+        assert queue1._queue != queue2._queue
+        assert queue1._task_key != queue2._task_key

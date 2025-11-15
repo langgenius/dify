@@ -13,7 +13,7 @@ import Toast from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import type { AppIconType } from '@/types/app'
+import { type AppIconType, AppModeEnum } from '@/types/app'
 import { noop } from 'lodash-es'
 
 export type CreateAppModalProps = {
@@ -158,7 +158,7 @@ const CreateAppModal = ({
             />
           </div>
           {/* answer icon */}
-          {isEditModal && (appMode === 'chat' || appMode === 'advanced-chat' || appMode === 'agent-chat') && (
+          {isEditModal && (appMode === AppModeEnum.CHAT || appMode === AppModeEnum.ADVANCED_CHAT || appMode === AppModeEnum.AGENT_CHAT) && (
             <div className='pt-2'>
               <div className='flex items-center justify-between'>
                 <div className='py-2 text-sm font-medium leading-[20px] text-text-primary'>{t('app.answerIcon.title')}</div>

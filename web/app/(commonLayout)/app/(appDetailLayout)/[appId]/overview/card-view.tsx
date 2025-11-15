@@ -1,11 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppCard from '@/app/components/app/overview/app-card'
 import Loading from '@/app/components/base/loading'
 import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
+import TriggerCard from '@/app/components/app/overview/trigger-card'
 import { ToastContext } from '@/app/components/base/toast'
 import {
   fetchAppDetail,
@@ -14,11 +15,15 @@ import {
   updateAppSiteStatus,
 } from '@/service/apps'
 import type { App } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import { asyncRunSafe } from '@/utils'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import type { IAppCardProps } from '@/app/components/app/overview/app-card'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useAppWorkflow } from '@/service/use-workflow'
+import type { BlockEnum } from '@/app/components/workflow/types'
+import { isTriggerNode } from '@/app/components/workflow/types'
 
 export type ICardViewProps = {
   appId: string
@@ -32,7 +37,22 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
 
+  const isWorkflowApp = appDetail?.mode === AppModeEnum.WORKFLOW
   const showMCPCard = isInPanel
+  const showTriggerCard = isInPanel && isWorkflowApp
+  const { data: currentWorkflow } = useAppWorkflow(isWorkflowApp ? appDetail.id : '')
+  const hasTriggerNode = useMemo<boolean | null>(() => {
+    if (!isWorkflowApp)
+      return false
+    if (!currentWorkflow)
+      return null
+    const nodes = currentWorkflow.graph?.nodes || []
+    return nodes.some((node) => {
+      const nodeType = node.data?.type as BlockEnum | undefined
+      return !!nodeType && isTriggerNode(nodeType)
+    })
+  }, [isWorkflowApp, currentWorkflow])
+  const shouldRenderAppCards = !isWorkflowApp || hasTriggerNode === false
 
   const updateAppDetail = async () => {
     try {
@@ -106,23 +126,35 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
 
   return (
     <div className={className || 'mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'}>
-      <AppCard
-        appInfo={appDetail}
-        cardType="webapp"
-        isInPanel={isInPanel}
-        onChangeStatus={onChangeSiteStatus}
-        onGenerateCode={onGenerateCode}
-        onSaveSiteConfig={onSaveSiteConfig}
-      />
-      <AppCard
-        cardType="api"
-        appInfo={appDetail}
-        isInPanel={isInPanel}
-        onChangeStatus={onChangeApiStatus}
-      />
-      {showMCPCard && (
-        <MCPServiceCard
+      {
+        shouldRenderAppCards && (
+          <>
+            <AppCard
+              appInfo={appDetail}
+              cardType="webapp"
+              isInPanel={isInPanel}
+              onChangeStatus={onChangeSiteStatus}
+              onGenerateCode={onGenerateCode}
+              onSaveSiteConfig={onSaveSiteConfig}
+            />
+            <AppCard
+              cardType="api"
+              appInfo={appDetail}
+              isInPanel={isInPanel}
+              onChangeStatus={onChangeApiStatus}
+            />
+            {showMCPCard && (
+              <MCPServiceCard
+                appInfo={appDetail}
+              />
+            )}
+          </>
+        )
+      }
+      {showTriggerCard && (
+        <TriggerCard
           appInfo={appDetail}
+          onToggleResult={handleCallbackResult}
         />
       )}
     </div>

@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class RetrievalMethod(Enum):
+class RetrievalMethod(StrEnum):
     SEMANTIC_SEARCH = "semantic_search"
     FULL_TEXT_SEARCH = "full_text_search"
     HYBRID_SEARCH = "hybrid_search"

@@ -4,11 +4,11 @@ from typing import Any
 
 from core.entities.provider_entities import ProviderConfig
 from core.helper.module_import_helper import load_single_subclass_from_source
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import (
-    CredentialType,
     OAuthSchema,
     ToolEntity,
     ToolProviderEntity,
@@ -157,7 +157,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         returns the tool that the provider can provide
         """
-        return next(filter(lambda x: x.entity.identity.name == tool_name, self.get_tools()), None)  # type: ignore
+        return next(filter(lambda x: x.entity.identity.name == tool_name, self.get_tools()), None)
 
     @property
     def need_credentials(self) -> bool:

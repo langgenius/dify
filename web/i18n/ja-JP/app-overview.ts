@@ -30,12 +30,17 @@ const translation = {
   overview: {
     title: '概要',
     appInfo: {
+      title: 'Web App',
       explanation: '使いやすい AI Web アプリ',
       accessibleAddress: '公開 URL',
       preview: 'プレビュー',
       regenerate: '再生成',
       regenerateNotice: '公開 URL を再生成しますか？',
       preUseReminder: '続行する前に Web アプリを有効にしてください。',
+      enableTooltip: {
+        description: 'この機能を有効にするには、キャンバスにユーザー入力ノードを追加してください。（下書きに既に存在する可能性があり、公開後に有効になります）',
+        learnMore: '詳細を見る',
+      },
       settings: {
         entry: '設定',
         title: 'Web アプリの設定',
@@ -113,13 +118,21 @@ const translation = {
           operation: 'ドキュメント',
         },
       },
-      launch: '発射',
+      launch: '公開',
     },
     apiInfo: {
       title: 'バックエンドサービス API',
       explanation: 'あなたのアプリケーションに簡単に統合できます',
       accessibleAddress: 'サービス API エンドポイント',
       doc: 'API リファレンス',
+    },
+    triggerInfo: {
+      title: 'トリガー',
+      explanation: 'ワークフロートリガー管理',
+      triggersAdded: '{{count}} 個のトリガーが追加されました',
+      noTriggerAdded: 'トリガーが追加されていません',
+      triggerStatusDescription: 'トリガーノードの状態がここに表示されます。（下書きに既に存在する可能性があり、公開後に有効になります）',
+      learnAboutTriggers: 'トリガーについて学ぶ',
     },
     status: {
       running: '稼働中',

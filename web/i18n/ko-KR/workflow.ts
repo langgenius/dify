@@ -8,7 +8,7 @@ const translation = {
     published: '게시됨',
     publish: '게시하기',
     update: '업데이트',
-    run: '실행',
+    run: '테스트 실행',
     running: '실행 중',
     inRunMode: '실행 모드',
     inPreview: '미리보기 중',
@@ -18,7 +18,6 @@ const translation = {
     runHistory: '실행 기록',
     goBackToEdit: '편집기로 돌아가기',
     conversationLog: '대화 로그',
-    features: '기능',
     debugAndPreview: '미리보기',
     restart: '재시작',
     currentDraft: '현재 초안',
@@ -93,9 +92,7 @@ const translation = {
     addParallelNode: '병렬 노드 추가',
     parallel: '병렬',
     branch: '브랜치',
-    featuresDocLink: '더 알아보세요',
     fileUploadTip: '이미지 업로드 기능이 파일 업로드로 업그레이드되었습니다.',
-    featuresDescription: '웹앱 사용자 경험 향상',
     ImageUploadLegacyTip:
       '이제 시작 양식에서 파일 형식 변수를 만들 수 있습니다. 앞으로 이미지 업로드 기능은 더 이상 지원되지 않습니다.',
     importWarning: '주의',
@@ -115,10 +112,11 @@ const translation = {
     exportPNG: 'PNG 로 내보내기',
     addBlock: '노드 추가',
     needAnswerNode: '답변 노드를 추가해야 합니다.',
-    needEndNode: '종단 노드를 추가해야 합니다.',
+    needOutputNode: '출력 노드를 추가해야 합니다',
     tagBound: '이 태그를 사용하는 앱 수',
     currentView: '현재 보기',
     currentWorkflow: '현재 워크플로',
+    moreActions: '더 많은 작업',
   },
   env: {
     envPanelTitle: '환경 변수',
@@ -143,6 +141,19 @@ const translation = {
       checkbox: '비밀 값 내보내기',
       ignore: 'DSL 내보내기',
       export: '비밀 값이 포함된 DSL 내보내기',
+    },
+  },
+  globalVar: {
+    title: '시스템 변수',
+    description: '시스템 변수는 타입이 맞으면 배선 없이도 모든 노드에서 참조할 수 있는 전역 변수로, 엔드유저 ID와 워크플로 ID 등이 포함됩니다.',
+    fieldsDescription: {
+      conversationId: '대화 ID',
+      dialogCount: '대화 수',
+      userId: '사용자 ID',
+      triggerTimestamp: '애플리케이션 시작 타임스탬프',
+      appId: '애플리케이션 ID',
+      workflowId: '워크플로 ID',
+      workflowRunId: '워크플로 실행 ID',
     },
   },
   chatVariable: {
@@ -251,7 +262,7 @@ const translation = {
   },
   blocks: {
     'start': '시작',
-    'end': '끝',
+    'end': '출력',
     'answer': '답변',
     'llm': 'LLM',
     'knowledge-retrieval': '지식 검색',
@@ -277,7 +288,7 @@ const translation = {
   },
   blocksAbout: {
     'start': '워크플로우를 시작하기 위한 초기 매개변수를 정의합니다',
-    'end': '워크플로우의 종료 및 결과 유형을 정의합니다',
+    'end': '워크플로의 출력 및 결과 유형을 정의합니다',
     'answer': '대화의 답변 내용을 정의합니다',
     'llm': '질문에 답하거나 자연어를 처리하기 위해 대형 언어 모델을 호출합니다',
     'knowledge-retrieval':
@@ -332,7 +343,7 @@ const translation = {
   },
   panel: {
     userInputField: '사용자 입력 필드',
-    helpLink: '도움말 링크',
+    helpLink: '도움말 센터',
     about: '정보',
     createdBy: '작성자 ',
     nextStep: '다음 단계',
@@ -342,13 +353,14 @@ const translation = {
     checklistResolved: '모든 문제가 해결되었습니다',
     change: '변경',
     optional: '(선택사항)',
-    moveToThisNode: '이 노드로 이동',
     organizeBlocks: '노드 정리하기',
     selectNextStep: '다음 단계 선택',
     changeBlock: '노드 변경',
     addNextStep: '이 워크플로우에 다음 단계를 추가하세요.',
     minimize: '전체 화면 종료',
     maximize: '캔버스 전체 화면',
+    scrollToSelectedNode: '선택한 노드로 스크롤',
+    optional_and_hidden: '(선택 사항 및 숨김)',
   },
   nodes: {
     common: {
@@ -996,6 +1008,8 @@ const translation = {
       chunksVariableIsRequired: 'Chunks 변수는 필수입니다',
       embeddingModelIsRequired: '임베딩 모델이 필요합니다',
       rerankingModelIsRequired: '재순위 모델이 필요합니다',
+      rerankingModelIsInvalid: '재정렬 모델이 유효하지 않습니다',
+      embeddingModelIsInvalid: '임베딩 모델이 유효하지 않습니다',
     },
   },
   tracing: {

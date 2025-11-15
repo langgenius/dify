@@ -255,7 +255,6 @@ const translation = {
   variableTable: {
     key: '변수 키',
     name: '사용자 입력 필드명',
-    optional: '옵션',
     type: '입력 타입',
     action: '액션',
     typeString: '문자열',

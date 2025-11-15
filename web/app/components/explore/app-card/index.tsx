@@ -6,6 +6,7 @@ import cn from '@/utils/classnames'
 import type { App } from '@/models/explore'
 import AppIcon from '@/app/components/base/app-icon'
 import { AppTypeIcon } from '../../app/type-selector'
+import { AppModeEnum } from '@/types/app'
 export type AppCardProps = {
   app: App
   canCreate: boolean
@@ -32,7 +33,7 @@ const AppCard = ({
             background={appBasicInfo.icon_background}
             imageUrl={appBasicInfo.icon_url}
           />
-          <AppTypeIcon wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-[4px] border border-divider-regular outline outline-components-panel-on-panel-item-bg'
+          <AppTypeIcon wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm'
             className='h-3 w-3' type={appBasicInfo.mode} />
         </div>
         <div className='w-0 grow py-[1px]'>
@@ -40,11 +41,11 @@ const AppCard = ({
             <div className='truncate' title={appBasicInfo.name}>{appBasicInfo.name}</div>
           </div>
           <div className='flex items-center text-[10px] font-medium leading-[18px] text-text-tertiary'>
-            {appBasicInfo.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.advanced').toUpperCase()}</div>}
-            {appBasicInfo.mode === 'chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
-            {appBasicInfo.mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
-            {appBasicInfo.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
-            {appBasicInfo.mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
+            {appBasicInfo.mode === AppModeEnum.ADVANCED_CHAT && <div className='truncate'>{t('app.types.advanced').toUpperCase()}</div>}
+            {appBasicInfo.mode === AppModeEnum.CHAT && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
+            {appBasicInfo.mode === AppModeEnum.AGENT_CHAT && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
+            {appBasicInfo.mode === AppModeEnum.WORKFLOW && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
+            {appBasicInfo.mode === AppModeEnum.COMPLETION && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
           </div>
         </div>
       </div>

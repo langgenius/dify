@@ -1,7 +1,6 @@
 import logging
 
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
@@ -14,7 +13,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.console import console_ns
+from controllers.console import api, console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import (
@@ -22,10 +21,11 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     setup_required,
 )
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from libs.helper import TimestampField
-from libs.login import login_required
-from models.account import Account, Tenant, TenantStatus
+from libs.login import current_account_with_tenant, login_required
+from models.account import Tenant, TenantStatus
 from services.account_service import TenantService
 from services.feature_service import FeatureService
 from services.file_service import FileService
@@ -71,8 +71,7 @@ class TenantListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, current_tenant_id = current_account_with_tenant()
         tenants = TenantService.get_join_tenants(current_user)
         tenant_dicts = []
 
@@ -85,8 +84,8 @@ class TenantListApi(Resource):
                 "name": tenant.name,
                 "status": tenant.status,
                 "created_at": tenant.created_at,
-                "plan": features.billing.subscription.plan if features.billing.enabled else "sandbox",
-                "current": tenant.id == current_user.current_tenant_id if current_user.current_tenant_id else False,
+                "plan": features.billing.subscription.plan if features.billing.enabled else CloudPlan.SANDBOX,
+                "current": tenant.id == current_tenant_id if current_tenant_id else False,
             }
 
             tenant_dicts.append(tenant_dict)
@@ -99,9 +98,11 @@ class WorkspaceListApi(Resource):
     @setup_required
     @admin_required
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
-        parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+            .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+        )
         args = parser.parse_args()
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
@@ -131,8 +132,7 @@ class TenantApi(Resource):
         if request.path == "/info":
             logger.warning("Deprecated URL /info was used.")
 
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = current_account_with_tenant()
         tenant = current_user.current_tenant
         if not tenant:
             raise ValueError("No current tenant")
@@ -150,17 +150,18 @@ class TenantApi(Resource):
         return WorkspaceService.get_tenant_info(tenant), 200
 
 
+parser_switch = reqparse.RequestParser().add_argument("tenant_id", type=str, required=True, location="json")
+
+
 @console_ns.route("/workspaces/switch")
 class SwitchWorkspaceApi(Resource):
+    @api.expect(parser_switch)
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
-        parser = reqparse.RequestParser()
-        parser.add_argument("tenant_id", type=str, required=True, location="json")
-        args = parser.parse_args()
+        current_user, _ = current_account_with_tenant()
+        args = parser_switch.parse_args()
 
         # check if tenant_id is valid, 403 if not
         try:
@@ -182,16 +183,14 @@ class CustomConfigWorkspaceApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
     def post(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
-        parser = reqparse.RequestParser()
-        parser.add_argument("remove_webapp_brand", type=bool, location="json")
-        parser.add_argument("replace_webapp_logo", type=str, location="json")
+        _, current_tenant_id = current_account_with_tenant()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("remove_webapp_brand", type=bool, location="json")
+            .add_argument("replace_webapp_logo", type=str, location="json")
+        )
         args = parser.parse_args()
-
-        if not current_user.current_tenant_id:
-            raise ValueError("No current tenant")
-        tenant = db.get_or_404(Tenant, current_user.current_tenant_id)
+        tenant = db.get_or_404(Tenant, current_tenant_id)
 
         custom_config_dict = {
             "remove_webapp_brand": args["remove_webapp_brand"],
@@ -213,8 +212,7 @@ class WebappLogoWorkspaceApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
     def post(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
+        current_user, _ = current_account_with_tenant()
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -247,22 +245,23 @@ class WebappLogoWorkspaceApi(Resource):
         return {"id": upload_file.id}, 201
 
 
+parser_info = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
+
+
 @console_ns.route("/workspaces/info")
 class WorkspaceInfoApi(Resource):
+    @api.expect(parser_info)
     @setup_required
     @login_required
     @account_initialization_required
     # Change workspace name
     def post(self):
-        if not isinstance(current_user, Account):
-            raise ValueError("Invalid user account")
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, location="json")
-        args = parser.parse_args()
+        _, current_tenant_id = current_account_with_tenant()
+        args = parser_info.parse_args()
 
-        if not current_user.current_tenant_id:
+        if not current_tenant_id:
             raise ValueError("No current tenant")
-        tenant = db.get_or_404(Tenant, current_user.current_tenant_id)
+        tenant = db.get_or_404(Tenant, current_tenant_id)
         tenant.name = args["name"]
         db.session.commit()
 

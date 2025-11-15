@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'ไตรมาสจนถึงปัจจุบัน',
       yearToDate: 'ปีจนถึงปัจจุบัน',
       allTime: 'ตลอดเวลา',
+      last30days: '30 วันที่ผ่านมา',
+      custom: 'กำหนดเอง',
     },
     annotation: {
       all: 'ทั้งหมด',
@@ -82,6 +84,7 @@ const translation = {
     workflowTitle: 'รายละเอียดบันทึก',
     fileListDetail: 'รายละเอียด',
     fileListLabel: 'รายละเอียดไฟล์',
+    testWithParams: 'ทดสอบด้วยพารามิเตอร์',
   },
   promptLog: 'บันทึกพร้อมท์',
   agentLog: 'บันทึกตัวแทน',

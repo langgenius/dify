@@ -97,8 +97,7 @@ class RemoteFileUploadApi(WebApiResource):
             FileTooLargeError: File exceeds size limit
             UnsupportedFileTypeError: File type not supported
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("url", type=str, required=True, help="URL is required")
+        parser = reqparse.RequestParser().add_argument("url", type=str, required=True, help="URL is required")
         args = parser.parse_args()
 
         url = args["url"]

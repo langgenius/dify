@@ -28,6 +28,7 @@ import {
   AuthCategory,
   PluginAuthInAgent,
 } from '@/app/components/plugins/plugin-auth'
+import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 
 type Props = {
   showBackButton?: boolean
@@ -193,7 +194,7 @@ const SettingBuiltInTool: FC<Props> = ({
                   onClick={onHide}
                 >
                   <RiArrowLeftLine className='h-4 w-4' />
-                  BACK
+                  {t('plugin.detailPanel.operation.back')}
                 </div>
               )}
               <div className='flex items-center gap-1'>
@@ -214,6 +215,8 @@ const SettingBuiltInTool: FC<Props> = ({
                     pluginPayload={{
                       provider: collection.name,
                       category: AuthCategory.tool,
+                      providerType: collection.type,
+                      detail: collection as any,
                     }}
                     credentialId={credentialId}
                     onAuthorizationItemClick={onAuthorizationItemClick}
@@ -243,13 +246,14 @@ const SettingBuiltInTool: FC<Props> = ({
                 )}
                 <div className='h-0 grow overflow-y-auto px-4'>
                   {isInfoActive ? infoUI : settingUI}
+                  {!readonly && !isInfoActive && (
+                    <div className='flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2'>
+                      <Button className='flex h-8 items-center !px-3 !text-[13px] font-medium ' onClick={onHide}>{t('common.operation.cancel')}</Button>
+                      <Button className='flex h-8 items-center !px-3 !text-[13px] font-medium' variant='primary' disabled={!isValid} onClick={() => onSave?.(addDefaultValue(tempSetting, formSchemas))}>{t('common.operation.save')}</Button>
+                    </div>
+                  )}
                 </div>
-                {!readonly && !isInfoActive && (
-                  <div className='mt-2 flex shrink-0 justify-end space-x-2 rounded-b-[10px]  border-t border-divider-regular bg-components-panel-bg px-6 py-4'>
-                    <Button className='flex h-8 items-center !px-3 !text-[13px] font-medium ' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                    <Button className='flex h-8 items-center !px-3 !text-[13px] font-medium' variant='primary' disabled={!isValid} onClick={() => onSave?.(addDefaultValue(tempSetting, formSchemas))}>{t('common.operation.save')}</Button>
-                  </div>
-                )}
+                <ReadmeEntrance pluginDetail={collection as any} className='mt-auto' />
               </div>
             </div>
           </>

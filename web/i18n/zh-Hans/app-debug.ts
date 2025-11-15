@@ -342,7 +342,6 @@ const translation = {
   variableTable: {
     key: '变量 Key',
     name: '字段名称',
-    optional: '可选',
     type: '类型',
     action: '操作',
     typeString: '文本',

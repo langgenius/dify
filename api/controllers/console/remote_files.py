@@ -1,8 +1,6 @@
 import urllib.parse
-from typing import cast
 
 import httpx
-from flask_login import current_user
 from flask_restx import Resource, marshal_with, reqparse
 
 import services
@@ -12,11 +10,12 @@ from controllers.common.errors import (
     RemoteFileUploadError,
     UnsupportedFileTypeError,
 )
+from controllers.console import api
 from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from fields.file_fields import file_fields_with_signed_url, remote_file_info_fields
-from models.account import Account
+from libs.login import current_account_with_tenant
 from services.file_service import FileService
 
 from . import console_ns
@@ -38,13 +37,15 @@ class RemoteFileInfoApi(Resource):
         }
 
 
+parser_upload = reqparse.RequestParser().add_argument("url", type=str, required=True, help="URL is required")
+
+
 @console_ns.route("/remote-files/upload")
 class RemoteFileUploadApi(Resource):
+    @api.expect(parser_upload)
     @marshal_with(file_fields_with_signed_url)
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("url", type=str, required=True, help="URL is required")
-        args = parser.parse_args()
+        args = parser_upload.parse_args()
 
         url = args["url"]
 
@@ -65,7 +66,7 @@ class RemoteFileUploadApi(Resource):
         content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url).content
 
         try:
-            user = cast(Account, current_user)
+            user, _ = current_account_with_tenant()
             upload_file = FileService(db.engine).upload_file(
                 filename=file_info.filename,
                 content=content,

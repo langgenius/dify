@@ -1,10 +1,11 @@
 import logging
 import time as time_module
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel
 from sqlalchemy import update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -267,7 +268,7 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
 
             # Build and execute the update statement
             stmt = update(Provider).where(*where_conditions).values(**update_values)
-            result = session.execute(stmt)
+            result = cast(CursorResult, session.execute(stmt))
             rows_affected = result.rowcount
 
             logger.debug(

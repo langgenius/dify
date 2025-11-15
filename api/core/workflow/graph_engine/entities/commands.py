@@ -16,7 +16,6 @@ class CommandType(StrEnum):
 
     ABORT = "abort"
     PAUSE = "pause"
-    RESUME = "resume"
 
 
 class GraphEngineCommand(BaseModel):
@@ -31,3 +30,10 @@ class AbortCommand(GraphEngineCommand):
 
     command_type: CommandType = Field(default=CommandType.ABORT, description="Type of command")
     reason: str | None = Field(default=None, description="Optional reason for abort")
+
+
+class PauseCommand(GraphEngineCommand):
+    """Command to pause a running workflow execution."""
+
+    command_type: CommandType = Field(default=CommandType.PAUSE, description="Type of command")
+    reason: str = Field(default="unknown reason", description="reason for pause")
