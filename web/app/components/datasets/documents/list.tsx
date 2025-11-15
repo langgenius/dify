@@ -279,9 +279,9 @@ const DocumentList: FC<IDocumentListProps> = ({
   }, [])
 
   return (
-    <div className='relative flex h-full w-full flex-col'>
-      <div className='relative grow overflow-x-auto'>
-        <table className={`mt-3 w-full min-w-[700px] max-w-full border-collapse border-0 text-sm ${s.documentTable}`}>
+    <div className='relative mt-3 flex h-full w-full flex-col'>
+      <div className='relative h-0 grow overflow-x-auto'>
+        <table className={`w-full min-w-[700px] max-w-full border-collapse border-0 text-sm ${s.documentTable}`}>
           <thead className="h-8 border-b border-divider-subtle text-xs font-medium uppercase leading-8 text-text-tertiary">
             <tr>
               <td className='w-12'>
@@ -449,7 +449,7 @@ const DocumentList: FC<IDocumentListProps> = ({
       {pagination.total && (
         <Pagination
           {...pagination}
-          className='w-full shrink-0 px-0 pb-0'
+          className='w-full shrink-0'
         />
       )}
 
