@@ -2,6 +2,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,35 +19,73 @@ import {
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
-import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
-import Toast from '../../base/toast'
-import type { ModelAndParameter } from '../configuration/debug/types'
 import Divider from '../../base/divider'
-import AccessControl from '../app-access-control'
 import Loading from '../../base/loading'
+import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
-import SuggestedAction from './suggested-action'
+import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
+import AccessControl from '../app-access-control'
+import type { ModelAndParameter } from '../configuration/debug/types'
 import PublishWithMultipleModel from './publish-with-multiple-model'
+import SuggestedAction from './suggested-action'
+import EmbeddedModal from '@/app/components/app/overview/embedded'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
+import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { basePath } from '@/utils/var'
-import { fetchInstalledAppList } from '@/service/explore'
-import EmbeddedModal from '@/app/components/app/overview/embedded'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import type { InputVar } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
-import type { PublishWorkflowParams } from '@/types/workflow'
-import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
-import { AccessMode } from '@/models/access-control'
-import { fetchAppDetail } from '@/service/apps'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { AccessMode } from '@/models/access-control'
+import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
+import { fetchAppDetailDirect } from '@/service/apps'
+import { fetchInstalledAppList } from '@/service/explore'
+import { AppModeEnum } from '@/types/app'
+import type { PublishWorkflowParams } from '@/types/workflow'
+import { basePath } from '@/utils/var'
+
+const ACCESS_MODE_MAP: Record<AccessMode, { label: string, icon: React.ElementType }> = {
+  [AccessMode.ORGANIZATION]: {
+    label: 'organization',
+    icon: RiBuildingLine,
+  },
+  [AccessMode.SPECIFIC_GROUPS_MEMBERS]: {
+    label: 'specific',
+    icon: RiLockLine,
+  },
+  [AccessMode.PUBLIC]: {
+    label: 'anyone',
+    icon: RiGlobalLine,
+  },
+  [AccessMode.EXTERNAL_MEMBERS]: {
+    label: 'external',
+    icon: RiVerifiedBadgeLine,
+  },
+}
+
+const AccessModeDisplay: React.FC<{ mode?: AccessMode }> = ({ mode }) => {
+  const { t } = useTranslation()
+
+  if (!mode || !ACCESS_MODE_MAP[mode])
+    return null
+
+  const { icon: Icon, label } = ACCESS_MODE_MAP[mode]
+
+  return (
+    <>
+      <Icon className='h-4 w-4 shrink-0 text-text-secondary' />
+      <div className='grow truncate'>
+        <span className='system-sm-medium text-text-secondary'>{t(`app.accessControlDialog.accessItems.${label}`)}</span>
+      </div>
+    </>
+  )
+}
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -64,6 +103,9 @@ export type AppPublisherProps = {
   toolPublished?: boolean
   inputs?: InputVar[]
   onRefreshData?: () => void
+  workflowToolAvailable?: boolean
+  missingStartNode?: boolean
+  hasTriggerNode?: boolean // Whether workflow currently contains any trigger nodes (used to hide missing-start CTA when triggers exist).
 }
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
@@ -82,28 +124,48 @@ const AppPublisher = ({
   toolPublished,
   inputs,
   onRefreshData,
+  workflowToolAvailable = true,
+  missingStartNode = false,
+  hasTriggerNode = false,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
+
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
+  const [showAppAccessControl, setShowAppAccessControl] = useState(false)
+  const [isAppAccessSet, setIsAppAccessSet] = useState(true)
+  const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
+
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(s => s.setAppDetail)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
-  const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
+
+  const appMode = (appDetail?.mode !== AppModeEnum.COMPLETION && appDetail?.mode !== AppModeEnum.WORKFLOW) ? AppModeEnum.CHAT : appDetail.mode
   const appURL = `${appBaseURL}${basePath}/${appMode}/${accessToken}`
-  const isChatApp = ['chat', 'agent-chat', 'completion'].includes(appDetail?.mode || '')
+  const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(appDetail?.mode || AppModeEnum.CHAT)
+
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+
+  const noAccessPermission = useMemo(() => systemFeatures.webapp_auth.enabled && appDetail && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result, [systemFeatures, appDetail, userCanAccessApp])
+  const disabledFunctionButton = useMemo(() => (!publishedAt || missingStartNode || noAccessPermission), [publishedAt, missingStartNode, noAccessPermission])
+
+  const disabledFunctionTooltip = useMemo(() => {
+    if (!publishedAt)
+      return t('app.notPublishedYet')
+    if (missingStartNode)
+      return t('app.noUserInputNode')
+    if (noAccessPermission)
+      return t('app.noAccessPermission')
+  }, [missingStartNode, noAccessPermission, publishedAt])
 
   useEffect(() => {
     if (systemFeatures.webapp_auth.enabled && open && appDetail)
       refetch()
   }, [open, appDetail, refetch, systemFeatures])
 
-  const [showAppAccessControl, setShowAppAccessControl] = useState(false)
-  const [isAppAccessSet, setIsAppAccessSet] = useState(true)
   useEffect(() => {
     if (appDetail && appAccessSubjects) {
       if (appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
@@ -162,14 +224,17 @@ const AppPublisher = ({
     }
   }, [appDetail?.id])
 
-  const handleAccessControlUpdate = useCallback(() => {
-    fetchAppDetail({ url: '/apps', id: appDetail!.id }).then((res) => {
+  const handleAccessControlUpdate = useCallback(async () => {
+    if (!appDetail)
+      return
+    try {
+      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail.id })
       setAppDetail(res)
+    }
+    finally {
       setShowAppAccessControl(false)
-    })
+    }
   }, [appDetail, setAppDetail])
-
-  const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
@@ -177,6 +242,10 @@ const AppPublisher = ({
       return
     handlePublish()
   }, { exactMatch: true, useCapture: true })
+
+  const hasPublishedVersion = !!publishedAt
+  const workflowToolDisabled = !hasPublishedVersion || !workflowToolAvailable
+  const workflowToolMessage = workflowToolDisabled ? t('workflow.common.workflowAsToolDisabledHint') : undefined
 
   return (
     <>
@@ -192,7 +261,7 @@ const AppPublisher = ({
         <PortalToFollowElemTrigger onClick={handleTrigger}>
           <Button
             variant='primary'
-            className='p-2'
+            className='py-2 pl-3 pr-2'
             disabled={disabled}
           >
             {t('workflow.common.publish')}
@@ -274,32 +343,7 @@ const AppPublisher = ({
                       setShowAppAccessControl(true)
                     }}>
                     <div className='flex grow items-center gap-x-1.5 overflow-hidden pr-1'>
-                      {appDetail?.access_mode === AccessMode.ORGANIZATION
-                        && <>
-                          <RiBuildingLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                          <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.organization')}</p>
-                        </>
-                      }
-                      {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS
-                        && <>
-                          <RiLockLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                          <div className='grow truncate'>
-                            <span className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</span>
-                          </div>
-                        </>
-                      }
-                      {appDetail?.access_mode === AccessMode.PUBLIC
-                        && <>
-                          <RiGlobalLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                          <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.anyone')}</p>
-                        </>
-                      }
-                      {appDetail?.access_mode === AccessMode.EXTERNAL_MEMBERS
-                        && <>
-                          <RiVerifiedBadgeLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                          <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.external')}</p>
-                        </>
-                      }
+                      <AccessModeDisplay mode={appDetail?.access_mode} />
                     </div>
                     {!isAppAccessSet && <p className='system-xs-regular shrink-0 text-text-tertiary'>{t('app.publishApp.notSet')}</p>}
                     <div className='flex h-4 w-4 shrink-0 items-center justify-center'>
@@ -308,79 +352,88 @@ const AppPublisher = ({
                   </div>
                   {!isAppAccessSet && <p className='system-xs-regular mt-1 text-text-warning'>{t('app.publishApp.notSetDesc')}</p>}
                 </div>}
-                <div className='flex flex-col gap-y-1 border-t-[0.5px] border-t-divider-regular p-4 pt-3'>
-                  <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || appDetail?.access_mode === AccessMode.EXTERNAL_MEMBERS || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
-                    <SuggestedAction
-                      className='flex-1'
-                      disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && appDetail?.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result)}
-                      link={appURL}
-                      icon={<RiPlayCircleLine className='h-4 w-4' />}
-                    >
-                      {t('workflow.common.runApp')}
-                    </SuggestedAction>
-                  </Tooltip>
-                  {appDetail?.mode === 'workflow' || appDetail?.mode === 'completion'
-                    ? (
-                      <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || appDetail.access_mode === AccessMode.EXTERNAL_MEMBERS || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                {
+                  // Hide run/batch run app buttons when there is a trigger node.
+                  !hasTriggerNode && (
+                    <div className='flex flex-col gap-y-1 border-t-[0.5px] border-t-divider-regular p-4 pt-3'>
+                      <Tooltip triggerClassName='flex' disabled={!disabledFunctionButton} popupContent={disabledFunctionTooltip} asChild={false}>
                         <SuggestedAction
                           className='flex-1'
-                          disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result)}
-                          link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
-                          icon={<RiPlayList2Line className='h-4 w-4' />}
+                          disabled={disabledFunctionButton}
+                          link={appURL}
+                          icon={<RiPlayCircleLine className='h-4 w-4' />}
                         >
-                          {t('workflow.common.batchRunApp')}
+                          {t('workflow.common.runApp')}
                         </SuggestedAction>
                       </Tooltip>
-                    )
-                    : (
-                      <SuggestedAction
-                        onClick={() => {
-                          setEmbeddingModalOpen(true)
-                          handleTrigger()
-                        }}
-                        disabled={!publishedAt}
-                        icon={<CodeBrowser className='h-4 w-4' />}
-                      >
-                        {t('workflow.common.embedIntoSite')}
-                      </SuggestedAction>
-                    )}
-                  <Tooltip triggerClassName='flex' disabled={!systemFeatures.webapp_auth.enabled || userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
-                    <SuggestedAction
-                      className='flex-1'
-                      onClick={() => {
-                        publishedAt && handleOpenInExplore()
-                      }}
-                      disabled={!publishedAt || (systemFeatures.webapp_auth.enabled && !userCanAccessApp?.result)}
-                      icon={<RiPlanetLine className='h-4 w-4' />}
-                    >
-                      {t('workflow.common.openInExplore')}
-                    </SuggestedAction>
-                  </Tooltip>
-                  <SuggestedAction
-                    disabled={!publishedAt}
-                    link='./develop'
-                    icon={<RiTerminalBoxLine className='h-4 w-4' />}
-                  >
-                    {t('workflow.common.accessAPIReference')}
-                  </SuggestedAction>
-                  {appDetail?.mode === 'workflow' && (
-                    <WorkflowToolConfigureButton
-                      disabled={!publishedAt}
-                      published={!!toolPublished}
-                      detailNeedUpdate={!!toolPublished && published}
-                      workflowAppId={appDetail?.id}
-                      icon={{
-                        content: (appDetail.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
-                        background: (appDetail.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
-                      }}
-                      name={appDetail?.name}
-                      description={appDetail?.description}
-                      inputs={inputs}
-                      handlePublish={handlePublish}
-                      onRefreshData={onRefreshData}
-                    />
+                      {appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION
+                        ? (
+                          <Tooltip triggerClassName='flex' disabled={!disabledFunctionButton} popupContent={disabledFunctionTooltip} asChild={false}>
+                            <SuggestedAction
+                              className='flex-1'
+                              disabled={disabledFunctionButton}
+                              link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
+                              icon={<RiPlayList2Line className='h-4 w-4' />}
+                            >
+                              {t('workflow.common.batchRunApp')}
+                            </SuggestedAction>
+                          </Tooltip>
+                        )
+                        : (
+                          <SuggestedAction
+                            onClick={() => {
+                              setEmbeddingModalOpen(true)
+                              handleTrigger()
+                            }}
+                            disabled={!publishedAt}
+                            icon={<CodeBrowser className='h-4 w-4' />}
+                          >
+                            {t('workflow.common.embedIntoSite')}
+                          </SuggestedAction>
+                        )}
+                      <Tooltip triggerClassName='flex' disabled={!disabledFunctionButton} popupContent={disabledFunctionTooltip} asChild={false}>
+                        <SuggestedAction
+                          className='flex-1'
+                          onClick={() => {
+                            if (publishedAt)
+                              handleOpenInExplore()
+                          }}
+                          disabled={disabledFunctionButton}
+                          icon={<RiPlanetLine className='h-4 w-4' />}
+                        >
+                          {t('workflow.common.openInExplore')}
+                        </SuggestedAction>
+                      </Tooltip>
+                      <Tooltip triggerClassName='flex' disabled={!!publishedAt && !missingStartNode} popupContent={!publishedAt ? t('app.notPublishedYet') : t('app.noUserInputNode')} asChild={false}>
+                        <SuggestedAction
+                          className='flex-1'
+                          disabled={!publishedAt || missingStartNode}
+                          link='./develop'
+                          icon={<RiTerminalBoxLine className='h-4 w-4' />}
+                        >
+                          {t('workflow.common.accessAPIReference')}
+                        </SuggestedAction>
+                      </Tooltip>
+                      {appDetail?.mode === AppModeEnum.WORKFLOW && (
+                        <WorkflowToolConfigureButton
+                          disabled={workflowToolDisabled}
+                          published={!!toolPublished}
+                          detailNeedUpdate={!!toolPublished && published}
+                          workflowAppId={appDetail?.id}
+                          icon={{
+                            content: (appDetail.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
+                            background: (appDetail.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
+                          }}
+                          name={appDetail?.name}
+                          description={appDetail?.description}
+                          inputs={inputs}
+                          handlePublish={handlePublish}
+                          onRefreshData={onRefreshData}
+                          disabledReason={workflowToolMessage}
+                        />
+                      )}
+                    </div>
                   )}
-                </div>
               </>}
           </div>
         </PortalToFollowElemContent>

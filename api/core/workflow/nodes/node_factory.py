@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, final
 
 from typing_extensions import override
 
-from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType
+from core.workflow.enums import NodeType
 from core.workflow.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
 from libs.typing import is_str, is_str_dict
@@ -10,7 +10,8 @@ from libs.typing import is_str, is_str_dict
 from .node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 
 if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams, GraphRuntimeState
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState
 
 
 @final
@@ -80,9 +81,5 @@ class DifyNodeFactory(NodeFactory):
         if not is_str_dict(node_data):
             raise ValueError(f"Node {node_id} missing data information")
         node_instance.init_node_data(node_data)
-
-        # If node has fail branch, change execution type to branch
-        if node_instance.error_strategy == ErrorStrategy.FAIL_BRANCH:
-            node_instance.execution_type = NodeExecutionType.BRANCH
 
         return node_instance

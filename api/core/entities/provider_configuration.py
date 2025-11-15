@@ -5,7 +5,7 @@ from collections import defaultdict
 from collections.abc import Iterator, Sequence
 from json import JSONDecodeError
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -73,9 +73,8 @@ class ProviderConfiguration(BaseModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def __init__(self, **data):
-        super().__init__(**data)
-
+    @model_validator(mode="after")
+    def _(self):
         if self.provider.provider not in original_provider_configurate_methods:
             original_provider_configurate_methods[self.provider.provider] = []
             for configurate_method in self.provider.configurate_methods:
@@ -90,6 +89,7 @@ class ProviderConfiguration(BaseModel):
                 and ConfigurateMethod.PREDEFINED_MODEL not in self.provider.configurate_methods
             ):
                 self.provider.configurate_methods.append(ConfigurateMethod.PREDEFINED_MODEL)
+        return self
 
     def get_current_credentials(self, model_type: ModelType, model: str) -> dict | None:
         """
@@ -207,7 +207,7 @@ class ProviderConfiguration(BaseModel):
         """
         stmt = select(Provider).where(
             Provider.tenant_id == self.tenant_id,
-            Provider.provider_type == ProviderType.CUSTOM.value,
+            Provider.provider_type == ProviderType.CUSTOM,
             Provider.provider_name.in_(self._get_provider_names()),
         )
 
@@ -458,7 +458,7 @@ class ProviderConfiguration(BaseModel):
                     provider_record = Provider(
                         tenant_id=self.tenant_id,
                         provider_name=self.provider.provider,
-                        provider_type=ProviderType.CUSTOM.value,
+                        provider_type=ProviderType.CUSTOM,
                         is_valid=True,
                         credential_id=new_record.id,
                     )
@@ -472,6 +472,9 @@ class ProviderConfiguration(BaseModel):
                     provider_model_credentials_cache.delete()
 
                     self.switch_preferred_provider_type(provider_type=ProviderType.CUSTOM, session=session)
+                else:
+                    # some historical data may have a provider record but not be set as valid
+                    provider_record.is_valid = True
 
                 session.commit()
             except Exception:
@@ -1145,6 +1148,15 @@ class ProviderConfiguration(BaseModel):
                     raise ValueError("Can't add same credential")
                 provider_model_record.credential_id = credential_record.id
                 provider_model_record.updated_at = naive_utc_now()
+
+                # clear cache
+                provider_model_credentials_cache = ProviderCredentialsCache(
+                    tenant_id=self.tenant_id,
+                    identity_id=provider_model_record.id,
+                    cache_type=ProviderCredentialsCacheType.MODEL,
+                )
+                provider_model_credentials_cache.delete()
+
             session.add(provider_model_record)
             session.commit()
 
@@ -1177,6 +1189,14 @@ class ProviderConfiguration(BaseModel):
             provider_model_record.updated_at = naive_utc_now()
             session.add(provider_model_record)
             session.commit()
+
+            # clear cache
+            provider_model_credentials_cache = ProviderCredentialsCache(
+                tenant_id=self.tenant_id,
+                identity_id=provider_model_record.id,
+                cache_type=ProviderCredentialsCacheType.MODEL,
+            )
+            provider_model_credentials_cache.delete()
 
     def delete_custom_model(self, model_type: ModelType, model: str):
         """
@@ -1414,7 +1434,7 @@ class ProviderConfiguration(BaseModel):
         """
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type.value == FormType.SECRET_INPUT.value:
+            if credential_form_schema.type == FormType.SECRET_INPUT:
                 secret_input_form_variables.append(credential_form_schema.variable)
 
         return secret_input_form_variables
@@ -1512,6 +1532,9 @@ class ProviderConfiguration(BaseModel):
 
             # Return composite sort key: (model_type value, model position index)
             return (model.model_type.value, position_index)
+
+        # Deduplicate
+        provider_models = list({(m.model, m.model_type, m.fetch_from): m for m in provider_models}.values())
 
         # Sort using the composite sort key
         return sorted(provider_models, key=get_sort_key)
@@ -1848,7 +1871,7 @@ class ProviderConfigurations(BaseModel):
         if "/" not in key:
             key = str(ModelProviderID(key))
 
-        return self.configurations.get(key, default)  # type: ignore
+        return self.configurations.get(key, default)
 
 
 class ProviderModelBundle(BaseModel):

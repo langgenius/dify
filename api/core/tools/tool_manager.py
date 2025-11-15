@@ -8,23 +8,38 @@ from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import sqlalchemy as sa
-from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from yarl import URL
 
 import contexts
+from core.helper.provider_cache import ToolProviderCredentialsCache
+from core.plugin.impl.tool import PluginToolManager
+from core.tools.__base.tool_provider import ToolProviderController
+from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.mcp_tool.provider import MCPToolProviderController
+from core.tools.mcp_tool.tool import MCPTool
+from core.tools.plugin_tool.provider import PluginToolProviderController
+from core.tools.plugin_tool.tool import PluginTool
+from core.tools.utils.uuid_utils import is_valid_uuid
+from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+from core.workflow.runtime.variable_pool import VariablePool
+from extensions.ext_database import db
+from models.provider_ids import ToolProviderID
+from services.enterprise.plugin_manager_service import PluginCredentialType
+from services.tools.mcp_tools_manage_service import MCPToolManageService
+
+if TYPE_CHECKING:
+    from core.workflow.nodes.tool.entities import ToolEntity
+
 from configs import dify_config
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
-from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.plugin.impl.tool import PluginToolManager
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import Tool
-from core.tools.__base.tool_provider import ToolProviderController
-from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.builtin_tool.tool import BuiltinTool
@@ -34,32 +49,21 @@ from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
-    CredentialType,
     ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
 )
 from core.tools.errors import ToolProviderNotFoundError
-from core.tools.mcp_tool.provider import MCPToolProviderController
-from core.tools.mcp_tool.tool import MCPTool
-from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
-from core.tools.utils.uuid_utils import is_valid_uuid
-from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from extensions.ext_database import db
-from models.provider_ids import ToolProviderID
-from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
-from services.enterprise.plugin_manager_service import PluginCredentialType
-from services.tools.mcp_tools_manage_service import MCPToolManageService
+from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
-    from core.workflow.entities import VariablePool
     from core.workflow.nodes.tool.entities import ToolEntity
+    from core.workflow.runtime import VariablePool
 
 logger = logging.getLogger(__name__)
 
@@ -284,10 +288,8 @@ class ToolManager:
                     credentials=decrypted_credentials,
                 )
                 # update the credentials
-                builtin_provider.encrypted_credentials = (
-                    TypeAdapter(dict[str, Any])
-                    .dump_json(encrypter.encrypt(dict(refreshed_credentials.credentials)))
-                    .decode("utf-8")
+                builtin_provider.encrypted_credentials = json.dumps(
+                    encrypter.encrypt(refreshed_credentials.credentials)
                 )
                 builtin_provider.expires_at = refreshed_credentials.expires_at
                 db.session.commit()
@@ -317,7 +319,7 @@ class ToolManager:
             return api_provider.get_tool(tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
-                    credentials=encrypter.decrypt(credentials),
+                    credentials=dict(encrypter.decrypt(credentials)),
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,
                 )
@@ -326,7 +328,8 @@ class ToolManager:
             workflow_provider_stmt = select(WorkflowToolProvider).where(
                 WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id
             )
-            workflow_provider = db.session.scalar(workflow_provider_stmt)
+            with Session(db.engine, expire_on_commit=False) as session, session.begin():
+                workflow_provider = session.scalar(workflow_provider_stmt)
 
             if workflow_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
@@ -718,7 +721,9 @@ class ToolManager:
                     )
                     result_providers[f"workflow_provider.{user_provider.name}"] = user_provider
             if "mcp" in filters:
-                mcp_providers = MCPToolManageService.retrieve_mcp_tools(tenant_id, for_list=True)
+                with Session(db.engine) as session:
+                    mcp_service = MCPToolManageService(session=session)
+                    mcp_providers = mcp_service.list_providers(tenant_id=tenant_id, for_list=True)
                 for mcp_provider in mcp_providers:
                     result_providers[f"mcp_provider.{mcp_provider.name}"] = mcp_provider
 
@@ -773,17 +778,12 @@ class ToolManager:
 
         :return: the provider controller, the credentials
         """
-        provider: MCPToolProvider | None = (
-            db.session.query(MCPToolProvider)
-            .where(
-                MCPToolProvider.server_identifier == provider_id,
-                MCPToolProvider.tenant_id == tenant_id,
-            )
-            .first()
-        )
-
-        if provider is None:
-            raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
+        with Session(db.engine) as session:
+            mcp_service = MCPToolManageService(session=session)
+            try:
+                provider = mcp_service.get_provider(server_identifier=provider_id, tenant_id=tenant_id)
+            except ValueError:
+                raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
 
         controller = MCPToolProviderController.from_db(provider)
 
@@ -830,7 +830,7 @@ class ToolManager:
             controller=controller,
         )
 
-        masked_credentials = encrypter.mask_tool_credentials(encrypter.decrypt(credentials))
+        masked_credentials = encrypter.mask_plugin_credentials(encrypter.decrypt(credentials))
 
         try:
             icon = json.loads(provider_obj.icon)
@@ -921,16 +921,15 @@ class ToolManager:
     @classmethod
     def generate_mcp_tool_icon_url(cls, tenant_id: str, provider_id: str) -> Mapping[str, str] | str:
         try:
-            mcp_provider: MCPToolProvider | None = (
-                db.session.query(MCPToolProvider)
-                .where(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == provider_id)
-                .first()
-            )
-
-            if mcp_provider is None:
-                raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
-
-            return mcp_provider.provider_icon
+            with Session(db.engine) as session:
+                mcp_service = MCPToolManageService(session=session)
+                try:
+                    mcp_provider = mcp_service.get_provider_entity(
+                        provider_id=provider_id, tenant_id=tenant_id, by_server_id=True
+                    )
+                    return mcp_provider.provider_icon
+                except ValueError:
+                    raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
         except Exception:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
@@ -1008,7 +1007,7 @@ class ToolManager:
                     config = tool_configurations.get(parameter.name, {})
                     if not (config and isinstance(config, dict) and config.get("value") is not None):
                         continue
-                    tool_input = ToolNodeData.ToolInput(**tool_configurations.get(parameter.name, {}))
+                    tool_input = ToolNodeData.ToolInput.model_validate(tool_configurations.get(parameter.name, {}))
                     if tool_input.type == "variable":
                         variable = variable_pool.get(tool_input.value)
                         if variable is None:

@@ -4,8 +4,8 @@ from json import loads as json_loads
 from json.decoder import JSONDecodeError
 from typing import Any
 
+import httpx
 from flask import request
-from requests import get
 from yaml import YAMLError, safe_load
 
 from core.tools.entities.common_entities import I18nObject
@@ -62,6 +62,11 @@ class ApiBasedToolSchemaParser:
                             root = root[ref]
                         interface["operation"]["parameters"][i] = root
                 for parameter in interface["operation"]["parameters"]:
+                    # Handle complex type defaults that are not supported by PluginParameter
+                    default_value = None
+                    if "schema" in parameter and "default" in parameter["schema"]:
+                        default_value = ApiBasedToolSchemaParser._sanitize_default_value(parameter["schema"]["default"])
+
                     tool_parameter = ToolParameter(
                         name=parameter["name"],
                         label=I18nObject(en_US=parameter["name"], zh_Hans=parameter["name"]),
@@ -72,9 +77,7 @@ class ApiBasedToolSchemaParser:
                         required=parameter.get("required", False),
                         form=ToolParameter.ToolParameterForm.LLM,
                         llm_description=parameter.get("description"),
-                        default=parameter["schema"]["default"]
-                        if "schema" in parameter and "default" in parameter["schema"]
-                        else None,
+                        default=default_value,
                         placeholder=I18nObject(
                             en_US=parameter.get("description", ""), zh_Hans=parameter.get("description", "")
                         ),
@@ -134,6 +137,11 @@ class ApiBasedToolSchemaParser:
                             required = body_schema.get("required", [])
                             properties = body_schema.get("properties", {})
                             for name, property in properties.items():
+                                # Handle complex type defaults that are not supported by PluginParameter
+                                default_value = ApiBasedToolSchemaParser._sanitize_default_value(
+                                    property.get("default", None)
+                                )
+
                                 tool = ToolParameter(
                                     name=name,
                                     label=I18nObject(en_US=name, zh_Hans=name),
@@ -144,12 +152,11 @@ class ApiBasedToolSchemaParser:
                                     required=name in required,
                                     form=ToolParameter.ToolParameterForm.LLM,
                                     llm_description=property.get("description", ""),
-                                    default=property.get("default", None),
+                                    default=default_value,
                                     placeholder=I18nObject(
                                         en_US=property.get("description", ""), zh_Hans=property.get("description", "")
                                     ),
                                 )
-
                                 # check if there is a type
                                 typ = ApiBasedToolSchemaParser._get_tool_parameter_type(property)
                                 if typ:
@@ -198,6 +205,22 @@ class ApiBasedToolSchemaParser:
         return bundles
 
     @staticmethod
+    def _sanitize_default_value(value):
+        """
+        Sanitize default values for PluginParameter compatibility.
+        Complex types (list, dict) are converted to None to avoid validation errors.
+
+        Args:
+            value: The default value from OpenAPI schema
+
+        Returns:
+            None for complex types (list, dict), otherwise the original value
+        """
+        if isinstance(value, (list, dict)):
+            return None
+        return value
+
+    @staticmethod
     def _get_tool_parameter_type(parameter: dict) -> ToolParameter.ToolParameterType | None:
         parameter = parameter or {}
         typ: str | None = None
@@ -217,7 +240,11 @@ class ApiBasedToolSchemaParser:
             return ToolParameter.ToolParameterType.STRING
         elif typ == "array":
             items = parameter.get("items") or parameter.get("schema", {}).get("items")
-            return ToolParameter.ToolParameterType.FILES if items and items.get("format") == "binary" else None
+            if items and items.get("format") == "binary":
+                return ToolParameter.ToolParameterType.FILES
+            else:
+                # For regular arrays, return ARRAY type instead of None
+                return ToolParameter.ToolParameterType.ARRAY
         else:
             return None
 
@@ -334,14 +361,19 @@ class ApiBasedToolSchemaParser:
             raise ToolNotSupportedError("Only openapi is supported now.")
 
         # get openapi yaml
-        response = get(api_url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "}, timeout=5)
-
-        if response.status_code != 200:
-            raise ToolProviderNotFoundError("cannot get openapi yaml from url.")
-
-        return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(
-            response.text, extra_info=extra_info, warning=warning
+        response = httpx.get(
+            api_url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "}, timeout=5
         )
+
+        try:
+            if response.status_code != 200:
+                raise ToolProviderNotFoundError("cannot get openapi yaml from url.")
+
+            return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(
+                response.text, extra_info=extra_info, warning=warning
+            )
+        finally:
+            response.close()
 
     @staticmethod
     def auto_parse_to_tool_bundle(
@@ -388,7 +420,7 @@ class ApiBasedToolSchemaParser:
             openapi = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(
                 loaded_content, extra_info=extra_info, warning=warning
             )
-            schema_type = ApiProviderSchemaType.OPENAPI.value
+            schema_type = ApiProviderSchemaType.OPENAPI
             return openapi, schema_type
         except ToolApiSchemaError as e:
             openapi_error = e
@@ -398,7 +430,7 @@ class ApiBasedToolSchemaParser:
             converted_swagger = ApiBasedToolSchemaParser.parse_swagger_to_openapi(
                 loaded_content, extra_info=extra_info, warning=warning
             )
-            schema_type = ApiProviderSchemaType.SWAGGER.value
+            schema_type = ApiProviderSchemaType.SWAGGER
             return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(
                 converted_swagger, extra_info=extra_info, warning=warning
             ), schema_type
@@ -410,7 +442,7 @@ class ApiBasedToolSchemaParser:
             openapi_plugin = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(
                 json_dumps(loaded_content), extra_info=extra_info, warning=warning
             )
-            return openapi_plugin, ApiProviderSchemaType.OPENAI_PLUGIN.value
+            return openapi_plugin, ApiProviderSchemaType.OPENAI_PLUGIN
         except ToolNotSupportedError as e:
             # maybe it's not plugin at all
             openapi_plugin_error = e

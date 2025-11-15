@@ -2,24 +2,21 @@ import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import Button from '@/app/components/base/button'
 import { useAppContext } from '@/context/app-context'
-import { logout } from '@/service/common'
 import Avatar from '@/app/components/base/avatar'
 import { Triangle } from '@/app/components/base/icons/src/public/education'
+import { useLogout } from '@/service/use-common'
 
 const UserInfo = () => {
   const router = useRouter()
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
 
+  const { mutateAsync: logout } = useLogout()
   const handleLogout = async () => {
-    await logout({
-      url: '/logout',
-      params: {},
-    })
+    await logout()
 
     localStorage.removeItem('setup_status')
-    localStorage.removeItem('console_token')
-    localStorage.removeItem('refresh_token')
+    // Tokens are now stored in cookies and cleared by backend
 
     router.push('/signin')
   }

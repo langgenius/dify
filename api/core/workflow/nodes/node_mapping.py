@@ -9,6 +9,7 @@ from core.workflow.nodes.datasource.datasource_node import DatasourceNode
 from core.workflow.nodes.document_extractor import DocumentExtractorNode
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.http_request import HttpRequestNode
+from core.workflow.nodes.human_input import HumanInputNode
 from core.workflow.nodes.if_else import IfElseNode
 from core.workflow.nodes.iteration import IterationNode, IterationStartNode
 from core.workflow.nodes.knowledge_index import KnowledgeIndexNode
@@ -21,6 +22,9 @@ from core.workflow.nodes.question_classifier import QuestionClassifierNode
 from core.workflow.nodes.start import StartNode
 from core.workflow.nodes.template_transform import TemplateTransformNode
 from core.workflow.nodes.tool import ToolNode
+from core.workflow.nodes.trigger_plugin import TriggerEventNode
+from core.workflow.nodes.trigger_schedule import TriggerScheduleNode
+from core.workflow.nodes.trigger_webhook import TriggerWebhookNode
 from core.workflow.nodes.variable_aggregator import VariableAggregatorNode
 from core.workflow.nodes.variable_assigner.v1 import VariableAssignerNode as VariableAssignerNodeV1
 from core.workflow.nodes.variable_assigner.v2 import VariableAssignerNode as VariableAssignerNodeV2
@@ -134,6 +138,10 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[Node]]] = {
         "2": AgentNode,
         "1": AgentNode,
     },
+    NodeType.HUMAN_INPUT: {
+        LATEST_VERSION: HumanInputNode,
+        "1": HumanInputNode,
+    },
     NodeType.DATASOURCE: {
         LATEST_VERSION: DatasourceNode,
         "1": DatasourceNode,
@@ -141,5 +149,17 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[Node]]] = {
     NodeType.KNOWLEDGE_INDEX: {
         LATEST_VERSION: KnowledgeIndexNode,
         "1": KnowledgeIndexNode,
+    },
+    NodeType.TRIGGER_WEBHOOK: {
+        LATEST_VERSION: TriggerWebhookNode,
+        "1": TriggerWebhookNode,
+    },
+    NodeType.TRIGGER_PLUGIN: {
+        LATEST_VERSION: TriggerEventNode,
+        "1": TriggerEventNode,
+    },
+    NodeType.TRIGGER_SCHEDULE: {
+        LATEST_VERSION: TriggerScheduleNode,
+        "1": TriggerScheduleNode,
     },
 }
