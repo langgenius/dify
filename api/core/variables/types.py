@@ -159,8 +159,8 @@ class SegmentType(StrEnum):
         elif self == SegmentType.NONE:
             return value is None
         elif self == SegmentType.GROUP:
-            from .segments import Segment
             from .segment_group import SegmentGroup
+            from .segments import Segment
 
             if isinstance(value, SegmentGroup):
                 return all(isinstance(item, Segment) for item in value.value)

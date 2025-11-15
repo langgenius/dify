@@ -227,29 +227,13 @@ def get_group_cases() -> list[ValidationTestCase]:
     return [
         # valid cases
         ValidationTestCase(
-            SegmentType.GROUP,
-            SegmentGroup(value=segments),
-            True,
-            "Valid SegmentGroup with mixed segments"
+            SegmentType.GROUP, SegmentGroup(value=segments), True, "Valid SegmentGroup with mixed segments"
         ),
         ValidationTestCase(
-            SegmentType.GROUP,
-            [StringSegment(value="test"), IntegerSegment(value=123)],
-            True,
-            "List of Segment objects"
+            SegmentType.GROUP, [StringSegment(value="test"), IntegerSegment(value=123)], True, "List of Segment objects"
         ),
-        ValidationTestCase(
-            SegmentType.GROUP,
-            SegmentGroup(value=[]),
-            True,
-            "Empty SegmentGroup"
-        ),
-        ValidationTestCase(
-            SegmentType.GROUP,
-            [],
-            True,
-            "Empty list"
-        ),
+        ValidationTestCase(SegmentType.GROUP, SegmentGroup(value=[]), True, "Empty SegmentGroup"),
+        ValidationTestCase(SegmentType.GROUP, [], True, "Empty list"),
         # invalid cases
         ValidationTestCase(SegmentType.GROUP, "not a list", False, "String value"),
         ValidationTestCase(SegmentType.GROUP, 123, False, "Integer value"),
@@ -257,17 +241,12 @@ def get_group_cases() -> list[ValidationTestCase]:
         ValidationTestCase(SegmentType.GROUP, None, False, "None value"),
         ValidationTestCase(SegmentType.GROUP, {"key": "value"}, False, "Dict value"),
         ValidationTestCase(SegmentType.GROUP, test_file, False, "File value"),
-        ValidationTestCase(
-            SegmentType.GROUP,
-            ["string", 123, True],
-            False,
-            "List with non-Segment objects"
-        ),
+        ValidationTestCase(SegmentType.GROUP, ["string", 123, True], False, "List with non-Segment objects"),
         ValidationTestCase(
             SegmentType.GROUP,
             [StringSegment(value="test"), "not a segment"],
             False,
-            "Mixed list with some non-Segment objects"
+            "Mixed list with some non-Segment objects",
         ),
     ]
 
@@ -557,24 +536,14 @@ class TestSegmentTypeIsValid:
         test_file = create_test_file()
 
         # Test with nested SegmentGroups
-        inner_group = SegmentGroup(value=[
-            StringSegment(value="inner"),
-            IntegerSegment(value=42)
-        ])
-        outer_group = SegmentGroup(value=[
-            StringSegment(value="outer"),
-            inner_group
-        ])
+        inner_group = SegmentGroup(value=[StringSegment(value="inner"), IntegerSegment(value=42)])
+        outer_group = SegmentGroup(value=[StringSegment(value="outer"), inner_group])
         assert SegmentType.GROUP.is_valid(outer_group) is True
 
         # Test with ArrayFileSegment (which is also a Segment)
         file_segment = FileSegment(value=test_file)
         array_file_segment = ArrayFileSegment(value=[test_file, test_file])
-        group_with_arrays = SegmentGroup(value=[
-            file_segment,
-            array_file_segment,
-            StringSegment(value="test")
-        ])
+        group_with_arrays = SegmentGroup(value=[file_segment, array_file_segment, StringSegment(value="test")])
         assert SegmentType.GROUP.is_valid(group_with_arrays) is True
 
         # Test performance with large number of segments
@@ -624,8 +593,10 @@ class TestSegmentTypeIsValid:
                 result = segment_type.is_valid(test_value)
                 assert isinstance(result, bool), f"is_valid should return boolean for {segment_type}"
             except AssertionError as e:
-                pytest.fail(f"SegmentType.{segment_type.name}.is_valid() raised AssertionError: {e}. "
-                           "This segment type needs to be handled in the is_valid method.")
+                pytest.fail(
+                    f"SegmentType.{segment_type.name}.is_valid() raised AssertionError: {e}. "
+                    "This segment type needs to be handled in the is_valid method."
+                )
 
 
 class TestSegmentTypeArrayValidation:
