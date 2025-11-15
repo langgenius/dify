@@ -613,6 +613,8 @@ class DatasetRetrieval:
                 return []
 
             if dataset.provider == "external":
+                from core.file.helpers import sign_file_urls_in_content
+
                 external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
                     tenant_id=dataset.tenant_id,
                     dataset_id=dataset_id,
@@ -621,8 +623,12 @@ class DatasetRetrieval:
                     metadata_condition=metadata_condition,
                 )
                 for external_document in external_documents:
+                    content = external_document.get("content")
+                    # Sign file URLs in content for external knowledge base
+                    if content:
+                        content = sign_file_urls_in_content(content)
                     document = Document(
-                        page_content=external_document.get("content"),
+                        page_content=content,
                         metadata=external_document.get("metadata"),
                         provider="external",
                     )
