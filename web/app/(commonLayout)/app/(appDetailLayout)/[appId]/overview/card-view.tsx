@@ -37,18 +37,22 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
 
+  const isWorkflowApp = appDetail?.mode === AppModeEnum.WORKFLOW
   const showMCPCard = isInPanel
-  const showTriggerCard = isInPanel && appDetail?.mode === AppModeEnum.WORKFLOW
-  const { data: currentWorkflow } = useAppWorkflow(appDetail?.mode === AppModeEnum.WORKFLOW ? appDetail.id : '')
-  const hasTriggerNode = useMemo(() => {
-    if (appDetail?.mode !== AppModeEnum.WORKFLOW)
+  const showTriggerCard = isInPanel && isWorkflowApp
+  const { data: currentWorkflow } = useAppWorkflow(isWorkflowApp ? appDetail.id : '')
+  const hasTriggerNode = useMemo<boolean | null>(() => {
+    if (!isWorkflowApp)
       return false
-    const nodes = currentWorkflow?.graph?.nodes || []
+    if (!currentWorkflow)
+      return null
+    const nodes = currentWorkflow.graph?.nodes || []
     return nodes.some((node) => {
       const nodeType = node.data?.type as BlockEnum | undefined
       return !!nodeType && isTriggerNode(nodeType)
     })
-  }, [appDetail?.mode, currentWorkflow])
+  }, [isWorkflowApp, currentWorkflow])
+  const shouldRenderAppCards = !isWorkflowApp || hasTriggerNode === false
 
   const updateAppDetail = async () => {
     try {
@@ -123,7 +127,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   return (
     <div className={className || 'mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'}>
       {
-        !hasTriggerNode && (
+        shouldRenderAppCards && (
           <>
             <AppCard
               appInfo={appDetail}

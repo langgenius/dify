@@ -6,6 +6,7 @@ import { useStore } from '@/app/components/app/store'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing, NodeTracingListResponse } from '@/types/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { WorkflowContextProvider } from '@/app/components/workflow/context'
 
 const SAMPLE_APP_DETAIL = {
   id: 'app-demo-1',
@@ -143,10 +144,12 @@ const MessageLogPreview = (props: MessageLogModalProps) => {
 
   return (
     <div className="relative min-h-[640px] w-full bg-background-default-subtle p-6">
-      <MessageLogModal
-        {...props}
-        currentLogItem={mockCurrentLogItem}
-      />
+      <WorkflowContextProvider>
+        <MessageLogModal
+          {...props}
+          currentLogItem={mockCurrentLogItem}
+        />
+      </WorkflowContextProvider>
     </div>
   )
 }
