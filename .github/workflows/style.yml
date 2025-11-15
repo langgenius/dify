@@ -1,7 +1,9 @@
 name: Style check
 
 on:
-  workflow_call:
+  push:
+    branches:
+      - mysql-adapt
 
 concurrency:
   group: style-${{ github.head_ref || github.run_id }}
