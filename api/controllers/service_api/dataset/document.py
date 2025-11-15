@@ -179,7 +179,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
     def post(self, tenant_id: str, dataset_id: str, document_id: str):
         """Update document by text."""
         args = DocumentTextUpdate.model_validate(service_api_ns.payload).model_dump()
-        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).first()
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
