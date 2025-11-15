@@ -11,6 +11,7 @@ import {
 } from '@remixicon/react'
 import { Plan, SelfHostedPlan } from '../type'
 import { NUM_INFINITE } from '../config'
+import { getDaysUntilEndOfMonth } from '@/utils/time'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
 import AppsInfo from '../usage-info/apps-info'
 import UpgradeBtn from '../upgrade-btn'
@@ -44,7 +45,14 @@ const PlanComp: FC<Props> = ({
   const {
     usage,
     total,
+    reset,
   } = plan
+  const triggerEventsResetInDays = type === Plan.professional && total.triggerEvents !== NUM_INFINITE
+    ? reset.triggerEvents ?? undefined
+    : undefined
+  const apiRateLimitResetInDays = type === Plan.sandbox && total.apiRateLimit !== NUM_INFINITE
+    ? getDaysUntilEndOfMonth()
+    : undefined
 
   const [showModal, setShowModal] = React.useState(false)
   const { mutateAsync } = useEducationVerify()
@@ -126,6 +134,7 @@ const PlanComp: FC<Props> = ({
           usage={usage.triggerEvents}
           total={total.triggerEvents}
           tooltip={t('billing.plansCommon.triggerEvents.tooltip') as string}
+          resetInDays={triggerEventsResetInDays}
         />
         <UsageInfo
           Icon={ApiAggregate}
@@ -133,6 +142,7 @@ const PlanComp: FC<Props> = ({
           usage={usage.apiRateLimit}
           total={total.apiRateLimit}
           tooltip={total.apiRateLimit === NUM_INFINITE ? undefined : t('billing.plansCommon.apiRateLimitTooltip') as string}
+          resetInDays={apiRateLimitResetInDays}
         />
 
       </div>

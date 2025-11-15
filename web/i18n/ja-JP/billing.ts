@@ -9,6 +9,7 @@ const translation = {
     vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、ナレッジベースのデータストレージのリソースを消費します。ナレッジベースのデータストレージの上限に達すると、新しいドキュメントはアップロードされません。',
     triggerEvents: 'トリガーイベント数',
     perMonth: '月あたり',
+    resetsIn: '{{count,number}}日後にリセット',
   },
   upgradeBtn: {
     plain: 'プランをアップグレード',

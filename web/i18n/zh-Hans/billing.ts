@@ -9,6 +9,7 @@ const translation = {
     vectorSpaceTooltip: '采用高质量索引模式的文档会消耗知识数据存储资源。当知识数据存储达到限制时，将不会上传新文档。',
     triggerEvents: '触发器事件数',
     perMonth: '每月',
+    resetsIn: '{{count,number}} 天后重置',
   },
   upgradeBtn: {
     plain: '查看套餐',

@@ -9,6 +9,7 @@ const translation = {
     vectorSpaceTooltip: 'Documents with the High Quality indexing mode will consume Knowledge Data Storage resources. When Knowledge Data Storage reaches the limit, new documents will not be uploaded.',
     triggerEvents: 'Trigger Events',
     perMonth: 'per month',
+    resetsIn: 'Resets in {{count,number}} days',
   },
   teamMembers: 'Team Members',
   upgradeBtn: {
