@@ -1,5 +1,5 @@
 import json
-
+from uuid import UUID
 from flask import request
 from flask_restx import marshal, reqparse
 from pydantic import BaseModel
@@ -176,7 +176,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id: str, dataset_id: str, document_id: str):
+    def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
         """Update document by text."""
         args = DocumentTextUpdate.model_validate(service_api_ns.payload).model_dump()
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).first()
