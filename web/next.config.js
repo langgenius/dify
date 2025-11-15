@@ -1,5 +1,74 @@
-const { basePath, assetPrefix } = require('./utils/var-basePath')
 const { codeInspectorPlugin } = require('code-inspector-plugin')
+
+const isDev = process.env.NODE_ENV === 'development'
+
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
+  fallbacks: {
+    document: '/_offline.html',
+  },
+  runtimeCaching: [
+    {
+      urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'google-fonts',
+        expiration: {
+          maxEntries: 4,
+          maxAgeSeconds: 365 * 24 * 60 * 60 // 1 year
+        }
+      }
+    },
+    {
+      urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'google-fonts-webfonts',
+        expiration: {
+          maxEntries: 4,
+          maxAgeSeconds: 365 * 24 * 60 * 60 // 1 year
+        }
+      }
+    },
+    {
+      urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'images',
+        expiration: {
+          maxEntries: 64,
+          maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
+        }
+      }
+    },
+    {
+      urlPattern: /\.(?:js|css)$/i,
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'static-resources',
+        expiration: {
+          maxEntries: 32,
+          maxAgeSeconds: 24 * 60 * 60 // 1 day
+        }
+      }
+    },
+    {
+      urlPattern: /^\/api\/.*/i,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'api-cache',
+        networkTimeoutSeconds: 10,
+        expiration: {
+          maxEntries: 16,
+          maxAgeSeconds: 60 * 60 // 1 hour
+        }
+      }
+    }
+  ]
+})
 const withMDX = require('@next/mdx')({
   extension: /\.mdx?$/,
   options: {
@@ -24,11 +93,12 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath,
-  assetPrefix,
-  webpack: (config, { dev, isServer }) => {
-    config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
-    return config
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  transpilePackages: ['echarts', 'zrender'],
+  turbopack: {
+    rules: codeInspectorPlugin({
+      bundler: 'turbopack'
+    })
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
@@ -44,6 +114,9 @@ const nextConfig = {
     })),
   },
   experimental: {
+    optimizePackageImports: [
+      '@heroicons/react'
+    ],
   },
   // fix all before production. Now it slow the develop speed.
   eslint: {
@@ -67,6 +140,9 @@ const nextConfig = {
     ]
   },
   output: 'standalone',
+  compiler: {
+    removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
+  }
 }
 
-module.exports = withBundleAnalyzer(withMDX(nextConfig))
+module.exports = withPWA(withBundleAnalyzer(withMDX(nextConfig)))

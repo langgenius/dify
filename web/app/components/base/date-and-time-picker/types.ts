@@ -1,4 +1,5 @@
 import type { Dayjs } from 'dayjs'
+import type { Placement } from '@floating-ui/react'
 
 export enum ViewType {
   date = 'date',
@@ -28,7 +29,10 @@ export type DatePickerProps = {
   onClear: () => void
   triggerWrapClassName?: string
   renderTrigger?: (props: TriggerProps) => React.ReactNode
+  minuteFilter?: (minutes: string[]) => string[]
   popupZIndexClassname?: string
+  noConfirm?: boolean
+  getIsDateDisabled?: (date: Dayjs) => boolean
 }
 
 export type DatePickerHeaderProps = {
@@ -47,13 +51,25 @@ export type DatePickerFooterProps = {
   handleConfirmDate: () => void
 }
 
+export type TriggerParams = {
+  isOpen: boolean
+  inputElem: React.ReactNode
+  onClick: (e: React.MouseEvent) => void
+}
 export type TimePickerProps = {
-  value: Dayjs | undefined
+  value: Dayjs | string | undefined
   timezone?: string
   placeholder?: string
   onChange: (date: Dayjs | undefined) => void
   onClear: () => void
-  renderTrigger?: () => React.ReactNode
+  renderTrigger?: (props: TriggerParams) => React.ReactNode
+  title?: string
+  minuteFilter?: (minutes: string[]) => string[]
+  popupClassName?: string
+  notClearable?: boolean
+  triggerFullWidth?: boolean
+  showTimezone?: boolean
+  placement?: Placement
 }
 
 export type TimePickerFooterProps = {
@@ -71,16 +87,19 @@ export type CalendarProps = {
   selectedDate: Dayjs | undefined
   onDateClick: (date: Dayjs) => void
   wrapperClassName?: string
+  getIsDateDisabled?: (date: Dayjs) => boolean
 }
 
 export type CalendarItemProps = {
   day: Day
   selectedDate: Dayjs | undefined
   onClick: (date: Dayjs) => void
+  isDisabled: boolean
 }
 
 export type TimeOptionsProps = {
   selectedTime: Dayjs | undefined
+  minuteFilter?: (minutes: string[]) => string[]
   handleSelectHour: (hour: string) => void
   handleSelectMinute: (minute: string) => void
   handleSelectPeriod: (period: Period) => void

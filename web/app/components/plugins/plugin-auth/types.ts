@@ -1,12 +1,21 @@
+import type { CollectionType } from '../../tools/types'
+import type { PluginDetail } from '../types'
+
+export type { AddApiKeyButtonProps } from './authorize/add-api-key-button'
+export type { AddOAuthButtonProps } from './authorize/add-oauth-button'
+
 export enum AuthCategory {
   tool = 'tool',
   datasource = 'datasource',
   model = 'model',
+  trigger = 'trigger',
 }
 
 export type PluginPayload = {
   category: AuthCategory
   provider: string
+  providerType?: CollectionType | string
+  detail?: PluginDetail
 }
 
 export enum CredentialTypeEnum {
@@ -22,4 +31,6 @@ export type Credential = {
   is_default: boolean
   credentials?: Record<string, any>
   isWorkspaceDefault?: boolean
+  from_enterprise?: boolean
+  not_allowed_to_use?: boolean
 }

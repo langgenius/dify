@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { v4 as uuid4 } from 'uuid'
 import type { ValueSelector, Var } from '../../types'
@@ -124,7 +124,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
   const handleAddGroup = useCallback(() => {
     let maxInGroupName = 1
     inputs.advanced_settings.groups.forEach((item) => {
-      const match = item.group_name.match(/(\d+)$/)
+      const match = /(\d+)$/.exec(item.group_name)
       if (match) {
         const num = Number.parseInt(match[1], 10)
         if (num > maxInGroupName)

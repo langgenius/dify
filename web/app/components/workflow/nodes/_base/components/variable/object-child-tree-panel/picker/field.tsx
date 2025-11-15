@@ -41,7 +41,7 @@ const Field: FC<Props> = ({
       <Tooltip popupContent={t('app.structOutput.moreFillTip')} disabled={depth !== MAX_DEPTH + 1}>
         <div
           className={cn('flex items-center justify-between rounded-md pr-2', !readonly && 'hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}
-          onClick={() => !readonly && onSelect?.([...valueSelector, name])}
+          onMouseDown={() => !readonly && onSelect?.([...valueSelector, name])}
         >
           <div className='flex grow items-stretch'>
             <TreeIndentLine depth={depth} />

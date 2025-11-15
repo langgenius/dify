@@ -24,7 +24,7 @@ import type {
 } from '@/models/debug'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import { changeLanguage } from '@/i18n/i18next-config'
+import { changeLanguage } from '@/i18n-config/i18next-config'
 import Loading from '@/app/components/base/loading'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import Res from '@/app/components/share/text-generation/result'
@@ -151,10 +151,9 @@ const TextGeneration: FC<IMainProps> = ({
   const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
   const noPendingTask = pendingTaskList.length === 0
   const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
-  const [currGroupNum, doSetCurrGroupNum] = useState(0)
   const currGroupNumRef = useRef(0)
+
   const setCurrGroupNum = (num: number) => {
-    doSetCurrGroupNum(num)
     currGroupNumRef.current = num
   }
   const getCurrGroupNum = () => {
@@ -164,10 +163,8 @@ const TextGeneration: FC<IMainProps> = ({
   const allFailedTaskList = allTaskList.filter(task => task.status === TaskStatus.failed)
   const allTasksFinished = allTaskList.every(task => task.status === TaskStatus.completed)
   const allTasksRun = allTaskList.every(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status))
-  const [batchCompletionRes, doSetBatchCompletionRes] = useState<Record<string, string>>({})
   const batchCompletionResRef = useRef<Record<string, string>>({})
   const setBatchCompletionRes = (res: Record<string, string>) => {
-    doSetBatchCompletionRes(res)
     batchCompletionResRef.current = res
   }
   const getBatchCompletionRes = () => batchCompletionResRef.current
@@ -366,12 +363,13 @@ const TextGeneration: FC<IMainProps> = ({
     (async () => {
       if (!appData || !appParams)
         return
-      !isWorkflow && fetchSavedMessage()
+      if (!isWorkflow)
+        fetchSavedMessage()
       const { app_id: appId, site: siteInfo, custom_config } = appData
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)
       setCustomConfig(custom_config)
-      changeLanguage(siteInfo.default_language)
+      await changeLanguage(siteInfo.default_language)
 
       const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
       setVisionConfig({

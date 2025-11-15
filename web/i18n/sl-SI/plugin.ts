@@ -9,6 +9,7 @@ const translation = {
     models: 'Modeli',
     agents: 'Strategije agenta',
     tools: 'Orodja',
+    datasources: 'Viri podatkov',
   },
   categorySingle: {
     extension: 'Razširitev',
@@ -16,6 +17,7 @@ const translation = {
     agent: 'Agentska strategija',
     tool: 'Orodje',
     model: 'Model',
+    datasource: 'Vir podatkov',
   },
   list: {
     source: {
@@ -87,6 +89,16 @@ const translation = {
     endpointsTip: 'Ta vtičnik zagotavlja specifične funkcionalnosti preko končnih točk, prav tako pa lahko konfigurirate več nizov končnih točk za trenutno delovno okolje.',
     endpointModalDesc: 'Ko je konfiguriran, se lahko uporabljajo funkcije, ki jih vtičnik zagotavlja prek API končnih točk.',
     endpointsEmpty: 'Kliknite gumb \' \' za dodajanje končne točke',
+    deprecation: {
+      reason: {
+        businessAdjustments: 'poslovne prilagoditve',
+        noMaintainer: 'brez vzdrževalca',
+        ownershipTransferred: 'lastništvo preneseno',
+      },
+      onlyReason: 'Ta vtičnik je bil opuščen zaradi {{deprecatedReason}} in ne bo več posodobljen.',
+      noReason: 'Ta vtičnik je bil ukinjen in ne bo več posodabljan.',
+      fullMessage: 'Ta vtičnik je bil ukinjen zaradi {{deprecatedReason}}, in ne bo več posodobljen. Namesto tega uporabite <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>.',
+    },
   },
   debugInfo: {
     viewDocs: 'Oglejte si dokumente',
@@ -236,6 +248,63 @@ const translation = {
     oauthClientSettings: 'Nastavitve odjemalca OAuth',
     clientInfo: 'Ker za tega ponudnika orodij niso bili najdeni klientski skrivnosti sistema, je potrebna ročna nastavitev, za redirect_uri prosimo uporabite',
     useApiAuthDesc: 'Po konfiguraciji poverilnic lahko vsi člani v delovnem prostoru uporabljajo to orodje pri orkestraciji aplikacij.',
+    unavailable: 'Nedostopno',
+    customCredentialUnavailable: 'Trenutno niso na voljo prilagojene prijave.',
+    credentialUnavailable: 'Trenutno niso na voljo poverilnice. Prosimo, kontaktirajte administratorja.',
+    credentialUnavailableInButton: 'Pogodba ni na voljo',
+    connectedWorkspace: 'Povezani delovni prostor',
+    emptyAuth: 'Prosimo, konfigurirajte preverjanje pristnosti',
+  },
+  deprecated: 'Zastaran',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        name: 'Onemogočeno',
+        description: 'Vtičniki se ne bodo samodejno posodobili',
+      },
+      fixOnly: {
+        name: 'Popravi samo',
+        selectedDescription: 'Samodejno posodabljanje samo za različice popravkov',
+        description: 'Samodejno posodabljanje samo za različice popravkov (npr. 1.0.1 → 1.0.2). Spremembe manjših različic ne bodo povzročile posodobitev.',
+      },
+      latest: {
+        selectedDescription: 'Vedno posodobite na najnovejšo različico',
+        name: 'Najnovejši',
+        description: 'Vedno posodobite na najnovejšo različico',
+      },
+    },
+    upgradeMode: {
+      partial: 'Samo izbrano',
+      exclude: 'Izključi izbrano',
+      all: 'Posodobi vse',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'Izbrani vtičniki se ne bodo samodejno posodabljali.',
+      partial: 'Samo izbrani vtičniki se bodo samodejno posodabljali. Trenutno ni izbranih nobenih vtičnikov, zato se nobeni vtičniki ne bodo samodejno posodobili.',
+    },
+    operation: {
+      select: 'Izberi vtičnike',
+      clearAll: 'Počisti vse',
+    },
+    pluginDowngradeWarning: {
+      downgrade: 'Kljub temu narediti nižjo različico',
+      exclude: 'Izključi iz samodejnega posodabljanja',
+      title: 'Zmanjšanje različice vtičnika',
+      description: 'Samodejno posodabljanje je trenutno omogočeno za ta vtičnik. Zmanjšanje različice lahko povzroči, da bodo vaše spremembe prepisane med naslednjim samodejnim posodabljanjem.',
+    },
+    noPluginPlaceholder: {
+      noFound: 'Nobeni vtičniki niso bili najdeni',
+      noInstalled: 'Nobenih vtičnikov ni nameščenih',
+    },
+    updateTimeTitle: 'Čas posodobitve',
+    specifyPluginsToUpdate: 'Določite vtičnike za posodobitev',
+    updateTime: 'Čas posodobitve',
+    nextUpdateTime: 'Naslednje samodejno posodabljanje: {{time}}',
+    automaticUpdates: 'Samodejna posodobitev',
+    excludeUpdate: 'Naslednjih {{num}} razširitev ne bo samodejno posodobljenih',
+    changeTimezone: 'Za spremembo časovnega pasu pojdite v <setTimezone>Nastavitve</setTimezone>',
+    partialUPdate: 'Samo naslednjih {{num}} vtičnikov se bo samodejno posodabljalo.',
+    updateSettings: 'Posodobi nastavitve',
   },
 }
 

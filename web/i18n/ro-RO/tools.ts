@@ -2,7 +2,6 @@ const translation = {
   title: 'Instrumente',
   createCustomTool: 'Creează Instrument Personalizat',
   type: {
-    all: 'Toate',
     builtIn: 'Incorporat',
     custom: 'Personalizat',
     workflow: 'Flux de lucru',
@@ -20,7 +19,6 @@ const translation = {
     setupModalTitleDescription: 'După configurarea credențialelor, toți membrii din spațiul de lucru pot utiliza acest instrument la orchestrarea aplicațiilor.',
   },
   includeToolNum: '{{num}} instrumente incluse',
-  addTool: 'Adaugă Instrument',
   createTool: {
     title: 'Creează Instrument Personalizat',
     editAction: 'Configurează',
@@ -54,7 +52,6 @@ const translation = {
       keyTooltip: 'Cheie antet HTTP, puteți lăsa "Autorizare" dacă nu știți ce este sau setați-o la o valoare personalizată',
       types: {
         none: 'Niciuna',
-        api_key: 'Cheie API',
         apiKeyPlaceholder: 'Nume antet HTTP pentru cheia API',
         apiValuePlaceholder: 'Introduceți cheia API',
         api_key_header: 'Antet',
@@ -144,8 +141,6 @@ const translation = {
   addToolModal: {
     added: 'adăugat',
     category: 'categorie',
-    manageInTools: 'Gestionați în Instrumente',
-    add: 'adăuga',
     type: 'tip',
     custom: {
       title: 'Niciun instrument personalizat disponibil',
@@ -192,6 +187,24 @@ const translation = {
       cancel: 'Anulare',
       save: 'Salvare',
       confirm: 'Adăugare și Autorizare',
+      timeout: 'Timp de așteptare',
+      sseReadTimeout: 'Timp de așteptare pentru citirea SSE',
+      headerKeyPlaceholder: 'de exemplu, Autorizație',
+      headers: 'Antete',
+      addHeader: 'Adăugați antet',
+      headerValuePlaceholder: 'de exemplu, Bearer token123',
+      timeoutPlaceholder: 'treizeci',
+      headerKey: 'Numele antetului',
+      headerValue: 'Valoare Antet',
+      maskedHeadersTip: 'Valorile de antet sunt mascate pentru securitate. Modificările vor actualiza valorile reale.',
+      headersTip: 'Header-uri HTTP suplimentare de trimis cu cererile către serverul MCP',
+      noHeaders: 'Nu sunt configurate antete personalizate.',
+      authentication: 'Autentificare',
+      configurations: 'Configurații',
+      clientSecretPlaceholder: 'Secretul Clientului',
+      clientID: 'ID client',
+      useDynamicClientRegistration: 'Utilizați înregistrarea dinamică a clientului',
+      clientSecret: 'Secretul Clientului',
     },
     delete: 'Eliminare Server MCP',
     deleteConfirmTitle: 'Ștergeți {mcp}?',
@@ -232,7 +245,12 @@ const translation = {
       },
       publishTip: 'Aplicație nepublicată. Publicați aplicația mai întâi.',
     },
+    toolItem: {
+      parameters: 'Parametri',
+      noDescription: 'Fără descriere',
+    },
   },
+  allTools: 'Toate instrumentele',
 }
 
 export default translation

@@ -1,6 +1,6 @@
 import os
 
-import requests
+import httpx
 
 
 class OperationService:
@@ -12,7 +12,7 @@ class OperationService:
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
         url = f"{cls.base_url}{endpoint}"
-        response = requests.request(method, url, json=json, params=params, headers=headers)
+        response = httpx.request(method, url, json=json, params=params, headers=headers)
 
         return response.json()
 

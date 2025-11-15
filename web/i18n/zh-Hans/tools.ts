@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: '创建自定义工具',
   customToolTip: '了解更多关于 Dify 自定义工具的信息',
   type: {
-    all: '全部',
     builtIn: '工具',
     custom: '自定义',
     workflow: '工作流',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: '配置凭据后，工作区中的所有成员都可以在编排应用程序时使用此工具。',
   },
   includeToolNum: '包含 {{num}} 个 {{action}}',
-  addTool: '添加工具',
   addToolModal: {
     type: '类型',
     category: '类别',
-    add: '添加',
     added: '已添加',
-    manageInTools: '去工具列表管理',
     custom: {
       title: '没有可用的自定义工具',
       tip: '创建自定义工具',
@@ -65,7 +61,7 @@ const translation = {
     exampleOptions: {
       json: '天气 (JSON)',
       yaml: '宠物商店 (YAML)',
-      blankTemplate: '空白模版',
+      blankTemplate: '空白模板',
     },
     availableTools: {
       title: '可用工具',
@@ -81,7 +77,7 @@ const translation = {
       type: '鉴权类型',
       keyTooltip: 'HTTP 头部名称，如果你不知道是什么，可以将其保留为 Authorization 或设置为自定义值',
       queryParam: '查询参数',
-      queryParamTooltip: '用于传递 API 密钥查询参数的名称, 如 "https://example.com/test?key=API_KEY" 中的 "key"参数',
+      queryParamTooltip: '用于传递 API 密钥查询参数的名称，如 "https://example.com/test?key=API_KEY" 中的 "key"参数',
       types: {
         none: '无',
         api_key_header: '请求头',
@@ -188,9 +184,27 @@ const translation = {
       serverIdentifierTip: '工作空间内服务器的唯一标识。支持小写字母、数字、下划线和连字符，最多 24 个字符。',
       serverIdentifierPlaceholder: '服务器唯一标识，例如 my-mcp-server',
       serverIdentifierWarning: '更改服务器标识符后，现有应用将无法识别此服务器',
+      headers: '请求头',
+      headersTip: '发送到 MCP 服务器的额外 HTTP 请求头',
+      headerKey: '请求头名称',
+      headerValue: '请求头值',
+      headerKeyPlaceholder: '例如：Authorization',
+      headerValuePlaceholder: '例如：Bearer token123',
+      addHeader: '添加请求头',
+      noHeaders: '未配置自定义请求头',
+      maskedHeadersTip: '为了安全，请求头值已被掩码处理。修改将更新实际值。',
       cancel: '取消',
       save: '保存',
       confirm: '添加并授权',
+      timeout: '超时时间',
+      sseReadTimeout: 'SSE 读取超时时间',
+      timeoutPlaceholder: '30',
+      authentication: '认证',
+      useDynamicClientRegistration: '使用动态客户端注册',
+      clientID: '客户端 ID',
+      clientSecret: '客户端密钥',
+      clientSecretPlaceholder: '客户端密钥',
+      configurations: '配置',
     },
     delete: '删除 MCP 服务',
     deleteConfirmTitle: '你想要删除 {{mcp}} 吗？',
@@ -231,7 +245,12 @@ const translation = {
       },
       publishTip: '应用未发布。请先发布应用。',
     },
+    toolItem: {
+      parameters: '参数',
+      noDescription: '暂无描述',
+    },
   },
+  allTools: '全部工具',
 }
 
 export default translation

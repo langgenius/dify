@@ -26,14 +26,13 @@ def _gen_id():
 
 
 class TestFileSaverImpl:
-    def test_save_binary_string(self, monkeypatch):
+    def test_save_binary_string(self, monkeypatch: pytest.MonkeyPatch):
         user_id = _gen_id()
         tenant_id = _gen_id()
         file_type = FileType.IMAGE
         mime_type = "image/png"
         mock_signed_url = "https://example.com/image.png"
         mock_tool_file = ToolFile(
-            id=_gen_id(),
             user_id=user_id,
             tenant_id=tenant_id,
             conversation_id=None,
@@ -43,6 +42,7 @@ class TestFileSaverImpl:
             name=f"{_gen_id()}.png",
             size=len(_PNG_DATA),
         )
+        mock_tool_file.id = _gen_id()
         mocked_tool_file_manager = mock.MagicMock(spec=ToolFileManager)
         mocked_engine = mock.MagicMock(spec=Engine)
 
@@ -80,7 +80,7 @@ class TestFileSaverImpl:
         )
         mocked_sign_file.assert_called_once_with(mock_tool_file.id, ".png")
 
-    def test_save_remote_url_request_failed(self, monkeypatch):
+    def test_save_remote_url_request_failed(self, monkeypatch: pytest.MonkeyPatch):
         _TEST_URL = "https://example.com/image.png"
         mock_request = httpx.Request("GET", _TEST_URL)
         mock_response = httpx.Response(
@@ -99,7 +99,7 @@ class TestFileSaverImpl:
         mock_get.assert_called_once_with(_TEST_URL)
         assert exc.value.response.status_code == 401
 
-    def test_save_remote_url_success(self, monkeypatch):
+    def test_save_remote_url_success(self, monkeypatch: pytest.MonkeyPatch):
         _TEST_URL = "https://example.com/image.png"
         mime_type = "image/png"
         user_id = _gen_id()
@@ -115,7 +115,6 @@ class TestFileSaverImpl:
 
         file_saver = FileSaverImpl(user_id=user_id, tenant_id=tenant_id)
         mock_tool_file = ToolFile(
-            id=_gen_id(),
             user_id=user_id,
             tenant_id=tenant_id,
             conversation_id=None,
@@ -125,6 +124,7 @@ class TestFileSaverImpl:
             name=f"{_gen_id()}.png",
             size=len(_PNG_DATA),
         )
+        mock_tool_file.id = _gen_id()
         mock_get = mock.MagicMock(spec=ssrf_proxy.get, return_value=mock_response)
         monkeypatch.setattr(ssrf_proxy, "get", mock_get)
         mock_save_binary_string = mock.MagicMock(spec=file_saver.save_binary_string, return_value=mock_tool_file)

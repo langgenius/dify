@@ -1,4 +1,4 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar, PromptItem, Var, Variable } from '@/app/components/workflow/types'
@@ -12,13 +12,14 @@ import useConfigVision from '../../hooks/use-config-vision'
 import { noop } from 'lodash-es'
 import { findVariableWhenOnLLMVision } from '../utils'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
+import { AppModeEnum } from '@/types/app'
 
 const i18nPrefix = 'workflow.nodes.llm'
 type Params = {
   id: string,
   payload: LLMNodeType,
   runInputData: Record<string, any>
-  runInputDataRef: MutableRefObject<Record<string, any>>
+  runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
   setRunInputData: (data: Record<string, any>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
@@ -56,7 +57,7 @@ const useSingleRunFormParams = ({
   // model
   const model = inputs.model
   const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === 'chat'
+  const isChatModel = modelMode === AppModeEnum.CHAT
   const {
     isVisionModel,
   } = useConfigVision(model, {
@@ -168,7 +169,13 @@ const useSingleRunFormParams = ({
   })()
 
   const getDependentVars = () => {
-    const promptVars = varInputs.map(item => item.variable.slice(1, -1).split('.'))
+    const promptVars = varInputs.map((item) => {
+      // Guard against null/undefined variable to prevent app crash
+      if (!item.variable || typeof item.variable !== 'string')
+        return []
+
+      return item.variable.slice(1, -1).split('.')
+    }).filter(arr => arr.length > 0)
     const contextVar = payload.context.variable_selector
     const vars = [...promptVars, contextVar]
     if (isVisionModel && payload.vision?.enabled && payload.vision?.configs?.variable_selector) {

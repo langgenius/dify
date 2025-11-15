@@ -1,6 +1,8 @@
 import logging
 from typing import cast
 
+from sqlalchemy import select
+
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
 from core.agent.cot_completion_agent_runner import CotCompletionAgentRunner
 from core.agent.entities import AgentEntity
@@ -33,7 +35,7 @@ class AgentChatAppRunner(AppRunner):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
-    ) -> None:
+    ):
         """
         Run assistant application
         :param application_generate_entity: application generate entity
@@ -44,8 +46,8 @@ class AgentChatAppRunner(AppRunner):
         """
         app_config = application_generate_entity.app_config
         app_config = cast(AgentChatAppConfig, app_config)
-
-        app_record = db.session.query(App).filter(App.id == app_config.app_id).first()
+        app_stmt = select(App).where(App.id == app_config.app_id)
+        app_record = db.session.scalar(app_stmt)
         if not app_record:
             raise ValueError("App not found")
 
@@ -142,7 +144,7 @@ class AgentChatAppRunner(AppRunner):
             prompt_template_entity=app_config.prompt_template,
             inputs=dict(inputs),
             files=list(files),
-            query=query or "",
+            query=query,
             memory=memory,
         )
 
@@ -170,7 +172,7 @@ class AgentChatAppRunner(AppRunner):
             prompt_template_entity=app_config.prompt_template,
             inputs=dict(inputs),
             files=list(files),
-            query=query or "",
+            query=query,
             memory=memory,
         )
 
@@ -182,11 +184,12 @@ class AgentChatAppRunner(AppRunner):
 
         if {ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL}.intersection(model_schema.features or []):
             agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING
-
-        conversation_result = db.session.query(Conversation).filter(Conversation.id == conversation.id).first()
+        conversation_stmt = select(Conversation).where(Conversation.id == conversation.id)
+        conversation_result = db.session.scalar(conversation_stmt)
         if conversation_result is None:
             raise ValueError("Conversation not found")
-        message_result = db.session.query(Message).filter(Message.id == message.id).first()
+        msg_stmt = select(Message).where(Message.id == message.id)
+        message_result = db.session.scalar(msg_stmt)
         if message_result is None:
             raise ValueError("Message not found")
         db.session.close()
@@ -195,9 +198,9 @@ class AgentChatAppRunner(AppRunner):
         # start agent runner
         if agent_entity.strategy == AgentEntity.Strategy.CHAIN_OF_THOUGHT:
             # check LLM mode
-            if model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
+            if model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT:
                 runner_cls = CotChatAgentRunner
-            elif model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.COMPLETION.value:
+            elif model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.COMPLETION:
                 runner_cls = CotCompletionAgentRunner
             else:
                 raise ValueError(f"Invalid LLM mode: {model_schema.model_properties.get(ModelPropertyKey.MODE)}")

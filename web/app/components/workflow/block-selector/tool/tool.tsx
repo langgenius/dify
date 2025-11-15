@@ -16,17 +16,25 @@ import { useTranslation } from 'react-i18next'
 import { useHover } from 'ahooks'
 import McpToolNotSupportTooltip from '../../nodes/_base/components/mcp-tool-not-support-tooltip'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
+import { basePath } from '@/utils/var'
+
+const normalizeProviderIcon = (icon: ToolWithProvider['icon']) => {
+  if (typeof icon === 'string' && basePath && icon.startsWith('/') && !icon.startsWith(`${basePath}/`))
+    return `${basePath}${icon}`
+  return icon
+}
 
 type Props = {
   className?: string
   payload: ToolWithProvider
   viewType: ViewType
   hasSearchText: boolean
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
   canChooseMCPTool?: boolean
+  isShowLetterIndex?: boolean
 }
 
 const Tool: FC<Props> = ({
@@ -73,7 +81,7 @@ const Tool: FC<Props> = ({
     if (isHovering && !isAllSelected) {
       return (
         <span className='system-xs-regular text-components-button-secondary-accent-text'
-          onClick={(e) => {
+          onClick={() => {
             onSelectMultiple?.(BlockEnum.Tool, actions.filter(action => !getIsDisabled(action)).map((tool) => {
               const params: Record<string, string> = {}
               if (tool.parameters) {
@@ -85,12 +93,14 @@ const Tool: FC<Props> = ({
                 provider_id: payload.id,
                 provider_type: payload.type,
                 provider_name: payload.name,
+                plugin_id: payload.plugin_id,
+                plugin_unique_identifier: payload.plugin_unique_identifier,
+                provider_icon: normalizeProviderIcon(payload.icon),
                 tool_name: tool.name,
                 tool_label: tool.label[language],
                 tool_description: tool.description[language],
                 title: tool.label[language],
                 is_team_authorization: payload.is_team_authorization,
-                output_schema: tool.output_schema,
                 paramSchemas: tool.parameters,
                 params,
               }
@@ -122,7 +132,6 @@ const Tool: FC<Props> = ({
     }
     if (!hasSearchText && !isFold)
       setFold(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSearchText])
 
   const FoldIcon = isFold ? RiArrowRightSLine : RiArrowDownSLine
@@ -166,12 +175,14 @@ const Tool: FC<Props> = ({
               provider_id: payload.id,
               provider_type: payload.type,
               provider_name: payload.name,
+              plugin_id: payload.plugin_id,
+              plugin_unique_identifier: payload.plugin_unique_identifier,
+              provider_icon: normalizeProviderIcon(payload.icon),
               tool_name: tool.name,
               tool_label: tool.label[language],
               tool_description: tool.description[language],
               title: tool.label[language],
               is_team_authorization: payload.is_team_authorization,
-              output_schema: tool.output_schema,
               paramSchemas: tool.parameters,
               params,
             })

@@ -1,6 +1,5 @@
 """Abstract interface for document loader implementations."""
 
-import datetime
 import logging
 import mimetypes
 import os
@@ -10,7 +9,7 @@ import uuid
 from urllib.parse import urlparse
 from xml.etree import ElementTree
 
-import requests
+import httpx
 from docx import Document as DocxDocument
 
 from configs import dify_config
@@ -19,6 +18,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 
@@ -43,26 +43,30 @@ class WordExtractor(BaseExtractor):
 
         # If the file is a web path, download it to a temporary file, and use that
         if not os.path.isfile(self.file_path) and self._is_valid_url(self.file_path):
-            r = requests.get(self.file_path)
+            response = httpx.get(self.file_path, timeout=None)
 
-            if r.status_code != 200:
-                raise ValueError(f"Check the url of your file; returned status code {r.status_code}")
+            if response.status_code != 200:
+                response.close()
+                raise ValueError(f"Check the url of your file; returned status code {response.status_code}")
 
             self.web_path = self.file_path
             # TODO: use a better way to handle the file
             self.temp_file = tempfile.NamedTemporaryFile()  # noqa SIM115
-            self.temp_file.write(r.content)
+            try:
+                self.temp_file.write(response.content)
+            finally:
+                response.close()
             self.file_path = self.temp_file.name
         elif not os.path.isfile(self.file_path):
             raise ValueError(f"File path {self.file_path} is not a valid file or url")
 
-    def __del__(self) -> None:
+    def __del__(self):
         if hasattr(self, "temp_file"):
             self.temp_file.close()
 
     def extract(self) -> list[Document]:
         """Load given path as single page."""
-        content = self.parse_docx(self.file_path, "storage")
+        content = self.parse_docx(self.file_path)
         return [
             Document(
                 page_content=content,
@@ -117,10 +121,10 @@ class WordExtractor(BaseExtractor):
                     mime_type=mime_type or "",
                     created_by=self.user_id,
                     created_by_role=CreatorUserRole.ACCOUNT,
-                    created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                    created_at=naive_utc_now(),
                     used=True,
                     used_by=self.user_id,
-                    used_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                    used_at=naive_utc_now(),
                 )
 
                 db.session.add(upload_file)
@@ -148,13 +152,15 @@ class WordExtractor(BaseExtractor):
         # Initialize a row, all of which are empty by default
         row_cells = [""] * total_cols
         col_index = 0
-        for cell in row.cells:
+        while col_index < len(row.cells):
             # make sure the col_index is not out of range
-            while col_index < total_cols and row_cells[col_index] != "":
+            while col_index < len(row.cells) and row_cells[col_index] != "":
                 col_index += 1
             # if col_index is out of range the loop is jumped
-            if col_index >= total_cols:
+            if col_index >= len(row.cells):
                 break
+            # get the correct cell
+            cell = row.cells[col_index]
             cell_content = self._parse_cell(cell, image_map).strip()
             cell_colspan = cell.grid_span or 1
             for i in range(cell_colspan):
@@ -189,23 +195,8 @@ class WordExtractor(BaseExtractor):
                 paragraph_content.append(run.text)
         return "".join(paragraph_content).strip()
 
-    def _parse_paragraph(self, paragraph, image_map):
-        paragraph_content = []
-        for run in paragraph.runs:
-            if run.element.xpath(".//a:blip"):
-                for blip in run.element.xpath(".//a:blip"):
-                    embed_id = blip.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
-                    if embed_id:
-                        rel_target = run.part.rels[embed_id].target_ref
-                        if rel_target in image_map:
-                            paragraph_content.append(image_map[rel_target])
-            if run.text.strip():
-                paragraph_content.append(run.text.strip())
-        return " ".join(paragraph_content) if paragraph_content else ""
-
-    def parse_docx(self, docx_path, image_folder):
+    def parse_docx(self, docx_path):
         doc = DocxDocument(docx_path)
-        os.makedirs(image_folder, exist_ok=True)
 
         content = []
 

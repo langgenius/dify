@@ -7,6 +7,7 @@ export enum LOC {
 
 export enum AuthType {
   none = 'none',
+  apiKey = 'api_key', // backward compatibility
   apiKeyHeader = 'api_key_header',
   apiKeyQuery = 'api_key_query',
 }
@@ -32,6 +33,8 @@ export enum CollectionType {
   model = 'model',
   workflow = 'workflow',
   mcp = 'mcp',
+  datasource = 'datasource',
+  trigger = 'trigger',
 }
 
 export type Emoji = {
@@ -46,7 +49,7 @@ export type Collection = {
   description: TypeWithI18N
   icon: string | Emoji
   label: TypeWithI18N
-  type: CollectionType
+  type: CollectionType | string
   team_credentials: Record<string, any>
   is_team_authorization: boolean
   allow_delete: boolean
@@ -57,6 +60,22 @@ export type Collection = {
   server_url?: string
   updated_at?: number
   server_identifier?: string
+  timeout?: number
+  sse_read_timeout?: number
+  headers?: Record<string, string>
+  masked_headers?: Record<string, string>
+  is_authorized?: boolean
+  provider?: string
+  credential_id?: string
+  is_dynamic_registration?: boolean
+  authentication?: {
+    client_id?: string
+    client_secret?: string
+  }
+  configuration?: {
+    timeout?: number
+    sse_read_timeout?: number
+  }
 }
 
 export type ToolParameter = {
@@ -67,6 +86,7 @@ export type ToolParameter = {
   form: string
   llm_description: string
   required: boolean
+  multiple: boolean
   default: string
   options?: {
     label: TypeWithI18N
@@ -76,7 +96,33 @@ export type ToolParameter = {
   max?: number
 }
 
+export type TriggerParameter = {
+  name: string
+  label: TypeWithI18N
+  human_description: TypeWithI18N
+  type: string
+  form: string
+  llm_description: string
+  required: boolean
+  multiple: boolean
+  default: string
+  options?: {
+    label: TypeWithI18N
+    value: string
+  }[]
+}
+
 // Action
+export type Event = {
+  name: string
+  author: string
+  label: TypeWithI18N
+  description: TypeWithI18N
+  parameters: TriggerParameter[]
+  labels: string[]
+  output_schema: Record<string, any>
+}
+
 export type Tool = {
   name: string
   author: string
@@ -182,4 +228,11 @@ export type MCPServerDetail = {
   description: string
   status: string
   parameters?: Record<string, string>
+  headers?: Record<string, string>
+}
+
+export enum MCPAuthMethod {
+  authentication = 'authentication',
+  headers = 'headers',
+  configurations = 'configurations',
 }

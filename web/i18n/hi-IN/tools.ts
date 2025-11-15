@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'कस्टम उपकरण बनाएं',
   customToolTip: 'Dify कस्टम उपकरणों के बारे में और जानें',
   type: {
-    all: 'सभी',
     builtIn: 'निर्मित',
     custom: 'कस्टम',
     workflow: 'कार्यप्रवाह',
@@ -22,13 +21,10 @@ const translation = {
       'प्रमाणिकरण कॉन्फ़िगर करने के बाद, कार्यस्थान के सभी सदस्य इस उपकरण का उपयोग कर सकेंगे।',
   },
   includeToolNum: '{{num}} उपकरण शामिल हैं',
-  addTool: 'उपकरण जोड़ें',
   addToolModal: {
     type: 'प्रकार',
     category: 'श्रेणी',
-    add: 'जोड़ें',
     added: 'जोड़ा गया',
-    manageInTools: 'उपकरणों में प्रबंधित करें',
     custom: {
       title: 'कोई कस्टम टूल उपलब्ध नहीं है',
       tip: 'एक कस्टम टूल बनाएं',
@@ -86,7 +82,6 @@ const translation = {
         'Http हैडर कुंजी, यदि आपको कुछ पता नहीं है तो "Authorization" के साथ छोड़ सकते हैं या इसे कस्टम मूल्य पर सेट कर सकते हैं',
       types: {
         none: 'कोई नहीं',
-        api_key: 'API कुंजी',
         apiKeyPlaceholder: 'API कुंजी के लिए HTTP हैडर नाम',
         apiValuePlaceholder: 'API कुंजी दर्ज करें',
         api_key_query: 'अनुक्रमणिका पैरामीटर',
@@ -197,6 +192,24 @@ const translation = {
       cancel: 'रद्द करें',
       save: 'सहेजें',
       confirm: 'जोड़ें और अधिकृत करें',
+      timeout: 'टाइमआउट',
+      sseReadTimeout: 'एसएसई पढ़ने का टाइमआउट',
+      headerKey: 'हेडर नाम',
+      headers: 'हेडर',
+      headerValue: 'हेडर मान',
+      timeoutPlaceholder: 'तीस',
+      headerValuePlaceholder: 'उदाहरण के लिए, बियरर टोकन123',
+      addHeader: 'हेडर जोड़ें',
+      headerKeyPlaceholder: 'उदाहरण के लिए, प्राधिकरण',
+      noHeaders: 'कोई कस्टम हेडर कॉन्फ़िगर नहीं किए गए हैं',
+      maskedHeadersTip: 'सुरक्षा के लिए हेडर मानों को छिपाया गया है। परिवर्तन वास्तविक मानों को अपडेट करेगा।',
+      headersTip: 'MCP सर्वर अनुरोधों के साथ भेजने के लिए अतिरिक्त HTTP हेडर्स',
+      clientSecretPlaceholder: 'क्लाइंट सीक्रेट',
+      clientSecret: 'क्लाइंट सीक्रेट',
+      clientID: 'क्लाइंट आईडी',
+      configurations: 'संरचनाएँ',
+      authentication: 'प्रमाणीकरण',
+      useDynamicClientRegistration: 'डायनामिक क्लाइंट पंजीकरण का उपयोग करें',
     },
     delete: 'MCP सर्वर हटाएँ',
     deleteConfirmTitle: '{mcp} हटाना चाहते हैं?',
@@ -237,7 +250,12 @@ const translation = {
       },
       publishTip: 'ऐप प्रकाशित नहीं हुआ। कृपया पहले ऐप प्रकाशित करें।',
     },
+    toolItem: {
+      parameters: 'पैरामीटर',
+      noDescription: 'कोई वर्णन नहीं',
+    },
   },
+  allTools: 'सभी उपकरण',
 }
 
 export default translation

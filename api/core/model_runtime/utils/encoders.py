@@ -8,7 +8,7 @@ from ipaddress import IPv4Address, IPv4Interface, IPv4Network, IPv6Address, IPv6
 from pathlib import Path, PurePath
 from re import Pattern
 from types import GeneratorType
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Union
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -98,7 +98,7 @@ def jsonable_encoder(
     exclude_unset: bool = False,
     exclude_defaults: bool = False,
     exclude_none: bool = False,
-    custom_encoder: Optional[dict[Any, Callable[[Any], Any]]] = None,
+    custom_encoder: dict[Any, Callable[[Any], Any]] | None = None,
     sqlalchemy_safe: bool = True,
 ) -> Any:
     custom_encoder = custom_encoder or {}
@@ -151,12 +151,9 @@ def jsonable_encoder(
         return format(obj, "f")
     if isinstance(obj, dict):
         encoded_dict = {}
-        allowed_keys = set(obj.keys())
         for key, value in obj.items():
-            if (
-                (not sqlalchemy_safe or (not isinstance(key, str)) or (not key.startswith("_sa")))
-                and (value is not None or not exclude_none)
-                and key in allowed_keys
+            if (not sqlalchemy_safe or (not isinstance(key, str)) or (not key.startswith("_sa"))) and (
+                value is not None or not exclude_none
             ):
                 encoded_key = jsonable_encoder(
                     key,
@@ -199,15 +196,15 @@ def jsonable_encoder(
             return encoder(obj)
 
     try:
-        data = dict(obj)
+        data = dict(obj)  # type: ignore
     except Exception as e:
         errors: list[Exception] = []
         errors.append(e)
         try:
-            data = vars(obj)
+            data = vars(obj)  # type: ignore
         except Exception as e:
             errors.append(e)
-            raise ValueError(errors) from e
+            raise ValueError(str(errors)) from e
     return jsonable_encoder(
         data,
         by_alias=by_alias,

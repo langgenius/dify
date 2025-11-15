@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '../base/app-icon'
 import Tooltip from '@/app/components/base/tooltip'
 import {
-  Code,
+  ApiAggregate,
   WindowCursor,
 } from '@/app/components/base/icons/src/vender/workflow'
 
@@ -40,13 +40,13 @@ const NotionSvg = <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xm
 
 const ICON_MAP = {
   app: <AppIcon className='border !border-[rgba(0,0,0,0.05)]' />,
-  api: <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-500 p-1 shadow-md'>
-    <Code className='h-4 w-4 text-text-primary-on-surface' />
+  api: <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md'>
+    <ApiAggregate className='h-4 w-4 text-text-primary-on-surface' />
   </div>,
   dataset: <AppIcon innerIcon={DatasetSvg} className='!border-[0.5px] !border-indigo-100 !bg-indigo-25' />,
   webapp: <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md'>
-  <WindowCursor className='h-4 w-4 text-text-primary-on-surface' />
-</div>,
+    <WindowCursor className='h-4 w-4 text-text-primary-on-surface' />
+  </div>,
   notion: <AppIcon innerIcon={NotionSvg} className='!border-[0.5px] !border-indigo-100 !bg-white' />,
 }
 
@@ -56,12 +56,12 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
   return (
     <div className="flex grow items-center">
       {icon && icon_background && iconType === 'app' && (
-        <div className='mr-3 shrink-0'>
+        <div className='mr-2 shrink-0'>
           <AppIcon icon={icon} background={icon_background} />
         </div>
       )}
       {iconType !== 'app'
-        && <div className='mr-3 shrink-0'>
+        && <div className='mr-2 shrink-0'>
           {ICON_MAP[iconType]}
         </div>
 

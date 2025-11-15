@@ -1,18 +1,16 @@
 import {
   useCallback,
-  useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useReactFlow, useStoreApi } from 'reactflow'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useStore, useWorkflowStore } from '../store'
 import {
-  CUSTOM_NODE, DSL_EXPORT_CHECK,
+  CUSTOM_NODE,
   NODE_LAYOUT_HORIZONTAL_PADDING,
   NODE_LAYOUT_VERTICAL_PADDING,
   WORKFLOW_DATA_UPDATE,
 } from '../constants'
-import type { Node, WorkflowDataUpdater } from '../types'
+import type { WorkflowDataUpdater } from '../types'
 import { BlockEnum, ControlMode } from '../types'
 import {
   getLayoutByDagre,
@@ -20,6 +18,7 @@ import {
   initialEdges,
   initialNodes,
 } from '../utils'
+import type { LayoutResult } from '../utils'
 import {
   useNodesReadOnly,
   useSelectionInteractions,
@@ -30,10 +29,6 @@ import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-withou
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { fetchWorkflowDraft } from '@/service/workflow'
-import { exportAppConfig } from '@/service/apps'
-import { useToastContext } from '@/app/components/base/toast'
-import { useStore as useAppStore } from '@/app/components/app/store'
 
 export const useWorkflowInteractions = () => {
   const workflowStore = useWorkflowStore()
@@ -108,10 +103,17 @@ export const useWorkflowOrganize = () => {
               && node.type === CUSTOM_NODE,
     )
 
-    const childLayoutsMap: Record<string, any> = {}
-    loopAndIterationNodes.forEach((node) => {
-      childLayoutsMap[node.id] = getLayoutForChildNodes(node.id, nodes, edges)
-    })
+    const childLayoutEntries = await Promise.all(
+      loopAndIterationNodes.map(async node => [
+        node.id,
+        await getLayoutForChildNodes(node.id, nodes, edges),
+      ] as const),
+    )
+    const childLayoutsMap = childLayoutEntries.reduce((acc, [nodeId, layout]) => {
+      if (layout)
+        acc[nodeId] = layout
+      return acc
+    }, {} as Record<string, LayoutResult>)
 
     const containerSizeChanges: Record<string, { width: number, height: number }> = {}
 
@@ -119,37 +121,20 @@ export const useWorkflowOrganize = () => {
       const childLayout = childLayoutsMap[parentNode.id]
       if (!childLayout) return
 
-      let minX = Infinity
-      let minY = Infinity
-      let maxX = -Infinity
-      let maxY = -Infinity
-      let hasChildren = false
+      const {
+        bounds,
+        nodes: layoutNodes,
+      } = childLayout
 
-      const childNodes = nodes.filter(node => node.parentId === parentNode.id)
+      if (!layoutNodes.size)
+        return
 
-      childNodes.forEach((node) => {
-        if (childLayout.node(node.id)) {
-          hasChildren = true
-          const childNodeWithPosition = childLayout.node(node.id)
+      const requiredWidth = (bounds.maxX - bounds.minX) + NODE_LAYOUT_HORIZONTAL_PADDING * 2
+      const requiredHeight = (bounds.maxY - bounds.minY) + NODE_LAYOUT_VERTICAL_PADDING * 2
 
-          const nodeX = childNodeWithPosition.x - node.width! / 2
-          const nodeY = childNodeWithPosition.y - node.height! / 2
-
-          minX = Math.min(minX, nodeX)
-          minY = Math.min(minY, nodeY)
-          maxX = Math.max(maxX, nodeX + node.width!)
-          maxY = Math.max(maxY, nodeY + node.height!)
-        }
-      })
-
-      if (hasChildren) {
-        const requiredWidth = maxX - minX + NODE_LAYOUT_HORIZONTAL_PADDING * 2
-        const requiredHeight = maxY - minY + NODE_LAYOUT_VERTICAL_PADDING * 2
-
-        containerSizeChanges[parentNode.id] = {
-          width: Math.max(parentNode.width || 0, requiredWidth),
-          height: Math.max(parentNode.height || 0, requiredHeight),
-        }
+      containerSizeChanges[parentNode.id] = {
+        width: Math.max(parentNode.width || 0, requiredWidth),
+        height: Math.max(parentNode.height || 0, requiredHeight),
       }
     })
 
@@ -172,63 +157,65 @@ export const useWorkflowOrganize = () => {
       })
     })
 
-    const layout = getLayoutByDagre(nodesWithUpdatedSizes, edges)
+    const layout = await getLayoutByDagre(nodesWithUpdatedSizes, edges)
 
-    const rankMap = {} as Record<string, Node>
-    nodesWithUpdatedSizes.forEach((node) => {
-      if (!node.parentId && node.type === CUSTOM_NODE) {
-        const rank = layout.node(node.id).rank!
-
-        if (!rankMap[rank]) {
-          rankMap[rank] = node
+    // Build layer map for vertical alignment - nodes in the same layer should align
+    const layerMap = new Map<number, { minY: number; maxHeight: number }>()
+    layout.nodes.forEach((layoutInfo) => {
+      if (layoutInfo.layer !== undefined) {
+        const existing = layerMap.get(layoutInfo.layer)
+        const newLayerInfo = {
+          minY: existing ? Math.min(existing.minY, layoutInfo.y) : layoutInfo.y,
+          maxHeight: existing ? Math.max(existing.maxHeight, layoutInfo.height) : layoutInfo.height,
         }
-        else {
-          if (rankMap[rank].position.y > node.position.y)
-            rankMap[rank] = node
-        }
+        layerMap.set(layoutInfo.layer, newLayerInfo)
       }
     })
 
     const newNodes = produce(nodesWithUpdatedSizes, (draft) => {
       draft.forEach((node) => {
         if (!node.parentId && node.type === CUSTOM_NODE) {
-          const nodeWithPosition = layout.node(node.id)
+          const layoutInfo = layout.nodes.get(node.id)
+          if (!layoutInfo)
+            return
+
+          // Calculate vertical position with layer alignment
+          let yPosition = layoutInfo.y
+          if (layoutInfo.layer !== undefined) {
+            const layerInfo = layerMap.get(layoutInfo.layer)
+            if (layerInfo) {
+              // Align to the center of the tallest node in this layer
+              const layerCenterY = layerInfo.minY + layerInfo.maxHeight / 2
+              yPosition = layerCenterY - layoutInfo.height / 2
+            }
+          }
 
           node.position = {
-            x: nodeWithPosition.x - node.width! / 2,
-            y: nodeWithPosition.y - node.height! / 2 + rankMap[nodeWithPosition.rank!].height! / 2,
+            x: layoutInfo.x,
+            y: yPosition,
           }
         }
       })
 
       loopAndIterationNodes.forEach((parentNode) => {
         const childLayout = childLayoutsMap[parentNode.id]
-        if (!childLayout) return
+        if (!childLayout)
+          return
 
         const childNodes = draft.filter(node => node.parentId === parentNode.id)
+        const {
+          bounds,
+          nodes: layoutNodes,
+        } = childLayout
 
-        let minX = Infinity
-        let minY = Infinity
+        childNodes.forEach((childNode) => {
+          const layoutInfo = layoutNodes.get(childNode.id)
+          if (!layoutInfo)
+            return
 
-        childNodes.forEach((node) => {
-          if (childLayout.node(node.id)) {
-            const childNodeWithPosition = childLayout.node(node.id)
-            const nodeX = childNodeWithPosition.x - node.width! / 2
-            const nodeY = childNodeWithPosition.y - node.height! / 2
-
-            minX = Math.min(minX, nodeX)
-            minY = Math.min(minY, nodeY)
-          }
-        })
-
-        childNodes.forEach((node) => {
-          if (childLayout.node(node.id)) {
-            const childNodeWithPosition = childLayout.node(node.id)
-
-            node.position = {
-              x: NODE_LAYOUT_HORIZONTAL_PADDING + (childNodeWithPosition.x - node.width! / 2 - minX),
-              y: NODE_LAYOUT_VERTICAL_PADDING + (childNodeWithPosition.y - node.height! / 2 - minY),
-            }
+          childNode.position = {
+            x: NODE_LAYOUT_HORIZONTAL_PADDING + (layoutInfo.x - bounds.minX),
+            y: NODE_LAYOUT_VERTICAL_PADDING + (layoutInfo.y - bounds.minY),
           }
         })
       })
@@ -329,76 +316,14 @@ export const useWorkflowUpdate = () => {
         edges: initialEdges(edges, nodes),
       },
     } as any)
-    setViewport(viewport)
+
+    // Only set viewport if it exists and is valid
+    if (viewport && typeof viewport.x === 'number' && typeof viewport.y === 'number' && typeof viewport.zoom === 'number')
+      setViewport(viewport)
   }, [eventEmitter, reactflow])
 
   return {
     handleUpdateWorkflowCanvas,
-  }
-}
-
-export const useDSL = () => {
-  const { t } = useTranslation()
-  const { notify } = useToastContext()
-  const { eventEmitter } = useEventEmitterContextContext()
-  const [exporting, setExporting] = useState(false)
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
-
-  const appDetail = useAppStore(s => s.appDetail)
-
-  const handleExportDSL = useCallback(async (include = false) => {
-    if (!appDetail)
-      return
-
-    if (exporting)
-      return
-
-    try {
-      setExporting(true)
-      await doSyncWorkflowDraft()
-      const { data } = await exportAppConfig({
-        appID: appDetail.id,
-        include,
-      })
-      const a = document.createElement('a')
-      const file = new Blob([data], { type: 'application/yaml' })
-      a.href = URL.createObjectURL(file)
-      a.download = `${appDetail.name}.yml`
-      a.click()
-    }
-    catch {
-      notify({ type: 'error', message: t('app.exportFailed') })
-    }
-    finally {
-      setExporting(false)
-    }
-  }, [appDetail, notify, t, doSyncWorkflowDraft, exporting])
-
-  const exportCheck = useCallback(async () => {
-    if (!appDetail)
-      return
-    try {
-      const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail?.id}/workflows/draft`)
-      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
-      if (list.length === 0) {
-        handleExportDSL()
-        return
-      }
-      eventEmitter?.emit({
-        type: DSL_EXPORT_CHECK,
-        payload: {
-          data: list,
-        },
-      } as any)
-    }
-    catch {
-      notify({ type: 'error', message: t('app.exportFailed') })
-    }
-  }, [appDetail, eventEmitter, handleExportDSL, notify, t])
-
-  return {
-    exportCheck,
-    handleExportDSL,
   }
 }
 

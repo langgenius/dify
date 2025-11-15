@@ -1,26 +1,28 @@
 import logging
-from typing import Any, NoReturn
+from typing import NoReturn
 
 from flask import Response
-from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
 )
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
+from core.file import helpers as file_helpers
 from core.variables.segment_group import SegmentGroup
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
-from models import App, AppMode, db
+from models import Account, App, AppMode
 from models.workflow import WorkflowDraftVariable
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -28,7 +30,7 @@ from services.workflow_service import WorkflowService
 logger = logging.getLogger(__name__)
 
 
-def _convert_values_to_json_serializable_object(value: Segment) -> Any:
+def _convert_values_to_json_serializable_object(value: Segment):
     if isinstance(value, FileSegment):
         return value.value.model_dump()
     elif isinstance(value, ArrayFileSegment):
@@ -39,7 +41,7 @@ def _convert_values_to_json_serializable_object(value: Segment) -> Any:
         return value.value
 
 
-def _serialize_var_value(variable: WorkflowDraftVariable) -> Any:
+def _serialize_var_value(variable: WorkflowDraftVariable):
     value = variable.get_value()
     # create a copy of the value to avoid affecting the model cache.
     value = value.model_copy(deep=True)
@@ -55,22 +57,40 @@ def _serialize_var_value(variable: WorkflowDraftVariable) -> Any:
 
 
 def _create_pagination_parser():
-    parser = reqparse.RequestParser()
-    parser.add_argument(
-        "page",
-        type=inputs.int_range(1, 100_000),
-        required=False,
-        default=1,
-        location="args",
-        help="the page of data requested",
+    parser = (
+        reqparse.RequestParser()
+        .add_argument(
+            "page",
+            type=inputs.int_range(1, 100_000),
+            required=False,
+            default=1,
+            location="args",
+            help="the page of data requested",
+        )
+        .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
     )
-    parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
     return parser
 
 
 def _serialize_variable_type(workflow_draft_var: WorkflowDraftVariable) -> str:
     value_type = workflow_draft_var.value_type
     return value_type.exposed_type().value
+
+
+def _serialize_full_content(variable: WorkflowDraftVariable) -> dict | None:
+    """Serialize full_content information for large variables."""
+    if not variable.is_truncated():
+        return None
+
+    variable_file = variable.variable_file
+    assert variable_file is not None
+
+    return {
+        "size_bytes": variable_file.size,
+        "value_type": variable_file.value_type.exposed_type().value,
+        "length": variable_file.length,
+        "download_url": file_helpers.get_signed_file_url(variable_file.upload_file_id, as_attachment=True),
+    }
 
 
 _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
@@ -82,11 +102,13 @@ _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
     "value_type": fields.String(attribute=_serialize_variable_type),
     "edited": fields.Boolean(attribute=lambda model: model.edited),
     "visible": fields.Boolean,
+    "is_truncated": fields.Boolean(attribute=lambda model: model.file_id is not None),
 }
 
 _WORKFLOW_DRAFT_VARIABLE_FIELDS = dict(
     _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
     value=fields.Raw(attribute=_serialize_var_value),
+    full_content=fields.Raw(attribute=_serialize_full_content),
 )
 
 _WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS = {
@@ -135,14 +157,21 @@ def _api_prerequisite(f):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def wrapper(*args, **kwargs):
-        if not current_user.is_editor:
+        assert isinstance(current_user, Account)
+        if not current_user.has_edit_permission:
             raise Forbidden()
         return f(*args, **kwargs)
 
     return wrapper
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
 class WorkflowVariableCollectionApi(Resource):
+    @api.doc("get_workflow_variables")
+    @api.doc(description="Get draft workflow variables")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.doc(params={"page": "Page number (1-100000)", "limit": "Number of items per page (1-100)"})
+    @api.response(200, "Workflow variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
     def get(self, app_model: App):
@@ -163,14 +192,17 @@ class WorkflowVariableCollectionApi(Resource):
             draft_var_srv = WorkflowDraftVariableService(
                 session=session,
             )
-        workflow_vars = draft_var_srv.list_variables_without_values(
-            app_id=app_model.id,
-            page=args.page,
-            limit=args.limit,
-        )
+            workflow_vars = draft_var_srv.list_variables_without_values(
+                app_id=app_model.id,
+                page=args.page,
+                limit=args.limit,
+            )
 
         return workflow_vars
 
+    @api.doc("delete_workflow_variables")
+    @api.doc(description="Delete all draft workflow variables")
+    @api.response(204, "Workflow variables deleted successfully")
     @_api_prerequisite
     def delete(self, app_model: App):
         draft_var_srv = WorkflowDraftVariableService(
@@ -199,7 +231,12 @@ def validate_node_id(node_id: str) -> NoReturn | None:
     return None
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/variables")
 class NodeVariableCollectionApi(Resource):
+    @api.doc("get_node_variables")
+    @api.doc(description="Get variables for a specific node")
+    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @api.response(200, "Node variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
     def get(self, app_model: App, node_id: str):
@@ -212,6 +249,9 @@ class NodeVariableCollectionApi(Resource):
 
         return node_vars
 
+    @api.doc("delete_node_variables")
+    @api.doc(description="Delete all variables for a specific node")
+    @api.response(204, "Node variables deleted successfully")
     @_api_prerequisite
     def delete(self, app_model: App, node_id: str):
         validate_node_id(node_id)
@@ -221,10 +261,16 @@ class NodeVariableCollectionApi(Resource):
         return Response("", 204)
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>")
 class VariableApi(Resource):
     _PATCH_NAME_FIELD = "name"
     _PATCH_VALUE_FIELD = "value"
 
+    @api.doc("get_variable")
+    @api.doc(description="Get a specific workflow variable")
+    @api.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
+    @api.response(200, "Variable retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @api.response(404, "Variable not found")
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_FIELDS)
     def get(self, app_model: App, variable_id: str):
@@ -238,6 +284,19 @@ class VariableApi(Resource):
             raise NotFoundError(description=f"variable not found, id={variable_id}")
         return variable
 
+    @api.doc("update_variable")
+    @api.doc(description="Update a workflow variable")
+    @api.expect(
+        api.model(
+            "UpdateVariableRequest",
+            {
+                "name": fields.String(description="Variable name"),
+                "value": fields.Raw(description="Variable value"),
+            },
+        )
+    )
+    @api.response(200, "Variable updated successfully", _WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @api.response(404, "Variable not found")
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_FIELDS)
     def patch(self, app_model: App, variable_id: str):
@@ -262,10 +321,11 @@ class VariableApi(Resource):
         #         "upload_file_id": "1602650a-4fe4-423c-85a2-af76c083e3c4"
         #     }
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(self._PATCH_NAME_FIELD, type=str, required=False, nullable=True, location="json")
-        # Parse 'value' field as-is to maintain its original data structure
-        parser.add_argument(self._PATCH_VALUE_FIELD, type=lambda x: x, required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(self._PATCH_NAME_FIELD, type=str, required=False, nullable=True, location="json")
+            .add_argument(self._PATCH_VALUE_FIELD, type=lambda x: x, required=False, nullable=True, location="json")
+        )
 
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
@@ -300,6 +360,10 @@ class VariableApi(Resource):
         db.session.commit()
         return variable
 
+    @api.doc("delete_variable")
+    @api.doc(description="Delete a workflow variable")
+    @api.response(204, "Variable deleted successfully")
+    @api.response(404, "Variable not found")
     @_api_prerequisite
     def delete(self, app_model: App, variable_id: str):
         draft_var_srv = WorkflowDraftVariableService(
@@ -315,7 +379,14 @@ class VariableApi(Resource):
         return Response("", 204)
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>/reset")
 class VariableResetApi(Resource):
+    @api.doc("reset_variable")
+    @api.doc(description="Reset a workflow variable to its default value")
+    @api.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
+    @api.response(200, "Variable reset successfully", _WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @api.response(204, "Variable reset (no content)")
+    @api.response(404, "Variable not found")
     @_api_prerequisite
     def put(self, app_model: App, variable_id: str):
         draft_var_srv = WorkflowDraftVariableService(
@@ -356,7 +427,13 @@ def _get_variable_list(app_model: App, node_id) -> WorkflowDraftVariableList:
     return draft_vars
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/conversation-variables")
 class ConversationVariableCollectionApi(Resource):
+    @api.doc("get_conversation_variables")
+    @api.doc(description="Get conversation variables for workflow")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.response(200, "Conversation variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @api.response(404, "Draft workflow not found")
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
     def get(self, app_model: App):
@@ -372,14 +449,25 @@ class ConversationVariableCollectionApi(Resource):
         return _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/system-variables")
 class SystemVariableCollectionApi(Resource):
+    @api.doc("get_system_variables")
+    @api.doc(description="Get system variables for workflow")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.response(200, "System variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
     def get(self, app_model: App):
         return _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID)
 
 
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/environment-variables")
 class EnvironmentVariableCollectionApi(Resource):
+    @api.doc("get_environment_variables")
+    @api.doc(description="Get environment variables for workflow")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.response(200, "Environment variables retrieved successfully")
+    @api.response(404, "Draft workflow not found")
     @_api_prerequisite
     def get(self, app_model: App):
         """
@@ -411,16 +499,3 @@ class EnvironmentVariableCollectionApi(Resource):
             )
 
         return {"items": env_vars_list}
-
-
-api.add_resource(
-    WorkflowVariableCollectionApi,
-    "/apps/<uuid:app_id>/workflows/draft/variables",
-)
-api.add_resource(NodeVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/variables")
-api.add_resource(VariableApi, "/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>")
-api.add_resource(VariableResetApi, "/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>/reset")
-
-api.add_resource(ConversationVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/conversation-variables")
-api.add_resource(SystemVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/system-variables")
-api.add_resource(EnvironmentVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/environment-variables")

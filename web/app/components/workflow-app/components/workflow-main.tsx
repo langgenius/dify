@@ -7,7 +7,10 @@ import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import type { WorkflowProps } from '@/app/components/workflow'
 import WorkflowChildren from './workflow-children'
 import {
+  useAvailableNodesMetaData,
   useConfigsMap,
+  useDSL,
+  useGetRunAndTraceUrl,
   useInspectVarsCrud,
   useNodesSyncDraft,
   useSetWorkflowVarsWithValue,
@@ -15,7 +18,7 @@ import {
   useWorkflowRun,
   useWorkflowStartRun,
 } from '../hooks'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({
@@ -63,11 +66,21 @@ const WorkflowMain = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
+    handleWorkflowTriggerScheduleRunInWorkflow,
+    handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow,
   } = useWorkflowStartRun()
-  const appId = useStore(s => s.appId)
+  const availableNodesMetaData = useAvailableNodesMetaData()
+  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
+  const {
+    exportCheck,
+    handleExportDSL,
+  } = useDSL()
+
+  const configsMap = useConfigsMap()
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    flowId: appId,
-    ...useConfigsMap(),
+    ...configsMap,
   })
   const {
     hasNodeInspectVars,
@@ -85,7 +98,6 @@ const WorkflowMain = ({
     resetConversationVar,
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
-  const configsMap = useConfigsMap()
 
   const hooksStore = useMemo(() => {
     return {
@@ -100,6 +112,14 @@ const WorkflowMain = ({
       handleStartWorkflowRun,
       handleWorkflowStartRunInChatflow,
       handleWorkflowStartRunInWorkflow,
+      handleWorkflowTriggerScheduleRunInWorkflow,
+      handleWorkflowTriggerWebhookRunInWorkflow,
+      handleWorkflowTriggerPluginRunInWorkflow,
+      handleWorkflowRunAllTriggersInWorkflow,
+      availableNodesMetaData,
+      getWorkflowRunAndTraceUrl,
+      exportCheck,
+      handleExportDSL,
       fetchInspectVars,
       hasNodeInspectVars,
       hasSetInspectVar,
@@ -129,6 +149,14 @@ const WorkflowMain = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
+    handleWorkflowTriggerScheduleRunInWorkflow,
+    handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow,
+    availableNodesMetaData,
+    getWorkflowRunAndTraceUrl,
+    exportCheck,
+    handleExportDSL,
     fetchInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,
@@ -153,7 +181,7 @@ const WorkflowMain = ({
       edges={edges}
       viewport={viewport}
       onWorkflowDataUpdate={handleWorkflowDataUpdate}
-      hooksStore={hooksStore}
+      hooksStore={hooksStore as any}
     >
       <WorkflowChildren />
     </WorkflowWithInnerContext>

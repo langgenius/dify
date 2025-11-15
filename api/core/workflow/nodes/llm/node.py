@@ -2,8 +2,10 @@ import base64
 import io
 import json
 import logging
+import re
+import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import FileType, file_manager
@@ -22,6 +24,7 @@ from core.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
     LLMResultChunkWithStructuredOutput,
+    LLMResultWithStructuredOutput,
     LLMStructuredOutput,
     LLMUsage,
 )
@@ -33,12 +36,10 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import (
-    AIModelEntity,
     ModelFeature,
     ModelPropertyKey,
     ModelType,
 )
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -52,23 +53,26 @@ from core.variables import (
     StringSegment,
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_entities import VariableSelector
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from core.workflow.enums import SystemVariableKey
-from core.workflow.graph_engine.entities.event import InNodeEvent
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
-from core.workflow.nodes.event import (
-    ModelInvokeCompletedEvent,
-    NodeEvent,
-    RunCompletedEvent,
-    RunRetrieverResourceEvent,
-    RunStreamChunkEvent,
+from core.workflow.entities import GraphInitParams
+from core.workflow.enums import (
+    ErrorStrategy,
+    NodeType,
+    SystemVariableKey,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
 )
-from core.workflow.utils.variable_template_parser import VariableTemplateParser
+from core.workflow.node_events import (
+    ModelInvokeCompletedEvent,
+    NodeEventBase,
+    NodeRunResult,
+    RunRetrieverResourceEvent,
+    StreamChunkEvent,
+    StreamCompletedEvent,
+)
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
+from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
+from core.workflow.runtime import VariablePool
 
 from . import llm_utils
 from .entities import (
@@ -91,15 +95,18 @@ from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
 
-class LLMNode(BaseNode):
-    _node_type = NodeType.LLM
+class LLMNode(Node):
+    node_type = NodeType.LLM
 
     _node_data: LLMNodeData
+
+    # Compiled regex for extracting <think> blocks (with compatibility for attributes)
+    _THINK_PATTERN = re.compile(r"<think[^>]*>(.*?)</think>", re.IGNORECASE | re.DOTALL)
 
     # Instance attributes specific to LLMNode.
     # Output variable for file
@@ -112,24 +119,18 @@ class LLMNode(BaseNode):
         id: str,
         config: Mapping[str, Any],
         graph_init_params: "GraphInitParams",
-        graph: "Graph",
         graph_runtime_state: "GraphRuntimeState",
-        previous_node_id: Optional[str] = None,
-        thread_pool_id: Optional[str] = None,
         *,
         llm_file_saver: LLMFileSaver | None = None,
-    ) -> None:
+    ):
         super().__init__(
             id=id,
             config=config,
             graph_init_params=graph_init_params,
-            graph=graph,
             graph_runtime_state=graph_runtime_state,
-            previous_node_id=previous_node_id,
-            thread_pool_id=thread_pool_id,
         )
         # LLM file outputs, used for MultiModal outputs.
-        self._file_outputs: list[File] = []
+        self._file_outputs = []
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -138,10 +139,10 @@ class LLMNode(BaseNode):
             )
         self._llm_file_saver = llm_file_saver
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = LLMNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -150,7 +151,7 @@ class LLMNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -163,12 +164,14 @@ class LLMNode(BaseNode):
     def version(cls) -> str:
         return "1"
 
-    def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
-        node_inputs: Optional[dict[str, Any]] = None
-        process_data = None
+    def _run(self) -> Generator:
+        node_inputs: dict[str, Any] = {}
+        process_data: dict[str, Any] = {}
         result_text = ""
+        clean_text = ""
         usage = LLMUsage.empty_usage()
         finish_reason = None
+        reasoning_content = None
         variable_pool = self.graph_runtime_state.variable_pool
 
         try:
@@ -183,8 +186,6 @@ class LLMNode(BaseNode):
 
             # merge inputs
             inputs.update(jinja_inputs)
-
-            node_inputs = {}
 
             # fetch files
             files = (
@@ -203,9 +204,8 @@ class LLMNode(BaseNode):
             generator = self._fetch_context(node_data=self._node_data)
             context = None
             for event in generator:
-                if isinstance(event, RunRetrieverResourceEvent):
-                    context = event.context
-                    yield event
+                context = event.context
+                yield event
             if context:
                 node_inputs["#context#"] = context
 
@@ -223,7 +223,7 @@ class LLMNode(BaseNode):
                 model_instance=model_instance,
             )
 
-            query = None
+            query: str | None = None
             if self._node_data.memory:
                 query = self._node_data.memory.query_prompt_template
                 if not query and (
@@ -257,18 +257,38 @@ class LLMNode(BaseNode):
                 structured_output=self._node_data.structured_output,
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,
-                node_id=self.node_id,
+                node_id=self._node_id,
+                node_type=self.node_type,
+                reasoning_format=self._node_data.reasoning_format,
             )
 
             structured_output: LLMStructuredOutput | None = None
 
             for event in generator:
-                if isinstance(event, RunStreamChunkEvent):
+                if isinstance(event, StreamChunkEvent):
                     yield event
                 elif isinstance(event, ModelInvokeCompletedEvent):
+                    # Raw text
                     result_text = event.text
                     usage = event.usage
                     finish_reason = event.finish_reason
+                    reasoning_content = event.reasoning_content or ""
+
+                    # For downstream nodes, determine clean text based on reasoning_format
+                    if self._node_data.reasoning_format == "tagged":
+                        # Keep <think> tags for backward compatibility
+                        clean_text = result_text
+                    else:
+                        # Extract clean text from <think> tags
+                        clean_text, _ = LLMNode._split_reasoning(result_text, self._node_data.reasoning_format)
+
+                    # Process structured output if available from the event.
+                    structured_output = (
+                        LLMStructuredOutput(structured_output=event.structured_output)
+                        if event.structured_output
+                        else None
+                    )
+
                     # deduct quota
                     llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
@@ -286,14 +306,26 @@ class LLMNode(BaseNode):
                 "model_name": model_config.model,
             }
 
-            outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
+            outputs = {
+                "text": clean_text,
+                "reasoning_content": reasoning_content,
+                "usage": jsonable_encoder(usage),
+                "finish_reason": finish_reason,
+            }
             if structured_output:
                 outputs["structured_output"] = structured_output.structured_output
-            if self._file_outputs is not None:
+            if self._file_outputs:
                 outputs["files"] = ArrayFileSegment(value=self._file_outputs)
 
-            yield RunCompletedEvent(
-                run_result=NodeRunResult(
+            # Send final chunk event to indicate streaming is complete
+            yield StreamChunkEvent(
+                selector=[self._node_id, "text"],
+                chunk="",
+                is_final=True,
+            )
+
+            yield StreamCompletedEvent(
+                node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=node_inputs,
                     process_data=process_data,
@@ -307,8 +339,8 @@ class LLMNode(BaseNode):
                 )
             )
         except ValueError as e:
-            yield RunCompletedEvent(
-                run_result=NodeRunResult(
+            yield StreamCompletedEvent(
+                node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     error=str(e),
                     inputs=node_inputs,
@@ -318,8 +350,8 @@ class LLMNode(BaseNode):
             )
         except Exception as e:
             logger.exception("error while executing llm node")
-            yield RunCompletedEvent(
-                run_result=NodeRunResult(
+            yield StreamCompletedEvent(
+                node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     error=str(e),
                     inputs=node_inputs,
@@ -333,14 +365,16 @@ class LLMNode(BaseNode):
         node_data_model: ModelConfig,
         model_instance: ModelInstance,
         prompt_messages: Sequence[PromptMessage],
-        stop: Optional[Sequence[str]] = None,
+        stop: Sequence[str] | None = None,
         user_id: str,
         structured_output_enabled: bool,
-        structured_output: Optional[Mapping[str, Any]] = None,
+        structured_output: Mapping[str, Any] | None = None,
         file_saver: LLMFileSaver,
         file_outputs: list["File"],
         node_id: str,
-    ) -> Generator[NodeEvent | LLMStructuredOutput, None, None]:
+        node_type: NodeType,
+        reasoning_format: Literal["separated", "tagged"] = "tagged",
+    ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         model_schema = model_instance.model_type_instance.get_model_schema(
             node_data_model.name, model_instance.credentials
         )
@@ -351,6 +385,8 @@ class LLMNode(BaseNode):
             output_schema = LLMNode.fetch_structured_output_schema(
                 structured_output=structured_output or {},
             )
+            request_start_time = time.perf_counter()
+
             invoke_result = invoke_llm_with_structured_output(
                 provider=model_instance.provider,
                 model_schema=model_schema,
@@ -363,6 +399,8 @@ class LLMNode(BaseNode):
                 user=user_id,
             )
         else:
+            request_start_time = time.perf_counter()
+
             invoke_result = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages),
                 model_parameters=node_data_model.completion_params,
@@ -376,6 +414,9 @@ class LLMNode(BaseNode):
             file_saver=file_saver,
             file_outputs=file_outputs,
             node_id=node_id,
+            node_type=node_type,
+            reasoning_format=reasoning_format,
+            request_start_time=request_start_time,
         )
 
     @staticmethod
@@ -385,13 +426,22 @@ class LLMNode(BaseNode):
         file_saver: LLMFileSaver,
         file_outputs: list["File"],
         node_id: str,
-    ) -> Generator[NodeEvent | LLMStructuredOutput, None, None]:
+        node_type: NodeType,
+        reasoning_format: Literal["separated", "tagged"] = "tagged",
+        request_start_time: float | None = None,
+    ) -> Generator[NodeEventBase | LLMStructuredOutput, None, None]:
         # For blocking mode
         if isinstance(invoke_result, LLMResult):
+            duration = None
+            if request_start_time is not None:
+                duration = time.perf_counter() - request_start_time
+                invoke_result.usage.latency = round(duration, 3)
             event = LLMNode.handle_blocking_result(
                 invoke_result=invoke_result,
                 saver=file_saver,
                 file_outputs=file_outputs,
+                reasoning_format=reasoning_format,
+                request_latency=duration,
             )
             yield event
             return
@@ -403,10 +453,20 @@ class LLMNode(BaseNode):
         usage = LLMUsage.empty_usage()
         finish_reason = None
         full_text_buffer = io.StringIO()
+
+        # Initialize streaming metrics tracking
+        start_time = request_start_time if request_start_time is not None else time.perf_counter()
+        first_token_time = None
+        has_content = False
+
+        collected_structured_output = None  # Collect structured_output from streaming chunks
         # Consume the invoke result and handle generator exception
         try:
             for result in invoke_result:
                 if isinstance(result, LLMResultChunkWithStructuredOutput):
+                    # Collect structured_output from the chunk
+                    if result.structured_output is not None:
+                        collected_structured_output = dict(result.structured_output)
                     yield result
                 if isinstance(result, LLMResultChunk):
                     contents = result.delta.message.content
@@ -415,8 +475,17 @@ class LLMNode(BaseNode):
                         file_saver=file_saver,
                         file_outputs=file_outputs,
                     ):
+                        # Detect first token for TTFT calculation
+                        if text_part and not has_content:
+                            first_token_time = time.perf_counter()
+                            has_content = True
+
                         full_text_buffer.write(text_part)
-                        yield RunStreamChunkEvent(chunk_content=text_part, from_variable_selector=[node_id, "text"])
+                        yield StreamChunkEvent(
+                            selector=[node_id, "text"],
+                            chunk=text_part,
+                            is_final=False,
+                        )
 
                     # Update the whole metadata
                     if not model and result.model:
@@ -432,12 +501,77 @@ class LLMNode(BaseNode):
         except OutputParserError as e:
             raise LLMNodeError(f"Failed to parse structured output: {e}")
 
-        yield ModelInvokeCompletedEvent(text=full_text_buffer.getvalue(), usage=usage, finish_reason=finish_reason)
+        # Extract reasoning content from <think> tags in the main text
+        full_text = full_text_buffer.getvalue()
+
+        if reasoning_format == "tagged":
+            # Keep <think> tags in text for backward compatibility
+            clean_text = full_text
+            reasoning_content = ""
+        else:
+            # Extract clean text and reasoning from <think> tags
+            clean_text, reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
+
+        # Calculate streaming metrics
+        end_time = time.perf_counter()
+        total_duration = end_time - start_time
+        usage.latency = round(total_duration, 3)
+        if has_content and first_token_time:
+            gen_ai_server_time_to_first_token = first_token_time - start_time
+            llm_streaming_time_to_generate = end_time - first_token_time
+            usage.time_to_first_token = round(gen_ai_server_time_to_first_token, 3)
+            usage.time_to_generate = round(llm_streaming_time_to_generate, 3)
+
+        yield ModelInvokeCompletedEvent(
+            # Use clean_text for separated mode, full_text for tagged mode
+            text=clean_text if reasoning_format == "separated" else full_text,
+            usage=usage,
+            finish_reason=finish_reason,
+            # Reasoning content for workflow variables and downstream nodes
+            reasoning_content=reasoning_content,
+            # Pass structured output if collected from streaming chunks
+            structured_output=collected_structured_output,
+        )
 
     @staticmethod
     def _image_file_to_markdown(file: "File", /):
         text_chunk = f"![]({file.generate_url()})"
         return text_chunk
+
+    @classmethod
+    def _split_reasoning(
+        cls, text: str, reasoning_format: Literal["separated", "tagged"] = "tagged"
+    ) -> tuple[str, str]:
+        """
+        Split reasoning content from text based on reasoning_format strategy.
+
+        Args:
+            text: Full text that may contain <think> blocks
+            reasoning_format: Strategy for handling reasoning content
+                - "separated": Remove <think> tags and return clean text + reasoning_content field
+                - "tagged": Keep <think> tags in text, return empty reasoning_content
+
+        Returns:
+            tuple of (clean_text, reasoning_content)
+        """
+
+        if reasoning_format == "tagged":
+            return text, ""
+
+        # Find all <think>...</think> blocks (case-insensitive)
+        matches = cls._THINK_PATTERN.findall(text)
+
+        # Extract reasoning content from all <think> blocks
+        reasoning_content = "\n".join(match.strip() for match in matches) if matches else ""
+
+        # Remove all <think>...</think> blocks from original text
+        clean_text = cls._THINK_PATTERN.sub("", text)
+
+        # Clean up extra whitespace
+        clean_text = re.sub(r"\n\s*\n", "\n\n", clean_text).strip()
+
+        # Separated mode: always return clean text and reasoning_content
+        return clean_text, reasoning_content or ""
 
     def _transform_chat_messages(
         self, messages: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate, /
@@ -565,7 +699,7 @@ class LLMNode(BaseNode):
                     retriever_resources=original_retriever_resource, context=context_str.strip()
                 )
 
-    def _convert_to_original_retriever_resource(self, context_dict: dict):
+    def _convert_to_original_retriever_resource(self, context_dict: dict) -> RetrievalSourceMetadata | None:
         if (
             "metadata" in context_dict
             and "_source" in context_dict["metadata"]
@@ -631,7 +765,7 @@ class LLMNode(BaseNode):
         variable_pool: VariablePool,
         jinja2_variables: Sequence[VariableSelector],
         tenant_id: str,
-    ) -> tuple[Sequence[PromptMessage], Optional[Sequence[str]]]:
+    ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
         prompt_messages: list[PromptMessage] = []
 
         if isinstance(prompt_template, list):
@@ -739,7 +873,7 @@ class LLMNode(BaseNode):
                 and isinstance(prompt_messages[-1], UserPromptMessage)
                 and isinstance(prompt_messages[-1].content, list)
             ):
-                prompt_messages[-1] = UserPromptMessage(content=prompt_messages[-1].content + file_prompts)
+                prompt_messages[-1] = UserPromptMessage(content=file_prompts + prompt_messages[-1].content)
             else:
                 prompt_messages.append(UserPromptMessage(content=file_prompts))
 
@@ -813,14 +947,14 @@ class LLMNode(BaseNode):
         node_id: str,
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
+        # graph_config is not used in this node type
+        _ = graph_config  # Explicitly mark as unused
         # Create typed NodeData from dict
         typed_node_data = LLMNodeData.model_validate(node_data)
 
         prompt_template = typed_node_data.prompt_template
         variable_selectors = []
-        if isinstance(prompt_template, list) and all(
-            isinstance(prompt, LLMNodeChatModelMessage) for prompt in prompt_template
-        ):
+        if isinstance(prompt_template, list):
             for prompt in prompt_template:
                 if prompt.edition_type != "jinja2":
                     variable_template_parser = VariableTemplateParser(template=prompt.text)
@@ -851,7 +985,7 @@ class LLMNode(BaseNode):
             variable_mapping["#files#"] = typed_node_data.vision.configs.variable_selector
 
         if typed_node_data.memory:
-            variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY.value]
+            variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY]
 
         if typed_node_data.prompt_config:
             enable_jinja = False
@@ -874,7 +1008,7 @@ class LLMNode(BaseNode):
         return variable_mapping
 
     @classmethod
-    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
             "type": "llm",
             "config": {
@@ -902,7 +1036,7 @@ class LLMNode(BaseNode):
     def handle_list_messages(
         *,
         messages: Sequence[LLMNodeChatModelMessage],
-        context: Optional[str],
+        context: str | None,
         jinja2_variables: Sequence[VariableSelector],
         variable_pool: VariablePool,
         vision_detail_config: ImagePromptMessageContent.DETAIL,
@@ -963,9 +1097,11 @@ class LLMNode(BaseNode):
     @staticmethod
     def handle_blocking_result(
         *,
-        invoke_result: LLMResult,
+        invoke_result: LLMResult | LLMResultWithStructuredOutput,
         saver: LLMFileSaver,
         file_outputs: list["File"],
+        reasoning_format: Literal["separated", "tagged"] = "tagged",
+        request_latency: float | None = None,
     ) -> ModelInvokeCompletedEvent:
         buffer = io.StringIO()
         for text_part in LLMNode._save_multimodal_output_and_convert_result_to_markdown(
@@ -975,11 +1111,30 @@ class LLMNode(BaseNode):
         ):
             buffer.write(text_part)
 
-        return ModelInvokeCompletedEvent(
-            text=buffer.getvalue(),
+        # Extract reasoning content from <think> tags in the main text
+        full_text = buffer.getvalue()
+
+        if reasoning_format == "tagged":
+            # Keep <think> tags in text for backward compatibility
+            clean_text = full_text
+            reasoning_content = ""
+        else:
+            # Extract clean text and reasoning from <think> tags
+            clean_text, reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
+
+        event = ModelInvokeCompletedEvent(
+            # Use clean_text for separated mode, full_text for tagged mode
+            text=clean_text if reasoning_format == "separated" else full_text,
             usage=invoke_result.usage,
             finish_reason=None,
+            # Reasoning content for workflow variables and downstream nodes
+            reasoning_content=reasoning_content,
+            # Pass structured output if enabled
+            structured_output=getattr(invoke_result, "structured_output", None),
         )
+        if request_latency is not None:
+            event.usage.latency = round(request_latency, 3)
+        return event
 
     @staticmethod
     def save_multimodal_image_output(
@@ -1005,21 +1160,6 @@ class LLMNode(BaseNode):
                 file_type=FileType.IMAGE,
             )
         return saved_file
-
-    def _fetch_model_schema(self, provider: str) -> AIModelEntity | None:
-        """
-        Fetch model schema
-        """
-        model_name = self._node_data.model.name
-        model_manager = ModelManager()
-        model_instance = model_manager.get_model_instance(
-            tenant_id=self.tenant_id, model_type=ModelType.LLM, provider=provider, model=model_name
-        )
-        model_type_instance = model_instance.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
-        model_credentials = model_instance.credentials
-        model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
-        return model_schema
 
     @staticmethod
     def fetch_structured_output_schema(
@@ -1069,7 +1209,7 @@ class LLMNode(BaseNode):
             return
         if isinstance(contents, str):
             yield contents
-        elif isinstance(contents, list):
+        else:
             for item in contents:
                 if isinstance(item, TextPromptMessageContent):
                     yield item.data
@@ -1083,13 +1223,6 @@ class LLMNode(BaseNode):
                 else:
                     logger.warning("unknown item type encountered, type=%s", type(item))
                     yield str(item)
-        else:
-            logger.warning("unknown contents type encountered, type=%s", type(contents))
-            yield str(contents)
-
-    @property
-    def continue_on_error(self) -> bool:
-        return self._node_data.error_strategy is not None
 
     @property
     def retry(self) -> bool:
@@ -1097,7 +1230,7 @@ class LLMNode(BaseNode):
 
 
 def _combine_message_content_with_role(
-    *, contents: Optional[str | list[PromptMessageContentUnionTypes]] = None, role: PromptMessageRole
+    *, contents: str | list[PromptMessageContentUnionTypes] | None = None, role: PromptMessageRole
 ):
     match role:
         case PromptMessageRole.USER:
@@ -1106,7 +1239,8 @@ def _combine_message_content_with_role(
             return AssistantPromptMessage(content=contents)
         case PromptMessageRole.SYSTEM:
             return SystemPromptMessage(content=contents)
-    raise NotImplementedError(f"Role {role} is not supported")
+        case _:
+            raise NotImplementedError(f"Role {role} is not supported")
 
 
 def _render_jinja2_message(
@@ -1202,7 +1336,7 @@ def _handle_memory_completion_mode(
 def _handle_completion_template(
     *,
     template: LLMNodeCompletionModelPromptTemplate,
-    context: Optional[str],
+    context: str | None,
     jinja2_variables: Sequence[VariableSelector],
     variable_pool: VariablePool,
 ) -> Sequence[PromptMessage]:

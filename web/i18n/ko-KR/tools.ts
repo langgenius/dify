@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: '커스텀 도구 만들기',
   customToolTip: 'Dify 커스텀 도구에 대해 더 알아보기',
   type: {
-    all: '모두',
     builtIn: '내장',
     custom: '커스텀',
     workflow: '워크플로우',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: '자격 증명을 구성한 후에 워크스페이스의 모든 멤버가 이 도구를 사용하여 애플리케이션을 조작할 수 있습니다.',
   },
   includeToolNum: '{{num}}개의 도구가 포함되어 있습니다',
-  addTool: '도구 추가',
   addToolModal: {
     type: '타입',
     category: '카테고리',
-    add: '추가',
     added: '추가됨',
-    manageInTools: '도구에서 관리',
     custom: {
       title: '사용자 정의 도구 없음',
       tip: '사용자 정의 도구 생성',
@@ -82,7 +78,6 @@ const translation = {
       keyTooltip: 'HTTP 헤더 키입니다. 생각이 없으면 "Authorization"으로 남겨둘 수 있습니다. 또는 사용자 정의 값을 설정할 수 있습니다.',
       types: {
         none: '없음',
-        api_key: 'API 키',
         apiKeyPlaceholder: 'API 키의 HTTP 헤더 이름',
         apiValuePlaceholder: 'API 키를 입력하세요',
         api_key_query: '쿼리 매개변수',
@@ -192,6 +187,24 @@ const translation = {
       cancel: '취소',
       save: '저장',
       confirm: '추가 및 승인',
+      timeout: '타임아웃',
+      sseReadTimeout: 'SSE 읽기 타임아웃',
+      headers: '헤더',
+      headerKeyPlaceholder: '예: 승인',
+      headerKey: '헤더 이름',
+      headerValuePlaceholder: '예: 베어러 토큰123',
+      timeoutPlaceholder: '서른',
+      headerValue: '헤더 값',
+      addHeader: '헤더 추가',
+      noHeaders: '사용자 정의 헤더가 구성되어 있지 않습니다.',
+      headersTip: 'MCP 서버 요청과 함께 보낼 추가 HTTP 헤더',
+      maskedHeadersTip: '헤더 값은 보안상 마스킹 처리되어 있습니다. 변경 사항은 실제 값에 업데이트됩니다.',
+      authentication: '인증',
+      configurations: '구성',
+      useDynamicClientRegistration: '동적 클라이언트 등록 사용',
+      clientSecret: '클라이언트 시크릿',
+      clientID: '클라이언트 ID',
+      clientSecretPlaceholder: '클라이언트 시크릿',
     },
     delete: 'MCP 서버 제거',
     deleteConfirmTitle: '{mcp}를 제거하시겠습니까?',
@@ -232,7 +245,12 @@ const translation = {
       },
       publishTip: '앱이 게시되지 않았습니다. 먼저 앱을 게시하십시오.',
     },
+    toolItem: {
+      noDescription: '설명 없음',
+      parameters: '매개변수',
+    },
   },
+  allTools: '모든 도구',
 }
 
 export default translation

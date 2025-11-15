@@ -17,6 +17,21 @@ import {
 } from '@/service/workflow'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useWorkflowConfig } from '@/service/use-workflow'
+import type { FileUploadConfigResponse } from '@/models/common'
+import type { Edge, Node } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { AppModeEnum } from '@/types/app'
+
+const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean => {
+  const startNodeIds = nodes
+    .filter(node => node?.data?.type === BlockEnum.Start)
+    .map(node => node.id)
+
+  if (!startNodeIds.length)
+    return false
+
+  return edges.some(edge => startNodeIds.includes(edge.source))
+}
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
   const {
@@ -28,15 +43,17 @@ export const useWorkflowInit = () => {
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
   useEffect(() => {
-    workflowStore.setState({ appId: appDetail.id })
+    workflowStore.setState({ appId: appDetail.id, appName: appDetail.name })
   }, [appDetail.id, workflowStore])
 
-  const handleUpdateWorkflowConfig = useCallback((config: Record<string, any>) => {
-    const { setWorkflowConfig } = workflowStore.getState()
-
-    setWorkflowConfig(config)
+  const handleUpdateWorkflowFileUploadConfig = useCallback((config: FileUploadConfigResponse) => {
+    const { setFileUploadConfig } = workflowStore.getState()
+    setFileUploadConfig(config)
   }, [workflowStore])
-  useWorkflowConfig(appDetail.id, handleUpdateWorkflowConfig)
+  const {
+    data: fileUploadConfigResponse,
+    isLoading: isFileUploadConfigLoading,
+  } = useWorkflowConfig('/files/upload', handleUpdateWorkflowFileUploadConfig)
 
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
@@ -49,6 +66,7 @@ export const useWorkflowInit = () => {
         }, {} as Record<string, string>),
         environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
         conversationVariables: res.conversation_variables || [],
+        isWorkflowDataLoaded: true,
       })
       setSyncWorkflowDraftHash(res.hash)
       setIsLoading(false)
@@ -57,13 +75,22 @@ export const useWorkflowInit = () => {
       if (error && error.json && !error.bodyUsed && appDetail) {
         error.json().then((err: any) => {
           if (err.code === 'draft_workflow_not_exist') {
-            workflowStore.setState({ notInitialWorkflow: true })
+            const isAdvancedChat = appDetail.mode === AppModeEnum.ADVANCED_CHAT
+            workflowStore.setState({
+              notInitialWorkflow: true,
+              showOnboarding: !isAdvancedChat,
+              shouldAutoOpenStartNodeSelector: !isAdvancedChat,
+              hasShownOnboarding: false,
+            })
+            const nodesData = isAdvancedChat ? nodesTemplate : []
+            const edgesData = isAdvancedChat ? edgesTemplate : []
+
             syncWorkflowDraft({
               url: `/apps/${appDetail.id}/workflows/draft`,
               params: {
                 graph: {
-                  nodes: nodesTemplate,
-                  edges: edgesTemplate,
+                  nodes: nodesData,
+                  edges: edgesData,
                 },
                 features: {
                   retriever_resource: { enabled: true },
@@ -83,7 +110,6 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     handleGetInitialWorkflowData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
@@ -98,9 +124,14 @@ export const useWorkflowInit = () => {
         }, {} as Record<string, any>),
       })
       workflowStore.getState().setPublishedAt(publishedWorkflow?.created_at)
+      const graph = publishedWorkflow?.graph
+      workflowStore.getState().setLastPublishedHasUserInput(
+        hasConnectedUserInput(graph?.nodes, graph?.edges),
+      )
     }
     catch (e) {
       console.error(e)
+      workflowStore.getState().setLastPublishedHasUserInput(false)
     }
   }, [workflowStore, appDetail])
 
@@ -117,6 +148,7 @@ export const useWorkflowInit = () => {
 
   return {
     data,
-    isLoading,
+    isLoading: isLoading || isFileUploadConfigLoading,
+    fileUploadConfigResponse,
   }
 }

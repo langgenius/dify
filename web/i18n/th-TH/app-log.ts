@@ -1,7 +1,7 @@
 const translation = {
   title: 'บันทึก',
   description: 'บันทึกบันทึกสถานะการทํางานของแอปพลิเคชัน รวมถึงการป้อนข้อมูลของผู้ใช้และการตอบกลับ AI',
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  dateTimeFormat: 'MM/DD/YYYY hh:mm:ss A',
   table: {
     header: {
       updatedTime: 'อัพเดทเวลา',
@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'ไตรมาสจนถึงปัจจุบัน',
       yearToDate: 'ปีจนถึงปัจจุบัน',
       allTime: 'ตลอดเวลา',
+      last30days: '30 วันที่ผ่านมา',
+      custom: 'กำหนดเอง',
     },
     annotation: {
       all: 'ทั้งหมด',
@@ -82,6 +84,7 @@ const translation = {
     workflowTitle: 'รายละเอียดบันทึก',
     fileListDetail: 'รายละเอียด',
     fileListLabel: 'รายละเอียดไฟล์',
+    testWithParams: 'ทดสอบด้วยพารามิเตอร์',
   },
   promptLog: 'บันทึกพร้อมท์',
   agentLog: 'บันทึกตัวแทน',
@@ -93,6 +96,7 @@ const translation = {
     iteration: 'เกิด ซ้ำ',
     finalProcessing: 'การประมวลผลขั้นสุดท้าย',
   },
+  dateFormat: 'วัน/เดือน/ปี',
 }
 
 export default translation

@@ -14,7 +14,7 @@ import Loading from '../components/base/loading'
 import classNames from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
-import { fetchInitValidateStatus, fetchSetupStatus, setup } from '@/service/common'
+import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useDocLink } from '@/context/i18n'
@@ -35,7 +35,7 @@ type AccountFormValues = z.infer<typeof accountFormSchema>
 
 const InstallForm = () => {
   useDocumentTitle('')
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const docLink = useDocLink()
   const router = useRouter()
   const [showPassword, setShowPassword] = React.useState(false)
@@ -54,12 +54,31 @@ const InstallForm = () => {
   })
 
   const onSubmit: SubmitHandler<AccountFormValues> = async (data) => {
+    // First, setup the admin account
     await setup({
       body: {
         ...data,
+        language: i18n.language,
       },
     })
-    router.push('/signin')
+
+    // Then, automatically login with the same credentials
+    const loginRes = await login({
+      url: '/login',
+      body: {
+        email: data.email,
+        password: data.password,
+      },
+    })
+
+    // Store tokens and redirect to apps if login successful
+    if (loginRes.result === 'success') {
+      router.replace('/apps')
+    }
+    else {
+      // Fallback to signin page if auto-login fails
+      router.replace('/signin')
+    }
   }
 
   const handleSetting = async () => {
@@ -114,7 +133,7 @@ const InstallForm = () => {
                   <input
                     {...register('email')}
                     placeholder={t('login.emailPlaceholder') || ''}
-                    className={'w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal py-[7px] pl-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
+                    className={'system-sm-regular w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal px-3 py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
                   />
                   {errors.email && <span className='text-sm text-red-400'>{t(`${errors.email?.message}`)}</span>}
                 </div>
@@ -129,7 +148,7 @@ const InstallForm = () => {
                   <input
                     {...register('name')}
                     placeholder={t('login.namePlaceholder') || ''}
-                    className={'w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal py-[7px] pl-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
+                    className={'system-sm-regular w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal px-3 py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
                   />
                 </div>
                 {errors.name && <span className='text-sm text-red-400'>{t(`${errors.name.message}`)}</span>}
@@ -144,7 +163,7 @@ const InstallForm = () => {
                     {...register('password')}
                     type={showPassword ? 'text' : 'password'}
                     placeholder={t('login.passwordPlaceholder') || ''}
-                    className={'w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal py-[7px] pl-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
+                    className={'system-sm-regular w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal px-3 py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'}
                   />
 
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3">
@@ -158,7 +177,7 @@ const InstallForm = () => {
                   </div>
                 </div>
 
-                <div className={classNames('mt-1 text-xs text-text-tertiary', {
+                <div className={classNames('mt-1 text-xs text-text-secondary', {
                   'text-red-400 !text-sm': errors.password,
                 })}>{t('login.error.passwordInvalid')}</div>
               </div>
@@ -169,7 +188,7 @@ const InstallForm = () => {
                 </Button>
               </div>
             </form>
-            <div className="mt-2 block w-full text-xs text-text-tertiary">
+            <div className="mt-2 block w-full text-xs text-text-secondary">
               {t('login.license.tip')}
               &nbsp;
               <Link

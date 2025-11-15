@@ -1,11 +1,9 @@
 import logging
 
-from flask_login import current_user
-from flask_restful import marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import marshal_with, reqparse
+from flask_restx.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
 
-import services
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
     CompletionRequestError,
@@ -25,48 +23,71 @@ from core.model_runtime.errors.invoke import InvokeError
 from fields.message_fields import message_infinite_scroll_pagination_fields
 from libs import helper
 from libs.helper import uuid_value
+from libs.login import current_account_with_tenant
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
+from services.errors.message import (
+    FirstMessageNotExistsError,
+    MessageNotExistsError,
+    SuggestedQuestionsAfterAnswerDisabledError,
+)
 from services.message_service import MessageService
 
+from .. import console_ns
 
+logger = logging.getLogger(__name__)
+
+
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages",
+    endpoint="installed_app_messages",
+)
 class MessageListApi(InstalledAppResource):
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, installed_app):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("conversation_id", required=True, type=uuid_value, location="args")
-        parser.add_argument("first_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("conversation_id", required=True, type=uuid_value, location="args")
+            .add_argument("first_id", type=uuid_value, location="args")
+            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        )
         args = parser.parse_args()
 
         try:
             return MessageService.pagination_by_first_id(
                 app_model, current_user, args["conversation_id"], args["first_id"], args["limit"]
             )
-        except services.errors.conversation.ConversationNotExistsError:
+        except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        except services.errors.message.FirstMessageNotExistsError:
+        except FirstMessageNotExistsError:
             raise NotFound("First Message Not Exists.")
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/feedbacks",
+    endpoint="installed_app_message_feedback",
+)
 class MessageFeedbackApi(InstalledAppResource):
     def post(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
         message_id = str(message_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
-        parser.add_argument("content", type=str, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
+            .add_argument("content", type=str, location="json")
+        )
         args = parser.parse_args()
 
         try:
@@ -77,22 +98,26 @@ class MessageFeedbackApi(InstalledAppResource):
                 rating=args.get("rating"),
                 content=args.get("content"),
             )
-        except services.errors.message.MessageNotExistsError:
+        except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
         return {"result": "success"}
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/more-like-this",
+    endpoint="installed_app_more_like_this",
+)
 class MessageMoreLikeThisApi(InstalledAppResource):
     def get(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
         message_id = str(message_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
+        parser = reqparse.RequestParser().add_argument(
             "response_mode", type=str, required=True, choices=["blocking", "streaming"], location="args"
         )
         args = parser.parse_args()
@@ -123,12 +148,17 @@ class MessageMoreLikeThisApi(InstalledAppResource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/messages/<uuid:message_id>/suggested-questions",
+    endpoint="installed_app_suggested_question",
+)
 class MessageSuggestedQuestionApi(InstalledAppResource):
     def get(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -155,7 +185,7 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
         return {"data": questions}

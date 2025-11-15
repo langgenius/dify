@@ -8,6 +8,7 @@ import { noop } from 'lodash-es'
 type IModal = {
   className?: string
   wrapperClassName?: string
+  containerClassName?: string
   isShow: boolean
   onClose?: () => void
   title?: React.ReactNode
@@ -15,11 +16,15 @@ type IModal = {
   children?: React.ReactNode
   closable?: boolean
   overflowVisible?: boolean
+  highPriority?: boolean // For modals that need to appear above dropdowns
+  overlayOpacity?: boolean // For semi-transparent overlay instead of default
+  clickOutsideNotClose?: boolean // Prevent closing when clicking outside modal
 }
 
 export default function Modal({
   className,
   wrapperClassName,
+  containerClassName,
   isShow,
   onClose = noop,
   title,
@@ -27,19 +32,22 @@ export default function Modal({
   children,
   closable = false,
   overflowVisible = false,
+  highPriority = false,
+  overlayOpacity = false,
+  clickOutsideNotClose = false,
 }: IModal) {
   return (
     <Transition appear show={isShow} as={Fragment}>
-      <Dialog as="div" className={classNames('relative z-[60]', wrapperClassName)} onClose={onClose}>
+      <Dialog as="div" className={classNames('relative', highPriority ? 'z-[1100]' : 'z-[60]', wrapperClassName)} onClose={clickOutsideNotClose ? noop : onClose}>
         <TransitionChild>
           <div className={classNames(
-            'fixed inset-0 bg-background-overlay',
+            'fixed inset-0',
+            overlayOpacity ? 'bg-workflow-canvas-canvas-overlay' : 'bg-background-overlay',
             'duration-300 ease-in data-[closed]:opacity-0',
             'data-[enter]:opacity-100',
             'data-[leave]:opacity-0',
           )} />
         </TransitionChild>
-
         <div
           className="fixed inset-0 overflow-y-auto"
           onClick={(e) => {
@@ -47,14 +55,14 @@ export default function Modal({
             e.stopPropagation()
           }}
         >
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
+          <div className={classNames('flex min-h-full items-center justify-center p-4 text-center', containerClassName)}>
             <TransitionChild>
               <DialogPanel className={classNames(
-                'w-full max-w-[480px] transform rounded-2xl bg-components-panel-bg p-6 text-left align-middle shadow-xl transition-all',
+                'relative w-full max-w-[480px] rounded-2xl bg-components-panel-bg p-6 text-left align-middle shadow-xl transition-all',
                 overflowVisible ? 'overflow-visible' : 'overflow-hidden',
-                'duration-100 ease-in data-[closed]:opacity-0 data-[closed]:scale-95',
-                'data-[enter]:opacity-100 data-[enter]:scale-100',
-                'data-[leave]:opacity-0 data-[enter]:scale-95',
+                'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
+                'data-[enter]:scale-100 data-[enter]:opacity-100',
+                'data-[enter]:scale-95 data-[leave]:opacity-0',
                 className,
               )}>
                 {title && <DialogTitle

@@ -2,13 +2,65 @@ import type { Block } from '../types'
 import { BlockEnum } from '../types'
 import { BlockClassificationEnum } from './types'
 
-export const BLOCKS: Block[] = [
+export const BLOCK_CLASSIFICATIONS: string[] = [
+  BlockClassificationEnum.Default,
+  BlockClassificationEnum.QuestionUnderstand,
+  BlockClassificationEnum.Logic,
+  BlockClassificationEnum.Transform,
+  BlockClassificationEnum.Utilities,
+]
+
+export const DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE = [
+  'txt',
+  'markdown',
+  'mdx',
+  'pdf',
+  'html',
+  'xlsx',
+  'xls',
+  'vtt',
+  'properties',
+  'doc',
+  'docx',
+  'csv',
+  'eml',
+  'msg',
+  'pptx',
+  'xml',
+  'epub',
+  'ppt',
+  'md',
+]
+
+export const START_BLOCKS: Block[] = [
   {
     classification: BlockClassificationEnum.Default,
     type: BlockEnum.Start,
-    title: 'Start',
-    description: '',
+    title: 'User Input',
+    description: 'Traditional start node for user input',
   },
+  {
+    classification: BlockClassificationEnum.Default,
+    type: BlockEnum.TriggerSchedule,
+    title: 'Schedule Trigger',
+    description: 'Time-based workflow trigger',
+  },
+  {
+    classification: BlockClassificationEnum.Default,
+    type: BlockEnum.TriggerWebhook,
+    title: 'Webhook Trigger',
+    description: 'HTTP callback trigger',
+  },
+]
+
+export const ENTRY_NODE_TYPES = [
+  BlockEnum.Start,
+  BlockEnum.TriggerSchedule,
+  BlockEnum.TriggerWebhook,
+  BlockEnum.TriggerPlugin,
+] as const
+
+export const BLOCKS: Block[] = [
   {
     classification: BlockClassificationEnum.Default,
     type: BlockEnum.LLM,
@@ -100,12 +152,4 @@ export const BLOCKS: Block[] = [
     type: BlockEnum.Agent,
     title: 'Agent',
   },
-]
-
-export const BLOCK_CLASSIFICATIONS: string[] = [
-  BlockClassificationEnum.Default,
-  BlockClassificationEnum.QuestionUnderstand,
-  BlockClassificationEnum.Logic,
-  BlockClassificationEnum.Transform,
-  BlockClassificationEnum.Utilities,
 ]

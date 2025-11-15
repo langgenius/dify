@@ -1,5 +1,5 @@
 import os
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 from urllib.parse import parse_qsl, quote_plus
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
@@ -10,6 +10,7 @@ from .storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from .storage.amazon_s3_storage_config import S3StorageConfig
 from .storage.azure_blob_storage_config import AzureBlobStorageConfig
 from .storage.baidu_obs_storage_config import BaiduOBSStorageConfig
+from .storage.clickzetta_volume_storage_config import ClickZettaVolumeStorageConfig
 from .storage.google_cloud_storage_config import GoogleCloudStorageConfig
 from .storage.huawei_obs_storage_config import HuaweiCloudOBSStorageConfig
 from .storage.oci_storage_config import OCIStorageConfig
@@ -17,9 +18,11 @@ from .storage.opendal_storage_config import OpenDALStorageConfig
 from .storage.supabase_storage_config import SupabaseStorageConfig
 from .storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
 from .storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
+from .vdb.alibabacloud_mysql_config import AlibabaCloudMySQLConfig
 from .vdb.analyticdb_config import AnalyticdbConfig
 from .vdb.baidu_vector_config import BaiduVectorDBConfig
 from .vdb.chroma_config import ChromaConfig
+from .vdb.clickzetta_config import ClickzettaConfig
 from .vdb.couchbase_config import CouchbaseConfig
 from .vdb.elasticsearch_config import ElasticsearchConfig
 from .vdb.huawei_cloud_config import HuaweiCloudConfig
@@ -52,6 +55,7 @@ class StorageConfig(BaseSettings):
         "aliyun-oss",
         "azure-blob",
         "baidu-obs",
+        "clickzetta-volume",
         "google-storage",
         "huawei-obs",
         "oci-storage",
@@ -61,8 +65,9 @@ class StorageConfig(BaseSettings):
         "local",
     ] = Field(
         description="Type of storage to use."
-        " Options: 'opendal', '(deprecated) local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', 'google-storage', "
-        "'huawei-obs', 'oci-storage', 'tencent-cos', 'volcengine-tos', 'supabase'. Default is 'opendal'.",
+        " Options: 'opendal', '(deprecated) local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', "
+        "'clickzetta-volume', 'google-storage', 'huawei-obs', 'oci-storage', 'tencent-cos', "
+        "'volcengine-tos', 'supabase'. Default is 'opendal'.",
         default="opendal",
     )
 
@@ -74,15 +79,20 @@ class StorageConfig(BaseSettings):
 
 
 class VectorStoreConfig(BaseSettings):
-    VECTOR_STORE: Optional[str] = Field(
+    VECTOR_STORE: str | None = Field(
         description="Type of vector store to use for efficient similarity search."
         " Set to None if not using a vector store.",
         default=None,
     )
 
-    VECTOR_STORE_WHITELIST_ENABLE: Optional[bool] = Field(
+    VECTOR_STORE_WHITELIST_ENABLE: bool | None = Field(
         description="Enable whitelist for vector store.",
         default=False,
+    )
+
+    VECTOR_INDEX_NAME_PREFIX: str | None = Field(
+        description="Prefix used to create collection name in vector database",
+        default="Vector_index",
     )
 
 
@@ -135,7 +145,8 @@ class DatabaseConfig(BaseSettings):
         default="postgresql",
     )
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
+    @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         db_extras = (
             f"{self.DB_EXTRAS}&client_encoding={self.DB_CHARSET}" if self.DB_CHARSET else self.DB_EXTRAS
@@ -177,12 +188,17 @@ class DatabaseConfig(BaseSettings):
         default=False,
     )
 
+    SQLALCHEMY_POOL_TIMEOUT: NonNegativeInt = Field(
+        description="Number of seconds to wait for a connection from the pool before raising a timeout error.",
+        default=30,
+    )
+
     RETRIEVAL_SERVICE_EXECUTORS: NonNegativeInt = Field(
         description="Number of processes for the retrieval service, default to CPU cores.",
         default=os.cpu_count() or 1,
     )
 
-    @computed_field  # type: ignore[misc]
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
         # Parse DB_EXTRAS for 'options'
@@ -205,46 +221,49 @@ class DatabaseConfig(BaseSettings):
             "pool_pre_ping": self.SQLALCHEMY_POOL_PRE_PING,
             "connect_args": connect_args,
             "pool_use_lifo": self.SQLALCHEMY_POOL_USE_LIFO,
+            "pool_reset_on_return": None,
+            "pool_timeout": self.SQLALCHEMY_POOL_TIMEOUT,
         }
 
 
 class CeleryConfig(DatabaseConfig):
     CELERY_BACKEND: str = Field(
-        description="Backend for Celery task results. Options: 'database', 'redis'.",
+        description="Backend for Celery task results. Options: 'database', 'redis', 'rabbitmq'.",
         default="redis",
     )
 
-    CELERY_BROKER_URL: Optional[str] = Field(
+    CELERY_BROKER_URL: str | None = Field(
         description="URL of the message broker for Celery tasks.",
         default=None,
     )
 
-    CELERY_USE_SENTINEL: Optional[bool] = Field(
+    CELERY_USE_SENTINEL: bool | None = Field(
         description="Whether to use Redis Sentinel for high availability.",
         default=False,
     )
 
-    CELERY_SENTINEL_MASTER_NAME: Optional[str] = Field(
+    CELERY_SENTINEL_MASTER_NAME: str | None = Field(
         description="Name of the Redis Sentinel master.",
         default=None,
     )
 
-    CELERY_SENTINEL_PASSWORD: Optional[str] = Field(
+    CELERY_SENTINEL_PASSWORD: str | None = Field(
         description="Password of the Redis Sentinel master.",
         default=None,
     )
-    CELERY_SENTINEL_SOCKET_TIMEOUT: Optional[PositiveFloat] = Field(
+    CELERY_SENTINEL_SOCKET_TIMEOUT: PositiveFloat | None = Field(
         description="Timeout for Redis Sentinel socket operations in seconds.",
         default=0.1,
     )
 
     @computed_field
     def CELERY_RESULT_BACKEND(self) -> str | None:
-        return (
-            "db+{}".format(self.SQLALCHEMY_DATABASE_URI)
-            if self.CELERY_BACKEND == "database"
-            else self.CELERY_BROKER_URL
-        )
+        if self.CELERY_BACKEND in ("database", "rabbitmq"):
+            return f"db+{self.SQLALCHEMY_DATABASE_URI}"
+        elif self.CELERY_BACKEND == "redis":
+            return self.CELERY_BROKER_URL
+        else:
+            return None
 
     @property
     def BROKER_USE_SSL(self) -> bool:
@@ -256,12 +275,12 @@ class InternalTestConfig(BaseSettings):
     Configuration settings for Internal Test
     """
 
-    AWS_SECRET_ACCESS_KEY: Optional[str] = Field(
+    AWS_SECRET_ACCESS_KEY: str | None = Field(
         description="Internal test AWS secret access key",
         default=None,
     )
 
-    AWS_ACCESS_KEY_ID: Optional[str] = Field(
+    AWS_ACCESS_KEY_ID: str | None = Field(
         description="Internal test AWS access key ID",
         default=None,
     )
@@ -272,15 +291,15 @@ class DatasetQueueMonitorConfig(BaseSettings):
     Configuration settings for Dataset Queue Monitor
     """
 
-    QUEUE_MONITOR_THRESHOLD: Optional[NonNegativeInt] = Field(
+    QUEUE_MONITOR_THRESHOLD: NonNegativeInt | None = Field(
         description="Threshold for dataset queue monitor",
         default=200,
     )
-    QUEUE_MONITOR_ALERT_EMAILS: Optional[str] = Field(
+    QUEUE_MONITOR_ALERT_EMAILS: str | None = Field(
         description="Emails for dataset queue monitor alert, separated by commas",
         default=None,
     )
-    QUEUE_MONITOR_INTERVAL: Optional[NonNegativeFloat] = Field(
+    QUEUE_MONITOR_INTERVAL: NonNegativeFloat | None = Field(
         description="Interval for dataset queue monitor in minutes",
         default=30,
     )
@@ -288,8 +307,7 @@ class DatasetQueueMonitorConfig(BaseSettings):
 
 class MiddlewareConfig(
     # place the configs in alphabet order
-    CeleryConfig,
-    DatabaseConfig,
+    CeleryConfig,  # Note: CeleryConfig already inherits from DatabaseConfig
     KeywordStoreConfig,
     RedisConfig,
     # configs of storage and storage providers
@@ -297,6 +315,7 @@ class MiddlewareConfig(
     AliyunOSSStorageConfig,
     AzureBlobStorageConfig,
     BaiduOBSStorageConfig,
+    ClickZettaVolumeStorageConfig,
     GoogleCloudStorageConfig,
     HuaweiCloudOBSStorageConfig,
     OCIStorageConfig,
@@ -309,8 +328,10 @@ class MiddlewareConfig(
     VectorStoreConfig,
     AnalyticdbConfig,
     ChromaConfig,
+    ClickzettaConfig,
     HuaweiCloudConfig,
     MilvusConfig,
+    AlibabaCloudMySQLConfig,
     MyScaleConfig,
     OpenSearchConfig,
     OracleConfig,

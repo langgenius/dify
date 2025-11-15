@@ -1,5 +1,11 @@
 import type { ButtonHTMLAttributes } from 'react'
 
+type ElementProps = {
+  className?: string
+  children?: React.ReactNode
+  [key: string]: unknown
+}
+
 type IBasePaginationProps = {
   currentPage: number
   setCurrentPage: (page: number) => void
@@ -31,7 +37,7 @@ type IPagination = IUsePagination & {
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  as?: React.ReactNode
+  as?: React.ReactElement<ElementProps>
   children?: string | React.ReactNode
   className?: string
   dataTestId?: string
@@ -39,9 +45,9 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 type PageButtonProps = ButtonProps & {
   /**
-   * Provide a custom ReactNode (e.g. Next/Link)
+   * Provide a custom ReactElement (e.g. Next/Link)
    */
-  as?: React.ReactNode
+  as?: React.ReactElement<ElementProps>
   activeClassName?: string
   inactiveClassName?: string
   dataTestIdActive?: string

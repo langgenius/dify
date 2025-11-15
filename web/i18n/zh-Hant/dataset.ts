@@ -42,11 +42,15 @@ const translation = {
     },
     change: '更改',
     changeRetrievalMethod: '更改檢索方法',
+    keyword_search: {
+      title: '倒掛索引',
+      description: '倒掛索引是一種用於高效檢索的結構。依字詞組織，每個字詞都指向包含它的文件或網頁。',
+    },
   },
   docsFailedNotice: '文件無法被索引',
   retry: '重試',
   indexingTechnique: {
-    high_quality: '高質量',
+    high_quality: '高品質',
     economy: '經濟',
   },
   indexingMethod: {
@@ -55,7 +59,7 @@ const translation = {
     hybrid_search: '混合',
     invertedIndex: '倒排索引',
   },
-  mixtureHighQualityAndEconomicTip: '混合高質量和經濟知識庫需要重新排序模型。',
+  mixtureHighQualityAndEconomicTip: '混合高品質和經濟知識庫需要重新排序模型。',
   inconsistentEmbeddingModelTip: '如果選定知識庫的嵌入模型不一致，則需要重新排序模型。',
   retrievalSettings: '檢索設置',
   rerankSettings: '重新排序設置',
@@ -131,7 +135,7 @@ const translation = {
   mixtureInternalAndExternalTip: 'Rerank 模型是內部和外部知識的混合所必需的。',
   connectDataset: '連接到外部知識庫',
   learnHowToWriteGoodKnowledgeDescription: '瞭解如何編寫良好的知識描述',
-  createExternalAPI: '添加外部知識 API',
+  createExternalAPI: '新增外部知識 API',
   externalAPIPanelTitle: '外部知識 API',
   createNewExternalAPI: '創建新的外部知識 API',
   externalKnowledgeDescriptionPlaceholder: '描述此知識庫中的內容（選擇）',
@@ -149,6 +153,8 @@ const translation = {
   chunkingMode: {
     parentChild: '父子',
     general: '常規',
+    graph: '圖形',
+    qa: '問與答',
   },
   parentMode: {
     paragraph: '段',
@@ -173,7 +179,7 @@ const translation = {
       type: '類型',
       title: '新元數據',
       back: '返回',
-      namePlaceholder: '添加元數據名稱',
+      namePlaceholder: '新增元數據名稱',
       name: '名字',
     },
     checkName: {
@@ -195,7 +201,7 @@ const translation = {
     },
     datasetMetadata: {
       rename: '重新命名',
-      addMetaData: '添加元數據',
+      addMetaData: '新增元數據',
       builtInDescription: '內建的元數據會自動提取和生成。在使用之前必須啟用，且無法編輯。',
       name: '名字',
       disabled: '禁用',
@@ -210,13 +216,27 @@ const translation = {
       startLabeling: '開始標記',
       documentInformation: '文件資訊',
       technicalParameters: '技術參數',
-      metadataToolTip: '元數據作為一個關鍵的過濾器，提高了信息檢索的準確性和相關性。您可以在此處修改和添加此文檔的元數據。',
+      metadataToolTip: '元數據作為一個關鍵的過濾器，提高了信息檢索的準確性和相關性。您可以在此處修改和新增此文檔的元數據。',
     },
     metadata: '元數據',
     chooseTime: '選擇一個時間...',
-    addMetadata: '添加元數據',
+    addMetadata: '新增元數據',
   },
   embeddingModelNotAvailable: '嵌入模型無法使用。',
+  externalKnowledgeBase: '外部知識庫',
+  createFromPipeline: '從知識管線建立',
+  updated: '更新時間',
+  serviceApi: {
+    card: {
+      title: '後端服務 API',
+      apiReference: 'API 參考',
+      endpoint: '服務 API 端點',
+      apiKey: 'API 金鑰',
+    },
+    enabled: '使用中',
+    title: '服務 API',
+    disabled: '已停用',
+  },
 }
 
 export default translation

@@ -4,25 +4,22 @@ import re
 import time
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from sqlalchemy import Float, and_, func, or_, text
+from sqlalchemy import Float, and_, func, or_, select, text
 from sqlalchemy import cast as sqlalchemy_cast
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.message_entities import (
-    PromptMessageRole,
-)
-from core.model_runtime.entities.model_entities import (
-    ModelFeature,
-    ModelType,
-)
+from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.message_entities import PromptMessageRole
+from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities.metadata_entities import Condition, MetadataCondition
@@ -32,14 +29,17 @@ from core.variables import (
     StringSegment,
 )
 from core.variables.segments import ArrayObjectSegment
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
-from core.workflow.nodes.enums import ErrorStrategy, NodeType
-from core.workflow.nodes.event import (
-    ModelInvokeCompletedEvent,
+from core.workflow.entities import GraphInitParams
+from core.workflow.enums import (
+    ErrorStrategy,
+    NodeType,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
 )
+from core.workflow.node_events import ModelInvokeCompletedEvent, NodeRunResult
+from core.workflow.nodes.base import LLMUsageTrackingMixin
+from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.knowledge_retrieval.template_prompts import (
     METADATA_FILTER_ASSISTANT_PROMPT_1,
     METADATA_FILTER_ASSISTANT_PROMPT_2,
@@ -70,21 +70,21 @@ from .exc import (
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.graph_engine import Graph, GraphInitParams, GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
 default_retrieval_model = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
-    "top_k": 2,
+    "top_k": 4,
     "score_threshold_enabled": False,
 }
 
 
-class KnowledgeRetrievalNode(BaseNode):
-    _node_type = NodeType.KNOWLEDGE_RETRIEVAL
+class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node):
+    node_type = NodeType.KNOWLEDGE_RETRIEVAL
 
     _node_data: KnowledgeRetrievalNodeData
 
@@ -99,24 +99,18 @@ class KnowledgeRetrievalNode(BaseNode):
         id: str,
         config: Mapping[str, Any],
         graph_init_params: "GraphInitParams",
-        graph: "Graph",
         graph_runtime_state: "GraphRuntimeState",
-        previous_node_id: Optional[str] = None,
-        thread_pool_id: Optional[str] = None,
         *,
         llm_file_saver: LLMFileSaver | None = None,
-    ) -> None:
+    ):
         super().__init__(
             id=id,
             config=config,
             graph_init_params=graph_init_params,
-            graph=graph,
             graph_runtime_state=graph_runtime_state,
-            previous_node_id=previous_node_id,
-            thread_pool_id=thread_pool_id,
         )
         # LLM file outputs, used for MultiModal outputs.
-        self._file_outputs: list[File] = []
+        self._file_outputs = []
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -125,10 +119,10 @@ class KnowledgeRetrievalNode(BaseNode):
             )
         self._llm_file_saver = llm_file_saver
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
+    def init_node_data(self, data: Mapping[str, Any]):
         self._node_data = KnowledgeRetrievalNodeData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -137,7 +131,7 @@ class KnowledgeRetrievalNode(BaseNode):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -150,7 +144,7 @@ class KnowledgeRetrievalNode(BaseNode):
     def version(cls):
         return "1"
 
-    def _run(self) -> NodeRunResult:  # type: ignore
+    def _run(self) -> NodeRunResult:
         # extract variables
         variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_variable_selector)
         if not isinstance(variable, StringSegment):
@@ -175,7 +169,7 @@ class KnowledgeRetrievalNode(BaseNode):
             redis_client.zremrangebyscore(key, 0, current_time - 60000)
             request_count = redis_client.zcard(key)
             if request_count > knowledge_rate_limit.limit:
-                with Session(db.engine) as session:
+                with sessionmaker(db.engine).begin() as session:
                     # add ratelimit record
                     rate_limit_log = RateLimitLog(
                         tenant_id=self.tenant_id,
@@ -183,7 +177,6 @@ class KnowledgeRetrievalNode(BaseNode):
                         operation="knowledge",
                     )
                     session.add(rate_limit_log)
-                    session.commit()
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=variables,
@@ -192,14 +185,21 @@ class KnowledgeRetrievalNode(BaseNode):
                 )
 
         # retrieve knowledge
+        usage = LLMUsage.empty_usage()
         try:
-            results = self._fetch_dataset_retriever(node_data=self._node_data, query=query)
+            results, usage = self._fetch_dataset_retriever(node_data=self._node_data, query=query)
             outputs = {"result": ArrayObjectSegment(value=results)}
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=variables,
-                process_data=None,
+                process_data={"usage": jsonable_encoder(usage)},
                 outputs=outputs,  # type: ignore
+                metadata={
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
+                },
+                llm_usage=usage,
             )
 
         except KnowledgeRetrievalNodeError as e:
@@ -209,6 +209,7 @@ class KnowledgeRetrievalNode(BaseNode):
                 inputs=variables,
                 error=str(e),
                 error_type=type(e).__name__,
+                llm_usage=usage,
             )
         # Temporary handle all exceptions from DatasetRetrieval class here.
         except Exception as e:
@@ -217,18 +218,22 @@ class KnowledgeRetrievalNode(BaseNode):
                 inputs=variables,
                 error=str(e),
                 error_type=type(e).__name__,
+                llm_usage=usage,
             )
         finally:
             db.session.close()
 
-    def _fetch_dataset_retriever(self, node_data: KnowledgeRetrievalNodeData, query: str) -> list[dict[str, Any]]:
+    def _fetch_dataset_retriever(
+        self, node_data: KnowledgeRetrievalNodeData, query: str
+    ) -> tuple[list[dict[str, Any]], LLMUsage]:
+        usage = LLMUsage.empty_usage()
         available_datasets = []
         dataset_ids = node_data.dataset_ids
 
         # Subquery: Count the number of available documents for each dataset
         subquery = (
             db.session.query(Document.dataset_id, func.count(Document.id).label("available_document_count"))
-            .filter(
+            .where(
                 Document.indexing_status == "completed",
                 Document.enabled == True,
                 Document.archived == False,
@@ -242,8 +247,8 @@ class KnowledgeRetrievalNode(BaseNode):
         results = (
             db.session.query(Dataset)
             .outerjoin(subquery, Dataset.id == subquery.c.dataset_id)
-            .filter(Dataset.tenant_id == self.tenant_id, Dataset.id.in_(dataset_ids))
-            .filter((subquery.c.available_document_count > 0) | (Dataset.provider == "external"))
+            .where(Dataset.tenant_id == self.tenant_id, Dataset.id.in_(dataset_ids))
+            .where((subquery.c.available_document_count > 0) | (Dataset.provider == "external"))
             .all()
         )
 
@@ -255,12 +260,13 @@ class KnowledgeRetrievalNode(BaseNode):
             if not dataset:
                 continue
             available_datasets.append(dataset)
-        metadata_filter_document_ids, metadata_condition = self._get_metadata_filter_condition(
+        metadata_filter_document_ids, metadata_condition, metadata_usage = self._get_metadata_filter_condition(
             [dataset.id for dataset in available_datasets], query, node_data
         )
+        usage = self._merge_usage(usage, metadata_usage)
         all_documents = []
         dataset_retrieval = DatasetRetrieval()
-        if node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE.value:
+        if node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             # fetch model config
             if node_data.single_retrieval_config is None:
                 raise ValueError("single_retrieval_config is required")
@@ -292,7 +298,7 @@ class KnowledgeRetrievalNode(BaseNode):
                     metadata_filter_document_ids=metadata_filter_document_ids,
                     metadata_condition=metadata_condition,
                 )
-        elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value:
+        elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             if node_data.multiple_retrieval_config is None:
                 raise ValueError("multiple_retrieval_config is required")
             if node_data.multiple_retrieval_config.reranking_mode == "reranking_model":
@@ -340,6 +346,8 @@ class KnowledgeRetrievalNode(BaseNode):
                 metadata_filter_document_ids=metadata_filter_document_ids,
                 metadata_condition=metadata_condition,
             )
+        usage = self._merge_usage(usage, dataset_retrieval.llm_usage)
+
         dify_documents = [item for item in all_documents if item.provider == "dify"]
         external_documents = [item for item in all_documents if item.provider == "external"]
         retrieval_resource_list = []
@@ -368,15 +376,12 @@ class KnowledgeRetrievalNode(BaseNode):
                 for record in records:
                     segment = record.segment
                     dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()  # type: ignore
-                    document = (
-                        db.session.query(Document)
-                        .filter(
-                            Document.id == segment.document_id,
-                            Document.enabled == True,
-                            Document.archived == False,
-                        )
-                        .first()
+                    stmt = select(Document).where(
+                        Document.id == segment.document_id,
+                        Document.enabled == True,
+                        Document.archived == False,
                     )
+                    document = db.session.scalar(stmt)
                     if dataset and document:
                         source = {
                             "metadata": {
@@ -389,6 +394,15 @@ class KnowledgeRetrievalNode(BaseNode):
                                 "segment_id": segment.id,
                                 "retriever_from": "workflow",
                                 "score": record.score or 0.0,
+                                "child_chunks": [
+                                    {
+                                        "id": str(getattr(chunk, "id", "")),
+                                        "content": str(getattr(chunk, "content", "")),
+                                        "position": int(getattr(chunk, "position", 0)),
+                                        "score": float(getattr(chunk, "score", 0.0)),
+                                    }
+                                    for chunk in (record.child_chunks or [])
+                                ],
                                 "segment_hit_count": segment.hit_count,
                                 "segment_word_count": segment.word_count,
                                 "segment_position": segment.position,
@@ -410,23 +424,27 @@ class KnowledgeRetrievalNode(BaseNode):
             )
             for position, item in enumerate(retrieval_resource_list, start=1):
                 item["metadata"]["position"] = position
-        return retrieval_resource_list
+        return retrieval_resource_list, usage
 
     def _get_metadata_filter_condition(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
-    ) -> tuple[Optional[dict[str, list[str]]], Optional[MetadataCondition]]:
-        document_query = db.session.query(Document).filter(
+    ) -> tuple[dict[str, list[str]] | None, MetadataCondition | None, LLMUsage]:
+        usage = LLMUsage.empty_usage()
+        document_query = db.session.query(Document).where(
             Document.dataset_id.in_(dataset_ids),
             Document.indexing_status == "completed",
             Document.enabled == True,
             Document.archived == False,
         )
-        filters = []  # type: ignore
+        filters: list[Any] = []
         metadata_condition = None
         if node_data.metadata_filtering_mode == "disabled":
-            return None, None
+            return None, None, usage
         elif node_data.metadata_filtering_mode == "automatic":
-            automatic_metadata_filters = self._automatic_metadata_filter_func(dataset_ids, query, node_data)
+            automatic_metadata_filters, automatic_usage = self._automatic_metadata_filter_func(
+                dataset_ids, query, node_data
+            )
+            usage = self._merge_usage(usage, automatic_usage)
             if automatic_metadata_filters:
                 conditions = []
                 for sequence, filter in enumerate(automatic_metadata_filters):
@@ -435,7 +453,7 @@ class KnowledgeRetrievalNode(BaseNode):
                         filter.get("condition", ""),
                         filter.get("metadata_name", ""),
                         filter.get("value"),
-                        filters,  # type: ignore
+                        filters,
                     )
                     conditions.append(
                         Condition(
@@ -447,41 +465,40 @@ class KnowledgeRetrievalNode(BaseNode):
                 metadata_condition = MetadataCondition(
                     logical_operator=node_data.metadata_filtering_conditions.logical_operator
                     if node_data.metadata_filtering_conditions
-                    else "or",  # type: ignore
+                    else "or",
                     conditions=conditions,
                 )
         elif node_data.metadata_filtering_mode == "manual":
             if node_data.metadata_filtering_conditions:
                 conditions = []
-                if node_data.metadata_filtering_conditions:
-                    for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):  # type: ignore
-                        metadata_name = condition.name
-                        expected_value = condition.value
-                        if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
-                            if isinstance(expected_value, str):
-                                expected_value = self.graph_runtime_state.variable_pool.convert_template(
-                                    expected_value
-                                ).value[0]
-                                if expected_value.value_type == "number":  # type: ignore
-                                    expected_value = expected_value.value  # type: ignore
-                                elif expected_value.value_type == "string":  # type: ignore
-                                    expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
-                                else:
-                                    raise ValueError("Invalid expected metadata value type")
-                        conditions.append(
-                            Condition(
-                                name=metadata_name,
-                                comparison_operator=condition.comparison_operator,
-                                value=expected_value,
-                            )
+                for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):  # type: ignore
+                    metadata_name = condition.name
+                    expected_value = condition.value
+                    if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
+                        if isinstance(expected_value, str):
+                            expected_value = self.graph_runtime_state.variable_pool.convert_template(
+                                expected_value
+                            ).value[0]
+                            if expected_value.value_type in {"number", "integer", "float"}:
+                                expected_value = expected_value.value
+                            elif expected_value.value_type == "string":
+                                expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()
+                            else:
+                                raise ValueError("Invalid expected metadata value type")
+                    conditions.append(
+                        Condition(
+                            name=metadata_name,
+                            comparison_operator=condition.comparison_operator,
+                            value=expected_value,
                         )
-                        filters = self._process_metadata_filter_func(
-                            sequence,
-                            condition.comparison_operator,
-                            metadata_name,
-                            expected_value,
-                            filters,
-                        )
+                    )
+                    filters = self._process_metadata_filter_func(
+                        sequence,
+                        condition.comparison_operator,
+                        metadata_name,
+                        expected_value,
+                        filters,
+                    )
                 metadata_condition = MetadataCondition(
                     logical_operator=node_data.metadata_filtering_conditions.logical_operator,
                     conditions=conditions,
@@ -492,23 +509,27 @@ class KnowledgeRetrievalNode(BaseNode):
             if (
                 node_data.metadata_filtering_conditions
                 and node_data.metadata_filtering_conditions.logical_operator == "and"
-            ):  # type: ignore
-                document_query = document_query.filter(and_(*filters))
+            ):
+                document_query = document_query.where(and_(*filters))
             else:
-                document_query = document_query.filter(or_(*filters))
+                document_query = document_query.where(or_(*filters))
         documents = document_query.all()
         # group by dataset_id
         metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
         for document in documents:
             metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore
-        return metadata_filter_document_ids, metadata_condition
+        return metadata_filter_document_ids, metadata_condition, usage
 
     def _automatic_metadata_filter_func(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
-    ) -> list[dict[str, Any]]:
+    ) -> tuple[list[dict[str, Any]], LLMUsage]:
+        usage = LLMUsage.empty_usage()
         # get all metadata field
-        metadata_fields = db.session.query(DatasetMetadata).filter(DatasetMetadata.dataset_id.in_(dataset_ids)).all()
+        stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
+        metadata_fields = db.session.scalars(stmt).all()
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
+        if node_data.metadata_model_config is None:
+            raise ValueError("metadata_model_config is required")
         # get metadata model instance and fetch model config
         model_instance, model_config = self.get_model_config(node_data.metadata_model_config)
         # fetch prompt messages
@@ -543,12 +564,14 @@ class KnowledgeRetrievalNode(BaseNode):
                 structured_output=None,
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,
-                node_id=self.node_id,
+                node_id=self._node_id,
+                node_type=self.node_type,
             )
 
             for event in generator:
                 if isinstance(event, ModelInvokeCompletedEvent):
                     result_text = event.text
+                    usage = self._merge_usage(usage, event.usage)
                     break
 
             result_text_json = parse_and_check_json_markdown(result_text, [])
@@ -564,15 +587,15 @@ class KnowledgeRetrievalNode(BaseNode):
                                 "condition": item.get("comparison_operator"),
                             }
                         )
-        except Exception as e:
-            return []
-        return automatic_metadata_filters
+        except Exception:
+            return [], usage
+        return automatic_metadata_filters, usage
 
     def _process_metadata_filter_func(
-        self, sequence: int, condition: str, metadata_name: str, value: Optional[Any], filters: list
-    ):
-        if value is None:
-            return
+        self, sequence: int, condition: str, metadata_name: str, value: Any, filters: list[Any]
+    ) -> list[Any]:
+        if value is None and condition not in ("empty", "not empty"):
+            return filters
 
         key = f"{metadata_name}_{sequence}"
         key_value = f"{metadata_name}_{sequence}_value"
@@ -599,6 +622,28 @@ class KnowledgeRetrievalNode(BaseNode):
                 filters.append(
                     (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
                         **{key: metadata_name, key_value: f"%{value}"}
+                    )
+                )
+            case "in":
+                if isinstance(value, str):
+                    escaped_values = [v.strip().replace("'", "''") for v in str(value).split(",")]
+                    escaped_value_str = ",".join(escaped_values)
+                else:
+                    escaped_value_str = str(value)
+                filters.append(
+                    (text(f"documents.doc_metadata ->> :{key} = any(string_to_array(:{key_value},','))")).params(
+                        **{key: metadata_name, key_value: escaped_value_str}
+                    )
+                )
+            case "not in":
+                if isinstance(value, str):
+                    escaped_values = [v.strip().replace("'", "''") for v in str(value).split(",")]
+                    escaped_value_str = ",".join(escaped_values)
+                else:
+                    escaped_value_str = str(value)
+                filters.append(
+                    (text(f"documents.doc_metadata ->> :{key} != all(string_to_array(:{key_value},','))")).params(
+                        **{key: metadata_name, key_value: escaped_value_str}
                     )
                 )
             case "=" | "is":
@@ -635,6 +680,7 @@ class KnowledgeRetrievalNode(BaseNode):
         node_id: str,
         node_data: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
+        # graph_config is not used in this node type
         # Create typed NodeData from dict
         typed_node_data = KnowledgeRetrievalNodeData.model_validate(node_data)
 
@@ -701,7 +747,7 @@ class KnowledgeRetrievalNode(BaseNode):
         )
 
     def _get_prompt_template(self, node_data: KnowledgeRetrievalNodeData, metadata_fields: list, query: str):
-        model_mode = ModelMode(node_data.metadata_model_config.mode)
+        model_mode = ModelMode(node_data.metadata_model_config.mode)  # type: ignore
         input_text = query
 
         prompt_messages: list[LLMNodeChatModelMessage] = []

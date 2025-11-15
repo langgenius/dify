@@ -6,7 +6,12 @@ from core.file.models import File
 
 
 class ArrayValidation(StrEnum):
-    """Strategy for validating array elements"""
+    """Strategy for validating array elements.
+
+    Note:
+        The `NONE` and `FIRST` strategies are primarily for compatibility purposes.
+        Avoid using them in new code whenever possible.
+    """
 
     # Skip element validation (only check array container)
     NONE = "none"
@@ -27,12 +32,14 @@ class SegmentType(StrEnum):
     SECRET = "secret"
 
     FILE = "file"
+    BOOLEAN = "boolean"
 
     ARRAY_ANY = "array[any]"
     ARRAY_STRING = "array[string]"
     ARRAY_NUMBER = "array[number]"
     ARRAY_OBJECT = "array[object]"
     ARRAY_FILE = "array[file]"
+    ARRAY_BOOLEAN = "array[boolean]"
 
     NONE = "none"
 
@@ -76,12 +83,18 @@ class SegmentType(StrEnum):
                     return SegmentType.ARRAY_FILE
                 case SegmentType.NONE:
                     return SegmentType.ARRAY_ANY
+                case SegmentType.BOOLEAN:
+                    return SegmentType.ARRAY_BOOLEAN
                 case _:
                     # This should be unreachable.
                     raise ValueError(f"not supported value {value}")
         if value is None:
             return SegmentType.NONE
-        elif isinstance(value, int) and not isinstance(value, bool):
+        # Important: The check for `bool` must precede the check for `int`,
+        # as `bool` is a subclass of `int` in Python's type hierarchy.
+        elif isinstance(value, bool):
+            return SegmentType.BOOLEAN
+        elif isinstance(value, int):
             return SegmentType.INTEGER
         elif isinstance(value, float):
             return SegmentType.FLOAT
@@ -109,9 +122,9 @@ class SegmentType(StrEnum):
         elif array_validation == ArrayValidation.FIRST:
             return element_type.is_valid(value[0])
         else:
-            return all([element_type.is_valid(i, array_validation=ArrayValidation.NONE)] for i in value)
+            return all(element_type.is_valid(i, array_validation=ArrayValidation.NONE) for i in value)
 
-    def is_valid(self, value: Any, array_validation: ArrayValidation = ArrayValidation.FIRST) -> bool:
+    def is_valid(self, value: Any, array_validation: ArrayValidation = ArrayValidation.ALL) -> bool:
         """
         Check if a value matches the segment type.
         Users of `SegmentType` should call this method, instead of using
@@ -126,7 +139,11 @@ class SegmentType(StrEnum):
         """
         if self.is_array_type():
             return self._validate_array(value, array_validation)
-        elif self == SegmentType.NUMBER:
+        # Important: The check for `bool` must precede the check for `int`,
+        # as `bool` is a subclass of `int` in Python's type hierarchy.
+        elif self == SegmentType.BOOLEAN:
+            return isinstance(value, bool)
+        elif self in [SegmentType.INTEGER, SegmentType.FLOAT, SegmentType.NUMBER]:
             return isinstance(value, (int, float))
         elif self == SegmentType.STRING:
             return isinstance(value, str)
@@ -141,6 +158,27 @@ class SegmentType(StrEnum):
         else:
             raise AssertionError("this statement should be unreachable.")
 
+    @staticmethod
+    def cast_value(value: Any, type_: "SegmentType"):
+        # Cast Python's `bool` type to `int` when the runtime type requires
+        # an integer or number.
+        #
+        # This ensures compatibility with existing workflows that may use `bool` as
+        # `int`, since in Python's type system, `bool` is a subtype of `int`.
+        #
+        # This function exists solely to maintain compatibility with existing workflows.
+        # It should not be used to compromise the integrity of the runtime type system.
+        # No additional casting rules should be introduced to this function.
+
+        if type_ in (
+            SegmentType.INTEGER,
+            SegmentType.NUMBER,
+        ) and isinstance(value, bool):
+            return int(value)
+        if type_ == SegmentType.ARRAY_NUMBER and all(isinstance(i, bool) for i in value):
+            return [int(i) for i in value]
+        return value
+
     def exposed_type(self) -> "SegmentType":
         """Returns the type exposed to the frontend.
 
@@ -150,13 +188,57 @@ class SegmentType(StrEnum):
             return SegmentType.NUMBER
         return self
 
+    def element_type(self) -> "SegmentType | None":
+        """Return the element type of the current segment type, or `None` if the element type is undefined.
+
+        Raises:
+            ValueError: If the current segment type is not an array type.
+
+        Note:
+            For certain array types, such as `SegmentType.ARRAY_ANY`, their element types are not defined
+            by the runtime system. In such cases, this method will return `None`.
+        """
+        if not self.is_array_type():
+            raise ValueError(f"element_type is only supported by array type, got {self}")
+        return _ARRAY_ELEMENT_TYPES_MAPPING.get(self)
+
+    @staticmethod
+    def get_zero_value(t: "SegmentType"):
+        # Lazy import to avoid circular dependency
+        from factories import variable_factory
+
+        match t:
+            case (
+                SegmentType.ARRAY_OBJECT
+                | SegmentType.ARRAY_ANY
+                | SegmentType.ARRAY_STRING
+                | SegmentType.ARRAY_NUMBER
+                | SegmentType.ARRAY_BOOLEAN
+            ):
+                return variable_factory.build_segment_with_type(t, [])
+            case SegmentType.OBJECT:
+                return variable_factory.build_segment({})
+            case SegmentType.STRING:
+                return variable_factory.build_segment("")
+            case SegmentType.INTEGER:
+                return variable_factory.build_segment(0)
+            case SegmentType.FLOAT:
+                return variable_factory.build_segment(0.0)
+            case SegmentType.NUMBER:
+                return variable_factory.build_segment(0)
+            case SegmentType.BOOLEAN:
+                return variable_factory.build_segment(False)
+            case _:
+                raise ValueError(f"unsupported variable type: {t}")
+
 
 _ARRAY_ELEMENT_TYPES_MAPPING: Mapping[SegmentType, SegmentType] = {
-    # ARRAY_ANY does not have correpond element type.
+    # ARRAY_ANY does not have corresponding element type.
     SegmentType.ARRAY_STRING: SegmentType.STRING,
     SegmentType.ARRAY_NUMBER: SegmentType.NUMBER,
     SegmentType.ARRAY_OBJECT: SegmentType.OBJECT,
     SegmentType.ARRAY_FILE: SegmentType.FILE,
+    SegmentType.ARRAY_BOOLEAN: SegmentType.BOOLEAN,
 }
 
 _ARRAY_TYPES = frozenset(
@@ -165,7 +247,6 @@ _ARRAY_TYPES = frozenset(
         SegmentType.ARRAY_ANY,
     ]
 )
-
 
 _NUMERICAL_TYPES = frozenset(
     [

@@ -1,13 +1,14 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import produce from 'immer'
+import { produce } from 'immer'
 import { ReactSortable } from 'react-sortablejs'
 import { RiAddLine, RiAsterisk, RiCloseLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
+import PromptEditor from '@/app/components/base/prompt-editor'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import { getInputKeys } from '@/app/components/base/block-input'
 import type { PromptVariable } from '@/models/debug'
@@ -44,7 +45,13 @@ const OpeningSettingModal = ({
   const [isShowConfirmAddVar, { setTrue: showConfirmAddVar, setFalse: hideConfirmAddVar }] = useBoolean(false)
   const [notIncludeKeys, setNotIncludeKeys] = useState<string[]>([])
 
+  const isSaveDisabled = useMemo(() => !tempValue.trim(), [tempValue])
+
   const handleSave = useCallback((ignoreVariablesCheck?: boolean) => {
+    // Prevent saving if opening statement is empty
+    if (isSaveDisabled)
+      return
+
     if (!ignoreVariablesCheck) {
       const keys = getInputKeys(tempValue)
       const promptKeys = promptVariables.map(item => item.key)
@@ -74,7 +81,7 @@ const OpeningSettingModal = ({
       }
     })
     onSave(newOpening)
-  }, [data, onSave, promptVariables, workflowVariables, showConfirmAddVar, tempSuggestedQuestions, tempValue])
+  }, [data, onSave, promptVariables, workflowVariables, showConfirmAddVar, tempSuggestedQuestions, tempValue, isSaveDisabled])
 
   const cancelAutoAddVar = useCallback(() => {
     hideConfirmAddVar()
@@ -82,9 +89,7 @@ const OpeningSettingModal = ({
   }, [handleSave, hideConfirmAddVar])
 
   const autoAddVar = useCallback(() => {
-    onAutoAddPromptVariable?.([
-      ...notIncludeKeys.map(key => getNewVar(key, 'string')),
-    ])
+    onAutoAddPromptVariable?.(notIncludeKeys.map(key => getNewVar(key, 'string')))
     hideConfirmAddVar()
     handleSave(true)
   }, [handleSave, hideConfirmAddVar, notIncludeKeys, onAutoAddPromptVariable])
@@ -101,7 +106,7 @@ const OpeningSettingModal = ({
             <div>·</div>
             <div>{tempSuggestedQuestions.length}/{MAX_QUESTION_NUM}</div>
           </div>
-          <Divider bgStyle='gradient' className='ml-3 h-px w-0 grow'/>
+          <Divider bgStyle='gradient' className='ml-3 h-px w-0 grow' />
         </div>
         <ReactSortable
           className="space-y-1"
@@ -178,19 +183,32 @@ const OpeningSettingModal = ({
     >
       <div className='mb-6 flex items-center justify-between'>
         <div className='title-2xl-semi-bold text-text-primary'>{t('appDebug.feature.conversationOpener.title')}</div>
-        <div className='cursor-pointer p-1' onClick={onCancel}><RiCloseLine className='h-4 w-4 text-text-tertiary'/></div>
+        <div className='cursor-pointer p-1' onClick={onCancel}><RiCloseLine className='h-4 w-4 text-text-tertiary' /></div>
       </div>
       <div className='mb-8 flex gap-2'>
         <div className='mt-1.5 h-8 w-8 shrink-0 rounded-lg border-components-panel-border bg-util-colors-orange-dark-orange-dark-500 p-1.5'>
           <RiAsterisk className='h-5 w-5 text-text-primary-on-surface' />
         </div>
         <div className='grow rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg p-3 shadow-xs'>
-          <textarea
+          <PromptEditor
             value={tempValue}
-            rows={3}
-            onChange={e => setTempValue(e.target.value)}
-            className="system-md-regular w-full border-0 bg-transparent  px-0 text-text-secondary focus:outline-none"
+            onChange={setTempValue}
             placeholder={t('appDebug.openingStatement.placeholder') as string}
+            variableBlock={{
+              show: true,
+              variables: [
+                // Prompt variables
+                ...promptVariables.map(item => ({
+                  name: item.name || item.key,
+                  value: item.key,
+                })),
+                // Workflow variables
+                ...workflowVariables.map(item => ({
+                  name: item.variable,
+                  value: item.variable,
+                })),
+              ],
+            }}
           />
           {renderQuestions()}
         </div>
@@ -205,6 +223,7 @@ const OpeningSettingModal = ({
         <Button
           variant='primary'
           onClick={() => handleSave()}
+          disabled={isSaveDisabled}
         >
           {t('common.operation.save')}
         </Button>

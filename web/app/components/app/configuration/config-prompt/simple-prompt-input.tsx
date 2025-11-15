@@ -3,17 +3,17 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useContext } from 'use-context-selector'
 import ConfirmAddVar from './confirm-add-var'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import cn from '@/utils/classnames'
 import type { PromptVariable } from '@/models/debug'
 import Tooltip from '@/app/components/base/tooltip'
-import { AppType } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import { getNewVar, getVars } from '@/utils/var'
 import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
-import type { AutomaticRes } from '@/service/debug'
+import type { GenRes } from '@/service/debug'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
@@ -29,7 +29,7 @@ import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { noop } from 'lodash-es'
 
 export type ISimplePromptInput = {
-  mode: AppType
+  mode: AppModeEnum
   promptTemplate: string
   promptVariables: PromptVariable[]
   readonly?: boolean
@@ -61,6 +61,7 @@ const Prompt: FC<ISimplePromptInput> = ({
 
   const { eventEmitter } = useEventEmitterContextContext()
   const {
+    appId,
     modelConfig,
     dataSets,
     setModelConfig,
@@ -75,7 +76,9 @@ const Prompt: FC<ISimplePromptInput> = ({
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({
       payload: {},
-      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+      onSaveCallback: (newExternalDataTool?: ExternalDataTool) => {
+        if (!newExternalDataTool)
+          return
         eventEmitter?.emit({
           type: ADD_EXTERNAL_DATA_TOOL,
           payload: newExternalDataTool,
@@ -139,21 +142,21 @@ const Prompt: FC<ISimplePromptInput> = ({
   }
 
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
-  const handleAutomaticRes = (res: AutomaticRes) => {
+  const handleAutomaticRes = (res: GenRes) => {
     // put eventEmitter in first place to prevent overwrite the configs.prompt_variables.But another problem is that prompt won't hight the prompt_variables.
     eventEmitter?.emit({
       type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
-      payload: res.prompt,
+      payload: res.modified,
     } as any)
     const newModelConfig = produce(modelConfig, (draft) => {
-      draft.configs.prompt_template = res.prompt
-      draft.configs.prompt_variables = res.variables.map(key => ({ key, name: key, type: 'string', required: true }))
+      draft.configs.prompt_template = res.modified
+      draft.configs.prompt_variables = (res.variables || []).map(key => ({ key, name: key, type: 'string', required: true }))
     })
     setModelConfig(newModelConfig)
     setPrevPromptConfig(modelConfig.configs)
 
-    if (mode !== AppType.completion) {
-      setIntroduction(res.opening_statement)
+    if (mode !== AppModeEnum.COMPLETION) {
+      setIntroduction(res.opening_statement || '')
       const newFeatures = produce(features, (draft) => {
         draft.opening = {
           ...draft.opening,
@@ -174,7 +177,7 @@ const Prompt: FC<ISimplePromptInput> = ({
         {!noTitle && (
           <div className="flex h-11 items-center justify-between pl-3 pr-2.5">
             <div className="flex items-center space-x-1">
-              <div className='h2 system-sm-semibold-uppercase text-text-secondary'>{mode !== AppType.completion ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
+              <div className='h2 system-sm-semibold-uppercase text-text-secondary'>{mode !== AppModeEnum.COMPLETION ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
               {!readonly && (
                 <Tooltip
                   popupContent={
@@ -272,10 +275,13 @@ const Prompt: FC<ISimplePromptInput> = ({
 
       {showAutomatic && (
         <GetAutomaticResModal
-          mode={mode as AppType}
+          flowId={appId}
+          mode={mode as AppModeEnum}
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}
+          currentPrompt={promptTemplate}
+          isBasicMode
         />
       )}
     </div>

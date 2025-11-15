@@ -3,6 +3,7 @@ const translation = {
   searchTags: '搜索标签',
   tags: {
     agent: 'Agent',
+    rag: 'RAG',
     search: '搜索',
     image: '图片',
     videos: '视频',

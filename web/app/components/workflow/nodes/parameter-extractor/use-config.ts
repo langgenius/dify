@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { Memory, MoreInfo, ValueSelector, Var } from '../../types'
 import { ChangeType, VarType } from '../../types'
 import { useStore } from '../../store'
@@ -17,6 +17,7 @@ import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constant
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { supportFunctionCall } from '@/utils/tool-call'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { AppModeEnum } from '@/types/app'
 
 const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const {
@@ -27,7 +28,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const { handleOutVarRenameChange } = useWorkflow()
   const isChatMode = useIsChatMode()
 
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
 
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<ParameterExtractorNodeType>(id, payload)
@@ -86,13 +87,13 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const model = inputs.model || {
     provider: '',
     name: '',
-    mode: 'chat',
+    mode: AppModeEnum.CHAT,
     completion_params: {
       temperature: 0.7,
     },
   }
   const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === 'chat'
+  const isChatModel = modelMode === AppModeEnum.CHAT
   const isCompletionModel = !isChatModel
 
   const {
@@ -133,7 +134,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
       draft.model.mode = model.mode!
       const isModeChange = model.mode !== inputRef.current.model?.mode
       if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
-        appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
+        appendDefaultPromptConfig(draft, defaultConfig, model.mode === AppModeEnum.CHAT)
     })
     setInputs(newInputs)
     setModelChanged(true)
@@ -155,7 +156,6 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
       return
     setModelChanged(false)
     handleVisionConfigAfterModelChanged()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisionModel, modelChanged])
 
   const {

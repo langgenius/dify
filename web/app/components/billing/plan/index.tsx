@@ -5,12 +5,11 @@ import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import {
   RiBook2Line,
-  RiBox3Line,
   RiFileEditLine,
+  RiFlashlightLine,
   RiGraduationCapLine,
-  RiGroup3Line,
   RiGroupLine,
-  RiSquareLine,
+  RiSpeedLine,
 } from '@remixicon/react'
 import { Plan, SelfHostedPlan } from '../type'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
@@ -24,6 +23,7 @@ import VerifyStateModal from '@/app/education-apply/verify-state-modal'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { useEducationVerify } from '@/service/use-education'
 import { useModalContextSelector } from '@/context/modal-context'
+import { Enterprise, Professional, Sandbox, Team } from './assets'
 
 type Props = {
   loc: string
@@ -35,7 +35,8 @@ const PlanComp: FC<Props> = ({
   const { t } = useTranslation()
   const router = useRouter()
   const { userProfile } = useAppContext()
-  const { plan, enableEducationPlan, isEducationAccount } = useProviderContext()
+  const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } = useProviderContext()
+  const isAboutToExpire = allowRefreshEducationVerify
   const {
     type,
   } = plan
@@ -44,6 +45,8 @@ const PlanComp: FC<Props> = ({
     usage,
     total,
   } = plan
+  const perMonthUnit = ` ${t('billing.usagePage.perMonth')}`
+  const triggerEventUnit = plan.type === Plan.sandbox ? undefined : perMonthUnit
 
   const [showModal, setShowModal] = React.useState(false)
   const { mutateAsync } = useEducationVerify()
@@ -58,19 +61,19 @@ const PlanComp: FC<Props> = ({
     })
   }
   return (
-    <div className='rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn'>
+    <div className='relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn'>
       <div className='p-6 pb-2'>
         {plan.type === Plan.sandbox && (
-          <RiBox3Line className='h-7 w-7 text-text-primary'/>
+          <Sandbox />
         )}
         {plan.type === Plan.professional && (
-          <RiSquareLine className='h-7 w-7 rotate-90 text-util-colors-blue-brand-blue-brand-600'/>
+          <Professional />
         )}
         {plan.type === Plan.team && (
-          <RiGroup3Line className='h-7 w-7 text-util-colors-indigo-indigo-600'/>
+          <Team />
         )}
         {(plan.type as any) === SelfHostedPlan.enterprise && (
-          <RiGroup3Line className='h-7 w-7 text-util-colors-indigo-indigo-600'/>
+          <Enterprise />
         )}
         <div className='mt-1 flex items-center'>
           <div className='grow'>
@@ -81,9 +84,9 @@ const PlanComp: FC<Props> = ({
             <div className='system-xs-regular text-util-colors-gray-gray-600'>{t(`billing.plans.${type}.for`)}</div>
           </div>
           <div className='flex shrink-0 items-center gap-1'>
-            {enableEducationPlan && !isEducationAccount && (
+            {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant='ghost' onClick={handleVerify}>
-                <RiGraduationCapLine className='mr-1 h-4 w-4'/>
+                <RiGraduationCapLine className='mr-1 h-4 w-4' />
                 {t('education.toVerified')}
               </Button>
             )}
@@ -119,6 +122,20 @@ const PlanComp: FC<Props> = ({
           name={t('billing.usagePage.annotationQuota')}
           usage={usage.annotatedResponse}
           total={total.annotatedResponse}
+        />
+        <UsageInfo
+          Icon={RiFlashlightLine}
+          name={t('billing.usagePage.triggerEvents')}
+          usage={usage.triggerEvents}
+          total={total.triggerEvents}
+          unit={triggerEventUnit}
+        />
+        <UsageInfo
+          Icon={RiSpeedLine}
+          name={t('billing.plansCommon.apiRateLimit')}
+          usage={usage.apiRateLimit}
+          total={total.apiRateLimit}
+          unit={perMonthUnit}
         />
 
       </div>

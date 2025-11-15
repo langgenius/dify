@@ -45,7 +45,7 @@ const MultipleToolSelector = ({
   canChooseMCPTool,
 }: Props) => {
   const { t } = useTranslation()
-    const { data: mcpTools } = useAllMCPTools()
+  const { data: mcpTools } = useAllMCPTools()
   const enabledCount = value.filter((item) => {
     const isMCPTool = mcpTools?.find(tool => tool.id === item.provider_name)
     if(isMCPTool)

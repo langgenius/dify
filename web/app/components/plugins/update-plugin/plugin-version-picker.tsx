@@ -15,6 +15,7 @@ import type {
 import { useVersionListOfPlugin } from '@/service/use-plugins'
 import useTimestamp from '@/hooks/use-timestamp'
 import cn from '@/utils/classnames'
+import { lt } from 'semver'
 
 type Props = {
   disabled?: boolean
@@ -28,9 +29,11 @@ type Props = {
   onSelect: ({
     version,
     unique_identifier,
+    isDowngrade,
   }: {
     version: string
     unique_identifier: string
+    isDowngrade: boolean
   }) => void
 }
 
@@ -59,13 +62,14 @@ const PluginVersionPicker: FC<Props> = ({
 
   const { data: res } = useVersionListOfPlugin(pluginID)
 
-  const handleSelect = useCallback(({ version, unique_identifier }: {
+  const handleSelect = useCallback(({ version, unique_identifier, isDowngrade }: {
     version: string
     unique_identifier: string
+    isDowngrade: boolean
   }) => {
     if (currentVersion === version)
       return
-    onSelect({ version, unique_identifier })
+    onSelect({ version, unique_identifier, isDowngrade })
     onShowChange(false)
   }, [currentVersion, onSelect, onShowChange])
 
@@ -84,7 +88,7 @@ const PluginVersionPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
 
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className="relative w-[209px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
+        <div className="relative w-[209px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm">
           <div className='system-xs-medium-uppercase px-3 pb-0.5 pt-1 text-text-tertiary'>
             {t('plugin.detailPanel.switchVersion')}
           </div>
@@ -99,6 +103,7 @@ const PluginVersionPicker: FC<Props> = ({
                 onClick={() => handleSelect({
                   version: version.version,
                   unique_identifier: version.unique_identifier,
+                  isDowngrade: lt(version.version, currentVersion),
                 })}
               >
                 <div className='flex grow items-center'>

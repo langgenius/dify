@@ -73,10 +73,14 @@ const Question: FC<QuestionProps> = ({
   }, [content])
 
   const handleSwitchSibling = useCallback((direction: 'prev' | 'next') => {
-    if (direction === 'prev')
-      item.prevSibling && switchSibling?.(item.prevSibling)
-    else
-      item.nextSibling && switchSibling?.(item.nextSibling)
+    if (direction === 'prev') {
+      if (item.prevSibling)
+        switchSibling?.(item.prevSibling)
+    }
+    else {
+      if (item.nextSibling)
+        switchSibling?.(item.nextSibling)
+    }
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
   const getContentWidth = () => {
@@ -117,7 +121,7 @@ const Question: FC<QuestionProps> = ({
         </div>
         <div
           ref={contentRef}
-          className='bg-background-gradient-bg-fill-chat-bubble-bg-3 w-full rounded-2xl px-4 py-3 text-sm text-text-primary'
+          className='w-full rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 px-4 py-3 text-sm text-text-primary'
           style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >
           {

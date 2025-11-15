@@ -40,7 +40,7 @@ import type { SystemFeatures } from '@/types/feature'
 
 type LoginSuccess = {
   result: 'success'
-  data: { access_token: string; refresh_token: string }
+  data: { access_token: string }
 }
 type LoginFail = {
   result: 'fail'
@@ -54,10 +54,6 @@ export const login: Fetcher<LoginResponse, { url: string; body: Record<string, a
 }
 export const webAppLogin: Fetcher<LoginResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post(url, { body }, { isPublicAPI: true }) as Promise<LoginResponse>
-}
-
-export const fetchNewToken: Fetcher<CommonResponse & { data: { access_token: string; refresh_token: string } }, { body: Record<string, any> }> = ({ body }) => {
-  return post('/refresh-token', { body }) as Promise<CommonResponse & { data: { access_token: string; refresh_token: string } }>
 }
 
 export const setup: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
@@ -84,11 +80,7 @@ export const updateUserProfile: Fetcher<CommonResponse, { url: string; body: Rec
   return post<CommonResponse>(url, { body })
 }
 
-export const logout: Fetcher<CommonResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get<CommonResponse>(url, params)
-}
-
-export const fetchLanggeniusVersion: Fetcher<LangGeniusVersionResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+export const fetchLangGeniusVersion: Fetcher<LangGeniusVersionResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
   return get<LangGeniusVersionResponse>(url, { params })
 }
 
@@ -353,7 +345,7 @@ export const uploadRemoteFileInfo = (url: string, isPublic?: boolean, silent?: b
 export const sendEMailLoginCode = (email: string, language = 'en-US') =>
   post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } })
 
-export const emailLoginWithCode = (data: { email: string; code: string; token: string }) =>
+export const emailLoginWithCode = (data: { email: string; code: string; token: string; language: string }) =>
   post<LoginResponse>('/email-code-login/validity', { body: data })
 
 export const sendResetPasswordCode = (email: string, language = 'en-US') =>

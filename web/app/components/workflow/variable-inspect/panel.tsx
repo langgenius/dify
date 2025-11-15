@@ -7,6 +7,7 @@ import {
 import { useStore } from '../store'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import Empty from './empty'
+import Listening from './listening'
 import Left from './left'
 import Right from './right'
 import ActionButton from '@/app/components/base/action-button'
@@ -14,6 +15,10 @@ import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 
 import cn from '@/utils/classnames'
+import type { NodeProps } from '../types'
+import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 
 export type currentVarType = {
   nodeId: string
@@ -21,6 +26,7 @@ export type currentVarType = {
   title: string
   isValueFetched?: boolean
   var: VarInInspect
+  nodeData: NodeProps['data']
 }
 
 const Panel: FC = () => {
@@ -29,6 +35,7 @@ const Panel: FC = () => {
   const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const [showLeftPanel, setShowLeftPanel] = useState(true)
+  const isListening = useStore(s => s.isListening)
 
   const environmentVariables = useStore(s => s.environmentVariables)
   const currentFocusNodeId = useStore(s => s.currentFocusNodeId)
@@ -114,6 +121,7 @@ const Panel: FC = () => {
       title: targetNode.title,
       isSingRunRunning: targetNode.isSingRunRunning,
       isValueFetched: targetNode.isValueFetched,
+      nodeData: targetNode.nodePayload,
       ...(currentVar ? { var: currentVar } : {}),
     }
   }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
@@ -130,13 +138,38 @@ const Panel: FC = () => {
     setCurrentVarId(node.var.id)
   }, [setCurrentFocusNodeId, setCurrentVarId])
 
+  const { isLoading, schemaTypeDefinitions } = useMatchSchemaType()
+  const { eventEmitter } = useEventEmitterContextContext()
+
+  const handleStopListening = useCallback(() => {
+    eventEmitter?.emit({ type: EVENT_WORKFLOW_STOP } as any)
+  }, [eventEmitter])
+
   useEffect(() => {
-    if (currentFocusNodeId && currentVarId) {
+    if (currentFocusNodeId && currentVarId && !isLoading) {
       const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
       if (targetNode && !targetNode.isValueFetched)
-        fetchInspectVarValue([currentFocusNodeId])
+        fetchInspectVarValue([currentFocusNodeId], schemaTypeDefinitions!)
     }
-  }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue])
+  }, [currentFocusNodeId, currentVarId, nodesWithInspectVars, fetchInspectVarValue, schemaTypeDefinitions, isLoading])
+
+  if (isListening) {
+    return (
+      <div className={cn('flex h-full flex-col')}>
+        <div className='flex shrink-0 items-center justify-between pl-4 pr-2 pt-2'>
+          <div className='system-sm-semibold-uppercase text-text-primary'>{t('workflow.debug.variableInspect.title')}</div>
+          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
+            <RiCloseLine className='h-4 w-4' />
+          </ActionButton>
+        </div>
+        <div className='grow p-2'>
+          <Listening
+            onStop={handleStopListening}
+          />
+        </div>
+      </div>
+    )
+  }
 
   if (isEmpty) {
     return (
@@ -176,6 +209,7 @@ const Panel: FC = () => {
       {/* right */}
       <div className='w-0 grow'>
         <Right
+          nodeId={currentFocusNodeId!}
           isValueFetching={isCurrentNodeVarValueFetching}
           currentNodeVar={currentNodeInfo as currentVarType}
           handleOpenMenu={() => setShowLeftPanel(true)}

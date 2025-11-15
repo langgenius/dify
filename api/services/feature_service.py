@@ -3,12 +3,13 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
+from enums.cloud_plan import CloudPlan
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 
 
 class SubscriptionModel(BaseModel):
-    plan: str = "sandbox"
+    plan: str = CloudPlan.SANDBOX
     interval: str = ""
 
 
@@ -88,6 +89,10 @@ class WebAppAuthModel(BaseModel):
     allow_email_password_login: bool = False
 
 
+class KnowledgePipeline(BaseModel):
+    publish_enabled: bool = False
+
+
 class PluginInstallationScope(StrEnum):
     NONE = "none"
     OFFICIAL_ONLY = "official_only"
@@ -126,12 +131,17 @@ class FeatureModel(BaseModel):
     is_allow_transfer_workspace: bool = True
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+    knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
 
 
 class KnowledgeRateLimitModel(BaseModel):
     enabled: bool = False
     limit: int = 10
     subscription_plan: str = ""
+
+
+class PluginManagerModel(BaseModel):
+    enabled: bool = False
 
 
 class SystemFeatureModel(BaseModel):
@@ -150,6 +160,7 @@ class SystemFeatureModel(BaseModel):
     webapp_auth: WebAppAuthModel = WebAppAuthModel()
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
     enable_change_email: bool = True
+    plugin_manager: PluginManagerModel = PluginManagerModel()
 
 
 class FeatureService:
@@ -164,6 +175,7 @@ class FeatureService:
 
         if dify_config.ENTERPRISE_ENABLED:
             features.webapp_copyright_enabled = True
+            features.knowledge_pipeline.publish_enabled = True
             cls._fulfill_params_from_workspace_info(features, tenant_id)
 
         return features
@@ -175,7 +187,7 @@ class FeatureService:
             knowledge_rate_limit.enabled = True
             limit_info = BillingService.get_knowledge_rate_limit(tenant_id)
             knowledge_rate_limit.limit = limit_info.get("limit", 10)
-            knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", "sandbox")
+            knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", CloudPlan.SANDBOX)
         return knowledge_rate_limit
 
     @classmethod
@@ -188,6 +200,7 @@ class FeatureService:
             system_features.branding.enabled = True
             system_features.webapp_auth.enabled = True
             system_features.enable_change_email = False
+            system_features.plugin_manager.enabled = True
             cls._fulfill_params_from_enterprise(system_features)
 
         if dify_config.MARKETPLACE_ENABLED:
@@ -228,7 +241,7 @@ class FeatureService:
         features.billing.subscription.interval = billing_info["subscription"]["interval"]
         features.education.activated = billing_info["subscription"].get("education", False)
 
-        if features.billing.subscription.plan != "sandbox":
+        if features.billing.subscription.plan != CloudPlan.SANDBOX:
             features.webapp_copyright_enabled = True
         else:
             features.is_allow_transfer_workspace = False
@@ -264,6 +277,9 @@ class FeatureService:
 
         if "knowledge_rate_limit" in billing_info:
             features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
+
+        if "knowledge_pipeline_publish_enabled" in billing_info:
+            features.knowledge_pipeline.publish_enabled = billing_info["knowledge_pipeline_publish_enabled"]
 
     @classmethod
     def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel):

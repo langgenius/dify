@@ -9,7 +9,6 @@ const translation = {
   namePlaceholder: 'Vaše uporabniško ime',
   forget: 'Ste pozabili geslo?',
   signBtn: 'Prijava',
-  sso: 'Nadaljujte z SSO',
   installBtn: 'Namesti',
   setAdminAccount: 'Nastavitev administratorskega računa',
   setAdminAccountDesc: 'Najvišje pravice za administratorski račun, ki se lahko uporablja za ustvarjanje aplikacij in upravljanje LLM ponudnikov itd.',
@@ -56,6 +55,7 @@ const translation = {
     passwordLengthInValid: 'Geslo mora vsebovati vsaj 8 znakov',
     passwordInvalid: 'Geslo mora vsebovati črke in številke, dolžina pa mora biti več kot 8 znakov',
     registrationNotAllowed: 'Računa ni mogoče najti. Za registracijo se obrnite na skrbnika sistema.',
+    invalidEmailOrPassword: 'Neveljaven e-poštni naslov ali geslo.',
   },
   license: {
     tip: 'Preden začnete z Dify Community Edition, preberite GitHub',
@@ -76,13 +76,13 @@ const translation = {
     verificationCodePlaceholder: 'Vnesite 6-mestno kodo',
     resend: 'Poslati',
     verificationCode: 'Koda za preverjanje',
-    tips: 'Kodo za preverjanje pošljemo na <strong>{{email}}</strong>',
     verify: 'Preveriti',
     validTime: 'Upoštevajte, da je koda veljavna 5 minut',
     checkYourEmail: 'Preverjanje e-pošte',
     didNotReceiveCode: 'Niste prejeli kode?',
     invalidCode: 'Neveljavna koda',
     useAnotherMethod: 'Uporabite drug način',
+    tipsPrefix: 'Pošljemo kodo za preverjanje na',
   },
   useVerificationCode: 'Uporaba kode za preverjanje',
   licenseInactive: 'Licenca je neaktivna',
@@ -111,6 +111,16 @@ const translation = {
     disabled: 'Avtentikacija v spletni aplikaciji je onemogočena. Prosimo, kontaktirajte skrbnika sistema, da jo omogoči. Poskusite lahko neposredno uporabljati aplikacijo.',
     login: 'Prijava',
   },
+  signup: {
+    createAccount: 'Ustvari svoj račun',
+    signUp: 'Prijavite se',
+    verifyMail: 'Nadaljujte z verifikacijskim kodom',
+    haveAccount: 'Že imate račun?',
+    signIn: 'Prijavite se',
+    noAccount: 'Nimate računa?',
+    welcome: '👋 Dobrodošli! Prosimo, izpolnite podatke, da začnete.',
+  },
+  pageTitleForE: 'Hej, začnimo!',
 }
 
 export default translation

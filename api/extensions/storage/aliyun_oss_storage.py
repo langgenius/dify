@@ -1,7 +1,7 @@
 import posixpath
 from collections.abc import Generator
 
-import oss2 as aliyun_s3  # type: ignore
+import oss2 as aliyun_s3
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
@@ -33,7 +33,9 @@ class AliyunOssStorage(BaseStorage):
 
     def load_once(self, filename: str) -> bytes:
         obj = self.client.get_object(self.__wrapper_folder_filename(filename))
-        data: bytes = obj.read()
+        data = obj.read()
+        if not isinstance(data, bytes):
+            return b""
         return data
 
     def load_stream(self, filename: str) -> Generator:

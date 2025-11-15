@@ -36,10 +36,10 @@ const ChangeItem = ({
   const {
     availablePrevBlocks,
     availableNextBlocks,
-  } = useAvailableBlocks(data.type, data.isInIteration, data.isInLoop)
+  } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
 
-  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
-    handleNodeChange(nodeId, type, sourceHandle, toolDefaultValue)
+  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
+    handleNodeChange(nodeId, type, sourceHandle, pluginDefaultValue)
   }, [nodeId, sourceHandle, handleNodeChange])
 
   const renderTrigger = useCallback(() => {

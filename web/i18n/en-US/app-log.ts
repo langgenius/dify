@@ -1,7 +1,8 @@
 const translation = {
   title: 'Logs',
   description: 'The logs record the running status of the application, including user inputs and AI replies.',
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  dateTimeFormat: 'MM/DD/YYYY hh:mm:ss A',
+  dateFormat: 'MM/DD/YYYY',
   table: {
     header: {
       updatedTime: 'Updated time',
@@ -17,8 +18,9 @@ const translation = {
       status: 'STATUS',
       runtime: 'RUN TIME',
       tokens: 'TOKENS',
-      user: 'End User or Account',
+      user: 'END USER OR ACCOUNT',
       version: 'VERSION',
+      triggered_from: 'TRIGGER BY',
     },
     pagination: {
       previous: 'Prev',
@@ -58,6 +60,7 @@ const translation = {
     period: {
       today: 'Today',
       last7days: 'Last 7 Days',
+      last30days: 'Last 30 Days',
       last4weeks: 'Last 4 weeks',
       last3months: 'Last 3 months',
       last12months: 'Last 12 months',
@@ -65,6 +68,7 @@ const translation = {
       quarterToDate: 'Quarter to date',
       yearToDate: 'Year to date',
       allTime: 'All time',
+      custom: 'Custom',
     },
     annotation: {
       all: 'All',
@@ -82,6 +86,7 @@ const translation = {
     workflowTitle: 'Log Detail',
     fileListLabel: 'File Details',
     fileListDetail: 'Detail',
+    testWithParams: 'Test With Params',
   },
   promptLog: 'Prompt Log',
   agentLog: 'Agent Log',
@@ -92,6 +97,15 @@ const translation = {
     iterations: 'Iterations',
     iteration: 'Iteration',
     finalProcessing: 'Final Processing',
+  },
+  triggerBy: {
+    debugging: 'Debugging',
+    appRun: 'WebApp',
+    webhook: 'Webhook',
+    schedule: 'Schedule',
+    plugin: 'Plugin',
+    ragPipelineRun: 'RAG Pipeline',
+    ragPipelineDebugging: 'RAG Debugging',
   },
 }
 

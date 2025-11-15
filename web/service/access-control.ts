@@ -70,7 +70,7 @@ export const useUpdateAccessMode = () => {
   })
 }
 
-export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true }: { appId?: string; isInstalledApp?: boolean; }) => {
+export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }: { appId?: string; isInstalledApp?: boolean; enabled?: boolean }) => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   return useQuery({
     queryKey: [NAME_SPACE, 'user-can-access-app', appId],
@@ -80,7 +80,7 @@ export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true }: { appId
       else
         return { result: true }
     },
-    enabled: !!appId,
+    enabled: enabled !== undefined ? enabled : !!appId,
     staleTime: 0,
     gcTime: 0,
   })

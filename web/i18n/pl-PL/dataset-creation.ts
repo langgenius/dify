@@ -1,8 +1,6 @@
 const translation = {
   steps: {
     header: {
-      creation: 'Utwórz Wiedzę',
-      update: 'Dodaj dane',
       fallbackRoute: 'Wiedza',
     },
     one: 'Wybierz źródło danych',
@@ -23,6 +21,7 @@ const translation = {
     uploader: {
       title: 'Prześlij plik tekstowy',
       button: 'Przeciągnij i upuść pliki lub foldery lub',
+      buttonSingleFile: 'Przeciągnij i upuść plik lub',
       browse: 'Przeglądaj',
       tip: 'Obsługuje {{supportTypes}}. Maksymalnie {{size}}MB każdy.',
       validation: {
@@ -89,6 +88,7 @@ const translation = {
       watercrawlDoc: 'Dokumentacja Watercrawl',
       waterCrawlNotConfiguredDescription: 'Skonfiguruj Watercrawl z kluczem API, aby go używać.',
       waterCrawlNotConfigured: 'Watercrawl nie jest skonfigurowany',
+      running: 'Bieganie',
     },
     cancel: 'Anuluj',
   },
@@ -186,6 +186,7 @@ const translation = {
     useQALanguage: 'Fragment przy użyciu formatu Q&A w',
     parentChildTip: 'W przypadku korzystania z trybu nadrzędny-podrzędny fragment podrzędny jest używany do pobierania, a fragment nadrzędny jest używany do przywoływania jako kontekstu.',
     qaSwitchHighQualityTipTitle: 'Format Q&A wymaga metody indeksowania wysokiej jakości',
+    qaTip: 'Korzystając z ustrukturyzowanych danych pytań i odpowiedzi, można tworzyć dokumenty, które łączą pytania z odpowiedziami. Dokumenty te są indeksowane na podstawie części pytań, dzięki czemu system może pobrać odpowiednie odpowiedzi na podstawie podobieństwa zapytania.',
   },
   stepThree: {
     creationTitle: '🎉 Utworzono Wiedzę',

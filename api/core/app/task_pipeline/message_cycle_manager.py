@@ -1,8 +1,10 @@
 import logging
 from threading import Thread
-from typing import Optional, Union
+from typing import Union
 
 from flask import Flask, current_app
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import (
@@ -23,6 +25,7 @@ from core.app.entities.task_entities import (
     MessageFileStreamResponse,
     MessageReplaceStreamResponse,
     MessageStreamResponse,
+    StreamEvent,
     WorkflowTaskState,
 )
 from core.llm_generator.llm_generator import LLMGenerator
@@ -30,6 +33,8 @@ from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
+
+logger = logging.getLogger(__name__)
 
 
 class MessageCycleManager:
@@ -43,11 +48,11 @@ class MessageCycleManager:
             AdvancedChatAppGenerateEntity,
         ],
         task_state: Union[EasyUITaskState, WorkflowTaskState],
-    ) -> None:
+    ):
         self._application_generate_entity = application_generate_entity
         self._task_state = task_state
 
-    def generate_conversation_name(self, *, conversation_id: str, query: str) -> Optional[Thread]:
+    def generate_conversation_name(self, *, conversation_id: str, query: str) -> Thread | None:
         """
         Generate conversation name.
         :param conversation_id: conversation id
@@ -81,30 +86,31 @@ class MessageCycleManager:
     def _generate_conversation_name_worker(self, flask_app: Flask, conversation_id: str, query: str):
         with flask_app.app_context():
             # get conversation and message
-            conversation = db.session.query(Conversation).filter(Conversation.id == conversation_id).first()
+            stmt = select(Conversation).where(Conversation.id == conversation_id)
+            conversation = db.session.scalar(stmt)
 
             if not conversation:
                 return
 
-            if conversation.mode != AppMode.COMPLETION.value:
+            if conversation.mode != AppMode.COMPLETION:
                 app_model = conversation.app
                 if not app_model:
                     return
 
                 # generate conversation name
                 try:
-                    name = LLMGenerator.generate_conversation_name(app_model.tenant_id, query)
+                    name = LLMGenerator.generate_conversation_name(
+                        app_model.tenant_id, query, conversation_id, conversation.app_id
+                    )
                     conversation.name = name
-                except Exception as e:
+                except Exception:
                     if dify_config.DEBUG:
-                        logging.exception(f"generate conversation name failed, conversation_id: {conversation_id}")
-                    pass
+                        logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
 
-                db.session.merge(conversation)
                 db.session.commit()
                 db.session.close()
 
-    def handle_annotation_reply(self, event: QueueAnnotationReplyEvent) -> Optional[MessageAnnotation]:
+    def handle_annotation_reply(self, event: QueueAnnotationReplyEvent) -> MessageAnnotation | None:
         """
         Handle annotation reply.
         :param event: event
@@ -125,22 +131,45 @@ class MessageCycleManager:
 
         return None
 
-    def handle_retriever_resources(self, event: QueueRetrieverResourcesEvent) -> None:
+    def handle_retriever_resources(self, event: QueueRetrieverResourcesEvent):
         """
         Handle retriever resources.
         :param event: event
         :return:
         """
+        if not self._application_generate_entity.app_config.additional_features:
+            raise ValueError("Additional features not found")
         if self._application_generate_entity.app_config.additional_features.show_retrieve_source:
-            self._task_state.metadata.retriever_resources = event.retriever_resources
+            merged_resources = [r for r in self._task_state.metadata.retriever_resources or [] if r]
+            existing_ids = {(r.dataset_id, r.document_id) for r in merged_resources if r.dataset_id and r.document_id}
 
-    def message_file_to_stream_response(self, event: QueueMessageFileEvent) -> Optional[MessageFileStreamResponse]:
+            # Add new unique resources from the event
+            for resource in event.retriever_resources or []:
+                if not resource:
+                    continue
+
+                is_duplicate = (
+                    resource.dataset_id
+                    and resource.document_id
+                    and (resource.dataset_id, resource.document_id) in existing_ids
+                )
+
+                if not is_duplicate:
+                    merged_resources.append(resource)
+
+            for i, resource in enumerate(merged_resources, 1):
+                resource.position = i
+
+            self._task_state.metadata.retriever_resources = merged_resources
+
+    def message_file_to_stream_response(self, event: QueueMessageFileEvent) -> MessageFileStreamResponse | None:
         """
         Message file to stream response.
         :param event: event
         :return:
         """
-        message_file = db.session.query(MessageFile).filter(MessageFile.id == event.message_file_id).first()
+        with Session(db.engine, expire_on_commit=False) as session:
+            message_file = session.scalar(select(MessageFile).where(MessageFile.id == event.message_file_id))
 
         if message_file and message_file.url is not None:
             # get tool file id
@@ -172,7 +201,7 @@ class MessageCycleManager:
         return None
 
     def message_to_stream_response(
-        self, answer: str, message_id: str, from_variable_selector: Optional[list[str]] = None
+        self, answer: str, message_id: str, from_variable_selector: list[str] | None = None
     ) -> MessageStreamResponse:
         """
         Message to stream response.
@@ -180,11 +209,16 @@ class MessageCycleManager:
         :param message_id: message id
         :return:
         """
+        with Session(db.engine, expire_on_commit=False) as session:
+            message_file = session.scalar(select(MessageFile).where(MessageFile.id == message_id))
+        event_type = StreamEvent.MESSAGE_FILE if message_file else StreamEvent.MESSAGE
+
         return MessageStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=message_id,
             answer=answer,
             from_variable_selector=from_variable_selector,
+            event=event_type,
         )
 
     def message_replace_to_stream_response(self, answer: str, reason: str = "") -> MessageReplaceStreamResponse:

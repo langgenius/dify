@@ -4,7 +4,7 @@ import React from 'react'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import type { AppMode } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import Tag from '@/app/components/base/tag'
@@ -15,7 +15,7 @@ type IShareLinkProps = {
   linkUrl: string
   api_base_url: string
   appId: string
-  mode: AppMode
+  mode: AppModeEnum
 }
 
 const StepNum: FC<{ children: React.ReactNode }> = ({ children }) =>
@@ -42,7 +42,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const isChatApp = mode === 'chat' || mode === 'advanced-chat'
+  const isChatApp = mode === AppModeEnum.CHAT || mode === AppModeEnum.ADVANCED_CHAT
 
   return <Modal
     title={t(`${prefixCustomize}.title`)}
@@ -68,7 +68,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
       <div className='flex pt-4'>
         <StepNum>2</StepNum>
         <div className='flex flex-col'>
-          <div className='text-text-primary'>{t(`${prefixCustomize}.way1.step3`)}</div>
+          <div className='text-text-primary'>{t(`${prefixCustomize}.way1.step2`)}</div>
           <div className='mb-2 mt-1 text-xs text-text-tertiary'>{t(`${prefixCustomize}.way1.step2Tip`)}</div>
           <a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target='_blank' rel='noopener noreferrer'>
             <Button>

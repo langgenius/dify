@@ -3,11 +3,12 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Literal, Optional, Union, overload
+from typing import Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
@@ -22,9 +23,11 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
+from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
@@ -36,10 +39,16 @@ from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTrigger
 from models.enums import WorkflowRunTriggeredFrom
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
+SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
+
 logger = logging.getLogger(__name__)
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
+    @staticmethod
+    def _should_prepare_user_inputs(args: Mapping[str, Any]) -> bool:
+        return not bool(args.get(SKIP_PREPARE_USER_INPUTS_KEY))
+
     @overload
     def generate(
         self,
@@ -51,8 +60,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[True],
         call_depth: int,
-        workflow_thread_pool_id: Optional[str],
-    ) -> Generator[Mapping | str, None, None]: ...
+        triggered_from: WorkflowRunTriggeredFrom | None = None,
+        root_node_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+    ) -> Generator[Mapping[str, Any] | str, None, None]: ...
 
     @overload
     def generate(
@@ -65,7 +76,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[False],
         call_depth: int,
-        workflow_thread_pool_id: Optional[str],
+        triggered_from: WorkflowRunTriggeredFrom | None = None,
+        root_node_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -79,8 +92,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
-        workflow_thread_pool_id: Optional[str],
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
+        triggered_from: WorkflowRunTriggeredFrom | None = None,
+        root_node_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+    ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]: ...
 
     def generate(
         self,
@@ -92,8 +107,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
-        workflow_thread_pool_id: Optional[str] = None,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]:
+        triggered_from: WorkflowRunTriggeredFrom | None = None,
+        root_node_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
+    ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]:
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
         # parse files
@@ -123,18 +140,25 @@ class WorkflowAppGenerator(BaseAppGenerator):
         )
 
         inputs: Mapping[str, Any] = args["inputs"]
+
+        extras = {
+            **extract_external_trace_id_from_args(args),
+        }
         workflow_run_id = str(uuid.uuid4())
+        # for trigger debug run, not prepare user inputs
+        if self._should_prepare_user_inputs(args):
+            inputs = self._prepare_user_inputs(
+                user_inputs=inputs,
+                variables=app_config.variables,
+                tenant_id=app_model.tenant_id,
+                strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
+            )
         # init application generate entity
         application_generate_entity = WorkflowAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             file_upload_config=file_extra_config,
-            inputs=self._prepare_user_inputs(
-                user_inputs=inputs,
-                variables=app_config.variables,
-                tenant_id=app_model.tenant_id,
-                strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
-            ),
+            inputs=inputs,
             files=list(system_files),
             user_id=user.id,
             stream=streaming,
@@ -142,6 +166,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             call_depth=call_depth,
             trace_manager=trace_manager,
             workflow_execution_id=workflow_run_id,
+            extras=extras,
         )
 
         contexts.plugin_tool_providers.set({})
@@ -152,7 +177,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create session factory
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
         # Create workflow execution(aka workflow run) repository
-        if invoke_from == InvokeFrom.DEBUGGER:
+        if triggered_from is not None:
+            # Use explicitly provided triggered_from (for async triggers)
+            workflow_triggered_from = triggered_from
+        elif invoke_from == InvokeFrom.DEBUGGER:
             workflow_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
         else:
             workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
@@ -179,8 +207,15 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
-            workflow_thread_pool_id=workflow_thread_pool_id,
+            root_node_id=root_node_id,
+            graph_engine_layers=graph_engine_layers,
         )
+
+    def resume(self, *, workflow_run_id: str) -> None:
+        """
+        @TBD
+        """
+        pass
 
     def _generate(
         self,
@@ -193,8 +228,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         streaming: bool = True,
-        workflow_thread_pool_id: Optional[str] = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
+        root_node_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
         """
         Generate App response.
@@ -207,7 +243,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param workflow_execution_repository: repository for workflow execution
         :param workflow_node_execution_repository: repository for workflow node execution
         :param streaming: is stream
-        :param workflow_thread_pool_id: workflow thread pool id
         """
         # init queue manager
         queue_manager = WorkflowAppQueueManager(
@@ -230,16 +265,17 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "context": context,
-                "workflow_thread_pool_id": workflow_thread_pool_id,
                 "variable_loader": variable_loader,
+                "root_node_id": root_node_id,
+                "workflow_execution_repository": workflow_execution_repository,
+                "workflow_node_execution_repository": workflow_node_execution_repository,
+                "graph_engine_layers": graph_engine_layers,
             },
         )
 
         worker_thread.start()
 
-        draft_var_saver_factory = self._get_draft_var_saver_factory(
-            invoke_from,
-        )
+        draft_var_saver_factory = self._get_draft_var_saver_factory(invoke_from, user)
 
         # return response or stream generator
         response = self._handle_response(
@@ -247,8 +283,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow=workflow,
             queue_manager=queue_manager,
             user=user,
-            workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
             draft_var_saver_factory=draft_var_saver_factory,
             stream=streaming,
         )
@@ -427,7 +461,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         queue_manager: AppQueueManager,
         context: contextvars.Context,
         variable_loader: VariableLoader,
-        workflow_thread_pool_id: Optional[str] = None,
+        workflow_execution_repository: WorkflowExecutionRepository,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        root_node_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> None:
         """
         Generate worker in a new thread.
@@ -437,19 +474,48 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param workflow_thread_pool_id: workflow thread pool id
         :return:
         """
-
         with preserve_flask_contexts(flask_app, context_vars=context):
-            try:
-                # workflow app
-                runner = WorkflowAppRunner(
-                    application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager,
-                    workflow_thread_pool_id=workflow_thread_pool_id,
-                    variable_loader=variable_loader,
+            with Session(db.engine, expire_on_commit=False) as session:
+                workflow = session.scalar(
+                    select(Workflow).where(
+                        Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
+                        Workflow.app_id == application_generate_entity.app_config.app_id,
+                        Workflow.id == application_generate_entity.app_config.workflow_id,
+                    )
                 )
+                if workflow is None:
+                    raise ValueError("Workflow not found")
 
+                # Determine system_user_id based on invocation source
+                is_external_api_call = application_generate_entity.invoke_from in {
+                    InvokeFrom.WEB_APP,
+                    InvokeFrom.SERVICE_API,
+                }
+
+                if is_external_api_call:
+                    # For external API calls, use end user's session ID
+                    end_user = session.scalar(select(EndUser).where(EndUser.id == application_generate_entity.user_id))
+                    system_user_id = end_user.session_id if end_user else ""
+                else:
+                    # For internal calls, use the original user ID
+                    system_user_id = application_generate_entity.user_id
+
+            runner = WorkflowAppRunner(
+                application_generate_entity=application_generate_entity,
+                queue_manager=queue_manager,
+                variable_loader=variable_loader,
+                workflow=workflow,
+                system_user_id=system_user_id,
+                workflow_execution_repository=workflow_execution_repository,
+                workflow_node_execution_repository=workflow_node_execution_repository,
+                root_node_id=root_node_id,
+                graph_engine_layers=graph_engine_layers,
+            )
+
+            try:
                 runner.run()
-            except GenerateTaskStoppedError:
+            except GenerateTaskStoppedError as e:
+                logger.warning("Task stopped: %s", str(e))
                 pass
             except InvokeAuthorizationError:
                 queue_manager.publish_error(
@@ -465,8 +531,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
             except Exception as e:
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            finally:
-                db.session.close()
 
     def _handle_response(
         self,
@@ -474,8 +538,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow: Workflow,
         queue_manager: AppQueueManager,
         user: Union[Account, EndUser],
-        workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
     ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
@@ -495,8 +557,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow=workflow,
             queue_manager=queue_manager,
             user=user,
-            workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
             draft_var_saver_factory=draft_var_saver_factory,
             stream=stream,
         )
@@ -508,6 +568,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 raise GenerateTaskStoppedError()
             else:
                 logger.exception(
-                    f"Fails to process generate task pipeline, task_id: {application_generate_entity.task_id}"
+                    "Fails to process generate task pipeline, task_id: %s", application_generate_entity.task_id
                 )
                 raise e

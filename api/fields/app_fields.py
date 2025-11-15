@@ -1,6 +1,6 @@
 import json
 
-from flask_restful import fields
+from flask_restx import fields
 
 from fields.workflow_fields import workflow_partial_fields
 from libs.helper import AppIconUrlField, TimestampField
@@ -59,6 +59,8 @@ model_config_fields = {
     "updated_at": TimestampField,
 }
 
+tag_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
+
 app_detail_fields = {
     "id": fields.String,
     "name": fields.String,
@@ -77,6 +79,7 @@ app_detail_fields = {
     "updated_by": fields.String,
     "updated_at": TimestampField,
     "access_mode": fields.String,
+    "tags": fields.List(fields.Nested(tag_fields)),
 }
 
 prompt_config_fields = {
@@ -91,8 +94,6 @@ model_config_partial_fields = {
     "updated_by": fields.String,
     "updated_at": TimestampField,
 }
-
-tag_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
 
 app_partial_fields = {
     "id": fields.String,
@@ -115,6 +116,7 @@ app_partial_fields = {
     "access_mode": fields.String,
     "create_user_name": fields.String,
     "author_name": fields.String,
+    "has_draft_trigger": fields.Boolean,
 }
 
 
@@ -185,7 +187,6 @@ app_detail_fields_with_site = {
     "enable_api": fields.Boolean,
     "model_config": fields.Nested(model_config_fields, attribute="app_model_config", allow_null=True),
     "workflow": fields.Nested(workflow_partial_fields, allow_null=True),
-    "site": fields.Nested(site_fields),
     "api_base_url": fields.String,
     "use_icon_as_answer_icon": fields.Boolean,
     "max_active_requests": fields.Integer,
@@ -195,6 +196,8 @@ app_detail_fields_with_site = {
     "updated_at": TimestampField,
     "deleted_tools": fields.List(fields.Nested(deleted_tool_fields)),
     "access_mode": fields.String,
+    "tags": fields.List(fields.Nested(tag_fields)),
+    "site": fields.Nested(site_fields),
 }
 
 

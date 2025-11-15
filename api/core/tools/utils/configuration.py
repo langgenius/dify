@@ -1,3 +1,4 @@
+import contextlib
 from copy import deepcopy
 from typing import Any
 
@@ -23,7 +24,7 @@ class ToolParameterConfigurationManager:
 
     def __init__(
         self, tenant_id: str, tool_runtime: Tool, provider_name: str, provider_type: ToolProviderType, identity_id: str
-    ) -> None:
+    ):
         self.tenant_id = tenant_id
         self.tool_runtime = tool_runtime
         self.provider_name = provider_name
@@ -137,11 +138,9 @@ class ToolParameterConfigurationManager:
                 and parameter.type == ToolParameter.ToolParameterType.SECRET_INPUT
             ):
                 if parameter.name in parameters:
-                    try:
-                        has_secret_input = True
+                    has_secret_input = True
+                    with contextlib.suppress(Exception):
                         parameters[parameter.name] = encrypter.decrypt_token(self.tenant_id, parameters[parameter.name])
-                    except Exception:
-                        pass
 
         if has_secret_input:
             cache.set(parameters)

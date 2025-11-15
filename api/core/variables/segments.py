@@ -51,7 +51,7 @@ class Segment(BaseModel):
         """
         return sys.getsizeof(self.value)
 
-    def to_object(self) -> Any:
+    def to_object(self):
         return self.value
 
 
@@ -120,10 +120,17 @@ class ObjectSegment(Segment):
 
 class ArraySegment(Segment):
     @property
+    def text(self) -> str:
+        # Return empty string for empty arrays instead of "[]"
+        if not self.value:
+            return ""
+        return super().text
+
+    @property
     def markdown(self) -> str:
         items = []
         for item in self.value:
-            items.append(str(item))
+            items.append(f"- {item}")
         return "\n".join(items)
 
 
@@ -144,6 +151,11 @@ class FileSegment(Segment):
         return ""
 
 
+class BooleanSegment(Segment):
+    value_type: SegmentType = SegmentType.BOOLEAN
+    value: bool
+
+
 class ArrayAnySegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_ANY
     value: Sequence[Any]
@@ -155,6 +167,9 @@ class ArrayStringSegment(ArraySegment):
 
     @property
     def text(self) -> str:
+        # Return empty string for empty arrays instead of "[]"
+        if not self.value:
+            return ""
         return json.dumps(self.value, ensure_ascii=False)
 
 
@@ -186,6 +201,11 @@ class ArrayFileSegment(ArraySegment):
     @property
     def text(self) -> str:
         return ""
+
+
+class ArrayBooleanSegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_BOOLEAN
+    value: Sequence[bool]
 
 
 def get_segment_discriminator(v: Any) -> SegmentType | None:
@@ -221,11 +241,13 @@ SegmentUnion: TypeAlias = Annotated[
         | Annotated[IntegerSegment, Tag(SegmentType.INTEGER)]
         | Annotated[ObjectSegment, Tag(SegmentType.OBJECT)]
         | Annotated[FileSegment, Tag(SegmentType.FILE)]
+        | Annotated[BooleanSegment, Tag(SegmentType.BOOLEAN)]
         | Annotated[ArrayAnySegment, Tag(SegmentType.ARRAY_ANY)]
         | Annotated[ArrayStringSegment, Tag(SegmentType.ARRAY_STRING)]
         | Annotated[ArrayNumberSegment, Tag(SegmentType.ARRAY_NUMBER)]
         | Annotated[ArrayObjectSegment, Tag(SegmentType.ARRAY_OBJECT)]
         | Annotated[ArrayFileSegment, Tag(SegmentType.ARRAY_FILE)]
+        | Annotated[ArrayBooleanSegment, Tag(SegmentType.ARRAY_BOOLEAN)]
     ),
     Discriminator(get_segment_discriminator),
 ]

@@ -60,6 +60,11 @@ const translation = {
     downloadSuccess: 'Téléchargement terminé.',
     deSelectAll: 'Désélectionner tout',
     selectAll: 'Sélectionner tout',
+    config: 'Config',
+    no: 'Non',
+    confirmAction: 'Veuillez confirmer votre action.',
+    deleteConfirmTitle: 'Supprimer ?',
+    yes: 'Oui',
   },
   placeholder: {
     input: 'Veuillez entrer',
@@ -156,7 +161,6 @@ const translation = {
     workspace: 'Espace de travail',
     createWorkspace: 'Créer un Espace de Travail',
     helpCenter: 'Aide',
-    communityFeedback: 'Retour d\'information',
     roadmap: 'Feuille de route',
     community: 'Communauté',
     about: 'À propos',
@@ -164,6 +168,8 @@ const translation = {
     support: 'Soutien',
     github: 'GitHub',
     compliance: 'Conformité',
+    contactUs: 'Contactez-nous',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'COMPTE',
@@ -237,6 +243,7 @@ const translation = {
       content2: 'Votre adresse e-mail actuelle est <email>{{email}}</email>. Un code de vérification a été envoyé à cette adresse e-mail.',
       codeLabel: 'Code de vérification',
       content1: 'Si vous continuez, nous enverrons un code de vérification à <email>{{email}}</email> pour une nouvelle authentification.',
+      unAvailableEmail: 'Cet e-mail est temporairement indisponible.',
     },
   },
   members: {
@@ -468,6 +475,39 @@ const translation = {
     installProvider: 'Installer des fournisseurs de modèles',
     discoverMore: 'Découvrez-en plus dans',
     emptyProviderTip: 'Veuillez d’abord installer un fournisseur de modèles.',
+    auth: {
+      apiKeyModal: {
+        addModel: 'Ajouter un modèle',
+        title: 'Configuration de l\'autorisation de clé API',
+        desc: 'Après avoir configuré les identifiants, tous les membres de l\'espace de travail peuvent utiliser ce modèle lors de l\'orchestration des applications.',
+      },
+      addModelCredential: 'Ajouter des informations d’identification de modèle',
+      configModel: 'Configurer le modèle',
+      addNewModel: 'Ajouter un nouveau modèle',
+      apiKeys: 'Clés API',
+      providerManaged: 'Fournisseur géré',
+      configLoadBalancing: 'Configuration de l\'équilibrage de charge',
+      modelCredentials: 'Informations d\'identification du modèle',
+      addApiKey: 'Ajouter une clé API',
+      specifyModelCredential: 'Spécifiez les identifiants du modèle',
+      authorizationError: 'Erreur d\'autorisation',
+      authRemoved: 'Autorisation retirée',
+      addCredential: 'Ajouter un identifiant',
+      unAuthorized: 'Non autorisé',
+      specifyModelCredentialTip: 'Utilisez un identifiant de modèle configuré.',
+      providerManagedTip: 'La configuration actuelle est hébergée par le fournisseur.',
+      customModelCredentials: 'Informations d’identification du modèle personnalisé',
+      manageCredentials: 'Gérer les informations d’identification',
+      modelCredential: 'Références du modèle',
+      addModel: 'Ajouter un modèle',
+      addNewModelCredential: 'Ajouter de nouvelles informations d’identification de modèle',
+      selectModelCredential: 'Sélectionnez les informations d’identification d’un modèle',
+      customModelCredentialsDeleteTip: 'Les informations d’identification sont en cours d’utilisation et ne peuvent pas être supprimées',
+      removeModel: 'Supprimer le modèle',
+      editModelCredential: 'Modifier les informations d’identification du modèle',
+    },
+    parametersInvalidRemoved: 'Certains paramètres sont invalides et ont été supprimés.',
+    installDataSourceProvider: 'Installer les fournisseurs de sources de données',
   },
   dataSource: {
     add: 'Ajouter une source de données',
@@ -566,6 +606,7 @@ const translation = {
     viewDoc: 'Voir la documentation',
     relatedApp: 'applications liées',
     noRelatedApp: 'Pas d’applications liées',
+    pipeline: 'Pipeline',
   },
   voiceInput: {
     speaking: 'Parle maintenant...',
@@ -686,6 +727,7 @@ const translation = {
     fileExtensionNotSupport: 'Extension de fichier non prise en charge',
     pasteFileLinkInvalid: 'Lien de fichier non valide',
     uploadFromComputerLimit: 'Le fichier de téléchargement ne peut pas dépasser {{size}}',
+    fileExtensionBlocked: 'Ce type de fichier est bloqué pour des raisons de sécurité',
   },
   license: {
     expiring: 'Expirant dans un jour',
@@ -715,6 +757,19 @@ const translation = {
     supportedFormats: 'Prend en charge PNG, JPG, JPEG, WEBP et GIF',
   },
   you: 'Vous',
+  avatar: {
+    deleteTitle: 'Supprimer l\'avatar',
+    deleteDescription: 'Êtes-vous sûr de vouloir supprimer votre photo de profil ? Votre compte utilisera l\'avatar par défaut.',
+  },
+  feedback: {
+    content: 'Contenu des retours',
+    title: 'Fournir des retours',
+    placeholder: 'Veuillez décrire ce qui n\'a pas fonctionné ou comment nous pourrions nous améliorer...',
+    subtitle: 'Veuillez nous dire ce qui n\'a pas fonctionné avec cette réponse.',
+  },
+  label: {
+    optional: '(facultatif)',
+  },
 }
 
 export default translation

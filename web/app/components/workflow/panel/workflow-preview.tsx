@@ -31,6 +31,7 @@ const WorkflowPreview = () => {
   const { t } = useTranslation()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore(s => s.workflowRunningData)
+  const isListening = useStore(s => s.isListening)
   const showInputsPanel = useStore(s => s.showInputsPanel)
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const panelWidth = useStore(s => s.previewPanelWidth)
@@ -48,7 +49,16 @@ const WorkflowPreview = () => {
   }, [showDebugAndPreviewPanel, showInputsPanel])
 
   useEffect(() => {
-    if ((workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded || workflowRunningData?.result.status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText && !workflowRunningData.result.files?.length)
+    if (isListening)
+      switchTab('DETAIL')
+  }, [isListening])
+
+  useEffect(() => {
+    const status = workflowRunningData?.result.status
+    if (!workflowRunningData)
+      return
+
+    if ((status === WorkflowRunningStatus.Succeeded || status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText && !workflowRunningData.result.files?.length)
       switchTab('DETAIL')
   }, [workflowRunningData])
 
@@ -88,7 +98,7 @@ const WorkflowPreview = () => {
     <div className={
       'relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
     }
-      style={{ width: `${panelWidth}px` }}
+    style={{ width: `${panelWidth}px` }}
     >
       <div
         className="absolute bottom-0 left-[3px] top-1/2 z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"
@@ -184,7 +194,12 @@ const WorkflowPreview = () => {
           {currentTab === 'DETAIL' && (
             <ResultPanel
               inputs={workflowRunningData?.result?.inputs}
+              inputs_truncated={workflowRunningData?.result?.inputs_truncated}
+              process_data={workflowRunningData?.result?.process_data}
+              process_data_truncated={workflowRunningData?.result?.process_data_truncated}
               outputs={workflowRunningData?.result?.outputs}
+              outputs_truncated={workflowRunningData?.result?.outputs_truncated}
+              outputs_full_content={workflowRunningData?.result?.outputs_full_content}
               status={workflowRunningData?.result?.status || ''}
               error={workflowRunningData?.result?.error}
               elapsed_time={workflowRunningData?.result?.elapsed_time}

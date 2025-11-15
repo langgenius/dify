@@ -1,6 +1,6 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
@@ -10,14 +10,13 @@ import {
 } from '@remixicon/react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useHover } from 'ahooks'
 import SettingCog from '../assets/setting-gear-mod.svg'
-import OrangeEffect from '../assets/option-card-effect-orange.svg'
-import FamilyMod from '../assets/family-mod.svg'
+import BlueEffect from '../assets/option-card-effect-blue.svg'
+import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import Note from '../assets/note-mod.svg'
 import FileList from '../assets/file-list-3-fill.svg'
 import { indexMethodIcon } from '../icons'
-import { PreviewContainer } from '../../preview/container'
+import PreviewContainer from '../../preview/container'
 import { ChunkContainer, QAPreview } from '../../chunk'
 import { PreviewHeader } from '../../preview/header'
 import { FormattedText } from '../../formatted-text/formatted'
@@ -42,12 +41,12 @@ import { isReRankModelSelected } from '@/app/components/datasets/common/check-re
 import Toast from '@/app/components/base/toast'
 import type { NotionPage } from '@/models/common'
 import { DataSourceProvider } from '@/models/common'
-import { useDatasetDetailContext } from '@/context/dataset-detail'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useDefaultModel, useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { LanguagesSupported } from '@/i18n/language'
+import { LanguagesSupported } from '@/i18n-config/language'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -60,10 +59,10 @@ import Badge from '@/app/components/base/badge'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Tooltip from '@/app/components/base/tooltip'
 import CustomDialog from '@/app/components/base/dialog'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
@@ -80,6 +79,7 @@ type StepTwoProps = {
   dataSourceType: DataSourceType
   files: CustomFile[]
   notionPages?: NotionPage[]
+  notionCredentialId: string
   websitePages?: CrawlResultItem[]
   crawlOptions?: CrawlOptions
   websiteCrawlProvider?: DataSourceProvider
@@ -135,9 +135,10 @@ const StepTwo = ({
   dataSourceType: inCreatePageDataSourceType,
   files,
   notionPages = [],
+  notionCredentialId,
   websitePages = [],
   crawlOptions,
-  websiteCrawlProvider = DataSourceProvider.fireCrawl,
+  websiteCrawlProvider = DataSourceProvider.jinaReader,
   websiteCrawlJobId = '',
   onStepChange,
   updateIndexingTypeCache,
@@ -152,7 +153,8 @@ const StepTwo = ({
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
+  const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
+  const mutateDatasetRes = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
 
   const isInUpload = Boolean(currentDataset)
   const isUploadInEmptyDataset = isInUpload && !currentDataset?.doc_form
@@ -282,6 +284,7 @@ const StepTwo = ({
     indexingTechnique: getIndexing_technique() as any,
     processRule: getProcessRule(),
     dataset_id: datasetId || '',
+    credential_id: notionCredentialId,
   })
 
   const websiteIndexingEstimateQuery = useFetchFileIndexingEstimateForWeb({
@@ -405,7 +408,6 @@ const StepTwo = ({
       score_threshold_enabled: false,
       score_threshold: 0.5,
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rerankDefaultModel, isRerankDefaultModelValid])
 
   const getCreationParams = () => {
@@ -470,7 +472,7 @@ const StepTwo = ({
         }
       }
       if (dataSourceType === DataSourceType.NOTION)
-        params.data_source.info_list.notion_info_list = getNotionInfo(notionPages)
+        params.data_source.info_list.notion_info_list = getNotionInfo(notionPages, notionCredentialId)
 
       if (dataSourceType === DataSourceType.WEB) {
         params.data_source.info_list.website_info_list = getWebsiteInfo({
@@ -508,7 +510,7 @@ const StepTwo = ({
       const max = rules.segmentation.max_tokens
       const overlap = rules.segmentation.chunk_overlap
       const isHierarchicalDocument = documentDetail.doc_form === ChunkingMode.parentChild
-                              || (rules.parent_mode && rules.subchunk_segmentation)
+        || (rules.parent_mode && rules.subchunk_segmentation)
       setSegmentIdentifier(separator)
       setMaxChunkLength(max)
       setOverlap(overlap!)
@@ -554,6 +556,7 @@ const StepTwo = ({
   })
 
   const isCreating = createFirstDocumentMutation.isPending || createDocumentMutation.isPending
+  const invalidDatasetList = useInvalidDatasetList()
 
   const createHandle = async () => {
     const params = getCreationParams()
@@ -565,9 +568,9 @@ const StepTwo = ({
         params,
         {
           onSuccess(data) {
-            updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
-            updateResultCache && updateResultCache(data)
-            updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
+            updateIndexingTypeCache?.(indexType as string)
+            updateResultCache?.(data)
+            updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
           },
         },
       )
@@ -575,16 +578,18 @@ const StepTwo = ({
     else {
       await createDocumentMutation.mutateAsync(params, {
         onSuccess(data) {
-          updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
-          updateResultCache && updateResultCache(data)
-          updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
+          updateIndexingTypeCache?.(indexType as string)
+          updateResultCache?.(data)
+          updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
         },
       })
     }
     if (mutateDatasetRes)
       mutateDatasetRes()
-    onStepChange && onStepChange(+1)
-    isSetting && onSave && onSave()
+    invalidDatasetList()
+    onStepChange?.(+1)
+    if (isSetting)
+      onSave?.()
   }
 
   useEffect(() => {
@@ -596,7 +601,6 @@ const StepTwo = ({
       getRulesFromDetail()
       getDefaultMode()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -606,9 +610,6 @@ const StepTwo = ({
     else
       setIndexType(isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL)
   }, [isAPIKeySet, indexingType, datasetId])
-
-  const economyDomRef = useRef<HTMLDivElement>(null)
-  const isHoveringEconomy = useHover(economyDomRef)
 
   const isModelAndRetrievalConfigDisabled = !!datasetId && !!currentDataset?.data_source_type
 
@@ -732,9 +733,10 @@ const StepTwo = ({
           )
           && <OptionCard
             title={t('datasetCreation.stepTwo.parentChild')}
-            icon={<Image width={20} height={20} src={FamilyMod} alt={t('datasetCreation.stepTwo.parentChild')} />}
-            effectImg={OrangeEffect.src}
-            activeHeaderClassName='bg-dataset-option-card-orange-gradient'
+            icon={<ParentChildChunk className='h-[20px] w-[20px]' />}
+            effectImg={BlueEffect.src}
+            className='text-util-colors-blue-light-blue-light-500'
+            activeHeaderClassName='bg-dataset-option-card-blue-gradient'
             description={t('datasetCreation.stepTwo.parentChildTip')}
             isActive={currentDocForm === ChunkingMode.parentChild}
             onSwitched={() => handleChangeDocform(ChunkingMode.parentChild)}
@@ -869,7 +871,8 @@ const StepTwo = ({
         <div className={'system-md-semibold mb-1 text-text-secondary'}>{t('datasetCreation.stepTwo.indexMode')}</div>
         <div className='flex items-center gap-2'>
           {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
-            <OptionCard className='flex-1 self-stretch'
+            <OptionCard
+              className='flex-1 self-stretch'
               title={<div className='flex items-center'>
                 {t('datasetCreation.stepTwo.qualified')}
                 <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>
@@ -915,26 +918,8 @@ const StepTwo = ({
                   </Button>
                 </div>
               </CustomDialog>
-              <PortalToFollowElem
-                open={
-                  isHoveringEconomy && docForm !== ChunkingMode.text
-                }
-                placement={'top'}
-              >
-                <PortalToFollowElemTrigger asChild>
-                  <OptionCard className='flex-1 self-stretch'
-                    title={t('datasetCreation.stepTwo.economical')}
-                    description={t('datasetCreation.stepTwo.economicalTip')}
-                    icon={<Image src={indexMethodIcon.economical} alt='' />}
-                    isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
-                    disabled={hasSetIndexType || docForm !== ChunkingMode.text}
-                    ref={economyDomRef}
-                    onSwitched={() => {
-                      setIndexType(IndexingType.ECONOMICAL)
-                    }}
-                  />
-                </PortalToFollowElemTrigger>
-                <PortalToFollowElemContent>
+              <Tooltip
+                popupContent={
                   <div className='rounded-lg border-components-panel-border bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg'>
                     {
                       docForm === ChunkingMode.qa
@@ -942,8 +927,24 @@ const StepTwo = ({
                         : t('datasetCreation.stepTwo.notAvailableForParentChild')
                     }
                   </div>
-                </PortalToFollowElemContent>
-              </PortalToFollowElem>
+                }
+                noDecoration
+                position='top'
+                asChild={false}
+                triggerClassName='flex-1 self-stretch'
+              >
+                <OptionCard
+                  className='h-full'
+                  title={t('datasetCreation.stepTwo.economical')}
+                  description={t('datasetCreation.stepTwo.economicalTip')}
+                  icon={<Image src={indexMethodIcon.economical} alt='' />}
+                  isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
+                  disabled={hasSetIndexType || docForm !== ChunkingMode.text}
+                  onSwitched={() => {
+                    setIndexType(IndexingType.ECONOMICAL)
+                  }}
+                />
+              </Tooltip>
             </>)}
         </div>
         {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
@@ -1027,7 +1028,7 @@ const StepTwo = ({
         {!isSetting
           ? (
             <div className='mt-8 flex items-center py-2'>
-              <Button onClick={() => onStepChange && onStepChange(-1)}>
+              <Button onClick={() => onStepChange?.(-1)}>
                 <RiArrowLeftLine className='mr-1 h-4 w-4' />
                 {t('datasetCreation.stepTwo.previousStep')}
               </Button>

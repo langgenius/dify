@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { useContext, useContextSelector } from 'use-context-selector'
+import { useContext } from 'use-context-selector'
 import React, { useCallback, useState } from 'react'
 import {
   RiDeleteBinLine,
@@ -12,10 +12,9 @@ import {
   RiFileUploadLine,
 } from '@remixicon/react'
 import AppIcon from '../base/app-icon'
-import cn from '@/utils/classnames'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
-import AppsContext, { useAppContext } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
@@ -26,11 +25,12 @@ import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import ContentDialog from '@/app/components/base/content-dialog'
 import Button from '@/app/components/base/button'
-import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/cardView'
-import Divider from '../base/divider'
+import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
 import type { Operation } from './app-operations'
 import AppOperations from './app-operations'
 import dynamic from 'next/dynamic'
+import cn from '@/utils/classnames'
+import { AppModeEnum } from '@/types/app'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,
@@ -72,11 +72,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
-
-  const mutateApps = useContextSelector(
-    AppsContext,
-    state => state.mutateApps,
-  )
+  const [showExportWarning, setShowExportWarning] = useState(false)
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -106,12 +102,11 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         message: t('app.editDone'),
       })
       setAppDetail(app)
-      mutateApps()
     }
     catch {
       notify({ type: 'error', message: t('app.editFailed') })
     }
-  }, [appDetail, mutateApps, notify, setAppDetail, t])
+  }, [appDetail, notify, setAppDetail, t])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     if (!appDetail)
@@ -131,7 +126,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      mutateApps()
       onPlanInfoChanged()
       getRedirection(true, newApp, replace)
     }
@@ -150,9 +144,11 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       })
       const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
-      a.href = URL.createObjectURL(file)
+      const url = URL.createObjectURL(file)
+      a.href = url
       a.download = `${appDetail.name}.yml`
       a.click()
+      URL.revokeObjectURL(url)
     }
     catch {
       notify({ type: 'error', message: t('app.exportFailed') })
@@ -162,10 +158,18 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const exportCheck = async () => {
     if (!appDetail)
       return
-    if (appDetail.mode !== 'workflow' && appDetail.mode !== 'advanced-chat') {
+    if (appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.ADVANCED_CHAT) {
       onExport()
       return
     }
+
+    setShowExportWarning(true)
+  }
+
+  const handleConfirmExport = async () => {
+    if (!appDetail)
+      return
+    setShowExportWarning(false)
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
       const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
@@ -186,7 +190,6 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     try {
       await deleteApp(appDetail.id)
       notify({ type: 'success', message: t('app.appDeleted') })
-      mutateApps()
       onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
@@ -198,14 +201,14 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       })
     }
     setShowConfirmDelete(false)
-  }, [appDetail, mutateApps, notify, onPlanInfoChanged, replace, setAppDetail, t])
+  }, [appDetail, notify, onPlanInfoChanged, replace, setAppDetail, t])
 
   const { isCurrentWorkspaceEditor } = useAppContext()
 
   if (!appDetail)
     return null
 
-  const operations = [
+  const primaryOperations = [
     {
       id: 'edit',
       title: t('app.editApp'),
@@ -232,7 +235,11 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       icon: <RiFileDownloadLine />,
       onClick: exportCheck,
     },
-    (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')) ? {
+  ]
+
+  const secondaryOperations: Operation[] = [
+    // Import DSL (conditional)
+    ...(appDetail.mode !== AppModeEnum.AGENT_CHAT && (appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW)) ? [{
       id: 'import',
       title: t('workflow.common.importDSL'),
       icon: <RiFileUploadLine />,
@@ -241,54 +248,89 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         onDetailExpand?.(false)
         setShowImportDSLModal(true)
       },
-    } : undefined,
-    (appDetail.mode !== 'agent-chat' && (appDetail.mode === 'completion' || appDetail.mode === 'chat')) ? {
-      id: 'switch',
-      title: t('app.switch'),
-      icon: <RiExchange2Line />,
+    }] : [],
+    // Divider
+    {
+      id: 'divider-1',
+      title: '',
+      icon: <></>,
+      onClick: () => { /* divider has no action */ },
+      type: 'divider' as const,
+    },
+    // Delete operation
+    {
+      id: 'delete',
+      title: t('common.operation.delete'),
+      icon: <RiDeleteBinLine />,
       onClick: () => {
         setOpen(false)
         onDetailExpand?.(false)
-        setShowSwitchModal(true)
+        setShowConfirmDelete(true)
       },
-    } : undefined,
-  ].filter((op): op is Operation => Boolean(op))
+    },
+  ]
+
+  // Keep the switch operation separate as it's not part of the main operations
+  const switchOperation = (appDetail.mode !== AppModeEnum.AGENT_CHAT && (appDetail.mode === AppModeEnum.COMPLETION || appDetail.mode === AppModeEnum.CHAT)) ? {
+    id: 'switch',
+    title: t('app.switch'),
+    icon: <RiExchange2Line />,
+    onClick: () => {
+      setOpen(false)
+      onDetailExpand?.(false)
+      setShowSwitchModal(true)
+    },
+  } : null
 
   return (
     <div>
       {!onlyShowDetail && (
-        <button
+        <button type="button"
           onClick={() => {
             if (isCurrentWorkspaceEditor)
               setOpen(v => !v)
           }}
           className='block w-full'
         >
-          <div className={cn('flex rounded-lg', expand ? 'flex-col gap-2 p-2 pb-2.5' : 'items-start justify-center gap-1 p-1', open && 'bg-state-base-hover', isCurrentWorkspaceEditor && 'cursor-pointer hover:bg-state-base-hover')}>
-            <div className={`flex items-center self-stretch ${expand ? 'justify-between' : 'flex-col gap-1'}`}>
-              <AppIcon
-                size={expand ? 'large' : 'small'}
-                iconType={appDetail.icon_type}
-                icon={appDetail.icon}
-                background={appDetail.icon_background}
-                imageUrl={appDetail.icon_url}
-              />
-              <div className='flex items-center justify-center rounded-md p-0.5'>
-                <div className='flex h-5 w-5 items-center justify-center'>
+          <div className='flex flex-col gap-2 rounded-lg p-1 hover:bg-state-base-hover'>
+            <div className='flex items-center gap-1'>
+              <div className={cn(!expand && 'ml-1')}>
+                <AppIcon
+                  size={expand ? 'large' : 'small'}
+                  iconType={appDetail.icon_type}
+                  icon={appDetail.icon}
+                  background={appDetail.icon_background}
+                  imageUrl={appDetail.icon_url}
+                />
+              </div>
+              {expand && (
+                <div className='ml-auto flex items-center justify-center rounded-md p-0.5'>
+                  <div className='flex h-5 w-5 items-center justify-center'>
+                    <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+                  </div>
+                </div>
+              )}
+            </div>
+            {!expand && (
+              <div className='flex items-center justify-center'>
+                <div className='flex h-5 w-5 items-center justify-center rounded-md p-0.5'>
                   <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
                 </div>
               </div>
-            </div>
-            {
-              expand && (
-                <div className='flex flex-col items-start gap-1'>
-                  <div className='flex w-full'>
-                    <div className='system-md-semibold truncate text-text-secondary'>{appDetail.name}</div>
-                  </div>
-                  <div className='system-2xs-medium-uppercase text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+            )}
+            {expand && (
+              <div className='flex flex-col items-start gap-1'>
+                <div className='flex w-full'>
+                  <div className='system-md-semibold truncate whitespace-nowrap text-text-secondary'>{appDetail.name}</div>
                 </div>
-              )
-            }
+                <div className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'>
+                  {appDetail.mode === AppModeEnum.ADVANCED_CHAT ? t('app.types.advanced')
+                    : appDetail.mode === AppModeEnum.AGENT_CHAT ? t('app.types.agent')
+                      : appDetail.mode === AppModeEnum.CHAT ? t('app.types.chatbot')
+                        : appDetail.mode === AppModeEnum.COMPLETION ? t('app.types.completion')
+                          : t('app.types.workflow')}</div>
+              </div>
+            )}
           </div>
         </button>
       )}
@@ -303,15 +345,15 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         <div className='flex shrink-0 flex-col items-start justify-center gap-3 self-stretch p-4'>
           <div className='flex items-center gap-3 self-stretch'>
             <AppIcon
-              size="large"
+              size='large'
               iconType={appDetail.icon_type}
               icon={appDetail.icon}
               background={appDetail.icon_background}
               imageUrl={appDetail.icon_url}
             />
-            <div className='flex w-full grow flex-col items-start justify-center'>
+            <div className='flex flex-1 flex-col items-start justify-center overflow-hidden'>
               <div className='system-md-semibold w-full truncate text-text-secondary'>{appDetail.name}</div>
-              <div className='system-2xs-medium-uppercase text-text-tertiary'>{appDetail.mode === 'advanced-chat' ? t('app.types.advanced') : appDetail.mode === 'agent-chat' ? t('app.types.agent') : appDetail.mode === 'chat' ? t('app.types.chatbot') : appDetail.mode === 'completion' ? t('app.types.completion') : t('app.types.workflow')}</div>
+              <div className='system-2xs-medium-uppercase text-text-tertiary'>{appDetail.mode === AppModeEnum.ADVANCED_CHAT ? t('app.types.advanced') : appDetail.mode === AppModeEnum.AGENT_CHAT ? t('app.types.agent') : appDetail.mode === AppModeEnum.CHAT ? t('app.types.chatbot') : appDetail.mode === AppModeEnum.COMPLETION ? t('app.types.completion') : t('app.types.workflow')}</div>
             </div>
           </div>
           {/* description */}
@@ -321,7 +363,8 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           {/* operations */}
           <AppOperations
             gap={4}
-            operations={operations}
+            primaryOperations={primaryOperations}
+            secondaryOperations={secondaryOperations}
           />
         </div>
         <CardView
@@ -329,22 +372,20 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           isInPanel={true}
           className='flex flex-1 flex-col gap-2 overflow-auto px-2 py-1'
         />
-        <Divider />
-        <div className='flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch border-t-[0.5px] border-divider-subtle p-2'>
-          <Button
-            size={'medium'}
-            variant={'ghost'}
-            className='gap-0.5'
-            onClick={() => {
-              setOpen(false)
-              onDetailExpand?.(false)
-              setShowConfirmDelete(true)
-            }}
-          >
-            <RiDeleteBinLine className='h-4 w-4 text-text-tertiary' />
-            <span className='system-sm-medium text-text-tertiary'>{t('common.operation.deleteApp')}</span>
-          </Button>
-        </div>
+        {/* Switch operation (if available) */}
+        {switchOperation && (
+          <div className='flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch pb-2'>
+            <Button
+              size={'medium'}
+              variant={'ghost'}
+              className='gap-0.5'
+              onClick={switchOperation.onClick}
+            >
+              {switchOperation.icon}
+              <span className='system-sm-medium text-text-tertiary'>{switchOperation.title}</span>
+            </Button>
+          </div>
+        )}
       </ContentDialog>
       {showSwitchModal && (
         <SwitchAppModal
@@ -404,6 +445,16 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           envList={secretEnvList}
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
+        />
+      )}
+      {showExportWarning && (
+        <Confirm
+          type="info"
+          isShow={showExportWarning}
+          title={t('workflow.sidebar.exportWarning')}
+          content={t('workflow.sidebar.exportWarningDesc')}
+          onConfirm={handleConfirmExport}
+          onCancel={() => setShowExportWarning(false)}
         />
       )}
     </div>

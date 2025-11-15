@@ -1,7 +1,7 @@
 const translation = {
   title: 'Dnevniki',
   description: 'Dnevniki beležijo stanje delovanja aplikacije, vključno z vnosi uporabnikov in odgovori umetne inteligence.',
-  dateTimeFormat: 'DD.MM.YYYY hh:mm A',
+  dateTimeFormat: 'DD.MM.YYYY hh:mm:ss A',
   table: {
     header: {
       updatedTime: 'Čas posodobitve',
@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'Četrtletje do danes',
       yearToDate: 'Leto do danes',
       allTime: 'Vse obdobje',
+      last30days: 'Zadnjih 30 dni',
+      custom: 'Po meri',
     },
     annotation: {
       all: 'Vse',
@@ -82,6 +84,7 @@ const translation = {
     workflowTitle: 'Podrobnosti dnevnika',
     fileListDetail: 'Podrobnosti',
     fileListLabel: 'Podrobnosti o datoteki',
+    testWithParams: 'Preizkus s parametri',
   },
   promptLog: 'Dnevnik PROMPT-ov',
   agentLog: 'Dnevnik pomočnika',
@@ -93,6 +96,7 @@ const translation = {
     iteration: 'Iteracija',
     finalProcessing: 'Končna obdelava',
   },
+  dateFormat: 'MM/DD/LETNO',
 }
 
 export default translation

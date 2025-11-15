@@ -1,7 +1,9 @@
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
+
+from sqlalchemy import select
 
 from configs import dify_config
 from core.model_manager import ModelManager
@@ -24,13 +26,13 @@ class AbstractVectorFactory(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> dict:
+    def gen_index_struct_dict(vector_type: VectorType, collection_name: str):
         index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
         return index_struct_dict
 
 
 class Vector:
-    def __init__(self, dataset: Dataset, attributes: Optional[list] = None):
+    def __init__(self, dataset: Dataset, attributes: list | None = None):
         if attributes is None:
             attributes = ["doc_id", "dataset_id", "document_id", "doc_hash"]
         self._dataset = dataset
@@ -45,11 +47,10 @@ class Vector:
             vector_type = self._dataset.index_struct_dict["type"]
         else:
             if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
-                whitelist = (
-                    db.session.query(Whitelist)
-                    .filter(Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db")
-                    .one_or_none()
+                stmt = select(Whitelist).where(
+                    Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db"
                 )
+                whitelist = db.session.scalars(stmt).one_or_none()
                 if whitelist:
                     vector_type = VectorType.TIDB_ON_QDRANT
 
@@ -70,6 +71,12 @@ class Vector:
                 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
 
                 return MilvusVectorFactory
+            case VectorType.ALIBABACLOUD_MYSQL:
+                from core.rag.datasource.vdb.alibabacloud_mysql.alibabacloud_mysql_vector import (
+                    AlibabaCloudMySQLVectorFactory,
+                )
+
+                return AlibabaCloudMySQLVectorFactory
             case VectorType.MYSCALE:
                 from core.rag.datasource.vdb.myscale.myscale_vector import MyScaleVectorFactory
 
@@ -172,25 +179,29 @@ class Vector:
                 from core.rag.datasource.vdb.matrixone.matrixone_vector import MatrixoneVectorFactory
 
                 return MatrixoneVectorFactory
+            case VectorType.CLICKZETTA:
+                from core.rag.datasource.vdb.clickzetta.clickzetta_vector import ClickzettaVectorFactory
+
+                return ClickzettaVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
-    def create(self, texts: Optional[list] = None, **kwargs):
+    def create(self, texts: list | None = None, **kwargs):
         if texts:
             start = time.time()
-            logger.info(f"start embedding {len(texts)} texts {start}")
+            logger.info("start embedding %s texts %s", len(texts), start)
             batch_size = 1000
             total_batches = len(texts) + batch_size - 1
             for i in range(0, len(texts), batch_size):
                 batch = texts[i : i + batch_size]
                 batch_start = time.time()
-                logger.info(f"Processing batch {i // batch_size + 1}/{total_batches} ({len(batch)} texts)")
+                logger.info("Processing batch %s/%s (%s texts)", i // batch_size + 1, total_batches, len(batch))
                 batch_embeddings = self._embeddings.embed_documents([document.page_content for document in batch])
                 logger.info(
-                    f"Embedding batch {i // batch_size + 1}/{total_batches} took {time.time() - batch_start:.3f}s"
+                    "Embedding batch %s/%s took %s s", i // batch_size + 1, total_batches, time.time() - batch_start
                 )
                 self._vector_processor.create(texts=batch, embeddings=batch_embeddings, **kwargs)
-            logger.info(f"Embedding {len(texts)} texts took {time.time() - start:.3f}s")
+            logger.info("Embedding %s texts took %s s", len(texts), time.time() - start)
 
     def add_texts(self, documents: list[Document], **kwargs):
         if kwargs.get("duplicate_check", False):
@@ -202,10 +213,10 @@ class Vector:
     def text_exists(self, id: str) -> bool:
         return self._vector_processor.text_exists(id)
 
-    def delete_by_ids(self, ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]):
         self._vector_processor.delete_by_ids(ids)
 
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
+    def delete_by_metadata_field(self, key: str, value: str):
         self._vector_processor.delete_by_metadata_field(key, value)
 
     def search_by_vector(self, query: str, **kwargs: Any) -> list[Document]:
@@ -215,11 +226,11 @@ class Vector:
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)
 
-    def delete(self) -> None:
+    def delete(self):
         self._vector_processor.delete()
         # delete collection redis cache
         if self._vector_processor.collection_name:
-            collection_exist_cache_key = "vector_indexing_{}".format(self._vector_processor.collection_name)
+            collection_exist_cache_key = f"vector_indexing_{self._vector_processor.collection_name}"
             redis_client.delete(collection_exist_cache_key)
 
     def _get_embeddings(self) -> Embeddings:

@@ -7,6 +7,7 @@ from typing import Any, TypeAlias, final
 from urllib.parse import urljoin, urlparse
 
 import httpx
+from httpx_sse import EventSource, ServerSentEvent
 from sseclient import SSEClient
 
 from core.mcp import types
@@ -22,24 +23,19 @@ DEFAULT_QUEUE_READ_TIMEOUT = 3
 @final
 class _StatusReady:
     def __init__(self, endpoint_url: str):
-        self._endpoint_url = endpoint_url
+        self.endpoint_url = endpoint_url
 
 
 @final
 class _StatusError:
     def __init__(self, exc: Exception):
-        self._exc = exc
+        self.exc = exc
 
 
 # Type aliases for better readability
 ReadQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
 WriteQueue: TypeAlias = queue.Queue[SessionMessage | Exception | None]
 StatusQueue: TypeAlias = queue.Queue[_StatusReady | _StatusError]
-
-
-def remove_request_params(url: str) -> str:
-    """Remove request parameters from URL, keeping only the path."""
-    return urljoin(url, urlparse(url).path)
 
 
 class SSETransport:
@@ -50,8 +46,8 @@ class SSETransport:
         url: str,
         headers: dict[str, Any] | None = None,
         timeout: float = 5.0,
-        sse_read_timeout: float = 5 * 60,
-    ) -> None:
+        sse_read_timeout: float = 1 * 60,
+    ):
         """Initialize the SSE transport.
 
         Args:
@@ -80,7 +76,7 @@ class SSETransport:
 
         return url_parsed.netloc == endpoint_parsed.netloc and url_parsed.scheme == endpoint_parsed.scheme
 
-    def _handle_endpoint_event(self, sse_data: str, status_queue: StatusQueue) -> None:
+    def _handle_endpoint_event(self, sse_data: str, status_queue: StatusQueue):
         """Handle an 'endpoint' SSE event.
 
         Args:
@@ -88,7 +84,7 @@ class SSETransport:
             status_queue: Queue to put status updates.
         """
         endpoint_url = urljoin(self.url, sse_data)
-        logger.info(f"Received endpoint URL: {endpoint_url}")
+        logger.info("Received endpoint URL: %s", endpoint_url)
 
         if not self._validate_endpoint_url(endpoint_url):
             error_msg = f"Endpoint origin does not match connection origin: {endpoint_url}"
@@ -98,7 +94,7 @@ class SSETransport:
 
         status_queue.put(_StatusReady(endpoint_url))
 
-    def _handle_message_event(self, sse_data: str, read_queue: ReadQueue) -> None:
+    def _handle_message_event(self, sse_data: str, read_queue: ReadQueue):
         """Handle a 'message' SSE event.
 
         Args:
@@ -107,14 +103,14 @@ class SSETransport:
         """
         try:
             message = types.JSONRPCMessage.model_validate_json(sse_data)
-            logger.debug(f"Received server message: {message}")
+            logger.debug("Received server message: %s", message)
             session_message = SessionMessage(message)
             read_queue.put(session_message)
         except Exception as exc:
             logger.exception("Error parsing server message")
             read_queue.put(exc)
 
-    def _handle_sse_event(self, sse, read_queue: ReadQueue, status_queue: StatusQueue) -> None:
+    def _handle_sse_event(self, sse: ServerSentEvent, read_queue: ReadQueue, status_queue: StatusQueue):
         """Handle a single SSE event.
 
         Args:
@@ -128,9 +124,9 @@ class SSETransport:
             case "message":
                 self._handle_message_event(sse.data, read_queue)
             case _:
-                logger.warning(f"Unknown SSE event: {sse.event}")
+                logger.warning("Unknown SSE event: %s", sse.event)
 
-    def sse_reader(self, event_source, read_queue: ReadQueue, status_queue: StatusQueue) -> None:
+    def sse_reader(self, event_source: EventSource, read_queue: ReadQueue, status_queue: StatusQueue):
         """Read and process SSE events.
 
         Args:
@@ -142,13 +138,13 @@ class SSETransport:
             for sse in event_source.iter_sse():
                 self._handle_sse_event(sse, read_queue, status_queue)
         except httpx.ReadError as exc:
-            logger.debug(f"SSE reader shutting down normally: {exc}")
+            logger.debug("SSE reader shutting down normally: %s", exc)
         except Exception as exc:
             read_queue.put(exc)
         finally:
             read_queue.put(None)
 
-    def _send_message(self, client: httpx.Client, endpoint_url: str, message: SessionMessage) -> None:
+    def _send_message(self, client: httpx.Client, endpoint_url: str, message: SessionMessage):
         """Send a single message to the server.
 
         Args:
@@ -165,9 +161,9 @@ class SSETransport:
             ),
         )
         response.raise_for_status()
-        logger.debug(f"Client message sent successfully: {response.status_code}")
+        logger.debug("Client message sent successfully: %s", response.status_code)
 
-    def post_writer(self, client: httpx.Client, endpoint_url: str, write_queue: WriteQueue) -> None:
+    def post_writer(self, client: httpx.Client, endpoint_url: str, write_queue: WriteQueue):
         """Handle writing messages to the server.
 
         Args:
@@ -190,7 +186,7 @@ class SSETransport:
                 except queue.Empty:
                     continue
         except httpx.ReadError as exc:
-            logger.debug(f"Post writer shutting down normally: {exc}")
+            logger.debug("Post writer shutting down normally: %s", exc)
         except Exception as exc:
             logger.exception("Error writing messages")
             write_queue.put(exc)
@@ -215,9 +211,9 @@ class SSETransport:
             raise ValueError("failed to get endpoint URL")
 
         if isinstance(status, _StatusReady):
-            return status._endpoint_url
+            return status.endpoint_url
         elif isinstance(status, _StatusError):
-            raise status._exc
+            raise status.exc
         else:
             raise ValueError("failed to get endpoint URL")
 
@@ -225,7 +221,7 @@ class SSETransport:
         self,
         executor: ThreadPoolExecutor,
         client: httpx.Client,
-        event_source,
+        event_source: EventSource,
     ) -> tuple[ReadQueue, WriteQueue]:
         """Establish connection and start worker threads.
 
@@ -259,7 +255,7 @@ def sse_client(
     url: str,
     headers: dict[str, Any] | None = None,
     timeout: float = 5.0,
-    sse_read_timeout: float = 5 * 60,
+    sse_read_timeout: float = 1 * 60,
 ) -> Generator[tuple[ReadQueue, WriteQueue], None, None]:
     """
     Client transport for SSE.
@@ -280,34 +276,37 @@ def sse_client(
     read_queue: ReadQueue | None = None
     write_queue: WriteQueue | None = None
 
-    with ThreadPoolExecutor() as executor:
-        try:
-            with create_ssrf_proxy_mcp_http_client(headers=transport.headers) as client:
-                with ssrf_proxy_sse_connect(
-                    url, timeout=httpx.Timeout(timeout, read=sse_read_timeout), client=client
-                ) as event_source:
-                    event_source.response.raise_for_status()
+    executor = ThreadPoolExecutor()
+    try:
+        with create_ssrf_proxy_mcp_http_client(headers=transport.headers) as client:
+            with ssrf_proxy_sse_connect(
+                url, timeout=httpx.Timeout(timeout, read=sse_read_timeout), client=client
+            ) as event_source:
+                event_source.response.raise_for_status()
 
-                    read_queue, write_queue = transport.connect(executor, client, event_source)
+                read_queue, write_queue = transport.connect(executor, client, event_source)
 
-                    yield read_queue, write_queue
+                yield read_queue, write_queue
 
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code == 401:
-                raise MCPAuthError()
-            raise MCPConnectionError()
-        except Exception:
-            logger.exception("Error connecting to SSE endpoint")
-            raise
-        finally:
-            # Clean up queues
-            if read_queue:
-                read_queue.put(None)
-            if write_queue:
-                write_queue.put(None)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 401:
+            raise MCPAuthError()
+        raise MCPConnectionError()
+    except Exception:
+        logger.exception("Error connecting to SSE endpoint")
+        raise
+    finally:
+        # Clean up queues
+        if read_queue:
+            read_queue.put(None)
+        if write_queue:
+            write_queue.put(None)
+
+        # Shutdown executor without waiting to prevent hanging
+        executor.shutdown(wait=False)
 
 
-def send_message(http_client: httpx.Client, endpoint_url: str, session_message: SessionMessage) -> None:
+def send_message(http_client: httpx.Client, endpoint_url: str, session_message: SessionMessage):
     """
     Send a message to the server using the provided HTTP client.
 
@@ -326,8 +325,8 @@ def send_message(http_client: httpx.Client, endpoint_url: str, session_message: 
             ),
         )
         response.raise_for_status()
-        logger.debug(f"Client message sent successfully: {response.status_code}")
-    except Exception as exc:
+        logger.debug("Client message sent successfully: %s", response.status_code)
+    except Exception:
         logger.exception("Error sending message")
         raise
 
@@ -349,13 +348,13 @@ def read_messages(
             if sse.event == "message":
                 try:
                     message = types.JSONRPCMessage.model_validate_json(sse.data)
-                    logger.debug(f"Received server message: {message}")
+                    logger.debug("Received server message: %s", message)
                     yield SessionMessage(message)
                 except Exception as exc:
                     logger.exception("Error parsing server message")
                     yield exc
             else:
-                logger.warning(f"Unknown SSE event: {sse.event}")
+                logger.warning("Unknown SSE event: %s", sse.event)
     except Exception as exc:
         logger.exception("Error reading SSE messages")
         yield exc

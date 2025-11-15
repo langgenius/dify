@@ -10,13 +10,20 @@ import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
+import { basePath } from '@/utils/var'
+
+const normalizeProviderIcon = (icon: ToolWithProvider['icon']) => {
+  if (typeof icon === 'string' && basePath && icon.startsWith('/') && !icon.startsWith(`${basePath}/`))
+    return `${basePath}${icon}`
+  return icon
+}
 
 type Props = {
   provider: ToolWithProvider
   payload: Tool
   disabled?: boolean
   isAdded?: boolean
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
 }
 
 const ToolItem: FC<Props> = ({
@@ -34,6 +41,7 @@ const ToolItem: FC<Props> = ({
     <Tooltip
       key={payload.name}
       position='right'
+      needsDelay={false}
       popupClassName='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
       popupContent={(
         <div>
@@ -63,12 +71,14 @@ const ToolItem: FC<Props> = ({
             provider_id: provider.id,
             provider_type: provider.type,
             provider_name: provider.name,
+            plugin_id: provider.plugin_id,
+            plugin_unique_identifier: provider.plugin_unique_identifier,
+            provider_icon: normalizeProviderIcon(provider.icon),
             tool_name: payload.name,
             tool_label: payload.label[language],
             tool_description: payload.description[language],
             title: payload.label[language],
             is_team_authorization: provider.is_team_authorization,
-            output_schema: payload.output_schema,
             paramSchemas: payload.parameters,
             params,
             meta: provider.meta,

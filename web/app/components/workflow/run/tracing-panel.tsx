@@ -33,7 +33,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const treeNodes = formatNodeList(list, t)
-  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
+  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(() => new Set())
   const [hoveredParallel, setHoveredParallel] = useState<string | null>(null)
 
   const toggleCollapse = (id: string) => {
@@ -109,7 +109,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
           onMouseLeave={handleParallelMouseLeave}
         >
           <div className="mb-1 flex items-center">
-            <button
+            <button type="button"
               onClick={() => toggleCollapse(node.id)}
               className={cn(
                 'mr-2 transition-colors',

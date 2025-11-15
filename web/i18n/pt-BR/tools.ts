@@ -2,7 +2,6 @@ const translation = {
   title: 'Ferramentas',
   createCustomTool: 'Criar Ferramenta Personalizada',
   type: {
-    all: 'Todas',
     builtIn: 'Integradas',
     custom: 'Personalizadas',
     workflow: 'Fluxo de trabalho',
@@ -20,7 +19,6 @@ const translation = {
     setupModalTitleDescription: 'Após configurar as credenciais, todos os membros do espaço de trabalho podem usar essa ferramenta ao orquestrar aplicativos.',
   },
   includeToolNum: '{{num}} ferramentas incluídas',
-  addTool: 'Adicionar Ferramenta',
   createTool: {
     title: 'Criar Ferramenta Personalizada',
     editAction: 'Configurar',
@@ -54,7 +52,6 @@ const translation = {
       keyTooltip: 'Chave do Cabeçalho HTTP, você pode deixar como "Authorization" se não tiver ideia do que é ou definir um valor personalizado',
       types: {
         none: 'Nenhum',
-        api_key: 'Chave de API',
         apiKeyPlaceholder: 'Nome do cabeçalho HTTP para a Chave de API',
         apiValuePlaceholder: 'Digite a Chave de API',
         api_key_query: 'Parâmetro de consulta',
@@ -144,9 +141,7 @@ const translation = {
   addToolModal: {
     category: 'categoria',
     type: 'tipo',
-    add: 'adicionar',
     added: 'Adicionado',
-    manageInTools: 'Gerenciar em Ferramentas',
     custom: {
       title: 'Nenhuma ferramenta personalizada disponível',
       tip: 'Crie uma ferramenta personalizada',
@@ -192,6 +187,24 @@ const translation = {
       cancel: 'Cancelar',
       save: 'Salvar',
       confirm: 'Adicionar e Autorizar',
+      sseReadTimeout: 'Tempo limite de leitura SSE',
+      timeout: 'Tempo esgotado',
+      timeoutPlaceholder: 'trinta',
+      headerValue: 'Valor do Cabeçalho',
+      headerKeyPlaceholder: 'por exemplo, Autorização',
+      addHeader: 'Adicionar Cabeçalho',
+      headersTip: 'Cabeçalhos HTTP adicionais a serem enviados com as solicitações do servidor MCP',
+      headers: 'Cabeçalhos',
+      maskedHeadersTip: 'Os valores do cabeçalho estão mascarados por segurança. As alterações atualizarão os valores reais.',
+      headerKey: 'Nome do Cabeçalho',
+      noHeaders: 'Nenhum cabeçalho personalizado configurado',
+      headerValuePlaceholder: 'ex: Token de portador 123',
+      useDynamicClientRegistration: 'Usar Registro Dinâmico de Cliente',
+      configurations: 'Configurações',
+      clientSecret: 'Segredo do Cliente',
+      authentication: 'Autenticação',
+      clientID: 'ID do Cliente',
+      clientSecretPlaceholder: 'Segredo do Cliente',
     },
     delete: 'Remover Servidor MCP',
     deleteConfirmTitle: 'Você gostaria de remover {{mcp}}?',
@@ -232,7 +245,12 @@ const translation = {
       },
       publishTip: 'Aplicativo não publicado. Por favor, publique o aplicativo primeiro.',
     },
+    toolItem: {
+      noDescription: 'Sem descrição',
+      parameters: 'Parâmetros',
+    },
   },
+  allTools: 'Todas as ferramentas',
 }
 
 export default translation

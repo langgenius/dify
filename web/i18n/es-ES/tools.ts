@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'Crear Herramienta Personalizada',
   customToolTip: 'Aprende más sobre las herramientas personalizadas de Dify',
   type: {
-    all: 'Todas',
     builtIn: 'Incorporadas',
     custom: 'Personalizadas',
     workflow: 'Flujo de Trabajo',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: 'Después de configurar las credenciales, todos los miembros dentro del espacio de trabajo pueden usar esta herramienta al orquestar aplicaciones.',
   },
   includeToolNum: '{{num}} herramientas incluidas',
-  addTool: 'Agregar Herramienta',
   addToolModal: {
     type: 'tipo',
     category: 'categoría',
-    add: 'agregar',
     added: 'agregada',
-    manageInTools: 'Administrar en Herramientas',
     custom: {
       title: 'No hay herramienta personalizada disponible',
       tip: 'Crear una herramienta personalizada',
@@ -82,7 +78,6 @@ const translation = {
       keyTooltip: 'Clave del encabezado HTTP, puedes dejarla como "Authorization" si no tienes idea de qué es o configurarla con un valor personalizado',
       types: {
         none: 'Ninguno',
-        api_key: 'Clave API',
         apiKeyPlaceholder: 'Nombre del encabezado HTTP para la Clave API',
         apiValuePlaceholder: 'Ingresa la Clave API',
         api_key_header: 'Encabezado',
@@ -192,6 +187,24 @@ const translation = {
       cancel: 'Cancelar',
       save: 'Guardar',
       confirm: 'Añadir y Autorizar',
+      sseReadTimeout: 'Tiempo de espera de lectura SSE',
+      timeout: 'Tiempo de espera',
+      timeoutPlaceholder: 'treinta',
+      headers: 'Encabezados',
+      addHeader: 'Agregar encabezado',
+      headerValuePlaceholder: 'por ejemplo, token de portador123',
+      headersTip: 'Encabezados HTTP adicionales para enviar con las solicitudes del servidor MCP',
+      maskedHeadersTip: 'Los valores del encabezado están enmascarados por seguridad. Los cambios actualizarán los valores reales.',
+      headerKeyPlaceholder: 'por ejemplo, Autorización',
+      headerValue: 'Valor del encabezado',
+      noHeaders: 'No se han configurado encabezados personalizados',
+      headerKey: 'Nombre del encabezado',
+      authentication: 'Autenticación',
+      clientID: 'ID del Cliente',
+      clientSecretPlaceholder: 'Secreto del Cliente',
+      useDynamicClientRegistration: 'Usar registro dinámico de clientes',
+      clientSecret: 'Secreto del Cliente',
+      configurations: 'Configuraciones',
     },
     delete: 'Eliminar servidor MCP',
     deleteConfirmTitle: '¿Eliminar {{mcp}}?',
@@ -232,7 +245,12 @@ const translation = {
       },
       publishTip: 'App no publicada. Publícala primero.',
     },
+    toolItem: {
+      noDescription: 'Sin descripción',
+      parameters: 'Parámetros',
+    },
   },
+  allTools: 'Todas las herramientas',
 }
 
 export default translation

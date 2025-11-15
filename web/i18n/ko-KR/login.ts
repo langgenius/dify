@@ -55,6 +55,7 @@ const translation = {
     passwordInvalid: '비밀번호는 문자와 숫자를 포함하고 8 자 이상이어야 합니다.',
     passwordLengthInValid: '비밀번호는 8 자 이상이어야 합니다.',
     registrationNotAllowed: '계정을 찾을 수 없습니다. 등록하려면 시스템 관리자에게 문의하십시오.',
+    invalidEmailOrPassword: '유효하지 않은 이메일이나 비밀번호입니다.',
   },
   license: {
     tip: 'Dify Community Edition 을 시작하기 전에 GitHub 의',
@@ -70,11 +71,9 @@ const translation = {
   activated: '지금 로그인하세요',
   adminInitPassword: '관리자 초기화 비밀번호',
   validate: '확인',
-  sso: 'SSO 로 계속하기',
   checkCode: {
     verify: '확인',
     verificationCode: '인증 코드',
-    tips: '<strong>{{email}}</strong>로 인증 코드를 보내드립니다.',
     validTime: '코드는 5 분 동안 유효합니다',
     checkYourEmail: '이메일 주소 확인',
     invalidCode: '유효하지 않은 코드',
@@ -83,6 +82,7 @@ const translation = {
     useAnotherMethod: '다른 방법 사용',
     didNotReceiveCode: '코드를 받지 못하셨나요?',
     resend: '재전송',
+    tipsPrefix: '우리는 확인 코드를 보냅니다',
   },
   back: '뒤로',
   or: '또는',
@@ -111,6 +111,16 @@ const translation = {
     noLoginMethodTip: '인증 방법을 추가하려면 시스템 관리자에게 연락하십시오.',
     login: '로그인',
   },
+  signup: {
+    signIn: '로그인',
+    signUp: '가입하기',
+    haveAccount: '이미 계정이 있으신가요?',
+    createAccount: '계정을 생성하세요',
+    verifyMail: '인증 코드로 계속 진행하세요',
+    noAccount: '계정이 없으신가요?',
+    welcome: '👋 환영합니다! 시작하려면 세부 정보를 입력해 주세요.',
+  },
+  pageTitleForE: '이봐, 시작하자!',
 }
 
 export default translation

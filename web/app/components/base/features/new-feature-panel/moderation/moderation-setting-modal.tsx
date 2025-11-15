@@ -19,13 +19,14 @@ import {
 } from '@/service/common'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
+import { LanguagesSupported } from '@/i18n-config/language'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 const systemTypes = ['openai_moderation', 'keywords', 'api']
 
@@ -55,7 +56,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const { setShowAccountSettingModal } = useModalContext()
   const handleOpenSettingsModal = () => {
     setShowAccountSettingModal({
-      payload: 'provider',
+      payload: ACCOUNT_SETTING_TAB.PROVIDER,
       onCancelCallback: () => {
         mutate()
       },

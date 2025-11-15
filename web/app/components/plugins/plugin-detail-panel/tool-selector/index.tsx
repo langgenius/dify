@@ -40,6 +40,7 @@ import {
   AuthCategory,
   PluginAuthInAgent,
 } from '@/app/components/plugins/plugin-auth'
+import { ReadmeEntrance } from '../../readme-panel/entrance'
 
 type Props = {
   disabled?: boolean
@@ -265,14 +266,17 @@ const ToolSelector: FC<Props> = ({
             />
           )}
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent>
+        <PortalToFollowElemContent className='z-10'>
           <div className={cn('relative max-h-[642px] min-h-20 w-[361px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
             <>
               <div className='system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary'>{t(`plugin.detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`)}</div>
               {/* base form */}
               <div className='flex flex-col gap-3 px-4 py-2'>
                 <div className='flex flex-col gap-1'>
-                  <div className='system-sm-semibold flex h-6 items-center text-text-secondary'>{t('plugin.detailPanel.toolSelector.toolLabel')}</div>
+                  <div className='system-sm-semibold flex h-6 items-center justify-between text-text-secondary'>
+                    {t('plugin.detailPanel.toolSelector.toolLabel')}
+                    <ReadmeEntrance pluginDetail={currentProvider as any} showShortTip className='pb-0' />
+                  </div>
                   <ToolPicker
                     placement='bottom'
                     offset={offset}
@@ -309,15 +313,17 @@ const ToolSelector: FC<Props> = ({
               {currentProvider && currentProvider.type === CollectionType.builtIn && currentProvider.allow_delete && (
                 <>
                   <Divider className='my-1 w-full' />
-                    <div className='px-4 py-2'>
-                      <PluginAuthInAgent
-                        pluginPayload={{
-                          provider: currentProvider.name,
-                          category: AuthCategory.tool,
-                        }}
-                        credentialId={value?.credential_id}
-                        onAuthorizationItemClick={handleAuthorizationItemClick}
-                      />
+                  <div className='px-4 py-2'>
+                    <PluginAuthInAgent
+                      pluginPayload={{
+                        provider: currentProvider.name,
+                        category: AuthCategory.tool,
+                        providerType: currentProvider.type,
+                        detail: currentProvider as any,
+                      }}
+                      credentialId={value?.credential_id}
+                      onAuthorizationItemClick={handleAuthorizationItemClick}
+                    />
                   </div>
                 </>
               )}

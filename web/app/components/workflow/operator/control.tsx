@@ -24,7 +24,7 @@ import { useStore } from '../store'
 import Divider from '../../base/divider'
 import AddBlock from './add-block'
 import TipPopup from './tip-popup'
-import ExportImage from './export-image'
+import MoreActions from './more-actions'
 import { useOperator } from './hooks'
 import cn from '@/utils/classnames'
 
@@ -50,7 +50,7 @@ const Control = () => {
   }
 
   return (
-    <div className='flex flex-col items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-text-tertiary shadow-lg'>
+    <div className='pointer-events-auto flex flex-col items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-text-tertiary shadow-lg'>
       <AddBlock />
       <TipPopup title={t('workflow.nodes.note.addNote')}>
         <div
@@ -89,7 +89,6 @@ const Control = () => {
         </div>
       </TipPopup>
       <Divider className='my-1 w-3.5' />
-      <ExportImage />
       <TipPopup title={t('workflow.panel.organizeBlocks')} shortcuts={['ctrl', 'o']}>
         <div
           className={cn(
@@ -114,6 +113,7 @@ const Control = () => {
           {!maximizeCanvas && <RiAspectRatioLine className='h-4 w-4' />}
         </div>
       </TipPopup>
+      <MoreActions />
     </div>
   )
 }

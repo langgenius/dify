@@ -1,5 +1,8 @@
+import { PluginCategoryEnum } from './types'
+
 export const tagKeys = [
   'agent',
+  'rag',
   'search',
   'image',
   'videos',
@@ -19,9 +22,11 @@ export const tagKeys = [
 ]
 
 export const categoryKeys = [
-  'model',
-  'tool',
-  'agent-strategy',
-  'extension',
+  PluginCategoryEnum.model,
+  PluginCategoryEnum.tool,
+  PluginCategoryEnum.datasource,
+  PluginCategoryEnum.agent,
+  PluginCategoryEnum.extension,
   'bundle',
+  PluginCategoryEnum.trigger,
 ]

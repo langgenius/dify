@@ -4,8 +4,6 @@ import React, { useRef, useState } from 'react'
 import { useGetState, useInfiniteScroll } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
-import produce from 'immer'
-import TypeIcon from '../type-icon'
 import Modal from '@/app/components/base/modal'
 import type { DataSet } from '@/models/datasets'
 import Button from '@/app/components/base/button'
@@ -14,7 +12,7 @@ import Loading from '@/app/components/base/loading'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import cn from '@/utils/classnames'
-import { basePath } from '@/utils/var'
+import AppIcon from '@/app/components/base/app-icon'
 
 export type ISelectDataSetProps = {
   isShow: boolean
@@ -30,9 +28,10 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const [selected, setSelected] = React.useState<DataSet[]>(selectedIds.map(id => ({ id }) as any))
+  const [selected, setSelected] = React.useState<DataSet[]>([])
   const [loaded, setLoaded] = React.useState(false)
   const [datasets, setDataSets] = React.useState<DataSet[] | null>(null)
+  const [hasInitialized, setHasInitialized] = React.useState(false)
   const hasNoData = !datasets || datasets?.length === 0
   const canSelectMulti = true
 
@@ -50,19 +49,17 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique || item.provider === 'external')]
         setDataSets(newList)
         setLoaded(true)
-        if (!selected.find(item => !item.name))
-          return { list: [] }
 
-        const newSelected = produce(selected, (draft) => {
-          selected.forEach((item, index) => {
-            if (!item.name) { // not fetched database
-              const newItem = newList.find(i => i.id === item.id)
-              if (newItem)
-                draft[index] = newItem
-            }
-          })
-        })
-        setSelected(newSelected)
+        // Initialize selected datasets based on selectedIds and available datasets
+        if (!hasInitialized) {
+          if (selectedIds.length > 0) {
+            const validSelectedDatasets = selectedIds
+              .map(id => newList.find(item => item.id === id))
+              .filter(Boolean) as DataSet[]
+            setSelected(validSelectedDatasets)
+          }
+          setHasInitialized(true)
+        }
       }
       return { list: [] }
     },
@@ -91,6 +88,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const handleSelect = () => {
     onSelect(selected)
   }
+
   return (
     <Modal
       isShow={isShow}
@@ -112,7 +110,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
           }}
         >
           <span className='text-text-tertiary'>{t('appDebug.feature.dataSet.noDataSet')}</span>
-          <Link href={`${basePath}/datasets/create`} className='font-normal text-text-accent'>{t('appDebug.feature.dataSet.toCreate')}</Link>
+          <Link href='/datasets/create' className='font-normal text-text-accent'>{t('appDebug.feature.dataSet.toCreate')}</Link>
         </div>
       )}
 
@@ -135,7 +133,13 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
               >
                 <div className='mr-1 flex items-center overflow-hidden'>
                   <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
-                    <TypeIcon type="upload_file" size='md' />
+                    <AppIcon
+                      size='tiny'
+                      iconType={item.icon_info.icon_type}
+                      icon={item.icon_info.icon}
+                      background={item.icon_info.icon_type === 'image' ? undefined : item.icon_info.icon_background}
+                      imageUrl={item.icon_info.icon_type === 'image' ? item.icon_info.icon_url : undefined}
+                    />
                   </div>
                   <div className={cn('max-w-[200px] truncate text-[13px] font-medium text-text-secondary', !item.embedding_available && '!max-w-[120px] opacity-30')}>{item.name}</div>
                   {!item.embedding_available && (

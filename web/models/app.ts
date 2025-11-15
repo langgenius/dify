@@ -1,63 +1,16 @@
-import type { AliyunConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, TracingProvider, WeaveConfig } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { App, AppTemplate, SiteConfig } from '@/types/app'
+import type {
+  AliyunConfig,
+  ArizeConfig,
+  LangFuseConfig,
+  LangSmithConfig,
+  OpikConfig,
+  PhoenixConfig,
+  TencentConfig,
+  TracingProvider,
+  WeaveConfig,
+} from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
+import type { App, AppModeEnum, AppTemplate, SiteConfig } from '@/types/app'
 import type { Dependency } from '@/app/components/plugins/types'
-
-/* export type App = {
-  id: strin
-  name: string
-  description: string
-  mode: AppMode
-  enable_site: boolean
-  enable_api: boolean
-  api_rpm: number
-  api_rph: number
-  is_demo: boolean
-  model_config: AppModelConfig
-  providers: Array<{ provider: string; token_is_set: boolean }>
-  site: SiteConfig
-  created_at: string
-}
-
-export type AppModelConfig = {
-  provider: string
-  model_id: string
-  configs: {
-    prompt_template: string
-    prompt_variables: Array<PromptVariable>
-    completion_params: CompletionParam
-  }
-}
-
-export type PromptVariable = {
-  key: string
-  name: string
-  description: string
-  type: string | number
-  default: string
-  options: string[]
-}
-
-export type CompletionParam = {
-  max_tokens: number
-  temperature: number
-  top_p: number
-  echo: boolean
-  stop: string[]
-  presence_penalty: number
-  frequency_penalty: number
-}
-
-export type SiteConfig = {
-  access_token: string
-  title: string
-  author: string
-  support_email: string
-  default_language: string
-  customize_domain: string
-  theme: string
-  customize_token_strategy: 'must' | 'allow' | 'not_allow'
-  prompt_public: boolean
-} */
 
 export enum DSLImportMode {
   YAML_CONTENT = 'yaml-content',
@@ -84,7 +37,7 @@ export type AppDetailResponse = App
 export type DSLImportResponse = {
   id: string
   status: DSLImportStatus
-  app_mode: AppMode
+  app_mode: AppModeEnum
   app_id?: string
   current_dsl_version?: string
   imported_dsl_version?: string
@@ -166,5 +119,14 @@ export type TracingStatus = {
 
 export type TracingConfig = {
   tracing_provider: TracingProvider
-  tracing_config: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig
+  tracing_config: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig
+}
+
+export type WebhookTriggerResponse = {
+  id: string
+  webhook_id: string
+  webhook_url: string
+  webhook_debug_url: string
+  node_id: string
+  created_at: string
 }

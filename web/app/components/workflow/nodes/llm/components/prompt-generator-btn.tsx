@@ -6,25 +6,33 @@ import cn from 'classnames'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import { ActionButton } from '@/app/components/base/action-button'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
-import { AppType } from '@/types/app'
-import type { AutomaticRes } from '@/service/debug'
+import { AppModeEnum } from '@/types/app'
+import type { GenRes } from '@/service/debug'
 import type { ModelConfig } from '@/app/components/workflow/types'
+import { useHooksStore } from '../../../hooks-store'
 
 type Props = {
   className?: string
   onGenerated?: (prompt: string) => void
   modelConfig?: ModelConfig
+  nodeId: string
+  editorId?: string
+  currentPrompt?: string
 }
 
 const PromptGeneratorBtn: FC<Props> = ({
   className,
   onGenerated,
+  nodeId,
+  editorId,
+  currentPrompt,
 }) => {
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
-  const handleAutomaticRes = useCallback((res: AutomaticRes) => {
-    onGenerated?.(res.prompt)
+  const handleAutomaticRes = useCallback((res: GenRes) => {
+    onGenerated?.(res.modified)
     showAutomaticFalse()
   }, [onGenerated, showAutomaticFalse])
+  const configsMap = useHooksStore(s => s.configsMap)
   return (
     <div className={cn(className)}>
       <ActionButton
@@ -34,11 +42,14 @@ const PromptGeneratorBtn: FC<Props> = ({
       </ActionButton>
       {showAutomatic && (
         <GetAutomaticResModal
-          mode={AppType.chat}
+          mode={AppModeEnum.CHAT}
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}
-          isInLLMNode
+          flowId={configsMap?.flowId || ''}
+          nodeId={nodeId}
+          editorId={editorId}
+          currentPrompt={currentPrompt}
         />
       )}
     </div>

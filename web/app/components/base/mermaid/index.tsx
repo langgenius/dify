@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import mermaid, { type MermaidConfig } from 'mermaid'
 import { useTranslation } from 'react-i18next'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
@@ -107,29 +107,24 @@ const initMermaid = () => {
   return isMermaidInitialized
 }
 
-const Flowchart = React.forwardRef((props: {
+type FlowchartProps = {
   PrimitiveCode: string
   theme?: 'light' | 'dark'
-}, ref) => {
+  ref?: React.Ref<HTMLDivElement>
+}
+
+const Flowchart = (props: FlowchartProps) => {
   const { t } = useTranslation()
   const [svgString, setSvgString] = useState<string | null>(null)
   const [look, setLook] = useState<'classic' | 'handDrawn'>('classic')
   const [isInitialized, setIsInitialized] = useState(false)
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(props.theme || 'light')
   const containerRef = useRef<HTMLDivElement>(null)
-  const chartId = useRef(`mermaid-chart-${Math.random().toString(36).substr(2, 9)}`).current
+  const chartId = useRef(`mermaid-chart-${Math.random().toString(36).slice(2, 11)}`).current
   const [isLoading, setIsLoading] = useState(true)
-  const renderTimeoutRef = useRef<NodeJS.Timeout>()
+  const renderTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const [errMsg, setErrMsg] = useState('')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
-  const [isCodeComplete, setIsCodeComplete] = useState(false)
-  const codeCompletionCheckRef = useRef<NodeJS.Timeout>()
-  const prevCodeRef = useRef<string>()
-
-  // Create cache key from code, style and theme
-  const cacheKey = useMemo(() => {
-    return `${props.PrimitiveCode}-${look}-${currentTheme}`
-  }, [props.PrimitiveCode, look, currentTheme])
 
   /**
    * Renders Mermaid chart
@@ -192,7 +187,7 @@ const Flowchart = React.forwardRef((props: {
   }, [])
 
   // Update theme when prop changes, but allow internal override.
-  const prevThemeRef = useRef<string>()
+  const prevThemeRef = useRef<string | undefined>(undefined)
   useEffect(() => {
     // Only react if the theme prop from the outside has actually changed.
     if (props.theme && props.theme !== prevThemeRef.current) {
@@ -498,7 +493,7 @@ const Flowchart = React.forwardRef((props: {
   }
 
   return (
-    <div ref={ref as React.RefObject<HTMLDivElement>} className={themeClasses.container}>
+    <div ref={props.ref as React.RefObject<HTMLDivElement>} className={themeClasses.container}>
       <div className={themeClasses.segmented}>
         <div className="msh-segmented-group">
           <label className="msh-segmented-item m-2 flex w-[200px] items-center space-x-1">
@@ -537,18 +532,16 @@ const Flowchart = React.forwardRef((props: {
       {isLoading && !svgString && (
         <div className='px-[26px] py-4'>
           <LoadingAnim type='text'/>
-          {!isCodeComplete && (
-            <div className="mt-2 text-sm text-gray-500">
-              {t('common.wait_for_completion', 'Waiting for diagram code to complete...')}
-            </div>
-          )}
+          <div className="mt-2 text-sm text-gray-500">
+            {t('common.wait_for_completion', 'Waiting for diagram code to complete...')}
+          </div>
         </div>
       )}
 
       {svgString && (
         <div className={themeClasses.mermaidDiv} style={{ objectFit: 'cover' }} onClick={handlePreviewClick}>
           <div className="absolute bottom-2 left-2 z-[100]">
-            <button
+            <button type="button"
               onClick={(e) => {
                 e.stopPropagation()
                 toggleTheme()
@@ -582,7 +575,7 @@ const Flowchart = React.forwardRef((props: {
       )}
     </div>
   )
-})
+}
 
 Flowchart.displayName = 'Flowchart'
 

@@ -1,16 +1,24 @@
-import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import { type ParameterExtractorNodeType, ReasoningModeType } from './types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { AppModeEnum } from '@/types/app'
 const i18nPrefix = 'workflow'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Transform,
+  sort: 6,
+  type: BlockEnum.ParameterExtractor,
+})
 const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
+  metaData,
   defaultValue: {
     query: [],
     model: {
       provider: '',
       name: '',
-      mode: 'chat',
+      mode: AppModeEnum.CHAT,
       completion_params: {
         temperature: 0.7,
       },
@@ -19,16 +27,6 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
     vision: {
       enabled: false,
     },
-  },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
   },
   checkValid(payload: ParameterExtractorNodeType, t: any) {
     let errorMessages = ''

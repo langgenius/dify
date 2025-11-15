@@ -1,14 +1,24 @@
 import { get, post, ssePost } from './base'
 import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnThought } from './base'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
-import type { ModelModeType } from '@/types/app'
+import type { AppModeEnum, ModelModeType } from '@/types/app'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
-export type AutomaticRes = {
+
+export type BasicAppFirstRes = {
   prompt: string
   variables: string[]
   opening_statement: string
   error?: string
 }
+
+export type GenRes = {
+  modified: string
+  message?: string // tip for human
+  variables?: string[] // only for basic app first time rule
+  opening_statement?: string // only for basic app first time rule
+  error?: string
+}
+
 export type CodeGenRes = {
   code: string
   language: string[]
@@ -71,13 +81,14 @@ export const fetchConversationMessages = (appId: string, conversation_id: string
   })
 }
 
-export const generateRule = (body: Record<string, any>) => {
-  return post<AutomaticRes>('/rule-generate', {
+export const generateBasicAppFirstTimeRule = (body: Record<string, any>) => {
+  return post<BasicAppFirstRes>('/rule-generate', {
     body,
   })
 }
-export const generateRuleCode = (body: Record<string, any>) => {
-  return post<CodeGenRes>('/rule-code-generate', {
+
+export const generateRule = (body: Record<string, any>) => {
+  return post<GenRes>('/instruction-generate', {
     body,
   })
 }
@@ -95,7 +106,7 @@ export const fetchPromptTemplate = ({
   mode,
   modelName,
   hasSetDataSet,
-}: { appMode: string; mode: ModelModeType; modelName: string; hasSetDataSet: boolean }) => {
+}: { appMode: AppModeEnum; mode: ModelModeType; modelName: string; hasSetDataSet: boolean }) => {
   return get<Promise<{ chat_prompt_config: ChatPromptConfig; completion_prompt_config: CompletionPromptConfig; stop: [] }>>('/app/prompt-templates', {
     params: {
       app_mode: appMode,

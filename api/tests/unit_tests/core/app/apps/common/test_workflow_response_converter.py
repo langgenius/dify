@@ -23,7 +23,7 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
             storage_key="storage_key_123",
         )
 
-    def create_file_dict(self, file_id: str = "test_file_dict") -> dict:
+    def create_file_dict(self, file_id: str = "test_file_dict"):
         """Create a file dictionary with correct dify_model_identity"""
         return {
             "dify_model_identity": FILE_MODEL_IDENTITY,
@@ -43,7 +43,7 @@ class TestWorkflowResponseConverterFetchFilesFromVariableValue:
         """Test with None input"""
         # The method signature expects Union[dict, list, Segment], but implementation handles None
         # We'll test the actual behavior by passing an empty dict instead
-        result = WorkflowResponseConverter._fetch_files_from_variable_value(None)  # type: ignore
+        result = WorkflowResponseConverter._fetch_files_from_variable_value(None)
         assert result == []
 
     def test_fetch_files_from_variable_value_with_empty_dict(self):

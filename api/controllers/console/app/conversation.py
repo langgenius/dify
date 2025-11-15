@@ -1,16 +1,14 @@
-from datetime import UTC, datetime
-
-import pytz  # pip install pytz
-from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
-from flask_restful.inputs import int_range
+import sqlalchemy as sa
+from flask import abort
+from flask_restx import Resource, marshal_with, reqparse
+from flask_restx.inputs import int_range
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
@@ -19,62 +17,88 @@ from fields.conversation_fields import (
     conversation_pagination_fields,
     conversation_with_summary_pagination_fields,
 )
+from libs.datetime_utils import naive_utc_now, parse_time_range
 from libs.helper import DatetimeString
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
 from models.model import AppMode
+from services.conversation_service import ConversationService
+from services.errors.conversation import ConversationNotExistsError
 
 
+@console_ns.route("/apps/<uuid:app_id>/completion-conversations")
 class CompletionConversationApi(Resource):
+    @api.doc("list_completion_conversations")
+    @api.doc(description="Get completion conversations with pagination and filtering")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("keyword", type=str, location="args", help="Search keyword")
+        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
+        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
+        .add_argument(
+            "annotation_status",
+            type=str,
+            location="args",
+            choices=["annotated", "not_annotated", "all"],
+            default="all",
+            help="Annotation status filter",
+        )
+        .add_argument("page", type=int, location="args", default=1, help="Page number")
+        .add_argument("limit", type=int, location="args", default=20, help="Page size (1-100)")
+    )
+    @api.response(200, "Success", conversation_pagination_fields)
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_pagination_fields)
+    @edit_permission_required
     def get(self, app_model):
-        if not current_user.is_editor:
-            raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("keyword", type=str, location="args")
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument(
-            "annotation_status", type=str, choices=["annotated", "not_annotated", "all"], default="all", location="args"
+        current_user, _ = current_account_with_tenant()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("keyword", type=str, location="args")
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument(
+                "annotation_status",
+                type=str,
+                choices=["annotated", "not_annotated", "all"],
+                default="all",
+                location="args",
+            )
+            .add_argument("page", type=int_range(1, 99999), default=1, location="args")
+            .add_argument("limit", type=int_range(1, 100), default=20, location="args")
         )
-        parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
-        query = db.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.mode == "completion")
+        query = sa.select(Conversation).where(
+            Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
+        )
 
         if args["keyword"]:
-            query = query.join(Message, Message.conversation_id == Conversation.id).filter(
+            query = query.join(Message, Message.conversation_id == Conversation.id).where(
                 or_(
-                    Message.query.ilike("%{}%".format(args["keyword"])),
-                    Message.answer.ilike("%{}%".format(args["keyword"])),
+                    Message.query.ilike(f"%{args['keyword']}%"),
+                    Message.answer.ilike(f"%{args['keyword']}%"),
                 )
             )
 
         account = current_user
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
+        assert account.timezone is not None
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
+        if start_datetime_utc:
             query = query.where(Conversation.created_at >= start_datetime_utc)
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=59)
-
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
+        if end_datetime_utc:
+            end_datetime_utc = end_datetime_utc.replace(second=59)
             query = query.where(Conversation.created_at < end_datetime_utc)
 
         # FIXME, the type ignore in this file
@@ -96,69 +120,111 @@ class CompletionConversationApi(Resource):
         return conversations
 
 
+@console_ns.route("/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
 class CompletionConversationDetailApi(Resource):
+    @api.doc("get_completion_conversation")
+    @api.doc(description="Get completion conversation details with messages")
+    @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @api.response(200, "Success", conversation_message_detail_fields)
+    @api.response(403, "Insufficient permissions")
+    @api.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_message_detail_fields)
+    @edit_permission_required
     def get(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_model, conversation_id)
 
+    @api.doc("delete_completion_conversation")
+    @api.doc(description="Delete a completion conversation")
+    @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @api.response(204, "Conversation deleted successfully")
+    @api.response(403, "Insufficient permissions")
+    @api.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @get_app_model(mode=AppMode.COMPLETION)
+    @edit_permission_required
     def delete(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
         conversation_id = str(conversation_id)
 
-        conversation = (
-            db.session.query(Conversation)
-            .filter(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
-            .first()
-        )
-
-        if not conversation:
+        try:
+            ConversationService.delete(app_model, conversation_id, current_user)
+        except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-
-        conversation.is_deleted = True
-        db.session.commit()
 
         return {"result": "success"}, 204
 
 
+@console_ns.route("/apps/<uuid:app_id>/chat-conversations")
 class ChatConversationApi(Resource):
+    @api.doc("list_chat_conversations")
+    @api.doc(description="Get chat conversations with pagination, filtering and summary")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser()
+        .add_argument("keyword", type=str, location="args", help="Search keyword")
+        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
+        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
+        .add_argument(
+            "annotation_status",
+            type=str,
+            location="args",
+            choices=["annotated", "not_annotated", "all"],
+            default="all",
+            help="Annotation status filter",
+        )
+        .add_argument("message_count_gte", type=int, location="args", help="Minimum message count")
+        .add_argument("page", type=int, location="args", default=1, help="Page number")
+        .add_argument("limit", type=int, location="args", default=20, help="Page size (1-100)")
+        .add_argument(
+            "sort_by",
+            type=str,
+            location="args",
+            choices=["created_at", "-created_at", "updated_at", "-updated_at"],
+            default="-updated_at",
+            help="Sort field and direction",
+        )
+    )
+    @api.response(200, "Success", conversation_with_summary_pagination_fields)
+    @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(conversation_with_summary_pagination_fields)
+    @edit_permission_required
     def get(self, app_model):
-        if not current_user.is_editor:
-            raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("keyword", type=str, location="args")
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument(
-            "annotation_status", type=str, choices=["annotated", "not_annotated", "all"], default="all", location="args"
-        )
-        parser.add_argument("message_count_gte", type=int_range(1, 99999), required=False, location="args")
-        parser.add_argument("page", type=int_range(1, 99999), required=False, default=1, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument(
-            "sort_by",
-            type=str,
-            choices=["created_at", "-created_at", "updated_at", "-updated_at"],
-            required=False,
-            default="-updated_at",
-            location="args",
+        current_user, _ = current_account_with_tenant()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("keyword", type=str, location="args")
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument(
+                "annotation_status",
+                type=str,
+                choices=["annotated", "not_annotated", "all"],
+                default="all",
+                location="args",
+            )
+            .add_argument("message_count_gte", type=int_range(1, 99999), required=False, location="args")
+            .add_argument("page", type=int_range(1, 99999), required=False, default=1, location="args")
+            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+            .add_argument(
+                "sort_by",
+                type=str,
+                choices=["created_at", "-created_at", "updated_at", "-updated_at"],
+                required=False,
+                default="-updated_at",
+                location="args",
+            )
         )
         args = parser.parse_args()
 
@@ -170,17 +236,17 @@ class ChatConversationApi(Resource):
             .subquery()
         )
 
-        query = db.select(Conversation).where(Conversation.app_id == app_model.id)
+        query = sa.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
 
         if args["keyword"]:
-            keyword_filter = "%{}%".format(args["keyword"])
+            keyword_filter = f"%{args['keyword']}%"
             query = (
                 query.join(
                     Message,
                     Message.conversation_id == Conversation.id,
                 )
                 .join(subquery, subquery.c.conversation_id == Conversation.id)
-                .filter(
+                .where(
                     or_(
                         Message.query.ilike(keyword_filter),
                         Message.answer.ilike(keyword_filter),
@@ -193,29 +259,22 @@ class ChatConversationApi(Resource):
             )
 
         account = current_user
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
+        assert account.timezone is not None
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
+        if start_datetime_utc:
             match args["sort_by"]:
                 case "updated_at" | "-updated_at":
                     query = query.where(Conversation.updated_at >= start_datetime_utc)
                 case "created_at" | "-created_at" | _:
                     query = query.where(Conversation.created_at >= start_datetime_utc)
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=59)
-
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
+        if end_datetime_utc:
+            end_datetime_utc = end_datetime_utc.replace(second=59)
             match args["sort_by"]:
                 case "updated_at" | "-updated_at":
                     query = query.where(Conversation.updated_at <= end_datetime_utc)
@@ -241,8 +300,8 @@ class ChatConversationApi(Resource):
                 .having(func.count(Message.id) >= args["message_count_gte"])
             )
 
-        if app_model.mode == AppMode.ADVANCED_CHAT.value:
-            query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER.value)
+        if app_model.mode == AppMode.ADVANCED_CHAT:
+            query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
 
         match args["sort_by"]:
             case "created_at":
@@ -261,53 +320,53 @@ class ChatConversationApi(Resource):
         return conversations
 
 
+@console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")
 class ChatConversationDetailApi(Resource):
+    @api.doc("get_chat_conversation")
+    @api.doc(description="Get chat conversation details")
+    @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @api.response(200, "Success", conversation_detail_fields)
+    @api.response(403, "Insufficient permissions")
+    @api.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(conversation_detail_fields)
+    @edit_permission_required
     def get(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_model, conversation_id)
 
+    @api.doc("delete_chat_conversation")
+    @api.doc(description="Delete a chat conversation")
+    @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @api.response(204, "Conversation deleted successfully")
+    @api.response(403, "Insufficient permissions")
+    @api.response(404, "Conversation not found")
     @setup_required
     @login_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @account_initialization_required
+    @edit_permission_required
     def delete(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
         conversation_id = str(conversation_id)
 
-        conversation = (
-            db.session.query(Conversation)
-            .filter(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
-            .first()
-        )
-
-        if not conversation:
+        try:
+            ConversationService.delete(app_model, conversation_id, current_user)
+        except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-
-        conversation.is_deleted = True
-        db.session.commit()
 
         return {"result": "success"}, 204
 
 
-api.add_resource(CompletionConversationApi, "/apps/<uuid:app_id>/completion-conversations")
-api.add_resource(CompletionConversationDetailApi, "/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
-api.add_resource(ChatConversationApi, "/apps/<uuid:app_id>/chat-conversations")
-api.add_resource(ChatConversationDetailApi, "/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")
-
-
 def _get_conversation(app_model, conversation_id):
+    current_user, _ = current_account_with_tenant()
     conversation = (
         db.session.query(Conversation)
-        .filter(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
+        .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)
         .first()
     )
 
@@ -315,7 +374,7 @@ def _get_conversation(app_model, conversation_id):
         raise NotFound("Conversation Not Exists.")
 
     if not conversation.read_at:
-        conversation.read_at = datetime.now(UTC).replace(tzinfo=None)
+        conversation.read_at = naive_utc_now()
         conversation.read_account_id = current_user.id
         db.session.commit()
 

@@ -1,4 +1,4 @@
-import produce from 'immer'
+import { produce } from 'immer'
 import type { VisualEditorProps } from '.'
 import { useMittContext } from './context'
 import { useVisualEditorStore } from './store'
@@ -45,8 +45,10 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       onChange(backupSchema)
       setBackupSchema(null)
     }
-    isAddingNewField && setIsAddingNewField(false)
-    advancedEditing && setAdvancedEditing(false)
+    if (isAddingNewField)
+      setIsAddingNewField(false)
+    if (advancedEditing)
+      setAdvancedEditing(false)
     setHoveringProperty(null)
   })
 
@@ -221,7 +223,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
   })
 
   useSubscribe('addField', (params) => {
-    advancedEditing && setAdvancedEditing(false)
+    if (advancedEditing)
+      setAdvancedEditing(false)
     setBackupSchema(jsonSchema)
     const { path } = params as AddEventParams
     setIsAddingNewField(true)
@@ -229,7 +232,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       const schema = findPropertyWithPath(draft, path) as Field
       if (schema.type === Type.object) {
         schema.properties = {
-          ...(schema.properties || {}),
+          ...schema.properties,
           '': {
             type: Type.string,
           },
@@ -238,7 +241,7 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
       }
       if (schema.type === Type.array && schema.items && schema.items.type === Type.object) {
         schema.items.properties = {
-          ...(schema.items.properties || {}),
+          ...schema.items.properties,
           '': {
             type: Type.string,
           },

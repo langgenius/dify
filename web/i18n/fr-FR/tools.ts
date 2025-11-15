@@ -2,7 +2,6 @@ const translation = {
   title: 'Outils',
   createCustomTool: 'Créer un Outil Personnalisé',
   type: {
-    all: 'Tout',
     builtIn: 'Intégré',
     custom: 'Personnalisé',
     workflow: 'Flux de travail',
@@ -20,7 +19,6 @@ const translation = {
     setupModalTitleDescription: 'Après avoir configuré les identifiants, tous les membres de l\'espace de travail peuvent utiliser cet outil lors de l\'orchestration des applications.',
   },
   includeToolNum: '{{num}} outils inclus',
-  addTool: 'Ajouter un outil',
   createTool: {
     title: 'Créer un Outil Personnalisé',
     editAction: 'Configurer',
@@ -54,7 +52,6 @@ const translation = {
       keyTooltip: 'Clé de l\'en-tête HTTP. Vous pouvez la laisser telle quelle avec "Autorisation" si vous n\'avez aucune idée de ce que c\'est, ou la définir sur une valeur personnalisée.',
       types: {
         none: 'Aucun',
-        api_key: 'Clé API',
         apiKeyPlaceholder: 'Nom de l\'en-tête HTTP pour la clé API',
         apiValuePlaceholder: 'Entrez la clé API',
         api_key_query: 'Paramètre de requête',
@@ -144,9 +141,7 @@ const translation = {
   addToolModal: {
     type: 'type',
     added: 'supplémentaire',
-    add: 'ajouter',
     category: 'catégorie',
-    manageInTools: 'Gérer dans Outils',
     custom: {
       title: 'Aucun outil personnalisé disponible',
       tip: 'Créer un outil personnalisé',
@@ -192,6 +187,24 @@ const translation = {
       cancel: 'Annuler',
       save: 'Enregistrer',
       confirm: 'Ajouter & Authoriser',
+      sseReadTimeout: 'Délai d\'attente de lecture SSE',
+      timeout: 'Délai d\'attente',
+      timeoutPlaceholder: 'trente',
+      headerValue: 'Valeur d\'en-tête',
+      headerKey: 'Nom de l\'en-tête',
+      noHeaders: 'Aucun en-tête personnalisé configuré',
+      headers: 'En-têtes',
+      headerKeyPlaceholder: 'par exemple, Autorisation',
+      headerValuePlaceholder: 'par exemple, Jeton d\'accès123',
+      headersTip: 'En-têtes HTTP supplémentaires à envoyer avec les requêtes au serveur MCP',
+      addHeader: 'Ajouter un en-tête',
+      maskedHeadersTip: 'Les valeurs d\'en-tête sont masquées pour des raisons de sécurité. Les modifications mettront à jour les valeurs réelles.',
+      clientSecretPlaceholder: 'Secret client',
+      configurations: 'Configurations',
+      clientID: 'ID client',
+      authentication: 'Authentification',
+      useDynamicClientRegistration: 'Utiliser l\'enregistrement dynamique des clients',
+      clientSecret: 'Secret client',
     },
     delete: 'Supprimer le Serveur MCP',
     deleteConfirmTitle: 'Souhaitez-vous supprimer {mcp}?',
@@ -232,7 +245,12 @@ const translation = {
       },
       publishTip: 'Application non publiée. Merci de publier l\'application en premier.',
     },
+    toolItem: {
+      parameters: 'Paramètres',
+      noDescription: 'Aucune description',
+    },
   },
+  allTools: 'Tous les outils',
 }
 
 export default translation

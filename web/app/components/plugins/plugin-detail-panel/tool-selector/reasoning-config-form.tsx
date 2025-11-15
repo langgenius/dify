@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiArrowRightUpLine,
   RiBracesLine,
@@ -54,7 +54,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
   const getVarKindType = (type: FormTypeEnum) => {
     if (type === FormTypeEnum.file || type === FormTypeEnum.files)
       return VarKindType.variable
-    if (type === FormTypeEnum.select || type === FormTypeEnum.boolean || type === FormTypeEnum.textNumber || type === FormTypeEnum.array || type === FormTypeEnum.object)
+    if (type === FormTypeEnum.select || type === FormTypeEnum.checkbox || type === FormTypeEnum.textNumber || type === FormTypeEnum.array || type === FormTypeEnum.object)
       return VarKindType.constant
     if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
       return VarKindType.mixed
@@ -164,7 +164,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
     const isArray = type === FormTypeEnum.array
     const isShowJSONEditor = isObject || isArray
     const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
-    const isBoolean = type === FormTypeEnum.boolean
+    const isBoolean = type === FormTypeEnum.checkbox
     const isSelect = type === FormTypeEnum.select
     const isAppSelector = type === FormTypeEnum.appSelector
     const isModelSelector = type === FormTypeEnum.modelSelector
@@ -222,12 +222,12 @@ const ReasoningConfigForm: React.FC<Props> = ({
                   {t('workflow.nodes.agent.clickToViewParameterSchema')}
                 </div>}
                 asChild={false}>
-                  <div
-                    className='ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
-                    onClick={() => showSchema(input_schema as SchemaRoot, label[language] || label.en_US)}
-                  >
-                    <RiBracesLine className='size-3.5'/>
-                  </div>
+                <div
+                  className='ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+                  onClick={() => showSchema(input_schema as SchemaRoot, label[language] || label.en_US)}
+                >
+                  <RiBracesLine className='size-3.5'/>
+                </div>
               </Tooltip>
             )}
 
@@ -259,7 +259,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 className='h-8 grow'
                 type='number'
                 value={varInput?.value || ''}
-                onChange={handleValueChange(variable, type)}
+                onChange={e => handleValueChange(variable, type)(e.target.value)}
                 placeholder={placeholder?.[language] || placeholder?.en_US}
               />
             )}

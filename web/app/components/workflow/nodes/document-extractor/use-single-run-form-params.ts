@@ -1,4 +1,4 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
 import type { DocExtractorNodeType } from './types'
@@ -11,7 +11,7 @@ type Params = {
   id: string,
   payload: DocExtractorNodeType,
   runInputData: Record<string, any>
-  runInputDataRef: MutableRefObject<Record<string, any>>
+  runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
   setRunInputData: (data: Record<string, any>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]

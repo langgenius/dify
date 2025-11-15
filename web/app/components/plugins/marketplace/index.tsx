@@ -6,7 +6,7 @@ import PluginTypeSwitch from './plugin-type-switch'
 import ListWrapper from './list/list-wrapper'
 import type { SearchParams } from './types'
 import { getMarketplaceCollectionsAndPlugins } from './utils'
-import { TanstackQueryIniter } from '@/context/query-client'
+import { TanstackQueryInitializer } from '@/context/query-client'
 
 type MarketplaceProps = {
   locale: string
@@ -39,7 +39,7 @@ const Marketplace = async ({
   }
 
   return (
-    <TanstackQueryIniter>
+    <TanstackQueryInitializer>
       <MarketplaceContextProvider
         searchParams={searchParams}
         shouldExclude={shouldExclude}
@@ -65,7 +65,7 @@ const Marketplace = async ({
           showInstallButton={showInstallButton}
         />
       </MarketplaceContextProvider>
-    </TanstackQueryIniter>
+    </TanstackQueryInitializer>
   )
 }
 

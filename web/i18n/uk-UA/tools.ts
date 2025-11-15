@@ -2,7 +2,6 @@ const translation = {
   title: 'Інструменти',
   createCustomTool: 'Створити власний інструмент',
   type: {
-    all: 'Усі',
     builtIn: 'Вбудовані',
     custom: 'Користувацькі',
     workflow: 'Робочий процес',
@@ -20,7 +19,6 @@ const translation = {
     setupModalTitleDescription: 'Після налаштування облікових даних усі члени робочого простору можуть використовувати цей інструмент під час оркестрування програм.',
   },
   includeToolNum: '{{num}} інструмент(ів) включено',
-  addTool: 'Додати інструмент ',
   createTool: {
     title: 'Створити власний інструмент',
     editAction: 'Налаштування',
@@ -54,7 +52,6 @@ const translation = {
       keyTooltip: 'Ключ HTTP-заголовка. Якщо ви не знаєте, залиште його як "Authorization" або встановіть власне значення',
       types: {
         none: 'Відсутня',
-        api_key: 'API-ключ',
         apiKeyPlaceholder: 'Назва HTTP-заголовка для API-ключа',
         apiValuePlaceholder: 'Введіть API-ключ',
         api_key_header: 'Заголовок',
@@ -143,10 +140,8 @@ const translation = {
   howToGet: 'Як отримати',
   addToolModal: {
     category: 'категорія',
-    add: 'Додати',
     added: 'Додано',
     type: 'тип',
-    manageInTools: 'Керування в інструментах',
     custom: {
       title: 'Немає доступного користувацького інструмента',
       tip: 'Створити користувацький інструмент',
@@ -192,6 +187,24 @@ const translation = {
       cancel: 'Скасувати',
       save: 'Зберегти',
       confirm: 'Додати та Авторизувати',
+      timeout: 'Час вичерпано',
+      sseReadTimeout: 'Тайм-аут читання SSE',
+      headers: 'Заголовки',
+      headerValuePlaceholder: 'наприклад, токен носія 123',
+      headerValue: 'Значення заголовка',
+      headerKey: 'Назва заголовка',
+      timeoutPlaceholder: 'тридцять',
+      addHeader: 'Додати заголовок',
+      noHeaders: 'Не налаштовано спеціальні заголовки',
+      headerKeyPlaceholder: 'наприклад, Авторизація',
+      maskedHeadersTip: 'Значення заголовків маскуються для безпеки. Зміни оновлять фактичні значення.',
+      headersTip: 'Додаткові HTTP заголовки для відправлення з запитами до сервера MCP',
+      clientSecret: 'Секрет клієнта',
+      clientSecretPlaceholder: 'Секрет клієнта',
+      clientID: 'Ідентифікатор клієнта',
+      authentication: 'Аутентифікація',
+      configurations: 'Конфігурації',
+      useDynamicClientRegistration: 'Використовувати динамічну реєстрацію клієнтів',
     },
     delete: 'Видалити сервер MCP',
     deleteConfirmTitle: 'Видалити {mcp}?',
@@ -232,7 +245,12 @@ const translation = {
       },
       publishTip: 'Додаток не опубліковано. Спочатку опублікуйте додаток.',
     },
+    toolItem: {
+      parameters: 'Параметри',
+      noDescription: 'Немає опису',
+    },
   },
+  allTools: 'Всі інструменти',
 }
 
 export default translation

@@ -66,7 +66,7 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
     app_model = MagicMock()
     app_model.id = "app_id"
     app_model.tenant_id = "tenant_id"
-    app_model.mode = AppMode.CHAT.value
+    app_model.mode = AppMode.CHAT
 
     api_based_extension_id = "api_based_extension_id"
     mock_api_based_extension = APIBasedExtension(
@@ -107,7 +107,7 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
     assert body_data
 
     body_data_json = json.loads(body_data)
-    assert body_data_json["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY.value
+    assert body_data_json["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY
 
     body_params = body_data_json["params"]
     assert body_params["app_id"] == app_model.id
@@ -127,7 +127,7 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
     app_model = MagicMock()
     app_model.id = "app_id"
     app_model.tenant_id = "tenant_id"
-    app_model.mode = AppMode.WORKFLOW.value
+    app_model.mode = AppMode.WORKFLOW
 
     api_based_extension_id = "api_based_extension_id"
     mock_api_based_extension = APIBasedExtension(
@@ -168,7 +168,7 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
     assert body_data
 
     body_data_json = json.loads(body_data)
-    assert body_data_json["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY.value
+    assert body_data_json["point"] == APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY
 
     body_params = body_data_json["params"]
     assert body_params["app_id"] == app_model.id
@@ -199,6 +199,7 @@ def test__convert_to_knowledge_retrieval_node_for_chatbot():
     node = WorkflowConverter()._convert_to_knowledge_retrieval_node(
         new_app_mode=new_app_mode, dataset_config=dataset_config, model_config=model_config
     )
+    assert node is not None
 
     assert node["data"]["type"] == "knowledge-retrieval"
     assert node["data"]["query_variable_selector"] == ["sys", "query"]
@@ -231,6 +232,7 @@ def test__convert_to_knowledge_retrieval_node_for_workflow_app():
     node = WorkflowConverter()._convert_to_knowledge_retrieval_node(
         new_app_mode=new_app_mode, dataset_config=dataset_config, model_config=model_config
     )
+    assert node is not None
 
     assert node["data"]["type"] == "knowledge-retrieval"
     assert node["data"]["query_variable_selector"] == ["start", dataset_config.retrieve_config.query_variable]

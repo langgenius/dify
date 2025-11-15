@@ -107,7 +107,7 @@ const ConversationVariableModal = ({
           <div className='flex h-0 grow flex-col p-4 pt-2'>
             <div className='mb-2 flex shrink-0 items-center gap-2'>
               <div className='system-xs-medium-uppercase shrink-0 text-text-tertiary'>{t('workflow.chatVariable.storedContent').toLocaleUpperCase()}</div>
-              <div className='h-[1px] grow' style={{
+              <div className='h-px grow' style={{
                 background: 'linear-gradient(to right, rgba(16, 24, 40, 0.08) 0%, rgba(255, 255, 255) 100%)',
               }}></div>
               {latestValueTimestampMap[currentVar.id] && (

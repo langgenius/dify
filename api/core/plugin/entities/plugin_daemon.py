@@ -1,11 +1,13 @@
+import enum
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.agent.plugin_entities import AgentProviderEntityWithPlugin
+from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
@@ -13,6 +15,7 @@ from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
+from core.trigger.entities.entities import TriggerProviderEntity
 
 T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
 
@@ -24,7 +27,7 @@ class PluginDaemonBasicResponse(BaseModel, Generic[T]):
 
     code: int
     message: str
-    data: Optional[T]
+    data: T | None = None
 
 
 class InstallPluginMessage(BaseModel):
@@ -46,6 +49,14 @@ class PluginToolProviderEntity(BaseModel):
     plugin_unique_identifier: str
     plugin_id: str
     declaration: ToolProviderEntityWithPlugin
+
+
+class PluginDatasourceProviderEntity(BaseModel):
+    provider: str
+    plugin_unique_identifier: str
+    plugin_id: str
+    is_authorized: bool = False
+    declaration: DatasourceProviderEntityWithPlugin
 
 
 class PluginAgentProviderEntity(BaseModel):
@@ -174,7 +185,7 @@ class PluginVerification(BaseModel):
 class PluginDecodeResponse(BaseModel):
     unique_identifier: str = Field(description="The unique identifier of the plugin.")
     manifest: PluginDeclaration
-    verification: Optional[PluginVerification] = Field(default=None, description="Basic verification information")
+    verification: PluginVerification | None = Field(default=None, description="Basic verification information")
 
 
 class PluginOAuthAuthorizationUrlResponse(BaseModel):
@@ -182,6 +193,10 @@ class PluginOAuthAuthorizationUrlResponse(BaseModel):
 
 
 class PluginOAuthCredentialsResponse(BaseModel):
+    metadata: Mapping[str, Any] = Field(
+        default_factory=dict, description="The metadata of the OAuth, like avatar url, name, etc."
+    )
+    expires_at: int = Field(default=-1, description="The expires at time of the credentials. UTC timestamp.")
     credentials: Mapping[str, Any] = Field(description="The credentials of the OAuth.")
 
 
@@ -192,3 +207,53 @@ class PluginListResponse(BaseModel):
 
 class PluginDynamicSelectOptionsResponse(BaseModel):
     options: Sequence[PluginParameterOption] = Field(description="The options of the dynamic select.")
+
+
+class PluginTriggerProviderEntity(BaseModel):
+    provider: str
+    plugin_unique_identifier: str
+    plugin_id: str
+    declaration: TriggerProviderEntity
+
+
+class CredentialType(enum.StrEnum):
+    API_KEY = "api-key"
+    OAUTH2 = "oauth2"
+    UNAUTHORIZED = "unauthorized"
+
+    def get_name(self):
+        if self == CredentialType.API_KEY:
+            return "API KEY"
+        elif self == CredentialType.OAUTH2:
+            return "AUTH"
+        elif self == CredentialType.UNAUTHORIZED:
+            return "UNAUTHORIZED"
+        else:
+            return self.value.replace("-", " ").upper()
+
+    def is_editable(self):
+        return self == CredentialType.API_KEY
+
+    def is_validate_allowed(self):
+        return self == CredentialType.API_KEY
+
+    @classmethod
+    def values(cls):
+        return [item.value for item in cls]
+
+    @classmethod
+    def of(cls, credential_type: str) -> "CredentialType":
+        type_name = credential_type.lower()
+        if type_name in {"api-key", "api_key"}:
+            return cls.API_KEY
+        elif type_name in {"oauth2", "oauth"}:
+            return cls.OAUTH2
+        elif type_name == "unauthorized":
+            return cls.UNAUTHORIZED
+        else:
+            raise ValueError(f"Invalid credential type: {credential_type}")
+
+
+class PluginReadmeResponse(BaseModel):
+    content: str = Field(description="The readme of the plugin.")
+    language: str = Field(description="The language of the readme.")

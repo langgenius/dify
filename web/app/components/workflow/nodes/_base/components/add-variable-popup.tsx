@@ -27,6 +27,7 @@ export const AddVariablePopup = ({
           hideSearch
           vars={availableVars}
           onChange={onSelect}
+          isSupportFileVar
         />
       </div>
     </div>

@@ -1,7 +1,7 @@
 const translation = {
   title: 'Логирование',
   description: 'В логах записывается состояние работы приложения, включая пользовательский ввод и ответы ИИ.',
-  dateTimeFormat: 'DD.MM.YYYY HH:mm',
+  dateTimeFormat: 'DD.MM.YYYY HH:mm:ss',
   table: {
     header: {
       updatedTime: 'Время обновления',
@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'С начала квартала',
       yearToDate: 'С начала года',
       allTime: 'Все время',
+      last30days: 'Последние 30 дней',
+      custom: 'Кастомный',
     },
     annotation: {
       all: 'Все',
@@ -82,6 +84,7 @@ const translation = {
     workflowTitle: 'Подробная информация о журнале',
     fileListLabel: 'Сведения о файле',
     fileListDetail: 'Подробность',
+    testWithParams: 'Тест с параметрами',
   },
   promptLog: 'Журнал подсказок',
   agentLog: 'Журнал агента',
@@ -93,6 +96,7 @@ const translation = {
     iteration: 'Итерация',
     finalProcessing: 'Окончательная обработка',
   },
+  dateFormat: 'ДД/ММ/ГГГГ',
 }
 
 export default translation

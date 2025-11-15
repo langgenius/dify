@@ -56,6 +56,10 @@ export type ChatWithHistoryContextValue = {
   currentConversationInputs: Record<string, any> | null,
   setCurrentConversationInputs: (v: Record<string, any>) => void,
   allInputsHidden: boolean,
+  initUserVariables?: {
+    name?: string
+    avatar_url?: string
+  }
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
@@ -90,5 +94,6 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   currentConversationInputs: {},
   setCurrentConversationInputs: noop,
   allInputsHidden: false,
+  initUserVariables: {},
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

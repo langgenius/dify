@@ -5,7 +5,7 @@ import {
   RiCollapseDiagonalLine,
   RiExpandDiagonalLine,
 } from '@remixicon/react'
-import { useDocumentContext } from '../index'
+import { useDocumentContext } from '../context'
 import ActionButtons from './common/action-buttons'
 import ChunkContent from './common/chunk-content'
 import Keywords from './common/keywords'
@@ -27,6 +27,7 @@ type ISegmentDetailProps = {
   onCancel: () => void
   isEditMode?: boolean
   docForm: ChunkingMode
+  onModalStateChange?: (isOpen: boolean) => void
 }
 
 /**
@@ -38,6 +39,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   onCancel,
   isEditMode,
   docForm,
+  onModalStateChange,
 }) => {
   const { t } = useTranslation()
   const [question, setQuestion] = useState(isEditMode ? segInfo?.content || '' : segInfo?.sign_content || '')
@@ -48,7 +50,6 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const [showRegenerationModal, setShowRegenerationModal] = useState(false)
   const fullScreen = useSegmentListContext(s => s.fullScreen)
   const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
-  const mode = useDocumentContext(s => s.mode)
   const parentMode = useDocumentContext(s => s.parentMode)
   const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
 
@@ -69,11 +70,19 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
 
   const handleRegeneration = useCallback(() => {
     setShowRegenerationModal(true)
-  }, [])
+    onModalStateChange?.(true)
+  }, [onModalStateChange])
 
   const onCancelRegeneration = useCallback(() => {
     setShowRegenerationModal(false)
-  }, [])
+    onModalStateChange?.(false)
+  }, [onModalStateChange])
+
+  const onCloseAfterRegeneration = useCallback(() => {
+    setShowRegenerationModal(false)
+    onModalStateChange?.(false)
+    onCancel() // Close the edit drawer
+  }, [onCancel, onModalStateChange])
 
   const onConfirmRegeneration = useCallback(() => {
     onUpdate(segInfo?.id || '', question, answer, keywords, true)
@@ -86,9 +95,9 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     return `${total} ${t('datasetDocuments.segment.characters', { count })}`
   }, [isEditMode, question.length, answer.length, docForm, segInfo, t])
 
-  const isFullDocMode = mode === 'hierarchical' && parentMode === 'full-doc'
+  const isFullDocMode = docForm === ChunkingMode.parentChild && parentMode === 'full-doc'
   const titleText = isEditMode ? t('datasetDocuments.segment.editChunk') : t('datasetDocuments.segment.chunkDetail')
-  const labelPrefix = mode === 'hierarchical' ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
+  const labelPrefix = docForm === ChunkingMode.parentChild ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
   const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
 
   return (
@@ -162,7 +171,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
             isShow={showRegenerationModal}
             onConfirm={onConfirmRegeneration}
             onCancel={onCancelRegeneration}
-            onClose={onCancelRegeneration}
+            onClose={onCloseAfterRegeneration}
           />
         )
       }

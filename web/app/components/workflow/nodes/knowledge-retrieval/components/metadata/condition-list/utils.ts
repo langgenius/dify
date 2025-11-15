@@ -32,6 +32,8 @@ export const getOperators = (type?: MetadataFilteringVariableType) => {
         ComparisonOperator.endWith,
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
+        ComparisonOperator.in,
+        ComparisonOperator.notIn,
       ]
     case MetadataFilteringVariableType.number:
       return [

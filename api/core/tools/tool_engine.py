@@ -1,9 +1,10 @@
+import contextlib
 import json
 from collections.abc import Generator, Iterable
 from copy import deepcopy
 from datetime import UTC, datetime
 from mimetypes import guess_type
-from typing import Any, Optional, Union, cast
+from typing import Any, Union, cast
 
 from yarl import URL
 
@@ -29,7 +30,7 @@ from core.tools.errors import (
     ToolProviderCredentialValidationError,
     ToolProviderNotFoundError,
 )
-from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_value
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
 from models.enums import CreatorUserRole
@@ -50,10 +51,10 @@ class ToolEngine:
         message: Message,
         invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
-        trace_manager: Optional[TraceQueueManager] = None,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        trace_manager: TraceQueueManager | None = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> tuple[str, list[str], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
@@ -69,10 +70,8 @@ class ToolEngine:
             if parameters and len(parameters) == 1:
                 tool_parameters = {parameters[0].name: tool_parameters}
             else:
-                try:
+                with contextlib.suppress(Exception):
                     tool_parameters = json.loads(tool_parameters)
-                except Exception:
-                    pass
                 if not isinstance(tool_parameters, dict):
                     raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
 
@@ -153,10 +152,9 @@ class ToolEngine:
         user_id: str,
         workflow_tool_callback: DifyWorkflowCallbackHandler,
         workflow_call_depth: int,
-        thread_pool_id: Optional[str] = None,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Workflow invokes the tool with the given arguments.
@@ -167,7 +165,6 @@ class ToolEngine:
 
             if isinstance(tool, WorkflowTool):
                 tool.workflow_call_depth = workflow_call_depth + 1
-                tool.thread_pool_id = thread_pool_id
 
             if tool.runtime and tool.runtime.runtime_parameters:
                 tool_parameters = {**tool.runtime.runtime_parameters, **tool_parameters}
@@ -197,9 +194,9 @@ class ToolEngine:
         tool: Tool,
         tool_parameters: dict,
         user_id: str,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]:
         """
         Invoke the tool with the given arguments.
@@ -231,28 +228,41 @@ class ToolEngine:
         """
         Handle tool response
         """
-        result = ""
+        parts: list[str] = []
+        json_parts: list[str] = []
+
         for response in tool_response:
             if response.type == ToolInvokeMessage.MessageType.TEXT:
-                result += cast(ToolInvokeMessage.TextMessage, response.message).text
+                parts.append(cast(ToolInvokeMessage.TextMessage, response.message).text)
             elif response.type == ToolInvokeMessage.MessageType.LINK:
-                result += (
+                parts.append(
                     f"result link: {cast(ToolInvokeMessage.TextMessage, response.message).text}."
                     + " please tell user to check it."
                 )
             elif response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
-                result += (
+                parts.append(
                     "image has been created and sent to user already, "
                     + "you do not need to create it, just tell the user to check it now."
                 )
             elif response.type == ToolInvokeMessage.MessageType.JSON:
-                result += json.dumps(
-                    cast(ToolInvokeMessage.JsonMessage, response.message).json_object, ensure_ascii=False
+                json_message = cast(ToolInvokeMessage.JsonMessage, response.message)
+                if json_message.suppress_output:
+                    continue
+                json_parts.append(
+                    json.dumps(
+                        safe_json_value(cast(ToolInvokeMessage.JsonMessage, response.message).json_object),
+                        ensure_ascii=False,
+                    )
                 )
             else:
-                result += str(response.message)
+                parts.append(str(response.message))
 
-        return result
+        # Add JSON parts, avoiding duplicates from text parts.
+        if json_parts:
+            existing_parts = set(parts)
+            parts.extend(p for p in json_parts if p not in existing_parts)
+
+        return "".join(parts)
 
     @staticmethod
     def _extract_tool_response_binary_and_text(
@@ -269,20 +279,18 @@ class ToolEngine:
                 if response.meta.get("mime_type"):
                     mimetype = response.meta.get("mime_type")
                 else:
-                    try:
+                    with contextlib.suppress(Exception):
                         url = URL(cast(ToolInvokeMessage.TextMessage, response.message).text)
                         extension = url.suffix
                         guess_type_result, _ = guess_type(f"a{extension}")
                         if guess_type_result:
                             mimetype = guess_type_result
-                    except Exception:
-                        pass
 
                 if not mimetype:
                     mimetype = "image/jpeg"
 
                 yield ToolInvokeMessageBinary(
-                    mimetype=response.meta.get("mime_type", "image/jpeg"),
+                    mimetype=response.meta.get("mime_type", mimetype),
                     url=cast(ToolInvokeMessage.TextMessage, response.message).text,
                 )
             elif response.type == ToolInvokeMessage.MessageType.BLOB:

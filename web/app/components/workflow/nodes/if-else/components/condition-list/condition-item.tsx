@@ -5,7 +5,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine } from '@remixicon/react'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { VarType as NumberVarType } from '../../../tool/types'
 import type {
   Condition,
@@ -38,8 +38,16 @@ import { VarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 import { SimpleSelect as Select } from '@/app/components/base/select'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 import { getVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
+import useMatchSchemaType from '../../../_base/components/variable/use-match-schema-type'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 
 type ConditionItemProps = {
@@ -89,10 +97,12 @@ const ConditionItem = ({
   const [isHovered, setIsHovered] = useState(false)
   const [open, setOpen] = useState(false)
 
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
+
   const workflowStore = useWorkflowStore()
-  const {
-    setControlPromptEditorRerenderKey,
-  } = workflowStore.getState()
 
   const doUpdateCondition = useCallback((newCondition: Condition) => {
     if (isSubVariableKey)
@@ -142,12 +152,12 @@ const ConditionItem = ({
 
   const isArrayValue = fileAttr?.key === 'transfer_method' || fileAttr?.key === 'type'
 
-  const handleUpdateConditionValue = useCallback((value: string) => {
-    if (value === condition.value || (isArrayValue && value === condition.value?.[0]))
+  const handleUpdateConditionValue = useCallback((value: string | boolean) => {
+    if (value === condition.value || (isArrayValue && value === (condition.value as string[])?.[0]))
       return
     const newCondition = {
       ...condition,
-      value: isArrayValue ? [value] : value,
+      value: isArrayValue ? [value as string] : value,
     }
     doUpdateCondition(newCondition)
   }, [condition, doUpdateCondition, isArrayValue])
@@ -202,24 +212,50 @@ const ConditionItem = ({
       onRemoveCondition?.(caseId, condition.id)
   }, [caseId, condition, conditionId, isSubVariableKey, onRemoveCondition, onRemoveSubVariableCondition])
 
-  const handleVarChange = useCallback((valueSelector: ValueSelector, varItem: Var) => {
+  const { schemaTypeDefinitions } = useMatchSchemaType()
+  const handleVarChange = useCallback((valueSelector: ValueSelector, _varItem: Var) => {
+    const {
+      conversationVariables,
+      setControlPromptEditorRerenderKey,
+      dataSourceList,
+    } = workflowStore.getState()
     const resolvedVarType = getVarType({
       valueSelector,
+      conversationVariables,
       availableNodes,
       isChatMode,
+      allPluginInfoList: {
+        buildInTools: buildInTools || [],
+        customTools: customTools || [],
+        mcpTools: mcpTools || [],
+        workflowTools: workflowTools || [],
+        dataSourceList: dataSourceList || [],
+      },
+      schemaTypeDefinitions,
     })
 
     const newCondition = produce(condition, (draft) => {
       draft.variable_selector = valueSelector
       draft.varType = resolvedVarType
-      draft.value = ''
+      draft.value = resolvedVarType === VarType.boolean ? false : ''
       draft.comparison_operator = getOperators(resolvedVarType)[0]
+      delete draft.key
+      delete draft.sub_variable_condition
+      delete draft.numberVarType
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     })
     doUpdateCondition(newCondition)
     setOpen(false)
-  }, [condition, doUpdateCondition, availableNodes, isChatMode, setControlPromptEditorRerenderKey])
+  }, [condition, doUpdateCondition, availableNodes, isChatMode, schemaTypeDefinitions, buildInTools, customTools, mcpTools, workflowTools])
 
+  const showBooleanInput = useMemo(() => {
+    if(condition.varType === VarType.boolean)
+      return true
+
+    if(condition.varType === VarType.arrayBoolean && [ComparisonOperator.contains, ComparisonOperator.notContains].includes(condition.comparison_operator!))
+      return true
+    return false
+  }, [condition])
   return (
     <div className={cn('mb-1 flex last-of-type:mb-0', className)}>
       <div className={cn(
@@ -273,7 +309,7 @@ const ConditionItem = ({
           />
         </div>
         {
-          !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && condition.varType !== VarType.number && (
+          !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && condition.varType !== VarType.number && !showBooleanInput && (
             <div className='max-h-[100px] overflow-y-auto border-t border-t-divider-subtle px-2 py-1'>
               <ConditionInput
                 disabled={disabled}
@@ -281,6 +317,16 @@ const ConditionItem = ({
                 onChange={handleUpdateConditionValue}
                 nodesOutputVars={nodesOutputVars}
                 availableNodes={availableNodes}
+              />
+            </div>
+          )
+        }
+        {
+          !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && showBooleanInput && (
+            <div className='p-1'>
+              <BoolValue
+                value={condition.value as boolean}
+                onChange={handleUpdateConditionValue}
               />
             </div>
           )

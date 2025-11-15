@@ -1,17 +1,18 @@
 import json
 import logging
-import re
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
+from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
-from core.plugin.entities.plugin import ToolProviderID
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.api_entities import (
@@ -20,7 +21,6 @@ from core.tools.entities.api_entities import (
     ToolProviderCredentialApiEntity,
     ToolProviderCredentialInfoApiEntity,
 )
-from core.tools.entities.tool_entities import CredentialType
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
@@ -29,6 +29,7 @@ from core.tools.utils.encryption import create_provider_encrypter
 from core.tools.utils.system_oauth_encryption import decrypt_system_oauth_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
@@ -153,7 +154,7 @@ class BuiltinToolManageService:
             # get if the provider exists
             db_provider = (
                 session.query(BuiltinToolProvider)
-                .filter(
+                .where(
                     BuiltinToolProvider.tenant_id == tenant_id,
                     BuiltinToolProvider.id == credential_id,
                 )
@@ -189,11 +190,14 @@ class BuiltinToolManageService:
                 # update name if provided
                 if name and name != db_provider.name:
                     # check if the name is already used
-                    if (
-                        session.query(BuiltinToolProvider)
-                        .filter_by(tenant_id=tenant_id, provider=provider, name=name)
-                        .count()
-                        > 0
+                    if session.scalar(
+                        select(
+                            exists().where(
+                                BuiltinToolProvider.tenant_id == tenant_id,
+                                BuiltinToolProvider.provider == provider,
+                                BuiltinToolProvider.name == name,
+                            )
+                        )
                     ):
                         raise ValueError(f"the credential name '{name}' is already used")
 
@@ -212,13 +216,14 @@ class BuiltinToolManageService:
         tenant_id: str,
         provider: str,
         credentials: dict,
+        expires_at: int = -1,
         name: str | None = None,
     ):
         """
         add builtin tool provider
         """
-        try:
-            with Session(db.engine) as session:
+        with Session(db.engine) as session:
+            try:
                 lock = f"builtin_tool_provider_create_lock:{tenant_id}_{provider}"
                 with redis_client.lock(lock, timeout=20):
                     provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
@@ -244,11 +249,14 @@ class BuiltinToolManageService:
                         )
                     else:
                         # check if the name is already used
-                        if (
-                            session.query(BuiltinToolProvider)
-                            .filter_by(tenant_id=tenant_id, provider=provider, name=name)
-                            .count()
-                            > 0
+                        if session.scalar(
+                            select(
+                                exists().where(
+                                    BuiltinToolProvider.tenant_id == tenant_id,
+                                    BuiltinToolProvider.provider == provider,
+                                    BuiltinToolProvider.name == name,
+                                )
+                            )
                         ):
                             raise ValueError(f"the credential name '{name}' is already used")
 
@@ -269,13 +277,14 @@ class BuiltinToolManageService:
                         encrypted_credentials=json.dumps(encrypter.encrypt(credentials)),
                         credential_type=api_type.value,
                         name=name,
+                        expires_at=expires_at if expires_at is not None else -1,
                     )
 
                     session.add(db_provider)
                     session.commit()
-        except Exception as e:
-            session.rollback()
-            raise ValueError(str(e))
+            except Exception as e:
+                session.rollback()
+                raise ValueError(str(e))
         return {"result": "success"}
 
     @staticmethod
@@ -299,42 +308,20 @@ class BuiltinToolManageService:
     def generate_builtin_tool_provider_name(
         session: Session, tenant_id: str, provider: str, credential_type: CredentialType
     ) -> str:
-        try:
-            db_providers = (
-                session.query(BuiltinToolProvider)
-                .filter_by(
-                    tenant_id=tenant_id,
-                    provider=provider,
-                    credential_type=credential_type.value,
-                )
-                .order_by(BuiltinToolProvider.created_at.desc())
-                .all()
+        db_providers = (
+            session.query(BuiltinToolProvider)
+            .filter_by(
+                tenant_id=tenant_id,
+                provider=provider,
+                credential_type=credential_type.value,
             )
-
-            # Get the default name pattern
-            default_pattern = f"{credential_type.get_name()}"
-
-            # Find all names that match the default pattern: "{default_pattern} {number}"
-            pattern = rf"^{re.escape(default_pattern)}\s+(\d+)$"
-            numbers = []
-
-            for db_provider in db_providers:
-                if db_provider.name:
-                    match = re.match(pattern, db_provider.name.strip())
-                    if match:
-                        numbers.append(int(match.group(1)))
-
-            # If no default pattern names found, start with 1
-            if not numbers:
-                return f"{default_pattern} 1"
-
-            # Find the next number
-            max_number = max(numbers)
-            return f"{default_pattern} {max_number + 1}"
-        except Exception as e:
-            logger.warning(f"Error generating next provider name for {provider}: {str(e)}")
-            # fallback
-            return f"{credential_type.get_name()} 1"
+            .order_by(BuiltinToolProvider.created_at.desc())
+            .all()
+        )
+        return generate_incremental_name(
+            [provider.name for provider in db_providers],
+            f"{credential_type.get_name()}",
+        )
 
     @staticmethod
     def get_builtin_tool_provider_credentials(
@@ -359,18 +346,14 @@ class BuiltinToolManageService:
             provider_controller = ToolManager.get_builtin_provider(default_provider.provider, tenant_id)
 
             credentials: list[ToolProviderCredentialApiEntity] = []
-            encrypters = {}
             for provider in providers:
-                credential_type = provider.credential_type
-                if credential_type not in encrypters:
-                    encrypters[credential_type] = BuiltinToolManageService.create_tool_encrypter(
-                        tenant_id, provider, provider.provider, provider_controller
-                    )[0]
-                encrypter = encrypters[credential_type]
-                decrypt_credential = encrypter.mask_tool_credentials(encrypter.decrypt(provider.credentials))
+                encrypter, _ = BuiltinToolManageService.create_tool_encrypter(
+                    tenant_id, provider, provider.provider, provider_controller
+                )
+                decrypt_credential = encrypter.mask_plugin_credentials(encrypter.decrypt(provider.credentials))
                 credential_entity = ToolTransformService.convert_builtin_provider_to_credential_entity(
                     provider=provider,
-                    credentials=decrypt_credential,
+                    credentials=dict(decrypt_credential),
                 )
                 credentials.append(credential_entity)
             return credentials
@@ -399,7 +382,7 @@ class BuiltinToolManageService:
         with Session(db.engine) as session:
             db_provider = (
                 session.query(BuiltinToolProvider)
-                .filter(
+                .where(
                     BuiltinToolProvider.tenant_id == tenant_id,
                     BuiltinToolProvider.id == credential_id,
                 )
@@ -448,7 +431,7 @@ class BuiltinToolManageService:
         check if oauth system client exists
         """
         tool_provider = ToolProviderID(provider_name)
-        with Session(db.engine).no_autoflush as session:
+        with Session(db.engine, autoflush=False) as session:
             system_client: ToolOAuthSystemClient | None = (
                 session.query(ToolOAuthSystemClient)
                 .filter_by(plugin_id=tool_provider.plugin_id, provider=tool_provider.provider_name)
@@ -462,7 +445,7 @@ class BuiltinToolManageService:
         check if oauth custom client is enabled
         """
         tool_provider = ToolProviderID(provider)
-        with Session(db.engine).no_autoflush as session:
+        with Session(db.engine, autoflush=False) as session:
             user_client: ToolOAuthTenantClient | None = (
                 session.query(ToolOAuthTenantClient)
                 .filter_by(
@@ -487,7 +470,7 @@ class BuiltinToolManageService:
             config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
             cache=NoOpProviderCredentialCache(),
         )
-        with Session(db.engine).no_autoflush as session:
+        with Session(db.engine, autoflush=False) as session:
             user_client: ToolOAuthTenantClient | None = (
                 session.query(ToolOAuthTenantClient)
                 .filter_by(
@@ -503,10 +486,10 @@ class BuiltinToolManageService:
                 oauth_params = encrypter.decrypt(user_client.oauth_params)
                 return oauth_params
 
-            # only verified provider can use custom oauth client
-            is_verified = not isinstance(provider, PluginToolProviderController) or PluginService.is_plugin_verified(
-                tenant_id, provider.plugin_unique_identifier
-            )
+            # only verified provider can use official oauth client
+            is_verified = not isinstance(
+                provider_controller, PluginToolProviderController
+            ) or PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
             if not is_verified:
                 return oauth_params
 
@@ -541,65 +524,64 @@ class BuiltinToolManageService:
         # get all builtin providers
         provider_controllers = ToolManager.list_builtin_providers(tenant_id)
 
-        with db.session.no_autoflush:
-            # get all user added providers
-            db_providers: list[BuiltinToolProvider] = ToolManager.list_default_builtin_providers(tenant_id)
+        # get all user added providers
+        db_providers: list[BuiltinToolProvider] = ToolManager.list_default_builtin_providers(tenant_id)
 
-            # rewrite db_providers
-            for db_provider in db_providers:
-                db_provider.provider = str(ToolProviderID(db_provider.provider))
+        # rewrite db_providers
+        for db_provider in db_providers:
+            db_provider.provider = str(ToolProviderID(db_provider.provider))
 
-            # find provider
-            def find_provider(provider):
-                return next(filter(lambda db_provider: db_provider.provider == provider, db_providers), None)
+        # find provider
+        def find_provider(provider):
+            return next(filter(lambda db_provider: db_provider.provider == provider, db_providers), None)
 
-            result: list[ToolProviderApiEntity] = []
+        result: list[ToolProviderApiEntity] = []
 
-            for provider_controller in provider_controllers:
-                try:
-                    # handle include, exclude
-                    if is_filtered(
-                        include_set=dify_config.POSITION_TOOL_INCLUDES_SET,  # type: ignore
-                        exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,  # type: ignore
-                        data=provider_controller,
-                        name_func=lambda x: x.identity.name,
-                    ):
-                        continue
+        for provider_controller in provider_controllers:
+            try:
+                # handle include, exclude
+                if is_filtered(
+                    include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
+                    exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
+                    data=provider_controller,
+                    name_func=lambda x: x.entity.identity.name,
+                ):
+                    continue
 
-                    # convert provider controller to user provider
-                    user_builtin_provider = ToolTransformService.builtin_provider_to_user_provider(
-                        provider_controller=provider_controller,
-                        db_provider=find_provider(provider_controller.entity.identity.name),
-                        decrypt_credentials=True,
+                # convert provider controller to user provider
+                user_builtin_provider = ToolTransformService.builtin_provider_to_user_provider(
+                    provider_controller=provider_controller,
+                    db_provider=find_provider(provider_controller.entity.identity.name),
+                    decrypt_credentials=True,
+                )
+
+                # add icon
+                ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_builtin_provider)
+
+                tools = provider_controller.get_tools()
+                for tool in tools or []:
+                    user_builtin_provider.tools.append(
+                        ToolTransformService.convert_tool_entity_to_api_entity(
+                            tenant_id=tenant_id,
+                            tool=tool,
+                            labels=ToolLabelManager.get_tool_labels(provider_controller),
+                        )
                     )
 
-                    # add icon
-                    ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_builtin_provider)
-
-                    tools = provider_controller.get_tools()
-                    for tool in tools or []:
-                        user_builtin_provider.tools.append(
-                            ToolTransformService.convert_tool_entity_to_api_entity(
-                                tenant_id=tenant_id,
-                                tool=tool,
-                                labels=ToolLabelManager.get_tool_labels(provider_controller),
-                            )
-                        )
-
-                    result.append(user_builtin_provider)
-                except Exception as e:
-                    raise e
+                result.append(user_builtin_provider)
+            except Exception as e:
+                raise e
 
         return BuiltinToolProviderSort.sort(result)
 
     @staticmethod
-    def get_builtin_provider(provider_name: str, tenant_id: str) -> Optional[BuiltinToolProvider]:
+    def get_builtin_provider(provider_name: str, tenant_id: str) -> BuiltinToolProvider | None:
         """
         This method is used to fetch the builtin provider from the database
         1.if the default provider exists, return the default provider
         2.if the default provider does not exist, return the oldest provider
         """
-        with Session(db.engine) as session:
+        with Session(db.engine, autoflush=False) as session:
             try:
                 full_provider_name = provider_name
                 provider_id_entity = ToolProviderID(provider_name)
@@ -608,7 +590,7 @@ class BuiltinToolManageService:
                 if provider_id_entity.organization != "langgenius":
                     provider = (
                         session.query(BuiltinToolProvider)
-                        .filter(
+                        .where(
                             BuiltinToolProvider.tenant_id == tenant_id,
                             BuiltinToolProvider.provider == full_provider_name,
                         )
@@ -621,7 +603,7 @@ class BuiltinToolManageService:
                 else:
                     provider = (
                         session.query(BuiltinToolProvider)
-                        .filter(
+                        .where(
                             BuiltinToolProvider.tenant_id == tenant_id,
                             (BuiltinToolProvider.provider == provider_name)
                             | (BuiltinToolProvider.provider == full_provider_name),
@@ -642,7 +624,7 @@ class BuiltinToolManageService:
                 # it's an old provider without organization
                 return (
                     session.query(BuiltinToolProvider)
-                    .filter(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider_name)
+                    .where(BuiltinToolProvider.tenant_id == tenant_id, BuiltinToolProvider.provider == provider_name)
                     .order_by(
                         BuiltinToolProvider.is_default.desc(),  # default=True first
                         BuiltinToolProvider.created_at.asc(),  # oldest first
@@ -654,8 +636,8 @@ class BuiltinToolManageService:
     def save_custom_oauth_client_params(
         tenant_id: str,
         provider: str,
-        client_params: Optional[dict] = None,
-        enable_oauth_custom_client: Optional[bool] = None,
+        client_params: dict | None = None,
+        enable_oauth_custom_client: bool | None = None,
     ):
         """
         setup oauth custom client
@@ -698,7 +680,7 @@ class BuiltinToolManageService:
                     cache=NoOpProviderCredentialCache(),
                 )
                 original_params = encrypter.decrypt(custom_client_params.oauth_params)
-                new_params: dict = {
+                new_params = {
                     key: value if value != HIDDEN_VALUE else original_params.get(key, UNKNOWN_VALUE)
                     for key, value in client_params.items()
                 }
@@ -742,4 +724,4 @@ class BuiltinToolManageService:
                 cache=NoOpProviderCredentialCache(),
             )
 
-            return encrypter.mask_tool_credentials(encrypter.decrypt(custom_oauth_client_params.oauth_params))
+            return encrypter.mask_plugin_credentials(encrypter.decrypt(custom_oauth_client_params.oauth_params))

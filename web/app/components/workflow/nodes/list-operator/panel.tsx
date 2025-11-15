@@ -55,6 +55,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
             value={inputs.variable || []}
             onChange={handleVarChanges}
             filterVar={filterVar}
+            isSupportFileVar={false}
             typePlaceHolder='Array'
           />
         </Field>
@@ -78,6 +79,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
                 varType={itemVarType}
                 hasSubVariable={hasSubVariable}
                 readOnly={readOnly}
+                nodeId={id}
               />
             )
             : null}

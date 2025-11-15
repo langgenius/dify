@@ -5,7 +5,7 @@ import type {
   XYPosition,
 } from 'reactflow'
 import type { Resolution, TransferMethod } from '@/types/app'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
@@ -16,7 +16,9 @@ import type {
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { PluginMeta } from '../plugins/types'
+import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
+import type { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import type { SchemaTypeDefinition } from '@/service/use-common'
 
 export enum BlockEnum {
   Start = 'start',
@@ -42,6 +44,12 @@ export enum BlockEnum {
   Loop = 'loop',
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
+  DataSource = 'datasource',
+  DataSourceEmpty = 'datasource-empty',
+  KnowledgeBase = 'knowledge-index',
+  TriggerSchedule = 'trigger-schedule',
+  TriggerWebhook = 'trigger-webhook',
+  TriggerPlugin = 'trigger-plugin',
 }
 
 export enum ControlMode {
@@ -74,9 +82,10 @@ export type CommonNodeType<T = {}> = {
   _holdAddVariablePopup?: boolean
   _iterationLength?: number
   _iterationIndex?: number
-  _inParallelHovering?: boolean
   _waitingRun?: boolean
   _retryIndex?: number
+  _dataSourceStartToAdd?: boolean
+  _isTempNode?: boolean
   isInIteration?: boolean
   iteration_id?: string
   selected?: boolean
@@ -94,7 +103,11 @@ export type CommonNodeType<T = {}> = {
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
   credential_id?: string
-} & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
+  subscription_id?: string
+  provider_id?: string
+  _dimmed?: boolean
+  _pluginInstallLocked?: boolean
+} & T & Partial<PluginDefaultValue>
 
 export type CommonEdgeType = {
   _hovering?: boolean
@@ -109,7 +122,8 @@ export type CommonEdgeType = {
   isInLoop?: boolean
   loop_id?: string
   sourceType: BlockEnum
-  targetType: BlockEnum
+  targetType: BlockEnum,
+  _isTemp?: boolean,
 }
 
 export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>
@@ -164,7 +178,7 @@ export type ConversationVariable = {
 
 export type GlobalVariable = {
   name: string
-  value_type: 'string' | 'number'
+  value_type: 'string' | 'number' | 'integer'
   description: string
 }
 
@@ -178,9 +192,11 @@ export enum InputVarType {
   paragraph = 'paragraph',
   select = 'select',
   number = 'number',
+  checkbox = 'checkbox',
   url = 'url',
   files = 'files',
   json = 'json', // obj, array
+  jsonObject = 'json_object', // only object support define json schema
   contexts = 'contexts', // knowledge retrieval
   iterator = 'iterator', // iteration input
   singleFile = 'file',
@@ -199,14 +215,17 @@ export type InputVar = {
   var_description: string
   variable: string
   max_length?: number
-  default?: string
+  default?: string | number
   required: boolean
   hint?: string
   options?: string[]
   value_selector?: ValueSelector
+  placeholder?: string
+  unit?: string
   getVarValueFromDependent?: boolean
   hide?: boolean
   isFileItem?: boolean
+  json_schema?: string // for jsonObject type
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {
@@ -257,6 +276,7 @@ export type Memory = {
 export enum VarType {
   string = 'string',
   number = 'number',
+  integer = 'integer',
   secret = 'secret',
   boolean = 'boolean',
   object = 'object',
@@ -265,6 +285,7 @@ export enum VarType {
   arrayString = 'array[string]',
   arrayNumber = 'array[number]',
   arrayObject = 'array[object]',
+  arrayBoolean = 'array[boolean]',
   arrayFile = 'array[file]',
   any = 'any',
   arrayAny = 'array[any]',
@@ -287,6 +308,8 @@ export type Var = {
   isException?: boolean
   isLoopVariable?: boolean
   nodeId?: string
+  isRagVariable?: boolean
+  schemaType?: string
 }
 
 export type NodeOutPutVar = {
@@ -295,24 +318,33 @@ export type NodeOutPutVar = {
   vars: Var[]
   isStartNode?: boolean
   isLoop?: boolean
+  isFlat?: boolean
 }
 
-export type Block = {
-  classification?: string
-  type: BlockEnum
-  title: string
-  description?: string
-}
-
-export type NodeDefault<T> = {
+export type NodeDefault<T = {}> = {
+  metaData: {
+    classification: BlockClassificationEnum
+    sort: number
+    type: BlockEnum
+    title: string
+    author: string
+    description?: string
+    helpLinkUri?: string
+    isRequired?: boolean
+    isUndeletable?: boolean
+    isStart?: boolean
+    isSingleton?: boolean
+    isTypeFixed?: boolean
+  }
   defaultValue: Partial<T>
   defaultRunInputData?: Record<string, any>
-  getAvailablePrevNodes: (isChatMode: boolean) => BlockEnum[]
-  getAvailableNextNodes: (isChatMode: boolean) => BlockEnum[]
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
+  getOutputVars?: (payload: T, allPluginInfoList: Record<string, ToolWithProvider[]>, ragVariables?: Var[], utils?: {
+    schemaTypeDefinitions?: SchemaTypeDefinition[]
+  }) => Var[]
 }
 
-export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => void
+export type OnSelectBlock = (type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => void
 
 export enum WorkflowRunningStatus {
   Waiting = 'waiting',
@@ -330,6 +362,7 @@ export enum WorkflowVersion {
 export enum NodeRunningStatus {
   NotStart = 'not-start',
   Waiting = 'waiting',
+  Listening = 'listening',
   Running = 'running',
   Succeeded = 'succeeded',
   Failed = 'failed',
@@ -343,14 +376,14 @@ export type OnNodeAdd = (
     nodeType: BlockEnum
     sourceHandle?: string
     targetHandle?: string
-    toolDefaultValue?: ToolDefaultValue
+    pluginDefaultValue?: PluginDefaultValue
   },
   oldNodesPayload: {
     prevNodeId?: string
     prevNodeSourceHandle?: string
     nextNodeId?: string
     nextNodeTargetHandle?: string
-  }
+  },
 ) => void
 
 export type CheckValidRes = {
@@ -373,8 +406,14 @@ export type WorkflowRunningData = {
   result: {
     workflow_id?: string
     inputs?: string
+    inputs_truncated: boolean
     process_data?: string
+    process_data_truncated: boolean
     outputs?: string
+    outputs_truncated: boolean
+    outputs_full_content?: {
+      download_url: string
+    }
     status: string
     error?: string
     elapsed_time?: number
@@ -414,6 +453,12 @@ export type MoreInfo = {
 export type ToolWithProvider = Collection & {
   tools: Tool[]
   meta: PluginMeta
+  plugin_unique_identifier?: string
+}
+
+export type RAGRecommendedPlugins = {
+  installed_recommended_plugins: ToolWithProvider[]
+  uninstalled_recommended_plugins: Plugin[]
 }
 
 export enum SupportUploadFileTypes {
@@ -446,4 +491,30 @@ export enum VersionHistoryContextMenuOptions {
   restore = 'restore',
   edit = 'edit',
   delete = 'delete',
+  exportDSL = 'exportDSL',
+  copyId = 'copyId',
+}
+
+export type ChildNodeTypeCount = {
+  [key: string]: number;
+}
+
+export const TRIGGER_NODE_TYPES = [
+  BlockEnum.TriggerSchedule,
+  BlockEnum.TriggerWebhook,
+  BlockEnum.TriggerPlugin,
+] as const
+
+// Type-safe trigger node type extracted from TRIGGER_NODE_TYPES array
+export type TriggerNodeType = typeof TRIGGER_NODE_TYPES[number]
+
+export function isTriggerNode(nodeType: BlockEnum): boolean {
+  return TRIGGER_NODE_TYPES.includes(nodeType as any)
+}
+
+export type Block = {
+  classification?: string
+  type: BlockEnum
+  title: string
+  description?: string
 }

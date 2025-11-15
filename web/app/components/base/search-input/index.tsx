@@ -22,7 +22,7 @@ const SearchInput: FC<SearchInputProps> = ({
   const { t } = useTranslation()
   const [focus, setFocus] = useState<boolean>(false)
   const isComposing = useRef<boolean>(false)
-  const [internalValue, setInternalValue] = useState<string>(value)
+  const [compositionValue, setCompositionValue] = useState<string>('')
 
   return (
     <div className={cn(
@@ -42,18 +42,22 @@ const SearchInput: FC<SearchInputProps> = ({
           white && '!bg-white placeholder:!text-gray-400 hover:!bg-white group-hover:!bg-white',
         )}
         placeholder={placeholder || t('common.operation.search')!}
-        value={internalValue}
+        value={isComposing.current ? compositionValue : value}
         onChange={(e) => {
-          setInternalValue(e.target.value)
-          if (!isComposing.current)
-            onChange(e.target.value)
+          const newValue = e.target.value
+          if (isComposing.current)
+            setCompositionValue(newValue)
+          else
+            onChange(newValue)
         }}
         onCompositionStart={() => {
           isComposing.current = true
+          setCompositionValue(value)
         }}
         onCompositionEnd={(e) => {
           isComposing.current = false
-          onChange(e.data)
+          setCompositionValue('')
+          onChange(e.currentTarget.value)
         }}
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
@@ -64,7 +68,6 @@ const SearchInput: FC<SearchInputProps> = ({
           className='group/clear flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center'
           onClick={() => {
             onChange('')
-            setInternalValue('')
           }}
         >
           <RiCloseCircleFill className='h-4 w-4 text-text-quaternary group-hover/clear:text-text-tertiary' />

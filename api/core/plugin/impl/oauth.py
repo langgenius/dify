@@ -84,6 +84,41 @@ class OAuthHandler(BasePluginClient):
         except Exception as e:
             raise ValueError(f"Error getting credentials: {e}")
 
+    def refresh_credentials(
+        self,
+        tenant_id: str,
+        user_id: str,
+        plugin_id: str,
+        provider: str,
+        redirect_uri: str,
+        system_credentials: Mapping[str, Any],
+        credentials: Mapping[str, Any],
+    ) -> PluginOAuthCredentialsResponse:
+        try:
+            response = self._request_with_plugin_daemon_response_stream(
+                "POST",
+                f"plugin/{tenant_id}/dispatch/oauth/refresh_credentials",
+                PluginOAuthCredentialsResponse,
+                data={
+                    "user_id": user_id,
+                    "data": {
+                        "provider": provider,
+                        "redirect_uri": redirect_uri,
+                        "system_credentials": system_credentials,
+                        "credentials": credentials,
+                    },
+                },
+                headers={
+                    "X-Plugin-ID": plugin_id,
+                    "Content-Type": "application/json",
+                },
+            )
+            for resp in response:
+                return resp
+            raise ValueError("No response received from plugin daemon for refresh credentials request.")
+        except Exception as e:
+            raise ValueError(f"Error refreshing credentials: {e}")
+
     def _convert_request_to_raw_data(self, request: Request) -> bytes:
         """
         Convert a Request object to raw HTTP data.

@@ -1,12 +1,11 @@
 from urllib import parse
 
-from flask import request
-from flask_login import current_user
-from flask_restful import Resource, abort, marshal_with, reqparse
+from flask import abort, request
+from flask_restx import Resource, marshal_with, reqparse
 
 import services
 from configs import dify_config
-from controllers.console import api
+from controllers.console import api, console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
     EmailCodeError,
@@ -26,13 +25,14 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.member_fields import account_with_role_list_fields
 from libs.helper import extract_remote_ip
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.account import Account, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
 from services.feature_service import FeatureService
 
 
+@console_ns.route("/workspaces/current/members")
 class MemberListApi(Resource):
     """List all members of current tenant."""
 
@@ -41,31 +41,42 @@ class MemberListApi(Resource):
     @account_initialization_required
     @marshal_with(account_with_role_list_fields)
     def get(self):
+        current_user, _ = current_account_with_tenant()
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
         members = TenantService.get_tenant_members(current_user.current_tenant)
         return {"result": "success", "accounts": members}, 200
 
 
+parser_invite = (
+    reqparse.RequestParser()
+    .add_argument("emails", type=list, required=True, location="json")
+    .add_argument("role", type=str, required=True, default="admin", location="json")
+    .add_argument("language", type=str, required=False, location="json")
+)
+
+
+@console_ns.route("/workspaces/current/members/invite-email")
 class MemberInviteEmailApi(Resource):
     """Invite a new member by email."""
 
+    @api.expect(parser_invite)
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("members")
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("emails", type=str, required=True, location="json", action="append")
-        parser.add_argument("role", type=str, required=True, default="admin", location="json")
-        parser.add_argument("language", type=str, required=False, location="json")
-        args = parser.parse_args()
+        args = parser_invite.parse_args()
 
         invitee_emails = args["emails"]
         invitee_role = args["role"]
         interface_language = args["language"]
         if not TenantAccountRole.is_non_owner_role(invitee_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
-
+        current_user, _ = current_account_with_tenant()
         inviter = current_user
+        if not inviter.current_tenant:
+            raise ValueError("No current tenant")
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
 
@@ -76,6 +87,8 @@ class MemberInviteEmailApi(Resource):
 
         for invitee_email in invitee_emails:
             try:
+                if not inviter.current_tenant:
+                    raise ValueError("No current tenant")
                 token = RegisterService.invite_new_member(
                     inviter.current_tenant, invitee_email, interface_language, role=invitee_role, inviter=inviter
                 )
@@ -97,10 +110,11 @@ class MemberInviteEmailApi(Resource):
         return {
             "result": "success",
             "invitation_results": invitation_results,
-            "tenant_id": str(current_user.current_tenant.id),
+            "tenant_id": str(inviter.current_tenant.id) if inviter.current_tenant else "",
         }, 201
 
 
+@console_ns.route("/workspaces/current/members/<uuid:member_id>")
 class MemberCancelInviteApi(Resource):
     """Cancel an invitation by member id."""
 
@@ -108,7 +122,10 @@ class MemberCancelInviteApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, member_id):
-        member = db.session.query(Account).filter(Account.id == str(member_id)).first()
+        current_user, _ = current_account_with_tenant()
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
+        member = db.session.query(Account).where(Account.id == str(member_id)).first()
         if member is None:
             abort(404)
         else:
@@ -123,24 +140,32 @@ class MemberCancelInviteApi(Resource):
             except Exception as e:
                 raise ValueError(str(e))
 
-        return {"result": "success", "tenant_id": str(current_user.current_tenant.id)}, 200
+        return {
+            "result": "success",
+            "tenant_id": str(current_user.current_tenant.id) if current_user.current_tenant else "",
+        }, 200
 
 
+parser_update = reqparse.RequestParser().add_argument("role", type=str, required=True, location="json")
+
+
+@console_ns.route("/workspaces/current/members/<uuid:member_id>/update-role")
 class MemberUpdateRoleApi(Resource):
     """Update member role."""
 
+    @api.expect(parser_update)
     @setup_required
     @login_required
     @account_initialization_required
     def put(self, member_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("role", type=str, required=True, location="json")
-        args = parser.parse_args()
+        args = parser_update.parse_args()
         new_role = args["role"]
 
         if not TenantAccountRole.is_valid_role(new_role):
             return {"code": "invalid-role", "message": "Invalid role"}, 400
-
+        current_user, _ = current_account_with_tenant()
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
         member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
@@ -156,6 +181,7 @@ class MemberUpdateRoleApi(Resource):
         return {"result": "success"}
 
 
+@console_ns.route("/workspaces/current/dataset-operators")
 class DatasetOperatorMemberListApi(Resource):
     """List all members of current tenant."""
 
@@ -164,26 +190,34 @@ class DatasetOperatorMemberListApi(Resource):
     @account_initialization_required
     @marshal_with(account_with_role_list_fields)
     def get(self):
+        current_user, _ = current_account_with_tenant()
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
         members = TenantService.get_dataset_operator_members(current_user.current_tenant)
         return {"result": "success", "accounts": members}, 200
 
 
+parser_send = reqparse.RequestParser().add_argument("language", type=str, required=False, location="json")
+
+
+@console_ns.route("/workspaces/current/members/send-owner-transfer-confirm-email")
 class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
+    @api.expect(parser_send)
     @setup_required
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("language", type=str, required=False, location="json")
-        args = parser.parse_args()
+        args = parser_send.parse_args()
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
-
+        current_user, _ = current_account_with_tenant()
         # check if the current user is the owner of the workspace
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
             raise NotOwnerError()
 
@@ -198,23 +232,32 @@ class SendOwnerTransferEmailApi(Resource):
             account=current_user,
             email=email,
             language=language,
-            workspace_name=current_user.current_tenant.name,
+            workspace_name=current_user.current_tenant.name if current_user.current_tenant else "",
         )
 
         return {"result": "success", "data": token}
 
 
+parser_owner = (
+    reqparse.RequestParser()
+    .add_argument("code", type=str, required=True, location="json")
+    .add_argument("token", type=str, required=True, nullable=False, location="json")
+)
+
+
+@console_ns.route("/workspaces/current/members/owner-transfer-check")
 class OwnerTransferCheckApi(Resource):
+    @api.expect(parser_owner)
     @setup_required
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("code", type=str, required=True, location="json")
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
-        args = parser.parse_args()
+        args = parser_owner.parse_args()
         # check if the current user is the owner of the workspace
+        current_user, _ = current_account_with_tenant()
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
             raise NotOwnerError()
 
@@ -245,17 +288,25 @@ class OwnerTransferCheckApi(Resource):
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
+parser_owner_transfer = reqparse.RequestParser().add_argument(
+    "token", type=str, required=True, nullable=False, location="json"
+)
+
+
+@console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
 class OwnerTransfer(Resource):
+    @api.expect(parser_owner_transfer)
     @setup_required
     @login_required
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self, member_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
-        args = parser.parse_args()
+        args = parser_owner_transfer.parse_args()
 
         # check if the current user is the owner of the workspace
+        current_user, _ = current_account_with_tenant()
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
         if not TenantService.is_owner(current_user, current_user.current_tenant):
             raise NotOwnerError()
 
@@ -274,9 +325,11 @@ class OwnerTransfer(Resource):
         member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
-        else:
-            member_account = member
-        if not TenantService.is_member(member_account, current_user.current_tenant):
+            return  # Never reached, but helps type checker
+
+        if not current_user.current_tenant:
+            raise ValueError("No current tenant")
+        if not TenantService.is_member(member, current_user.current_tenant):
             raise MemberNotInTenantError()
 
         try:
@@ -286,13 +339,13 @@ class OwnerTransfer(Resource):
             AccountService.send_new_owner_transfer_notify_email(
                 account=member,
                 email=member.email,
-                workspace_name=current_user.current_tenant.name,
+                workspace_name=current_user.current_tenant.name if current_user.current_tenant else "",
             )
 
             AccountService.send_old_owner_transfer_notify_email(
                 account=current_user,
                 email=current_user.email,
-                workspace_name=current_user.current_tenant.name,
+                workspace_name=current_user.current_tenant.name if current_user.current_tenant else "",
                 new_owner_email=member.email,
             )
 
@@ -300,14 +353,3 @@ class OwnerTransfer(Resource):
             raise ValueError(str(e))
 
         return {"result": "success"}
-
-
-api.add_resource(MemberListApi, "/workspaces/current/members")
-api.add_resource(MemberInviteEmailApi, "/workspaces/current/members/invite-email")
-api.add_resource(MemberCancelInviteApi, "/workspaces/current/members/<uuid:member_id>")
-api.add_resource(MemberUpdateRoleApi, "/workspaces/current/members/<uuid:member_id>/update-role")
-api.add_resource(DatasetOperatorMemberListApi, "/workspaces/current/dataset-operators")
-# owner transfer
-api.add_resource(SendOwnerTransferEmailApi, "/workspaces/current/members/send-owner-transfer-confirm-email")
-api.add_resource(OwnerTransferCheckApi, "/workspaces/current/members/owner-transfer-check")
-api.add_resource(OwnerTransfer, "/workspaces/current/members/<uuid:member_id>/owner-transfer")

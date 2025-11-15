@@ -6,6 +6,7 @@ const translation = {
     agents: 'استراتژی های عامل',
     tools: 'ابزار',
     extensions: 'پسوند',
+    datasources: 'منابع داده',
   },
   categorySingle: {
     tool: 'ابزار',
@@ -13,6 +14,7 @@ const translation = {
     extension: 'فرمت',
     model: 'مدل',
     bundle: 'بسته',
+    datasource: 'منبع داده',
   },
   list: {
     source: {
@@ -45,7 +47,8 @@ const translation = {
       install: 'نصب',
     },
     toolSelector: {
-      descriptionPlaceholder: 'شرح مختصری از هدف ابزار، به عنوان مثال، دما را برای یک مکان خاص دریافت کنید.',
+      descriptionPlaceholder:
+        'شرح مختصری از هدف ابزار، به عنوان مثال، دما را برای یک مکان خاص دریافت کنید.',
       auto: 'خودکار',
       unsupportedContent: 'نسخه افزونه نصب شده این عمل را ارائه نمی دهد.',
       paramsTip1: 'پارامترهای استنتاج LLM را کنترل می کند.',
@@ -55,15 +58,18 @@ const translation = {
       descriptionLabel: 'توضیحات ابزار',
       title: 'ابزار افزودن',
       settings: 'تنظیمات کاربر',
-      empty: 'برای افزودن ابزارها روی دکمه "+" کلیک کنید. می توانید چندین ابزار اضافه کنید.',
+      empty:
+        'برای افزودن ابزارها روی دکمه "+" کلیک کنید. می توانید چندین ابزار اضافه کنید.',
       toolLabel: 'ابزار',
       uninstalledTitle: 'ابزار نصب نشده است',
       uninstalledLink: 'مدیریت در پلاگین ها',
-      uninstalledContent: 'این افزونه از مخزن local/GitHub نصب شده است. لطفا پس از نصب استفاده کنید.',
+      uninstalledContent:
+        'این افزونه از مخزن local/GitHub نصب شده است. لطفا پس از نصب استفاده کنید.',
       unsupportedTitle: 'اکشن پشتیبانی نشده',
       unsupportedContent2: 'برای تغییر نسخه کلیک کنید.',
       toolSetting: 'تنظیمات ابزار',
-      unsupportedMCPTool: 'نسخه فعلی پلاگین استراتژی عامل انتخاب‌شده از ابزارهای MCP پشتیبانی نمی‌کند.',
+      unsupportedMCPTool:
+        'نسخه فعلی پلاگین استراتژی عامل انتخاب‌شده از ابزارهای MCP پشتیبانی نمی‌کند.',
     },
     endpointDeleteTip: 'حذف نقطه پایانی',
     disabled: 'غیر فعال',
@@ -74,16 +80,30 @@ const translation = {
     actionNum: '{{عدد}} {{اقدام}} شامل',
     endpointDisableContent: 'آیا می خواهید {{name}} را غیرفعال کنید؟',
     endpointModalTitle: 'راه اندازی اندپوینت',
-    endpointsTip: 'این افزونه عملکردهای خاصی را از طریق نقاط پایانی ارائه می دهد و می توانید چندین مجموعه نقطه پایانی را برای فضای کاری فعلی پیکربندی کنید.',
+    endpointsTip:
+      'این افزونه عملکردهای خاصی را از طریق نقاط پایانی ارائه می دهد و می توانید چندین مجموعه نقطه پایانی را برای فضای کاری فعلی پیکربندی کنید.',
     serviceOk: 'خدمات خوب',
     modelNum: '{{عدد}} مدل های گنجانده شده است',
     endpointDisableTip: 'غیرفعال کردن نقطه پایانی',
     configureModel: 'مدل را پیکربندی کنید',
     configureTool: 'ابزار پیکربندی',
     endpointsEmpty: 'برای افزودن نقطه پایانی روی دکمه "+" کلیک کنید',
-    endpointModalDesc: 'پس از پیکربندی، می توان از ویژگی های ارائه شده توسط افزونه از طریق نقاط پایانی API استفاده کرد.',
+    endpointModalDesc:
+      'پس از پیکربندی، می توان از ویژگی های ارائه شده توسط افزونه از طریق نقاط پایانی API استفاده کرد.',
     switchVersion: 'نسخه سوئیچ',
     endpointDeleteContent: 'آیا می خواهید {{name}} را حذف کنید؟',
+    deprecation: {
+      reason: {
+        ownershipTransferred: 'مالکیت منتقل شد',
+        businessAdjustments: 'تنظیمات کسب و کار',
+        noMaintainer: 'بدون نگهدارنده',
+      },
+      noReason: 'این افزونه منسوخ شده است و دیگر به روز رسانی نخواهد شد.',
+      onlyReason:
+        'این افزونه به دلیل {{deprecatedReason}} منسوخ شده و دیگر به‌روزرسانی نخواهد شد.',
+      fullMessage:
+        'این افزونه به دلیل {{deprecatedReason}} منسوخ شده است و دیگر به‌روزرسانی نخواهد شد. لطفا به‌جای آن از <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> استفاده کنید.',
+    },
   },
   debugInfo: {
     title: 'اشکال زدایی',
@@ -121,7 +141,8 @@ const translation = {
     next: 'بعدی',
     cancel: 'لغو',
     uploadingPackage: 'آپلود {{packageName}}...',
-    fromTrustSource: 'لطفا مطمئن شوید که افزونه ها را فقط از <trustSource>یک منبع قابل اعتماد</trustSource> نصب می کنید.',
+    fromTrustSource:
+      'لطفا مطمئن شوید که افزونه ها را فقط از <trustSource>یک منبع قابل اعتماد</trustSource> نصب می کنید.',
     readyToInstall: 'در مورد نصب افزونه زیر',
     install: 'نصب',
     pluginLoadError: 'خطای بارگذاری افزونه',
@@ -147,7 +168,8 @@ const translation = {
     updatePlugin: 'افزونه را از GitHub به روز کنید',
     uploadFailed: 'آپلود انجام نشد',
     installedSuccessfully: 'نصب موفقیت آمیز بود',
-    installNote: 'لطفا مطمئن شوید که افزونه ها را فقط از یک منبع قابل اعتماد نصب می کنید.',
+    installNote:
+      'لطفا مطمئن شوید که افزونه ها را فقط از یک منبع قابل اعتماد نصب می کنید.',
     installFailed: 'نصب ناموفق بود',
     selectVersionPlaceholder: 'لطفا یک نسخه را انتخاب کنید',
     selectPackage: 'بسته را انتخاب کنید',
@@ -163,9 +185,12 @@ const translation = {
     description: 'در مورد نصب افزونه زیر',
   },
   error: {
-    noReleasesFound: 'هیچ نسخه ای یافت نشد. لطفا مخزن GitHub یا URL ورودی را بررسی کنید.',
-    inValidGitHubUrl: 'URL GitHub نامعتبر است. لطفا یک URL معتبر را در قالب وارد کنید: https://github.com/owner/repo',
-    fetchReleasesError: 'امکان بازیابی نسخه ها وجود ندارد. لطفا بعدا دوباره امتحان کنید.',
+    noReleasesFound:
+      'هیچ نسخه ای یافت نشد. لطفا مخزن GitHub یا URL ورودی را بررسی کنید.',
+    inValidGitHubUrl:
+      'URL GitHub نامعتبر است. لطفا یک URL معتبر را در قالب وارد کنید: https://github.com/owner/repo',
+    fetchReleasesError:
+      'امکان بازیابی نسخه ها وجود ندارد. لطفا بعدا دوباره امتحان کنید.',
   },
   marketplace: {
     sortOption: {
@@ -191,8 +216,10 @@ const translation = {
     clearAll: 'پاک کردن همه',
     installedError: 'افزونه های {{errorLength}} نصب نشدند',
     installError: 'پلاگین های {{errorLength}} نصب نشدند، برای مشاهده کلیک کنید',
-    installingWithSuccess: 'نصب پلاگین های {{installingLength}}، {{successLength}} موفقیت آمیز است.',
-    installingWithError: 'نصب پلاگین های {{installingLength}}، {{successLength}} با موفقیت مواجه شد، {{errorLength}} ناموفق بود',
+    installingWithSuccess:
+      'نصب پلاگین های {{installingLength}}، {{successLength}} موفقیت آمیز است.',
+    installingWithError:
+      'نصب پلاگین های {{installingLength}}، {{successLength}} با موفقیت مواجه شد، {{errorLength}} ناموفق بود',
   },
   searchTools: 'ابزارهای جستجو...',
   findMoreInMarketplace: 'اطلاعات بیشتر در Marketplace',
@@ -211,7 +238,8 @@ const translation = {
   metadata: {
     title: 'پلاگین ها',
   },
-  difyVersionNotCompatible: 'نسخه فعلی دیفی با این پلاگین سازگار نیست، لطفاً به نسخه حداقل مورد نیاز به‌روزرسانی کنید: {{minimalDifyVersion}}',
+  difyVersionNotCompatible:
+    'نسخه فعلی دیفی با این پلاگین سازگار نیست، لطفاً به نسخه حداقل مورد نیاز به‌روزرسانی کنید: {{minimalDifyVersion}}',
   requestAPlugin: 'درخواست یک افزونه',
   publishPlugins: 'انتشار افزونه ها',
   auth: {
@@ -234,8 +262,75 @@ const translation = {
     saveAndAuth: 'ذخیره و تأیید',
     saveOnly: 'فقط ذخیره کنید',
     oauthClientSettings: 'تنظیمات کلاینت اوتور',
-    clientInfo: 'از آنجایی که هیچ راز مشتری سیستم برای این ارائه‌دهنده ابزار پیدا نشد، تنظیم دستی آن ضروری است، لطفاً برای redirect_uri از',
-    useApiAuthDesc: 'پس از پیکربندی اعتبارنامه‌ها، تمامی اعضای درون فضای کاری می‌توانند از این ابزار هنگام نظم‌دهی به برنامه‌ها استفاده کنند.',
+    clientInfo:
+      'از آنجایی که هیچ راز مشتری سیستم برای این ارائه‌دهنده ابزار پیدا نشد، تنظیم دستی آن ضروری است، لطفاً برای redirect_uri از',
+    useApiAuthDesc:
+      'پس از پیکربندی اعتبارنامه‌ها، تمامی اعضای درون فضای کاری می‌توانند از این ابزار هنگام نظم‌دهی به برنامه‌ها استفاده کنند.',
+    unavailable: 'در دسترس نیست',
+    credentialUnavailable:
+      'دسترسی به مدارک در حال حاضر امکان‌پذیر نیست. لطفاً با مدیر تماس بگیرید.',
+    customCredentialUnavailable:
+      'اعتبارنامه‌های سفارشی در حال حاضر در دسترس نیستند',
+    credentialUnavailableInButton: 'گواهی در دسترس نیست',
+    connectedWorkspace: 'فضای کاری متصل',
+    emptyAuth: 'لطفا احراز هویت را پیکربندی کنید',
+  },
+  deprecated: 'منسوخ شده',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        name: 'ناتوان',
+        description: 'پلاگین‌ها به‌طور خودکار به‌روزرسانی نخواهند شد',
+      },
+      fixOnly: {
+        name: 'فقط تعمیر کنید',
+        selectedDescription: 'به‌روزرسانی خودکار تنها برای نسخه‌های وصله',
+        description:
+          'به‌روزرسانی خودکار فقط برای نسخه‌های پچ (مانند ۱.۰.۱ → ۱.۰.۲). تغییرات جزئی نسخه باعث راه‌اندازی به‌روزرسانی‌ها نمی‌شود.',
+      },
+      latest: {
+        name: 'جدیدترین',
+        selectedDescription: 'همیشه به آخرین نسخه بروزرسانی کنید',
+        description: 'همیشه به آخرین نسخه بروزرسانی کنید',
+      },
+    },
+    upgradeMode: {
+      all: 'همه را بروزرسانی کن',
+      partial: 'فقط انتخاب شده',
+      exclude: 'انتخاب شده را استثنا کن',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'افزونه‌های انتخاب شده به‌صورت خودکار به‌روزرسانی نخواهند شد',
+      partial:
+        'فقط پلاگین‌های انتخاب شده به‌روزرسانی خودکار خواهند داشت. در حال حاضر هیچ پلاگینی انتخاب نشده است، بنابراین هیچ پلاگینی به‌روزرسانی خودکار نخواهد شد.',
+    },
+    operation: {
+      select: 'افزونه‌ها را انتخاب کنید',
+      clearAll: 'همه را پاک کن',
+    },
+    pluginDowngradeWarning: {
+      title: 'کاهش نسخه افزونه',
+      downgrade: 'به هر حال تنزل دهید',
+      exclude: 'از بروزرسانی خودکار مستثنی شود',
+      description:
+        'به‌روزرسانی خودکار برای این افزونه در حال حاضر فعال است. کاهش نسخه ممکن است باعث شود تغییرات شما در حین به‌روزرسانی خودکار بعدی نادیده گرفته شود.',
+    },
+    noPluginPlaceholder: {
+      noFound: 'هیچ افزونه‌ای یافت نشد',
+      noInstalled: 'هیچ افزونه‌ای نصب نشده است',
+    },
+    updateTimeTitle: 'زمان به‌روزرسانی',
+    specifyPluginsToUpdate: 'ماژول‌هایی را برای به‌روزرسانی مشخص کنید',
+    updateTime: 'زمان به‌روزرسانی',
+    automaticUpdates: 'بروز رسانی خودکار',
+    updateSettings: 'تنظیمات را به‌روزرسانی کنید',
+    changeTimezone:
+      'برای تغییر منطقه زمانی، به <setTimezone>تنظیمات</setTimezone> بروید',
+    excludeUpdate:
+      'پلاگین‌های زیر {{num}} به‌طور خودکار به‌روزرسانی نخواهند شد',
+    nextUpdateTime: 'به‌روزرسانی خودکار بعدی: {{time}}',
+    partialUPdate:
+      'تنها {{num}} پلاگین زیر به‌طور خودکار به‌روزرسانی خواهد شد.',
   },
 }
 

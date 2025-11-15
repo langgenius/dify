@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useBoolean } from 'ahooks'
 import useVarList from '../_base/hooks/use-var-list'
 import { VarType } from '../../types'
@@ -16,7 +16,7 @@ import {
 const useConfig = (id: string, payload: HttpNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
 
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs?.[payload.type])
 
   const { inputs, setInputs } = useNodeCrud<HttpNodeType>(id, payload)
 
@@ -51,7 +51,6 @@ const useConfig = (id: string, payload: HttpNodeType) => {
       setInputs(newInputs)
       setIsDataReady(true)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleMethodChange = useCallback((method: Method) => {

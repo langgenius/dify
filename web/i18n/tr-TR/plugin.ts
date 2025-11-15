@@ -6,6 +6,7 @@ const translation = {
     agents: 'Ajan Stratejileri',
     tools: 'Araçları',
     extensions: 'Uzantı -ları',
+    datasources: 'Veri Kaynakları',
   },
   categorySingle: {
     tool: 'Alet',
@@ -13,6 +14,7 @@ const translation = {
     extension: 'Uzantı',
     agent: 'Temsilci Stratejisi',
     model: 'Model',
+    datasource: 'Veri Kaynağı',
   },
   list: {
     source: {
@@ -84,6 +86,16 @@ const translation = {
     modelNum: '{{sayı}} DAHİL OLAN MODELLER',
     endpointDisableTip: 'Uç Noktayı Devre Dışı Bırak',
     serviceOk: 'Servis Tamam',
+    deprecation: {
+      reason: {
+        noMaintainer: 'bakımcı yok',
+        ownershipTransferred: 'mülkiyet devredildi',
+        businessAdjustments: 'iş ayarlamaları',
+      },
+      noReason: 'Bu eklenti kullanımdan kaldırıldı ve artık güncellenmeyecek.',
+      onlyReason: 'Bu eklenti {{deprecatedReason}} nedeniyle kullanımdan kaldırılmıştır ve artık güncellenmeyecektir.',
+      fullMessage: 'Bu eklenti {{deprecatedReason}} nedeniyle kullanım dışı bırakılmıştır ve artık güncellenmeyecek. Lütfen bunun yerine <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink>\'i kullanın.',
+    },
   },
   debugInfo: {
     title: 'Hata ayıklama',
@@ -236,6 +248,63 @@ const translation = {
     addApi: 'API Anahtarını Ekle',
     saveAndAuth: 'Kaydet ve Yetkilendir',
     clientInfo: 'Bu araç sağlayıcı için sistem istemci gizlilikleri bulunmadığından, manuel olarak ayar yapılması gerekmektedir. redirect_uri için lütfen şu adresi kullanın',
+    unavailable: 'Kullanılamıyor',
+    customCredentialUnavailable: 'Özel kimlik bilgileri şu anda mevcut değil.',
+    credentialUnavailable: 'Kimlik bilgileri şu anda mevcut değil. Lütfen yönetici ile iletişime geçin.',
+    credentialUnavailableInButton: 'Kimlik bilgileri mevcut değil',
+    connectedWorkspace: 'Bağlı Çalışma Alanı',
+    emptyAuth: 'Lütfen kimlik doğrulamasını yapılandırın',
+  },
+  deprecated: 'Kaldırılmış',
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        name: 'Engelli',
+        description: 'Eklentiler otomatik olarak güncellenmeyecek',
+      },
+      fixOnly: {
+        selectedDescription: 'Sadece yamanın versiyonları için otomatik güncelleme',
+        name: 'Sadece Düzelt',
+        description: 'Yalnızca yamanın sürüm güncellemeleri için otomatik güncelleme (örneğin, 1.0.1 → 1.0.2). Küçük sürüm değişiklikleri güncellemeleri tetiklemez.',
+      },
+      latest: {
+        name: 'Son',
+        selectedDescription: 'Her zaman en son sürüme güncelle',
+        description: 'Her zaman en son sürüme güncelle',
+      },
+    },
+    upgradeMode: {
+      partial: 'Sadece seçilen',
+      all: 'Hepsini güncelle',
+      exclude: 'Seçilenleri hariç tut',
+    },
+    upgradeModePlaceholder: {
+      exclude: 'Seçilen eklentiler otomatik olarak güncellenmeyecek.',
+      partial: 'Sadece seçilen eklentiler otomatik olarak güncellenecek. Şu anda hiçbir eklenti seçilmedi, bu yüzden hiçbir eklenti otomatik olarak güncellenmeyecek.',
+    },
+    operation: {
+      select: 'Eklentileri seçin',
+      clearAll: 'Hepsini temizle',
+    },
+    pluginDowngradeWarning: {
+      downgrade: 'Her durumda düşürme',
+      title: 'Eklenti Düşürme',
+      exclude: 'Otomatik güncellemeden hariç tut',
+      description: 'Bu eklenti için otomatik güncelleme şu anda etkin. Sürümün düşürülmesi, bir sonraki otomatik güncelleme sırasında değişikliklerinizin üzerine yazılmasına neden olabilir.',
+    },
+    noPluginPlaceholder: {
+      noInstalled: 'Hiçbir eklenti yüklenmemiş',
+      noFound: 'Hiçbir eklenti bulunamadı',
+    },
+    automaticUpdates: 'Otomatik güncellemeler',
+    updateTime: 'Güncelleme zamanı',
+    updateTimeTitle: 'Güncelleme zamanı',
+    updateSettings: 'Ayarları Güncelle',
+    nextUpdateTime: 'Sonraki otomatik güncelleme: {{time}}',
+    specifyPluginsToUpdate: 'Güncellemek için eklentileri belirtin',
+    excludeUpdate: 'Aşağıdaki {{num}} eklenti otomatik olarak güncellenmeyecek',
+    changeTimezone: 'Zaman dilimini değiştirmek için <setTimezone>Ayarlar</setTimezone> sekmesine gidin',
+    partialUPdate: 'Sadece aşağıdaki {{num}} eklenti otomatik olarak güncellenecek',
   },
 }
 

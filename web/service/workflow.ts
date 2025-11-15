@@ -10,6 +10,8 @@ import type {
 } from '@/types/workflow'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
+import type { FlowType } from '@/types/common'
+import { getFlowPrefix } from './utils'
 
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
@@ -34,16 +36,16 @@ export const fetchChatRunHistory: Fetcher<ChatRunHistoryResponse, string> = (url
   return get<ChatRunHistoryResponse>(url)
 }
 
-export const singleNodeRun = (appId: string, nodeId: string, params: object) => {
-  return post(`apps/${appId}/workflows/draft/nodes/${nodeId}/run`, { body: params })
+export const singleNodeRun = (flowType: FlowType, flowId: string, nodeId: string, params: object) => {
+  return post(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/run`, { body: params })
 }
 
-export const getIterationSingleNodeRunUrl = (isChatFlow: boolean, appId: string, nodeId: string) => {
-  return `apps/${appId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/iteration/nodes/${nodeId}/run`
+export const getIterationSingleNodeRunUrl = (flowType: FlowType, isChatFlow: boolean, flowId: string, nodeId: string) => {
+  return `${getFlowPrefix(flowType)}/${flowId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/iteration/nodes/${nodeId}/run`
 }
 
-export const getLoopSingleNodeRunUrl = (isChatFlow: boolean, appId: string, nodeId: string) => {
-  return `apps/${appId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/loop/nodes/${nodeId}/run`
+export const getLoopSingleNodeRunUrl = (flowType: FlowType, isChatFlow: boolean, flowId: string, nodeId: string) => {
+  return `${getFlowPrefix(flowType)}/${flowId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/loop/nodes/${nodeId}/run`
 }
 
 export const fetchPublishedWorkflow: Fetcher<FetchWorkflowDraftResponse, string> = (url) => {
@@ -60,6 +62,12 @@ export const fetchNodeDefault = (appId: string, blockType: BlockEnum, query = {}
   })
 }
 
+export const fetchPipelineNodeDefault = (pipelineId: string, blockType: BlockEnum, query = {}) => {
+  return get(`rag/pipelines/${pipelineId}/workflows/default-workflow-block-configs/${blockType}`, {
+    params: { q: JSON.stringify(query) },
+  })
+}
+
 // TODO: archived
 export const updateWorkflowDraftFromDSL = (appId: string, data: string) => {
   return post<FetchWorkflowDraftResponse>(`apps/${appId}/workflows/draft/import`, { body: { data } })
@@ -72,13 +80,13 @@ export const fetchCurrentValueOfConversationVariable: Fetcher<ConversationVariab
   return get<ConversationVariableResponse>(url, { params })
 }
 
-const fetchAllInspectVarsOnePage = async (appId: string, page: number): Promise<{ total: number, items: VarInInspect[] }> => {
-  return get(`apps/${appId}/workflows/draft/variables`, {
+const fetchAllInspectVarsOnePage = async (flowType: FlowType, flowId: string, page: number): Promise<{ total: number, items: VarInInspect[] }> => {
+  return get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables`, {
     params: { page, limit: 100 },
   })
 }
-export const fetchAllInspectVars = async (appId: string): Promise<VarInInspect[]> => {
-  const res = await fetchAllInspectVarsOnePage(appId, 1)
+export const fetchAllInspectVars = async (flowType: FlowType, flowId: string): Promise<VarInInspect[]> => {
+  const res = await fetchAllInspectVarsOnePage(flowType, flowId, 1)
   const { items, total } = res
   if (total <= 100)
     return items
@@ -86,7 +94,7 @@ export const fetchAllInspectVars = async (appId: string): Promise<VarInInspect[]
   const pageCount = Math.ceil(total / 100)
   const promises = []
   for (let i = 2; i <= pageCount; i++)
-    promises.push(fetchAllInspectVarsOnePage(appId, i))
+    promises.push(fetchAllInspectVarsOnePage(flowType, flowId, i))
 
   const restData = await Promise.all(promises)
   restData.forEach(({ items: item }) => {
@@ -95,7 +103,7 @@ export const fetchAllInspectVars = async (appId: string): Promise<VarInInspect[]
   return items
 }
 
-export const fetchNodeInspectVars = async (appId: string, nodeId: string): Promise<VarInInspect[]> => {
-  const { items } = (await get(`apps/${appId}/workflows/draft/nodes/${nodeId}/variables`)) as { items: VarInInspect[] }
+export const fetchNodeInspectVars = async (flowType: FlowType, flowId: string, nodeId: string): Promise<VarInInspect[]> => {
+  const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/variables`)) as { items: VarInInspect[] }
   return items
 }

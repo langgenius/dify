@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'Özel Araç Oluştur',
   customToolTip: 'Dify özel araçları hakkında daha fazla bilgi edinin',
   type: {
-    all: 'Hepsi',
     builtIn: 'Yerleşik',
     custom: 'Özel',
     workflow: 'Workflow',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: 'Kimlik bilgilerini yapılandırdıktan sonra, çalışma alanındaki tüm üyeler uygulamaları düzenlerken bu aracı kullanabilir.',
   },
   includeToolNum: '{{num}} araç dahil',
-  addTool: 'Araç Ekle',
   addToolModal: {
     type: 'Tür',
     category: 'Kategori',
-    add: 'Ekle',
     added: 'Eklendi',
-    manageInTools: 'Araçlarda Yönet',
     custom: {
       title: 'Mevcut özel araç yok',
       tip: 'Özel bir araç oluşturun',
@@ -82,7 +78,6 @@ const translation = {
       keyTooltip: 'Http Başlığı Anahtarı, ne olduğunu bilmiyorsanız "Authorization" olarak bırakabilirsiniz veya özel bir değere ayarlayabilirsiniz',
       types: {
         none: 'Yok',
-        api_key: 'API Anahtarı',
         apiKeyPlaceholder: 'API Anahtarı için HTTP başlık adı',
         apiValuePlaceholder: 'API Anahtarını girin',
         api_key_header: 'Başlık',
@@ -192,6 +187,24 @@ const translation = {
       cancel: 'İptal',
       save: 'Kaydet',
       confirm: 'Ekle ve Yetkilendir',
+      timeout: 'Zaman aşımı',
+      sseReadTimeout: 'SSE Okuma Zaman Aşımı',
+      headers: 'Başlıklar',
+      headerKeyPlaceholder: 'örneğin, Yetkilendirme',
+      addHeader: 'Başlık Ekle',
+      headerValue: 'Başlık Değeri',
+      noHeaders: 'Özel başlıklar yapılandırılmamış',
+      headerKey: 'Başlık Adı',
+      timeoutPlaceholder: 'otuz',
+      headersTip: 'MCP sunucu istekleri ile gönderilecek ek HTTP başlıkları',
+      headerValuePlaceholder: 'örneğin, Taşıyıcı jeton123',
+      maskedHeadersTip: 'Başlık değerleri güvenlik amacıyla gizlenmiştir. Değişiklikler gerçek değerleri güncelleyecektir.',
+      clientID: 'Müşteri Kimliği',
+      configurations: 'Yapılandırmalar',
+      clientSecretPlaceholder: 'İstemci Sırrı',
+      clientSecret: 'İstemci Sırrı',
+      authentication: 'Kimlik Doğrulama',
+      useDynamicClientRegistration: 'Dinamik İstemci Kaydını Kullan',
     },
     delete: 'MCP Sunucusunu Kaldır',
     deleteConfirmTitle: '{mcp} kaldırılsın mı?',
@@ -232,7 +245,12 @@ const translation = {
       },
       publishTip: 'Uygulama yayınlanmadı. Lütfen önce uygulamayı yayınlayın.',
     },
+    toolItem: {
+      parameters: 'Parametreler',
+      noDescription: 'Açıklama yok',
+    },
   },
+  allTools: 'Tüm araçlar',
 }
 
 export default translation

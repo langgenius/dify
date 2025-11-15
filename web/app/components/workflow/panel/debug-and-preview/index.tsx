@@ -39,7 +39,7 @@ const DebugAndPreview = () => {
   const selectedNode = nodes.find(node => node.data.selected)
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
-  const visibleVariables = variables.filter(v => v.hide !== true)
+  const visibleVariables = variables
 
   const [showConversationVariableModal, setShowConversationVariableModal] = useState(false)
 
@@ -53,8 +53,9 @@ const DebugAndPreview = () => {
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const panelWidth = useStore(s => s.previewPanelWidth)
   const setPanelWidth = useStore(s => s.setPreviewPanelWidth)
-  const handleResize = useCallback((width: number) => {
-    localStorage.setItem('debug-and-preview-panel-width', `${width}`)
+  const handleResize = useCallback((width: number, source: 'user' | 'system' = 'user') => {
+    if (source === 'user')
+      localStorage.setItem('debug-and-preview-panel-width', `${width}`)
     setPanelWidth(width)
   }, [setPanelWidth])
   const maxPanelWidth = useMemo(() => {
@@ -74,7 +75,9 @@ const DebugAndPreview = () => {
     triggerDirection: 'left',
     minWidth: 400,
     maxWidth: maxPanelWidth,
-    onResize: debounce(handleResize),
+    onResize: debounce((width: number) => {
+      handleResize(width, 'user')
+    }),
   })
 
   return (
