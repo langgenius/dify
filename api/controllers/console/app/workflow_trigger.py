@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
@@ -99,9 +99,11 @@ class AppTriggerEnableApi(Resource):
     @marshal_with(trigger_fields)
     def post(self, app_model: App):
         """Update app trigger (enable/disable)"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("trigger_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("enable_trigger", type=bool, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("trigger_id", type=str, required=True, nullable=False, location="json")
+            .add_argument("enable_trigger", type=bool, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         assert isinstance(current_user, Account)
@@ -140,6 +142,6 @@ class AppTriggerEnableApi(Resource):
         return trigger
 
 
-api.add_resource(WebhookTriggerApi, "/apps/<uuid:app_id>/workflows/triggers/webhook")
-api.add_resource(AppTriggersApi, "/apps/<uuid:app_id>/triggers")
-api.add_resource(AppTriggerEnableApi, "/apps/<uuid:app_id>/trigger-enable")
+console_ns.add_resource(WebhookTriggerApi, "/apps/<uuid:app_id>/workflows/triggers/webhook")
+console_ns.add_resource(AppTriggersApi, "/apps/<uuid:app_id>/triggers")
+console_ns.add_resource(AppTriggerEnableApi, "/apps/<uuid:app_id>/trigger-enable")

@@ -3,7 +3,7 @@ from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.workflow.enums import WorkflowExecutionStatus
@@ -17,10 +17,10 @@ from services.workflow_app_service import WorkflowAppService
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-app-logs")
 class WorkflowAppLogApi(Resource):
-    @api.doc("get_workflow_app_logs")
-    @api.doc(description="Get workflow application execution logs")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.doc(
+    @console_ns.doc("get_workflow_app_logs")
+    @console_ns.doc(description="Get workflow application execution logs")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(
         params={
             "keyword": "Search keyword for filtering logs",
             "status": "Filter by execution status (succeeded, failed, stopped, partial-succeeded)",
@@ -33,7 +33,7 @@ class WorkflowAppLogApi(Resource):
             "limit": "Number of items per page (1-100)",
         }
     )
-    @api.response(200, "Workflow app logs retrieved successfully", workflow_app_log_pagination_fields)
+    @console_ns.response(200, "Workflow app logs retrieved successfully", workflow_app_log_pagination_fields)
     @setup_required
     @login_required
     @account_initialization_required

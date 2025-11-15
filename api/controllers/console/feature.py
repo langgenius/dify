@@ -3,18 +3,18 @@ from flask_restx import Resource, fields
 from libs.login import current_account_with_tenant, login_required
 from services.feature_service import FeatureService
 
-from . import api, console_ns
+from . import console_ns
 from .wraps import account_initialization_required, cloud_utm_record, setup_required
 
 
 @console_ns.route("/features")
 class FeatureApi(Resource):
-    @api.doc("get_tenant_features")
-    @api.doc(description="Get feature configuration for current tenant")
-    @api.response(
+    @console_ns.doc("get_tenant_features")
+    @console_ns.doc(description="Get feature configuration for current tenant")
+    @console_ns.response(
         200,
         "Success",
-        api.model("FeatureResponse", {"features": fields.Raw(description="Feature configuration object")}),
+        console_ns.model("FeatureResponse", {"features": fields.Raw(description="Feature configuration object")}),
     )
     @setup_required
     @login_required
@@ -29,12 +29,14 @@ class FeatureApi(Resource):
 
 @console_ns.route("/system-features")
 class SystemFeatureApi(Resource):
-    @api.doc("get_system_features")
-    @api.doc(description="Get system-wide feature configuration")
-    @api.response(
+    @console_ns.doc("get_system_features")
+    @console_ns.doc(description="Get system-wide feature configuration")
+    @console_ns.response(
         200,
         "Success",
-        api.model("SystemFeatureResponse", {"features": fields.Raw(description="System feature configuration object")}),
+        console_ns.model(
+            "SystemFeatureResponse", {"features": fields.Raw(description="System feature configuration object")}
+        ),
     )
     def get(self):
         """Get system-wide feature configuration"""

@@ -3,7 +3,7 @@ from flask_restx import Resource, fields, marshal, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.dataset_fields import dataset_detail_fields
@@ -22,16 +22,16 @@ def _validate_name(name: str) -> str:
 
 @console_ns.route("/datasets/external-knowledge-api")
 class ExternalApiTemplateListApi(Resource):
-    @api.doc("get_external_api_templates")
-    @api.doc(description="Get external knowledge API templates")
-    @api.doc(
+    @console_ns.doc("get_external_api_templates")
+    @console_ns.doc(description="Get external knowledge API templates")
+    @console_ns.doc(
         params={
             "page": "Page number (default: 1)",
             "limit": "Number of items per page (default: 20)",
             "keyword": "Search keyword",
         }
     )
-    @api.response(200, "External API templates retrieved successfully")
+    @console_ns.response(200, "External API templates retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -95,11 +95,11 @@ class ExternalApiTemplateListApi(Resource):
 
 @console_ns.route("/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>")
 class ExternalApiTemplateApi(Resource):
-    @api.doc("get_external_api_template")
-    @api.doc(description="Get external knowledge API template details")
-    @api.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
-    @api.response(200, "External API template retrieved successfully")
-    @api.response(404, "Template not found")
+    @console_ns.doc("get_external_api_template")
+    @console_ns.doc(description="Get external knowledge API template details")
+    @console_ns.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
+    @console_ns.response(200, "External API template retrieved successfully")
+    @console_ns.response(404, "Template not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -163,10 +163,10 @@ class ExternalApiTemplateApi(Resource):
 
 @console_ns.route("/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>/use-check")
 class ExternalApiUseCheckApi(Resource):
-    @api.doc("check_external_api_usage")
-    @api.doc(description="Check if external knowledge API is being used")
-    @api.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
-    @api.response(200, "Usage check completed successfully")
+    @console_ns.doc("check_external_api_usage")
+    @console_ns.doc(description="Check if external knowledge API is being used")
+    @console_ns.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
+    @console_ns.response(200, "Usage check completed successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -181,10 +181,10 @@ class ExternalApiUseCheckApi(Resource):
 
 @console_ns.route("/datasets/external")
 class ExternalDatasetCreateApi(Resource):
-    @api.doc("create_external_dataset")
-    @api.doc(description="Create external knowledge dataset")
-    @api.expect(
-        api.model(
+    @console_ns.doc("create_external_dataset")
+    @console_ns.doc(description="Create external knowledge dataset")
+    @console_ns.expect(
+        console_ns.model(
             "CreateExternalDatasetRequest",
             {
                 "external_knowledge_api_id": fields.String(required=True, description="External knowledge API ID"),
@@ -194,9 +194,9 @@ class ExternalDatasetCreateApi(Resource):
             },
         )
     )
-    @api.response(201, "External dataset created successfully", dataset_detail_fields)
-    @api.response(400, "Invalid parameters")
-    @api.response(403, "Permission denied")
+    @console_ns.response(201, "External dataset created successfully", dataset_detail_fields)
+    @console_ns.response(400, "Invalid parameters")
+    @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -241,11 +241,11 @@ class ExternalDatasetCreateApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/external-hit-testing")
 class ExternalKnowledgeHitTestingApi(Resource):
-    @api.doc("test_external_knowledge_retrieval")
-    @api.doc(description="Test external knowledge retrieval for dataset")
-    @api.doc(params={"dataset_id": "Dataset ID"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("test_external_knowledge_retrieval")
+    @console_ns.doc(description="Test external knowledge retrieval for dataset")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.expect(
+        console_ns.model(
             "ExternalHitTestingRequest",
             {
                 "query": fields.String(required=True, description="Query text for testing"),
@@ -254,9 +254,9 @@ class ExternalKnowledgeHitTestingApi(Resource):
             },
         )
     )
-    @api.response(200, "External hit testing completed successfully")
-    @api.response(404, "Dataset not found")
-    @api.response(400, "Invalid parameters")
+    @console_ns.response(200, "External hit testing completed successfully")
+    @console_ns.response(404, "Dataset not found")
+    @console_ns.response(400, "Invalid parameters")
     @setup_required
     @login_required
     @account_initialization_required
@@ -299,10 +299,10 @@ class ExternalKnowledgeHitTestingApi(Resource):
 @console_ns.route("/test/retrieval")
 class BedrockRetrievalApi(Resource):
     # this api is only for internal testing
-    @api.doc("bedrock_retrieval_test")
-    @api.doc(description="Bedrock retrieval test (internal use only)")
-    @api.expect(
-        api.model(
+    @console_ns.doc("bedrock_retrieval_test")
+    @console_ns.doc(description="Bedrock retrieval test (internal use only)")
+    @console_ns.expect(
+        console_ns.model(
             "BedrockRetrievalTestRequest",
             {
                 "retrieval_setting": fields.Raw(required=True, description="Retrieval settings"),
@@ -311,7 +311,7 @@ class BedrockRetrievalApi(Resource):
             },
         )
     )
-    @api.response(200, "Bedrock retrieval test completed")
+    @console_ns.response(200, "Bedrock retrieval test completed")
     def post(self):
         parser = (
             reqparse.RequestParser()

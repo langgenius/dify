@@ -5,7 +5,7 @@ from flask_restx import Resource, marshal_with, reqparse
 
 import services
 from configs import dify_config
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
     EmailCodeError,
@@ -60,7 +60,7 @@ parser_invite = (
 class MemberInviteEmailApi(Resource):
     """Invite a new member by email."""
 
-    @api.expect(parser_invite)
+    @console_ns.expect(parser_invite)
     @setup_required
     @login_required
     @account_initialization_required
@@ -153,7 +153,7 @@ parser_update = reqparse.RequestParser().add_argument("role", type=str, required
 class MemberUpdateRoleApi(Resource):
     """Update member role."""
 
-    @api.expect(parser_update)
+    @console_ns.expect(parser_update)
     @setup_required
     @login_required
     @account_initialization_required
@@ -204,7 +204,7 @@ parser_send = reqparse.RequestParser().add_argument("language", type=str, requir
 class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
-    @api.expect(parser_send)
+    @console_ns.expect(parser_send)
     @setup_required
     @login_required
     @account_initialization_required
@@ -247,7 +247,7 @@ parser_owner = (
 
 @console_ns.route("/workspaces/current/members/owner-transfer-check")
 class OwnerTransferCheckApi(Resource):
-    @api.expect(parser_owner)
+    @console_ns.expect(parser_owner)
     @setup_required
     @login_required
     @account_initialization_required
@@ -295,7 +295,7 @@ parser_owner_transfer = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
 class OwnerTransfer(Resource):
-    @api.expect(parser_owner_transfer)
+    @console_ns.expect(parser_owner_transfer)
     @setup_required
     @login_required
     @account_initialization_required

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants.languages import supported_language
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
     EmailChangeLimitError,
@@ -55,7 +55,7 @@ def _init_parser():
 
 @console_ns.route("/account/init")
 class AccountInitApi(Resource):
-    @api.expect(_init_parser())
+    @console_ns.expect(_init_parser())
     @setup_required
     @login_required
     def post(self):
@@ -115,7 +115,7 @@ parser_name = reqparse.RequestParser().add_argument("name", type=str, required=T
 
 @console_ns.route("/account/name")
 class AccountNameApi(Resource):
-    @api.expect(parser_name)
+    @console_ns.expect(parser_name)
     @setup_required
     @login_required
     @account_initialization_required
@@ -138,7 +138,7 @@ parser_avatar = reqparse.RequestParser().add_argument("avatar", type=str, requir
 
 @console_ns.route("/account/avatar")
 class AccountAvatarApi(Resource):
-    @api.expect(parser_avatar)
+    @console_ns.expect(parser_avatar)
     @setup_required
     @login_required
     @account_initialization_required
@@ -159,7 +159,7 @@ parser_interface = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/account/interface-language")
 class AccountInterfaceLanguageApi(Resource):
-    @api.expect(parser_interface)
+    @console_ns.expect(parser_interface)
     @setup_required
     @login_required
     @account_initialization_required
@@ -180,7 +180,7 @@ parser_theme = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/account/interface-theme")
 class AccountInterfaceThemeApi(Resource):
-    @api.expect(parser_theme)
+    @console_ns.expect(parser_theme)
     @setup_required
     @login_required
     @account_initialization_required
@@ -199,7 +199,7 @@ parser_timezone = reqparse.RequestParser().add_argument("timezone", type=str, re
 
 @console_ns.route("/account/timezone")
 class AccountTimezoneApi(Resource):
-    @api.expect(parser_timezone)
+    @console_ns.expect(parser_timezone)
     @setup_required
     @login_required
     @account_initialization_required
@@ -227,7 +227,7 @@ parser_pw = (
 
 @console_ns.route("/account/password")
 class AccountPasswordApi(Resource):
-    @api.expect(parser_pw)
+    @console_ns.expect(parser_pw)
     @setup_required
     @login_required
     @account_initialization_required
@@ -325,7 +325,7 @@ parser_delete = (
 
 @console_ns.route("/account/delete")
 class AccountDeleteApi(Resource):
-    @api.expect(parser_delete)
+    @console_ns.expect(parser_delete)
     @setup_required
     @login_required
     @account_initialization_required
@@ -351,7 +351,7 @@ parser_feedback = (
 
 @console_ns.route("/account/delete/feedback")
 class AccountDeleteUpdateFeedbackApi(Resource):
-    @api.expect(parser_feedback)
+    @console_ns.expect(parser_feedback)
     @setup_required
     def post(self):
         args = parser_feedback.parse_args()
@@ -396,7 +396,7 @@ class EducationApi(Resource):
         "allow_refresh": fields.Boolean,
     }
 
-    @api.expect(parser_edu)
+    @console_ns.expect(parser_edu)
     @setup_required
     @login_required
     @account_initialization_required
@@ -441,7 +441,7 @@ class EducationAutoCompleteApi(Resource):
         "has_next": fields.Boolean,
     }
 
-    @api.expect(parser_autocomplete)
+    @console_ns.expect(parser_autocomplete)
     @setup_required
     @login_required
     @account_initialization_required
@@ -465,7 +465,7 @@ parser_change_email = (
 
 @console_ns.route("/account/change-email")
 class ChangeEmailSendEmailApi(Resource):
-    @api.expect(parser_change_email)
+    @console_ns.expect(parser_change_email)
     @enable_change_email
     @setup_required
     @login_required
@@ -517,7 +517,7 @@ parser_validity = (
 
 @console_ns.route("/account/change-email/validity")
 class ChangeEmailCheckApi(Resource):
-    @api.expect(parser_validity)
+    @console_ns.expect(parser_validity)
     @enable_change_email
     @setup_required
     @login_required
@@ -563,7 +563,7 @@ parser_reset = (
 
 @console_ns.route("/account/change-email/reset")
 class ChangeEmailResetApi(Resource):
-    @api.expect(parser_reset)
+    @console_ns.expect(parser_reset)
     @enable_change_email
     @setup_required
     @login_required
@@ -603,7 +603,7 @@ parser_check = reqparse.RequestParser().add_argument("email", type=email, requir
 
 @console_ns.route("/account/change-email/check-email-unique")
 class CheckEmailUnique(Resource):
-    @api.expect(parser_check)
+    @console_ns.expect(parser_check)
     @setup_required
     def post(self):
         args = parser_check.parse_args()
