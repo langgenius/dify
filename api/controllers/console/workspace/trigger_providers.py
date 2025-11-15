@@ -173,15 +173,17 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
         assert isinstance(user, Account)
         assert user.current_tenant_id is not None
 
-        parser = reqparse.RequestParser()
-        # The name of the subscription builder
-        parser.add_argument("name", type=str, required=False, nullable=True, location="json")
-        # The parameters of the subscription builder
-        parser.add_argument("parameters", type=dict, required=False, nullable=True, location="json")
-        # The properties of the subscription builder
-        parser.add_argument("properties", type=dict, required=False, nullable=True, location="json")
-        # The credentials of the subscription builder
-        parser.add_argument("credentials", type=dict, required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            # The name of the subscription builder
+            .add_argument("name", type=str, required=False, nullable=True, location="json")
+            # The parameters of the subscription builder
+            .add_argument("parameters", type=dict, required=False, nullable=True, location="json")
+            # The properties of the subscription builder
+            .add_argument("properties", type=dict, required=False, nullable=True, location="json")
+            # The credentials of the subscription builder
+            .add_argument("credentials", type=dict, required=False, nullable=True, location="json")
+        )
         args = parser.parse_args()
         try:
             return jsonable_encoder(
@@ -232,15 +234,17 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        # The name of the subscription builder
-        parser.add_argument("name", type=str, required=False, nullable=True, location="json")
-        # The parameters of the subscription builder
-        parser.add_argument("parameters", type=dict, required=False, nullable=True, location="json")
-        # The properties of the subscription builder
-        parser.add_argument("properties", type=dict, required=False, nullable=True, location="json")
-        # The credentials of the subscription builder
-        parser.add_argument("credentials", type=dict, required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            # The name of the subscription builder
+            .add_argument("name", type=str, required=False, nullable=True, location="json")
+            # The parameters of the subscription builder
+            .add_argument("parameters", type=dict, required=False, nullable=True, location="json")
+            # The properties of the subscription builder
+            .add_argument("properties", type=dict, required=False, nullable=True, location="json")
+            # The credentials of the subscription builder
+            .add_argument("credentials", type=dict, required=False, nullable=True, location="json")
+        )
         args = parser.parse_args()
         try:
             # Use atomic update_and_build to prevent race conditions

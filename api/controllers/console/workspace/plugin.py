@@ -770,9 +770,11 @@ class PluginReadmeApi(Resource):
     @account_initialization_required
     def get(self):
         _, tenant_id = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
-        parser.add_argument("language", type=str, required=False, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+            .add_argument("language", type=str, required=False, location="args")
+        )
         args = parser.parse_args()
         return jsonable_encoder(
             {

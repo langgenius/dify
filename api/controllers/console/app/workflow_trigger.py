@@ -99,9 +99,11 @@ class AppTriggerEnableApi(Resource):
     @marshal_with(trigger_fields)
     def post(self, app_model: App):
         """Update app trigger (enable/disable)"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("trigger_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("enable_trigger", type=bool, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("trigger_id", type=str, required=True, nullable=False, location="json")
+            .add_argument("enable_trigger", type=bool, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         assert isinstance(current_user, Account)
