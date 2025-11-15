@@ -161,7 +161,7 @@ const CodeEditor: FC<Props> = ({
           unicodeHighlight: {
             ambiguousCharacters: false,
           },
-          stickyScroll: {enabled: false},
+          stickyScroll: { enabled: false },
         }}
         onMount={handleEditorDidMount}
       />
