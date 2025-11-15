@@ -1802,7 +1802,7 @@ class MessageAgentThought(Base):
     answer_price_unit = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
     tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     total_price = mapped_column(sa.Numeric, nullable=True)
-    currency = mapped_column(String, nullable=True)
+    currency: Mapped[str | None] = mapped_column()
     latency: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
     created_by_role = mapped_column(String, nullable=False)
     created_by = mapped_column(StringUUID, nullable=False)
