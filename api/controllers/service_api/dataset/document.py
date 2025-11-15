@@ -54,12 +54,12 @@ document_text_create_parser = (
 
 
 class DocumentTextUpdate(BaseModel):
-    name: str | None
-    text: str | None
-    process_rule: dict | None
+    name: str | None = None
+    text: str | None = None
+    process_rule: dict | None = None
     doc_form: str = "text_model"
     doc_language: str = "English"
-    retrieval_model: dict
+    retrieval_model: dict | None = None
 
 
 service_api_ns.add_model(DocumentTextUpdate.__name__, DocumentTextUpdate.model_json_schema())
@@ -163,7 +163,7 @@ class DocumentAddByTextApi(DatasetApiResource):
 class DocumentUpdateByTextApi(DatasetApiResource):
     """Resource for update documents."""
 
-    @service_api_ns.expect(service_api_ns.models[DocumentTextUpdate.__name__])
+    @service_api_ns.expect(service_api_ns.models[DocumentTextUpdate.__name__], validate=True)
     @service_api_ns.doc("update_document_by_text")
     @service_api_ns.doc(description="Update an existing document by providing text content")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})

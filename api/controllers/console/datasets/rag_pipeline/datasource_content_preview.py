@@ -16,7 +16,7 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 class Parser(BaseModel):
     inputs: dict
     datasource_type: str
-    credential_id: str | None
+    credential_id: str | None = None
 
 
 console_ns.add_model(Parser.__name__, Parser.model_json_schema())
