@@ -69,6 +69,8 @@ const translation = {
       quarterToDate: 'Od początku kwartału',
       yearToDate: 'Od początku roku',
       allTime: 'Cały czas',
+      custom: 'Niestandardowy',
+      last30days: 'Ostatnie 30 dni',
     },
     annotation: {
       all: 'Wszystkie',
@@ -86,6 +88,7 @@ const translation = {
     workflowTitle: 'Szczegół dziennika',
     fileListDetail: 'Detal',
     fileListLabel: 'Szczegóły pliku',
+    testWithParams: 'Test z parametrami',
   },
   promptLog: 'Dziennik monitów',
   agentLog: 'Dziennik agenta',

@@ -3,7 +3,6 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from flask_login import current_user
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -12,9 +11,9 @@ from core.helper import encrypter
 from core.helper.name_generator import generate_incremental_name
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.model_runtime.entities.provider_entities import FormType
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
-from core.tools.entities.tool_entities import CredentialType
 from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -23,6 +22,16 @@ from models.provider_ids import DatasourceProviderID
 from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
+
+
+def get_current_user():
+    from libs.login import current_user
+    from models.account import Account
+    from models.model import EndUser
+
+    if not isinstance(current_user._get_current_object(), (Account, EndUser)):  # type: ignore
+        raise TypeError(f"current_user must be Account or EndUser, got {type(current_user).__name__}")
+    return current_user
 
 
 class DatasourceProviderService:
@@ -109,6 +118,7 @@ class DatasourceProviderService:
                 return {}
             # refresh the credentials
             if datasource_provider.expires_at != -1 and (datasource_provider.expires_at - 60) < int(time.time()):
+                current_user = get_current_user()
                 decrypted_credentials = self.decrypt_datasource_provider_credentials(
                     tenant_id=tenant_id,
                     datasource_provider=datasource_provider,
@@ -166,6 +176,7 @@ class DatasourceProviderService:
             )
             if not datasource_providers:
                 return []
+            current_user = get_current_user()
             # refresh the credentials
             real_credentials_list = []
             for datasource_provider in datasource_providers:
@@ -327,7 +338,7 @@ class DatasourceProviderService:
                     key: value if value != HIDDEN_VALUE else original_params.get(key, UNKNOWN_VALUE)
                     for key, value in client_params.items()
                 }
-                tenant_oauth_client_params.client_params = encrypter.encrypt(new_params)
+                tenant_oauth_client_params.client_params = dict(encrypter.encrypt(new_params))
 
             if enabled is not None:
                 tenant_oauth_client_params.enabled = enabled
@@ -363,7 +374,7 @@ class DatasourceProviderService:
 
     def get_tenant_oauth_client(
         self, tenant_id: str, datasource_provider_id: DatasourceProviderID, mask: bool = False
-    ) -> dict[str, Any] | None:
+    ) -> Mapping[str, Any] | None:
         """
         get tenant oauth client
         """
@@ -379,7 +390,7 @@ class DatasourceProviderService:
         if tenant_oauth_client_params:
             encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
             if mask:
-                return encrypter.mask_tool_credentials(encrypter.decrypt(tenant_oauth_client_params.client_params))
+                return encrypter.mask_plugin_credentials(encrypter.decrypt(tenant_oauth_client_params.client_params))
             else:
                 return encrypter.decrypt(tenant_oauth_client_params.client_params)
         return None
@@ -423,7 +434,7 @@ class DatasourceProviderService:
             )
             if tenant_oauth_client_params:
                 encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
-                return encrypter.decrypt(tenant_oauth_client_params.client_params)
+                return dict(encrypter.decrypt(tenant_oauth_client_params.client_params))
 
             provider_controller = self.provider_manager.fetch_datasource_provider(
                 tenant_id=tenant_id, provider_id=str(datasource_provider_id)
@@ -604,6 +615,7 @@ class DatasourceProviderService:
         """
         provider_name = provider_id.provider_name
         plugin_id = provider_id.plugin_id
+
         with Session(db.engine) as session:
             lock = f"datasource_provider_create_lock:{tenant_id}_{provider_id}_{CredentialType.API_KEY}"
             with redis_client.lock(lock, timeout=20):
@@ -624,6 +636,7 @@ class DatasourceProviderService:
                     raise ValueError("Authorization name is already exists")
 
                 try:
+                    current_user = get_current_user()
                     self.provider_manager.validate_provider_credentials(
                         tenant_id=tenant_id,
                         user_id=current_user.id,
@@ -646,7 +659,7 @@ class DatasourceProviderService:
                     name=db_provider_name,
                     provider=provider_name,
                     plugin_id=plugin_id,
-                    auth_type=CredentialType.API_KEY.value,
+                    auth_type=CredentialType.API_KEY,
                     encrypted_credentials=credentials,
                 )
                 session.add(datasource_provider)
@@ -674,7 +687,7 @@ class DatasourceProviderService:
 
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type.value == FormType.SECRET_INPUT.value:
+            if credential_form_schema.type.value == FormType.SECRET_INPUT:
                 secret_input_form_variables.append(credential_form_schema.name)
 
         return secret_input_form_variables
@@ -901,6 +914,7 @@ class DatasourceProviderService:
         """
         update datasource credentials.
         """
+
         with Session(db.engine) as session:
             datasource_provider = (
                 session.query(DatasourceProvider)
@@ -936,6 +950,7 @@ class DatasourceProviderService:
                     for key, value in credentials.items()
                 }
                 try:
+                    current_user = get_current_user()
                     self.provider_manager.validate_provider_credentials(
                         tenant_id=tenant_id,
                         user_id=current_user.id,

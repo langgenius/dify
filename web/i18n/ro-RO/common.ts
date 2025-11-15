@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Deselectați tot',
     selectAll: 'Selectați tot',
     config: 'Configurație',
+    yes: 'Da',
+    deleteConfirmTitle: 'Ștergere?',
+    no: 'Nu',
+    confirmAction: 'Vă rugăm să confirmați acțiunea dumneavoastră.',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',
@@ -157,7 +161,6 @@ const translation = {
     workspace: 'Spațiu de lucru',
     createWorkspace: 'Creează Spațiu de lucru',
     helpCenter: 'Ajutor',
-    communityFeedback: 'Feedback',
     roadmap: 'Plan de acțiune',
     community: 'Comunitate',
     about: 'Despre',
@@ -165,6 +168,8 @@ const translation = {
     github: 'GitHub',
     support: 'Suport',
     compliance: 'Conformitate',
+    contactUs: 'Contactați-ne',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'CONT',
@@ -721,6 +726,7 @@ const translation = {
     pasteFileLinkInvalid: 'Link fișier nevalid',
     uploadFromComputerLimit: 'Încărcarea fișierului nu poate depăși {{size}}',
     pasteFileLink: 'Lipiți linkul fișierului',
+    fileExtensionBlocked: 'Acest tip de fișier este blocat din motive de securitate',
   },
   license: {
     expiring: 'Expiră într-o zi',

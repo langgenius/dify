@@ -193,8 +193,8 @@ function CodeGroupPanels({ children, targetCode, ...props }: ICodeGroupPanelsPro
   if ((targetCode?.length ?? 0) > 1) {
     return (
       <TabPanels>
-        {targetCode!.map(code => (
-          <TabPanel>
+        {targetCode!.map((code, index) => (
+          <TabPanel key={code.title || code.tag || index}>
             <CodePanel {...props} targetCode={code} />
           </TabPanel>
         ))}
@@ -206,8 +206,8 @@ function CodeGroupPanels({ children, targetCode, ...props }: ICodeGroupPanelsPro
 }
 
 function usePreventLayoutShift() {
-  const positionRef = useRef<any>()
-  const rafRef = useRef<any>()
+  const positionRef = useRef<any>(null)
+  const rafRef = useRef<any>(null)
 
   useEffect(() => {
     return () => {

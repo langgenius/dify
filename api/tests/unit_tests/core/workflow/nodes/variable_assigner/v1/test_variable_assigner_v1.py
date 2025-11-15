@@ -6,11 +6,12 @@ from uuid import uuid4
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import ArrayStringVariable, StringVariable
 from core.workflow.conversation_variable_updater import ConversationVariableUpdater
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.graph import Graph
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.variable_assigner.v1 import VariableAssignerNode
 from core.workflow.nodes.variable_assigner.v1.node_data import WriteMode
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 
@@ -87,7 +88,7 @@ def test_overwrite_string_variable():
         "data": {
             "title": "test",
             "assigned_variable_selector": ["conversation", conversation_variable.name],
-            "write_mode": WriteMode.OVER_WRITE.value,
+            "write_mode": WriteMode.OVER_WRITE,
             "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
         },
     }
@@ -189,7 +190,7 @@ def test_append_variable_to_array():
         "data": {
             "title": "test",
             "assigned_variable_selector": ["conversation", conversation_variable.name],
-            "write_mode": WriteMode.APPEND.value,
+            "write_mode": WriteMode.APPEND,
             "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
         },
     }
@@ -282,7 +283,7 @@ def test_clear_array():
         "data": {
             "title": "test",
             "assigned_variable_selector": ["conversation", conversation_variable.name],
-            "write_mode": WriteMode.CLEAR.value,
+            "write_mode": WriteMode.CLEAR,
             "input_variable_selector": [],
         },
     }

@@ -11,7 +11,7 @@ import Input from '@/app/components/base/input'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
-import WorkflowToolEmpty from '@/app/components/tools/add-tool-modal/empty'
+import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
@@ -21,6 +21,7 @@ import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/u
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { ToolTypeEnum } from '../workflow/block-selector/types'
 import { useMarketplace } from './marketplace/hooks'
+import { useTags } from '@/app/components/plugins/hooks'
 
 const getToolType = (type: string) => {
   switch (type) {
@@ -40,6 +41,7 @@ const ProviderList = () => {
   // const searchParams = useSearchParams()
   // searchParams.get('category') === 'workflow'
   const { t } = useTranslation()
+  const { getTagLabel } = useTags()
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -180,7 +182,7 @@ const ProviderList = () => {
                     } as any}
                     footer={
                       <CardMoreInfo
-                        tags={collection.labels}
+                        tags={collection.labels?.map(label => getTagLabel(label)) || []}
                       />
                     }
                   />

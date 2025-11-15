@@ -121,7 +121,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         if self._application_generate_entity.app_config.app_mode != AppMode.COMPLETION:
             # start generate conversation name thread
             self._conversation_name_generate_thread = self._message_cycle_manager.generate_conversation_name(
-                conversation_id=self._conversation_id, query=self._application_generate_entity.query or ""
+                conversation_id=self._conversation_id, query=self._application_generate_entity.query
             )
 
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)

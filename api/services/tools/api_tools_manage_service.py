@@ -148,7 +148,7 @@ class ApiToolManageService:
             description=extra_info.get("description", ""),
             schema_type_str=schema_type,
             tools_str=json.dumps(jsonable_encoder(tool_bundles)),
-            credentials_str={},
+            credentials_str="{}",
             privacy_policy=privacy_policy,
             custom_disclaimer=custom_disclaimer,
         )
@@ -277,7 +277,7 @@ class ApiToolManageService:
         provider.icon = json.dumps(icon)
         provider.schema = schema
         provider.description = extra_info.get("description", "")
-        provider.schema_type_str = ApiProviderSchemaType.OPENAPI.value
+        provider.schema_type_str = ApiProviderSchemaType.OPENAPI
         provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
         provider.privacy_policy = privacy_policy
         provider.custom_disclaimer = custom_disclaimer
@@ -300,13 +300,13 @@ class ApiToolManageService:
         )
 
         original_credentials = encrypter.decrypt(provider.credentials)
-        masked_credentials = encrypter.mask_tool_credentials(original_credentials)
+        masked_credentials = encrypter.mask_plugin_credentials(original_credentials)
         # check if the credential has changed, save the original credential
         for name, value in credentials.items():
             if name in masked_credentials and value == masked_credentials[name]:
                 credentials[name] = original_credentials[name]
 
-        credentials = encrypter.encrypt(credentials)
+        credentials = dict(encrypter.encrypt(credentials))
         provider.credentials_str = json.dumps(credentials)
 
         db.session.add(provider)
@@ -393,7 +393,7 @@ class ApiToolManageService:
                 icon="",
                 schema=schema,
                 description="",
-                schema_type_str=ApiProviderSchemaType.OPENAPI.value,
+                schema_type_str=ApiProviderSchemaType.OPENAPI,
                 tools_str=json.dumps(jsonable_encoder(tool_bundles)),
                 credentials_str=json.dumps(credentials),
             )
@@ -417,7 +417,7 @@ class ApiToolManageService:
             )
             decrypted_credentials = encrypter.decrypt(credentials)
             # check if the credential has changed, save the original credential
-            masked_credentials = encrypter.mask_tool_credentials(decrypted_credentials)
+            masked_credentials = encrypter.mask_plugin_credentials(decrypted_credentials)
             for name, value in credentials.items():
                 if name in masked_credentials and value == masked_credentials[name]:
                     credentials[name] = decrypted_credentials[name]
