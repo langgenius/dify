@@ -36,6 +36,7 @@ export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput):
       type,
       variable: key,
       label: key.slice(0, getMaxVarNameLength(key)),
+      var_description: rest.var_description || '',
     }
   }
   return {
@@ -46,6 +47,7 @@ export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput):
     placeholder: '',
     default: '',
     hint: '',
+    var_description: VAR_ITEM_TEMPLATE_IN_WORKFLOW.var_description || '',
   }
 }
 

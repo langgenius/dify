@@ -63,7 +63,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       label: currItem.name,
       variable: currItem.key,
       type: currItem.type === 'string' ? InputVarType.textInput : currItem.type,
-      var_description: currItem.description || '',
+      var_description: '',
     } as InputVar
   })()
   const updatePromptVariableItem = (payload: InputVar) => {
