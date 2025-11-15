@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
+from typing import Optional
 
 from pydantic import BaseModel
 from yarl import URL
@@ -504,7 +505,79 @@ class PluginService:
         )
 
     @staticmethod
-    def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:
+    def check_plugin_credentials(tenant_id: str, plugin_installation_id: str):
+        """
+        Check if a plugin has associated credentials.
+
+        Args:
+            tenant_id: Tenant ID
+            plugin_installation_id: Plugin installation ID
+
+        Returns:
+            List of PluginCredentialInfo objects
+        """
+        from services.plugin.plugin_credential_service import PluginCredentialService
+
+        # Get plugin installation to extract plugin_id
+        manager = PluginInstaller()
+        plugins = manager.list_plugins(tenant_id)
+        plugin = next((p for p in plugins if p.installation_id == plugin_installation_id), None)
+
+        if not plugin:
+            return []
+
+        plugin_id = plugin.plugin_id
+        return PluginCredentialService.get_plugin_credentials(tenant_id, plugin_id)
+
+    @staticmethod
+    def uninstall(
+        tenant_id: str,
+        plugin_installation_id: str,
+        delete_credentials: bool = False,
+        credential_ids: Optional[Sequence[str]] = None,
+    ) -> bool:
+        """
+        Uninstall a plugin and optionally delete its credentials.
+
+        Args:
+            tenant_id: Tenant ID
+            plugin_installation_id: Plugin installation ID
+            delete_credentials: Whether to delete associated credentials
+            credential_ids: Specific credential IDs to delete (if None, deletes all)
+
+        Returns:
+            True if successful
+        """
+        import logging
+        from services.plugin.plugin_credential_service import PluginCredentialService
+
+        logger = logging.getLogger(__name__)
+        logger.info(
+            f"Uninstalling plugin {plugin_installation_id}, delete_credentials={delete_credentials}, "
+            f"credential_ids={credential_ids}"
+        )
+
+        # Get plugin information before uninstalling
+        if delete_credentials:
+            manager = PluginInstaller()
+            plugins = manager.list_plugins(tenant_id)
+            plugin = next((p for p in plugins if p.installation_id == plugin_installation_id), None)
+
+            if plugin:
+                plugin_id = plugin.plugin_id
+                logger.info(f"Plugin found: {plugin_id}, proceeding with credential deletion")
+                if credential_ids:
+                    # Delete specific credentials
+                    logger.info(f"Deleting specific credentials: {credential_ids}")
+                    PluginCredentialService.delete_plugin_credentials(tenant_id, credential_ids)
+                else:
+                    # Delete all plugin credentials
+                    logger.info(f"Deleting all credentials for plugin: {plugin_id}")
+                    PluginCredentialService.delete_all_plugin_credentials(tenant_id, plugin_id)
+            else:
+                logger.warning(f"Plugin not found: {plugin_installation_id}")
+
+        # Uninstall the plugin
         manager = PluginInstaller()
         return manager.uninstall(tenant_id, plugin_installation_id)
 

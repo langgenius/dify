@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { type MetaData, PluginSource } from '../types'
 import { RiDeleteBinLine, RiInformation2Line, RiLoopLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -9,7 +9,8 @@ import PluginInfo from '../plugin-page/plugin-info'
 import ActionButton from '../../base/action-button'
 import Tooltip from '../../base/tooltip'
 import Confirm from '../../base/confirm'
-import { uninstallPlugin } from '@/service/plugins'
+import CredentialCheckbox from './credential-checkbox'
+import { checkPluginCredentials, uninstallPlugin } from '@/service/plugins'
 import { useGitHubReleases } from '../install-plugin/hooks'
 import Toast from '@/app/components/base/toast'
 import { useModalContext } from '@/context/modal-context'
@@ -90,10 +91,36 @@ const Action: FC<Props> = ({
     setFalse: hideDeleteConfirm,
   }] = useBoolean(false)
 
+  const [credentials, setCredentials] = React.useState<Array<{
+    credential_id: string
+    credential_name: string
+    credential_type: string
+    provider_name: string
+  }>>([])
+
+  const [deleteCredentials, setDeleteCredentials] = React.useState(false)
+
+  const handleShowDeleteConfirm = useCallback(async () => {
+    try {
+      const credentialsData = await checkPluginCredentials(installationId)
+      setCredentials(credentialsData.credentials || [])
+      setDeleteCredentials(credentialsData.has_credentials) // Default to delete if there are credentials
+    }
+    catch (error) {
+      console.error('checkPluginCredentials error', error)
+      setCredentials([])
+    }
+    showDeleteConfirm()
+  }, [installationId, showDeleteConfirm])
+
   const handleDelete = useCallback(async () => {
     showDeleting()
-    try{
-      const res = await uninstallPlugin(installationId)
+    try {
+      const res = await uninstallPlugin(
+        installationId,
+        deleteCredentials && credentials.length > 0,
+        deleteCredentials ? credentials.map(c => c.credential_id) : undefined,
+      )
       if (res.success) {
         hideDeleteConfirm()
         onDelete()
@@ -105,7 +132,61 @@ const Action: FC<Props> = ({
     finally {
       hideDeleting()
     }
-  }, [installationId, onDelete])
+  }, [installationId, deleteCredentials, credentials, onDelete, hideDeleteConfirm])
+
+  const confirmContent = useMemo(() => (
+    <div className='space-y-3'>
+      <div>
+        {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{pluginName}</span>{t(`${i18nPrefix}.deleteContentRight`)}
+      </div>
+      {credentials.length > 0 && (
+        <div className='space-y-2'>
+          <div className='system-sm-semibold text-text-secondary'>
+            {t(`${i18nPrefix}.credentialsWarning`)}
+          </div>
+          <div className='max-h-32 overflow-y-auto space-y-1 rounded-lg border border-divider-subtle bg-background-section-burn p-2'>
+            {credentials.map(cred => (
+              <div key={cred.credential_id} className='system-xs-regular text-text-tertiary'>
+                • {cred.credential_name} ({cred.credential_type})
+              </div>
+            ))}
+          </div>
+          <div className='space-y-2 pt-2'>
+            <div className='system-sm-semibold text-text-secondary'>
+              What should happen to these API keys?
+            </div>
+            <div className='flex flex-col gap-2'>
+              <label
+                className='flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-background-default-hover transition-colors'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setDeleteCredentials(true)
+                }}
+              >
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${deleteCredentials ? 'border-blue-600' : 'border-gray-300'}`}>
+                  {deleteCredentials && <div className='w-2 h-2 rounded-full bg-blue-600' />}
+                </div>
+                <span className='system-sm-regular'>Delete these API keys</span>
+              </label>
+              <label
+                className='flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-background-default-hover transition-colors'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setDeleteCredentials(false)
+                }}
+              >
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${!deleteCredentials ? 'border-blue-600' : 'border-gray-300'}`}>
+                  {!deleteCredentials && <div className='w-2 h-2 rounded-full bg-blue-600' />}
+                </div>
+                <span className='system-sm-regular'>Keep these API keys (reuse if reinstalling plugin)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  ), [t, pluginName, credentials, deleteCredentials])
+
   return (
     <div className='flex space-x-1'>
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
@@ -134,7 +215,7 @@ const Action: FC<Props> = ({
           <Tooltip popupContent={t(`${i18nPrefix}.delete`)}>
             <ActionButton
               className='text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
-              onClick={showDeleteConfirm}
+              onClick={handleShowDeleteConfirm}
             >
               <RiDeleteBinLine className='h-4 w-4' />
             </ActionButton>
@@ -153,13 +234,7 @@ const Action: FC<Props> = ({
       <Confirm
         isShow={isShowDeleteConfirm}
         title={t(`${i18nPrefix}.delete`)}
-        content={
-          <div>
-            {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{pluginName}</span>{t(`${i18nPrefix}.deleteContentRight`)}<br />
-            {/* // todo: add usedInApps */}
-            {/* {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })} */}
-          </div>
-        }
+        content={confirmContent}
         onCancel={hideDeleteConfirm}
         onConfirm={handleDelete}
         isLoading={deleting}

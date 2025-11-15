@@ -17,7 +17,7 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage, useI18N } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { uninstallPlugin } from '@/service/plugins'
+import { checkPluginCredentials, uninstallPlugin } from '@/service/plugins'
 import { useAllToolProviders, useInvalidateAllToolProviders } from '@/service/use-tools'
 import cn from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -196,9 +196,35 @@ const DetailHeader = ({
     setFalse: hideDeleting,
   }] = useBoolean(false)
 
+  const [credentials, setCredentials] = React.useState<Array<{
+    credential_id: string
+    credential_name: string
+    credential_type: string
+    provider_name: string
+  }>>([])
+
+  const [deleteCredentials, setDeleteCredentials] = React.useState(false)
+
+  const handleShowDeleteConfirm = useCallback(async () => {
+    try {
+      const credentialsData = await checkPluginCredentials(id)
+      setCredentials(credentialsData.credentials || [])
+      setDeleteCredentials(credentialsData.has_credentials)
+    }
+    catch (error) {
+      console.error('checkPluginCredentials error', error)
+      setCredentials([])
+    }
+    showDeleteConfirm()
+  }, [id, showDeleteConfirm])
+
   const handleDelete = useCallback(async () => {
     showDeleting()
-    const res = await uninstallPlugin(id)
+    const res = await uninstallPlugin(
+      id,
+      deleteCredentials && credentials.length > 0,
+      deleteCredentials ? credentials.map(c => c.credential_id) : undefined,
+    )
     hideDeleting()
     if (res.success) {
       hideDeleteConfirm()
@@ -208,7 +234,7 @@ const DetailHeader = ({
       if (PluginCategoryEnum.tool.includes(category))
         invalidateAllToolProviders()
     }
-  }, [showDeleting, id, hideDeleting, hideDeleteConfirm, onUpdate, category, refreshModelProviders, invalidateAllToolProviders])
+  }, [showDeleting, id, deleteCredentials, credentials, hideDeleting, hideDeleteConfirm, onUpdate, category, refreshModelProviders, invalidateAllToolProviders])
 
   return (
     <div className={cn('shrink-0 border-b border-divider-subtle bg-components-panel-bg p-4 pb-3', isReadmeView && 'border-b-0 bg-transparent p-0')}>
@@ -311,7 +337,7 @@ const DetailHeader = ({
               source={source}
               onInfo={showPluginInfo}
               onCheckVersion={handleUpdate}
-              onRemove={showDeleteConfirm}
+              onRemove={handleShowDeleteConfirm}
               detailUrl={detailUrl}
             />
             <ActionButton onClick={onHide}>
@@ -354,8 +380,35 @@ const DetailHeader = ({
           isShow
           title={t(`${i18nPrefix}.delete`)}
           content={
-            <div>
-              {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{label[locale]}</span>{t(`${i18nPrefix}.deleteContentRight`)}<br />
+            <div className='space-y-3'>
+              <div>
+                {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{label[locale]}</span>{t(`${i18nPrefix}.deleteContentRight`)}
+              </div>
+              {credentials.length > 0 && (
+                <div className='space-y-2'>
+                  <div className='system-sm-semibold text-text-secondary'>
+                    {t(`${i18nPrefix}.credentialsWarning`)}
+                  </div>
+                  <div className='max-h-32 overflow-y-auto space-y-1 rounded-lg border border-divider-subtle bg-background-section-burn p-2'>
+                    {credentials.map(cred => (
+                      <div key={cred.credential_id} className='system-xs-regular text-text-tertiary'>
+                        • {cred.credential_name} ({cred.credential_type})
+                      </div>
+                    ))}
+                  </div>
+                  <label className='flex items-center space-x-2 cursor-pointer'>
+                    <input
+                      type='checkbox'
+                      checked={deleteCredentials}
+                      onChange={e => setDeleteCredentials(e.target.checked)}
+                      className='rounded border-divider-regular'
+                    />
+                    <span className='system-sm-regular text-text-secondary'>
+                      {t(`${i18nPrefix}.deleteCredentials`)}
+                    </span>
+                  </label>
+                </div>
+              )}
             </div>
           }
           onCancel={hideDeleteConfirm}
