@@ -812,7 +812,7 @@ class WebhookService:
         not_found_in_cache: list[str] = []
         for node_id in nodes_id_in_graph:
             # firstly check if the node exists in cache
-            if not redis_client.get(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{node_id}"):
+            if not redis_client.get(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}"):
                 not_found_in_cache.append(node_id)
                 continue
 
@@ -845,14 +845,14 @@ class WebhookService:
                     session.add(webhook_record)
                     session.flush()
                     cache = Cache(record_id=webhook_record.id, node_id=node_id, webhook_id=webhook_record.webhook_id)
-                    redis_client.set(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{node_id}", cache.model_dump_json(), ex=60 * 60)
+                    redis_client.set(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}", cache.model_dump_json(), ex=60 * 60)
                 session.commit()
 
                 # delete the nodes not found in the graph
                 for node_id in nodes_id_in_db:
                     if node_id not in nodes_id_in_graph:
                         session.delete(nodes_id_in_db[node_id])
-                        redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{node_id}")
+                        redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}")
                 session.commit()
             except Exception:
                 logger.exception("Failed to sync webhook relationships for app %s", app.id)
