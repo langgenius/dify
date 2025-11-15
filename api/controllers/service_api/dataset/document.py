@@ -62,7 +62,7 @@ class DocumentTextUpdate(BaseModel):
     retrieval_model: dict | None = None
 
 
-service_api_ns.add_model(DocumentTextUpdate.__name__, DocumentTextUpdate.model_json_schema())
+service_api_ns.model(DocumentTextUpdate.__name__, DocumentTextUpdate.model_json_schema(), strict=True)
 
 
 @service_api_ns.route(
