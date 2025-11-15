@@ -1,5 +1,5 @@
-from typing import Self
 import json
+from typing import Self
 from uuid import UUID
 
 from flask import request
@@ -210,9 +210,9 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         # indexing_technique is already set in dataset since this is an update
         args["indexing_technique"] = dataset.indexing_technique
 
-        if args["text"]:
-            text = args["text"]
-            name = args["name"]
+        if args.get("text"):
+            text = args.get("text")
+            name = args.get("name")
             if not current_user:
                 raise ValueError("current_user is required")
             upload_file = FileService(db.engine).upload_text(
