@@ -260,7 +260,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   })
 
   return (
-    <div className='flex h-full flex-col overflow-y-auto'>
+    <div className='flex h-full flex-col'>
       <div className='flex flex-col justify-center gap-1 px-6 pt-4'>
         <h1 className='text-base font-semibold text-text-primary'>{t('datasetDocuments.list.title')}</h1>
         <div className='flex items-center space-x-0.5 text-sm font-normal text-text-tertiary'>
@@ -275,7 +275,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           </a>
         </div>
       </div>
-      <div className='flex flex-1 flex-col px-6 py-4'>
+      <div className='flex h-0 grow flex-col px-6 pt-4'>
         <div className='flex flex-wrap items-center justify-between'>
           <div className='flex items-center gap-2'>
             <SimpleSelect
