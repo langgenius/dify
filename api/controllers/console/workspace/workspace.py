@@ -13,7 +13,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import (
@@ -155,7 +155,7 @@ parser_switch = reqparse.RequestParser().add_argument("tenant_id", type=str, req
 
 @console_ns.route("/workspaces/switch")
 class SwitchWorkspaceApi(Resource):
-    @api.expect(parser_switch)
+    @console_ns.expect(parser_switch)
     @setup_required
     @login_required
     @account_initialization_required
@@ -250,7 +250,7 @@ parser_info = reqparse.RequestParser().add_argument("name", type=str, required=T
 
 @console_ns.route("/workspaces/info")
 class WorkspaceInfoApi(Resource):
-    @api.expect(parser_info)
+    @console_ns.expect(parser_info)
     @setup_required
     @login_required
     @account_initialization_required

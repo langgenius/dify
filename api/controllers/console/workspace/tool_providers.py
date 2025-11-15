@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
     enterprise_license_required,
@@ -64,7 +64,7 @@ parser_tool = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/tool-providers")
 class ToolProviderListApi(Resource):
-    @api.expect(parser_tool)
+    @console_ns.expect(parser_tool)
     @setup_required
     @login_required
     @account_initialization_required
@@ -112,7 +112,7 @@ parser_delete = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/delete")
 class ToolBuiltinProviderDeleteApi(Resource):
-    @api.expect(parser_delete)
+    @console_ns.expect(parser_delete)
     @setup_required
     @login_required
     @account_initialization_required
@@ -140,7 +140,7 @@ parser_add = (
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/add")
 class ToolBuiltinProviderAddApi(Resource):
-    @api.expect(parser_add)
+    @console_ns.expect(parser_add)
     @setup_required
     @login_required
     @account_initialization_required
@@ -174,7 +174,7 @@ parser_update = (
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/update")
 class ToolBuiltinProviderUpdateApi(Resource):
-    @api.expect(parser_update)
+    @console_ns.expect(parser_update)
     @setup_required
     @login_required
     @account_initialization_required
@@ -239,7 +239,7 @@ parser_api_add = (
 
 @console_ns.route("/workspaces/current/tool-provider/api/add")
 class ToolApiProviderAddApi(Resource):
-    @api.expect(parser_api_add)
+    @console_ns.expect(parser_api_add)
     @setup_required
     @login_required
     @account_initialization_required
@@ -272,7 +272,7 @@ parser_remote = reqparse.RequestParser().add_argument("url", type=str, required=
 
 @console_ns.route("/workspaces/current/tool-provider/api/remote")
 class ToolApiProviderGetRemoteSchemaApi(Resource):
-    @api.expect(parser_remote)
+    @console_ns.expect(parser_remote)
     @setup_required
     @login_required
     @account_initialization_required
@@ -297,7 +297,7 @@ parser_tools = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/tool-provider/api/tools")
 class ToolApiProviderListToolsApi(Resource):
-    @api.expect(parser_tools)
+    @console_ns.expect(parser_tools)
     @setup_required
     @login_required
     @account_initialization_required
@@ -333,7 +333,7 @@ parser_api_update = (
 
 @console_ns.route("/workspaces/current/tool-provider/api/update")
 class ToolApiProviderUpdateApi(Resource):
-    @api.expect(parser_api_update)
+    @console_ns.expect(parser_api_update)
     @setup_required
     @login_required
     @account_initialization_required
@@ -369,7 +369,7 @@ parser_api_delete = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/tool-provider/api/delete")
 class ToolApiProviderDeleteApi(Resource):
-    @api.expect(parser_api_delete)
+    @console_ns.expect(parser_api_delete)
     @setup_required
     @login_required
     @account_initialization_required
@@ -395,7 +395,7 @@ parser_get = reqparse.RequestParser().add_argument("provider", type=str, require
 
 @console_ns.route("/workspaces/current/tool-provider/api/get")
 class ToolApiProviderGetApi(Resource):
-    @api.expect(parser_get)
+    @console_ns.expect(parser_get)
     @setup_required
     @login_required
     @account_initialization_required
@@ -435,7 +435,7 @@ parser_schema = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/tool-provider/api/schema")
 class ToolApiProviderSchemaApi(Resource):
-    @api.expect(parser_schema)
+    @console_ns.expect(parser_schema)
     @setup_required
     @login_required
     @account_initialization_required
@@ -460,7 +460,7 @@ parser_pre = (
 
 @console_ns.route("/workspaces/current/tool-provider/api/test/pre")
 class ToolApiProviderPreviousTestApi(Resource):
-    @api.expect(parser_pre)
+    @console_ns.expect(parser_pre)
     @setup_required
     @login_required
     @account_initialization_required
@@ -493,7 +493,7 @@ parser_create = (
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/create")
 class ToolWorkflowProviderCreateApi(Resource):
-    @api.expect(parser_create)
+    @console_ns.expect(parser_create)
     @setup_required
     @login_required
     @account_initialization_required
@@ -536,7 +536,7 @@ parser_workflow_update = (
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/update")
 class ToolWorkflowProviderUpdateApi(Resource):
-    @api.expect(parser_workflow_update)
+    @console_ns.expect(parser_workflow_update)
     @setup_required
     @login_required
     @account_initialization_required
@@ -574,7 +574,7 @@ parser_workflow_delete = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/delete")
 class ToolWorkflowProviderDeleteApi(Resource):
-    @api.expect(parser_workflow_delete)
+    @console_ns.expect(parser_workflow_delete)
     @setup_required
     @login_required
     @account_initialization_required
@@ -604,7 +604,7 @@ parser_wf_get = (
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/get")
 class ToolWorkflowProviderGetApi(Resource):
-    @api.expect(parser_wf_get)
+    @console_ns.expect(parser_wf_get)
     @setup_required
     @login_required
     @account_initialization_required
@@ -640,7 +640,7 @@ parser_wf_tools = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/tools")
 class ToolWorkflowProviderListToolApi(Resource):
-    @api.expect(parser_wf_tools)
+    @console_ns.expect(parser_wf_tools)
     @setup_required
     @login_required
     @account_initialization_required
@@ -832,7 +832,7 @@ parser_default_cred = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/default-credential")
 class ToolBuiltinProviderSetDefaultApi(Resource):
-    @api.expect(parser_default_cred)
+    @console_ns.expect(parser_default_cred)
     @setup_required
     @login_required
     @account_initialization_required
@@ -853,7 +853,7 @@ parser_custom = (
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/oauth/custom-client")
 class ToolOAuthCustomClient(Resource):
-    @api.expect(parser_custom)
+    @console_ns.expect(parser_custom)
     @setup_required
     @login_required
     @account_initialization_required
@@ -953,7 +953,7 @@ parser_mcp_delete = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/tool-provider/mcp")
 class ToolProviderMCPApi(Resource):
-    @api.expect(parser_mcp)
+    @console_ns.expect(parser_mcp)
     @setup_required
     @login_required
     @account_initialization_required
@@ -983,7 +983,7 @@ class ToolProviderMCPApi(Resource):
             )
             return jsonable_encoder(result)
 
-    @api.expect(parser_mcp_put)
+    @console_ns.expect(parser_mcp_put)
     @setup_required
     @login_required
     @account_initialization_required
@@ -1022,7 +1022,7 @@ class ToolProviderMCPApi(Resource):
             )
             return {"result": "success"}
 
-    @api.expect(parser_mcp_delete)
+    @console_ns.expect(parser_mcp_delete)
     @setup_required
     @login_required
     @account_initialization_required
@@ -1045,7 +1045,7 @@ parser_auth = (
 
 @console_ns.route("/workspaces/current/tool-provider/mcp/auth")
 class ToolMCPAuthApi(Resource):
-    @api.expect(parser_auth)
+    @console_ns.expect(parser_auth)
     @setup_required
     @login_required
     @account_initialization_required
@@ -1157,7 +1157,7 @@ parser_cb = (
 
 @console_ns.route("/mcp/oauth/callback")
 class ToolMCPCallbackApi(Resource):
-    @api.expect(parser_cb)
+    @console_ns.expect(parser_cb)
     def get(self):
         args = parser_cb.parse_args()
         state_key = args["state"]
