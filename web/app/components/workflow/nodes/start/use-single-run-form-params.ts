@@ -39,6 +39,7 @@ const useSingleRunFormParams = ({
         variable: '#sys.query#',
         type: InputVarType.textInput,
         required: true,
+        var_description: '',
       })
     }
 
@@ -47,6 +48,7 @@ const useSingleRunFormParams = ({
       variable: '#sys.files#',
       type: InputVarType.multiFiles,
       required: false,
+      var_description: '',
     })
 
     forms.push(

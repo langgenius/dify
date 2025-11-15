@@ -27,6 +27,7 @@ export const getDataSourceCheckParams = (
           type: item.type,
           required: item.required,
           hide: item.hide,
+          var_description: item.description || '',
         })
       })
       return formInputs
