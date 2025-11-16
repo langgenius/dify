@@ -173,6 +173,7 @@ x-shared-env: &shared-api-worker-env
   OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
   OCEANBASE_ENABLE_HYBRID_SEARCH: ${OCEANBASE_ENABLE_HYBRID_SEARCH:-false}
   OCEANBASE_FULLTEXT_PARSER: ${OCEANBASE_FULLTEXT_PARSER:-ik}
+  SEEKDB_MEMORY_LIMIT: ${SEEKDB_MEMORY_LIMIT:-2G}
   QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
   QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
   QDRANT_CLIENT_TIMEOUT: ${QDRANT_CLIENT_TIMEOUT:-20}
@@ -658,6 +659,9 @@ services:
       oceanbase:
         condition: service_healthy
         required: false
+      seekdb:
+        condition: service_healthy
+        required: false
       redis:
         condition: service_started
     volumes:
@@ -692,6 +696,9 @@ services:
       oceanbase:
         condition: service_healthy
         required: false
+      seekdb:
+        condition: service_healthy
+        required: false
       redis:
         condition: service_started
     volumes:
@@ -719,6 +726,9 @@ services:
         condition: service_healthy
         required: false
       oceanbase:
+        condition: service_healthy
+        required: false
+      seekdb:
         condition: service_healthy
         required: false
       redis:
@@ -933,6 +943,9 @@ services:
       oceanbase:
         condition: service_healthy
         required: false
+      seekdb:
+        condition: service_healthy
+        required: false
 
   # ssrf_proxy server
   # for more information, please refer to
@@ -1073,12 +1086,37 @@ services:
       test:
         [
           "CMD-SHELL",
-          'obclient -h127.0.0.1 -P2881 -uroot@test -p${OCEANBASE_VECTOR_PASSWORD} -e "SELECT 1;"',
+          'obclient -h127.0.0.1 -P2881 -uroot@test -p${OCEANBASE_VECTOR_PASSWORD:-difyai123456} -e "SELECT 1;"',
         ]
       interval: 10s
       retries: 30
       start_period: 30s
       timeout: 10s
+
+  # SeekDB vector database
+  seekdb: 
+    image: oceanbase/seekdb:latest
+    container_name: seekdb
+    profiles:
+      - seekdb
+    restart: always
+    volumes:
+      - ./volumes/seekdb:/var/lib/oceanbase
+    environment:
+      ROOT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      MEMORY_LIMIT: ${SEEKDB_MEMORY_LIMIT:-2G}
+      REPORTER: dify-ai-seekdb
+    ports:
+      - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'mysql -h127.0.0.1 -P2881 -uroot -p${OCEANBASE_VECTOR_PASSWORD:-difyai123456} -e "SELECT 1;"',
+        ]
+      interval: 5s
+      retries: 60
+      timeout: 5s
 
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
