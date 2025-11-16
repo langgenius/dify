@@ -38,6 +38,7 @@ const translation = {
       learnMore: 'Learn more',
       description: ' about retrieval method.',
       longDescription: ' about retrieval method, you can change this at any time in the Knowledge settings.',
+      multiModalTip: 'When embedding model supports multi-modal, please select a multi-modal rerank model for better performance.',
     },
     externalKnowledgeAPI: 'External Knowledge API',
     externalKnowledgeID: 'External Knowledge ID',

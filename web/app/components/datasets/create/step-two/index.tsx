@@ -1,6 +1,6 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
@@ -63,6 +63,7 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { checkShowMultiModalTip } from '../../settings/utils'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
@@ -613,6 +614,20 @@ const StepTwo = ({
 
   const isModelAndRetrievalConfigDisabled = !!datasetId && !!currentDataset?.data_source_type
 
+  const showMultiModalTip = useMemo(() => {
+    return checkShowMultiModalTip({
+      embeddingModel,
+      rerankingEnable: retrievalConfig.reranking_enable,
+      rerankModel: {
+        rerankingProviderName: retrievalConfig.reranking_model.reranking_provider_name,
+        rerankingModelName: retrievalConfig.reranking_model.reranking_model_name,
+      },
+      indexMethod: indexType,
+      embeddingModelList,
+      rerankModelList,
+    })
+  }, [embeddingModel, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, indexType, embeddingModelList, rerankModelList])
+
   return (
     <div className='flex h-full w-full'>
       <div className={cn('relative h-full w-1/2 overflow-y-auto py-6', isMobile ? 'px-4' : 'px-12')}>
@@ -1012,6 +1027,7 @@ const StepTwo = ({
                     disabled={isModelAndRetrievalConfigDisabled}
                     value={retrievalConfig}
                     onChange={setRetrievalConfig}
+                    showMultiModalTip={showMultiModalTip}
                   />
                 )
                 : (
