@@ -438,6 +438,10 @@ class PluginModelClient(BasePluginClient):
                     },
                 }
             ),
+            headers={
+                "X-Plugin-ID": plugin_id,
+                "Content-Type": "application/json",
+            },
         )
         for resp in response:
             return resp
