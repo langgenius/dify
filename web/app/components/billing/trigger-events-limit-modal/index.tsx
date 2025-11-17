@@ -8,7 +8,7 @@ import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import type { Plan } from '@/app/components/billing/type'
-import './index.css'
+import styles from './index.module.css'
 
 type Props = {
   show: boolean
@@ -36,19 +36,19 @@ const TriggerEventsLimitModal: FC<Props> = ({
       onClose={onDismiss}
       closable={false}
       clickOutsideNotClose
-      className='trigger-events-limit-modal-surface flex h-[360px] w-[580px] flex-col overflow-hidden rounded-2xl !p-0'
+      className={`${styles.surface} flex h-[360px] w-[580px] flex-col overflow-hidden rounded-2xl !p-0 shadow-xl`}
     >
       <div className='relative flex w-full flex-1 items-stretch justify-center'>
         <div
           aria-hidden
-          className='trigger-events-limit-hero-overlay pointer-events-none absolute inset-0'
+          className={`${styles.heroOverlay} pointer-events-none absolute inset-0`}
         />
         <div className='relative z-10 flex w-full flex-col items-start gap-4 px-8 pt-8'>
-          <div className='trigger-events-limit-icon flex h-12 w-12 items-center justify-center rounded-[12px]'>
+          <div className={`${styles.icon} flex h-12 w-12 items-center justify-center rounded-[12px]`}>
             <TriggerAll className='h-5 w-5 text-text-primary-on-surface' />
           </div>
           <div className='flex flex-col items-start gap-2'>
-            <div className='trigger-events-limit-highlight title-lg-semi-bold'>
+            <div className={`${styles.highlight} title-lg-semi-bold`}>
               {t('billing.triggerLimitModal.title')}
             </div>
             <div className='body-md-regular text-text-secondary'>
