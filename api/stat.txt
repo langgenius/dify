@@ -1,3 +1,0 @@
-This file is gen by cnt_base.sh
-Base 75
-TypeBase 26
