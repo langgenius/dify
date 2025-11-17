@@ -71,6 +71,7 @@ type Props = {
   availableVars?: NodeOutPutVar[]
   isAddBtnTrigger?: boolean
   trigger?: React.ReactNode
+  isJustShowValue?: boolean
   schema?: Partial<CredentialFormSchema>
   valueTypePlaceHolder?: string
   isInTable?: boolean
@@ -104,6 +105,7 @@ const VarReferencePicker: FC<Props> = ({
   availableNodes: passedInAvailableNodes,
   availableVars: passedInAvailableVars,
   trigger,
+  isJustShowValue,
   isAddBtnTrigger,
   schema,
   valueTypePlaceHolder,
@@ -432,7 +434,7 @@ const VarReferencePicker: FC<Props> = ({
                     <AddButton onClick={noop}></AddButton>
                   </div>
                 )
-                : (<div ref={!isSupportConstantValue ? triggerRef : null} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'group/wrap relative flex h-8 w-full items-center', !isSupportConstantValue && 'rounded-lg bg-components-input-bg-normal p-1', isInTable && 'border-none bg-transparent', readonly && 'bg-components-input-bg-disabled')}>
+                : (<div ref={!isSupportConstantValue ? triggerRef : null} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'group/wrap relative flex h-8 w-full items-center', !isSupportConstantValue && 'rounded-lg bg-components-input-bg-normal p-1', isInTable && 'border-none bg-transparent', readonly && 'bg-components-input-bg-disabled', isJustShowValue && 'h-6 bg-transparent p-0')}>
                   {isSupportConstantValue
                     ? <div onClick={(e) => {
                       e.stopPropagation()
@@ -544,7 +546,7 @@ const VarReferencePicker: FC<Props> = ({
 
                       </VarPickerWrap>
                     )}
-                  {(hasValue && !readonly && !isInTable) && (<div
+                  {(hasValue && !readonly && !isInTable && !isJustShowValue) && (<div
                     className='group invisible absolute right-1 top-[50%] h-5 translate-y-[-50%] cursor-pointer rounded-md p-1 hover:bg-state-base-hover group-hover/wrap:visible'
                     onClick={handleClearVar}
                   >

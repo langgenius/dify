@@ -167,6 +167,7 @@ const WorkflowPreview = () => {
           )}
           {currentTab === 'RESULT' && (
             <>
+              {/* human input form position */}
               <ResultText
                 isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
                 outputs={workflowRunningData?.resultText}

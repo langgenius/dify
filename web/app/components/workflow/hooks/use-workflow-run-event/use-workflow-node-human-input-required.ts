@@ -6,7 +6,7 @@ import { produce } from 'immer'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import type { HumanInputRequiredResponse } from '@/types/workflow'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+// import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 
 export const useWorkflowNodeHumanInputRequired = () => {
   const workflowStore = useWorkflowStore()
@@ -27,13 +27,15 @@ export const useWorkflowNodeHumanInputRequired = () => {
     const newNodes = produce(nodes, (draft) => {
       draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Suspended
       // draft[currentNodeIndex].data._waitingRun = false
+      // store form data & input form schema
     })
     setNodes(newNodes)
 
+    // cache form data & generate input form UI in node data
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.result = {
         ...draft.result,
-        status: WorkflowRunningStatus.Suspended,
+        // status: WorkflowRunningStatus.Suspended, // human input required !== workflow  'Suspended'
       }
     }))
   }, [workflowStore])

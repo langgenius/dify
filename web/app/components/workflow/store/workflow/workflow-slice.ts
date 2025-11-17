@@ -9,6 +9,8 @@ import type { FileUploadConfigResponse } from '@/models/common'
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
   resultText?: string
+  // human input form schema or data cached when node is in 'Suspended' status
+  extraContentAndFormData?: Record<string, any>
 }
 
 export type WorkflowSliceShape = {

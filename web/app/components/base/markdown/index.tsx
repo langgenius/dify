@@ -18,7 +18,7 @@ export type MarkdownProps = {
   content: string
   className?: string
   pluginInfo?: SimplePluginInfo
-} & Pick<ReactMarkdownWrapperProps, 'customComponents' | 'customDisallowedElements'>
+} & Pick<ReactMarkdownWrapperProps, 'customComponents' | 'customDisallowedElements' | 'rehypePlugins'>
 
 export const Markdown = (props: MarkdownProps) => {
   const { customComponents = {}, pluginInfo } = props

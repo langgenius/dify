@@ -18,10 +18,12 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
   defaultValue: {
     delivery_methods: [
       {
+        id: 'webapp-method',
         type: DeliveryMethodType.WebApp,
         enabled: true,
       },
       {
+        id: 'email-method',
         type: DeliveryMethodType.Email,
         enabled: false,
       },
