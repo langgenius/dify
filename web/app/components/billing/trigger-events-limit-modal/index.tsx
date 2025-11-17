@@ -66,7 +66,7 @@ const TriggerEventsLimitModal: FC<Props> = ({
 
       <div className={s.footer}>
         <Button
-          className={cn('!rounded-lg !border-[0.5px]', s.dismissButton)}
+          className='h-8 w-[77px] min-w-[72px] !rounded-lg !border-[0.5px] px-3 py-2'
           onClick={onDismiss}
         >
           {t('billing.triggerLimitModal.dismiss')}
@@ -74,7 +74,7 @@ const TriggerEventsLimitModal: FC<Props> = ({
         <UpgradeBtn
           isShort
           onClick={onUpgrade}
-          className={cn('!rounded-lg', s.upgradeButton)}
+          className='h-8 w-[93px] !rounded-lg p-2'
           labelKey='billing.triggerLimitModal.upgrade'
           loc='trigger-events-limit-modal'
         />

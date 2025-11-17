@@ -84,16 +84,3 @@
   align-items: center;
   gap: 8px;
 }
-
-.dismissButton {
-  width: 77px;
-  min-width: 72px;
-  height: 32px;
-  padding: 8px 12px;
-}
-
-.upgradeButton {
-  width: 93px;
-  height: 32px;
-  padding: 8px;
-}
