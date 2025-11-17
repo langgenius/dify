@@ -808,8 +808,6 @@ services:
     profiles:
       - mysql
     restart: always
-    env_file:
-      - ./middleware.env
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-difyai123456}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-dify}
