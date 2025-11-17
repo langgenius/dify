@@ -56,6 +56,42 @@ class BillingService:
         return cls._send_request("GET", "/invoices", params=params)
 
     @classmethod
+    def get_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str):
+        params = {"tenant_id": tenant_id, "feature_key": feature_key}
+        return cls._send_request("GET", "/billing/tenant_feature_plan/usage", params=params)
+
+    @classmethod
+    def update_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str, usage: int) -> dict:
+        """
+        Update tenant feature plan usage.
+
+        Args:
+            tenant_id: Tenant identifier
+            feature_key: Feature key (e.g., 'trigger', 'workflow')
+            usage: Usage delta (positive to add, negative to consume)
+
+        Returns:
+            Response dict with 'result' and 'history_id'
+            Example: {"result": "success", "history_id": "uuid"}
+        """
+        payload = {"tenant_id": tenant_id, "feature_key": feature_key, "usage": usage}
+        return cls._send_request("POST", "/v1/tenant-feature-usage/usage", json=payload)
+
+    @classmethod
+    def refund_tenant_feature_plan_usage(cls, history_id: str) -> dict:
+        """
+        Refund a previous usage charge.
+
+        Args:
+            history_id: The history_id returned from update_tenant_feature_plan_usage
+
+        Returns:
+            Response dict with 'result' and 'history_id'
+        """
+        params = {"quota_usage_history_id": history_id}
+        return cls._send_request("POST", "/v1/tenant-feature-usage/refund", params=params)
+
+    @classmethod
     @retry(
         wait=wait_fixed(2),
         stop=stop_before_delay(10),

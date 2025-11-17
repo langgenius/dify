@@ -5,11 +5,11 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.schedule_utils import calculate_next_run_at
 from models.trigger import AppTrigger, AppTriggerStatus, AppTriggerType, WorkflowSchedulePlan
-from services.workflow.queue_dispatcher import QueueDispatcherManager
 from tasks.workflow_schedule_tasks import run_schedule_trigger
 
 logger = logging.getLogger(__name__)
@@ -98,7 +98,6 @@ def _process_schedules(session: Session, schedules: list[WorkflowSchedulePlan]) 
     if not schedules:
         return 0, 0
 
-    dispatcher_manager = QueueDispatcherManager()
     tasks_to_dispatch: list[str] = []
     rate_limited_count = 0
 
@@ -109,8 +108,8 @@ def _process_schedules(session: Session, schedules: list[WorkflowSchedulePlan]) 
         )
         schedule.next_run_at = next_run_at
 
-        dispatcher = dispatcher_manager.get_dispatcher(schedule.tenant_id)
-        if not dispatcher.check_daily_quota(schedule.tenant_id):
+        # Check quota before dispatching
+        if not QuotaType.TRIGGER.check(schedule.tenant_id):
             logger.info("Tenant %s rate limited, skipping schedule_plan %s", schedule.tenant_id, schedule.id)
             rate_limited_count += 1
         else:
