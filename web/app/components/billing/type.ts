@@ -60,6 +60,12 @@ export type UsageResetInfo = {
   triggerEvents?: number | null
 }
 
+export type BillingQuota = {
+  usage: number
+  limit: number
+  reset_date?: number | null
+}
+
 export enum DocumentProcessingPriority {
   standard = 'standard',
   priority = 'priority',
@@ -93,16 +99,8 @@ export type CurrentPlanInfoBackend = {
     size: number
     limit: number // total. 0 means unlimited
   }
-  api_rate_limit?: {
-    size: number
-    limit: number // total. 0 means unlimited
-    reset_in_days?: number
-  }
-  trigger_events?: {
-    size: number
-    limit: number // total. 0 means unlimited
-    reset_in_days?: number
-  }
+  api_rate_limit?: BillingQuota
+  trigger_event?: BillingQuota
   docs_processing: DocumentProcessingPriority
   can_replace_logo: boolean
   model_load_balancing_enabled: boolean
