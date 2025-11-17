@@ -37,7 +37,7 @@ class QuotaExceededError(Exception):
         )
 
 
-class TriggerNodeLimitExceededError(Exception):
+class TriggerNodeLimitExceededError(ValueError):
     """Raised when trigger node count exceeds the plan limit."""
 
     def __init__(self, count: int, limit: int):
