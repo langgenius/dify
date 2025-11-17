@@ -65,7 +65,7 @@ const translation = {
     messageRequest: {
       title: 'เครดิตข้อความ',
       tooltip: 'โควต้าการเรียกใช้ข้อความสําหรับแผนต่างๆ โดยใช้โมเดล OpenAI (ยกเว้น gpt4) ข้อความที่เกินขีดจํากัดจะใช้คีย์ OpenAI API ของคุณ',
-      titlePerMonth: '{{count,number}} ข้อความ/เดือน',
+      titlePerMonth: '{{count,number}} ข้อความ / เดือน',
     },
     annotatedResponse: {
       title: 'ขีดจํากัดโควต้าคําอธิบายประกอบ',
@@ -82,7 +82,7 @@ const translation = {
     teamMember_one: '{{count,number}} สมาชิกทีม',
     unlimitedApiRate: 'ไม่มีข้อจำกัดอัตราการเรียก API',
     self: 'โฮสต์ด้วยตัวเอง',
-    apiRateLimitUnit: '{{count,number}}/เดือน',
+    apiRateLimitUnit: '{{count,number}}',
     teamMember_other: '{{count,number}} สมาชิกทีม',
     teamWorkspace: '{{count,number}} ทีมทำงาน',
     priceTip: 'ต่อพื้นที่ทำงาน/',

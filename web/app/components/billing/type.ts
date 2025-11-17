@@ -55,6 +55,11 @@ export type SelfHostedPlanInfo = {
 
 export type UsagePlanInfo = Pick<PlanInfo, 'buildApps' | 'teamMembers' | 'annotatedResponse' | 'documentsUploadQuota' | 'apiRateLimit' | 'triggerEvents'> & { vectorSpace: number }
 
+export type UsageResetInfo = {
+  apiRateLimit?: number | null
+  triggerEvents?: number | null
+}
+
 export enum DocumentProcessingPriority {
   standard = 'standard',
   priority = 'priority',
@@ -91,10 +96,12 @@ export type CurrentPlanInfoBackend = {
   api_rate_limit?: {
     size: number
     limit: number // total. 0 means unlimited
+    reset_in_days?: number
   }
   trigger_events?: {
     size: number
     limit: number // total. 0 means unlimited
+    reset_in_days?: number
   }
   docs_processing: DocumentProcessingPriority
   can_replace_logo: boolean

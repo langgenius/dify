@@ -70,7 +70,7 @@ const translation = {
       title: 'Crediti Messaggi',
       tooltip:
         'Quote di invocazione dei messaggi per vari piani utilizzando i modelli OpenAI (eccetto gpt4). I messaggi oltre il limite utilizzeranno la tua chiave API OpenAI.',
-      titlePerMonth: '{{count,number}} messaggi/mese',
+      titlePerMonth: '{{count,number}} messaggi / mese',
     },
     annotatedResponse: {
       title: 'Limiti di Quota di Annotazione',
@@ -88,7 +88,7 @@ const translation = {
     freeTrialTipPrefix: 'Iscriviti e ricevi un',
     teamMember_one: '{{count,number}} membro del team',
     documents: '{{count,number}} Documenti di Conoscenza',
-    apiRateLimitUnit: '{{count,number}}/mese',
+    apiRateLimitUnit: '{{count,number}}',
     documentsRequestQuota: '{{count,number}}/min Limite di richiesta di conoscenza',
     teamMember_other: '{{count,number}} membri del team',
     freeTrialTip: 'prova gratuita di 200 chiamate OpenAI.',

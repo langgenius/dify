@@ -61,7 +61,7 @@ const translation = {
     messageRequest: {
       title: 'Créditos de Mensagem',
       tooltip: 'Cotas de invocação de mensagens para vários planos usando modelos da OpenAI (exceto gpt4). Mensagens além do limite usarão sua Chave de API da OpenAI.',
-      titlePerMonth: '{{count,number}} mensagens/mês',
+      titlePerMonth: '{{count,number}} mensagens / mês',
     },
     annotatedResponse: {
       title: 'Limites de Cota de Anotação',
@@ -80,7 +80,7 @@ const translation = {
     documentsRequestQuota: '{{count,number}}/min Limite de Taxa de Solicitação de Conhecimento',
     cloud: 'Serviço de Nuvem',
     teamWorkspace: '{{count,number}} Espaço de Trabalho da Equipe',
-    apiRateLimitUnit: '{{count,number}}/mês',
+    apiRateLimitUnit: '{{count,number}}',
     freeTrialTipSuffix: 'Nenhum cartão de crédito necessário',
     teamMember_other: '{{count,number}} Membros da Equipe',
     comparePlanAndFeatures: 'Compare planos e recursos',

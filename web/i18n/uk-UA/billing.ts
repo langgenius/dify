@@ -64,7 +64,7 @@ const translation = {
     messageRequest: {
       title: 'Кредити повідомлень',
       tooltip: 'Квоти на виклик повідомлень для різних планів з використанням моделей OpenAI (крім gpt4). Повідомлення понад ліміт використовуватимуть ваш ключ API OpenAI.',
-      titlePerMonth: '{{count,number}} повідомлень/місяць',
+      titlePerMonth: '{{count,number}} повідомлень / місяць',
     },
     annotatedResponse: {
       title: 'Ліміти квоти відповідей з анотаціями',
@@ -84,7 +84,7 @@ const translation = {
     priceTip: 'за робочим простором/',
     unlimitedApiRate: 'Немає обмеження на швидкість API',
     freeTrialTipSuffix: 'Кредитна картка не потрібна',
-    apiRateLimitUnit: '{{count,number}}/місяць',
+    apiRateLimitUnit: '{{count,number}}',
     getStarted: 'Почати',
     freeTrialTip: 'безкоштовна пробна версія з 200 запитів до OpenAI.',
     documents: '{{count,number}} Документів знань',

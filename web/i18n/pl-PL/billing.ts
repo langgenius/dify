@@ -68,7 +68,7 @@ const translation = {
       title: 'Limity kredytów wiadomości',
       tooltip:
         'Limity wywołań wiadomości dla różnych planów używających modeli OpenAI (z wyjątkiem gpt4). Wiadomości przekraczające limit będą korzystać z twojego klucza API OpenAI.',
-      titlePerMonth: '{{count,number}} wiadomości/miesiąc',
+      titlePerMonth: '{{count,number}} wiadomości / miesiąc',
     },
     annotatedResponse: {
       title: 'Limity kredytów na adnotacje',
@@ -91,7 +91,7 @@ const translation = {
     freeTrialTipPrefix: 'Zarejestruj się i zdobądź',
     teamMember_other: '{{count,number}} członków zespołu',
     teamWorkspace: '{{count,number}} Zespół Workspace',
-    apiRateLimitUnit: '{{count,number}}/miesiąc',
+    apiRateLimitUnit: '{{count,number}}',
     cloud: 'Usługa chmurowa',
     teamMember_one: '{{count,number}} Członek zespołu',
     priceTip: 'na przestrzeń roboczą/',

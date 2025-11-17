@@ -64,7 +64,7 @@ const translation = {
     messageRequest: {
       title: 'Credite de mesaje',
       tooltip: 'Cote de invocare a mesajelor pentru diferite planuri utilizând modele OpenAI (cu excepția gpt4). Mesajele peste limită vor utiliza cheia API OpenAI.',
-      titlePerMonth: '{{count,number}} mesaje/lună',
+      titlePerMonth: '{{count,number}} mesaje / lună',
     },
     annotatedResponse: {
       title: 'Limite de cotă de anotare',
@@ -82,7 +82,7 @@ const translation = {
     documentsTooltip: 'Cota pe numărul de documente importate din Sursele de Date de Cunoștințe.',
     getStarted: 'Întrebați-vă',
     cloud: 'Serviciu de cloud',
-    apiRateLimitUnit: '{{count,number}}/lună',
+    apiRateLimitUnit: '{{count,number}}',
     comparePlanAndFeatures: 'Compară planurile și caracteristicile',
     documentsRequestQuota: '{{count,number}}/min Limita de rată a cererilor de cunoștințe',
     documents: '{{count,number}} Documente de Cunoaștere',

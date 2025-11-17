@@ -65,7 +65,7 @@ const translation = {
     messageRequest: {
       title: 'Кредиты на сообщения',
       tooltip: 'Квоты вызова сообщений для различных тарифных планов, использующих модели OpenAI (кроме gpt4). Сообщения, превышающие лимит, будут использовать ваш ключ API OpenAI.',
-      titlePerMonth: '{{count,number}} сообщений/месяц',
+      titlePerMonth: '{{count,number}} сообщений / месяц',
     },
     annotatedResponse: {
       title: 'Ограничения квоты аннотаций',
@@ -78,7 +78,7 @@ const translation = {
     apiRateLimit: 'Ограничение скорости API',
     self: 'Самостоятельно размещенный',
     teamMember_other: '{{count,number}} Члены команды',
-    apiRateLimitUnit: '{{count,number}}/месяц',
+    apiRateLimitUnit: '{{count,number}}',
     unlimitedApiRate: 'Нет ограничений на количество запросов к API',
     freeTrialTip: 'бесплатная пробная версия из 200 вызовов OpenAI.',
     freeTrialTipSuffix: 'Кредитная карта не требуется',

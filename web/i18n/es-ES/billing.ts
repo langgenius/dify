@@ -65,7 +65,7 @@ const translation = {
     messageRequest: {
       title: 'Créditos de Mensajes',
       tooltip: 'Cuotas de invocación de mensajes para varios planes utilizando modelos de OpenAI (excepto gpt4). Los mensajes que excedan el límite utilizarán tu clave API de OpenAI.',
-      titlePerMonth: '{{count,number}} mensajes/mes',
+      titlePerMonth: '{{count,number}} mensajes / mes',
     },
     annotatedResponse: {
       title: 'Límites de Cuota de Anotación',
@@ -76,7 +76,7 @@ const translation = {
     priceTip: 'por espacio de trabajo/',
     teamMember_one: '{{count, número}} Miembro del Equipo',
     getStarted: 'Comenzar',
-    apiRateLimitUnit: '{{count, número}}/mes',
+    apiRateLimitUnit: '{{count, número}}',
     freeTrialTipSuffix: 'No se requiere tarjeta de crédito',
     unlimitedApiRate: 'Sin límite de tasa de API',
     apiRateLimit: 'Límite de tasa de API',

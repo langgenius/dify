@@ -68,7 +68,7 @@ const translation = {
       title: '메시지 크레딧',
       tooltip:
         'GPT 제외 다양한 요금제에서의 메시지 호출 쿼터 (gpt4 제외). 제한을 초과하는 메시지는 OpenAI API 키를 사용합니다.',
-      titlePerMonth: '{{count,number}} 메시지/월',
+      titlePerMonth: '{{count,number}} 메시지 / 월',
     },
     annotatedResponse: {
       title: '주석 응답 쿼터',
@@ -88,7 +88,7 @@ const translation = {
     freeTrialTip: '200 회의 OpenAI 호출 무료 체험을 받으세요. ',
     annualBilling: '연간 청구',
     getStarted: '시작하기',
-    apiRateLimitUnit: '{{count,number}}/월',
+    apiRateLimitUnit: '{{count,number}}',
     freeTrialTipSuffix: '신용카드 없음',
     teamWorkspace: '{{count,number}} 팀 작업 공간',
     self: '자체 호스팅',

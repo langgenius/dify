@@ -36,5 +36,9 @@ export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
       apiRateLimit: resolveLimit(data.api_rate_limit?.limit, planPreset?.apiRateLimit ?? NUM_INFINITE),
       triggerEvents: resolveLimit(data.trigger_events?.limit, planPreset?.triggerEvents),
     },
+    reset: {
+      apiRateLimit: data.api_rate_limit?.reset_in_days ?? null,
+      triggerEvents: data.trigger_events?.reset_in_days ?? null,
+    },
   }
 }

@@ -65,7 +65,7 @@ const translation = {
     messageRequest: {
       title: 'Krediti za sporočila',
       tooltip: 'Kvota za klice sporočil pri različnih načrtih z uporabo modelov OpenAI (razen GPT-4). Sporočila preko omejitve bodo uporabljala vaš OpenAI API ključ.',
-      titlePerMonth: '{{count,number}} sporočil/mesec',
+      titlePerMonth: '{{count,number}} sporočil / mesec',
     },
     annotatedResponse: {
       title: 'Omejitve kvote za označevanje',
@@ -86,7 +86,7 @@ const translation = {
     teamMember_one: '{{count,number}} član ekipe',
     teamMember_other: '{{count,number}} Članov ekipe',
     documentsRequestQuota: '{{count,number}}/min Omejitev stopnje zahtev po znanju',
-    apiRateLimitUnit: '{{count,number}}/mesec',
+    apiRateLimitUnit: '{{count,number}}',
     priceTip: 'na delovnem prostoru/',
     freeTrialTipPrefix: 'Prijavite se in prejmite',
     cloud: 'Oblačna storitev',

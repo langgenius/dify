@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <style>
+    body {
+      font-family: 'Inter', 'Arial', sans-serif;
+      background-color: #e9ebf0;
+      margin: 0;
+      padding: 0;
+      color: #000000;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    .card {
+      width: 600px;
+      min-height: 454px;
+      margin: 40px auto 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      background: #fcfcfd;
+      border: 1px solid #ffffff;
+      box-shadow: 0px 3px 10px -2px rgba(9, 9, 11, 0.08), 0px 2px 4px -2px rgba(9, 9, 11, 0.06);
+      border-radius: 16px;
+    }
+
+    .card-header {
+      display: flex;
+      padding: 36px 48px 24px 48px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      align-self: stretch;
+    }
+
+    .card-header img {
+      width: 68px;
+      height: auto;
+    }
+
+    .card-content {
+      display: flex;
+      padding: 8px 48px 48px 48px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+      align-self: stretch;
+      width: 100%;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+      line-height: 120%;
+      color: #000000;
+    }
+
+    .body-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px 0 0;
+    }
+
+    .body-text {
+      margin: 0;
+      font-size: 14px;
+      line-height: 20px;
+      letter-spacing: -0.005em;
+      color: #354052;
+    }
+
+    .body-text strong {
+      font-weight: 600;
+      color: #101828;
+    }
+
+    .cta {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      max-width: 504px;
+      height: 32px;
+      padding: 0 16px;
+      gap: 8px;
+      background: #1677ff;
+      border-radius: 6px;
+      text-decoration: none;
+      color: #ffffff !important;
+      font-size: 14px;
+      line-height: 22px;
+      font-weight: 400;
+    }
+
+    .note {
+      margin: 0;
+      font-size: 14px;
+      line-height: 20px;
+      letter-spacing: -0.005em;
+      color: #354052;
+    }
+
+    .signature {
+      margin-top: 28px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .signature-text {
+      margin: 0;
+      font-size: 14px;
+      line-height: 20px;
+      letter-spacing: -0.005em;
+      color: #354052;
+    }
+
+    .email-footer {
+      margin: 20px auto 40px;
+      max-width: 600px;
+      color: #676f83;
+      text-align: center;
+      font-family: 'Inter', 'Arial', sans-serif;
+      font-size: 12px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 16px;
+      letter-spacing: -0.06px;
+      flex: 1 0 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <div class="card-header">
+      <img src="https://assets.dify.ai/images/logo.png" alt="Dify Logo" />
+    </div>
+    <div class="card-content">
+      <h1 class="title">You’re nearing your Trigger Events limit</h1>
+      <div class="body-group">
+        <p class="body-text">
+          <strong>Dear {{ recipientName | default(workspaceName ~ ' team', true) }},</strong>
+        </p>
+        <p class="body-text">
+          Your workspace <strong>{{workspaceName}}</strong> has used <strong>{{usagePercent}}</strong> of its
+          <strong>{{usageScope}}</strong> for the <strong>{{planName}} Plan (limit: {{planLimit}})</strong>.
+        </p>
+        <p class="body-text">
+          Once the limit is reached, workflows triggered by <strong>{{triggerSources}}</strong> events will be temporarily
+          paused.
+        </p>
+        <p class="body-text">
+          {{upgradeHint}}
+        </p>
+        <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
+        <p class="note">
+          <strong>
+            {% if resetLine is defined %}
+              {{ resetLine }}
+            {% else %}
+              Trigger Events for the {{planName}} Plan {{resetDescription}}
+            {% endif %}
+          </strong>
+        </p>
+      </div>
+      <div class="signature">
+        <p class="signature-text">Best regards,</p>
+        <p class="signature-text">The Dify Team</p>
+      </div>
+    </div>
+  </div>
+  <p class="email-footer">Please do not reply directly to this email, it is automatically sent by the system.</p>
+</body>
+
+</html>
