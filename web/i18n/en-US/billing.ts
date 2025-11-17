@@ -12,6 +12,13 @@ const translation = {
     resetsIn: 'Resets in {{count,number}} days',
   },
   teamMembers: 'Team Members',
+  triggerLimitModal: {
+    title: 'Upgrade to unlock more trigger events',
+    description: 'You’ve reached the limit of workflow event triggers for this plan.',
+    dismiss: 'Dismiss',
+    upgrade: 'Upgrade',
+    usageTitle: 'TRIGGER EVENTS',
+  },
   upgradeBtn: {
     plain: 'View Plan',
     encourage: 'Upgrade Now',

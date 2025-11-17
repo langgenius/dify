@@ -50,9 +50,15 @@ const PlanComp: FC<Props> = ({
   const triggerEventsResetInDays = type === Plan.professional && total.triggerEvents !== NUM_INFINITE
     ? reset.triggerEvents ?? undefined
     : undefined
-  const apiRateLimitResetInDays = type === Plan.sandbox && total.apiRateLimit !== NUM_INFINITE
-    ? getDaysUntilEndOfMonth()
-    : undefined
+  const apiRateLimitResetInDays = (() => {
+    if (total.apiRateLimit === NUM_INFINITE)
+      return undefined
+    if (typeof reset.apiRateLimit === 'number')
+      return reset.apiRateLimit
+    if (type === Plan.sandbox)
+      return getDaysUntilEndOfMonth()
+    return undefined
+  })()
 
   const [showModal, setShowModal] = React.useState(false)
   const { mutateAsync } = useEducationVerify()
