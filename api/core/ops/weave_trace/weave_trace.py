@@ -1,7 +1,7 @@
 import logging
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
 import wandb
@@ -12,6 +12,7 @@ from weave.trace_server.trace_server_interface import (
     CallStartReq,
     EndedCallSchemaForInsert,
     StartedCallSchemaForInsert,
+    SummaryInsertMap,
     TraceStatus,
 )
 
@@ -64,7 +65,7 @@ class WeaveDataTrace(BaseTraceInstance):
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
         self.calls: dict[str, Any] = {}
-        self.project_id = self.weave_client._project_id()
+        self.project_id = f"{self.weave_client.entity}/{self.weave_client.project}"
 
     def get_project_url(
         self,
@@ -434,9 +435,9 @@ class WeaveDataTrace(BaseTraceInstance):
 
     def _normalize_time(self, dt: datetime | None) -> datetime:
         if dt is None:
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
         if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
+            return dt.replace(tzinfo=UTC)
         return dt
 
     def start_call(self, run_data: WeaveTraceModel, parent_run_id: str | None = None):
@@ -468,6 +469,7 @@ class WeaveDataTrace(BaseTraceInstance):
                 started_at=started_at,
                 attributes=attributes,
                 inputs=inputs,
+                wb_user_id=None,
             )
         )
         self.weave_client.server.call_start(call_start_req)
@@ -501,7 +503,7 @@ class WeaveDataTrace(BaseTraceInstance):
         else:
             status_counts[TraceStatus.SUCCESS] = 1
 
-        summary = {
+        summary: dict[str, Any] = {
             "status_counts": status_counts,
             "weave": {"latency_ms": elapsed_ms},
         }
@@ -515,7 +517,7 @@ class WeaveDataTrace(BaseTraceInstance):
                 ended_at=ended_at,
                 exception=exception_str,
                 output=run_data.outputs,
-                summary=summary,
+                summary=cast(SummaryInsertMap, summary),
             )
         )
         self.weave_client.server.call_end(call_end_req)
