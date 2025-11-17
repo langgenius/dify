@@ -1095,7 +1095,7 @@ class DatasetPermission(TypeBase):
     )
 
 
-class ExternalKnowledgeApis(Base):
+class ExternalKnowledgeApis(TypeBase):
     __tablename__ = "external_knowledge_apis"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="external_knowledge_apis_pkey"),
@@ -1103,16 +1103,20 @@ class ExternalKnowledgeApis(Base):
         sa.Index("external_knowledge_apis_name_idx", "name"),
     )
 
-    id = mapped_column(StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(
+        StringUUID, nullable=False, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    settings = mapped_column(sa.Text, nullable=True)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    settings: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
 
     def to_dict(self) -> dict[str, Any]:

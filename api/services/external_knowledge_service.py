@@ -62,7 +62,7 @@ class ExternalDatasetService:
             tenant_id=tenant_id,
             created_by=user_id,
             updated_by=user_id,
-            name=args.get("name"),
+            name=str(args.get("name")),
             description=args.get("description", ""),
             settings=json.dumps(args.get("settings"), ensure_ascii=False),
         )
