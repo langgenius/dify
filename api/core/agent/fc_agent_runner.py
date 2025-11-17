@@ -23,7 +23,7 @@ from core.model_runtime.entities import (
 )
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
-from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.entities.tool_entities import ToolInvokeMeta, ToolProviderType
 from core.tools.tool_engine import ToolEngine
 from models.model import Message
 
@@ -234,6 +234,11 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         "meta": ToolInvokeMeta.error_instance(f"there is not a tool named {tool_call_name}").to_dict(),
                     }
                 else:
+                    inputs_to_pass = (
+                        kwargs.get("inputs")
+                        if tool_instance.tool_provider_type() == ToolProviderType.MCP
+                        else None
+                    )
                     # invoke tool
                     tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
                         tool=tool_instance,
@@ -247,6 +252,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         app_id=self.application_generate_entity.app_config.app_id,
                         message_id=self.message.id,
                         conversation_id=self.conversation.id,
+                        inputs=inputs_to_pass,
                     )
                     # publish files
                     for message_file_id in message_files:

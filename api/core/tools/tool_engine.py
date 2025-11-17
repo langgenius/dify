@@ -55,6 +55,7 @@ class ToolEngine:
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        inputs: dict[str, Any] | None = None,
     ) -> tuple[str, list[str], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
@@ -79,7 +80,7 @@ class ToolEngine:
             # hit the callback handler
             agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
 
-            messages = ToolEngine._invoke(tool, tool_parameters, user_id, conversation_id, app_id, message_id)
+            messages = ToolEngine._invoke(tool, tool_parameters, user_id, conversation_id, app_id, message_id, inputs)
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
             def message_callback(
@@ -197,6 +198,7 @@ class ToolEngine:
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        inputs: dict[str, Any] | None = None, 
     ) -> Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]:
         """
         Invoke the tool with the given arguments.
@@ -214,7 +216,7 @@ class ToolEngine:
             },
         )
         try:
-            yield from tool.invoke(user_id, tool_parameters, conversation_id, app_id, message_id)
+            yield from tool.invoke(user_id, tool_parameters, conversation_id, app_id, message_id, inputs)
         except Exception as e:
             meta.error = str(e)
             raise ToolEngineInvokeError(meta)
