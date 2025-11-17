@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'Create Custom Tool',
   customToolTip: 'Learn more about Dify custom tools',
   type: {
-    all: 'All',
     builtIn: 'Tools',
     custom: 'Custom',
     workflow: 'Workflow',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: 'After configuring credentials, all members within the workspace can use this tool when orchestrating applications.',
   },
   includeToolNum: '{{num}} {{action}} included',
-  addTool: 'Add Tool',
   addToolModal: {
     type: 'type',
     category: 'category',
-    add: 'add',
     added: 'added',
-    manageInTools: 'Manage in Tools',
     custom: {
       title: 'No custom tool available',
       tip: 'Create a custom tool',
