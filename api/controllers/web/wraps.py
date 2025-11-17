@@ -62,7 +62,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None):
             end_user = session.scalar(select(EndUser).where(EndUser.id == end_user_id))
             if not end_user:
                 raise NotFound()
-            
+
             # Validate user_id against end_user's session_id if provided
             if user_id is not None and end_user.session_id != user_id:
                 raise Unauthorized("Authentication has expired.")
