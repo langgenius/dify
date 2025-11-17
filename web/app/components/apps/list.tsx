@@ -35,6 +35,7 @@ import dynamic from 'next/dynamic'
 import Empty from './empty'
 import Footer from './footer'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { AppModeEnum } from '@/types/app'
 
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
@@ -126,11 +127,11 @@ const List: FC<Props> = ({
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
     { value: 'all', text: t('app.types.all'), icon: <RiApps2Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: 'workflow', text: t('app.types.workflow'), icon: <RiExchange2Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: 'advanced-chat', text: t('app.types.advanced'), icon: <RiMessage3Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: 'chat', text: t('app.types.chatbot'), icon: <RiMessage3Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: 'agent-chat', text: t('app.types.agent'), icon: <RiRobot3Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: 'completion', text: t('app.types.completion'), icon: <RiFile4Line className='mr-1 h-[14px] w-[14px]' /> },
+    { value: AppModeEnum.WORKFLOW, text: t('app.types.workflow'), icon: <RiExchange2Line className='mr-1 h-[14px] w-[14px]' /> },
+    { value: AppModeEnum.ADVANCED_CHAT, text: t('app.types.advanced'), icon: <RiMessage3Line className='mr-1 h-[14px] w-[14px]' /> },
+    { value: AppModeEnum.CHAT, text: t('app.types.chatbot'), icon: <RiMessage3Line className='mr-1 h-[14px] w-[14px]' /> },
+    { value: AppModeEnum.AGENT_CHAT, text: t('app.types.agent'), icon: <RiRobot3Line className='mr-1 h-[14px] w-[14px]' /> },
+    { value: AppModeEnum.COMPLETION, text: t('app.types.completion'), icon: <RiFile4Line className='mr-1 h-[14px] w-[14px]' /> },
   ]
 
   useEffect(() => {
@@ -155,15 +156,23 @@ const List: FC<Props> = ({
       return
     }
 
-    if (anchorRef.current) {
+    if (anchorRef.current && containerRef.current) {
+      // Calculate dynamic rootMargin: clamps to 100-200px range, using 20% of container height as the base value for better responsiveness
+      const containerHeight = containerRef.current.clientHeight
+      const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200)) // Clamps to 100-200px range, using 20% of container height as the base value
+
       observer = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && !isLoading && !error && hasMore)
           setSize((size: number) => size + 1)
-      }, { rootMargin: '100px' })
+      }, {
+        root: containerRef.current,
+        rootMargin: `${dynamicMargin}px`,
+        threshold: 0.1, // Trigger when 10% of the anchor element is visible
+      })
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, setSize, anchorRef, mutate, data, error])
+  }, [isLoading, setSize, data, error])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)

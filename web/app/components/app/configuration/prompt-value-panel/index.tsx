@@ -10,7 +10,7 @@ import {
 } from '@remixicon/react'
 import ConfigContext from '@/context/debug-configuration'
 import type { Inputs } from '@/models/debug'
-import { AppType, ModelModeType } from '@/types/app'
+import { AppModeEnum, ModelModeType } from '@/types/app'
 import Select from '@/app/components/base/select'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -25,7 +25,7 @@ import cn from '@/utils/classnames'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 
 export type IPromptValuePanelProps = {
-  appType: AppType
+  appType: AppModeEnum
   onSend?: () => void
   inputs: Inputs
   visionConfig: VisionSettings
@@ -55,7 +55,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   }, [promptVariables])
 
   const canNotRun = useMemo(() => {
-    if (mode !== AppType.completion)
+    if (mode !== AppModeEnum.COMPLETION)
       return true
 
     if (isAdvancedMode) {
@@ -95,8 +95,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         <div className={cn('px-4 pt-3', userInputFieldCollapse ? 'pb-3' : 'pb-1')}>
           <div className='flex cursor-pointer items-center gap-0.5 py-0.5' onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
             <div className='system-md-semibold-uppercase text-text-secondary'>{t('appDebug.inputs.userInputField')}</div>
-            {userInputFieldCollapse && <RiArrowRightSLine className='h-4 w-4 text-text-secondary'/>}
-            {!userInputFieldCollapse && <RiArrowDownSLine className='h-4 w-4 text-text-secondary'/>}
+            {userInputFieldCollapse && <RiArrowRightSLine className='h-4 w-4 text-text-secondary' />}
+            {!userInputFieldCollapse && <RiArrowDownSLine className='h-4 w-4 text-text-secondary' />}
           </div>
           {!userInputFieldCollapse && (
             <div className='system-xs-regular mt-1 text-text-tertiary'>{t('appDebug.inputs.completionVarTip')}</div>
@@ -221,7 +221,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
       <div className='mx-3'>
         <FeatureBar
           showFileUpload={false}
-          isChatMode={appType !== AppType.completion}
+          isChatMode={appType !== AppModeEnum.COMPLETION}
           onFeatureBarClick={setShowAppConfigureFeaturesModal}
           disabled={readonly}
           hideEditEntrance={readonly}

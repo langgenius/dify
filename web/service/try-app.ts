@@ -1,11 +1,10 @@
-import type { AppMode } from '@/types/app'
 import {
   get,
 } from './base'
 import type {
   SiteInfo,
 } from '@/models/share'
-import type { ModelConfig } from '@/types/app'
+import type { AppModeEnum, ModelConfig } from '@/types/app'
 import qs from 'qs'
 import type { DataSetListResponse } from '@/models/datasets'
 import type { Edge, Node } from '@/app/components/workflow/types'
@@ -14,7 +13,7 @@ import type { Viewport } from 'reactflow'
 export type TryAppInfo = {
   name: string
   description: string
-  mode: AppMode
+  mode: AppModeEnum
   site: SiteInfo
   model_config: ModelConfig
   deleted_tools: any[]

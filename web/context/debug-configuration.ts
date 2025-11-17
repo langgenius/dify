@@ -22,6 +22,7 @@ import type {
 import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { VisionSettings } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import { ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -33,7 +34,7 @@ type IDebugConfiguration = {
   appId: string
   isAPIKeySet: boolean
   isTrailFinished: boolean
-  mode: string
+  mode: AppModeEnum
   modelModeType: ModelModeType
   promptMode: PromptMode
   setPromptMode: (promptMode: PromptMode) => void
@@ -113,7 +114,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   appId: '',
   isAPIKeySet: false,
   isTrailFinished: false,
-  mode: '',
+  mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,
   promptMode: PromptMode.simple,
   setPromptMode: noop,
@@ -212,6 +213,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
       prompt_template: '',
       prompt_variables: [],
     },
+    chat_prompt_config: DEFAULT_CHAT_PROMPT_CONFIG,
+    completion_prompt_config: DEFAULT_COMPLETION_PROMPT_CONFIG,
     more_like_this: null,
     opening_statement: '',
     suggested_questions: [],
@@ -222,6 +225,14 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     suggested_questions_after_answer: null,
     retriever_resource: null,
     annotation_reply: null,
+    external_data_tools: [],
+    system_parameters: {
+      audio_file_size_limit: 0,
+      file_size_limit: 0,
+      image_file_size_limit: 0,
+      video_file_size_limit: 0,
+      workflow_file_upload_limit: 0,
+    },
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   },

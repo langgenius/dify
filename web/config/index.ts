@@ -144,7 +144,9 @@ export const getMaxToken = (modelId: string) => {
 
 export const LOCALE_COOKIE_NAME = 'locale'
 
+const COOKIE_DOMAIN = (process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '').trim()
 export const CSRF_COOKIE_NAME = () => {
+  if (COOKIE_DOMAIN) return 'csrf_token'
   const isSecure = API_PREFIX.startsWith('https://')
   return isSecure ? '__Host-csrf_token' : 'csrf_token'
 }
@@ -375,6 +377,11 @@ export const ENABLE_WEBSITE_WATERCRAWL = getBooleanConfig(
   DatasetAttr.DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL,
   false,
 )
+export const ENABLE_SINGLE_DOLLAR_LATEX = getBooleanConfig(
+  process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX,
+  DatasetAttr.DATA_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX,
+  false,
+)
 
 export const VALUE_SELECTOR_DELIMITER = '@@@'
 
@@ -413,6 +420,8 @@ export const ZENDESK_FIELD_IDS = {
   ),
 }
 export const APP_VERSION = pkg.version
+
+export const IS_MARKETPLACE = globalThis.document?.body?.getAttribute('data-is-marketplace') === 'true'
 
 export const RAG_PIPELINE_PREVIEW_CHUNK_NUM = 20
 

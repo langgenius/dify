@@ -13,7 +13,7 @@ import CardItem from './card-item/item'
 import ParamsConfig from './params-config'
 import ContextVar from './context-var'
 import ConfigContext from '@/context/debug-configuration'
-import { AppType } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import type { DataSet } from '@/models/datasets'
 import {
   getMultipleRetrievalConfig,
@@ -237,7 +237,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
       draft.metadata_model_config = {
         provider: model.provider,
         name: model.modelId,
-        mode: model.mode || 'chat',
+        mode: model.mode || AppModeEnum.CHAT,
         completion_params: draft.metadata_model_config?.completion_params || { temperature: 0.7 },
       }
     })
@@ -310,7 +310,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
         </div>
       )}
 
-      {!readonly && mode === AppType.completion && dataSet.length > 0 && (
+      {!readonly && mode === AppModeEnum.COMPLETION && dataSet.length > 0 && (
         <ContextVar
           value={selectedContextVar?.key}
           options={promptVariablesToSelect}

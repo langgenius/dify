@@ -1,6 +1,7 @@
 import threading
 from collections.abc import Sequence
 
+from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
 import contexts
@@ -14,17 +15,26 @@ from models import (
     WorkflowRun,
     WorkflowRunTriggeredFrom,
 )
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
 
 
 class WorkflowRunService:
-    def __init__(self):
+    _session_factory: sessionmaker
+    _workflow_run_repo: APIWorkflowRunRepository
+
+    def __init__(self, session_factory: Engine | sessionmaker | None = None):
         """Initialize WorkflowRunService with repository dependencies."""
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        if session_factory is None:
+            session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+        elif isinstance(session_factory, Engine):
+            session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
+
+        self._session_factory = session_factory
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
-            session_maker
+            self._session_factory
         )
-        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
 
     def get_paginate_advanced_chat_workflow_runs(
         self, app_model: App, args: dict, triggered_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.DEBUGGING

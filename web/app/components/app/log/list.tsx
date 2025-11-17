@@ -14,12 +14,13 @@ import timezone from 'dayjs/plugin/timezone'
 import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { ChatItemInTree } from '../../base/chat/types'
 import Indicator from '../../header/indicator'
 import VarPanel from './var-panel'
 import type { FeedbackFunc, FeedbackType, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
 import type { Annotation, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
-import type { App } from '@/types/app'
+import { type App, AppModeEnum } from '@/types/app'
 import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
@@ -41,6 +42,12 @@ import { getProcessedFilesFromResponse } from '@/app/components/base/file-upload
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
 import PromptLogModal from '../../base/prompt-log-modal'
+import { WorkflowContextProvider } from '@/app/components/workflow/context'
+import { AppSourceType } from '@/service/share'
+
+type AppStoreState = ReturnType<typeof useAppStore.getState>
+type ConversationListItem = ChatConversationGeneralDetail | CompletionConversationGeneralDetail
+type ConversationSelection = ConversationListItem | { id: string; isPlaceholder?: true }
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -201,7 +208,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
   const { notify } = useContext(ToastContext)
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
+  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow((state: AppStoreState) => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showMessageLogModal: state.showMessageLogModal,
@@ -369,7 +376,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
   // Only load initial messages, don't auto-load more
   useEffect(() => {
-    if (appDetail?.id && detail.id && appDetail?.mode !== 'completion' && !fetchInitiated.current) {
+    if (appDetail?.id && detail.id && appDetail?.mode !== AppModeEnum.COMPLETION && !fetchInitiated.current) {
       // Mark as initialized, but don't auto-load more messages
       fetchInitiated.current = true
       // Still call fetchData to get initial messages
@@ -578,8 +585,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
   }, [hasMore, isLoading, loadMoreMessages])
 
-  const isChatMode = appDetail?.mode !== 'completion'
-  const isAdvanced = appDetail?.mode === 'advanced-chat'
+  const isChatMode = appDetail?.mode !== AppModeEnum.COMPLETION
+  const isAdvanced = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
 
   const varList = (detail.model_config as any).user_input_form?.map((item: any) => {
     const itemContent = item[Object.keys(item)[0]]
@@ -683,12 +690,12 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               }}></div>
             </div>
             <TextGeneration
+              appSourceType={AppSourceType.webApp}
               className='mt-2'
               content={detail.message.answer}
               messageId={detail.message.id}
               isError={false}
               onRetry={noop}
-              isInstalledApp={false}
               supportFeedback
               feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
               onFeedback={feedback => onFeedback(detail.message.id, feedback)}
@@ -774,15 +781,17 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         }
       </div>
       {showMessageLogModal && (
-        <MessageLogModal
-          width={width}
-          currentLogItem={currentLogItem}
-          onCancel={() => {
-            setCurrentLogItem()
-            setShowMessageLogModal(false)
-          }}
-          defaultTab={currentLogModalActiveTab}
-        />
+        <WorkflowContextProvider>
+          <MessageLogModal
+            width={width}
+            currentLogItem={currentLogItem}
+            onCancel={() => {
+              setCurrentLogItem()
+              setShowMessageLogModal(false)
+            }}
+            defaultTab={currentLogModalActiveTab}
+          />
+        </WorkflowContextProvider>
       )}
       {!isChatMode && showPromptLogModal && (
         <PromptLogModal
@@ -893,19 +902,112 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
 const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const conversationIdInUrl = searchParams.get('conversation_id') ?? undefined
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false) // Whether to display the chat details drawer
-  const [currentConversation, setCurrentConversation] = useState<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>() // Currently selected conversation
-  const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
-  const isChatflow = appDetail.mode === 'advanced-chat' // Whether the app is a chatflow app
-  const { setShowPromptLogModal, setShowAgentLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
+  const [currentConversation, setCurrentConversation] = useState<ConversationSelection | undefined>() // Currently selected conversation
+  const closingConversationIdRef = useRef<string | null>(null)
+  const pendingConversationIdRef = useRef<string | null>(null)
+  const pendingConversationCacheRef = useRef<ConversationSelection | undefined>(undefined)
+  const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION // Whether the app is a chat app
+  const isChatflow = appDetail.mode === AppModeEnum.ADVANCED_CHAT // Whether the app is a chatflow app
+  const { setShowPromptLogModal, setShowAgentLogModal, setShowMessageLogModal } = useAppStore(useShallow((state: AppStoreState) => ({
     setShowPromptLogModal: state.setShowPromptLogModal,
     setShowAgentLogModal: state.setShowAgentLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
   })))
+
+  const activeConversationId = conversationIdInUrl ?? pendingConversationIdRef.current ?? currentConversation?.id
+
+  const buildUrlWithConversation = useCallback((conversationId?: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (conversationId)
+      params.set('conversation_id', conversationId)
+    else
+      params.delete('conversation_id')
+
+    const queryString = params.toString()
+    return queryString ? `${pathname}?${queryString}` : pathname
+  }, [pathname, searchParams])
+
+  const handleRowClick = useCallback((log: ConversationListItem) => {
+    if (conversationIdInUrl === log.id) {
+      if (!showDrawer)
+        setShowDrawer(true)
+
+      if (!currentConversation || currentConversation.id !== log.id)
+        setCurrentConversation(log)
+      return
+    }
+
+    pendingConversationIdRef.current = log.id
+    pendingConversationCacheRef.current = log
+    if (!showDrawer)
+      setShowDrawer(true)
+
+    if (currentConversation?.id !== log.id)
+      setCurrentConversation(undefined)
+
+    router.push(buildUrlWithConversation(log.id), { scroll: false })
+  }, [buildUrlWithConversation, conversationIdInUrl, currentConversation, router, showDrawer])
+
+  const currentConversationId = currentConversation?.id
+
+  useEffect(() => {
+    if (!conversationIdInUrl) {
+      if (pendingConversationIdRef.current)
+        return
+
+      if (showDrawer || currentConversationId) {
+        setShowDrawer(false)
+        setCurrentConversation(undefined)
+      }
+      closingConversationIdRef.current = null
+      pendingConversationCacheRef.current = undefined
+      return
+    }
+
+    if (closingConversationIdRef.current === conversationIdInUrl)
+      return
+
+    if (pendingConversationIdRef.current === conversationIdInUrl)
+      pendingConversationIdRef.current = null
+
+    const matchedConversation = logs?.data?.find((item: ConversationListItem) => item.id === conversationIdInUrl)
+    const nextConversation: ConversationSelection = matchedConversation
+      ?? pendingConversationCacheRef.current
+      ?? { id: conversationIdInUrl, isPlaceholder: true }
+
+    if (!showDrawer)
+      setShowDrawer(true)
+
+    if (!currentConversation || currentConversation.id !== conversationIdInUrl || (!('created_at' in currentConversation) && matchedConversation))
+      setCurrentConversation(nextConversation)
+
+    if (pendingConversationCacheRef.current?.id === conversationIdInUrl || matchedConversation)
+      pendingConversationCacheRef.current = undefined
+  }, [conversationIdInUrl, currentConversation, isChatMode, logs?.data, showDrawer])
+
+  const onCloseDrawer = useCallback(() => {
+    onRefresh()
+    setShowDrawer(false)
+    setCurrentConversation(undefined)
+    setShowPromptLogModal(false)
+    setShowAgentLogModal(false)
+    setShowMessageLogModal(false)
+    pendingConversationIdRef.current = null
+    pendingConversationCacheRef.current = undefined
+    closingConversationIdRef.current = conversationIdInUrl ?? null
+
+    if (conversationIdInUrl)
+      router.replace(buildUrlWithConversation(), { scroll: false })
+  }, [buildUrlWithConversation, conversationIdInUrl, onRefresh, router, setShowAgentLogModal, setShowMessageLogModal, setShowPromptLogModal])
 
   // Annotated data needs to be highlighted
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
@@ -923,15 +1025,6 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         </div>
       </Tooltip>
     )
-  }
-
-  const onCloseDrawer = () => {
-    onRefresh()
-    setShowDrawer(false)
-    setCurrentConversation(undefined)
-    setShowPromptLogModal(false)
-    setShowAgentLogModal(false)
-    setShowMessageLogModal(false)
   }
 
   if (!logs)
@@ -960,11 +1053,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
             return <tr
               key={log.id}
-              className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', currentConversation?.id !== log.id ? '' : 'bg-background-default-hover')}
-              onClick={() => {
-                setShowDrawer(true)
-                setCurrentConversation(log)
-              }}>
+              className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', activeConversationId !== log.id ? '' : 'bg-background-default-hover')}
+              onClick={() => handleRowClick(log)}>
               <td className='h-4'>
                 {!log.read_at && (
                   <div className='flex items-center p-3 pr-0.5'>

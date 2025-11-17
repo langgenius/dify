@@ -9,6 +9,7 @@ import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/gene
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 const APIKeyInfoPanel: FC = () => {
   const isCloud = !IS_CE_EDITION
@@ -47,7 +48,7 @@ const APIKeyInfoPanel: FC = () => {
       <Button
         variant='primary'
         className='mt-2 space-x-2'
-        onClick={() => setShowAccountSettingModal({ payload: 'provider' })}
+        onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
       >
         <div className='text-sm font-medium'>{t('appOverview.apiKeyInfo.setAPIBtn')}</div>
         <LinkExternal02 className='h-4 w-4' />

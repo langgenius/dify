@@ -11,6 +11,7 @@ import { RiInformation2Line } from '@remixicon/react'
 import { useCallback } from 'react'
 import ExploreContext from '@/context/explore-context'
 import { useContextSelector } from 'use-context-selector'
+import { AppModeEnum } from '@/types/app'
 
 export type AppCardProps = {
   app: App
@@ -55,11 +56,11 @@ const AppCard = ({
             <div className='truncate' title={appBasicInfo.name}>{appBasicInfo.name}</div>
           </div>
           <div className='flex items-center text-[10px] font-medium leading-[18px] text-text-tertiary'>
-            {appBasicInfo.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.advanced').toUpperCase()}</div>}
-            {appBasicInfo.mode === 'chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
-            {appBasicInfo.mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
-            {appBasicInfo.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
-            {appBasicInfo.mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
+            {appBasicInfo.mode === AppModeEnum.ADVANCED_CHAT && <div className='truncate'>{t('app.types.advanced').toUpperCase()}</div>}
+            {appBasicInfo.mode === AppModeEnum.CHAT && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
+            {appBasicInfo.mode === AppModeEnum.AGENT_CHAT && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
+            {appBasicInfo.mode === AppModeEnum.WORKFLOW && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
+            {appBasicInfo.mode === AppModeEnum.COMPLETION && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
           </div>
         </div>
       </div>

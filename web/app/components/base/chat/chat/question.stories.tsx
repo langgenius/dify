@@ -5,7 +5,7 @@ import Question from './question'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 
 const meta = {
-  title: 'Base/Chat Question',
+  title: 'Base/Other/Chat Question',
   component: Question,
   parameters: {
     layout: 'centered',

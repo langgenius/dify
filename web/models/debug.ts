@@ -9,6 +9,7 @@ import type {
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ModelConfig as NodeModelConfig } from '@/app/components/workflow/types'
+import type { ExternalDataTool } from '@/models/common'
 export type Inputs = Record<string, string | number | object | boolean>
 
 export enum PromptMode {
@@ -133,9 +134,9 @@ export type ModelConfig = {
   model_id: string
   mode: ModelModeType
   prompt_type?: PromptMode
+  configs: PromptConfig
   chat_prompt_config?: ChatPromptConfig | null
   completion_prompt_config?: CompletionPromptConfig | null
-  configs: PromptConfig
   opening_statement: string | null
   more_like_this: MoreLikeThisConfig | null
   suggested_questions: string[] | null
@@ -146,6 +147,14 @@ export type ModelConfig = {
   retriever_resource: RetrieverResourceConfig | null
   sensitive_word_avoidance: ModerationConfig | null
   annotation_reply: AnnotationReplyConfig | null
+  external_data_tools?: ExternalDataTool[] | null
+  system_parameters: {
+    audio_file_size_limit: number
+    file_size_limit: number
+    image_file_size_limit: number
+    video_file_size_limit: number
+    workflow_file_upload_limit: number
+  }
   dataSets: any[]
   agentConfig: AgentConfig
 }

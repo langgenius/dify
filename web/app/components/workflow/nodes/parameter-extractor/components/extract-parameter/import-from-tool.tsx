@@ -8,9 +8,8 @@ import { useTranslation } from 'react-i18next'
 import BlockSelector from '../../../../block-selector'
 import type { Param, ParamType } from '../../types'
 import cn from '@/utils/classnames'
-import { useStore } from '@/app/components/workflow/store'
 import type {
-  DataSourceDefaultValue,
+  PluginDefaultValue,
   ToolDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
 import type { ToolParameter } from '@/app/components/tools/types'
@@ -18,6 +17,11 @@ import { CollectionType } from '@/app/components/tools/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { canFindTool } from '@/utils'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 
@@ -42,23 +46,23 @@ const ImportFromTool: FC<Props> = ({
   const { t } = useTranslation()
   const language = useLanguage()
 
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
 
-  const handleSelectTool = useCallback((_type: BlockEnum, toolInfo?: ToolDefaultValue | DataSourceDefaultValue) => {
-    if (!toolInfo || 'datasource_name' in toolInfo)
+  const handleSelectTool = useCallback((_type: BlockEnum, toolInfo?: PluginDefaultValue) => {
+    if (!toolInfo || 'datasource_name' in toolInfo || !('tool_name' in toolInfo))
       return
 
-    const { provider_id, provider_type, tool_name } = toolInfo
+    const { provider_id, provider_type, tool_name } = toolInfo as ToolDefaultValue
     const currentTools = (() => {
       switch (provider_type) {
         case CollectionType.builtIn:
-          return buildInTools
+          return buildInTools || []
         case CollectionType.custom:
-          return customTools
+          return customTools || []
         case CollectionType.workflow:
-          return workflowTools
+          return workflowTools || []
         default:
           return []
       }

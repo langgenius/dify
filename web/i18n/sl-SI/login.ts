@@ -120,6 +120,7 @@ const translation = {
     noAccount: 'Nimate računa?',
     welcome: '👋 Dobrodošli! Prosimo, izpolnite podatke, da začnete.',
   },
+  pageTitleForE: 'Hej, začnimo!',
 }
 
 export default translation

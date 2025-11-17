@@ -126,6 +126,7 @@ export enum DatasetAttr {
   DATA_PUBLIC_ENABLE_WEBSITE_JINAREADER = 'data-public-enable-website-jinareader',
   DATA_PUBLIC_ENABLE_WEBSITE_FIRECRAWL = 'data-public-enable-website-firecrawl',
   DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL = 'data-public-enable-website-watercrawl',
+  DATA_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX = 'data-public-enable-single-dollar-latex',
   NEXT_PUBLIC_ZENDESK_WIDGET_KEY = 'next-public-zendesk-widget-key',
   NEXT_PUBLIC_ZENDESK_FIELD_ID_ENVIRONMENT = 'next-public-zendesk-field-id-environment',
   NEXT_PUBLIC_ZENDESK_FIELD_ID_VERSION = 'next-public-zendesk-field-id-version',

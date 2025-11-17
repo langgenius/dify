@@ -284,7 +284,8 @@ export const fetchAccessToken = async ({ userId, appCode }: { userId?: string, a
   if (accessToken)
     headers.append('Authorization', `Bearer ${accessToken}`)
   const params = new URLSearchParams()
-  userId && params.append('user_id', userId)
+  if (userId)
+    params.append('user_id', userId)
   const url = `/passport?${params.toString()}`
   return get<{ access_token: string }>(url, { headers }) as Promise<{ access_token: string }>
 }
