@@ -8,8 +8,7 @@ import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import type { Plan } from '@/app/components/billing/type'
-import cn from '@/utils/classnames'
-import s from './style.module.css'
+import './index.css'
 
 type Props = {
   show: boolean
@@ -37,15 +36,19 @@ const TriggerEventsLimitModal: FC<Props> = ({
       onClose={onDismiss}
       closable={false}
       clickOutsideNotClose
-      className={cn('flex flex-col !p-0', s.container)}
+      className='trigger-events-limit-modal-surface flex h-[360px] w-[580px] flex-col overflow-hidden rounded-2xl !p-0'
     >
-      <div className={s.hero}>
-        <div className={s.heroContent}>
-          <div className={s.iconWrapper}>
+      <div className='relative flex w-full flex-1 items-stretch justify-center'>
+        <div
+          aria-hidden
+          className='trigger-events-limit-hero-overlay pointer-events-none absolute inset-0'
+        />
+        <div className='relative z-10 flex w-full flex-col items-start gap-4 px-8 pt-8'>
+          <div className='trigger-events-limit-icon flex h-12 w-12 items-center justify-center rounded-[12px]'>
             <TriggerAll className='h-5 w-5 text-text-primary-on-surface' />
           </div>
-          <div className={s.copyBlock}>
-            <div className={cn('title-lg-semi-bold', s.highlight)}>
+          <div className='flex flex-col items-start gap-2'>
+            <div className='trigger-events-limit-highlight title-lg-semi-bold'>
               {t('billing.triggerLimitModal.title')}
             </div>
             <div className='body-md-regular text-text-secondary'>
@@ -53,7 +56,7 @@ const TriggerEventsLimitModal: FC<Props> = ({
             </div>
           </div>
           <UsageInfo
-            className={cn('w-full', s.usageCard)}
+            className='trigger-events-limit-usage-card mb-5 w-full rounded-[12px]'
             Icon={TriggerAll}
             name={t('billing.triggerLimitModal.usageTitle')}
             usage={usage}
@@ -64,7 +67,7 @@ const TriggerEventsLimitModal: FC<Props> = ({
         </div>
       </div>
 
-      <div className={s.footer}>
+      <div className='flex h-[76px] w-full items-center justify-end gap-2 px-8 pb-8 pt-5'>
         <Button
           className='h-8 w-[77px] min-w-[72px] !rounded-lg !border-[0.5px] px-3 py-2'
           onClick={onDismiss}
@@ -74,7 +77,8 @@ const TriggerEventsLimitModal: FC<Props> = ({
         <UpgradeBtn
           isShort
           onClick={onUpgrade}
-          className='h-8 w-[93px] !rounded-lg p-2'
+          className='flex w-[93px] items-center justify-center !rounded-lg !px-2'
+          style={{ height: 32 }}
           labelKey='billing.triggerLimitModal.upgrade'
           loc='trigger-events-limit-modal'
         />
