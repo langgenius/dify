@@ -210,6 +210,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const showUserComments = useStore(s => s.showUserComments)
   const showUserCursors = useStore(s => s.showUserCursors)
   const isCommentPreviewHovering = useStore(s => s.isCommentPreviewHovering)
+  const isCommentInputActive = Boolean(pendingComment)
   const { t } = useTranslation()
 
   eventEmitter?.useSubscription((v: any) => {
@@ -317,7 +318,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   // Prevent browser zoom interactions from hijacking gestures meant for the workflow canvas
   useEffect(() => {
     const preventBrowserZoom = (event: WheelEvent) => {
-      if (!isCommentPreviewHovering)
+      if (!isCommentPreviewHovering && !isCommentInputActive)
         return
 
       if (event.ctrlKey || event.metaKey)
@@ -325,7 +326,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     }
 
     const preventGestureZoom = (event: Event) => {
-      if (!isCommentPreviewHovering)
+      if (!isCommentPreviewHovering && !isCommentInputActive)
         return
 
       event.preventDefault()
@@ -343,7 +344,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         window.removeEventListener(eventName, preventGestureZoom)
       })
     }
-  }, [isCommentPreviewHovering])
+  }, [isCommentPreviewHovering, isCommentInputActive])
 
   const {
     handleNodeDragStart,
