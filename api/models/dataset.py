@@ -958,7 +958,7 @@ class DatasetKeywordTable(TypeBase):
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False, unique=True)
     keyword_table: Mapped[str] = mapped_column(sa.Text, nullable=False)
     data_source_type: Mapped[str] = mapped_column(
-        String(255), nullable=False, server_default=sa.text("'database'::character varying"), default='database'
+        String(255), nullable=False, server_default=sa.text("'database'::character varying"), default="database"
     )
 
     @property
