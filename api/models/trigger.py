@@ -425,7 +425,7 @@ class WorkflowSchedulePlan(TypeBase):
         sa.Index("workflow_schedule_plan_next_idx", "next_run_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"), init=False)
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuidv7()"), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
