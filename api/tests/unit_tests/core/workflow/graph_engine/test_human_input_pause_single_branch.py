@@ -1,5 +1,6 @@
 import time
 
+from core.app.app_config.entities import OutputVariableEntity, OutputVariableType
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.workflow.entities import GraphInitParams
@@ -13,7 +14,6 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
 from core.workflow.nodes.human_input import HumanInputNode
@@ -111,8 +111,12 @@ def _build_llm_human_llm_graph(mock_config: MockConfig) -> tuple[Graph, GraphRun
     end_data = EndNodeData(
         title="End",
         outputs=[
-            VariableSelector(variable="initial_text", value_selector=["llm_initial", "text"]),
-            VariableSelector(variable="resume_text", value_selector=["llm_resume", "text"]),
+            OutputVariableEntity(
+                variable="initial_text", value_type=OutputVariableType.STRING, value_selector=["llm_initial", "text"]
+            ),
+            OutputVariableEntity(
+                variable="resume_text", value_type=OutputVariableType.STRING, value_selector=["llm_resume", "text"]
+            ),
         ],
         desc=None,
     )
