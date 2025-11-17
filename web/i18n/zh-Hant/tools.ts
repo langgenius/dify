@@ -2,7 +2,6 @@ const translation = {
   title: '工具',
   createCustomTool: '建立自定義工具',
   type: {
-    all: '全部',
     builtIn: '內建',
     custom: '自定義',
     workflow: '工作流',
@@ -20,7 +19,6 @@ const translation = {
     setupModalTitleDescription: '配置憑據後，工作區中的所有成員都可以在編排應用程式時使用此工具。',
   },
   includeToolNum: '包含 {{num}} 個工具',
-  addTool: '新增工具',
   createTool: {
     title: '建立自定義工具',
     editAction: '編輯',
@@ -141,10 +139,8 @@ const translation = {
   notAuthorized: '工具未授權',
   howToGet: '如何獲取',
   addToolModal: {
-    add: '加',
     type: '類型',
     added: '新增',
-    manageInTools: '在工具中管理',
     category: '類別',
     custom: {
       title: '沒有可用的自訂工具',

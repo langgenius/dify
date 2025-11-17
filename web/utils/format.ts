@@ -130,10 +130,20 @@ export const formatNumberAbbreviated = (num: number) => {
 
   for (let i = 0; i < units.length; i++) {
     if (num >= units[i].value) {
-      const formatted = (num / units[i].value).toFixed(1)
+      const value = num / units[i].value
+      let rounded = Math.round(value * 10) / 10
+      let unitIndex = i
+
+      // If rounded value >= 1000, promote to next unit
+      if (rounded >= 1000 && i > 0) {
+        rounded = rounded / 1000
+        unitIndex = i - 1
+      }
+
+      const formatted = rounded.toFixed(1)
       return formatted.endsWith('.0')
-        ? `${Number.parseInt(formatted)}${units[i].symbol}`
-        : `${formatted}${units[i].symbol}`
+        ? `${Number.parseInt(formatted)}${units[unitIndex].symbol}`
+        : `${formatted}${units[unitIndex].symbol}`
     }
   }
 }
