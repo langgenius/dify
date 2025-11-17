@@ -11,6 +11,7 @@ export const useGetTryAppInfo = (appId: string) => {
     queryFn: () => {
       return fetchTryAppInfo(appId)
     },
+    enabled: !!appId,
   })
 }
 
@@ -20,6 +21,7 @@ export const useGetTryAppParams = (appId: string) => {
     queryFn: () => {
       return fetchAppParams(AppSourceType.tryApp, appId)
     },
+    enabled: !!appId,
   })
 }
 

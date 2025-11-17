@@ -37,6 +37,7 @@ import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { noop } from 'lodash-es'
 import { useWebAppStore } from '@/context/web-app-context'
+import { useGetTryAppInfo, useGetTryAppParams } from '@/service/use-try-app'
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -67,9 +68,13 @@ function getFormattedChatList(messages: any[]) {
 export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: string) => {
   const isInstalledApp = false // just can be webapp and try app
   const isTryApp = appSourceType === AppSourceType.tryApp
-  const appInfo = useWebAppStore(s => s.appInfo)
+  const { data: tryAppInfo } = useGetTryAppInfo(isTryApp ? tryAppId! : '')
+  const webAppInfo = useWebAppStore(s => s.appInfo)
+  const appInfo = isTryApp ? tryAppInfo : webAppInfo
   const appMeta = useWebAppStore(s => s.appMeta)
-  const appParams = useWebAppStore(s => s.appParams)
+  const { data: tryAppParams } = useGetTryAppParams(isTryApp ? tryAppId! : '')
+  const webAppParams = useWebAppStore(s => s.appParams)
+  const appParams = isTryApp ? tryAppParams : webAppParams
 
   const appId = useMemo(() => {
     return isTryApp ? tryAppId : (appInfo as any)?.app_id

@@ -21,6 +21,7 @@ import cn from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AppSourceType } from '@/service/share'
+import type { AppData } from '@/models/share'
 
 const Chatbot = () => {
   const {
@@ -136,7 +137,7 @@ const EmbeddedChatbotWrapper = () => {
 
   return <EmbeddedChatbotContext.Provider value={{
     appSourceType: AppSourceType.webApp,
-    appData,
+    appData: appData as AppData,
     appParams,
     appMeta,
     appChatListDataLoading,
