@@ -1,6 +1,5 @@
 const translation = {
   type: {
-    all: 'Semua',
     workflow: 'Alur Kerja',
     builtIn: 'Perkakas',
     custom: 'Adat',
@@ -35,8 +34,6 @@ const translation = {
     category: 'golongan',
     type: 'jenis',
     added: 'Ditambahkan',
-    add: 'tambah',
-    manageInTools: 'Kelola di Alat',
   },
   createTool: {
     exampleOptions: {
@@ -240,7 +237,6 @@ const translation = {
   title: 'Perkakas',
   createCustomTool: 'Buat Alat Kustom',
   customToolTip: 'Pelajari alat kustom Dify lebih lanjut',
-  addTool: 'Tambahkan Alat',
   author: 'Oleh',
   copyToolName: 'Salin Nama',
   howToGet: 'Cara mendapatkan',
