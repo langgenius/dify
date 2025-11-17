@@ -314,6 +314,37 @@ export const Workflow: FC<WorkflowProps> = memo(({
     }
   })
 
+  // Prevent browser zoom interactions from hijacking gestures meant for the workflow canvas
+  useEffect(() => {
+    const preventBrowserZoom = (event: WheelEvent) => {
+      if (!isCommentPreviewHovering)
+        return
+
+      if (event.ctrlKey || event.metaKey)
+        event.preventDefault()
+    }
+
+    const preventGestureZoom = (event: Event) => {
+      if (!isCommentPreviewHovering)
+        return
+
+      event.preventDefault()
+    }
+
+    window.addEventListener('wheel', preventBrowserZoom, { passive: false })
+    const gestureEvents: Array<'gesturestart' | 'gesturechange' | 'gestureend'> = ['gesturestart', 'gesturechange', 'gestureend']
+    gestureEvents.forEach((eventName) => {
+      window.addEventListener(eventName, preventGestureZoom, { passive: false })
+    })
+
+    return () => {
+      window.removeEventListener('wheel', preventBrowserZoom)
+      gestureEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, preventGestureZoom)
+      })
+    }
+  }, [isCommentPreviewHovering])
+
   const {
     handleNodeDragStart,
     handleNodeDrag,
@@ -536,7 +567,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         edgesFocusable={!nodesReadOnly}
         panOnScroll={false}
         panOnDrag={controlMode === ControlMode.Hand}
-        zoomOnPinch={!isCommentPreviewHovering}
+        zoomOnPinch={true}
         zoomOnScroll={true}
         zoomOnDoubleClick={true}
         isValidConnection={isValidConnection}
