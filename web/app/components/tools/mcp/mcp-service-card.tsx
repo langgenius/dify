@@ -30,10 +30,14 @@ import { useDocLink } from '@/context/i18n'
 
 export type IAppCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
+  triggerModeDisabled?: boolean // align with Trigger Node vs User Input exclusivity
+  triggerModeMessage?: React.ReactNode // display-only message explaining the trigger restriction
 }
 
 function MCPServiceCard({
   appInfo,
+  triggerModeDisabled = false,
+  triggerModeMessage = '',
 }: IAppCardProps) {
   const { t } = useTranslation()
   const docLink = useDocLink()
@@ -79,7 +83,7 @@ function MCPServiceCard({
   const hasStartNode = currentWorkflow?.graph?.nodes?.some(node => node.data.type === BlockEnum.Start)
   const missingStartNode = isWorkflowApp && !hasStartNode
   const hasInsufficientPermissions = !isCurrentWorkspaceEditor
-  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingStartNode
+  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingStartNode || triggerModeDisabled
   const isMinimalState = appUnpublished || missingStartNode
 
   const [activated, setActivated] = useState(serverActivated)
@@ -144,7 +148,18 @@ function MCPServiceCard({
   return (
     <>
       <div className={cn('w-full max-w-full rounded-xl border-l-[0.5px] border-t border-effects-highlight', isMinimalState && 'h-12')}>
-        <div className='rounded-xl bg-background-default'>
+        <div className={cn('relative rounded-xl bg-background-default', triggerModeDisabled && 'opacity-60')}>
+          {triggerModeDisabled && (
+            triggerModeMessage ? (
+              <Tooltip
+                popupContent={triggerModeMessage}
+                popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
+                position="right"
+              >
+                <div className='absolute inset-0 z-10 cursor-not-allowed rounded-xl' aria-hidden="true"></div>
+              </Tooltip>
+            ) : <div className='absolute inset-0 z-10 cursor-not-allowed rounded-xl' aria-hidden="true"></div>
+          )}
           <div className={cn('flex w-full flex-col items-start justify-center gap-3 self-stretch p-3', isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle')}>
             <div className='flex w-full items-center gap-3 self-stretch'>
               <div className='flex grow items-center'>
@@ -182,7 +197,7 @@ function MCPServiceCard({
                           {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
                         </div>
                       </>
-                    ) : ''
+                    ) : triggerModeMessage || ''
                   ) : ''
                 }
                 position="right"
