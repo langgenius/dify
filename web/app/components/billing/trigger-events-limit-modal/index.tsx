@@ -7,8 +7,7 @@ import Button from '@/app/components/base/button'
 import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { NUM_INFINITE } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
+import type { Plan } from '@/app/components/billing/type'
 import cn from '@/utils/classnames'
 import s from './style.module.css'
 
@@ -29,11 +28,8 @@ const TriggerEventsLimitModal: FC<Props> = ({
   usage,
   total,
   resetInDays,
-  planType,
 }) => {
   const { t } = useTranslation()
-
-  const triggerResetInDays = planType === Plan.professional && total !== NUM_INFINITE ? resetInDays : undefined
 
   return (
     <Modal
@@ -62,7 +58,7 @@ const TriggerEventsLimitModal: FC<Props> = ({
             name={t('billing.triggerLimitModal.usageTitle')}
             usage={usage}
             total={total}
-            resetInDays={triggerResetInDays}
+            resetInDays={resetInDays}
             hideIcon
           />
         </div>
@@ -70,29 +66,15 @@ const TriggerEventsLimitModal: FC<Props> = ({
 
       <div className={s.footer}>
         <Button
-          className='!rounded-lg !border-[0.5px]'
+          className={cn('!rounded-lg !border-[0.5px]', s.dismissButton)}
           onClick={onDismiss}
-          style={{
-            width: 77,
-            minWidth: 72,
-            height: 32,
-            paddingTop: 8,
-            paddingBottom: 8,
-            paddingLeft: 12,
-            paddingRight: 12,
-          }}
         >
           {t('billing.triggerLimitModal.dismiss')}
         </Button>
         <UpgradeBtn
           isShort
           onClick={onUpgrade}
-          className='!rounded-lg'
-          style={{
-            width: 93,
-            height: 32,
-            padding: 8,
-          }}
+          className={cn('!rounded-lg', s.upgradeButton)}
           labelKey='billing.triggerLimitModal.upgrade'
           loc='trigger-events-limit-modal'
         />
