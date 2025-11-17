@@ -44,6 +44,8 @@
     "knip": "knip"
   },
   "dependencies": {
+    "@amplitude/analytics-browser": "^2.30.1",
+    "@amplitude/plugin-session-replay-browser": "^1.23.2",
     "@emoji-mart/data": "^1.2.1",
     "@floating-ui/react": "^0.26.28",
     "@formatjs/intl-localematcher": "^0.5.10",
