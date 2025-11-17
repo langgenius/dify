@@ -56,7 +56,7 @@ const TriggerEventsLimitModal: FC<Props> = ({
             </div>
           </div>
           <UsageInfo
-            className='trigger-events-limit-usage-card mb-5 w-full rounded-[12px]'
+            className='mb-5 w-full rounded-[12px] bg-components-panel-on-panel-item-bg'
             Icon={TriggerAll}
             name={t('billing.triggerLimitModal.usageTitle')}
             usage={usage}

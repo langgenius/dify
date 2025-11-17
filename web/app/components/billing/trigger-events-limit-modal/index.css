@@ -35,8 +35,4 @@
     -webkit-text-fill-color: transparent;
   }
 
-  .trigger-events-limit-usage-card {
-    background: var(--color-components-panel-on-panel-item-bg, #fff);
-    box-shadow: 0 12px 24px var(--color-shadow-shadow-5, rgba(9, 9, 11, 0.08));
-  }
 }
