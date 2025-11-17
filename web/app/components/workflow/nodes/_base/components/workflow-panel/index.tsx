@@ -298,7 +298,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const { setDetail } = usePluginStore()
 
   useEffect(() => {
-    if (currentTriggerPlugin?.subscription_constructor) {
+    if (currentTriggerPlugin) {
       setDetail({
         name: currentTriggerPlugin.label[language],
         plugin_id: currentTriggerPlugin.plugin_id || '',
