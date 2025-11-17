@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: '발사',
+      enableTooltip: {},
     },
     apiInfo: {
       title: '백엔드 서비스 API',
@@ -125,6 +126,8 @@ const translation = {
       running: '서비스 중',
       disable: '비활성',
     },
+    triggerInfo: {},
+    disableTooltip: {},
   },
   analysis: {
     title: '분석',

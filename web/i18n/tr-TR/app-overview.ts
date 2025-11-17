@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Başlat',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'Arka Uç Servis API\'si',
@@ -125,6 +126,8 @@ const translation = {
       running: 'Hizmette',
       disable: 'Devre Dışı',
     },
+    triggerInfo: {},
+    disableTooltip: {},
   },
   analysis: {
     title: 'Analiz',

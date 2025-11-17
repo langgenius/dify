@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Lancer',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API de service Backend',
@@ -125,6 +126,8 @@ const translation = {
       running: 'En service',
       disable: 'Désactiver',
     },
+    triggerInfo: {},
+    disableTooltip: {},
   },
   analysis: {
     title: 'Analyse',

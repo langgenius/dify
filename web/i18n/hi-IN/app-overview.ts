@@ -125,6 +125,7 @@ const translation = {
         },
       },
       launch: 'लॉन्च',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'बैकएंड सेवा एपीआई',
@@ -136,6 +137,8 @@ const translation = {
       running: 'सेवा में',
       disable: 'अक्षम करें',
     },
+    triggerInfo: {},
+    disableTooltip: {},
   },
   analysis: {
     title: 'विश्लेषण',

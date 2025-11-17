@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Phóng',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API dịch vụ backend',
@@ -125,6 +126,8 @@ const translation = {
       running: 'Đang hoạt động',
       disable: 'Đã tắt',
     },
+    triggerInfo: {},
+    disableTooltip: {},
   },
   analysis: {
     title: 'Phân tích',

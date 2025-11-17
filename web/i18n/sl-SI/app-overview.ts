@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Začetek',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API storitev v ozadju',
@@ -125,6 +126,8 @@ const translation = {
       running: 'V storitvi',
       disable: 'Onemogočeno',
     },
+    triggerInfo: {},
+    disableTooltip: {},
   },
   analysis: {
     title: 'Analiza',

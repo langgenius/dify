@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Lansa',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API serviciu backend',
@@ -125,6 +126,8 @@ const translation = {
       running: 'În service',
       disable: 'Dezactivat',
     },
+    triggerInfo: {},
+    disableTooltip: {},
   },
   analysis: {
     title: 'Analiză',

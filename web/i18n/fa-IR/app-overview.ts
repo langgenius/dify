@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'راه اندازی',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API سرویس بک‌اند',
@@ -125,6 +126,8 @@ const translation = {
       running: 'در حال سرویس‌دهی',
       disable: 'غیرفعال',
     },
+    triggerInfo: {},
+    disableTooltip: {},
   },
   analysis: {
     title: 'تحلیل',

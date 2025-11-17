@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Баркас',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API серверной части',
@@ -125,6 +126,8 @@ const translation = {
       running: 'В работе',
       disable: 'Отключено',
     },
+    triggerInfo: {},
+    disableTooltip: {},
   },
   analysis: {
     title: 'Анализ',

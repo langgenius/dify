@@ -125,6 +125,7 @@ const translation = {
         },
       },
       launch: 'Uruchomić',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API usługi w tle',
@@ -136,6 +137,8 @@ const translation = {
       running: 'W usłudze',
       disable: 'Wyłącz',
     },
+    triggerInfo: {},
+    disableTooltip: {},
   },
   analysis: {
     title: 'Analiza',

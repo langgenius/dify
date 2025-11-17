@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'เรือยนต์',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API บริการแบ็กเอนด์',
@@ -125,6 +126,8 @@ const translation = {
       running: 'ให้บริการ',
       disable: 'พิการ',
     },
+    triggerInfo: {},
+    disableTooltip: {},
   },
   analysis: {
     title: 'การวิเคราะห์',

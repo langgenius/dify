@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: '發射',
+      enableTooltip: {},
     },
     apiInfo: {
       title: '後端服務 API',
@@ -125,6 +126,8 @@ const translation = {
       running: '執行中',
       disable: '已停用',
     },
+    triggerInfo: {},
+    disableTooltip: {},
   },
   analysis: {
     title: '分析',
