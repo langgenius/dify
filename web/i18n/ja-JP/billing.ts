@@ -93,8 +93,8 @@ const translation = {
       tooltip: 'ワークフローの実行キューの優先度と実行速度。',
     },
     startNodes: {
-      limited: '各ワークフローにつき、開始ノードは最大{{count}}つまで設定可能',
-      unlimited: '各ワークフローの開始ノード数は無制限',
+      limited: '各ワークフローは最大{{count}}つのトリガーまで',
+      unlimited: '各ワークフローのトリガーは無制限',
     },
     logsHistory: '{{days}}のログ履歴',
     customTools: 'カスタムツール',

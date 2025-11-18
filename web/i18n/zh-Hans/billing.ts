@@ -94,8 +94,8 @@ const translation = {
       tooltip: '工作流的执行队列优先级与运行速度。',
     },
     startNodes: {
-      limited: '最多 {{count}} 个起始节点/工作流',
-      unlimited: '无限的起始节点/工作流',
+      limited: '最多 {{count}} 个触发器/工作流',
+      unlimited: '无限制的触发器/工作流',
     },
     logsHistory: '{{days}}日志历史',
     customTools: '自定义工具',

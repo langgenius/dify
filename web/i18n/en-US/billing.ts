@@ -95,8 +95,8 @@ const translation = {
       tooltip: 'Workflow execution queue priority and speed.',
     },
     startNodes: {
-      limited: 'Up to {{count}} Start Nodes/workflow',
-      unlimited: 'Unlimited Start Nodes/workflow',
+      limited: 'Up to {{count}} Triggers/workflow',
+      unlimited: 'Unlimited Triggers/workflow',
     },
     logsHistory: '{{days}} Log history',
     customTools: 'Custom Tools',
