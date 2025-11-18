@@ -14,7 +14,7 @@ from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEnt
 from core.trigger.entities.entities import Subscription
 from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url, generate_webhook_trigger_endpoint
 from libs.datetime_utils import naive_utc_now
-from models.base import Base
+from models.base import Base, TypeBase
 from models.engine import db
 from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from models.model import Account
@@ -399,7 +399,7 @@ class AppTrigger(Base):
     )
 
 
-class WorkflowSchedulePlan(Base):
+class WorkflowSchedulePlan(TypeBase):
     """
     Workflow Schedule Configuration
 
@@ -425,7 +425,7 @@ class WorkflowSchedulePlan(Base):
         sa.Index("workflow_schedule_plan_next_idx", "next_run_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=sa.text("uuidv7()"), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -436,9 +436,11 @@ class WorkflowSchedulePlan(Base):
 
     # Schedule control
     next_run_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
 
     def to_dict(self) -> dict[str, Any]:
