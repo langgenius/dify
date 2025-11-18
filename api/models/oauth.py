@@ -1,3 +1,4 @@
+from .base import TypeBase
 from datetime import datetime
 
 import sqlalchemy as sa
@@ -9,14 +10,14 @@ from .base import Base
 from .types import StringUUID
 
 
-class DatasourceOauthParamConfig(Base):  # type: ignore[name-defined]
+class DatasourceOauthParamConfig(TypeBase):
     __tablename__ = "datasource_oauth_params"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="datasource_oauth_config_pkey"),
         sa.UniqueConstraint("plugin_id", "provider", name="datasource_oauth_config_datasource_id_provider_idx"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"), init=False)
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     system_credentials: Mapped[dict] = mapped_column(JSONB, nullable=False)
