@@ -9,7 +9,6 @@ from unittest import mock
 from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.event_management.event_handlers import EventHandler
-from core.workflow.graph_engine.event_management.event_manager import EventManager
 from core.workflow.graph_engine.orchestration.dispatcher import Dispatcher
 from core.workflow.graph_engine.orchestration.execution_coordinator import ExecutionCoordinator
 from core.workflow.graph_events import (
