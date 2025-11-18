@@ -1093,7 +1093,7 @@ class DocumentService:
         "queuing": (Document.indexing_status == "waiting",),
         "indexing": (
             Document.indexing_status.in_(_INDEXING_STATUSES),
-            sa.or_(Document.is_paused.is_(False), Document.is_paused.is_(None)),
+            Document.is_paused.is_not(True),
         ),
         "paused": (
             Document.indexing_status.in_(_INDEXING_STATUSES),
