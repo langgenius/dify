@@ -31,10 +31,7 @@ class QuotaExceededError(ValueError):
         self.feature = feature
         self.tenant_id = tenant_id
         self.required = required
-        super().__init__(
-            f"Quota exceeded for feature '{feature}' (tenant: {tenant_id}). "
-            f"Required: {required}"
-        )
+        super().__init__(f"Quota exceeded for feature '{feature}' (tenant: {tenant_id}). Required: {required}")
 
 
 class TriggerNodeLimitExceededError(ValueError):

@@ -54,15 +54,15 @@ const createPlan = (overrides: PlanOverrides = {}): DefaultPlanShape => ({
   ...overrides,
   usage: {
     ...defaultPlan.usage,
-    ...(overrides.usage ?? {}),
+    ...overrides.usage,
   },
   total: {
     ...defaultPlan.total,
-    ...(overrides.total ?? {}),
+    ...overrides.total,
   },
   reset: {
     ...defaultPlan.reset,
-    ...(overrides.reset ?? {}),
+    ...overrides.reset,
   },
 })
 
