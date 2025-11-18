@@ -98,24 +98,27 @@ class TriggerSubscription(Base):
 
 
 # system level trigger oauth client params
-class TriggerOAuthSystemClient(Base):
+class TriggerOAuthSystemClient(TypeBase):
     __tablename__ = "trigger_oauth_system_clients"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="trigger_oauth_system_client_pkey"),
         sa.UniqueConstraint("plugin_id", "provider", name="trigger_oauth_system_client_plugin_id_provider_idx"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
     plugin_id: Mapped[str] = mapped_column(String(512), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # oauth params of the trigger provider
     encrypted_oauth_params: Mapped[str] = mapped_column(sa.Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
         server_onupdate=func.current_timestamp(),
+        init=False,
     )
 
 
