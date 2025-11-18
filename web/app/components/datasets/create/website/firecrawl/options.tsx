@@ -79,6 +79,12 @@ const Options: FC<Props> = ({
         onChange={handleChange('only_main_content')}
         labelClassName='text-[13px] leading-[16px] font-medium text-text-secondary'
       />
+      <CheckboxWithLabel
+        label={t(`${I18N_PREFIX}.crawlEntireDomain`)}
+        isChecked={payload.crawl_entire_domain}
+        onChange={handleChange('crawl_entire_domain')}
+        labelClassName='text-[13px] leading-[16px] font-medium text-text-secondary'
+      />
     </div>
   )
 }

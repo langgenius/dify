@@ -150,6 +150,7 @@ export type CrawlOptions = {
   limit: number | string
   max_depth: number | string
   use_sitemap: boolean
+  crawl_entire_domain: boolean
 }
 
 export type CrawlResultItem = {
