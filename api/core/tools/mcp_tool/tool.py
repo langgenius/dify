@@ -51,9 +51,10 @@ class MCPTool(Tool):
     ) -> Generator[ToolInvokeMessage, None, None]:
         # If inputs is provided, flatten its key/value pairs into the tool_parameters.
         # This is a conservative merge: only add a key from inputs if it does not already exist in tool_parameters.
-        for key, value in inputs.items():
-            if key not in tool_parameters:
-                tool_parameters[key] = value
+        if inputs:
+            for key, value in inputs.items():
+                if key not in tool_parameters:
+                    tool_parameters[key] = value
         result = self.invoke_remote_mcp_tool(tool_parameters)
         # handle dify tool output
         for content in result.content:
