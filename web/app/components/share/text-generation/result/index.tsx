@@ -128,7 +128,7 @@ const Result: FC<IResultProps> = ({
 
     let hasEmptyInput = ''
     const requiredVars = prompt_variables?.filter(({ key, name, required, type }) => {
-      if(type === 'boolean' || type === 'checkbox')
+      if (type === 'boolean' || type === 'checkbox')
         return false // boolean/checkbox input is not required
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res

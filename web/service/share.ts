@@ -82,7 +82,7 @@ export const sendCompletionMessage = async (body: Record<string, any>, { onData,
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, isPublicAPI: !appSourceType, onError, onMessageReplace })
+  }, { onData, onCompleted, isPublicAPI: getIsPublicAPI(appSourceType), onError, onMessageReplace })
 }
 
 export const sendWorkflowMessage = async (
