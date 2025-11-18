@@ -261,7 +261,6 @@ class TestAPIBasedExtensionService:
         )
 
         APIBasedExtensionService.save(extension_data1)
-        assert tenant is not None
         # Try to create second extension with same name
         extension_data2 = APIBasedExtension(
             tenant_id=tenant.id,
