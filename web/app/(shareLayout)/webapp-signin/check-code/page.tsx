@@ -119,7 +119,15 @@ export default function CheckCode() {
 
     <form onSubmit={handleSubmit}>
       <label htmlFor="code" className='system-md-semibold mb-1 text-text-secondary'>{t('login.checkCode.verificationCode')}</label>
-      <Input ref={codeInputRef} value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') || ''} />
+      <Input
+        ref={codeInputRef}
+        id='code'
+        value={code}
+        onChange={e => setVerifyCode(e.target.value)}
+        maxLength={6}
+        className='mt-1'
+        placeholder={t('login.checkCode.verificationCodePlaceholder') || ''}
+      />
       <Button type='submit' loading={loading} disabled={loading} className='my-3 w-full' variant='primary'>{t('login.checkCode.verify')}</Button>
       <Countdown onResend={resendCode} />
     </form>
