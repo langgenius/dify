@@ -4,7 +4,7 @@ import Toast from '@/app/components/base/toast'
 import { useDeleteTriggerSubscription } from '@/service/use-triggers'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { usePluginSubscriptionStore } from './store'
+import { useSubscriptionList } from './use-subscription-list'
 
 type Props = {
   onClose: (deleted: boolean) => void
@@ -18,7 +18,7 @@ const tPrefix = 'pluginTrigger.subscription.list.item.actions.deleteConfirm'
 
 export const DeleteConfirm = (props: Props) => {
   const { onClose, isShow, currentId, currentName, workflowsInUse } = props
-  const { refresh } = usePluginSubscriptionStore()
+  const { refetch } = useSubscriptionList()
   const { mutate: deleteSubscription, isPending: isDeleting } = useDeleteTriggerSubscription()
   const { t } = useTranslation()
   const [inputName, setInputName] = useState('')
@@ -40,7 +40,7 @@ export const DeleteConfirm = (props: Props) => {
           message: t(`${tPrefix}.success`, { name: currentName }),
           className: 'z-[10000001]',
         })
-        refresh?.()
+        refetch?.()
         onClose(true)
       },
       onError: (error: any) => {
