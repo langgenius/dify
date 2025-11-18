@@ -190,7 +190,7 @@ class QuotaType(StrEnum):
         from services.billing_service import BillingService
 
         try:
-            usage_info = BillingService.get_tenant_feature_plan_usage(tenant_id, self.value)
+            usage_info = BillingService.get_tenant_feature_plan_usage(tenant_id, self.billing_key)
             # Assuming the API returns a dict with 'remaining' or 'limit' and 'used'
             if isinstance(usage_info, dict):
                 return usage_info.get("remaining", 0)
