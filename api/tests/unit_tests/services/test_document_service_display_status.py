@@ -21,10 +21,13 @@ def test_build_display_status_filters_available():
 def test_apply_display_status_filter_applies_when_status_present():
     query = sa.select(Document)
     filtered = DocumentService.apply_display_status_filter(query, "queuing")
-    assert str(filtered) != str(query)
+    compiled = str(filtered.compile(compile_kwargs={"literal_binds": True}))
+    assert "WHERE" in compiled
+    assert "document.indexing_status = 'waiting'" in compiled
 
 
 def test_apply_display_status_filter_returns_same_when_invalid():
     query = sa.select(Document)
     filtered = DocumentService.apply_display_status_filter(query, "invalid")
-    assert str(filtered) == str(query)
+    compiled = str(filtered.compile(compile_kwargs={"literal_binds": True}))
+    assert "WHERE" not in compiled
