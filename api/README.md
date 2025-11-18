@@ -28,7 +28,7 @@
 
 > [!IMPORTANT]
 >
-> When the frontend and backend run on different subdomains, set COOKIE_DOMAIN to the site’s primary domain (e.g., `example.com`). The frontend and backend must be under the same top-level domain in order to share authentication cookies.
+> When the frontend and backend run on different subdomains, set COOKIE_DOMAIN to the site’s top-level domain (e.g., `example.com`). The frontend and backend must be under the same top-level domain in order to share authentication cookies.
 
 1. Generate a `SECRET_KEY` in the `.env` file.
 
