@@ -101,6 +101,12 @@ class WebhookService:
                     raise ValueError(f"App trigger not found for webhook {webhook_id}")
 
                 # Only check enabled status if not in debug mode
+
+                if app_trigger.status == AppTriggerStatus.RATE_LIMITED:
+                    raise ValueError(
+                        f"Webhook trigger is rate limited for webhook {webhook_id}, please upgrade your plan."
+                    )
+
                 if app_trigger.status != AppTriggerStatus.ENABLED:
                     raise ValueError(f"Webhook trigger is disabled for webhook {webhook_id}")
 

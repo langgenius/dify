@@ -74,8 +74,11 @@ class BillingService:
             Response dict with 'result' and 'history_id'
             Example: {"result": "success", "history_id": "uuid"}
         """
-        payload = {"tenant_id": tenant_id, "feature_key": feature_key, "usage": usage}
-        return cls._send_request("POST", "/v1/tenant-feature-usage/usage", json=payload)
+        return cls._send_request(
+            "POST",
+            "/tenant-feature-usage/usage",
+            params={"tenant_id": tenant_id, "feature_key": feature_key, "usage": usage},
+        )
 
     @classmethod
     def refund_tenant_feature_plan_usage(cls, history_id: str) -> dict:
@@ -88,8 +91,7 @@ class BillingService:
         Returns:
             Response dict with 'result' and 'history_id'
         """
-        params = {"quota_usage_history_id": history_id}
-        return cls._send_request("POST", "/v1/tenant-feature-usage/refund", params=params)
+        return cls._send_request("POST", "/tenant-feature-usage/refund", params={"quota_usage_history_id": history_id})
 
     @classmethod
     @retry(
@@ -105,6 +107,8 @@ class BillingService:
         response = httpx.request(method, url, json=json, params=params, headers=headers)
         if method == "GET" and response.status_code != httpx.codes.OK:
             raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
+        if method == "POST" and response.status_code != httpx.codes.OK:
+            raise ValueError(f"Unable to send request to {url}. Please try again later or contact support.")
         return response.json()
 
     @staticmethod

@@ -46,6 +46,19 @@ class QuotaType(StrEnum):
 
     UNLIMITED = auto()
 
+    @property
+    def billing_key(self) -> str:
+        """
+        Get the billing key for the feature.
+        """
+        match self:
+            case QuotaType.TRIGGER:
+                return "trigger_event"
+            case QuotaType.WORKFLOW:
+                return "api_rate_limit"
+            case _:
+                raise ValueError(f"Invalid quota type: {self}")
+
     def consume(self, tenant_id: str, amount: int = 1) -> QuotaCharge:
         """
         Consume quota for the feature.
@@ -75,7 +88,7 @@ class QuotaType(StrEnum):
 
         try:
             # Call billing service to decrement quota (negative amount)
-            response = BillingService.update_tenant_feature_plan_usage(tenant_id, self.value, -amount)
+            response = BillingService.update_tenant_feature_plan_usage(tenant_id, self.billing_key, -amount)
 
             if response.get("result") != "success":
                 logger.warning("Failed to consume quota for %s, feature %s", tenant_id, self.value)
@@ -96,7 +109,7 @@ class QuotaType(StrEnum):
         except Exception:
             # fail-safe: allow request on billing errors
             logger.exception("Failed to consume quota for %s, feature %s", tenant_id, self.value)
-            return QuotaCharge(success=False, charge_id=None, _quota_type=self)
+            return unlimited()
 
     def check(self, tenant_id: str, amount: int = 1) -> bool:
         """
