@@ -16,7 +16,12 @@ from core.workflow.nodes.list_operator.entities import (
     OrderByConfig,
 )
 from core.workflow.nodes.list_operator.exc import InvalidKeyError
-from core.workflow.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
+from core.workflow.nodes.list_operator.node import (
+    ListOperatorNode,
+    _get_file_extract_string_func,
+    _get_file_filter_func,
+    _order_file,
+)
 from models.enums import UserFrom
 
 
@@ -139,7 +144,7 @@ def test_filter_files_by_type(list_operator_node):
         assert expected_file["related_id"] == result_file.related_id
 
 
-def test_get_file_extract_string_func():
+def test_get_file_extract_string_func(monkeypatch):
     # Create a File object
     file = File(
         tenant_id="test_tenant",
@@ -159,7 +164,13 @@ def test_get_file_extract_string_func():
     assert _get_file_extract_string_func(key="extension")(file) == ".txt"
     assert _get_file_extract_string_func(key="mime_type")(file) == "text/plain"
     assert _get_file_extract_string_func(key="transfer_method")(file) == "local_file"
-    assert _get_file_extract_string_func(key="url")(file) == "https://example.com/test_file.txt"
+
+    # Make URL extraction deterministic
+    mock_generate = MagicMock(return_value="mocked-url-1")
+    monkeypatch.setattr(File, "generate_url", mock_generate)
+    extractor_url = _get_file_extract_string_func(key="url")
+    assert extractor_url(file) == "mocked-url-1"
+    assert mock_generate.call_count == 1
 
     # Test with empty values
     empty_file = File(
@@ -177,8 +188,106 @@ def test_get_file_extract_string_func():
     assert _get_file_extract_string_func(key="name")(empty_file) == ""
     assert _get_file_extract_string_func(key="extension")(empty_file) == ""
     assert _get_file_extract_string_func(key="mime_type")(empty_file) == ""
-    assert _get_file_extract_string_func(key="url")(empty_file) == ""
+    assert extractor_url(empty_file) == "mocked-url-1"
+    assert mock_generate.call_count == 2
 
     # Test invalid key
     with pytest.raises(InvalidKeyError):
         _get_file_extract_string_func(key="invalid_key")
+
+
+def test_get_file_extract_string_func_related_id():
+    file = File(
+        tenant_id="tenant",
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="rel-123",
+        storage_key="",
+    )
+    extractor = _get_file_extract_string_func(key="related_id")
+    assert extractor(file) == "rel-123"
+
+
+def test_get_file_extract_string_func_url_calls_generate_url(monkeypatch):
+    file = File(
+        tenant_id="tenant",
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="rel-456",
+        storage_key="",
+    )
+    # Patch method on the class to ensure it's called
+    mock_generate = MagicMock(return_value="mocked-url")
+    monkeypatch.setattr(File, "generate_url", mock_generate)
+    extractor = _get_file_extract_string_func(key="url")
+    assert extractor(file) == "mocked-url"
+    mock_generate.assert_called_once_with()
+
+
+def test_get_file_filter_func_by_related_id():
+    files = [
+        File(
+            tenant_id="tenant",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="a-1",
+            storage_key="",
+        ),
+        File(
+            tenant_id="tenant",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="b-2",
+            storage_key="",
+        ),
+        File(
+            tenant_id="tenant",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="a-3",
+            storage_key="",
+        ),
+    ]
+
+    # Filter by exact related_id
+    filter_func = _get_file_filter_func(key="related_id", condition="is", value="b-2")
+    filtered = list(filter(filter_func, files))
+    assert len(filtered) == 1
+    assert filtered[0].related_id == "b-2"
+
+    # Also verify contains works
+    contains_func = _get_file_filter_func(key="related_id", condition="contains", value="a-")
+    contains_filtered = list(filter(contains_func, files))
+    assert [f.related_id for f in contains_filtered] == ["a-1", "a-3"]
+
+
+def test_order_file_by_related_id():
+    files = [
+        File(
+            tenant_id="tenant",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="b",
+            storage_key="",
+        ),
+        File(
+            tenant_id="tenant",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="a",
+            storage_key="",
+        ),
+        File(
+            tenant_id="tenant",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id="c",
+            storage_key="",
+        ),
+    ]
+
+    asc = _order_file(order=Order.ASC, order_by="related_id", array=files)
+    assert [f.related_id for f in asc] == ["a", "b", "c"]
+
+    desc = _order_file(order=Order.DESC, order_by="related_id", array=files)
+    assert [f.related_id for f in desc] == ["c", "b", "a"]
