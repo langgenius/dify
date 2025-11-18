@@ -4,12 +4,35 @@ from __future__ import annotations
 
 import queue
 from datetime import datetime
+from unittest import mock
 
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.event_management.event_manager import EventManager
+from core.workflow.graph_engine.event_management.event_handlers import EventHandler
 from core.workflow.graph_engine.orchestration.dispatcher import Dispatcher
-from core.workflow.graph_events import NodeRunStartedEvent, NodeRunSucceededEvent
+from core.workflow.graph_engine.orchestration.execution_coordinator import ExecutionCoordinator
+from core.workflow.graph_events import GraphNodeEventBase, NodeRunStartedEvent, NodeRunSucceededEvent
 from core.workflow.node_events import NodeRunResult
+
+
+def test_dispatcher_should_consume_remains_events_after_pause():
+    event_queue = queue.Queue()
+    event_queue.put(
+        GraphNodeEventBase(
+            id="test",
+            node_id="test",
+            node_type=NodeType.START,
+        )
+    )
+    event_handler = mock.Mock(spec=EventHandler)
+    execution_coordinator = mock.Mock(spec=ExecutionCoordinator)
+    execution_coordinator.paused.return_value = True
+    dispatcher = Dispatcher(
+        event_queue=event_queue,
+        event_handler=event_handler,
+        execution_coordinator=execution_coordinator,
+    )
+    dispatcher._dispatcher_loop()
+    assert event_queue.empty()
 
 
 class _StubExecutionCoordinator:
@@ -18,32 +41,29 @@ class _StubExecutionCoordinator:
     def __init__(self) -> None:
         self.command_checks = 0
         self.scaling_checks = 0
-        self._execution_complete = False
-        self.mark_complete_called = False
+        self.execution_complete = False
         self.failed = False
         self._paused = False
 
-    def check_commands(self) -> None:
+    def process_commands(self) -> None:
         self.command_checks += 1
 
     def check_scaling(self) -> None:
         self.scaling_checks += 1
 
     @property
-    def is_paused(self) -> bool:
+    def paused(self) -> bool:
         return self._paused
 
-    def is_execution_complete(self) -> bool:
-        return self._execution_complete
+    @property
+    def aborted(self) -> bool:
+        return False
 
     def mark_complete(self) -> None:
-        self.mark_complete_called = True
+        self.execution_complete = True
 
     def mark_failed(self, error: Exception) -> None:  # pragma: no cover - defensive, not triggered in tests
         self.failed = True
-
-    def set_execution_complete(self) -> None:
-        self._execution_complete = True
 
 
 class _StubEventHandler:
@@ -55,7 +75,7 @@ class _StubEventHandler:
 
     def dispatch(self, event) -> None:
         self.events.append(event)
-        self._coordinator.set_execution_complete()
+        self._coordinator.mark_complete()
 
 
 def _run_dispatcher_for_event(event) -> int:
@@ -65,12 +85,10 @@ def _run_dispatcher_for_event(event) -> int:
 
     coordinator = _StubExecutionCoordinator()
     event_handler = _StubEventHandler(coordinator)
-    event_manager = EventManager()
 
     dispatcher = Dispatcher(
         event_queue=event_queue,
         event_handler=event_handler,
-        event_collector=event_manager,
         execution_coordinator=coordinator,
     )
 
@@ -105,5 +123,5 @@ def test_dispatcher_checks_commands_during_idle_and_on_completion() -> None:
     started_checks = _run_dispatcher_for_event(_make_started_event())
     succeeded_checks = _run_dispatcher_for_event(_make_succeeded_event())
 
-    assert started_checks == 1
-    assert succeeded_checks == 2
+    assert started_checks == 2
+    assert succeeded_checks == 3
