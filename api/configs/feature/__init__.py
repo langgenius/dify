@@ -360,12 +360,10 @@ class FileUploadConfig(BaseSettings):
         default=10,
     )
 
-
     IMAGE_FILE_BATCH_LIMIT: PositiveInt = Field(
         description="Maximum number of files allowed in a image batch upload operation",
         default=10,
     )
-
 
     SINGLE_CHUNK_ATTACHMENT_LIMIT: PositiveInt = Field(
         description="Maximum number of files allowed in a single chunk attachment",
