@@ -127,7 +127,9 @@ const translation = {
       disable: 'Deaktivieren',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'Die Funktion {{feature}} wird im Trigger-Knoten-Modus nicht unterstützt.',
+    },
   },
   analysis: {
     title: 'Analyse',

@@ -140,7 +140,9 @@ const translation = {
       disable: 'Disabilita',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'La funzionalità {{feature}} non è supportata in modalità Nodo Trigger.',
+    },
   },
   analysis: {
     title: 'Analisi',

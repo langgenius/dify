@@ -127,7 +127,9 @@ const translation = {
       disable: '已停用',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: '觸發節點模式不支援 {{feature}} 功能。',
+    },
   },
   analysis: {
     title: '分析',

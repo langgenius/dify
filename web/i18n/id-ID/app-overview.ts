@@ -125,7 +125,9 @@ const translation = {
     },
     title: 'Ikhtisar',
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'Fitur {{feature}} tidak didukung dalam mode Node Pemicu.',
+    },
   },
   analysis: {
     totalMessages: {

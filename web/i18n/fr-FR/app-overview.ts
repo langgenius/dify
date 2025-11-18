@@ -127,7 +127,9 @@ const translation = {
       disable: 'Désactiver',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'La fonctionnalité {{feature}} n\'est pas prise en charge en mode Nœud Déclencheur.',
+    },
   },
   analysis: {
     title: 'Analyse',

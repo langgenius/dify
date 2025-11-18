@@ -127,7 +127,9 @@ const translation = {
       disable: 'Onemogočeno',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'Funkcija {{feature}} ni podprta v načinu vozlišča sprožilca.',
+    },
   },
   analysis: {
     title: 'Analiza',
