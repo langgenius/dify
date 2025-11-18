@@ -141,18 +141,22 @@
 </head>
 
 <body>
+  {% set computed_usageScope = 'Monthly API Rate Limit' %}
+  {% set computed_ctaLabel = 'Upgrade now' %}
+  {% set computed_upgradeUrl = 'https://cloud.dify.ai/apps?pricing=open' %}
+
   <div class="card">
     <div class="card-header">
       <img src="https://assets.dify.ai/images/logo.png" alt="Dify Logo" />
     </div>
     <div class="card-content">
-      <h1 class="title">You’ve reached your API Rate Limit</h1>
+      <h1 class="title">You've reached your API Rate Limit</h1>
       <div class="body-group">
         <p class="body-text">
           <strong>Dear {{ recipientName | default(workspaceName ~ ' team', true) }},</strong>
         </p>
         <p class="body-text">
-          Your workspace <strong>{{workspaceName}}</strong> has used all available <strong>Monthly API Rate Limit</strong> for the
+          Your workspace <strong>{{workspaceName}}</strong> has used all available <strong>{{computed_usageScope}}</strong> for the
           <strong>{{planName}} Plan (limit: {{planLimit}})</strong>.
         </p>
         <p class="body-text">
@@ -161,9 +165,9 @@
         <p class="body-text">
           To continue using the Dify API and unlock a higher limit, please upgrade to a paid plan.
         </p>
-        <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
+        <a class="cta" href="{{computed_upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{computed_ctaLabel}}</a>
         <p class="note">
-          <strong>Monthly API Rate Limit</strong> for the <strong>{{planName}} Plan</strong> will reset on <strong>{{resetDate}}</strong>.
+          <strong>{{computed_usageScope}}</strong> for the <strong>{{planName}} Plan</strong> will reset on <strong>{{resetDate}}</strong>.
         </p>
       </div>
       <div class="signature">

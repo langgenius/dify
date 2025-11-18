@@ -141,6 +141,10 @@
 </head>
 
 <body>
+  {% set computed_usageScope = '月度 API 速率额度' %}
+  {% set computed_ctaLabel = '立即升级' %}
+  {% set computed_upgradeUrl = 'https://cloud.dify.ai/apps?pricing=open' %}
+
   <div class="card">
     <div class="card-header">
       <img src="https://assets.dify.ai/images/logo.png" alt="Dify Logo" />
@@ -152,7 +156,7 @@
           <strong>亲爱的 {{ recipientName | default(workspaceName, true) }}，</strong>
         </p>
         <p class="body-text">
-          您的工作区 <strong>{{workspaceName}}</strong> 已用完 <strong>月度 API 速率额度</strong>，触及
+          您的工作区 <strong>{{workspaceName}}</strong> 已用完 <strong>{{computed_usageScope}}</strong>，触及
           <strong>{{planName}} 计划（上限：{{planLimit}}）</strong>。
         </p>
         <p class="body-text">
@@ -161,9 +165,9 @@
         <p class="body-text">
           若要继续使用 Dify API 并解锁更高额度，请升级到付费套餐。
         </p>
-        <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
+        <a class="cta" href="{{computed_upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{computed_ctaLabel}}</a>
         <p class="note">
-          <strong>{{planName}} 计划的月度 API 速率额度</strong> 将于 <strong>{{resetDate}}</strong> 重置。</p>
+          <strong>{{planName}} 计划的{{computed_usageScope}}</strong> 将于 <strong>{{resetDate}}</strong> 重置。</p>
       </div>
       <div class="signature">
         <p class="signature-text">此致敬礼，</p>

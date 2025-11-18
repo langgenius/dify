@@ -141,18 +141,23 @@
 </head>
 
 <body>
+  {% set computed_usagePercent = '80%' %}
+  {% set computed_usageScope = 'Monthly API Rate Limit' %}
+  {% set computed_ctaLabel = 'Manage plan' %}
+  {% set computed_upgradeUrl = 'https://cloud.dify.ai/apps?action=showSettings&tab=billing' %}
+
   <div class="card">
     <div class="card-header">
       <img src="https://assets.dify.ai/images/logo.png" alt="Dify Logo" />
     </div>
     <div class="card-content">
-      <h1 class="title">You’re nearing your API Rate Limit</h1>
+      <h1 class="title">You're nearing your API Rate Limit</h1>
       <div class="body-group">
         <p class="body-text">
           <strong>Dear {{ recipientName | default(workspaceName ~ ' team', true) }},</strong>
         </p>
         <p class="body-text">
-          Your workspace <strong>{{workspaceName}}</strong> has used <strong>80% of its Monthly API Rate Limit</strong> for the
+          Your workspace <strong>{{workspaceName}}</strong> has used <strong>{{computed_usagePercent}} of its {{computed_usageScope}}</strong> for the
           <strong>{{planName}} Plan (limit: {{planLimit}})</strong>.
         </p>
         <p class="body-text">
@@ -162,9 +167,9 @@
           To avoid service interruptions and ensure continued access to the Dify API, please consider upgrading your plan for a higher API
           Rate Limit.
         </p>
-        <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
+        <a class="cta" href="{{computed_upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{computed_ctaLabel}}</a>
         <p class="note">
-          <strong>Monthly API Rate Limit</strong> for the <strong>{{planName}} Plan</strong> will reset on <strong>{{resetDate}}</strong>.
+          <strong>{{computed_usageScope}}</strong> for the <strong>{{planName}} Plan</strong> will reset on <strong>{{resetDate}}</strong>.
         </p>
       </div>
       <div class="signature">
