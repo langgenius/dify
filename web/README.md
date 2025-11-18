@@ -43,9 +43,9 @@ NEXT_PUBLIC_SENTRY_DSN=
 ```
 
 > [!IMPORTANT]
->  
+>
 > 1. When the site and backend API are on different domains or subdomains, set NEXT_PUBLIC_COOKIE_DOMAIN=1 and set the [backend env](../api/.env.example) COOKIE_DOMAIN to site domain(e.g example.com).
-> 2. It's necessary to set NEXT_PUBLIC_API_PREFIX and NEXT_PUBLIC_PUBLIC_API_PREFIX to the correct backend API URL.
+> 1. It's necessary to set NEXT_PUBLIC_API_PREFIX and NEXT_PUBLIC_PUBLIC_API_PREFIX to the correct backend API URL.
 
 Finally, run the development server:
 
