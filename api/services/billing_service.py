@@ -63,14 +63,14 @@ class BillingService:
         return cls._send_request("GET", "/invoices", params=params)
 
     @classmethod
-    def update_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str, usage: int) -> dict:
+    def update_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str, delta: int) -> dict:
         """
         Update tenant feature plan usage.
 
         Args:
             tenant_id: Tenant identifier
             feature_key: Feature key (e.g., 'trigger', 'workflow')
-            usage: Usage delta (positive to add, negative to consume)
+            delta: Usage delta (positive to add, negative to consume)
 
         Returns:
             Response dict with 'result' and 'history_id'
@@ -79,7 +79,7 @@ class BillingService:
         return cls._send_request(
             "POST",
             "/tenant-feature-usage/usage",
-            params={"tenant_id": tenant_id, "feature_key": feature_key, "delta": usage},
+            params={"tenant_id": tenant_id, "feature_key": feature_key, "delta": delta},
         )
 
     @classmethod
