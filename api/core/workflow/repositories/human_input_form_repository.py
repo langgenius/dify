@@ -48,8 +48,26 @@ class HumanInputFormEntity(abc.ABC):
         # webapp delivery?
         pass
 
+    @property
+    @abc.abstractmethod
+    def recipients(self) -> list["HumanInputFormRecipientEntity"]: ...
 
-class FormSubmissionEntity(abc.ABC):
+
+class HumanInputFormRecipientEntity(abc.ABC):
+    @property
+    @abc.abstractmethod
+    def id(self) -> str:
+        """id returns the identifer of this recipient."""
+        ...
+
+    @property
+    @abc.abstractmethod
+    def token(self) -> str:
+        """token returns a random string used to submit form"""
+        ...
+
+
+class FormSubmission(abc.ABC):
     @property
     @abc.abstractmethod
     def selected_action_id(self) -> str:
@@ -81,7 +99,7 @@ class HumanInputFormRepository(Protocol):
         """
         ...
 
-    def get_form_submission(self, workflow_execution_id: str, node_id: str) -> FormSubmissionEntity | None:
+    def get_form_submission(self, workflow_execution_id: str, node_id: str) -> FormSubmission | None:
         """Retrieve the submission for a specific human input node.
 
         Returns `FormSubmission` if the form has been submitted, or `None` if not.

@@ -1,19 +1,28 @@
-"""
-Repository implementations for data access.
+"""Repository implementations for data access."""
 
-This package contains concrete implementations of the repository interfaces
-defined in the core.workflow.repository package.
-"""
+from __future__ import annotations
 
-from core.repositories.celery_workflow_execution_repository import CeleryWorkflowExecutionRepository
-from core.repositories.celery_workflow_node_execution_repository import CeleryWorkflowNodeExecutionRepository
-from core.repositories.factory import DifyCoreRepositoryFactory, RepositoryImportError
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from importlib import import_module
+from typing import Any
 
-__all__ = [
-    "CeleryWorkflowExecutionRepository",
-    "CeleryWorkflowNodeExecutionRepository",
-    "DifyCoreRepositoryFactory",
-    "RepositoryImportError",
-    "SQLAlchemyWorkflowNodeExecutionRepository",
-]
+_ATTRIBUTE_MODULE_MAP = {
+    "CeleryWorkflowExecutionRepository": "core.repositories.celery_workflow_execution_repository",
+    "CeleryWorkflowNodeExecutionRepository": "core.repositories.celery_workflow_node_execution_repository",
+    "DifyCoreRepositoryFactory": "core.repositories.factory",
+    "RepositoryImportError": "core.repositories.factory",
+    "SQLAlchemyWorkflowNodeExecutionRepository": "core.repositories.sqlalchemy_workflow_node_execution_repository",
+}
+
+__all__ = list(_ATTRIBUTE_MODULE_MAP.keys())
+
+
+def __getattr__(name: str) -> Any:
+    module_path = _ATTRIBUTE_MODULE_MAP.get(name)
+    if module_path is None:
+        raise AttributeError(f"module 'core.repositories' has no attribute '{name}'")
+    module = import_module(module_path)
+    return getattr(module, name)
+
+
+def __dir__() -> list[str]:  # pragma: no cover - simple helper
+    return sorted(__all__)

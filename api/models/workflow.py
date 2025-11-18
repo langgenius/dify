@@ -637,14 +637,14 @@ class WorkflowRun(Base):
         back_populates="workflow_run",
     )
 
-    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     @property
+    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     def created_by_account(self):
         created_by_role = CreatorUserRole(self.created_by_role)
         return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
 
-    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     @property
+    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     def created_by_end_user(self):
         from .model import EndUser
 
@@ -663,8 +663,8 @@ class WorkflowRun(Base):
     def outputs_dict(self) -> Mapping[str, Any]:
         return json.loads(self.outputs) if self.outputs else {}
 
-    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     @property
+    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     def message(self):
         from .model import Message
 
@@ -672,8 +672,8 @@ class WorkflowRun(Base):
             db.session.query(Message).where(Message.app_id == self.app_id, Message.workflow_run_id == self.id).first()
         )
 
-    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     @property
+    @deprecated("This method is retained for historical reasons; avoid using it if possible.")
     def workflow(self):
         return db.session.query(Workflow).where(Workflow.id == self.workflow_id).first()
 

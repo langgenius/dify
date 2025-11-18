@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from sqlalchemy import Engine, select
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker, selectinload
 
 from core.workflow.nodes.human_input.entities import (
     DeliveryChannelConfig,
@@ -19,17 +19,18 @@ from core.workflow.nodes.human_input.entities import (
 from core.workflow.repositories.human_input_form_repository import (
     FormCreateParams,
     FormNotFoundError,
-    FormSubmissionEntity,
+    FormSubmission,
     HumanInputFormEntity,
 )
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
+from models.account import Account, TenantAccountJoin
 from models.human_input import (
     EmailExternalRecipientPayload,
     EmailMemberRecipientPayload,
     HumanInputDelivery,
     HumanInputForm,
-    HumanInputRecipient,
+    HumanInputFormRecipient,
     RecipientType,
     WebAppRecipientPayload,
 )
@@ -38,14 +39,20 @@ from models.human_input import (
 @dataclasses.dataclass(frozen=True)
 class _DeliveryAndRecipients:
     delivery: HumanInputDelivery
-    recipients: Sequence[HumanInputRecipient]
+    recipients: Sequence[HumanInputFormRecipient]
 
-    def webapp_recipient(self) -> HumanInputRecipient | None:
+    def webapp_recipient(self) -> HumanInputFormRecipient | None:
         return next((i for i in self.recipients if i.recipient_type == RecipientType.WEBAPP), None)
 
 
+@dataclasses.dataclass(frozen=True)
+class _WorkspaceMemberInfo:
+    user_id: str
+    email: str
+
+
 class _HumanInputFormEntityImpl(HumanInputFormEntity):
-    def __init__(self, form_model: HumanInputForm, web_app_recipient: HumanInputRecipient | None):
+    def __init__(self, form_model: HumanInputForm, web_app_recipient: HumanInputFormRecipient | None):
         self._form_model = form_model
         self._web_app_recipient = web_app_recipient
 
@@ -60,7 +67,7 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
         return self._web_app_recipient.access_token
 
 
-class _FormSubmissionEntityImpl(FormSubmissionEntity):
+class _FormSubmissionImpl(FormSubmission):
     def __init__(self, form_model: HumanInputForm):
         self._form_model = form_model
 
@@ -78,37 +85,23 @@ class _FormSubmissionEntityImpl(FormSubmissionEntity):
         return json.loads(submitted_data)
 
 
-class WorkspaceMember:
-    def user_id(self) -> str:
-        pass
-
-    def email(self) -> str:
-        pass
-
-
-class WorkspaceMemberQueirer:
-    def get_all_workspace_members(self) -> Sequence[WorkspaceMember]:
-        # TOOD: need a way to query all members in the current workspace.
-        pass
-
-    def get_members_by_ids(self, user_ids: Sequence[str]) -> Sequence[WorkspaceMember]:
-        pass
-
-
 class HumanInputFormRepositoryImpl:
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
         tenant_id: str,
-        member_quierer: WorkspaceMemberQueirer,
     ):
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(bind=session_factory)
         self._session_factory = session_factory
         self._tenant_id = tenant_id
-        self._member_queirer = member_quierer
 
-    def _delivery_method_to_model(self, form_id, delivery_method: DeliveryChannelConfig) -> _DeliveryAndRecipients:
+    def _delivery_method_to_model(
+        self,
+        session: Session,
+        form_id: str,
+        delivery_method: DeliveryChannelConfig,
+    ) -> _DeliveryAndRecipients:
         delivery_id = str(uuidv7())
         delivery_model = HumanInputDelivery(
             id=delivery_id,
@@ -117,9 +110,9 @@ class HumanInputFormRepositoryImpl:
             delivery_config_id=delivery_method.id,
             channel_payload=delivery_method.model_dump_json(),
         )
-        recipients: list[HumanInputRecipient] = []
+        recipients: list[HumanInputFormRecipient] = []
         if isinstance(delivery_method, WebAppDeliveryMethod):
-            recipient_model = HumanInputRecipient(
+            recipient_model = HumanInputFormRecipient(
                 form_id=form_id,
                 delivery_id=delivery_id,
                 recipient_type=RecipientType.WEBAPP,
@@ -129,11 +122,20 @@ class HumanInputFormRepositoryImpl:
         elif isinstance(delivery_method, EmailDeliveryMethod):
             email_recipients_config = delivery_method.config.recipients
             if email_recipients_config.whole_workspace:
-                recipients.extend(self._create_whole_workspace_recipients(form_id=form_id, delivery_id=delivery_id))
+                recipients.extend(
+                    self._create_whole_workspace_recipients(
+                        session=session,
+                        form_id=form_id,
+                        delivery_id=delivery_id,
+                    )
+                )
             else:
                 recipients.extend(
                     self._create_email_recipients(
-                        form_id=form_id, delivery_id=delivery_id, recipients=email_recipients_config.items
+                        session=session,
+                        form_id=form_id,
+                        delivery_id=delivery_id,
+                        recipients=email_recipients_config.items,
                     )
                 )
 
@@ -141,27 +143,34 @@ class HumanInputFormRepositoryImpl:
 
     def _create_email_recipients(
         self,
+        session: Session,
         form_id: str,
         delivery_id: str,
         recipients: Sequence[EmailRecipient],
-    ) -> list[HumanInputRecipient]:
-        recipient_models: list[HumanInputRecipient] = []
+    ) -> list[HumanInputFormRecipient]:
+        recipient_models: list[HumanInputFormRecipient] = []
         member_user_ids: list[str] = []
         for r in recipients:
             if isinstance(r, MemberRecipient):
                 member_user_ids.append(r.user_id)
             elif isinstance(r, ExternalRecipient):
-                recipient_model = HumanInputRecipient.new(
+                recipient_model = HumanInputFormRecipient.new(
                     form_id=form_id, delivery_id=delivery_id, payload=EmailExternalRecipientPayload(email=r.email)
                 )
                 recipient_models.append(recipient_model)
             else:
                 raise AssertionError(f"unknown recipient type: recipient={r}")
 
-        members = self._member_queirer.get_members_by_ids(member_user_ids)
-        for member in members:
-            payload = EmailMemberRecipientPayload(user_id=member.user_id(), email=member.email())
-            recipient_model = HumanInputRecipient.new(
+        member_entries = {
+            member.user_id: member.email
+            for member in self._query_workspace_members(session=session, user_ids=member_user_ids)
+        }
+        for user_id in member_user_ids:
+            email = member_entries.get(user_id)
+            if email is None:
+                continue
+            payload = EmailMemberRecipientPayload(user_id=user_id, email=email)
+            recipient_model = HumanInputFormRecipient.new(
                 form_id=form_id,
                 delivery_id=delivery_id,
                 payload=payload,
@@ -169,12 +178,17 @@ class HumanInputFormRepositoryImpl:
             recipient_models.append(recipient_model)
         return recipient_models
 
-    def _create_whole_workspace_recipients(self, form_id: str, delivery_id: str) -> list[HumanInputRecipient]:
+    def _create_whole_workspace_recipients(
+        self,
+        session: Session,
+        form_id: str,
+        delivery_id: str,
+    ) -> list[HumanInputFormRecipient]:
         recipeint_models = []
-        members = self._member_queirer.get_all_workspace_members()
+        members = self._query_workspace_members(session=session, user_ids=None)
         for member in members:
-            payload = EmailMemberRecipientPayload(user_id=member.user_id(), email=member.email())
-            recipient_model = HumanInputRecipient.new(
+            payload = EmailMemberRecipientPayload(user_id=member.user_id, email=member.email)
+            recipient_model = HumanInputFormRecipient.new(
                 form_id=form_id,
                 delivery_id=delivery_id,
                 payload=payload,
@@ -183,6 +197,30 @@ class HumanInputFormRepositoryImpl:
 
         return recipeint_models
 
+    def _query_workspace_members(
+        self,
+        session: Session,
+        user_ids: Sequence[str] | None,
+    ) -> list[_WorkspaceMemberInfo]:
+        unique_ids: set[str] | None
+        if user_ids is None:
+            unique_ids = None
+        else:
+            unique_ids = {user_id for user_id in user_ids if user_id}
+            if not unique_ids:
+                return []
+
+        stmt = (
+            select(Account.id, Account.email)
+            .join(TenantAccountJoin, TenantAccountJoin.account_id == Account.id)
+            .where(TenantAccountJoin.tenant_id == self._tenant_id)
+        )
+        if unique_ids is not None:
+            stmt = stmt.where(Account.id.in_(unique_ids))
+
+        rows = session.execute(stmt).all()
+        return [_WorkspaceMemberInfo(user_id=account_id, email=email) for account_id, email in rows]
+
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
         form_config: HumanInputNodeData = params.form_config
 
@@ -190,8 +228,12 @@ class HumanInputFormRepositoryImpl:
             # Generate unique form ID
             form_id = str(uuidv7())
             form_definition = FormDefinition(
+                form_content=form_config.form_content,
                 inputs=form_config.inputs,
                 user_actions=form_config.user_actions,
+                rendered_content=params.rendered_content,
+                timeout=form_config.timeout,
+                timeout_unit=form_config.timeout_unit,
             )
             form_model = HumanInputForm(
                 id=form_id,
@@ -203,9 +245,13 @@ class HumanInputFormRepositoryImpl:
                 expiration_time=form_config.expiration_time(naive_utc_now()),
             )
             session.add(form_model)
-            web_app_recipient: HumanInputRecipient | None = None
+            web_app_recipient: HumanInputFormRecipient | None = None
             for delivery in form_config.delivery_methods:
-                delivery_and_recipients = self._delivery_method_to_model(form_id, delivery)
+                delivery_and_recipients = self._delivery_method_to_model(
+                    session=session,
+                    form_id=form_id,
+                    delivery_method=delivery,
+                )
                 session.add(delivery_and_recipients.delivery)
                 session.add_all(delivery_and_recipients.recipients)
                 if web_app_recipient is None:
@@ -214,7 +260,7 @@ class HumanInputFormRepositoryImpl:
 
         return _HumanInputFormEntityImpl(form_model=form_model, web_app_recipient=web_app_recipient)
 
-    def get_form_submission(self, workflow_execution_id: str, node_id: str) -> FormSubmissionEntity | None:
+    def get_form_submission(self, workflow_execution_id: str, node_id: str) -> FormSubmission | None:
         query = select(HumanInputForm).where(
             HumanInputForm.workflow_run_id == workflow_execution_id,
             HumanInputForm.node_id == node_id,
@@ -227,4 +273,13 @@ class HumanInputFormRepositoryImpl:
             if form_model.submitted_at is None:
                 return None
 
-        return _FormSubmissionEntityImpl(form_model=form_model)
+        return _FormSubmissionImpl(form_model=form_model)
+
+    def get_form_by_token(self, token: str, recipient_type: RecipientType | None = None):
+        query = (
+            select(HumanInputFormRecipient)
+            .options(selectinload(HumanInputFormRecipient.form))
+            .where()
+
+        with self._session_factory(expire_on_commit=False) as session:
+            form_recipient = session.qu

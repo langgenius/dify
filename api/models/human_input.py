@@ -66,7 +66,7 @@ class HumanInputForm(DefaultFieldsMixin, Base):
         back_populates="form",
         lazy="raise",
     )
-    completed_by_recipient: Mapped["HumanInputRecipient | None"] = relationship(
+    completed_by_recipient: Mapped["HumanInputFormRecipient | None"] = relationship(
         "HumanInputRecipient",
         primaryjoin="HumanInputForm.completed_by_recipient_id == HumanInputRecipient.id",
         lazy="raise",
@@ -75,7 +75,7 @@ class HumanInputForm(DefaultFieldsMixin, Base):
 
 
 class HumanInputDelivery(DefaultFieldsMixin, Base):
-    __tablename__ = "human_input_deliveries"
+    __tablename__ = "human_input_form_deliveries"
 
     form_id: Mapped[str] = mapped_column(
         StringUUID,
@@ -94,10 +94,11 @@ class HumanInputDelivery(DefaultFieldsMixin, Base):
         back_populates="deliveries",
         lazy="raise",
     )
-    recipients: Mapped[list["HumanInputRecipient"]] = relationship(
+    recipients: Mapped[list["HumanInputFormRecipient"]] = relationship(
         "HumanInputRecipient",
+        uselist=True,
         back_populates="delivery",
-        cascade="all, delete-orphan",
+        # Require explicit preloading
         lazy="raise",
     )
 
@@ -135,8 +136,8 @@ RecipientPayload = Annotated[
 ]
 
 
-class HumanInputRecipient(DefaultFieldsMixin, Base):
-    __tablename__ = "human_input_recipients"
+class HumanInputFormRecipient(DefaultFieldsMixin, Base):
+    __tablename__ = "human_input_form_recipients"
 
     form_id: Mapped[str] = mapped_column(
         StringUUID,
@@ -158,7 +159,19 @@ class HumanInputRecipient(DefaultFieldsMixin, Base):
 
     delivery: Mapped[HumanInputDelivery] = relationship(
         "HumanInputDelivery",
+        uselist=False,
+        foreign_keys=[delivery_id],
         back_populates="recipients",
+        # Require explicit preloading
+        lazy="raise",
+    )
+
+    form: Mapped[HumanInputForm] = relationship(
+        "HumanInputForm",
+        uselist=False,
+        foreign_keys=[form_id],
+        back_populates="recipients",
+        # Require explicit preloading
         lazy="raise",
     )
 

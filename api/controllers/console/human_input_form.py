@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 class _FormDefinitionWithSite(FormDefinition):
+    # the site field may be not necessary for console scenario.
     site: None
 
 

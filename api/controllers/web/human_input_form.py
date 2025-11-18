@@ -4,55 +4,47 @@ Web App Human Input Form APIs.
 
 import logging
 
-from flask import jsonify
-from flask_restful import reqparse
+from flask import Response
+from flask_restx import reqparse
 
-from controllers.web import api
-from controllers.web.error import (
-    NotFoundError,
-)
+from controllers.web import web_ns
+from controllers.web.error import NotFoundError
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
-from models.human_input import HumanInputSubmissionType
+from models.human_input import RecipientType
+from models.model import App, EndUser
+from services.human_input_service import Form, FormNotFoundError, HumanInputService
 
 logger = logging.getLogger(__name__)
 
 
-class HumanInputFormApi(WebApiResource):
-    """API for getting human input form definition."""
+def _jsonify_form_definition(form: Form) -> Response:
+    """Return the Pydantic definition as a JSON response."""
+    return Response(form.get_definition().model_dump_json(), mimetype="application/json")
 
-    def get(self, web_app_form_token: str):
+
+@web_ns.route("/form/human_input/<string:web_app_form_token>")
+class HumanInputFormApi(WebApiResource):
+    """API for getting and submitting human input forms via the web app."""
+
+    def get(self, _app_model: App, _end_user: EndUser, web_app_form_token: str):
         """
         Get human input form definition by token.
 
         GET /api/form/human_input/<web_app_form_token>
         """
+        service = HumanInputService(db.engine)
         try:
-            service = HumanInputFormService(db.session())
-            form_definition = service.get_form_definition(
-                identifier=web_app_form_token, is_token=True, include_site_info=True
-            )
-            return form_definition, 200
-
-        except HumanInputFormNotFoundError:
+            form = service.get_form_definition_by_token(RecipientType.WEBAPP, web_app_form_token)
+        except FormNotFoundError:
             raise NotFoundError("Form not found")
-        except HumanInputFormExpiredError:
-            return jsonify(
-                {"error_code": "human_input_form_expired", "description": "Human input form has expired"}
-            ), 400
-        except HumanInputFormAlreadySubmittedError:
-            return jsonify(
-                {
-                    "error_code": "human_input_form_submitted",
-                    "description": "Human input form has already been submitted",
-                }
-            ), 400
 
+        if form is None:
+            raise NotFoundError("Form not found")
 
-class HumanInputFormSubmissionApi(WebApiResource):
-    """API for submitting human input forms."""
+        return _jsonify_form_definition(form)
 
-    def post(self, web_app_form_token: str):
+    def post(self, _app_model: App, _end_user: EndUser, web_app_form_token: str):
         """
         Submit human input form by token.
 
@@ -71,36 +63,15 @@ class HumanInputFormSubmissionApi(WebApiResource):
         parser.add_argument("action", type=str, required=True, location="json")
         args = parser.parse_args()
 
+        service = HumanInputService(db.engine)
         try:
-            # Submit the form
-            service = HumanInputFormService(db.session())
-            service.submit_form(
-                identifier=web_app_form_token,
+            service.submit_form_by_token(
+                recipient_type=RecipientType.WEBAPP,
+                form_token=web_app_form_token,
+                selected_action_id=args["action"],
                 form_data=args["inputs"],
-                action=args["action"],
-                is_token=True,
-                submission_type=HumanInputSubmissionType.web_app,
             )
-
-            return {}, 200
-
-        except HumanInputFormNotFoundError:
+        except FormNotFoundError:
             raise NotFoundError("Form not found")
-        except HumanInputFormExpiredError:
-            return jsonify(
-                {"error_code": "human_input_form_expired", "description": "Human input form has expired"}
-            ), 400
-        except HumanInputFormAlreadySubmittedError:
-            return jsonify(
-                {
-                    "error_code": "human_input_form_submitted",
-                    "description": "Human input form has already been submitted",
-                }
-            ), 400
-        except InvalidFormDataError as e:
-            return jsonify({"error_code": "invalid_form_data", "description": e.message}), 400
 
-
-# Register the APIs
-api.add_resource(HumanInputFormApi, "/form/human_input/<string:web_app_form_token>")
-api.add_resource(HumanInputFormSubmissionApi, "/form/human_input/<string:web_app_form_token>", methods=["POST"])
+        return {}, 200
