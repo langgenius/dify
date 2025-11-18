@@ -21,6 +21,7 @@ from configs import dify_config
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_storage import storage
+from models.base import TypeBase
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 
 from .account import Account
@@ -906,17 +907,21 @@ class ChildChunk(Base):
         return db.session.query(DocumentSegment).where(DocumentSegment.id == self.segment_id).first()
 
 
-class AppDatasetJoin(Base):
+class AppDatasetJoin(TypeBase):
     __tablename__ = "app_dataset_joins"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="app_dataset_join_pkey"),
         sa.Index("app_dataset_join_app_dataset_idx", "dataset_id", "app_id"),
     )
 
-    id = mapped_column(StringUUID, primary_key=True, nullable=False, server_default=sa.text("uuid_generate_v4()"))
-    app_id = mapped_column(StringUUID, nullable=False)
-    dataset_id = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
+    id: Mapped[str] = mapped_column(
+        StringUUID, primary_key=True, nullable=False, server_default=sa.text("uuid_generate_v4()"), init=False
+    )
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
+    )
 
     @property
     def app(self):

@@ -15,6 +15,7 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import { useUpdateNodeInternals } from 'reactflow'
+import { AppModeEnum } from '@/types/app'
 
 const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const updateNodeInternals = useUpdateNodeInternals()
@@ -38,7 +39,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
 
   const model = inputs.model
   const modelMode = inputs.model?.mode
-  const isChatModel = modelMode === 'chat'
+  const isChatModel = modelMode === AppModeEnum.CHAT
 
   const {
     isVisionModel,

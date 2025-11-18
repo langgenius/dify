@@ -82,7 +82,7 @@ const translation = {
     documentsTooltip: 'Cota pe numărul de documente importate din Sursele de Date de Cunoștințe.',
     getStarted: 'Întrebați-vă',
     cloud: 'Serviciu de cloud',
-    apiRateLimitUnit: '{{count,number}}/zi',
+    apiRateLimitUnit: '{{count,number}}/lună',
     comparePlanAndFeatures: 'Compară planurile și caracteristicile',
     documentsRequestQuota: '{{count,number}}/min Limita de rată a cererilor de cunoștințe',
     documents: '{{count,number}} Documente de Cunoaștere',

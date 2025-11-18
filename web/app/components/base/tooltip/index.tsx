@@ -17,6 +17,7 @@ export type TooltipProps = {
   popupContent?: React.ReactNode
   children?: React.ReactNode
   popupClassName?: string
+  portalContentClassName?: string
   noDecoration?: boolean
   offset?: OffsetOptions
   needsDelay?: boolean
@@ -32,6 +33,7 @@ const Tooltip: FC<TooltipProps> = ({
   popupContent,
   children,
   popupClassName,
+  portalContentClassName,
   noDecoration,
   offset,
   asChild = true,
@@ -104,7 +106,7 @@ const Tooltip: FC<TooltipProps> = ({
         {children || <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-[1px]'}><RiQuestionLine className='h-full w-full text-text-quaternary hover:text-text-tertiary' /></div>}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
-        className="z-[9999]"
+        className={cn('z-[9999]', portalContentClassName || '')}
       >
         {popupContent && (<div
           className={cn(
