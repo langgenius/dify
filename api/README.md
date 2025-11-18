@@ -28,7 +28,7 @@
 
 > [!IMPORTANT]
 >
-> When your site uses HTTP, or the frontend and backend run on different domains or subdomains, set `COOKIE_DOMAIN` to the site domain (e.g., `example.com`).
+> When the frontend and backend run on different subdomains, set COOKIE_DOMAIN to the site’s primary domain (e.g., `example.com`). The frontend and backend must be under the same top-level domain in order to share authentication cookies.
 
 1. Generate a `SECRET_KEY` in the `.env` file.
 

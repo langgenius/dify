@@ -44,7 +44,7 @@ NEXT_PUBLIC_SENTRY_DSN=
 
 > [!IMPORTANT]
 >
-> 1. When your site uses HTTPS and the frontend and backend run on different domains or subdomains, set NEXT_PUBLIC_COOKIE_DOMAIN=1.
+> 1. When the frontend and backend run on different subdomains, set NEXT_PUBLIC_COOKIE_DOMAIN=1. The frontend and backend must be under the same top-level domain in order to share authentication cookies.
 > 1. It's necessary to set NEXT_PUBLIC_API_PREFIX and NEXT_PUBLIC_PUBLIC_API_PREFIX to the correct backend API URL.
 
 Finally, run the development server:
