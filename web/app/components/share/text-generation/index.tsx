@@ -87,6 +87,8 @@ const TextGeneration: FC<IMainProps> = ({
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
   const fetchSavedMessage = useCallback(async () => {
+    if (!appId)
+      return
     const res: any = await doFetchSavedMessage(appSourceType, appId)
     setSavedMessages(res.data)
   }, [appSourceType, appId])

@@ -258,7 +258,9 @@ export const saveMessage = (messageId: string, appSourceType: AppSourceType, ins
 }
 
 export const fetchSavedMessage = async (appSourceType: AppSourceType, installedAppId = '') => {
-  return (getAction('get', appSourceType))(getUrl('/saved-messages', appSourceType, installedAppId))
+  return (getAction('get', appSourceType))(getUrl('/saved-messages', appSourceType, installedAppId), {}, {
+    silent: true,
+  })
 }
 
 export const removeMessage = (messageId: string, appSourceType: AppSourceType, installedAppId = '') => {
