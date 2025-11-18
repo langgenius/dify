@@ -71,7 +71,7 @@ class Tool(ABC):
                 sig = inspect.signature(self._invoke)
                 if "inputs" in sig.parameters:
                     invoke_kwargs["inputs"] = inputs
-            except Exception:
+            except (ValueError, TypeError):
                 # fallback: Do not pass inputs if reflection fails
                 pass
 
