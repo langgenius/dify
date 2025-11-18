@@ -363,7 +363,7 @@ def _parse_token_response(response: httpx.Response) -> OAuthTokens:
         # No content-type or unknown - try JSON first, fallback to form-urlencoded
         try:
             return OAuthTokens.model_validate(response.json())
-        except Exception:
+        except (ValidationError, json.JSONDecodeError):
             token_data = dict(urllib.parse.parse_qsl(response.text))
             return OAuthTokens.model_validate(token_data)
 
