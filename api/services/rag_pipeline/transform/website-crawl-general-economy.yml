@@ -611,7 +611,7 @@ workflow:
     options: []
     placeholder: null
     required: false
-    tooltips: null
+    tooltips: Enable to crawl all pages within the entire domain, not just pages under the initial URL path
     type: checkbox
     unit: null
     variable: firecrawl_crawl_entire_domain
