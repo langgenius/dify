@@ -5,7 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base, TypeBase
+from .base import TypeBase
 from .types import StringUUID
 
 
@@ -52,21 +52,27 @@ class DatasourceProvider(TypeBase):
     )
 
 
-class DatasourceOauthTenantParamConfig(Base):
+class DatasourceOauthTenantParamConfig(TypeBase):
     __tablename__ = "datasource_oauth_tenant_params"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="datasource_oauth_tenant_config_pkey"),
         sa.UniqueConstraint("tenant_id", "plugin_id", "provider", name="datasource_oauth_tenant_config_unique"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuidv7()"))
-    tenant_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuidv7()"), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     client_params: Mapped[dict] = mapped_column(JSONB, nullable=False, default={})
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
 
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
