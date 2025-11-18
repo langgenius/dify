@@ -141,35 +141,40 @@
 </head>
 
 <body>
+  {% set is_sandbox = (planName == 'Sandbox') %}
+  {% set computed_usageScope = 'Trigger Events' if is_sandbox else 'Monthly Trigger Events' %}
+  {% set computed_triggerSources = 'Plugin, Schedule, or Webhook' %}
+  {% set computed_ctaLabel = 'Upgrade now' %}
+  {% set computed_upgradeUrl = 'https://cloud.dify.ai/apps?pricing=open' %}
+  {% if is_sandbox %}
+    {% set computed_resetLine = 'Trigger Events for the Sandbox Plan do not reset monthly.' %}
+  {% else %}
+    {% set computed_resetLine = 'Monthly Trigger Events for the Professional Plan will reset on ' ~ resetDate ~ '.' %}
+  {% endif %}
+
   <div class="card">
     <div class="card-header">
       <img src="https://assets.dify.ai/images/logo.png" alt="Dify Logo" />
     </div>
     <div class="card-content">
-      <h1 class="title">You’ve reached your trigger events limit</h1>
+      <h1 class="title">You've reached your trigger events limit</h1>
       <div class="body-group">
         <p class="body-text">
           <strong>Dear {{ recipientName | default(workspaceName ~ ' team', true) }},</strong>
         </p>
         <p class="body-text">
-          Your workspace <strong>{{workspaceName}}</strong> has used all available <strong>{{usageScope | default('Trigger Events')}}</strong> for the
+          Your workspace <strong>{{workspaceName}}</strong> has used all available <strong>{{computed_usageScope}}</strong> for the
           <strong>{{planName}} Plan (limit: {{planLimit}})</strong>.
         </p>
         <p class="body-text">
-          Workflows triggered by <strong>Plugin, Schedule, or Webhook</strong> events have been temporarily paused.
+          Workflows triggered by <strong>{{computed_triggerSources}}</strong> events have been temporarily paused.
         </p>
         <p class="body-text">
           To keep your workflows running without interruption, please upgrade your plan to unlock more Trigger Events.
         </p>
-        <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
+        <a class="cta" href="{{computed_upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{computed_ctaLabel}}</a>
         <p class="note">
-          <strong>
-            {% if resetLine is defined %}
-              {{ resetLine }}
-            {% else %}
-              Trigger Events for the {{planName}} Plan {{resetDescription}}
-            {% endif %}
-          </strong>
+          <strong>{{computed_resetLine}}</strong>
         </p>
       </div>
       <div class="signature">

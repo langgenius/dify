@@ -141,36 +141,44 @@
 </head>
 
 <body>
+  {% set is_sandbox = (planName == 'Sandbox') %}
+  {% set computed_usagePercent = '80%' %}
+  {% set computed_usageScope = 'Trigger Events' if is_sandbox else 'Monthly Trigger Events' %}
+  {% set computed_triggerSources = 'Plugin, Schedule, or Webhook' %}
+  {% set computed_ctaLabel = 'Manage plan' %}
+  {% set computed_upgradeUrl = 'https://cloud.dify.ai/apps?action=showSettings&tab=billing' %}
+  {% if is_sandbox %}
+    {% set computed_upgradeHint = 'To continue running workflows without interruption, please consider upgrading to a paid plan for higher capacity.' %}
+    {% set computed_resetLine = 'Trigger Events for the Sandbox Plan do not reset monthly.' %}
+  {% else %}
+    {% set computed_upgradeHint = 'To continue running workflows without interruption, please review your plan and consider upgrading for a higher monthly quota.' %}
+    {% set computed_resetLine = 'Monthly Trigger Events for the Professional Plan will reset on ' ~ resetDate ~ '.' %}
+  {% endif %}
+
   <div class="card">
     <div class="card-header">
       <img src="https://assets.dify.ai/images/logo.png" alt="Dify Logo" />
     </div>
     <div class="card-content">
-      <h1 class="title">You’re nearing your Trigger Events limit</h1>
+      <h1 class="title">You're nearing your Trigger Events limit</h1>
       <div class="body-group">
         <p class="body-text">
           <strong>Dear {{ recipientName | default(workspaceName ~ ' team', true) }},</strong>
         </p>
         <p class="body-text">
-          Your workspace <strong>{{workspaceName}}</strong> has used <strong>{{usagePercent}}</strong> of its
-          <strong>{{usageScope}}</strong> for the <strong>{{planName}} Plan (limit: {{planLimit}})</strong>.
+          Your workspace <strong>{{workspaceName}}</strong> has used <strong>{{computed_usagePercent}}</strong> of its
+          <strong>{{computed_usageScope}}</strong> for the <strong>{{planName}} Plan (limit: {{planLimit}})</strong>.
         </p>
         <p class="body-text">
-          Once the limit is reached, workflows triggered by <strong>Plugin, Schedule, or Webhook</strong> events will be temporarily
+          Once the limit is reached, workflows triggered by <strong>{{computed_triggerSources}}</strong> events will be temporarily
           paused.
         </p>
         <p class="body-text">
-          {{upgradeHint}}
+          {{computed_upgradeHint}}
         </p>
-        <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
+        <a class="cta" href="{{computed_upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{computed_ctaLabel}}</a>
         <p class="note">
-          <strong>
-            {% if resetLine is defined %}
-              {{ resetLine }}
-            {% else %}
-              Trigger Events for the {{planName}} Plan {{resetDescription}}
-            {% endif %}
-          </strong>
+          <strong>{{computed_resetLine}}</strong>
         </p>
       </div>
       <div class="signature">

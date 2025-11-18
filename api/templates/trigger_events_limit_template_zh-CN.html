@@ -141,6 +141,17 @@
 </head>
 
 <body>
+  {% set is_sandbox = (planName == 'Sandbox') %}
+  {% set computed_usageScope = '触发事件额度' if is_sandbox else '月度触发事件额度' %}
+  {% set computed_triggerSources = '触发器插件、定时任务或 Webhook' %}
+  {% set computed_ctaLabel = '立即升级' %}
+  {% set computed_upgradeUrl = 'https://cloud.dify.ai/apps?pricing=open' %}
+  {% if is_sandbox %}
+    {% set computed_resetLine = 'Sandbox 计划的触发事件额度不会按月重置。' %}
+  {% else %}
+    {% set computed_resetLine = 'Professional 计划的月度触发事件额度将于 ' ~ resetDate ~ ' 重置。' %}
+  {% endif %}
+
   <div class="card">
     <div class="card-header">
       <img src="https://assets.dify.ai/images/logo.png" alt="Dify Logo" />
@@ -152,24 +163,18 @@
           <strong>亲爱的 {{ recipientName | default(workspaceName, true) }}，</strong>
         </p>
         <p class="body-text">
-          您的工作区 <strong>{{workspaceName}}</strong> 已用完 <strong>{{usageScope | default('触发事件额度')}}</strong>，并耗尽
+          您的工作区 <strong>{{workspaceName}}</strong> 已用完 <strong>{{computed_usageScope}}</strong>，并耗尽
           <strong>{{planName}} 计划（上限：{{planLimit}}）</strong> 的全部额度。
         </p>
         <p class="body-text">
-          由 <strong>触发器插件、定时任务或 Webhook</strong> 触发的工作流已被暂时暂停。
+          由 <strong>{{computed_triggerSources}}</strong> 触发的工作流已被暂时暂停。
         </p>
         <p class="body-text">
           为保证工作流不中断，请升级套餐以解锁更多触发事件额度。
         </p>
-        <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
+        <a class="cta" href="{{computed_upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{computed_ctaLabel}}</a>
         <p class="note">
-          <strong>
-            {% if resetLine is defined %}
-              {{ resetLine }}
-            {% else %}
-              {{planName}} 计划的触发事件额度{{resetDescription}}
-            {% endif %}
-          </strong>
+          <strong>{{computed_resetLine}}</strong>
         </p>
       </div>
       <div class="signature">

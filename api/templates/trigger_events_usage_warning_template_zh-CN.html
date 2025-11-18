@@ -141,6 +141,20 @@
 </head>
 
 <body>
+  {% set is_sandbox = (planName == 'Sandbox') %}
+  {% set computed_usagePercent = '80%' %}
+  {% set computed_usageScope = '触发事件额度' if is_sandbox else '月度触发事件额度' %}
+  {% set computed_triggerSources = '触发器插件、定时任务或 Webhook' %}
+  {% set computed_ctaLabel = '管理套餐' %}
+  {% set computed_upgradeUrl = 'https://cloud.dify.ai/apps?action=showSettings&tab=billing' %}
+  {% if is_sandbox %}
+    {% set computed_upgradeHint = '为保持工作流不中断，请考虑升级到更高配额的付费计划。' %}
+    {% set computed_resetLine = 'Sandbox 计划的触发事件额度不会按月重置。' %}
+  {% else %}
+    {% set computed_upgradeHint = '为保证月度用量不受限，请检查当前套餐并考虑升级以获得更高配额。' %}
+    {% set computed_resetLine = 'Professional 计划的月度触发事件额度将于 ' ~ resetDate ~ ' 重置。' %}
+  {% endif %}
+
   <div class="card">
     <div class="card-header">
       <img src="https://assets.dify.ai/images/logo.png" alt="Dify Logo" />
@@ -152,24 +166,18 @@
           <strong>亲爱的 {{ recipientName | default(workspaceName, true) }}，</strong>
         </p>
         <p class="body-text">
-          您的工作区 <strong>{{workspaceName}}</strong> 已使用 <strong>{{usagePercent}}</strong> 的
-          <strong>{{usageScope}}</strong>，触及 <strong>{{planName}} 计划（上限：{{planLimit}}）</strong>。
+          您的工作区 <strong>{{workspaceName}}</strong> 已使用 <strong>{{computed_usagePercent}}</strong> 的
+          <strong>{{computed_usageScope}}</strong>，触及 <strong>{{planName}} 计划（上限：{{planLimit}}）</strong>。
         </p>
         <p class="body-text">
-          一旦达到上限，由 <strong>触发器插件、定时任务或 Webhook</strong> 触发的工作流将被暂时暂停。
+          一旦达到上限，由 <strong>{{computed_triggerSources}}</strong> 触发的工作流将被暂时暂停。
         </p>
         <p class="body-text">
-          {{upgradeHint}}
+          {{computed_upgradeHint}}
         </p>
-        <a class="cta" href="{{upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{ctaLabel}}</a>
+        <a class="cta" href="{{computed_upgradeUrl}}" target="_blank" rel="noopener noreferrer">{{computed_ctaLabel}}</a>
         <p class="note">
-          <strong>
-            {% if resetLine is defined %}
-              {{ resetLine }}
-            {% else %}
-              {{planName}} 计划的触发事件额度{{resetDescription}}
-            {% endif %}
-          </strong>
+          <strong>{{computed_resetLine}}</strong>
         </p>
       </div>
       <div class="signature">
