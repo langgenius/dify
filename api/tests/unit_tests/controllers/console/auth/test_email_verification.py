@@ -12,7 +12,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from flask_restx import Api
 
 from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError
 from controllers.console.auth.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi
