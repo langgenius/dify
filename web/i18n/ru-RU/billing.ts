@@ -65,7 +65,7 @@ const translation = {
     messageRequest: {
       title: 'Кредиты на сообщения',
       tooltip: 'Квоты вызова сообщений для различных тарифных планов, использующих модели OpenAI (кроме gpt4). Сообщения, превышающие лимит, будут использовать ваш ключ API OpenAI.',
-      titlePerMonth: '{{count,number}} сообщений / месяц',
+      titlePerMonth: '{{count,number}} сообщений/месяц',
     },
     annotatedResponse: {
       title: 'Ограничения квоты аннотаций',

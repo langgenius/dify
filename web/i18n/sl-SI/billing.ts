@@ -65,7 +65,7 @@ const translation = {
     messageRequest: {
       title: 'Krediti za sporočila',
       tooltip: 'Kvota za klice sporočil pri različnih načrtih z uporabo modelov OpenAI (razen GPT-4). Sporočila preko omejitve bodo uporabljala vaš OpenAI API ključ.',
-      titlePerMonth: '{{count,number}} sporočil / mesec',
+      titlePerMonth: '{{count,number}} sporočil/mesec',
     },
     annotatedResponse: {
       title: 'Omejitve kvote za označevanje',

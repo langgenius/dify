@@ -67,7 +67,7 @@ const translation = {
     documentsTooltip: 'ナレッジデータソースからインポートされたドキュメントの数に対するクォータ。',
     vectorSpace: '{{size}}のナレッジベースのデータストレージ',
     vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、ナレッジベースのデータストレージのリソースを消費します。ナレッジベースのデータストレージの上限に達すると、新しいドキュメントはアップロードされません。',
-    documentsRequestQuota: '{{count,number}} のナレッジリクエスト上限 / 分',
+    documentsRequestQuota: '{{count,number}} のナレッジリクエスト上限/分',
     documentsRequestQuotaTooltip: 'ナレッジベース内でワークスペースが 1 分間に実行できる操作の総数を示します。これには、データセットの作成、削除、更新、ドキュメントのアップロード、修正、アーカイブ、およびナレッジベースクエリが含まれます。この指標は、ナレッジベースリクエストのパフォーマンスを評価するために使用されます。例えば、Sandbox ユーザーが 1 分間に 10 回連続でヒットテストを実行した場合、そのワークスペースは次の 1 分間、データセットの作成、削除、更新、ドキュメントのアップロードや修正などの操作を一時的に実行できなくなります。',
     apiRateLimit: 'API リクエスト制限',
     apiRateLimitUnit: '{{count,number}} の',
@@ -82,7 +82,7 @@ const translation = {
     },
     triggerEvents: {
       sandbox: '{{count,number}} トリガーイベント数',
-      professional: '{{count,number}} トリガーイベント数 / 月',
+      professional: '{{count,number}} トリガーイベント数/月',
       unlimited: '無制限のトリガーイベント数',
       tooltip: 'プラグイントリガー、タイマートリガー、または Webhook トリガーによって自動的にワークフローを起動するイベントの回数です。',
     },
@@ -123,7 +123,7 @@ const translation = {
     memberAfter: 'メンバー',
     messageRequest: {
       title: '{{count,number}}メッセージクレジット',
-      titlePerMonth: '{{count,number}}メッセージクレジット / 月',
+      titlePerMonth: '{{count,number}}メッセージクレジット/月',
       tooltip: 'メッセージクレジットは、Dify でさまざまな OpenAI モデルを簡単にお試しいただくためのものです。モデルタイプに応じてクレジットが消費され、使い切った後はご自身の OpenAI API キーに切り替えていただけます。',
     },
     annotatedResponse: {

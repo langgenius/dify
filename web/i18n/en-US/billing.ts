@@ -69,7 +69,7 @@ const translation = {
     documentsTooltip: 'Quota on the number of documents imported from the Knowledge Data Source.',
     vectorSpace: '{{size}} Knowledge Data Storage',
     vectorSpaceTooltip: 'Documents with the High Quality indexing mode will consume Knowledge Data Storage resources. When Knowledge Data Storage reaches the limit, new documents will not be uploaded.',
-    documentsRequestQuota: '{{count,number}} Knowledge Request / min',
+    documentsRequestQuota: '{{count,number}} Knowledge Request/min',
     documentsRequestQuotaTooltip: 'Specifies the total number of actions a workspace can perform per minute within the knowledge base, including dataset creation, deletion, updates, document uploads, modifications, archiving, and knowledge base queries. This metric is used to evaluate the performance of knowledge base requests. For example, if a Sandbox user performs 10 consecutive hit tests within one minute, their workspace will be temporarily restricted from performing the following actions for the next minute: dataset creation, deletion, updates, and document uploads or modifications. ',
     apiRateLimit: 'API Rate Limit',
     apiRateLimitUnit: '{{count,number}}',
@@ -84,7 +84,7 @@ const translation = {
     },
     triggerEvents: {
       sandbox: '{{count,number}} Trigger Events',
-      professional: '{{count,number}} Trigger Events / month',
+      professional: '{{count,number}} Trigger Events/month',
       unlimited: 'Unlimited Trigger Events',
       tooltip: 'The number of events that automatically start workflows through Plugin, Schedule, or Webhook triggers.',
     },
@@ -95,8 +95,8 @@ const translation = {
       tooltip: 'Workflow execution queue priority and speed.',
     },
     startNodes: {
-      limited: 'Up to {{count}} Start Nodes / workflow',
-      unlimited: 'Unlimited Start Nodes / workflow',
+      limited: 'Up to {{count}} Start Nodes/workflow',
+      unlimited: 'Unlimited Start Nodes/workflow',
     },
     logsHistory: '{{days}} Log history',
     customTools: 'Custom Tools',
@@ -125,7 +125,7 @@ const translation = {
     memberAfter: 'Member',
     messageRequest: {
       title: '{{count,number}} message credits',
-      titlePerMonth: '{{count,number}} message credits / month',
+      titlePerMonth: '{{count,number}} message credits/month',
       tooltip: 'Message credits are provided to help you easily try out different OpenAI models in Dify. Credits are consumed based on the model type. Once they’re used up, you can switch to your own OpenAI API key.',
     },
     annotatedResponse: {

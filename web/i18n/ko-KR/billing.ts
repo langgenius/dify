@@ -68,7 +68,7 @@ const translation = {
       title: '메시지 크레딧',
       tooltip:
         'GPT 제외 다양한 요금제에서의 메시지 호출 쿼터 (gpt4 제외). 제한을 초과하는 메시지는 OpenAI API 키를 사용합니다.',
-      titlePerMonth: '{{count,number}} 메시지 / 월',
+      titlePerMonth: '{{count,number}} 메시지/월',
     },
     annotatedResponse: {
       title: '주석 응답 쿼터',

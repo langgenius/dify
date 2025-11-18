@@ -64,7 +64,7 @@ const translation = {
     messageRequest: {
       title: 'Crédits de message',
       tooltip: 'Quotas d\'invocation de messages pour divers plans utilisant les modèles OpenAI (sauf gpt4). Les messages dépassant la limite utiliseront votre clé API OpenAI.',
-      titlePerMonth: '{{count,number}} messages / mois',
+      titlePerMonth: '{{count,number}} messages/mois',
     },
     annotatedResponse: {
       title: 'Limites de quota d\'annotation',
@@ -106,7 +106,7 @@ const translation = {
     professional: {
       name: 'Professionnel',
       description: 'Pour les individus et les petites équipes afin de débloquer plus de puissance à un prix abordable.',
-      for: 'Pour les développeurs indépendants / petites équipes',
+      for: 'Pour les développeurs indépendants/petites équipes',
     },
     team: {
       name: 'Équipe',

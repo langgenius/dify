@@ -70,7 +70,7 @@ const translation = {
       title: 'संदेश क्रेडिट्स',
       tooltip:
         'विभिन्न योजनाओं के लिए संदेश आह्वान कोटा OpenAI मॉडलों का उपयोग करके (gpt4 को छोड़कर)। सीमा से अधिक संदेश आपके OpenAI API कुंजी का उपयोग करेंगे।',
-      titlePerMonth: '{{count,number}} संदेश / महीना',
+      titlePerMonth: '{{count,number}} संदेश/महीना',
     },
     annotatedResponse: {
       title: 'एनोटेशन कोटा सीमाएं',

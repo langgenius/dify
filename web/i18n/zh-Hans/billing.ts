@@ -68,7 +68,7 @@ const translation = {
     documentsTooltip: '从知识库的数据源导入的文档数量配额。',
     vectorSpace: '{{size}} 知识库数据存储空间',
     vectorSpaceTooltip: '采用高质量索引模式的文档会消耗知识数据存储资源。当知识数据存储达到限制时，将不会上传新文档。',
-    documentsRequestQuota: '{{count,number}} 知识请求 / 分钟',
+    documentsRequestQuota: '{{count,number}} 知识请求/分钟',
     documentsRequestQuotaTooltip: '指每分钟内，一个空间在知识库中可执行的操作总数，包括数据集的创建、删除、更新，文档的上传、修改、归档，以及知识库查询等，用于评估知识库请求的性能。例如，Sandbox 用户在 1 分钟内连续执行 10 次命中测试，其工作区将在接下来的 1 分钟内无法继续执行以下操作：数据集的创建、删除、更新，文档的上传、修改等操作。',
     apiRateLimit: 'API 请求频率限制',
     apiRateLimitUnit: '{{count,number}} 次',
@@ -83,7 +83,7 @@ const translation = {
     },
     triggerEvents: {
       sandbox: '{{count,number}} 触发器事件数',
-      professional: '{{count,number}} 触发器事件数 / 月',
+      professional: '{{count,number}} 触发器事件数/月',
       unlimited: '无限触发器事件数',
       tooltip: '通过插件、定时触发器、Webhook 等来自动触发工作流的事件数。',
     },
@@ -94,8 +94,8 @@ const translation = {
       tooltip: '工作流的执行队列优先级与运行速度。',
     },
     startNodes: {
-      limited: '最多 {{count}} 个起始节点 / 工作流',
-      unlimited: '无限的起始节点 / 工作流',
+      limited: '最多 {{count}} 个起始节点/工作流',
+      unlimited: '无限的起始节点/工作流',
     },
     logsHistory: '{{days}}日志历史',
     customTools: '自定义工具',
@@ -124,7 +124,7 @@ const translation = {
     memberAfter: '个成员',
     messageRequest: {
       title: '{{count,number}} 条消息额度',
-      titlePerMonth: '{{count,number}} 条消息额度 / 月',
+      titlePerMonth: '{{count,number}} 条消息额度/月',
       tooltip: '消息额度旨在帮助您便捷地试用 Dify 中的各类 OpenAI 模型。不同模型会消耗不同额度。额度用尽后，您可以切换为使用自己的 OpenAI API 密钥。',
     },
     annotatedResponse: {

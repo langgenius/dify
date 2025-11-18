@@ -64,7 +64,7 @@ const translation = {
     messageRequest: {
       title: 'Số Lượng Tin Nhắn',
       tooltip: 'Hạn mức triệu hồi tin nhắn cho các kế hoạch sử dụng mô hình OpenAI (ngoại trừ gpt4). Các tin nhắn vượt quá giới hạn sẽ sử dụng Khóa API OpenAI của bạn.',
-      titlePerMonth: '{{count,number}} tin nhắn / tháng',
+      titlePerMonth: '{{count,number}} tin nhắn/tháng',
     },
     annotatedResponse: {
       title: 'Hạn Mức Quota Phản hồi Đã được Ghi chú',
