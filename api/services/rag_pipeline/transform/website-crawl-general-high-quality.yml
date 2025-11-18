@@ -173,6 +173,9 @@ workflow:
           only_main_content:
             type: mixed
             value: '{{#rag.1752565402678.firecrawl_extract_main_content#}}'
+          crawl_entire_domain:
+            type: mixed
+            value: '{{#rag.1752565402678.firecrawl_crawl_entire_domain#}}'
           url:
             type: mixed
             value: '{{#rag.1752565402678.firecrawl_url#}}'
@@ -598,6 +601,20 @@ workflow:
     type: checkbox
     unit: null
     variable: firecrawl_extract_main_content
+  - allow_file_extension: null
+    allow_file_upload_methods: null
+    allowed_file_types: null
+    belong_to_node_id: '1752565402678'
+    default_value: false
+    label: Crawl entire domain
+    max_length: 48
+    options: []
+    placeholder: null
+    required: false
+    tooltips: null
+    type: checkbox
+    unit: null
+    variable: firecrawl_crawl_entire_domain
   - allow_file_extension: null
     allow_file_upload_methods: null
     allowed_file_types: null
