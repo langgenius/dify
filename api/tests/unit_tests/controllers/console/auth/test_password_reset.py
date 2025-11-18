@@ -110,9 +110,7 @@ class TestForgotPasswordSendEmailApi:
         mock_is_ip_limit.return_value = True
 
         # Act & Assert
-        with app.test_request_context(
-            "/forgot-password", method="POST", json={"email": "test@example.com"}
-        ):
+        with app.test_request_context("/forgot-password", method="POST", json={"email": "test@example.com"}):
             api = ForgotPasswordSendEmailApi()
             with pytest.raises(EmailSendIpLimitError):
                 api.post()
@@ -312,9 +310,7 @@ class TestForgotPasswordCheckApi:
     @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
     @patch("controllers.console.auth.forgot_password.AccountService.add_forgot_password_error_rate_limit")
-    def test_verify_code_wrong_code(
-        self, mock_add_rate_limit, mock_get_data, mock_is_rate_limit, mock_db, app
-    ):
+    def test_verify_code_wrong_code(self, mock_add_rate_limit, mock_get_data, mock_is_rate_limit, mock_db, app):
         """
         Test code verification with incorrect code.
 

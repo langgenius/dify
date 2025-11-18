@@ -171,9 +171,7 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
-    def test_login_fails_when_rate_limited(
-        self, mock_get_invitation, mock_is_rate_limit, mock_db, app
-    ):
+    def test_login_fails_when_rate_limited(self, mock_get_invitation, mock_is_rate_limit, mock_db, app):
         """
         Test login rejection when rate limit is exceeded.
 
@@ -334,9 +332,7 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
-    def test_login_invitation_email_mismatch(
-        self, mock_get_invitation, mock_is_rate_limit, mock_db, app
-    ):
+    def test_login_invitation_email_mismatch(self, mock_get_invitation, mock_is_rate_limit, mock_db, app):
         """
         Test login failure when invitation email doesn't match login email.
 
@@ -424,7 +420,7 @@ class TestLogoutApi:
         mock_db.session.query.return_value.first.return_value = MagicMock()
         # Create a mock anonymous user that will pass isinstance check
         anonymous_user = MagicMock()
-        mock_flask_login.AnonymousUserMixin = type('AnonymousUserMixin', (), {})
+        mock_flask_login.AnonymousUserMixin = type("AnonymousUserMixin", (), {})
         anonymous_user.__class__ = mock_flask_login.AnonymousUserMixin
         mock_current_account.return_value = (anonymous_user, None)
 

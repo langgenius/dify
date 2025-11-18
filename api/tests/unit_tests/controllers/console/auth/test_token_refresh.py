@@ -49,9 +49,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token")
     @patch("controllers.console.auth.login.AccountService.refresh_token")
-    def test_successful_token_refresh(
-        self, mock_refresh_token, mock_extract_token, app, mock_token_pair
-    ):
+    def test_successful_token_refresh(self, mock_refresh_token, mock_extract_token, app, mock_token_pair):
         """
         Test successful token refresh flow.
 
@@ -100,9 +98,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token")
     @patch("controllers.console.auth.login.AccountService.refresh_token")
-    def test_refresh_fails_with_invalid_token(
-        self, mock_refresh_token, mock_extract_token, app
-    ):
+    def test_refresh_fails_with_invalid_token(self, mock_refresh_token, mock_extract_token, app):
         """
         Test token refresh failure with invalid refresh token.
 
@@ -127,9 +123,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token")
     @patch("controllers.console.auth.login.AccountService.refresh_token")
-    def test_refresh_fails_with_expired_token(
-        self, mock_refresh_token, mock_extract_token, app
-    ):
+    def test_refresh_fails_with_expired_token(self, mock_refresh_token, mock_extract_token, app):
         """
         Test token refresh failure with expired refresh token.
 
@@ -176,9 +170,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token")
     @patch("controllers.console.auth.login.AccountService.refresh_token")
-    def test_refresh_updates_all_tokens(
-        self, mock_refresh_token, mock_extract_token, app, mock_token_pair
-    ):
+    def test_refresh_updates_all_tokens(self, mock_refresh_token, mock_extract_token, app, mock_token_pair):
         """
         Test that token refresh updates all three tokens.
 

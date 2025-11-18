@@ -130,9 +130,7 @@ class TestEmailCodeLoginSendEmailApi:
         mock_get_features.return_value.is_allow_register = False
 
         # Act & Assert
-        with app.test_request_context(
-            "/email-code-login", method="POST", json={"email": "newuser@example.com"}
-        ):
+        with app.test_request_context("/email-code-login", method="POST", json={"email": "newuser@example.com"}):
             api = EmailCodeLoginSendEmailApi()
             with pytest.raises(AccountNotFound):
                 api.post()
