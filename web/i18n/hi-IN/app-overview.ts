@@ -138,7 +138,9 @@ const translation = {
       disable: 'अक्षम करें',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'ट्रिगर नोड मोड में {{feature}} फ़ीचर समर्थित नहीं है।',
+    },
   },
   analysis: {
     title: 'विश्लेषण',

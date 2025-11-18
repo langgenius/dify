@@ -127,7 +127,9 @@ const translation = {
       disable: 'غیرفعال',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'ویژگی {{feature}} در حالت گره تریگر پشتیبانی نمی‌شود.',
+    },
   },
   analysis: {
     title: 'تحلیل',

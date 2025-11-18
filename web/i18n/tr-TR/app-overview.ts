@@ -127,7 +127,9 @@ const translation = {
       disable: 'Devre Dışı',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'Trigger Düğümü modunda {{feature}} özelliği desteklenmiyor.',
+    },
   },
   analysis: {
     title: 'Analiz',

@@ -138,7 +138,9 @@ const translation = {
       disable: 'Wyłącz',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'Funkcja {{feature}} nie jest obsługiwana w trybie węzła wyzwalającego.',
+    },
   },
   analysis: {
     title: 'Analiza',

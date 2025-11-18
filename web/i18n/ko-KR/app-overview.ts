@@ -127,7 +127,9 @@ const translation = {
       disable: '비활성',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: '트리거 노드 모드에서는 {{feature}} 기능이 지원되지 않습니다.',
+    },
   },
   analysis: {
     title: '분석',

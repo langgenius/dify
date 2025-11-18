@@ -127,7 +127,9 @@ const translation = {
       disable: 'Вимкнути',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'Функція {{feature}} не підтримується в режимі вузла тригера.',
+    },
   },
   analysis: {
     title: 'Аналіз',

@@ -127,7 +127,9 @@ const translation = {
       disable: 'Đã tắt',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'Tính năng {{feature}} không được hỗ trợ trong chế độ Nút Kích hoạt.',
+    },
   },
   analysis: {
     title: 'Phân tích',

@@ -127,7 +127,9 @@ const translation = {
       disable: 'Deshabilitar',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'La función {{feature}} no es compatible en el modo Nodo de disparo.',
+    },
   },
   analysis: {
     title: 'Análisis',

@@ -127,7 +127,9 @@ const translation = {
       disable: 'พิการ',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'โหมดโหนดทริกเกอร์ไม่รองรับฟีเจอร์ {{feature}}.',
+    },
   },
   analysis: {
     title: 'การวิเคราะห์',

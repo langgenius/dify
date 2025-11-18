@@ -127,7 +127,9 @@ const translation = {
       disable: 'Desabilitar',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'O recurso {{feature}} não é compatível no modo Nó de Gatilho.',
+    },
   },
   analysis: {
     title: 'Análise',

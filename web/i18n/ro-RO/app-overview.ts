@@ -127,7 +127,9 @@ const translation = {
       disable: 'Dezactivat',
     },
     triggerInfo: {},
-    disableTooltip: {},
+    disableTooltip: {
+      triggerMode: 'Funcționalitatea {{feature}} nu este suportată în modul Nod Trigger.',
+    },
   },
   analysis: {
     title: 'Analiză',
