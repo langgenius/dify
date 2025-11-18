@@ -92,3 +92,4 @@ def downgrade():
     op.drop_table("tool_enduser_authentication_providers")
     # ### end Alembic commands ###
 
+
