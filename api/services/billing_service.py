@@ -25,6 +25,14 @@ class BillingService:
         return billing_info
 
     @classmethod
+    def get_tenant_feature_plan_usage(cls, tenant_id: str):
+        params = {"tenant_id": tenant_id}
+
+        usage_info = cls._send_request("GET", "/tenant-feature-usage/info", params=params)
+        return usage_info
+
+
+    @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str):
         params = {"tenant_id": tenant_id}
 
@@ -56,11 +64,6 @@ class BillingService:
         return cls._send_request("GET", "/invoices", params=params)
 
     @classmethod
-    def get_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str):
-        params = {"tenant_id": tenant_id, "feature_key": feature_key}
-        return cls._send_request("GET", "/billing/tenant_feature_plan/usage", params=params)
-
-    @classmethod
     def update_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str, usage: int) -> dict:
         """
         Update tenant feature plan usage.
@@ -77,7 +80,7 @@ class BillingService:
         return cls._send_request(
             "POST",
             "/tenant-feature-usage/usage",
-            params={"tenant_id": tenant_id, "feature_key": feature_key, "usage": usage},
+            params={"tenant_id": tenant_id, "feature_key": feature_key, "delta": usage},
         )
 
     @classmethod

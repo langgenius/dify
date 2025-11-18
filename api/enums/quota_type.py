@@ -88,7 +88,7 @@ class QuotaType(StrEnum):
 
         try:
             # Call billing service to decrement quota (negative amount)
-            response = BillingService.update_tenant_feature_plan_usage(tenant_id, self.billing_key, -amount)
+            response = BillingService.update_tenant_feature_plan_usage(tenant_id, self.billing_key, amount)
 
             if response.get("result") != "success":
                 logger.warning("Failed to consume quota for %s, feature %s", tenant_id, self.value)

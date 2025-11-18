@@ -244,6 +244,8 @@ class FeatureService:
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
         billing_info = BillingService.get_info(tenant_id)
 
+        features_usage_info = BillingService.get_tenant_feature_plan_usage(tenant_id)
+
         features.billing.enabled = billing_info["enabled"]
         features.billing.subscription.plan = billing_info["subscription"]["plan"]
         features.billing.subscription.interval = billing_info["subscription"]["interval"]
@@ -254,15 +256,15 @@ class FeatureService:
         else:
             features.is_allow_transfer_workspace = False
 
-        if "trigger_event" in billing_info:
-            features.trigger_event.usage = billing_info["trigger_event"]["usage"]
-            features.trigger_event.limit = billing_info["trigger_event"]["limit"]
-            features.trigger_event.reset_date = billing_info["trigger_event"].get("reset_date", -1)
+        if "trigger_event" in features_usage_info:
+            features.trigger_event.usage = features_usage_info["trigger_event"]["usage"]
+            features.trigger_event.limit = features_usage_info["trigger_event"]["limit"]
+            features.trigger_event.reset_date = features_usage_info["trigger_event"].get("reset_date", -1)
 
-        if "api_rate_limit" in billing_info:
-            features.api_rate_limit.usage = billing_info["api_rate_limit"]["usage"]
-            features.api_rate_limit.limit = billing_info["api_rate_limit"]["limit"]
-            features.api_rate_limit.reset_date = billing_info["api_rate_limit"].get("reset_date", -1)
+        if "api_rate_limit" in features_usage_info:
+            features.api_rate_limit.usage = features_usage_info["api_rate_limit"]["usage"]
+            features.api_rate_limit.limit = features_usage_info["api_rate_limit"]["limit"]
+            features.api_rate_limit.reset_date = features_usage_info["api_rate_limit"].get("reset_date", -1)
 
         if "members" in billing_info:
             features.members.size = billing_info["members"]["size"]
