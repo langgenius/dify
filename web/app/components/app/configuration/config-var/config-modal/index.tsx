@@ -28,7 +28,7 @@ import { jsonConfigPlaceHolder, jsonObjectWrap } from './config'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Textarea from '@/app/components/base/textarea'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import { TransferMethod } from '@/types/app'
+import { AppModeEnum, TransferMethod } from '@/types/app'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
 const TEXT_MAX_LENGTH = 256
@@ -70,7 +70,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { type, label, variable, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
   const appDetail = useAppStore(state => state.appDetail)
-  const isBasicApp = appDetail?.mode !== 'advanced-chat' && appDetail?.mode !== 'workflow'
+  const isBasicApp = appDetail?.mode !== AppModeEnum.ADVANCED_CHAT && appDetail?.mode !== AppModeEnum.WORKFLOW
   const isSupportJSON = false
   const jsonSchemaStr = useMemo(() => {
     const isJsonObject = type === InputVarType.jsonObject
@@ -320,7 +320,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
           {type === InputVarType.paragraph && (
             <Field title={t('appDebug.variableConfig.defaultValue')}>
               <Textarea
-                value={tempPayload.default || ''}
+                value={String(tempPayload.default ?? '')}
                 onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
                 placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               />

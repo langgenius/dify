@@ -7,6 +7,8 @@ const translation = {
     documentsUploadQuota: 'ドキュメント・アップロード・クォータ',
     vectorSpace: 'ナレッジベースのデータストレージ',
     vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、ナレッジベースのデータストレージのリソースを消費します。ナレッジベースのデータストレージの上限に達すると、新しいドキュメントはアップロードされません。',
+    triggerEvents: 'トリガーイベント',
+    perMonth: '月あたり',
   },
   upgradeBtn: {
     plain: 'プランをアップグレード',
@@ -60,7 +62,7 @@ const translation = {
     documentsRequestQuota: '{{count,number}}/分のナレッジ リクエストのレート制限',
     documentsRequestQuotaTooltip: 'ナレッジベース内でワークスペースが 1 分間に実行できる操作の総数を示します。これには、データセットの作成、削除、更新、ドキュメントのアップロード、修正、アーカイブ、およびナレッジベースクエリが含まれます。この指標は、ナレッジベースリクエストのパフォーマンスを評価するために使用されます。例えば、Sandbox ユーザーが 1 分間に 10 回連続でヒットテストを実行した場合、そのワークスペースは次の 1 分間、データセットの作成、削除、更新、ドキュメントのアップロードや修正などの操作を一時的に実行できなくなります。',
     apiRateLimit: 'API レート制限',
-    apiRateLimitUnit: '{{count,number}}/日',
+    apiRateLimitUnit: '{{count,number}}/月',
     unlimitedApiRate: '無制限の API コール',
     apiRateLimitTooltip: 'API レート制限は、テキスト生成、チャットボット、ワークフロー、ドキュメント処理など、Dify API 経由のすべてのリクエストに適用されます。',
     documentProcessingPriority: '文書処理',

@@ -39,13 +39,14 @@ import { useInvalid } from './use-base'
 const NAME_SPACE = 'pipeline'
 
 export const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template-list']
-export const usePipelineTemplateList = (params: PipelineTemplateListParams) => {
+export const usePipelineTemplateList = (params: PipelineTemplateListParams, enabled = true) => {
   const { type, language } = params
   return useQuery<PipelineTemplateListResponse>({
     queryKey: [...PipelineTemplateListQueryKeyPrefix, type, language],
     queryFn: () => {
       return get<PipelineTemplateListResponse>('/rag/pipeline/templates', { params })
     },
+    enabled,
   })
 }
 

@@ -10,7 +10,7 @@ import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import cn from '@/utils/classnames'
 import type { PromptVariable } from '@/models/debug'
 import Tooltip from '@/app/components/base/tooltip'
-import { AppType } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import { getNewVar, getVars } from '@/utils/var'
 import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
 import type { GenRes } from '@/service/debug'
@@ -29,7 +29,7 @@ import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { noop } from 'lodash-es'
 
 export type ISimplePromptInput = {
-  mode: AppType
+  mode: AppModeEnum
   promptTemplate: string
   promptVariables: PromptVariable[]
   readonly?: boolean
@@ -76,7 +76,9 @@ const Prompt: FC<ISimplePromptInput> = ({
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({
       payload: {},
-      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+      onSaveCallback: (newExternalDataTool?: ExternalDataTool) => {
+        if (!newExternalDataTool)
+          return
         eventEmitter?.emit({
           type: ADD_EXTERNAL_DATA_TOOL,
           payload: newExternalDataTool,
@@ -153,7 +155,7 @@ const Prompt: FC<ISimplePromptInput> = ({
     setModelConfig(newModelConfig)
     setPrevPromptConfig(modelConfig.configs)
 
-    if (mode !== AppType.completion) {
+    if (mode !== AppModeEnum.COMPLETION) {
       setIntroduction(res.opening_statement || '')
       const newFeatures = produce(features, (draft) => {
         draft.opening = {
@@ -175,7 +177,7 @@ const Prompt: FC<ISimplePromptInput> = ({
         {!noTitle && (
           <div className="flex h-11 items-center justify-between pl-3 pr-2.5">
             <div className="flex items-center space-x-1">
-              <div className='h2 system-sm-semibold-uppercase text-text-secondary'>{mode !== AppType.completion ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
+              <div className='h2 system-sm-semibold-uppercase text-text-secondary'>{mode !== AppModeEnum.COMPLETION ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
               {!readonly && (
                 <Tooltip
                   popupContent={
@@ -274,7 +276,7 @@ const Prompt: FC<ISimplePromptInput> = ({
       {showAutomatic && (
         <GetAutomaticResModal
           flowId={appId}
-          mode={mode as AppType}
+          mode={mode as AppModeEnum}
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}

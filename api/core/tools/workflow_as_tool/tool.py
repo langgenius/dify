@@ -117,7 +117,7 @@ class WorkflowTool(Tool):
         self._latest_usage = self._derive_usage_from_result(data)
 
         yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
-        yield self.create_json_message(outputs)
+        yield self.create_json_message(outputs, suppress_output=True)
 
     @property
     def latest_usage(self) -> LLMUsage:

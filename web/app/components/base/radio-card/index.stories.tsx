@@ -4,7 +4,7 @@ import { RiCloudLine, RiCpuLine, RiDatabase2Line, RiLightbulbLine, RiRocketLine,
 import RadioCard from '.'
 
 const meta = {
-  title: 'Base/RadioCard',
+  title: 'Base/Data Entry/RadioCard',
   component: RadioCard,
   parameters: {
     layout: 'centered',

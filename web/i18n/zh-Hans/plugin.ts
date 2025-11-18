@@ -8,6 +8,7 @@ const translation = {
     tools: '工具',
     agents: 'Agent 策略',
     extensions: '扩展',
+    triggers: '触发器',
     bundles: '插件集',
     datasources: '数据源',
   },
@@ -16,6 +17,7 @@ const translation = {
     tool: '工具',
     agent: 'Agent 策略',
     extension: '扩展',
+    trigger: '触发器',
     bundle: '插件集',
     datasource: '数据源',
   },
@@ -62,6 +64,7 @@ const translation = {
       checkUpdate: '检查更新',
       viewDetail: '查看详情',
       remove: '移除',
+      back: '返回',
     },
     actionNum: '包含 {{num}} 个 {{action}}',
     strategyNum: '包含 {{num}} 个 {{strategy}}',
@@ -77,7 +80,7 @@ const translation = {
     endpointModalDesc: '完成配置后可使用插件 API 端点提供的功能',
     serviceOk: '服务正常',
     disabled: '停用',
-    modelNum: '{{num}} 模型已包含',
+    modelNum: '包含 {{num}} 个模型',
     toolSelector: {
       title: '添加工具',
       toolSetting: '工具设置',
@@ -310,6 +313,12 @@ const translation = {
     unavailable: '不可用',
     connectedWorkspace: '已连接的工作区',
     emptyAuth: '请配置凭据',
+  },
+  readmeInfo: {
+    title: 'README',
+    needHelpCheckReadme: '需要帮助？查看 README。',
+    noReadmeAvailable: 'README 文档不可用',
+    failedToFetch: '获取 README 文档失败',
   },
 }
 

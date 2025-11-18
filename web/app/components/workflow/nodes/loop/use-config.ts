@@ -15,9 +15,24 @@ import useNodeCrud from '../_base/hooks/use-node-crud'
 import { toNodeOutputVars } from '../_base/components/variable/utils'
 import { getOperators } from './utils'
 import { LogicalOperator } from './types'
-import type { HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LoopNodeType } from './types'
+import type {
+  HandleAddCondition,
+  HandleAddSubVariableCondition,
+  HandleRemoveCondition,
+  HandleToggleConditionLogicalOperator,
+  HandleToggleSubVariableConditionLogicalOperator,
+  HandleUpdateCondition,
+  HandleUpdateSubVariableCondition,
+  LoopNodeType,
+} from './types'
 import useIsVarFileAttribute from './use-is-var-file-attribute'
 import { useStore } from '@/app/components/workflow/store'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 
 const useConfig = (id: string, payload: LoopNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -38,17 +53,17 @@ const useConfig = (id: string, payload: LoopNodeType) => {
   // output
   const { getLoopNodeChildren } = useWorkflow()
   const loopChildrenNodes = [{ id, data: payload } as any, ...getLoopNodeChildren(id)]
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
-  const mcpTools = useStore(s => s.mcpTools)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
   const dataSourceList = useStore(s => s.dataSourceList)
   const allPluginInfoList = {
-    buildInTools,
-    customTools,
-    workflowTools,
-    mcpTools,
-    dataSourceList: dataSourceList ?? [],
+    buildInTools: buildInTools || [],
+    customTools: customTools || [],
+    workflowTools: workflowTools || [],
+    mcpTools: mcpTools || [],
+    dataSourceList: dataSourceList || [],
   }
   const childrenNodeVars = toNodeOutputVars(loopChildrenNodes, isChatMode, undefined, [], conversationVariables, [], allPluginInfoList)
 

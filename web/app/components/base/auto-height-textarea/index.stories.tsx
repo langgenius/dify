@@ -3,7 +3,7 @@ import { useState } from 'react'
 import AutoHeightTextarea from '.'
 
 const meta = {
-  title: 'Base/AutoHeightTextarea',
+  title: 'Base/Data Entry/AutoHeightTextarea',
   component: AutoHeightTextarea,
   parameters: {
     layout: 'centered',

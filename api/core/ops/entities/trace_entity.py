@@ -62,6 +62,9 @@ class MessageTraceInfo(BaseTraceInfo):
     file_list: Union[str, dict[str, Any], list] | None = None
     message_file_data: Any | None = None
     conversation_mode: str
+    gen_ai_server_time_to_first_token: float | None = None
+    llm_streaming_time_to_generate: float | None = None
+    is_streaming_request: bool = False
 
 
 class ModerationTraceInfo(BaseTraceInfo):
