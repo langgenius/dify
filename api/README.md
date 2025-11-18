@@ -26,6 +26,10 @@
    cp .env.example .env
    ```
 
+> [!IMPORTANT]
+>  
+> When the site and backend API are on different domains or subdomains, set COOKIE_DOMAIN to site domain(e.g example.com) and set the [frontend env](../web/.env.example) NEXT_PUBLIC_COOKIE_DOMAIN=1.
+
 1. Generate a `SECRET_KEY` in the `.env` file.
 
    bash for Linux
