@@ -63,7 +63,7 @@ class DatasourceOauthTenantParamConfig(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
-    client_params: Mapped[dict] = mapped_column(JSONB, nullable=False, default={})
+    client_params: Mapped[dict] = mapped_column(JSONB, nullable=False, default_factory=dict)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
 
     created_at: Mapped[datetime] = mapped_column(
