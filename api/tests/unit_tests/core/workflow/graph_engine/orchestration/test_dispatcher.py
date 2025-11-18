@@ -6,11 +6,18 @@ import queue
 from datetime import datetime
 from unittest import mock
 
+from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.event_management.event_handlers import EventHandler
+from core.workflow.graph_engine.event_management.event_manager import EventManager
 from core.workflow.graph_engine.orchestration.dispatcher import Dispatcher
 from core.workflow.graph_engine.orchestration.execution_coordinator import ExecutionCoordinator
-from core.workflow.graph_events import GraphNodeEventBase, NodeRunStartedEvent, NodeRunSucceededEvent
+from core.workflow.graph_events import (
+    GraphNodeEventBase,
+    NodeRunPauseRequestedEvent,
+    NodeRunStartedEvent,
+    NodeRunSucceededEvent,
+)
 from core.workflow.node_events import NodeRunResult
 
 
@@ -125,3 +132,59 @@ def test_dispatcher_checks_commands_during_idle_and_on_completion() -> None:
 
     assert started_checks == 2
     assert succeeded_checks == 3
+
+
+class _PauseStubEventHandler:
+    """Minimal event handler that marks execution complete after handling an event."""
+
+    def __init__(self, coordinator: _StubExecutionCoordinator) -> None:
+        self._coordinator = coordinator
+        self.events = []
+
+    def dispatch(self, event) -> None:
+        self.events.append(event)
+        if isinstance(event, NodeRunPauseRequestedEvent):
+            self._coordinator.mark_complete()
+
+
+def test_dispatcher_drain_event_queue():
+    events = [
+        NodeRunStartedEvent(
+            id="start-event",
+            node_id="node-1",
+            node_type=NodeType.CODE,
+            node_title="Code",
+            start_at=datetime.utcnow(),
+        ),
+        NodeRunPauseRequestedEvent(
+            id="pause-event",
+            node_id="node-1",
+            node_type=NodeType.CODE,
+            reason=SchedulingPause(message="test pause"),
+        ),
+        NodeRunSucceededEvent(
+            id="success-event",
+            node_id="node-1",
+            node_type=NodeType.CODE,
+            start_at=datetime.utcnow(),
+            node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED),
+        ),
+    ]
+
+    event_queue: queue.Queue = queue.Queue()
+    for e in events:
+        event_queue.put(e)
+
+    coordinator = _StubExecutionCoordinator()
+    event_handler = _PauseStubEventHandler(coordinator)
+
+    dispatcher = Dispatcher(
+        event_queue=event_queue,
+        event_handler=event_handler,
+        execution_coordinator=coordinator,
+    )
+
+    dispatcher._dispatcher_loop()
+
+    # ensure all events are drained.
+    assert event_queue.empty()
