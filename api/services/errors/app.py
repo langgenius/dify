@@ -24,7 +24,7 @@ class InvokeRateLimitError(Exception):
     pass
 
 
-class QuotaExceededError(Exception):
+class QuotaExceededError(ValueError):
     """Raised when billing quota is exceeded for a feature."""
 
     def __init__(self, feature: str, tenant_id: str, required: int):
