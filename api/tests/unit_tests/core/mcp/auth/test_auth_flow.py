@@ -212,7 +212,7 @@ class TestOAuthDiscovery:
                 assert oauth_metadata.token_endpoint == "https://auth.example.com/token"
                 assert prm is not None
                 assert prm.authorization_servers == ["https://auth.example.com"]
-                
+
                 # Verify the discovery functions were called
                 mock_prm.assert_called_once()
                 mock_asm.assert_called_once()
@@ -236,7 +236,7 @@ class TestOAuthDiscovery:
                 assert oauth_metadata is not None
                 assert oauth_metadata.authorization_endpoint == "https://api.example.com/oauth/authorize"
                 assert prm is None
-                
+
                 # Verify the discovery functions were called
                 mock_prm.assert_called_once()
                 mock_asm.assert_called_once()
