@@ -28,7 +28,7 @@
 
 > [!IMPORTANT]
 >
-> When the site and backend API are on different domains or subdomains, set COOKIE_DOMAIN to site domain(e.g example.com) and set the [frontend env](../web/.env.example) NEXT_PUBLIC_COOKIE_DOMAIN=1.
+> When the site and backend API are on different domains or subdomains, set `COOKIE_DOMAIN` to the site domain (e.g., `example.com`) and set `NEXT_PUBLIC_COOKIE_DOMAIN=1` in the [frontend env](../web/.env.example).
 
 1. Generate a `SECRET_KEY` in the `.env` file.
 
