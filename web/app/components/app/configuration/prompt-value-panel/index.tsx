@@ -56,21 +56,22 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
 
   // Initialize inputs with default values from promptVariables
   useEffect(() => {
-    const newInputs = { ...inputs }
-    let hasChanges = false
+    setInputs((currentInputs) => {
+      const newInputs = { ...currentInputs }
+      let hasChanges = false
 
-    promptVariables.forEach((variable) => {
-      const { key, default: defaultValue } = variable
-      // Only set default value if the field is empty and a default exists
-      if (defaultValue !== undefined && defaultValue !== null && defaultValue !== '' && (inputs[key] === undefined || inputs[key] === null || inputs[key] === '')) {
-        newInputs[key] = defaultValue
-        hasChanges = true
-      }
+      promptVariables.forEach((variable) => {
+        const { key, default: defaultValue } = variable
+        // Only set default value if the field is empty and a default exists
+        if (defaultValue !== undefined && defaultValue !== null && defaultValue !== '' && (currentInputs[key] === undefined || currentInputs[key] === null || currentInputs[key] === '')) {
+          newInputs[key] = defaultValue
+          hasChanges = true
+        }
+      })
+
+      return hasChanges ? newInputs : currentInputs
     })
-
-    if (hasChanges)
-      setInputs(newInputs)
-  }, [promptVariables, inputs, setInputs])
+  }, [promptVariables, setInputs])
 
   const canNotRun = useMemo(() => {
     if (mode !== AppModeEnum.COMPLETION)
