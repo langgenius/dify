@@ -119,7 +119,7 @@ const AgentTools: FC = () => {
   }
   const getProviderShowName = (item: AgentTool) => {
     const type = item.provider_type
-    if(type === CollectionType.builtIn)
+    if (type === CollectionType.builtIn)
       return item.provider_name.split('/').pop()
     return item.provider_name
   }
@@ -291,10 +291,14 @@ const AgentTools: FC = () => {
                       }} />
                   )}
                   {item.notAuthor && (
-                    <Button variant='secondary' size='small' onClick={() => {
-                      setCurrentTool(item)
-                      setIsShowSettingTool(true)
-                    }}>
+                    <Button
+                      variant='secondary'
+                      disabled={readonly}
+                      size='small' onClick={() => {
+                        setCurrentTool(item)
+                        setIsShowSettingTool(true)
+                      }}
+                    >
                       {t('tools.notAuthorized')}
                       <Indicator className='ml-2' color='orange' />
                     </Button>
