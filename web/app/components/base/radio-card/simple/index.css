@@ -1,0 +1,20 @@
+@tailwind components;
+
+@layer components {
+  .radio-card {
+    @apply relative rounded-xl border border-gray-100 cursor-pointer bg-[#fcfcfd]
+           hover:bg-white hover:border-[#B2CCFF] hover:shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)];
+  }
+
+  .radio-card-active {
+    @apply border-[1.5px] border-[#528BFF] shadow-[0px_1px_3px_rgba(16,24,40,0.1),0px_1px_2px_rgba(16,24,40,0.06)];
+  }
+
+  .radio-card-radio {
+    @apply w-4 h-4 border-2 border-gray-200 rounded-full;
+  }
+
+  .radio-card-active .radio-card-radio {
+    @apply border-[5px] border-[#155EEF];
+  }
+}
