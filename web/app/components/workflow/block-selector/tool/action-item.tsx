@@ -11,6 +11,7 @@ import BlockIcon from '../../block-icon'
 import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 import { basePath } from '@/utils/var'
+import { trackEvent } from '@/app/components/amplitude'
 
 const normalizeProviderIcon = (icon: ToolWithProvider['icon']) => {
   if (typeof icon === 'string' && basePath && icon.startsWith('/') && !icon.startsWith(`${basePath}/`))
@@ -67,6 +68,13 @@ const ToolItem: FC<Props> = ({
               params[item.name] = ''
             })
           }
+          trackEvent('tool_selected', {
+            tool_name: payload.name,
+            tool_parameters: payload.parameters,
+            tool_params: params,
+            plugin_id: provider.plugin_id,
+            plugin_unique_identifier: provider.plugin_unique_identifier,
+          })
           onSelect(BlockEnum.Tool, {
             provider_id: provider.id,
             provider_type: provider.type,

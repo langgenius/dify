@@ -44,6 +44,7 @@ import { AUTO_UPDATE_MODE } from '../reference-setting-modal/auto-update-setting
 import { convertUTCDaySecondsToLocalSeconds, timeOfDayToDayjs } from '../reference-setting-modal/auto-update-setting/utils'
 import type { PluginDetail } from '../types'
 import { PluginCategoryEnum, PluginSource } from '../types'
+import { trackEvent } from '../../amplitude'
 
 const i18nPrefix = 'plugin.action'
 
@@ -199,6 +200,14 @@ const DetailHeader = ({
   const handleDelete = useCallback(async () => {
     showDeleting()
     const res = await uninstallPlugin(id)
+
+    trackEvent('plugin_deleted', {
+      plugin_id: id,
+      plugin_name: label[locale],
+      plugin_category: category,
+      plugin_source: source,
+      plugin_version: version,
+    })
     hideDeleting()
     if (res.success) {
       hideDeleteConfirm()

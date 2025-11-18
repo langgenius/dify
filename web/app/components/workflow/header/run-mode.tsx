@@ -12,6 +12,7 @@ import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAnd
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
 import TestRunMenu, { type TestRunMenuRef, type TriggerOption, TriggerType } from './test-run-menu'
 import { useToastContext } from '@/app/components/base/toast'
+import { trackEvent } from '../../amplitude'
 
 type RunModeProps = {
   text?: string
@@ -66,6 +67,11 @@ const RunMode = ({
       notify({ type: 'error', message: t('workflow.panel.checklistTip') })
       return
     }
+
+    trackEvent('app_start_action_time', {
+      time: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+      action_type: option.type,
+    })
 
     if (option.type === TriggerType.UserInput) {
       handleWorkflowStartRunInWorkflow()

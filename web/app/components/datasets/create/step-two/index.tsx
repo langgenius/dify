@@ -63,6 +63,7 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { trackEvent } from '@/app/components/amplitude'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
@@ -571,6 +572,12 @@ const StepTwo = ({
             updateIndexingTypeCache?.(indexType as string)
             updateResultCache?.(data)
             updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
+
+            trackEvent('create_datasets', {
+              data_source_type: dataSourceType,
+              indexing_technique: indexType,
+              doc_form: currentDocForm,
+            })
           },
         },
       )
@@ -581,6 +588,13 @@ const StepTwo = ({
           updateIndexingTypeCache?.(indexType as string)
           updateResultCache?.(data)
           updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
+
+          // Track document addition to existing dataset
+          trackEvent('dataset_document_added', {
+            data_source_type: dataSourceType,
+            indexing_technique: indexType,
+            doc_form: currentDocForm,
+          })
         },
       })
     }

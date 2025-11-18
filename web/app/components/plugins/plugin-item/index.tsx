@@ -30,6 +30,7 @@ import { useCategories } from '../hooks'
 import { usePluginPageContext } from '../plugin-page/context'
 import { PluginCategoryEnum, type PluginDetail, PluginSource } from '../types'
 import Action from './action'
+import { trackEvent } from '../../amplitude'
 
 type Props = {
   className?: string
@@ -77,6 +78,10 @@ const PluginItem: FC<Props> = ({
   }, [status, deprecated_reason])
 
   const handleDelete = useCallback(() => {
+    trackEvent('plugin_deleted', {
+      plugin_id,
+      plugin_name: name,
+    })
     refreshPluginList({ category } as any)
   }, [category, refreshPluginList])
 

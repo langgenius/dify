@@ -5,6 +5,7 @@ import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import Toast from '@/app/components/base/toast'
 import { useRouter } from 'next/navigation'
+import { trackEvent } from '@/app/components/amplitude'
 
 const CreateCard = () => {
   const { t } = useTranslation()
@@ -21,6 +22,9 @@ const CreateCard = () => {
           Toast.notify({
             type: 'success',
             message: t('datasetPipeline.creation.successTip'),
+          })
+          trackEvent('create_datasets_from_scratch', {
+            name: data.name,
           })
           invalidDatasetList()
           push(`/datasets/${id}/pipeline`)

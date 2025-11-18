@@ -7,6 +7,7 @@ import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
 
 export type IAmplitudeProps = {
   apiKey?: string
+  enableSessionReplay?: boolean
 }
 
 const AmplitudeProvider: FC<IAmplitudeProps> = ({

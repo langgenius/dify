@@ -49,6 +49,7 @@ import { fetchInstalledAppList } from '@/service/explore'
 import { AppModeEnum } from '@/types/app'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { basePath } from '@/utils/var'
+import { trackEvent } from '../../amplitude'
 
 const ACCESS_MODE_MAP: Record<AccessMode, { label: string, icon: React.ElementType }> = {
   [AccessMode.ORGANIZATION]: {
@@ -182,6 +183,12 @@ const AppPublisher = ({
     try {
       await onPublish?.(params)
       setPublished(true)
+      trackEvent('app·_published_time', {
+        app_mode: appDetail?.mode,
+        app_id: appDetail?.id,
+        app_name: appDetail?.name,
+        time: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+      })
     }
     catch {
       setPublished(false)

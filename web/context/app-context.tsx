@@ -11,6 +11,7 @@ import { noop } from 'lodash-es'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { useGlobalPublicStore } from './global-public-context'
+import { setUserId, setUserProperties } from '@/app/components/amplitude'
 
 export type AppContextValue = {
   userProfile: UserProfileResponse
@@ -158,6 +159,29 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     }
   }, [currentWorkspace?.id])
   // #endregion Zendesk conversation fields
+
+  useEffect(() => {
+    if (userProfile?.id) {
+      setUserId(userProfile.email)
+      setUserProperties({
+        email: userProfile.email,
+        name: userProfile.name,
+        has_password: userProfile.is_password_set,
+      })
+    }
+  }, [userProfile])
+
+  useEffect(() => {
+    if (currentWorkspace?.id && userProfile?.id) {
+      setUserProperties({
+        workspace_id: currentWorkspace.id,
+        workspace_name: currentWorkspace.name,
+        workspace_plan: currentWorkspace.plan,
+        workspace_status: currentWorkspace.status,
+        workspace_role: currentWorkspace.role,
+      })
+    }
+  }, [currentWorkspace])
 
   return (
     <AppContext.Provider value={{

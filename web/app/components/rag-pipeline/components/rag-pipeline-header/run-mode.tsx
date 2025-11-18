@@ -9,6 +9,7 @@ import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import cn from '@/utils/classnames'
 import { RiCloseLine, RiDatabase2Line, RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import { trackEvent } from '@/app/components/amplitude'
 
 type RunModeProps = {
   text?: string
@@ -53,6 +54,9 @@ const RunMode = ({
           isDisabled ? 'rounded-l-md' : 'rounded-md',
         )}
         onClick={() => {
+          trackEvent('pipeline_start_action_time', {
+            time: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+          })
           handleWorkflowStartRunInWorkflow()
         }}
         disabled={isDisabled}
