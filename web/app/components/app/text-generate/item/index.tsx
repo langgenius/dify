@@ -302,12 +302,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   </div>
                 )}
                 <div className='ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm'>
-                  {moreLikeThis && (
+                  {moreLikeThis && !isTryApp && (
                     <ActionButton state={depth === MAX_DEPTH ? ActionButtonState.Disabled : ActionButtonState.Default} disabled={depth === MAX_DEPTH} onClick={handleMoreLikeThis}>
                       <RiSparklingLine className='h-4 w-4' />
                     </ActionButton>
                   )}
-                  {isShowTextToSpeech && (
+                  {isShowTextToSpeech && !isTryApp && (
                     <NewAudioButton
                       id={messageId!}
                       voice={config?.text_to_speech?.voice}
