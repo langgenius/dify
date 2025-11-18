@@ -1096,7 +1096,7 @@ class DocumentService:
             sa.or_(Document.is_paused.is_(False), Document.is_paused.is_(None)),
         ),
         "paused": (
-            Document.indexing_status.notin_(("completed", "error", "waiting")),
+            Document.indexing_status.in_(_INDEXING_STATUSES),
             Document.is_paused.is_(True),
         ),
         "error": (Document.indexing_status == "error",),
