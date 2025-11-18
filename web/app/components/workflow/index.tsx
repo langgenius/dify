@@ -81,6 +81,7 @@ import {
   useStore,
   useWorkflowStore,
 } from './store'
+import type { WorkflowSliceShape } from './store/workflow/workflow-slice'
 import {
   CUSTOM_EDGE,
   CUSTOM_NODE,
@@ -210,6 +211,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const showUserComments = useStore(s => s.showUserComments)
   const showUserCursors = useStore(s => s.showUserCursors)
   const isCommentPreviewHovering = useStore(s => s.isCommentPreviewHovering)
+  const setPendingCommentState = useStore(s => s.setPendingComment)
   const isCommentInputActive = Boolean(pendingComment)
   const { t } = useTranslation()
 
@@ -243,6 +245,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
       handleSyncWorkflowDraft(true, true)
     }
   }, [])
+
+  const handlePendingCommentPositionChange = useCallback((position: NonNullable<WorkflowSliceShape['pendingComment']>) => {
+    setPendingCommentState(position)
+  }, [setPendingCommentState])
 
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
@@ -483,6 +489,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
           }}
           onSubmit={handleCommentSubmit}
           onCancel={handleCommentCancel}
+          onPositionChange={handlePendingCommentPositionChange}
         />
       )}
       {comments.map((comment, index) => {
