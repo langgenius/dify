@@ -110,8 +110,9 @@ class TencentDataTrace(BaseTraceInstance):
             self.trace_client.add_span(message_span)
 
             # Add LLM child span with detailed attributes
+            parent_span_id = TencentTraceUtils.convert_to_span_id(trace_info.message_id, "message")
             llm_span = TencentSpanBuilder.build_message_llm_span(
-                trace_info, trace_id, TencentTraceUtils.convert_to_span_id(trace_info.message_id, "message"), str(user_id)
+                trace_info, trace_id, parent_span_id, str(user_id)
             )
             self.trace_client.add_span(llm_span)
 
