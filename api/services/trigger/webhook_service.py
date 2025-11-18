@@ -748,7 +748,7 @@ class WebhookService:
                         webhook_trigger.tenant_id,
                         webhook_trigger.webhook_id,
                     )
-                    return
+                    raise
 
                 # Trigger workflow execution asynchronously
                 AsyncWorkflowService.trigger_workflow_async(
