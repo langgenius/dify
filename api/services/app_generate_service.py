@@ -10,6 +10,7 @@ from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
+from core.observability.otel import trace_span
 from enums.cloud_plan import CloudPlan
 from libs.helper import RateLimiter
 from models.model import Account, App, AppMode, EndUser
@@ -24,6 +25,7 @@ class AppGenerateService:
     system_rate_limiter = RateLimiter("app_daily_rate_limiter", dify_config.APP_DAILY_RATE_LIMIT, 86400)
 
     @classmethod
+    @trace_span("app.generate")
     def generate(
         cls,
         app_model: App,
