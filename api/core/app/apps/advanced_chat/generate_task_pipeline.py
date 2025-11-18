@@ -62,7 +62,8 @@ from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.ops.ops_trace_manager import TraceQueueManager
+from core.ops.entities.trace_entity import TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.nodes import NodeType
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
@@ -580,7 +581,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
             with self._database_session() as session:
                 # Save message
-                self._save_message(session=session, graph_runtime_state=resolved_state)
+                self._save_message(
+                    session=session, graph_runtime_state=resolved_state, trace_manager=trace_manager
+                )
 
             yield workflow_finish_resp
         elif event.stopped_by in (
@@ -590,7 +593,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             # When hitting input-moderation or annotation-reply, the workflow will not start
             with self._database_session() as session:
                 # Save message
-                self._save_message(session=session)
+                self._save_message(session=session, trace_manager=trace_manager)
 
         yield self._message_end_to_stream_response()
 
@@ -599,6 +602,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: QueueAdvancedChatMessageEndEvent,
         *,
         graph_runtime_state: GraphRuntimeState | None = None,
+        trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle advanced chat message end events."""
@@ -616,7 +620,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         # Save message
         with self._database_session() as session:
-            self._save_message(session=session, graph_runtime_state=resolved_state)
+            self._save_message(session=session, graph_runtime_state=resolved_state, trace_manager=trace_manager)
 
         yield self._message_end_to_stream_response()
 
@@ -770,7 +774,13 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if self._conversation_name_generate_thread:
             self._conversation_name_generate_thread.join()
 
-    def _save_message(self, *, session: Session, graph_runtime_state: GraphRuntimeState | None = None):
+    def _save_message(
+        self,
+        *,
+        session: Session,
+        graph_runtime_state: GraphRuntimeState | None = None,
+        trace_manager: TraceQueueManager | None = None,
+    ):
         message = self._get_message(session=session)
 
         # If there are assistant files, remove markdown image links from answer
@@ -825,6 +835,14 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             for file in self._recorded_files
         ]
         session.add_all(message_files)
+
+        # Trigger MESSAGE_TRACE for tracing integrations
+        if trace_manager:
+            trace_manager.add_trace_task(
+                TraceTask(
+                    TraceTaskName.MESSAGE_TRACE, conversation_id=self._conversation_id, message_id=self._message_id
+                )
+            )
 
     def _seed_graph_runtime_state_from_queue_manager(self) -> None:
         """Bootstrap the cached runtime state from the queue manager when present."""
