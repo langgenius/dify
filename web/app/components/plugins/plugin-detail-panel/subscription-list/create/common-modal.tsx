@@ -24,8 +24,8 @@ import { debounce } from 'lodash-es'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import LogViewer from '../log-viewer'
-import { usePluginSubscriptionStore } from '../store'
 import { usePluginStore } from '../../store'
+import { useSubscriptionList } from '../use-subscription-list'
 
 type Props = {
   onClose: () => void
@@ -91,7 +91,7 @@ const MultiSteps = ({ currentStep }: { currentStep: ApiKeyStep }) => {
 export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   const { t } = useTranslation()
   const detail = usePluginStore(state => state.detail)
-  const { refresh } = usePluginSubscriptionStore()
+  const { refetch } = useSubscriptionList()
 
   const [currentStep, setCurrentStep] = useState<ApiKeyStep>(createType === SupportedCreationMethods.APIKEY ? ApiKeyStep.Verify : ApiKeyStep.Configuration)
 
@@ -295,7 +295,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
             message: t('pluginTrigger.subscription.createSuccess'),
           })
           onClose()
-          refresh?.()
+          refetch?.()
         },
         onError: async (error: any) => {
           const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.subscription.createFailed')
