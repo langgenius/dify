@@ -37,7 +37,6 @@ from models.dataset import (
     Dataset,
     DatasetAutoDisableLog,
     DatasetCollectionBinding,
-    DatasetMetadataBinding,
     DatasetPermission,
     DatasetPermissionEnum,
     DatasetProcessRule,
@@ -1269,10 +1268,6 @@ class DocumentService:
                 data_source_info = document.data_source_info_dict
                 if data_source_info and "upload_file_id" in data_source_info:
                     file_id = data_source_info["upload_file_id"]
-        db.session.query(DatasetMetadataBinding).where(
-            DatasetMetadataBinding.dataset_id == document.dataset_id,
-            DatasetMetadataBinding.document_id == document.id,
-        ).delete(synchronize_session=False)
         document_was_deleted.send(
             document.id, dataset_id=document.dataset_id, doc_form=document.doc_form, file_id=file_id
         )
@@ -1291,10 +1286,6 @@ class DocumentService:
             for document in documents
             if document.data_source_type == "upload_file" and document.data_source_info_dict
         ]
-        db.session.query(DatasetMetadataBinding).where(
-            DatasetMetadataBinding.dataset_id == dataset.id,
-            DatasetMetadataBinding.document_id.in_(document_ids),
-        ).delete(synchronize_session=False)
         if dataset.doc_form is not None:
             batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
 
