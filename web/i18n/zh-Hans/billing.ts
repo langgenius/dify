@@ -12,8 +12,8 @@ const translation = {
     resetsIn: '{{count,number}} 天后重置',
   },
   triggerLimitModal: {
-    title: '升级以解锁更多触发事件额度',
-    description: '当前套餐的工作流触发事件额度已达上限。',
+    title: '升级以解锁每个工作流无限制的触发器',
+    description: '您已达到此计划上每个工作流最多 2 个触发器的限制。请升级后再发布此工作流。',
     dismiss: '知道了',
     upgrade: '升级',
     usageTitle: '触发事件额度',

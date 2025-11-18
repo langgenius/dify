@@ -12,8 +12,8 @@ const translation = {
     resetsIn: '{{count,number}}日後にリセット',
   },
   triggerLimitModal: {
-    title: 'さらにトリガーイベントを利用するにはアップグレードしてください',
-    description: 'このプランのワークフロー・トリガーイベントの上限に達しました。',
+    title: 'アップグレードして、各ワークフローのトリガーを制限なく使用',
+    description: 'このプランでは、各ワークフローのトリガー数は最大2個までです。公開するにはアップグレードしてください。',
     dismiss: '閉じる',
     upgrade: 'アップグレード',
     usageTitle: 'TRIGGER EVENTS',

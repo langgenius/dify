@@ -124,8 +124,8 @@ const translation = {
   },
   publishLimit: {
     startNodeTitlePrefix: '升级以',
-    startNodeTitleSuffix: '解锁无限开始节点',
-    startNodeDesc: '当前套餐最多支持 2 个开始节点。升级套餐即可发布此工作流。',
+    startNodeTitleSuffix: '解锁每个工作流无限制的触发器',
+    startNodeDesc: '您已达到此计划上每个工作流最多 2 个触发器的限制。请升级后再发布此工作流。',
   },
   env: {
     envPanelTitle: '环境变量',

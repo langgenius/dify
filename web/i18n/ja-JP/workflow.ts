@@ -120,9 +120,9 @@ const translation = {
     moreActions: 'さらにアクション',
   },
   publishLimit: {
-    startNodeTitlePrefix: 'アップグレードして',
-    startNodeTitleSuffix: '開始ノードの上限を解除',
-    startNodeDesc: '現在のプランでは開始ノードは2個までです。公開するにはプランをアップグレードしてください。',
+    startNodeTitlePrefix: 'アップグレードして、',
+    startNodeTitleSuffix: '各ワークフローのトリガーを制限なしで使用できます。',
+    startNodeDesc: 'このプランでは、各ワークフローのトリガー数は最大 2 個まで設定できます。公開するにはアップグレードが必要です。',
   },
   env: {
     envPanelTitle: '環境変数',

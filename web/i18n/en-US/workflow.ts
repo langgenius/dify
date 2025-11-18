@@ -125,8 +125,8 @@ const translation = {
   },
   publishLimit: {
     startNodeTitlePrefix: 'Upgrade to',
-    startNodeTitleSuffix: 'unlock unlimited start nodes',
-    startNodeDesc: 'You’ve reached the limit of 2 start nodes for your current plan. Upgrade to publish this workflow.',
+    startNodeTitleSuffix: 'unlock unlimited triggers per workflow',
+    startNodeDesc: 'You’ve reached the limit of 2 triggers per workflow for this plan. Upgrade to publish this workflow.',
   },
   env: {
     envPanelTitle: 'Environment Variables',
