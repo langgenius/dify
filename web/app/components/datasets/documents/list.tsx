@@ -36,7 +36,7 @@ import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-meta
 import StatusItem from './status-item'
 import Operations from './operations'
 import { DatasourceType } from '@/models/pipeline'
-import { normalizeStatusForQuery } from '../status-filter'
+import { normalizeStatusForQuery } from '@/app/components/datasets/documents/status-filter'
 
 export const renderTdValue = (value: string | number | null, isEmptyStyle = false) => {
   return (
