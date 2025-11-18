@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 from typing import Annotated, Literal, Self, TypeAlias
 
 from pydantic import BaseModel, Field
@@ -6,25 +5,11 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
-from core.workflow.entities.pause_reason import (
-    HumanInputRequired,
-    PauseReason,
-)
-from core.workflow.entities.pause_reason import (
-    SchedulingPause as EngineSchedulingPause,
-)
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events.base import GraphEngineEvent
 from core.workflow.graph_events.graph import GraphRunPausedEvent
 from models.model import AppMode
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
-from repositories.entities.workflow_pause import (
-    PauseDetail,
-    PauseMetadata,
-)
-from repositories.entities.workflow_pause import (
-    SchedulingPause as RepositorySchedulingPause,
-)
 from repositories.factory import DifyAPIRepositoryFactory
 
 
@@ -133,7 +118,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
             workflow_run_id=workflow_run_id,
             state_owner_user_id=self._state_owner_user_id,
             state=state.dumps(),
-            pause_metadata=self._build_pause_metadata(event.reasons),
+            pause_reasons=event.reasons,
         )
 
     def on_graph_end(self, error: Exception | None) -> None:
@@ -147,23 +132,3 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
             error: The exception that caused execution to fail, or None if successful
         """
         pass
-
-    @staticmethod
-    def _build_pause_metadata(reasons: Sequence[PauseReason]) -> PauseMetadata:
-        """
-        Build pause metadata from engine pause reasons.
-
-        Currently we only capture scheduling pauses, but this method centralizes
-        the transformation so future pause reason types can extend it.
-        """
-        details: list[PauseDetail] = []
-
-        for reason in reasons:
-            if isinstance(reason, EngineSchedulingPause):
-                details.append(PauseDetail(pause_type=RepositorySchedulingPause()))
-            elif isinstance(reason, HumanInputRequired):
-                # Human input pause details require additional context (e.g. form metadata).
-                # We'll skip until that data is available from the event stream.
-                continue
-
-        return PauseMetadata(details=details)

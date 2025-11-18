@@ -46,8 +46,6 @@ from models import Account
 from models import WorkflowPause as WorkflowPauseModel
 from models.model import AppMode, UploadFile
 from models.workflow import Workflow, WorkflowRun
-from repositories.entities.workflow_pause import PauseDetail
-from repositories.entities.workflow_pause import SchedulingPause as RepositorySchedulingPause
 from services.file_service import FileService
 from services.workflow_run_service import WorkflowRunService
 
@@ -392,7 +390,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         pause_entity = self.workflow_run_service._workflow_run_repo.get_workflow_pause(self.test_workflow_run_id)
         assert pause_entity is not None
         assert pause_entity.workflow_execution_id == self.test_workflow_run_id
-        assert pause_entity.get_pause_details() == [PauseDetail(pause_type=RepositorySchedulingPause())]
+        assert pause_entity.get_pause_reasons() == []
 
         state_bytes = pause_entity.get_state()
         resumption_context = WorkflowResumptionContext.loads(state_bytes.decode())

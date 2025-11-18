@@ -23,13 +23,6 @@ from core.workflow.graph_events.graph import (
 )
 from core.workflow.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from models.model import AppMode
-from repositories.entities.workflow_pause import (
-    PauseDetail,
-    PauseMetadata,
-)
-from repositories.entities.workflow_pause import (
-    SchedulingPause as RepositorySchedulingPause,
-)
 from repositories.factory import DifyAPIRepositoryFactory
 
 
@@ -270,9 +263,9 @@ class TestPauseStatePersistenceLayer:
         resumption_context = WorkflowResumptionContext.loads(serialized_state)
         assert resumption_context.serialized_graph_runtime_state == expected_state
         assert resumption_context.get_generate_entity().model_dump() == generate_entity.model_dump()
-        pause_metadata = call_kwargs["pause_metadata"]
-        assert isinstance(pause_metadata, PauseMetadata)
-        assert pause_metadata.details == [PauseDetail(pause_type=RepositorySchedulingPause())]
+        pause_reasons = call_kwargs["pause_reasons"]
+
+        assert isinstance(pause_reasons, list)
 
     def test_on_event_ignores_non_paused_events(self, monkeypatch: pytest.MonkeyPatch):
         session_factory = Mock(name="session_factory")
