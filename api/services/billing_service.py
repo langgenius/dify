@@ -31,7 +31,6 @@ class BillingService:
         usage_info = cls._send_request("GET", "/tenant-feature-usage/info", params=params)
         return usage_info
 
-
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str):
         params = {"tenant_id": tenant_id}
