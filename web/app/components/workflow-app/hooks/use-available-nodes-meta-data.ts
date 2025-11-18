@@ -17,9 +17,17 @@ export const useAvailableNodesMetaData = () => {
   const isChatMode = useIsChatMode()
   const docLink = useDocLink()
 
+  const startNodeMetaData = useMemo(() => ({
+    ...StartDefault,
+    metaData: {
+      ...StartDefault.metaData,
+      isUndeletable: isChatMode, // start node is undeletable in chat mode, @use-nodes-interactions: handleNodeDelete function
+    },
+  }), [isChatMode])
+
   const mergedNodesMetaData = useMemo(() => [
     ...WORKFLOW_COMMON_NODES,
-    StartDefault,
+    startNodeMetaData,
     ...(
       isChatMode
         ? [AnswerDefault]
@@ -30,7 +38,7 @@ export const useAvailableNodesMetaData = () => {
           TriggerPluginDefault,
         ]
     ),
-  ], [isChatMode])
+  ], [isChatMode, startNodeMetaData])
 
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node

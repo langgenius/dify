@@ -51,6 +51,8 @@ export type IAppCardProps = {
   isInPanel?: boolean
   cardType?: 'api' | 'webapp'
   customBgColor?: string
+  triggerModeDisabled?: boolean // true when Trigger Node mode needs UI locked to avoid conflicting actions
+  triggerModeMessage?: React.ReactNode // contextual copy explaining why the card is disabled in trigger mode
   onChangeStatus: (val: boolean) => Promise<void>
   onSaveSiteConfig?: (params: ConfigParams) => Promise<void>
   onGenerateCode?: () => Promise<void>
@@ -61,6 +63,8 @@ function AppCard({
   isInPanel,
   cardType = 'webapp',
   customBgColor,
+  triggerModeDisabled = false,
+  triggerModeMessage = '',
   onChangeStatus,
   onSaveSiteConfig,
   onGenerateCode,
@@ -111,7 +115,7 @@ function AppCard({
   const hasStartNode = currentWorkflow?.graph?.nodes?.some(node => node.data.type === BlockEnum.Start)
   const missingStartNode = isWorkflowApp && !hasStartNode
   const hasInsufficientPermissions = isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager
-  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingStartNode
+  const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingStartNode || triggerModeDisabled
   const runningStatus = (appUnpublished || missingStartNode) ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
   const isMinimalState = appUnpublished || missingStartNode
   const { app_base_url, access_token } = appInfo.site ?? {}
@@ -189,7 +193,20 @@ function AppCard({
       className={
         `${isInPanel ? 'border-l-[0.5px] border-t' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${isMinimalState ? 'h-12' : ''}`}
     >
-      <div className={`${customBgColor ?? 'bg-background-default'} rounded-xl`}>
+      <div className={`${customBgColor ?? 'bg-background-default'} relative rounded-xl ${triggerModeDisabled ? 'opacity-60' : ''}`}>
+        {triggerModeDisabled && (
+          triggerModeMessage
+            ? (
+              <Tooltip
+                popupContent={triggerModeMessage}
+                popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
+                position="right"
+              >
+                <div className='absolute inset-0 z-10 cursor-not-allowed rounded-xl' aria-hidden="true"></div>
+              </Tooltip>
+            )
+            : <div className='absolute inset-0 z-10 cursor-not-allowed rounded-xl' aria-hidden="true"></div>
+        )}
         <div className={`flex w-full flex-col items-start justify-center gap-3 self-stretch p-3 ${isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle'}`}>
           <div className='flex w-full items-center gap-3 self-stretch'>
             <AppBasic
@@ -214,18 +231,23 @@ function AppCard({
             </div>
             <Tooltip
               popupContent={
-                toggleDisabled && (appUnpublished || missingStartNode) ? (
-                  <>
-                    <div className="mb-1 text-xs font-normal text-text-secondary">
-                      {t('appOverview.overview.appInfo.enableTooltip.description')}
-                    </div>
-                    <div
-                      className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
-                      onClick={() => window.open(docLink('/guides/workflow/node/user-input'), '_blank')}
-                    >
-                      {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
-                    </div>
-                  </>
+                toggleDisabled ? (
+                  triggerModeDisabled && triggerModeMessage
+                    ? triggerModeMessage
+                    : (appUnpublished || missingStartNode) ? (
+                      <>
+                        <div className="mb-1 text-xs font-normal text-text-secondary">
+                          {t('appOverview.overview.appInfo.enableTooltip.description')}
+                        </div>
+                        <div
+                          className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
+                          onClick={() => window.open(docLink('/guides/workflow/node/user-input'), '_blank')}
+                        >
+                          {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
+                        </div>
+                      </>
+                    )
+                      : ''
                 ) : ''
               }
               position="right"
@@ -329,9 +351,11 @@ function AppCard({
             {!isApp && <SecretKeyButton appId={appInfo.id} />}
             {OPERATIONS_MAP[cardType].map((op) => {
               const disabled
-                = op.opName === t('appOverview.overview.appInfo.settings.entry')
-                  ? false
-                  : !runningStatus
+                = triggerModeDisabled
+                  ? true
+                  : op.opName === t('appOverview.overview.appInfo.settings.entry')
+                    ? false
+                    : !runningStatus
               return (
                 <Button
                   className="mr-1 min-w-[88px]"
