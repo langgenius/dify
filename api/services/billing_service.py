@@ -25,7 +25,7 @@ class BillingService:
         return billing_info
 
     @classmethod
-    def get_tenant_feature_plan_usage(cls, tenant_id: str):
+    def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
         params = {"tenant_id": tenant_id}
 
         usage_info = cls._send_request("GET", "/tenant-feature-usage/info", params=params)
@@ -94,6 +94,11 @@ class BillingService:
             Response dict with 'result' and 'history_id'
         """
         return cls._send_request("POST", "/tenant-feature-usage/refund", params={"quota_usage_history_id": history_id})
+
+    @classmethod
+    def get_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str):
+        params = {"tenant_id": tenant_id, "feature_key": feature_key}
+        return cls._send_request("GET", "/billing/tenant_feature_plan/usage", params=params)
 
     @classmethod
     @retry(

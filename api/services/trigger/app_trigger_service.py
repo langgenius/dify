@@ -42,5 +42,5 @@ class AppTriggerService:
                 )
                 session.commit()
                 logger.info("Marked all enabled triggers as rate limited for tenant %s", tenant_id)
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to mark all enabled triggers as rate limited for tenant %s", tenant_id)

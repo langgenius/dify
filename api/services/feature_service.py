@@ -244,7 +244,7 @@ class FeatureService:
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
         billing_info = BillingService.get_info(tenant_id)
 
-        features_usage_info = BillingService.get_tenant_feature_plan_usage(tenant_id)
+        features_usage_info = BillingService.get_tenant_feature_plan_usage_info(tenant_id)
 
         features.billing.enabled = billing_info["enabled"]
         features.billing.subscription.plan = billing_info["subscription"]["plan"]
