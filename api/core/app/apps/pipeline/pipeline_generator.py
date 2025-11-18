@@ -34,7 +34,7 @@ from core.datasource.entities.datasource_entities import (
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
-from core.rag.index_processor.constant.built_in_field import BuiltInField
+from core.rag.index_processor.constant.built_in_field import BuiltInField, get_safe_data_source_value
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -695,10 +695,10 @@ class PipelineGenerator(BaseAppGenerator):
         if built_in_field_enabled:
             doc_metadata = {
                 BuiltInField.document_name: name,
-                BuiltInField.uploader: account.name,
+                BuiltInField.uploader: account.name or "Unknown",
                 BuiltInField.upload_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
                 BuiltInField.last_update_date: datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                BuiltInField.source: datasource_type,
+                BuiltInField.source: get_safe_data_source_value(datasource_type),
             }
         if doc_metadata:
             document.doc_metadata = doc_metadata
