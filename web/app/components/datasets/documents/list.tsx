@@ -36,6 +36,7 @@ import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-meta
 import StatusItem from './status-item'
 import Operations from './operations'
 import { DatasourceType } from '@/models/pipeline'
+import { normalizeStatusForQuery } from '../status-filter'
 
 export const renderTdValue = (value: string | number | null, isEmptyStyle = false) => {
   return (
@@ -118,7 +119,7 @@ const DocumentList: FC<IDocumentListProps> = ({
     if (statusFilterValue && statusFilterValue !== 'all') {
       filteredDocs = filteredDocs.filter(doc =>
         typeof doc.display_status === 'string'
-        && doc.display_status.toLowerCase() === statusFilterValue.toLowerCase(),
+        && normalizeStatusForQuery(doc.display_status) === statusFilterValue,
       )
     }
 
