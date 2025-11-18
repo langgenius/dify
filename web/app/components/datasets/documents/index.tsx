@@ -226,7 +226,10 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     })
 
     const hasIncompleteDocuments = completedNum !== documentsRes?.data?.length
-    const shouldForcePolling = normalizedStatusFilterValue !== 'all'
+    const transientStatuses = ['queuing', 'indexing', 'paused']
+    const shouldForcePolling = normalizedStatusFilterValue === 'all'
+      ? false
+      : transientStatuses.includes(normalizedStatusFilterValue)
     setTimerCanRun(shouldForcePolling || hasIncompleteDocuments)
   }, [documentsRes, normalizedStatusFilterValue])
   const total = documentsRes?.total || 0
