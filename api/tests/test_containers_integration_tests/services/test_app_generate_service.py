@@ -439,9 +439,7 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify billing service was called to consume quota
-        mock_external_service_dependencies[
-            "billing_service"
-        ].update_tenant_feature_plan_usage.assert_called_once()
+        mock_external_service_dependencies["billing_service"].update_tenant_feature_plan_usage.assert_called_once()
 
     def test_generate_with_invalid_app_mode(self, db_session_with_containers, mock_external_service_dependencies):
         """
