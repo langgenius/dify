@@ -99,7 +99,7 @@ class TestMetadataPartialUpdate(unittest.TestCase):
         mock_redis.get.return_value = None
         mock_document_service.get_document.return_value = self.document
         mock_current_account.return_value = (MagicMock(id="user_id"), "tenant_id")
-        
+
         # Mock DB query to return an existing binding
         # This simulates that the document ALREADY has the metadata we are trying to add
         mock_existing_binding = MagicMock()
@@ -109,7 +109,7 @@ class TestMetadataPartialUpdate(unittest.TestCase):
         operation = DocumentMetadataOperation(
             document_id="doc_id",
             metadata_list=[MetadataDetail(id="existing_meta_id", name="existing_key", value="existing_value")],
-            partial_update=True
+            partial_update=True,
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
@@ -120,28 +120,29 @@ class TestMetadataPartialUpdate(unittest.TestCase):
         # We verify that db.session.add was NOT called for DatasetMetadataBinding
         # Since we can't easily check "not called with specific type" on the generic add method without complex logic,
         # we can check if the number of add calls is 1 (only for the document update) instead of 2 (document + binding)
-        
+
         # Expected calls:
         # 1. db.session.add(document)
         # 2. NO db.session.add(binding) because it exists
-        
+
         # Note: In the code, db.session.add is called for document.
         # Then loop over metadata_list.
         # If existing_binding found, continue.
         # So binding add should be skipped.
-        
+
         # Let's filter the calls to add to see what was added
         add_calls = mock_db.session.add.call_args_list
         added_objects = [call.args[0] for call in add_calls]
-        
+
         # Check that no DatasetMetadataBinding was added
         from models.dataset import DatasetMetadataBinding
+
         has_binding_add = any(
             isinstance(obj, DatasetMetadataBinding)
             or (isinstance(obj, MagicMock) and getattr(obj, "__class__", None) == DatasetMetadataBinding)
             for obj in added_objects
         )
-        
+
         # Since we mock everything, checking isinstance might be tricky if DatasetMetadataBinding
         # is not the exact class used in the service (imports match).
         # But we can check the count.
