@@ -11,11 +11,11 @@ import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { ReactSortable } from 'react-sortablejs'
 import { noop } from 'lodash-es'
 import cn from '@/utils/classnames'
+import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
 // Layout constants
-const MAX_CONTAINER_HEIGHT = 500 // Maximum height in pixels for scrollable containers
 const HANDLE_SIDE_WIDTH = 3 // Width offset for drag handle spacing
 
 type Props = {
@@ -40,6 +40,7 @@ const ClassList: FC<Props> = ({
   const listContainerRef = useRef<HTMLDivElement>(null)
   const [shouldScrollToEnd, setShouldScrollToEnd] = useState(false)
   const prevListLength = useRef(list.length)
+  const [collapsed, setCollapsed] = useState(false)
 
   const handleClassChange = useCallback((index: number) => {
     return (value: Topic) => {
@@ -56,7 +57,9 @@ const ClassList: FC<Props> = ({
     })
     onChange(newList)
     setShouldScrollToEnd(true)
-  }, [list, onChange])
+    if (collapsed)
+      setCollapsed(false)
+  }, [list, onChange, collapsed])
 
   const handleRemoveClass = useCallback((index: number) => {
     return () => {
@@ -72,82 +75,93 @@ const ClassList: FC<Props> = ({
 
   // Scroll to the newly added item after the list updates
   useEffect(() => {
-    if (shouldScrollToEnd && list.length > prevListLength.current) {
-      if (listContainerRef.current) {
-        // Scroll the container to bottom
-        listContainerRef.current.scrollTop = listContainerRef.current.scrollHeight
-      }
+    if (shouldScrollToEnd && list.length > prevListLength.current)
       setShouldScrollToEnd(false)
-    }
     prevListLength.current = list.length
   }, [list.length, shouldScrollToEnd])
 
-  // Todo Remove; edit topic name
+  const handleCollapse = useCallback(() => {
+    setCollapsed(!collapsed)
+  }, [collapsed])
+
   return (
     <>
-      <div
-        ref={listContainerRef}
-        className={cn('max-h-[500px] overflow-y-auto', `pl-${HANDLE_SIDE_WIDTH}`)}
-        style={{
-          // Performance optimizations for large lists
-          willChange: 'scroll-position',
-          contain: 'layout style paint',
-        }}
-      >
-        <ReactSortable
-          list={list.map(item => ({ ...item }))}
-          setList={handleSortTopic}
-          handle='.handle'
-          ghostClass='bg-components-panel-bg'
-          animation={150}
-          disabled={readonly}
-          className='space-y-2'
-        >
-          {
-            list.map((item, index) => {
-              const canDrag = (() => {
-                if (readonly)
-                  return false
-
-                return topicCount >= 2
-              })()
-              return (
-                <div
-                  key={item.id}
-                  className={cn(
-                    'group relative rounded-[10px] bg-components-panel-bg',
-                    `-ml-${HANDLE_SIDE_WIDTH} min-h-[40px] px-0 py-0`,
-                  )}
-                  style={{
-                    // Performance hint for browser
-                    contain: 'layout style paint',
-                  }}
-                >
-                  <div>
-                    <Item
-                      className={cn(canDrag && 'handle')}
-                      headerClassName={cn(canDrag && 'cursor-grab')}
-                      nodeId={nodeId}
-                      key={list[index].id}
-                      payload={item}
-                      onChange={handleClassChange(index)}
-                      onRemove={handleRemoveClass(index)}
-                      index={index + 1}
-                      readonly={readonly}
-                      filterVar={filterVar}
-                    />
-                  </div>
-                </div>
-              )
-            })
-          }
-        </ReactSortable>
+      <div className='mb-2 flex items-center justify-between' onClick={handleCollapse}>
+        <div className='flex cursor-pointer items-center text-xs font-semibold uppercase text-text-secondary'>
+          {t(`${i18nPrefix}.class`)} <span className='text-text-destructive'>*</span>
+          {list.length > 0 && (
+            <ArrowDownRoundFill
+              className={cn(
+                'h-4 w-4 text-text-quaternary transition-transform duration-200',
+                collapsed && '-rotate-90',
+              )}
+            />
+          )}
+        </div>
       </div>
-      {!readonly && (
-        <AddButton
-          onClick={handleAddClass}
-          text={t(`${i18nPrefix}.addClass`)}
-        />
+
+      {!collapsed && (
+        <div
+          ref={listContainerRef}
+          className={cn('overflow-y-visible', `pl-${HANDLE_SIDE_WIDTH}`)}
+        >
+          <ReactSortable
+            list={list.map(item => ({ ...item }))}
+            setList={handleSortTopic}
+            handle='.handle'
+            ghostClass='bg-components-panel-bg'
+            animation={150}
+            disabled={readonly}
+            className='space-y-2'
+          >
+            {
+              list.map((item, index) => {
+                const canDrag = (() => {
+                  if (readonly)
+                    return false
+
+                  return topicCount >= 2
+                })()
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      'group relative rounded-[10px] bg-components-panel-bg',
+                      `-ml-${HANDLE_SIDE_WIDTH} min-h-[40px] px-0 py-0`,
+                    )}
+                    style={{
+                      // Performance hint for browser
+                      contain: 'layout style paint',
+                    }}
+                  >
+                    <div>
+                      <Item
+                        className={cn(canDrag && 'handle')}
+                        headerClassName={cn(canDrag && 'cursor-grab')}
+                        nodeId={nodeId}
+                        key={list[index].id}
+                        payload={item}
+                        onChange={handleClassChange(index)}
+                        onRemove={handleRemoveClass(index)}
+                        index={index + 1}
+                        readonly={readonly}
+                        filterVar={filterVar}
+                      />
+                    </div>
+                  </div>
+                )
+              })
+            }
+          </ReactSortable>
+        </div>
+      )}
+      {!readonly && !collapsed && (
+        <div className='mt-2'>
+          <AddButton
+            onClick={handleAddClass}
+            text={t(`${i18nPrefix}.addClass`)}
+          />
+        </div>
       )}
     </>
   )
