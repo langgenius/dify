@@ -458,7 +458,7 @@ services:
       start_period: 30s
       timeout: 10s
 
-  # SeekDB vector database
+  # seekdb vector database
   seekdb: 
     image: oceanbase/seekdb:latest
     container_name: seekdb
