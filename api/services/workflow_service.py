@@ -281,7 +281,9 @@ class WorkflowService:
             if limit_info["subscription"]["plan"] == CloudPlan.SANDBOX:
                 # Check trigger node count limit for SANDBOX plan
                 trigger_node_count = sum(
-                    1 for _, node_data in draft_workflow.walk_nodes() if NodeType(node_data.get("type")).is_trigger_node
+                    1
+                    for _, node_data in draft_workflow.walk_nodes()
+                    if node_data.get("type") and NodeType(node_data.get("type")).is_trigger_node
                 )
                 if trigger_node_count > 2:
                     raise TriggerNodeLimitExceededError(count=trigger_node_count, limit=2)
