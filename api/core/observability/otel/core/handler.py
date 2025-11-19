@@ -1,89 +1,55 @@
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from opentelemetry.trace import Span, SpanKind, Status, StatusCode
-from opentelemetry.util.types import AttributeValue
+from opentelemetry.trace import SpanKind, Status, StatusCode
 
 
 class SpanHandler:
     """
     Base class for all span handlers.
 
-    Each instrumentation point can provide a handler implementation that customizes
-    how spans are created, annotated, and finalized.
+    Each instrumentation point provides a handler implementation that fully controls
+    how spans are created, annotated, and finalized through the wrapper method.
 
-    Handler methods receive:
-    - wrapped: The original function being traced
-    - args: Positional arguments (including self/cls if applicable)
-    - kwargs: Keyword arguments
+    This class provides a default implementation that creates a basic span and handles
+    exceptions. Handlers can override the wrapper method to customize behavior.
     """
 
-    def build_attributes(
+    def wrapper(
         self,
+        tracer: Any,
         wrapped: Callable[..., Any],
+        span_name: str,
         args: tuple[Any, ...],
         kwargs: Mapping[str, Any],
-    ) -> dict[str, AttributeValue]:
+    ) -> Any:
         """
-        Build the attribute dictionary for the span.
+        Fully control the wrapper behavior.
 
-        Handlers can override this to extract structured metadata from the wrapped function.
+        Default implementation creates a basic span and handles exceptions.
+        Handlers can override this method to provide complete control over:
+        - Span creation and configuration
+        - Attribute extraction
+        - Function invocation
+        - Exception handling
+        - Status setting
 
+        :param tracer: OpenTelemetry tracer instance
         :param wrapped: The original function being traced
+        :param span_name: The span name
         :param args: Positional arguments (including self/cls if applicable)
         :param kwargs: Keyword arguments
+        :return: Result of calling wrapped function
         """
-        return {}
-
-    def get_span_kind(self) -> SpanKind:
-        """Return the SpanKind. Defaults to INTERNAL."""
-        return SpanKind.INTERNAL
-
-    def on_span_start(
-        self,
-        span: Span,
-        wrapped: Callable[..., Any],
-        args: tuple[Any, ...],
-        kwargs: Mapping[str, Any],
-    ) -> None:
-        """Hook invoked immediately after the span is created."""
-        return None
-
-    def on_success(
-        self,
-        span: Span,
-        result: Any,
-        wrapped: Callable[..., Any],
-        args: tuple[Any, ...],
-        kwargs: Mapping[str, Any],
-    ) -> None:
-        """Hook invoked when the wrapped function completes successfully."""
-        return None
-
-    def on_error(
-        self,
-        span: Span,
-        exception: Exception,
-        wrapped: Callable[..., Any],
-        args: tuple[Any, ...],
-        kwargs: Mapping[str, Any],
-    ) -> None:
-        """Hook invoked when the wrapped function raises an exception."""
-        return None
-
-    def build_status(self, result: Any, exception: Exception | None) -> Status:
-        """
-        Build the final Status for the span.
-
-        Default behavior marks spans as OK on success and ERROR on exceptions.
-        """
-        if exception:
-            return Status(StatusCode.ERROR, str(exception))
-        return Status(StatusCode.OK)
-
-    def should_record_exception(self, exception: Exception) -> bool:
-        """Return whether the exception should be recorded on the span."""
-        return True
+        with tracer.start_as_current_span(span_name, kind=SpanKind.INTERNAL) as span:
+            try:
+                result = wrapped(*args, **kwargs)
+                span.set_status(Status(StatusCode.OK))
+                return result
+            except Exception as exc:
+                span.record_exception(exc)
+                span.set_status(Status(StatusCode.ERROR, str(exc)))
+                raise
 
 
 

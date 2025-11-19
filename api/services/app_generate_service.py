@@ -25,7 +25,7 @@ class AppGenerateService:
     system_rate_limiter = RateLimiter("app_daily_rate_limiter", dify_config.APP_DAILY_RATE_LIMIT, 86400)
 
     @classmethod
-    @trace_span("app.generate")
+    @trace_span("AppGenerateService.generate")
     def generate(
         cls,
         app_model: App,

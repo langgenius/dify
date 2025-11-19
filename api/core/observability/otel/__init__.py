@@ -4,5 +4,5 @@ from core.observability.otel.core.decorators import trace_span
 from core.observability.otel.core.handler import SpanHandler
 from core.observability.otel.core.registry import register_span_handler
 
-__all__ = ["SpanHandler", "trace_span", "register_span_handler"]
+__all__ = ["SpanHandler", "register_span_handler", "trace_span"]
 
