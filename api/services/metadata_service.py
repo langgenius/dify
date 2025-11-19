@@ -227,15 +227,16 @@ class MetadataService:
                 # deal metadata binding
                 if not operation.partial_update:
                     db.session.query(DatasetMetadataBinding).filter_by(document_id=operation.document_id).delete()
-                
+
                 current_user, current_tenant_id = current_account_with_tenant()
                 for metadata_value in operation.metadata_list:
                     # check if binding already exists
                     if operation.partial_update:
-                        existing_binding = db.session.query(DatasetMetadataBinding).filter_by(
-                            document_id=operation.document_id,
-                            metadata_id=metadata_value.id
-                        ).first()
+                        existing_binding = (
+                            db.session.query(DatasetMetadataBinding)
+                            .filter_by(document_id=operation.document_id, metadata_id=metadata_value.id)
+                            .first()
+                        )
                         if existing_binding:
                             continue
 
