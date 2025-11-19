@@ -32,7 +32,7 @@ class TestMetadataPartialUpdate(unittest.TestCase):
         mock_current_account.return_value = (MagicMock(id="user_id"), "tenant_id")
 
         # Mock DB query for existing bindings
-        # Mock DB query for existing bindings
+
         # No existing binding for new key
         mock_db.session.query.return_value.filter_by.return_value.first.return_value = None
 
