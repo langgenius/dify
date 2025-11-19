@@ -20,10 +20,9 @@ class TestAppGenerateService:
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
         with (
-            patch("services.app_generate_service.BillingService") as mock_billing_service,
+            patch("services.billing_service.BillingService") as mock_billing_service,
             patch("services.app_generate_service.WorkflowService") as mock_workflow_service,
             patch("services.app_generate_service.RateLimit") as mock_rate_limit,
-            patch("services.app_generate_service.RateLimiter") as mock_rate_limiter,
             patch("services.app_generate_service.CompletionAppGenerator") as mock_completion_generator,
             patch("services.app_generate_service.ChatAppGenerator") as mock_chat_generator,
             patch("services.app_generate_service.AgentChatAppGenerator") as mock_agent_chat_generator,
@@ -33,7 +32,10 @@ class TestAppGenerateService:
             patch("services.app_generate_service.dify_config") as mock_dify_config,
         ):
             # Setup default mock returns for billing service
-            mock_billing_service.get_info.return_value = {"subscription": {"plan": CloudPlan.SANDBOX}}
+            mock_billing_service.update_tenant_feature_plan_usage.return_value = {
+                "result": "success",
+                "history_id": "test_history_id",
+            }
 
             # Setup default mock returns for workflow service
             mock_workflow_service_instance = mock_workflow_service.return_value
@@ -46,10 +48,6 @@ class TestAppGenerateService:
             mock_rate_limit_instance.enter.return_value = "test_request_id"
             mock_rate_limit_instance.generate.return_value = ["test_response"]
             mock_rate_limit_instance.exit.return_value = None
-
-            mock_rate_limiter_instance = mock_rate_limiter.return_value
-            mock_rate_limiter_instance.is_rate_limited.return_value = False
-            mock_rate_limiter_instance.increment_rate_limit.return_value = None
 
             # Setup default mock returns for app generators
             mock_completion_generator_instance = mock_completion_generator.return_value
@@ -91,7 +89,6 @@ class TestAppGenerateService:
                 "billing_service": mock_billing_service,
                 "workflow_service": mock_workflow_service,
                 "rate_limit": mock_rate_limit,
-                "rate_limiter": mock_rate_limiter,
                 "completion_generator": mock_completion_generator,
                 "chat_generator": mock_chat_generator,
                 "agent_chat_generator": mock_agent_chat_generator,
