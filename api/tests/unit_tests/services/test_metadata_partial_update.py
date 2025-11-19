@@ -52,15 +52,10 @@ class TestMetadataPartialUpdate(unittest.TestCase):
         expected_metadata = {"existing_key": "existing_value", "new_key": "new_value"}
         assert self.document.doc_metadata == expected_metadata
 
-        # 2. Check that existing bindings were NOT deleted (delete should not be called)
+        # 2. Check that existing bindings were NOT deleted
         # The delete call in the original code: db.session.query(...).filter_by(...).delete()
-        # In my fix, this is conditional on not operation.partial_update
-        # We can check if delete was called on the query object
-
-        # It's a bit hard to mock the exact chain for delete, but we can check the logic flow.
-        # If partial_update is True, we expect NO delete call for the document's bindings.
-        # However, since we mock db.session.query, we need to be careful.
-        # Let's just verify the document state which is the most important part for the data loss bug.
+        # In partial update, this should NOT be called.
+        mock_db.session.query.return_value.filter_by.return_value.delete.assert_not_called()
 
     @patch("services.metadata_service.db")
     @patch("services.metadata_service.DocumentService")
@@ -87,6 +82,10 @@ class TestMetadataPartialUpdate(unittest.TestCase):
         # 1. Check that doc_metadata contains ONLY the new key
         expected_metadata = {"new_key": "new_value"}
         assert self.document.doc_metadata == expected_metadata
+
+        # 2. Check that existing bindings WERE deleted
+        # In full update (default), we expect the existing bindings to be cleared.
+        mock_db.session.query.return_value.filter_by.return_value.delete.assert_called()
 
     @patch("services.metadata_service.db")
     @patch("services.metadata_service.DocumentService")
