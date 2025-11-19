@@ -95,7 +95,9 @@ class App(Base):
     created_by = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
     use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
     @property
@@ -314,7 +316,9 @@ class AppModelConfig(Base):
     created_by = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
     opening_statement = mapped_column(sa.Text)
     suggested_questions = mapped_column(sa.Text)
     suggested_questions_after_answer = mapped_column(sa.Text)
@@ -545,7 +549,9 @@ class RecommendedApp(Base):
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     language = mapped_column(String(255), nullable=False, server_default=sa.text("'en-US'::character varying"))
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
     @property
     def app(self) -> App | None:
@@ -644,7 +650,9 @@ class Conversation(Base):
     read_account_id = mapped_column(StringUUID)
     dialogue_count: Mapped[int] = mapped_column(default=0)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
     messages = db.relationship("Message", backref="conversation", lazy="select", passive_deletes="all")
     message_annotations = db.relationship(
@@ -948,7 +956,9 @@ class Message(Base):
     from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
     from_account_id: Mapped[str | None] = mapped_column(StringUUID)
     created_at: Mapped[datetime] = mapped_column(sa.DateTime, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
     agent_based: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID)
     app_mode: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -1219,9 +1229,13 @@ class Message(Base):
     @property
     def workflow_run(self):
         if self.workflow_run_id:
-            from .workflow import WorkflowRun
+            from sqlalchemy.orm import sessionmaker
 
-            return db.session.query(WorkflowRun).where(WorkflowRun.id == self.workflow_run_id).first()
+            from repositories.factory import DifyAPIRepositoryFactory
+
+            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+            repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            return repo.get_workflow_run_by_id_without_tenant(run_id=self.workflow_run_id)
 
         return None
 
@@ -1282,20 +1296,22 @@ class MessageFeedback(Base):
         sa.Index("message_feedback_conversation_idx", "conversation_id", "from_source", "rating"),
     )
 
-    id = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
-    app_id = mapped_column(StringUUID, nullable=False)
-    conversation_id = mapped_column(StringUUID, nullable=False)
-    message_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     rating: Mapped[str] = mapped_column(String(255), nullable=False)
-    content = mapped_column(sa.Text)
+    content: Mapped[str | None] = mapped_column(sa.Text)
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
-    from_end_user_id = mapped_column(StringUUID)
-    from_account_id = mapped_column(StringUUID)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
+    from_account_id: Mapped[str | None] = mapped_column(StringUUID)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
     @property
-    def from_account(self):
+    def from_account(self) -> Account | None:
         account = db.session.query(Account).where(Account.id == self.from_account_id).first()
         return account
 
@@ -1374,7 +1390,9 @@ class MessageAnnotation(Base):
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
     account_id = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
     @property
     def account(self):
@@ -1439,7 +1457,9 @@ class AppAnnotationSetting(Base):
     created_user_id = mapped_column(StringUUID, nullable=False)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_user_id = mapped_column(StringUUID, nullable=False)
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
     @property
     def collection_binding_detail(self):
@@ -1467,7 +1487,9 @@ class OperationLog(Base):
     content = mapped_column(sa.JSON)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     created_ip: Mapped[str] = mapped_column(String(255), nullable=False)
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
 
 class DefaultEndUserSessionID(StrEnum):
@@ -1506,7 +1528,9 @@ class EndUser(Base, UserMixin):
 
     session_id: Mapped[str] = mapped_column()
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
 
 class AppMCPServer(Base):
@@ -1526,7 +1550,9 @@ class AppMCPServer(Base):
     parameters = mapped_column(sa.Text, nullable=False)
 
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
     @staticmethod
     def generate_server_code(n: int) -> str:
@@ -1572,7 +1598,9 @@ class Site(Base):
     created_by = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
     code = mapped_column(String(255))
 
     @property

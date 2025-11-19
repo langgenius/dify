@@ -1533,6 +1533,9 @@ class ProviderConfiguration(BaseModel):
             # Return composite sort key: (model_type value, model position index)
             return (model.model_type.value, position_index)
 
+        # Deduplicate
+        provider_models = list({(m.model, m.model_type, m.fetch_from): m for m in provider_models}.values())
+
         # Sort using the composite sort key
         return sorted(provider_models, key=get_sort_key)
 
