@@ -87,7 +87,6 @@ class QuotaType(StrEnum):
             raise ValueError("Amount to consume must be greater than 0")
 
         try:
-            # Call billing service to decrement quota (negative amount)
             response = BillingService.update_tenant_feature_plan_usage(tenant_id, self.billing_key, delta=amount)
 
             if response.get("result") != "success":
@@ -137,7 +136,7 @@ class QuotaType(StrEnum):
 
         try:
             remaining = self.get_remaining(tenant_id)
-            return remaining >= amount
+            return remaining >= amount if remaining != -1 else True
         except Exception:
             logger.exception("Failed to check quota for %s, feature %s", tenant_id, self.value)
             # fail-safe: allow request on billing errors
@@ -198,7 +197,7 @@ class QuotaType(StrEnum):
             return int(usage_info) if usage_info else 0
         except Exception:
             logger.exception("Failed to get remaining quota for %s, feature %s", tenant_id, self.value)
-            return 0
+            return -1
 
 
 def unlimited() -> QuotaCharge:

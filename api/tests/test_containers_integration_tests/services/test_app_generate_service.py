@@ -28,6 +28,7 @@ class TestAppGenerateService:
             patch("services.app_generate_service.WorkflowAppGenerator") as mock_workflow_generator,
             patch("services.account_service.FeatureService") as mock_account_feature_service,
             patch("services.app_generate_service.dify_config") as mock_dify_config,
+            patch("configs.dify_config") as mock_global_dify_config,
         ):
             # Setup default mock returns for billing service
             mock_billing_service.update_tenant_feature_plan_usage.return_value = {
@@ -83,6 +84,10 @@ class TestAppGenerateService:
             mock_dify_config.APP_MAX_ACTIVE_REQUESTS = 100
             mock_dify_config.APP_DAILY_RATE_LIMIT = 1000
 
+            mock_global_dify_config.BILLING_ENABLED = False
+            mock_global_dify_config.APP_MAX_ACTIVE_REQUESTS = 100
+            mock_global_dify_config.APP_DAILY_RATE_LIMIT = 1000
+
             yield {
                 "billing_service": mock_billing_service,
                 "workflow_service": mock_workflow_service,
@@ -94,6 +99,7 @@ class TestAppGenerateService:
                 "workflow_generator": mock_workflow_generator,
                 "account_feature_service": mock_account_feature_service,
                 "dify_config": mock_dify_config,
+                "global_dify_config": mock_global_dify_config,
             }
 
     def _create_test_app_and_account(self, db_session_with_containers, mock_external_service_dependencies, mode="chat"):
@@ -426,6 +432,7 @@ class TestAppGenerateService:
 
         # Set BILLING_ENABLED to True for this test
         mock_external_service_dependencies["dify_config"].BILLING_ENABLED = True
+        mock_external_service_dependencies["global_dify_config"].BILLING_ENABLED = True
 
         # Setup test arguments
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
