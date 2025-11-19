@@ -87,7 +87,7 @@ const ClassList: FC<Props> = ({
     <>
       <div
         ref={listContainerRef}
-        className='max-h-[500px] overflow-y-auto'
+        className={cn('max-h-[500px] overflow-y-auto', `pl-${HANDLE_SIDE_WIDTH}`)}
         style={{
           // Performance optimizations for large lists
           willChange: 'scroll-position',
