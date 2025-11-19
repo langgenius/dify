@@ -5,17 +5,28 @@ from typing import Any, TypeVar
 from opentelemetry.trace import get_tracer
 
 from configs import dify_config
-from core.observability.otel.core.registry import get_span_handler
+from core.observability.otel.core.handler import SpanHandler
 
 T = TypeVar("T", bound=Callable[..., Any])
 
+_HANDLER_INSTANCES: dict[type[SpanHandler], SpanHandler] = {SpanHandler: SpanHandler()}
 
-def trace_span(span_name: str) -> Callable[[T], T]:
+
+def _get_handler_instance(handler_class: type[SpanHandler]) -> SpanHandler:
+    """Get or create a singleton instance of the handler class."""
+    if handler_class not in _HANDLER_INSTANCES:
+        _HANDLER_INSTANCES[handler_class] = handler_class()
+    return _HANDLER_INSTANCES[handler_class]
+
+
+def trace_span(handler_class: type[SpanHandler] | None = None) -> Callable[[T], T]:
     """
     Decorator that traces a function with an OpenTelemetry span.
 
-    The decorator looks up a span handler by name and delegates the wrapper
-    implementation to that handler, providing necessary infrastructure (tracer, span_name).
+    The decorator uses the provided handler class to create a singleton handler instance
+    and delegates the wrapper implementation to that handler.
+
+    :param handler_class: Optional handler class to use for this span. If None, uses the default SpanHandler.
     """
 
     def decorator(func: T) -> T:
@@ -24,18 +35,16 @@ def trace_span(span_name: str) -> Callable[[T], T]:
             if not dify_config.ENABLE_OTEL:
                 return func(*args, **kwargs)
 
-            handler = get_span_handler(span_name)
+            handler = _get_handler_instance(handler_class or SpanHandler)
             tracer = get_tracer(__name__)
 
             return handler.wrapper(
                 tracer=tracer,
                 wrapped=func,
-                span_name=span_name,
                 args=args,
                 kwargs=kwargs,
             )
 
-        return wrapper  # type: ignore[misc]
+        return wrapper
 
     return decorator
-

@@ -15,11 +15,21 @@ class SpanHandler:
     exceptions. Handlers can override the wrapper method to customize behavior.
     """
 
+    def _build_span_name(self, wrapped: Callable[..., Any]) -> str:
+        """
+        Build the span name from the wrapped function.
+
+        Handlers can override this method to customize span name generation.
+
+        :param wrapped: The original function being traced
+        :return: The span name
+        """
+        return f"{wrapped.__module__}.{wrapped.__qualname__}"
+
     def wrapper(
         self,
         tracer: Any,
         wrapped: Callable[..., Any],
-        span_name: str,
         args: tuple[Any, ...],
         kwargs: Mapping[str, Any],
     ) -> Any:
@@ -36,11 +46,11 @@ class SpanHandler:
 
         :param tracer: OpenTelemetry tracer instance
         :param wrapped: The original function being traced
-        :param span_name: The span name
         :param args: Positional arguments (including self/cls if applicable)
         :param kwargs: Keyword arguments
         :return: Result of calling wrapped function
         """
+        span_name = self._build_span_name(wrapped)
         with tracer.start_as_current_span(span_name, kind=SpanKind.INTERNAL) as span:
             try:
                 result = wrapped(*args, **kwargs)

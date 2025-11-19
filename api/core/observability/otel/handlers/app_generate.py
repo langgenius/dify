@@ -15,7 +15,6 @@ class AppGenerateHandler(SpanHandler):
         self,
         tracer: Any,
         wrapped: Callable[..., Any],
-        span_name: str,
         args: tuple[Any, ...],
         kwargs: Mapping[str, Any],
     ) -> Any:
@@ -46,7 +45,7 @@ class AppGenerateHandler(SpanHandler):
         if invoke_from:
             attributes["invoke_from"] = invoke_from.value if hasattr(invoke_from, "value") else str(invoke_from)
 
-        with tracer.start_as_current_span(span_name, kind=SpanKind.INTERNAL, attributes=attributes) as span:
+        with tracer.start_as_current_span("app.generate", kind=SpanKind.INTERNAL, attributes=attributes) as span:
             try:
                 result = wrapped(*args, **kwargs)
                 span.set_status(Status(StatusCode.OK))
