@@ -1,8 +1,9 @@
 import type { FC } from 'react'
 import React from 'react'
 import Script from 'next/script'
-import { type UnsafeUnwrappedHeaders, headers } from 'next/headers'
+import { headers } from 'next/headers'
 import { IS_CE_EDITION } from '@/config'
+import type { ReadonlyHeaders } from 'next/dist/server/web/spec-extension/adapters/headers'
 
 export enum GaType {
   admin = 'admin',
@@ -24,7 +25,7 @@ const GA: FC<IGAProps> = ({
   if (IS_CE_EDITION)
     return null
 
-  const nonce = process.env.NODE_ENV === 'production' ? (headers() as unknown as UnsafeUnwrappedHeaders).get('x-nonce') ?? '' : ''
+  const nonce = process.env.NODE_ENV === 'production' ? (headers() as unknown as ReadonlyHeaders).get('x-nonce') ?? '' : ''
 
   return (
     <>
