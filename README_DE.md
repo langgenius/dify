@@ -6,8 +6,8 @@
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
-  <a href="https://docs.dify.ai/getting-started/introduction/getting-started/introduction/self-hosting/quick-start/docker-compose">Selbstgehostetes</a> ·
-  <a href="https://docs.dify.ai/getting-started/introduction/getting-started/introduction">Dokumentation</a> ·
+  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction/self-hosting/quick-start/docker-compose">Selbstgehostetes</a> ·
+  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction">Dokumentation</a> ·
   <a href="https://dify.ai/pricing">Überblick über die Dify-Produkte</a>
 </p>
 
@@ -77,9 +77,9 @@ Nachdem Sie den Server gestartet haben, können Sie über Ihren Browser auf das 
 
 #### Hilfe suchen
 
-Bitte beachten Sie unsere [FAQ](https://docs.dify.ai/getting-started/introduction/getting-started/introduction/self-hosting/quick-start/faqs), wenn Sie Probleme bei der Einrichtung von Dify haben. Wenden Sie sich an [die Community und uns](#community--contact), falls weiterhin Schwierigkeiten auftreten.
+Bitte beachten Sie unsere [FAQ](https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction/self-hosting/quick-start/faqs), wenn Sie Probleme bei der Einrichtung von Dify haben. Wenden Sie sich an [die Community und uns](#community--contact), falls weiterhin Schwierigkeiten auftreten.
 
-> Wenn Sie zu Dify beitragen oder zusätzliche Entwicklungen durchführen möchten, lesen Sie bitte unseren [Leitfaden zur Bereitstellung aus dem Quellcode](https://docs.dify.ai/getting-started/introduction/getting-started/introduction/self-hosting/advanced-deployments/local-source-code).
+> Wenn Sie zu Dify beitragen oder zusätzliche Entwicklungen durchführen möchten, lesen Sie bitte unseren [Leitfaden zur Bereitstellung aus dem Quellcode](https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction/self-hosting/advanced-deployments/local-source-code).
 
 ## Wesentliche Merkmale
 
@@ -87,7 +87,7 @@ Bitte beachten Sie unsere [FAQ](https://docs.dify.ai/getting-started/introductio
 Erstellen und testen Sie leistungsstarke KI-Workflows auf einer visuellen Oberfläche, wobei Sie alle der folgenden Funktionen und darüber hinaus nutzen können.
 
 **2. Umfassende Modellunterstützung**:
-Nahtlose Integration mit Hunderten von proprietären und Open-Source-LLMs von Dutzenden Inferenzanbietern und selbstgehosteten Lösungen, die GPT, Mistral, Llama3 und alle mit der OpenAI API kompatiblen Modelle abdecken. Eine vollständige Liste der unterstützten Modellanbieter finden Sie [hier](https://docs.dify.ai/getting-started/introduction/getting-started/introduction/workspace/model-providers).
+Nahtlose Integration mit Hunderten von proprietären und Open-Source-LLMs von Dutzenden Inferenzanbietern und selbstgehosteten Lösungen, die GPT, Mistral, Llama3 und alle mit der OpenAI API kompatiblen Modelle abdecken. Eine vollständige Liste der unterstützten Modellanbieter finden Sie [hier](https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction/workspace/model-providers).
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
@@ -112,7 +112,7 @@ Alle Dify-Angebote kommen mit entsprechenden APIs, sodass Sie Dify mühelos in I
   Wir hosten einen [Dify Cloud](https://dify.ai)-Service, den jeder ohne Einrichtung ausprobieren kann. Er bietet alle Funktionen der selbstgehosteten Version und beinhaltet 200 kostenlose GPT-4-Aufrufe im Sandbox-Plan.
 
 - **Selbstgehostete Dify Community Edition</br>**
-  Starten Sie Dify schnell in Ihrer Umgebung mit diesem [Schnellstart-Leitfaden](#quick-start). Nutzen Sie unsere [Dokumentation](https://docs.dify.ai/getting-started/introduction/getting-started/introduction) für weiterführende Informationen und detaillierte Anweisungen.
+  Starten Sie Dify schnell in Ihrer Umgebung mit diesem [Schnellstart-Leitfaden](#quick-start). Nutzen Sie unsere [Dokumentation](https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction) für weiterführende Informationen und detaillierte Anweisungen.
 
 - **Dify für Unternehmen / Organisationen</br>**
   Wir bieten zusätzliche, unternehmensspezifische Funktionen. [Über diesen Chatbot können Sie uns Ihre Fragen mitteilen](https://udify.app/chat/22L1zSxg6yW1cWQg) oder [senden Sie uns eine E-Mail](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry), um Ihre unternehmerischen Bedürfnisse zu besprechen. </br>
@@ -127,7 +127,7 @@ Star Dify auf GitHub und lassen Sie sich sofort über neue Releases benachrichti
 
 ## Erweiterte Einstellungen
 
-Falls Sie die Konfiguration anpassen müssen, lesen Sie bitte die Kommentare in unserer [.env.example](docker/.env.example)-Datei und aktualisieren Sie die entsprechenden Werte in Ihrer `.env`-Datei. Zusätzlich müssen Sie eventuell Anpassungen an der `docker-compose.yaml`-Datei vornehmen, wie zum Beispiel das Ändern von Image-Versionen, Portzuordnungen oder Volumen-Mounts, je nach Ihrer spezifischen Einsatzumgebung und Ihren Anforderungen. Nachdem Sie Änderungen vorgenommen haben, starten Sie `docker-compose up -d` erneut. Eine vollständige Liste der verfügbaren Umgebungsvariablen finden Sie [hier](https://docs.dify.ai/getting-started/introduction/getting-started/introduction/self-hosting/configuration/environments).
+Falls Sie die Konfiguration anpassen müssen, lesen Sie bitte die Kommentare in unserer [.env.example](docker/.env.example)-Datei und aktualisieren Sie die entsprechenden Werte in Ihrer `.env`-Datei. Zusätzlich müssen Sie eventuell Anpassungen an der `docker-compose.yaml`-Datei vornehmen, wie zum Beispiel das Ändern von Image-Versionen, Portzuordnungen oder Volumen-Mounts, je nach Ihrer spezifischen Einsatzumgebung und Ihren Anforderungen. Nachdem Sie Änderungen vorgenommen haben, starten Sie `docker-compose up -d` erneut. Eine vollständige Liste der verfügbaren Umgebungsvariablen finden Sie [hier](https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction/self-hosting/configuration/environments).
 
 Falls Sie eine hochverfügbare Konfiguration einrichten möchten, gibt es von der Community bereitgestellte [Helm Charts](https://helm.sh/) und YAML-Dateien, die es ermöglichen, Dify auf Kubernetes bereitzustellen.
 
