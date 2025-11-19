@@ -2,6 +2,7 @@ from flask_restx import Resource, reqparse
 
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
+from enums.cloud_plan import CloudPlan
 from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
 
@@ -16,7 +17,13 @@ class Subscription(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
         parser = (
             reqparse.RequestParser()
-            .add_argument("plan", type=str, required=True, location="args", choices=["professional", "team"])
+            .add_argument(
+                "plan",
+                type=str,
+                required=True,
+                location="args",
+                choices=[CloudPlan.PROFESSIONAL, CloudPlan.TEAM],
+            )
             .add_argument("interval", type=str, required=True, location="args", choices=["month", "year"])
         )
         args = parser.parse_args()

@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'कस्टम उपकरण बनाएं',
   customToolTip: 'Dify कस्टम उपकरणों के बारे में और जानें',
   type: {
-    all: 'सभी',
     builtIn: 'निर्मित',
     custom: 'कस्टम',
     workflow: 'कार्यप्रवाह',
@@ -22,13 +21,10 @@ const translation = {
       'प्रमाणिकरण कॉन्फ़िगर करने के बाद, कार्यस्थान के सभी सदस्य इस उपकरण का उपयोग कर सकेंगे।',
   },
   includeToolNum: '{{num}} उपकरण शामिल हैं',
-  addTool: 'उपकरण जोड़ें',
   addToolModal: {
     type: 'प्रकार',
     category: 'श्रेणी',
-    add: 'जोड़ें',
     added: 'जोड़ा गया',
-    manageInTools: 'उपकरणों में प्रबंधित करें',
     custom: {
       title: 'कोई कस्टम टूल उपलब्ध नहीं है',
       tip: 'एक कस्टम टूल बनाएं',

@@ -325,7 +325,6 @@ const translation = {
   variableTable: {
     action: 'Tindakan',
     typeString: 'String',
-    optional: 'Fakultatif',
     typeSelect: 'Pilih',
     type: 'Jenis Masukan',
     key: 'Kunci Variabel',
