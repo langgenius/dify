@@ -2,8 +2,8 @@
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
-  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction/self-hosting/quick-start/docker-compose">الاستضافة الذاتية</a> ·
-  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction">التوثيق</a> ·
+  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction//self-hosting/quick-start/docker-compose">الاستضافة الذاتية</a> ·
+  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction/">التوثيق</a> ·
   <a href="https://dify.ai/pricing">نظرة عامة على منتجات Dify</a>
 </p>
 
@@ -54,7 +54,7 @@
 
 **1. سير العمل**: قم ببناء واختبار سير عمل الذكاء الاصطناعي القوي على قماش بصري، مستفيدًا من جميع الميزات التالية وأكثر.
 
-**2. الدعم الشامل للنماذج**: تكامل سلس مع مئات من LLMs الخاصة / مفتوحة المصدر من عشرات من موفري التحليل والحلول المستضافة ذاتيًا، مما يغطي GPT و Mistral و Llama3 وأي نماذج متوافقة مع واجهة OpenAI API. يمكن العثور على قائمة كاملة بمزودي النموذج المدعومين [هنا](https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction/workspace/model-providers).
+**2. الدعم الشامل للنماذج**: تكامل سلس مع مئات من LLMs الخاصة / مفتوحة المصدر من عشرات من موفري التحليل والحلول المستضافة ذاتيًا، مما يغطي GPT و Mistral و Llama3 وأي نماذج متوافقة مع واجهة OpenAI API. يمكن العثور على قائمة كاملة بمزودي النموذج المدعومين [هنا](https://docs.dify.ai/documentation/pages/getting-started/introduction//workspace/model-providers).
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
@@ -75,7 +75,7 @@
 
 - **استضافة ذاتية لنسخة المجتمع Dify</br>**
   ابدأ سريعًا في تشغيل Dify في بيئتك باستخدام \[دليل البدء السريع\](#البدء السريع).
-  استخدم [توثيقنا](https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction) للمزيد من المراجع والتعليمات الأعمق.
+  استخدم [توثيقنا](https://docs.dify.ai/documentation/pages/getting-started/introduction/) للمزيد من المراجع والتعليمات الأعمق.
 
 - **مشروع Dify للشركات / المؤسسات</br>**
   نحن نوفر ميزات إضافية مركزة على الشركات. [جدول اجتماع معنا](https://cal.com/guchenhe/30min) أو [أرسل لنا بريدًا إلكترونيًا](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) لمناقشة احتياجات الشركات. </br>
@@ -107,7 +107,7 @@ docker compose up -d
 
 بعد التشغيل، يمكنك الوصول إلى لوحة تحكم Dify في متصفحك على [http://localhost/install](http://localhost/install) وبدء عملية التهيئة.
 
-> إذا كنت ترغب في المساهمة في Dify أو القيام بتطوير إضافي، فانظر إلى [دليلنا للنشر من الشفرة (code) المصدرية](https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction/self-hosting/advanced-deployments/local-source-code)
+> إذا كنت ترغب في المساهمة في Dify أو القيام بتطوير إضافي، فانظر إلى [دليلنا للنشر من الشفرة (code) المصدرية](https://docs.dify.ai/documentation/pages/getting-started/introduction//self-hosting/advanced-deployments/local-source-code)
 
 ## الخطوات التالية
 

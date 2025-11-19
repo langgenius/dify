@@ -2,8 +2,8 @@
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify 클라우드</a> ·
-  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction/self-hosting/quick-start/docker-compose">셀프-호스팅</a> ·
-  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction">문서</a> ·
+  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction//self-hosting/quick-start/docker-compose">셀프-호스팅</a> ·
+  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction/">문서</a> ·
   <a href="https://dify.ai/pricing">Dify 제품 에디션 안내</a>
 </p>
 
@@ -55,7 +55,7 @@ Dify는 오픈 소스 LLM 앱 개발 플랫폼입니다. 직관적인 인터페�
 
 **2. 포괄적인 모델 지원:**:
 
-수십 개의 추론 제공업체와 자체 호스팅 솔루션에서 제공하는 수백 개의 독점 및 오픈 소스 LLM과 원활하게 통합되며, GPT, Mistral, Llama3 및 모든 OpenAI API 호환 모델을 포함합니다. 지원되는 모델 제공업체의 전체 목록은 [여기](https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction/workspace/model-providers)에서 확인할 수 있습니다.
+수십 개의 추론 제공업체와 자체 호스팅 솔루션에서 제공하는 수백 개의 독점 및 오픈 소스 LLM과 원활하게 통합되며, GPT, Mistral, Llama3 및 모든 OpenAI API 호환 모델을 포함합니다. 지원되는 모델 제공업체의 전체 목록은 [여기](https://docs.dify.ai/documentation/pages/getting-started/introduction//workspace/model-providers)에서 확인할 수 있습니다.
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
 **3. 통합 개발환경**:
@@ -80,7 +80,7 @@ Dify의 모든 제품에는 해당 API가 함께 제공되므로 Dify를 자신�
 
 - **셀프-호스팅 Dify 커뮤니티 에디션</br>**
   환경에서 Dify를 빠르게 실행하려면 이 [스타터 가이드를](#quick-start) 참조하세요.
-  추가 참조 및 더 심층적인 지침은 [문서](https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction)를 사용하세요.
+  추가 참조 및 더 심층적인 지침은 [문서](https://docs.dify.ai/documentation/pages/getting-started/introduction/)를 사용하세요.
 
 - **기업 / 조직을 위한 Dify</br>**
   우리는 추가적인 기업 중심 기능을 제공합니다. 잡거나 [이메일 보내기](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry)를 통해 기업 요구 사항을 논의하십시오. </br>
@@ -112,11 +112,11 @@ docker compose up -d
 
 실행 후 브라우저의 [http://localhost/install](http://localhost/install) 에서 Dify 대시보드에 액세스하고 초기화 프로세스를 시작할 수 있습니다.
 
-> Dify에 기여하거나 추가 개발을 하고 싶다면 소스 코드에서 [배포에 대한 가이드](https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction/self-hosting/advanced-deployments/local-source-code)를 참조하세요.
+> Dify에 기여하거나 추가 개발을 하고 싶다면 소스 코드에서 [배포에 대한 가이드](https://docs.dify.ai/documentation/pages/getting-started/introduction//self-hosting/advanced-deployments/local-source-code)를 참조하세요.
 
 ## 다음 단계
 
-구성을 사용자 정의해야 하는 경우 [.env.example](docker/.env.example) 파일의 주석을 참조하고 `.env` 파일에서 해당 값을 업데이트하십시오. 또한 특정 배포 환경 및 요구 사항에 따라 `docker-compose.yaml` 파일 자체를 조정해야 할 수도 있습니다. 예를 들어 이미지 버전, 포트 매핑 또는 볼륨 마운트를 변경합니다. 변경 한 후 `docker-compose up -d`를 다시 실행하십시오. 사용 가능한 환경 변수의 전체 목록은 [여기](https://docs.dify.ai/documentation/pages/getting-started/introduction/getting-started/introduction/self-hosting/configuration/environments)에서 찾을 수 있습니다.
+구성을 사용자 정의해야 하는 경우 [.env.example](docker/.env.example) 파일의 주석을 참조하고 `.env` 파일에서 해당 값을 업데이트하십시오. 또한 특정 배포 환경 및 요구 사항에 따라 `docker-compose.yaml` 파일 자체를 조정해야 할 수도 있습니다. 예를 들어 이미지 버전, 포트 매핑 또는 볼륨 마운트를 변경합니다. 변경 한 후 `docker-compose up -d`를 다시 실행하십시오. 사용 가능한 환경 변수의 전체 목록은 [여기](https://docs.dify.ai/documentation/pages/getting-started/introduction//self-hosting/configuration/environments)에서 찾을 수 있습니다.
 
 Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했다는 커뮤니티가 제공하는 [Helm Charts](https://helm.sh/)와 YAML 파일이 존재합니다.
 
