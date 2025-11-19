@@ -26,7 +26,7 @@ services:
     command:
       - --addr=0.0.0.0:20160
       - --advertise-addr=tikv:20160
-      - --status-addr=tikv:20180
+      - --status-addr=0.0.0.0:20180
       - --data-dir=/data/tikv
       - --pd=pd0:2379
       - --log-file=/logs/tikv.log

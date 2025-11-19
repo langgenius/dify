@@ -5,8 +5,7 @@ listen_host = "0.0.0.0"
 path = "/data"
 
 [flash]
-tidb_status_addr = "tidb:10080"
-service_addr = "tiflash:4030"
+service_addr = "0.0.0.0:3930"
 
 [flash.proxy]
 config = "/tiflash-learner.toml"
@@ -17,3 +16,7 @@ log = "/logs/tiflash.log"
 
 [raft]
 pd_addr = "pd0:2379"
+
+[storage.main]
+dir = ["/data/flash"]
+# capacity = [31457280]
