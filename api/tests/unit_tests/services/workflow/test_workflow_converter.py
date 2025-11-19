@@ -70,12 +70,13 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
 
     api_based_extension_id = "api_based_extension_id"
     mock_api_based_extension = APIBasedExtension(
-        id=api_based_extension_id,
+        tenant_id="tenant_id",
         name="api-1",
         api_key="encrypted_api_key",
         api_endpoint="https://dify.ai",
     )
 
+    mock_api_based_extension.id = api_based_extension_id
     workflow_converter = WorkflowConverter()
     workflow_converter._get_api_based_extension = MagicMock(return_value=mock_api_based_extension)
 
@@ -131,11 +132,12 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
 
     api_based_extension_id = "api_based_extension_id"
     mock_api_based_extension = APIBasedExtension(
-        id=api_based_extension_id,
+        tenant_id="tenant_id",
         name="api-1",
         api_key="encrypted_api_key",
         api_endpoint="https://dify.ai",
     )
+    mock_api_based_extension.id = api_based_extension_id
 
     workflow_converter = WorkflowConverter()
     workflow_converter._get_api_based_extension = MagicMock(return_value=mock_api_based_extension)
