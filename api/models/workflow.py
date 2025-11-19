@@ -900,8 +900,6 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
 
         extras: dict[str, Any] = {}
         if self.execution_metadata_dict:
-            from core.workflow.nodes import NodeType
-
             if self.node_type == NodeType.TOOL and "tool_info" in self.execution_metadata_dict:
                 tool_info: dict[str, Any] = self.execution_metadata_dict["tool_info"]
                 extras["icon"] = ToolManager.get_tool_icon(
