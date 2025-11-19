@@ -235,9 +235,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     }
                 else:
                     inputs_to_pass = (
-                        kwargs.get("inputs")
-                        if tool_instance.tool_provider_type() == ToolProviderType.MCP
-                        else None
+                        kwargs.get("inputs") if tool_instance.tool_provider_type() == ToolProviderType.MCP else None
                     )
                     # invoke tool
                     tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(

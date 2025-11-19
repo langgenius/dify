@@ -168,8 +168,9 @@ class MCPTool(Tool):
                 sse_read_timeout=self.sse_read_timeout,
                 provider_entity=provider_entity,
             ) as mcp_client:
-                return mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters, 
-                                              _meta=_meta)
+                return mcp_client.invoke_tool(
+                    tool_name=self.entity.identity.name, tool_args=tool_parameters, _meta=_meta
+                )
         except MCPConnectionError as e:
             raise ToolInvokeError(f"Failed to connect to MCP server: {e}") from e
         except Exception as e:

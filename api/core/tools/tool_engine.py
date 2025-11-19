@@ -198,7 +198,7 @@ class ToolEngine:
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-        inputs: dict[str, Any] | None = None, 
+        inputs: dict[str, Any] | None = None,
     ) -> Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]:
         """
         Invoke the tool with the given arguments.
