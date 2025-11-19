@@ -581,9 +581,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
             with self._database_session() as session:
                 # Save message
-                self._save_message(
-                    session=session, graph_runtime_state=resolved_state, trace_manager=trace_manager
-                )
+                self._save_message(session=session, graph_runtime_state=resolved_state, trace_manager=trace_manager)
 
             yield workflow_finish_resp
         elif event.stopped_by in (
