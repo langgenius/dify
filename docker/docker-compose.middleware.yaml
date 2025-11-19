@@ -1,7 +1,7 @@
 services:
   # The postgres database.
   db:
-    image: postgres:15-alpine
+    image: docker.io/library/postgres:15-alpine
     restart: always
     env_file:
       - ./middleware.env
@@ -39,7 +39,7 @@ services:
 
   # The redis cache.
   redis:
-    image: redis:6-alpine
+    image: docker.io/library/redis:6-alpine
     restart: always
     env_file:
       - ./middleware.env
@@ -61,7 +61,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.12
+    image: docker.io/langgenius/dify-sandbox:0.2.12
     restart: always
     env_file:
       - ./middleware.env
@@ -87,7 +87,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.4.0-local
+    image: docker.io/langgenius/dify-plugin-daemon:0.4.0-local
     restart: always
     env_file:
       - ./middleware.env
@@ -154,7 +154,7 @@ services:
   # for more information, please refer to
   # https://docs.dify.ai/learn-more/faq/install-faq#18-why-is-ssrf-proxy-needed%3F
   ssrf_proxy:
-    image: ubuntu/squid:latest
+    image: docker.io/ubuntu/squid:latest
     restart: always
     volumes:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
@@ -183,7 +183,7 @@ services:
 
   # The Weaviate vector store.
   weaviate:
-    image: semitechnologies/weaviate:1.27.0
+    image: docker.io/semitechnologies/weaviate:1.27.0
     profiles:
       - ""
       - weaviate
@@ -211,6 +211,7 @@ services:
       - "${EXPOSE_WEAVIATE_GRPC_PORT:-50051}:50051"
 
 networks:
+  default: {}
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
     driver: bridge

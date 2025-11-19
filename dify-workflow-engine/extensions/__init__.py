@@ -1,0 +1,2 @@
+class Extension:
+    pass

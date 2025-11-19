@@ -1,0 +1,2 @@
+class SSKey:
+    pass

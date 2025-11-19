@@ -1,0 +1,2 @@
+class CallbackHandler:
+    pass

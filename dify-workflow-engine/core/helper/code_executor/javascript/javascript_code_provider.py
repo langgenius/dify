@@ -1,0 +1,2 @@
+class JavascriptCodeProvider:
+    pass

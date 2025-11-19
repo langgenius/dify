@@ -1,0 +1,2 @@
+class ModelPropertyKey:
+    pass

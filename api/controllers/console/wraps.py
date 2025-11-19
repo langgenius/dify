@@ -216,7 +216,6 @@ def setup_required(view: Callable[P, R]):
             raise NotInitValidateError()
         elif dify_config.EDITION == "SELF_HOSTED" and not db.session.query(DifySetup).first():
             raise NotSetupError()
-
         return view(*args, **kwargs)
 
     return decorated

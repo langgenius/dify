@@ -1,0 +1,5 @@
+pydantic
+jinja2
+networkx
+packaging
+chardet

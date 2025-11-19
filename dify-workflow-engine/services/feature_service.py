@@ -1,0 +1,2 @@
+class FeatureService:
+    pass
