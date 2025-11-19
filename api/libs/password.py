@@ -3,6 +3,8 @@ import binascii
 import hashlib
 import re
 
+from configs import dify_config
+
 password_pattern = r"^(?=.*[a-zA-Z])(?=.*\d).{8,}$"
 
 
@@ -17,7 +19,12 @@ def valid_password(password):
 
 
 def hash_password(password_str, salt_byte):
-    dk = hashlib.pbkdf2_hmac("sha256", password_str.encode("utf-8"), salt_byte, 10000)
+    dk = hashlib.pbkdf2_hmac(
+        "sha256",
+        password_str.encode("utf-8"),
+        salt_byte,
+        dify_config.PASSWORD_HASH_ITERATIONS,
+    )
     return binascii.hexlify(dk)
 
 

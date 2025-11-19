@@ -63,6 +63,11 @@ class SecurityConfig(BaseSettings):
         default=None,
     )
 
+    PASSWORD_HASH_ITERATIONS: int = Field(
+        description="Number of PBKDF2 iterations for password hashing. Higher values increase security but slow down hashing. Recommended: 600000+ for 2025 standards",
+        default=10000,
+    )
+
 
 class AppExecutionConfig(BaseSettings):
     """
