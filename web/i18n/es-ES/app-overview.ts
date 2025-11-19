@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Lanzar',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API del servicio backend',
@@ -124,6 +125,10 @@ const translation = {
     status: {
       running: 'En servicio',
       disable: 'Deshabilitar',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: 'La función {{feature}} no es compatible en el modo Nodo de disparo.',
     },
   },
   analysis: {
