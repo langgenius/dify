@@ -63,7 +63,7 @@ class SecurityConfig(BaseSettings):
         default=None,
     )
 
-    PASSWORD_HASH_ITERATIONS: int = Field(
+    PASSWORD_HASH_ITERATIONS: PositiveInt = Field(
         description="Number of PBKDF2 iterations for password hashing. Recommended: 600000+ for 2025 standards",
         default=10000,
     )
