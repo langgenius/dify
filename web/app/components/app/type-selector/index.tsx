@@ -9,13 +9,14 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
-import type { AppMode } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
+
 export type AppSelectorProps = {
-  value: Array<AppMode>
+  value: Array<AppModeEnum>
   onChange: (value: AppSelectorProps['value']) => void
 }
 
-const allTypes: AppMode[] = ['workflow', 'advanced-chat', 'chat', 'agent-chat', 'completion']
+const allTypes: AppModeEnum[] = [AppModeEnum.WORKFLOW, AppModeEnum.ADVANCED_CHAT, AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION]
 
 const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
   const [open, setOpen] = useState(false)
@@ -66,7 +67,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
 export default AppTypeSelector
 
 type AppTypeIconProps = {
-  type: AppMode
+  type: AppModeEnum
   style?: React.CSSProperties
   className?: string
   wrapperClassName?: string
@@ -75,27 +76,27 @@ type AppTypeIconProps = {
 export const AppTypeIcon = React.memo(({ type, className, wrapperClassName, style }: AppTypeIconProps) => {
   const wrapperClassNames = cn('inline-flex h-5 w-5 items-center justify-center rounded-md border border-divider-regular', wrapperClassName)
   const iconClassNames = cn('h-3.5 w-3.5 text-components-avatar-shape-fill-stop-100', className)
-  if (type === 'chat') {
+  if (type === AppModeEnum.CHAT) {
     return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-solid')}>
       <ChatBot className={iconClassNames} />
     </div>
   }
-  if (type === 'agent-chat') {
+  if (type === AppModeEnum.AGENT_CHAT) {
     return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-violet-solid')}>
       <Logic className={iconClassNames} />
     </div>
   }
-  if (type === 'advanced-chat') {
+  if (type === AppModeEnum.ADVANCED_CHAT) {
     return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-light-solid')}>
       <BubbleTextMod className={iconClassNames} />
     </div>
   }
-  if (type === 'workflow') {
+  if (type === AppModeEnum.WORKFLOW) {
     return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-indigo-solid')}>
       <RiExchange2Fill className={iconClassNames} />
     </div>
   }
-  if (type === 'completion') {
+  if (type === AppModeEnum.COMPLETION) {
     return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-teal-solid')}>
       <ListSparkle className={iconClassNames} />
     </div>
@@ -133,7 +134,7 @@ function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['v
 
 type AppTypeSelectorItemProps = {
   checked: boolean
-  type: AppMode
+  type: AppModeEnum
   onClick: () => void
 }
 function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProps) {
@@ -147,21 +148,21 @@ function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProp
 }
 
 type AppTypeLabelProps = {
-  type: AppMode
+  type: AppModeEnum
   className?: string
 }
 export function AppTypeLabel({ type, className }: AppTypeLabelProps) {
   const { t } = useTranslation()
   let label = ''
-  if (type === 'chat')
+  if (type === AppModeEnum.CHAT)
     label = t('app.typeSelector.chatbot')
-  if (type === 'agent-chat')
+  if (type === AppModeEnum.AGENT_CHAT)
     label = t('app.typeSelector.agent')
-  if (type === 'completion')
+  if (type === AppModeEnum.COMPLETION)
     label = t('app.typeSelector.completion')
-  if (type === 'advanced-chat')
+  if (type === AppModeEnum.ADVANCED_CHAT)
     label = t('app.typeSelector.advanced')
-  if (type === 'workflow')
+  if (type === AppModeEnum.WORKFLOW)
     label = t('app.typeSelector.workflow')
 
   return <span className={className}>{label}</span>

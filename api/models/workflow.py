@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
@@ -140,8 +140,9 @@ class Workflow(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
-        default=naive_utc_now(),
-        server_onupdate=func.current_timestamp(),
+        default=func.current_timestamp(),
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
     )
     _environment_variables: Mapped[str] = mapped_column(
         "environment_variables", sa.Text, nullable=False, server_default="{}"
@@ -150,7 +151,7 @@ class Workflow(Base):
         "conversation_variables", sa.Text, nullable=False, server_default="{}"
     )
     _rag_pipeline_variables: Mapped[str] = mapped_column(
-        "rag_pipeline_variables", db.Text, nullable=False, server_default="{}"
+        "rag_pipeline_variables", sa.Text, nullable=False, server_default="{}"
     )
 
     VERSION_DRAFT = "draft"
@@ -301,6 +302,54 @@ class Workflow(Base):
     @property
     def features_dict(self) -> dict[str, Any]:
         return json.loads(self.features) if self.features else {}
+
+    def walk_nodes(
+        self, specific_node_type: NodeType | None = None
+    ) -> Generator[tuple[str, Mapping[str, Any]], None, None]:
+        """
+        Walk through the workflow nodes, yield each node configuration.
+
+        Each node configuration is a tuple containing the node's id and the node's properties.
+
+        Node properties example:
+        {
+            "type": "llm",
+            "title": "LLM",
+            "desc": "",
+            "variables": [],
+            "model":
+              {
+                "provider": "langgenius/openai/openai",
+                "name": "gpt-4",
+                "mode": "chat",
+                "completion_params": { "temperature": 0.7 },
+              },
+            "prompt_template": [{ "role": "system", "text": "" }],
+            "context": { "enabled": false, "variable_selector": [] },
+            "vision": { "enabled": false },
+            "memory":
+              {
+                "window": { "enabled": false, "size": 10 },
+                "query_prompt_template": "{{#sys.query#}}\n\n{{#sys.files#}}",
+                "role_prefix": { "user": "", "assistant": "" },
+              },
+            "selected": false,
+        }
+
+        For specific node type, refer to `core.workflow.nodes`
+        """
+        graph_dict = self.graph_dict
+        if "nodes" not in graph_dict:
+            raise WorkflowDataError("nodes not found in workflow graph")
+
+        if specific_node_type:
+            yield from (
+                (node["id"], node["data"])
+                for node in graph_dict["nodes"]
+                if node["data"]["type"] == specific_node_type.value
+            )
+        else:
+            yield from ((node["id"], node["data"]) for node in graph_dict["nodes"])
 
     def user_input_form(self, to_old_structure: bool = False) -> list[Any]:
         # get start node from graph
@@ -1058,7 +1107,16 @@ class WorkflowAppLog(Base):
 
     @property
     def workflow_run(self):
-        return db.session.get(WorkflowRun, self.workflow_run_id)
+        if self.workflow_run_id:
+            from sqlalchemy.orm import sessionmaker
+
+            from repositories.factory import DifyAPIRepositoryFactory
+
+            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+            repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            return repo.get_workflow_run_by_id_without_tenant(run_id=self.workflow_run_id)
+
+        return None
 
     @property
     def created_by_account(self):

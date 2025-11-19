@@ -22,6 +22,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
+from enums.cloud_plan import CloudPlan
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
@@ -49,6 +50,7 @@ from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
+from services.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
@@ -78,7 +80,6 @@ from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
-from tasks.document_indexing_task import document_indexing_task
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.duplicate_document_indexing_task import duplicate_document_indexing_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
@@ -1042,7 +1043,7 @@ class DatasetService:
         assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
         features = FeatureService.get_features(current_user.current_tenant_id)
-        if not features.billing.enabled or features.billing.subscription.plan == "sandbox":
+        if not features.billing.enabled or features.billing.subscription.plan == CloudPlan.SANDBOX:
             return {
                 "document_ids": [],
                 "count": 0,
@@ -1438,7 +1439,7 @@ class DocumentService:
                         count = len(website_info.urls)
                     batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
 
-                    if features.billing.subscription.plan == "sandbox" and count > 1:
+                    if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
                         raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
                     if count > batch_upload_limit:
                         raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
@@ -1693,7 +1694,7 @@ class DocumentService:
 
                 # trigger async task
                 if document_ids:
-                    document_indexing_task.delay(dataset.id, document_ids)
+                    DocumentIndexingTaskProxy(dataset.tenant_id, dataset.id, document_ids).delay()
                 if duplicate_document_ids:
                     duplicate_document_indexing_task.delay(dataset.id, duplicate_document_ids)
 
@@ -1727,7 +1728,7 @@ class DocumentService:
     #                     count = len(website_info.urls)  # type: ignore
     #                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
 
-    #                 if features.billing.subscription.plan == "sandbox" and count > 1:
+    #                 if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
     #                     raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
     #                 if count > batch_upload_limit:
     #                     raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
@@ -2196,7 +2197,7 @@ class DocumentService:
                 website_info = knowledge_config.data_source.info_list.website_info_list
                 if website_info:
                     count = len(website_info.urls)
-            if features.billing.subscription.plan == "sandbox" and count > 1:
+            if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
                 raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
             if count > batch_upload_limit:

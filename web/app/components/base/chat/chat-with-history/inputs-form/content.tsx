@@ -49,7 +49,7 @@ const InputsFormContent = ({ showTip }: Props) => {
             <div className='flex h-6 items-center gap-1'>
               <div className='system-md-semibold text-text-secondary'>{form.label}</div>
               {!form.required && (
-                <div className='system-xs-regular text-text-tertiary'>{t('appDebug.variableTable.optional')}</div>
+                <div className='system-xs-regular text-text-tertiary'>{t('workflow.panel.optional')}</div>
               )}
             </div>
           )}
