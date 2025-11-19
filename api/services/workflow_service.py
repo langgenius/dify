@@ -283,7 +283,9 @@ class WorkflowService:
                 trigger_node_count = sum(
                     1
                     for _, node_data in draft_workflow.walk_nodes()
-                    if node_data.get("type") and NodeType(node_data.get("type")).is_trigger_node
+                    if (node_type_str := node_data.get("type"))
+                    and isinstance(node_type_str, str)
+                    and NodeType(node_type_str).is_trigger_node
                 )
                 if trigger_node_count > 2:
                     raise TriggerNodeLimitExceededError(count=trigger_node_count, limit=2)
