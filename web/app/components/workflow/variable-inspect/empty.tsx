@@ -15,7 +15,7 @@ const Empty: FC = () => {
         <div className='system-xs-regular text-text-tertiary'>{t('workflow.debug.variableInspect.emptyTip')}</div>
         <a
           className='system-xs-regular cursor-pointer text-text-accent'
-          href='https://docs.dify.ai/en/documentation/pages/debug/variable-inspect'
+          href='https://docs.dify.ai/getting-started/introduction/en/documentation/pages/debug/variable-inspect'
           target='_blank'
           rel='noopener noreferrer'>
           {t('workflow.debug.variableInspect.emptyLink')}

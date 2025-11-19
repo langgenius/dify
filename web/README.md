@@ -110,7 +110,7 @@ If you are not familiar with writing tests, here is some code to refer to:
 
 ## Documentation
 
-Visit <https://docs.dify.ai/> to view the full documentation.
+Visit <https://docs.dify.ai/getting-started/introduction/> to view the full documentation.
 
 ## Community
 
