@@ -192,7 +192,6 @@ class GraphEngine:
         self._dispatcher = Dispatcher(
             event_queue=self._event_queue,
             event_handler=self._event_handler_registry,
-            event_collector=self._event_manager,
             execution_coordinator=self._execution_coordinator,
             event_emitter=self._event_manager,
         )
