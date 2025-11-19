@@ -207,10 +207,7 @@ class MetadataService:
                 if document is None:
                     raise ValueError("Document not found.")
                 if operation.partial_update:
-                    if not document.doc_metadata:
-                        doc_metadata = {}
-                    else:
-                        doc_metadata = copy.deepcopy(document.doc_metadata)
+                    doc_metadata = copy.deepcopy(document.doc_metadata) if document.doc_metadata else {}
                 else:
                     doc_metadata = {}
                 for metadata_value in operation.metadata_list:
