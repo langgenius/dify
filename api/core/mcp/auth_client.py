@@ -174,7 +174,7 @@ class MCPClientWithAuthRetry(MCPClient):
         """
         return self._execute_with_retry(super().list_tools)
 
-    def invoke_tool(self, tool_name: str, tool_args: dict[str, Any]) -> CallToolResult:
+    def invoke_tool(self, tool_name: str, tool_args: dict[str, Any], _meta: dict[str, Any]) -> CallToolResult:
         """
         Invoke a tool on the MCP server with auth retry.
 
@@ -188,4 +188,4 @@ class MCPClientWithAuthRetry(MCPClient):
         Raises:
             MCPAuthError: If authentication fails after retries
         """
-        return self._execute_with_retry(super().invoke_tool, tool_name, tool_args)
+        return self._execute_with_retry(super().invoke_tool, tool_name, tool_args, _meta)
