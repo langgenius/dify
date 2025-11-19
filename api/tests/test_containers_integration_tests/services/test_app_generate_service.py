@@ -5,12 +5,10 @@ import pytest
 from faker import Faker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from enums.cloud_plan import CloudPlan
 from models.model import EndUser
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
-from services.errors.llm import InvokeRateLimitError
 
 
 class TestAppGenerateService:
@@ -426,11 +424,6 @@ class TestAppGenerateService:
             db_session_with_containers, mock_external_service_dependencies, mode="completion"
         )
 
-        # Setup billing service mock for sandbox plan
-        mock_external_service_dependencies["billing_service"].get_info.return_value = {
-            "subscription": {"plan": CloudPlan.SANDBOX}
-        }
-
         # Set BILLING_ENABLED to True for this test
         mock_external_service_dependencies["dify_config"].BILLING_ENABLED = True
 
@@ -445,41 +438,10 @@ class TestAppGenerateService:
         # Verify the result
         assert result == ["test_response"]
 
-        # Verify billing service was called
-        mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(app.tenant_id)
-
-    def test_generate_with_rate_limit_exceeded(self, db_session_with_containers, mock_external_service_dependencies):
-        """
-        Test generation when rate limit is exceeded.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
-        )
-
-        # Setup billing service mock for sandbox plan
-        mock_external_service_dependencies["billing_service"].get_info.return_value = {
-            "subscription": {"plan": CloudPlan.SANDBOX}
-        }
-
-        # Set BILLING_ENABLED to True for this test
-        mock_external_service_dependencies["dify_config"].BILLING_ENABLED = True
-
-        # Setup system rate limiter to return rate limited
-        with patch("services.app_generate_service.AppGenerateService.system_rate_limiter") as mock_system_rate_limiter:
-            mock_system_rate_limiter.is_rate_limited.return_value = True
-
-            # Setup test arguments
-            args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
-
-            # Execute the method under test and expect rate limit error
-            with pytest.raises(InvokeRateLimitError) as exc_info:
-                AppGenerateService.generate(
-                    app_model=app, user=account, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=True
-                )
-
-            # Verify error message
-            assert "Rate limit exceeded" in str(exc_info.value)
+        # Verify billing service was called to consume quota
+        mock_external_service_dependencies[
+            "billing_service"
+        ].update_tenant_feature_plan_usage.assert_called_once()
 
     def test_generate_with_invalid_app_mode(self, db_session_with_containers, mock_external_service_dependencies):
         """
