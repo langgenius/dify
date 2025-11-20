@@ -1,7 +1,7 @@
 """Add workflow_pauses_reasons table
 
 Revision ID: 7bb281b7a422
-Revises: 669ffd70119c
+Revises: 09cfdda155d1
 Create Date: 2025-11-18 18:59:26.999572
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "7bb281b7a422"
-down_revision = "669ffd70119c"
+down_revision = "09cfdda155d1"
 branch_labels = None
 depends_on = None
 
