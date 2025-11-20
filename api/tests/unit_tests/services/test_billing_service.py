@@ -156,7 +156,7 @@ class TestBillingServiceSendRequest:
         self, mock_httpx_request, mock_billing_config, method, status_code
     ):
         """Test POST/DELETE request with non-200 status code and invalid JSON response raises exception.
-        
+
         When billing service raises HTTPException(status_code=500, detail=str(e)), it typically returns
         JSON like {"detail": "error"} which can be parsed. However, if the response cannot be parsed
         as JSON (e.g., empty response), response.json() will raise JSONDecodeError.

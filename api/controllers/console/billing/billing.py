@@ -54,9 +54,7 @@ class PartnerTenants(Resource):
     @api.expect(
         api.model(
             "SyncPartnerTenantsBindingsRequest",
-            {
-                "click_id": fields.String(required=True, description="Click Id from partner referral link")
-            },
+            {"click_id": fields.String(required=True, description="Click Id from partner referral link")},
         )
     )
     @api.response(200, "Tenants synced to partner successfully")
@@ -67,10 +65,7 @@ class PartnerTenants(Resource):
     @only_edition_cloud
     def put(self, partner_key: str):
         current_user, _ = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("click_id", required=True, type=str, location="json")
-        )
+        parser = reqparse.RequestParser().add_argument("click_id", required=True, type=str, location="json")
         args = parser.parse_args()
 
         try:
@@ -78,8 +73,8 @@ class PartnerTenants(Resource):
             decoded_partner_key = base64.b64decode(partner_key).decode("utf-8")
         except Exception:
             raise BadRequest("Invalid partner_key")
-        
+
         if not click_id or not decoded_partner_key or not current_user.id:
             raise BadRequest("Invalid partner information")
-        
+
         return BillingService.sync_partner_tenants_bindings(current_user.id, decoded_partner_key, click_id)

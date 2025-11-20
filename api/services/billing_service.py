@@ -187,7 +187,7 @@ class BillingService:
     @classmethod
     def clean_billing_info_cache(cls, tenant_id: str):
         redis_client.delete(f"tenant:{tenant_id}:billing_info")
-    
+
     @classmethod
     def sync_partner_tenants_bindings(cls, account_id: str, partner_key: str, click_id: str):
         payload = {"account_id": account_id, "click_id": click_id}
