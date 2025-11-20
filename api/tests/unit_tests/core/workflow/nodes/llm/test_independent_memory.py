@@ -126,9 +126,9 @@ def patch_minimal_runtime(monkeypatch):
     # Mock _fetch_model_config to avoid database calls
     def _fake_fetch_model_config(*, node_data_model, tenant_id):
         from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-        from core.entities.provider_configuration import ProviderModelBundle, ProviderConfiguration
+        from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
         from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
-        from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType, FREETEXT
+        from core.model_runtime.entities.model_entities import FetchFrom, ModelType
         from models.provider import ProviderType
 
         # Create minimal fake objects for the required fields
@@ -201,6 +201,7 @@ def test_independent_memory_injected_into_prompt(
 
     # Make llm_utils return our fake node memory
     from core.workflow.nodes.llm import llm_utils as utils_mod
+
     monkeypatch.setattr(utils_mod, "fetch_node_scoped_memory", lambda **kwargs: fake_mem)
 
     # Capture prompt_messages passed to invoke_llm
@@ -228,9 +229,7 @@ def test_independent_memory_injected_into_prompt(
         query = None
         if self._node_data.memory:
             query = self._node_data.memory.query_prompt_template
-            if not query and (
-                query_variable := variable_pool.get((["sys", "query"]))
-            ):
+            if not query and (query_variable := variable_pool.get(["sys", "query"])):
                 query = query_variable.text
 
         # This mimics fetch_prompt_messages logic - simplified
@@ -293,8 +292,8 @@ def test_independent_memory_persist_append_on_success(
 
     # Create a fake invoke_llm that also handles the memory append/save logic
     def _fake_invoke_llm_with_memory(self, **kwargs):
-        from core.workflow.node_events.node import ModelInvokeCompletedEvent
         from core.model_runtime.entities.llm_entities import LLMUsage
+        from core.workflow.node_events.node import ModelInvokeCompletedEvent
 
         # Extract query from prompt messages for memory append
         prompt_messages = kwargs.get("prompt_messages", [])
@@ -305,7 +304,9 @@ def test_independent_memory_persist_append_on_success(
                 break
 
         # Simulate successful LLM invocation with completion
-        yield ModelInvokeCompletedEvent(text="ANS", usage=LLMUsage.empty_usage(), finish_reason=None, reasoning_content="")
+        yield ModelInvokeCompletedEvent(
+            text="ANS", usage=LLMUsage.empty_usage(), finish_reason=None, reasoning_content=""
+        )
 
         # After successful completion, memory should be appended and saved
         # This mimics the logic in LLMNode._run
@@ -336,9 +337,7 @@ def test_independent_memory_persist_append_on_success(
         query = None
         if self._node_data.memory:
             query = self._node_data.memory.query_prompt_template
-            if not query and (
-                query_variable := variable_pool.get((["sys", "query"]))
-            ):
+            if not query and (query_variable := variable_pool.get(["sys", "query"])):
                 query = query_variable.text
 
         # This mimics fetch_prompt_messages logic - simplified
@@ -414,11 +413,13 @@ def test_independent_memory_clear_after_execution(
 
     # Create a fake invoke_llm that just produces a completion event
     def _fake_invoke_llm_simple(self, **kwargs):
-        from core.workflow.node_events.node import ModelInvokeCompletedEvent
         from core.model_runtime.entities.llm_entities import LLMUsage
+        from core.workflow.node_events.node import ModelInvokeCompletedEvent
 
         # Simulate successful LLM invocation with completion
-        yield ModelInvokeCompletedEvent(text="ANS", usage=LLMUsage.empty_usage(), finish_reason=None, reasoning_content="")
+        yield ModelInvokeCompletedEvent(
+            text="ANS", usage=LLMUsage.empty_usage(), finish_reason=None, reasoning_content=""
+        )
 
     monkeypatch.setattr(LLMNode, "invoke_llm", _fake_invoke_llm_simple)
 
@@ -447,9 +448,7 @@ def test_independent_memory_clear_after_execution(
         query = None
         if self._node_data.memory:
             query = self._node_data.memory.query_prompt_template
-            if not query and (
-                query_variable := variable_pool.get((["sys", "query"]))
-            ):
+            if not query and (query_variable := variable_pool.get(["sys", "query"])):
                 query = query_variable.text
 
         # This mimics fetch_prompt_messages logic - simplified

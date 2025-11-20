@@ -105,8 +105,7 @@ class ChatHistoryMemory(Protocol):
         *,
         max_token_limit: int = 2000,
         message_limit: int | None = None,
-    ) -> Sequence[PromptMessage]:
-        ...
+    ) -> Sequence[PromptMessage]: ...
 
     def get_history_prompt_text(
         self,
@@ -115,8 +114,7 @@ class ChatHistoryMemory(Protocol):
         ai_prefix: str = "Assistant",
         max_token_limit: int = 2000,
         message_limit: int | None = None,
-    ) -> str:
-        ...
+    ) -> str: ...
 
 
 class LLMNode(Node):
