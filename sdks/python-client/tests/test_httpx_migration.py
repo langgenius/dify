@@ -152,6 +152,7 @@ class TestHttpxMigrationMocked(unittest.TestCase):
         """Test that json parameter is passed correctly."""
         mock_response = Mock()
         mock_response.json.return_value = {"result": "success"}
+        mock_response.status_code = 200  # Add status_code attribute
 
         mock_client_instance = Mock()
         mock_client_instance.request.return_value = mock_response
@@ -173,6 +174,7 @@ class TestHttpxMigrationMocked(unittest.TestCase):
         """Test that params parameter is passed correctly."""
         mock_response = Mock()
         mock_response.json.return_value = {"result": "success"}
+        mock_response.status_code = 200  # Add status_code attribute
 
         mock_client_instance = Mock()
         mock_client_instance.request.return_value = mock_response
