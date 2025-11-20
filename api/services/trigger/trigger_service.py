@@ -298,9 +298,6 @@ class TriggerService:
                         redis_client.delete(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{node_id}")
                 session.commit()
             except Exception:
-                import logging
-
-                logger = logging.getLogger(__name__)
                 logger.exception("Failed to sync plugin trigger relationships for app %s", app.id)
                 raise
             finally:

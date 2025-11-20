@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib
 import json
 from collections.abc import Mapping, Sequence
-from collections.abc import Mapping as TypingMapping
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -100,8 +99,8 @@ class ResponseStreamCoordinatorProtocol(Protocol):
 class GraphProtocol(Protocol):
     """Structural interface required from graph instances attached to the runtime state."""
 
-    nodes: TypingMapping[str, object]
-    edges: TypingMapping[str, object]
+    nodes: Mapping[str, object]
+    edges: Mapping[str, object]
     root_node: object
 
     def get_outgoing_edges(self, node_id: str) -> Sequence[object]: ...
