@@ -156,7 +156,7 @@ def _execute_workflow_common(
                 triggered_from=trigger_data.trigger_from,
                 root_node_id=trigger_data.root_node_id,
                 graph_engine_layers=[
-                    # TimeSliceLayer(cfs_plan_scheduler), TODO: add this back
+                    # TODO: Re-enable TimeSliceLayer after the HITL release.
                     TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id, session_factory),
                 ],
             )
