@@ -7,7 +7,15 @@ import { useCallback } from 'react'
 
 const usePSInfo = () => {
   const searchParams = useSearchParams()
-  const psInfoInCookie = JSON.parse(Cookies.get(PARTNER_STACK_CONFIG.cookieName) || '{}')
+  const psInfoInCookie = (() => {
+    try {
+      return JSON.parse(Cookies.get(PARTNER_STACK_CONFIG.cookieName) || '{}')
+    }
+    catch (e) {
+      console.error('Failed to parse partner stack info from cookie:', e)
+      return {}
+    }
+  })()
   const psPartnerKey = searchParams.get('ps_partner_key') || psInfoInCookie?.partnerKey
   const psClickId = searchParams.get('ps_xid') || psInfoInCookie?.clickId
   const isPSChanged = psInfoInCookie?.partnerKey !== psPartnerKey || psInfoInCookie?.clickId !== psClickId
