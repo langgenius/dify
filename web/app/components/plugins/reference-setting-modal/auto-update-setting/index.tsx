@@ -15,6 +15,7 @@ import { RiTimeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import { useModalContextSelector } from '@/context/modal-context'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 const i18nPrefix = 'plugin.autoUpdate'
 
@@ -30,7 +31,7 @@ const SettingTimeZone: FC<{
 }) => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   return (
-    <span className='body-xs-regular cursor-pointer text-text-accent' onClick={() => setShowAccountSettingModal({ payload: 'language' })} >{children}</span>
+    <span className='body-xs-regular cursor-pointer text-text-accent' onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })} >{children}</span>
   )
 }
 const AutoUpdateSetting: FC<Props> = ({
@@ -143,6 +144,7 @@ const AutoUpdateSetting: FC<Props> = ({
                   title={t(`${i18nPrefix}.updateTime`)}
                   minuteFilter={minuteFilter}
                   renderTrigger={renderTimePickerTrigger}
+                  placement='bottom-end'
                 />
                 <div className='body-xs-regular mt-1 text-right text-text-tertiary'>
                   <Trans

@@ -8,12 +8,12 @@ from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 import sqlalchemy as sa
-from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from yarl import URL
 
 import contexts
+from configs import dify_config
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_provider import ToolProviderController
@@ -33,12 +33,12 @@ from services.tools.mcp_tools_manage_service import MCPToolManageService
 if TYPE_CHECKING:
     from core.workflow.nodes.tool.entities import ToolEntity
 
-from configs import dify_config
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool import Tool
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -49,7 +49,6 @@ from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
-    CredentialType,
     ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
@@ -289,10 +288,8 @@ class ToolManager:
                     credentials=decrypted_credentials,
                 )
                 # update the credentials
-                builtin_provider.encrypted_credentials = (
-                    TypeAdapter(dict[str, Any])
-                    .dump_json(encrypter.encrypt(dict(refreshed_credentials.credentials)))
-                    .decode("utf-8")
+                builtin_provider.encrypted_credentials = json.dumps(
+                    encrypter.encrypt(refreshed_credentials.credentials)
                 )
                 builtin_provider.expires_at = refreshed_credentials.expires_at
                 db.session.commit()
@@ -322,7 +319,7 @@ class ToolManager:
             return api_provider.get_tool(tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=tenant_id,
-                    credentials=encrypter.decrypt(credentials),
+                    credentials=dict(encrypter.decrypt(credentials)),
                     invoke_from=invoke_from,
                     tool_invoke_from=tool_invoke_from,
                 )
@@ -621,12 +618,28 @@ class ToolManager:
         """
         # according to multi credentials, select the one with is_default=True first, then created_at oldest
         # for compatibility with old version
-        sql = """
+        if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
+            # PostgreSQL: Use DISTINCT ON
+            sql = """
                 SELECT DISTINCT ON (tenant_id, provider) id
                 FROM tool_builtin_providers
                 WHERE tenant_id = :tenant_id
                 ORDER BY tenant_id, provider, is_default DESC, created_at DESC
                 """
+        else:
+            # MySQL: Use window function to achieve same result
+            sql = """
+                SELECT id FROM (
+                    SELECT id, 
+                           ROW_NUMBER() OVER (
+                               PARTITION BY tenant_id, provider 
+                               ORDER BY is_default DESC, created_at DESC
+                           ) as rn
+                    FROM tool_builtin_providers
+                    WHERE tenant_id = :tenant_id
+                ) ranked WHERE rn = 1
+                """
+
         with Session(db.engine, autoflush=False) as session:
             ids = [row.id for row in session.execute(sa.text(sql), {"tenant_id": tenant_id}).all()]
             return session.query(BuiltinToolProvider).where(BuiltinToolProvider.id.in_(ids)).all()
@@ -833,7 +846,7 @@ class ToolManager:
             controller=controller,
         )
 
-        masked_credentials = encrypter.mask_tool_credentials(encrypter.decrypt(credentials))
+        masked_credentials = encrypter.mask_plugin_credentials(encrypter.decrypt(credentials))
 
         try:
             icon = json.loads(provider_obj.icon)

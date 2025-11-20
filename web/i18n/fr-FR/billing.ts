@@ -73,7 +73,7 @@ const translation = {
     ragAPIRequestTooltip: 'Fait référence au nombre d\'appels API invoquant uniquement les capacités de traitement de la base de connaissances de Dify.',
     receiptInfo: 'Seuls le propriétaire de l\'équipe et l\'administrateur de l\'équipe peuvent s\'abonner et consulter les informations de facturation',
     annotationQuota: 'Quota d’annotation',
-    apiRateLimitUnit: '{{count,number}}/jour',
+    apiRateLimitUnit: '{{count,number}}',
     priceTip: 'par espace de travail/',
     freeTrialTipSuffix: 'Aucune carte de crédit requise',
     teamWorkspace: '{{count,number}} Espace de travail d\'équipe',
@@ -106,7 +106,7 @@ const translation = {
     professional: {
       name: 'Professionnel',
       description: 'Pour les individus et les petites équipes afin de débloquer plus de puissance à un prix abordable.',
-      for: 'Pour les développeurs indépendants / petites équipes',
+      for: 'Pour les développeurs indépendants/petites équipes',
     },
     team: {
       name: 'Équipe',

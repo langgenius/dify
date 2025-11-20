@@ -82,7 +82,7 @@ const translation = {
     teamMember_one: '{{count,number}} สมาชิกทีม',
     unlimitedApiRate: 'ไม่มีข้อจำกัดอัตราการเรียก API',
     self: 'โฮสต์ด้วยตัวเอง',
-    apiRateLimitUnit: '{{count,number}}/วัน',
+    apiRateLimitUnit: '{{count,number}}',
     teamMember_other: '{{count,number}} สมาชิกทีม',
     teamWorkspace: '{{count,number}} ทีมทำงาน',
     priceTip: 'ต่อพื้นที่ทำงาน/',

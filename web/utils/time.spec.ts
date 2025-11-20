@@ -87,7 +87,8 @@ describe('time', () => {
     test('works with timestamps', () => {
       const date = 1705276800000 // 2024-01-15 00:00:00 UTC
       const result = formatTime({ date, dateFormat: 'YYYY-MM-DD' })
-      expect(result).toContain('2024-01-1') // Account for timezone differences
+      // Account for timezone differences: UTC-5 to UTC+8 can result in 2024-01-14 or 2024-01-15
+      expect(result).toMatch(/^2024-01-(14|15)$/)
     })
 
     test('handles ISO 8601 format', () => {

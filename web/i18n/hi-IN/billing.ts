@@ -96,7 +96,7 @@ const translation = {
     freeTrialTip: '200 ओपनएआई कॉल्स का मुफ्त परीक्षण।',
     documents: '{{count,number}} ज्ञान दस्तावेज़',
     freeTrialTipSuffix: 'कोई क्रेडिट कार्ड की आवश्यकता नहीं है',
-    apiRateLimitUnit: '{{count,number}}/दिन',
+    apiRateLimitUnit: '{{count,number}}',
     teamWorkspace: '{{count,number}} टीम कार्यक्षेत्र',
     apiRateLimitTooltip: 'Dify API के माध्यम से की गई सभी अनुरोधों पर API दर सीमा लागू होती है, जिसमें टेक्स्ट जनरेशन, चैट वार्तालाप, कार्यप्रवाह निष्पादन और दस्तावेज़ प्रसंस्करण शामिल हैं।',
     teamMember_one: '{{count,number}} टीम सदस्य',
