@@ -11,7 +11,7 @@ This test suite covers:
 
 import base64
 import secrets
-from datetime import datetime, timezone as tz
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -257,7 +257,7 @@ class TestAccountStatusTransitions:
 
         # Act
         account.status = AccountStatus.ACTIVE
-        account.initialized_at = datetime.now(tz.utc)
+        account.initialized_at = datetime.now(UTC)
 
         # Assert
         assert account.get_status() == AccountStatus.ACTIVE
@@ -857,7 +857,7 @@ class TestAccountIntegration:
         """Test account last login tracking."""
         # Arrange
         account = Account(name="Test User", email="test@example.com")
-        login_time = datetime.now(tz.utc)
+        login_time = datetime.now(UTC)
         login_ip = "192.168.1.1"
 
         # Act
@@ -879,7 +879,7 @@ class TestAccountIntegration:
 
         # Act - simulate initialization
         account.status = AccountStatus.ACTIVE
-        account.initialized_at = datetime.now(tz.utc)
+        account.initialized_at = datetime.now(UTC)
 
         # Assert
         assert account.get_status() == AccountStatus.ACTIVE
