@@ -24,9 +24,9 @@ class APIBasedExtension(TypeBase):
         sa.Index("api_based_extension_tenant_idx", "tenant_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     api_endpoint: Mapped[str] = mapped_column(String(255), nullable=False)
-    api_key = mapped_column(LongText, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    api_key: Mapped[str] = mapped_column(LongText, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
