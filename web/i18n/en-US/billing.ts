@@ -13,8 +13,8 @@ const translation = {
   },
   teamMembers: 'Team Members',
   triggerLimitModal: {
-    title: 'Upgrade to unlock unlimited triggers per workflow',
-    description: 'You’ve reached the limit of 2 triggers per workflow for this plan. Upgrade to publish this workflow.',
+    title: 'Upgrade to unlock more trigger events',
+    description: 'You\'ve reached the limit of workflow event triggers for this plan.',
     dismiss: 'Dismiss',
     upgrade: 'Upgrade',
     usageTitle: 'TRIGGER EVENTS',
