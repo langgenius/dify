@@ -6,15 +6,16 @@ import { useRouter } from 'next/navigation'
 import {
   RiBook2Line,
   RiFileEditLine,
-  RiFlashlightLine,
   RiGraduationCapLine,
   RiGroupLine,
-  RiSpeedLine,
 } from '@remixicon/react'
 import { Plan, SelfHostedPlan } from '../type'
+import { NUM_INFINITE } from '../config'
+import { getDaysUntilEndOfMonth } from '@/utils/time'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
 import AppsInfo from '../usage-info/apps-info'
 import UpgradeBtn from '../upgrade-btn'
+import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import { useProviderContext } from '@/context/provider-context'
 import { useAppContext } from '@/context/app-context'
 import Button from '@/app/components/base/button'
@@ -44,9 +45,20 @@ const PlanComp: FC<Props> = ({
   const {
     usage,
     total,
+    reset,
   } = plan
-  const perMonthUnit = ` ${t('billing.usagePage.perMonth')}`
-  const triggerEventUnit = plan.type === Plan.sandbox ? undefined : perMonthUnit
+  const triggerEventsResetInDays = type === Plan.professional && total.triggerEvents !== NUM_INFINITE
+    ? reset.triggerEvents ?? undefined
+    : undefined
+  const apiRateLimitResetInDays = (() => {
+    if (total.apiRateLimit === NUM_INFINITE)
+      return undefined
+    if (typeof reset.apiRateLimit === 'number')
+      return reset.apiRateLimit
+    if (type === Plan.sandbox)
+      return getDaysUntilEndOfMonth()
+    return undefined
+  })()
 
   const [showModal, setShowModal] = React.useState(false)
   const { mutateAsync } = useEducationVerify()
@@ -79,7 +91,6 @@ const PlanComp: FC<Props> = ({
           <div className='grow'>
             <div className='mb-1 flex items-center gap-1'>
               <div className='system-md-semibold-uppercase text-text-primary'>{t(`billing.plans.${type}.name`)}</div>
-              <div className='system-2xs-medium-uppercase rounded-[5px] border border-divider-deep px-1 py-0.5 text-text-tertiary'>{t('billing.currentPlan')}</div>
             </div>
             <div className='system-xs-regular text-util-colors-gray-gray-600'>{t(`billing.plans.${type}.for`)}</div>
           </div>
@@ -124,18 +135,20 @@ const PlanComp: FC<Props> = ({
           total={total.annotatedResponse}
         />
         <UsageInfo
-          Icon={RiFlashlightLine}
+          Icon={TriggerAll}
           name={t('billing.usagePage.triggerEvents')}
           usage={usage.triggerEvents}
           total={total.triggerEvents}
-          unit={triggerEventUnit}
+          tooltip={t('billing.plansCommon.triggerEvents.tooltip') as string}
+          resetInDays={triggerEventsResetInDays}
         />
         <UsageInfo
-          Icon={RiSpeedLine}
+          Icon={ApiAggregate}
           name={t('billing.plansCommon.apiRateLimit')}
           usage={usage.apiRateLimit}
           total={total.apiRateLimit}
-          unit={perMonthUnit}
+          tooltip={total.apiRateLimit === NUM_INFINITE ? undefined : t('billing.plansCommon.apiRateLimitTooltip') as string}
+          resetInDays={apiRateLimitResetInDays}
         />
 
       </div>

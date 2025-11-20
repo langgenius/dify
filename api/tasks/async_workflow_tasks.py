@@ -19,7 +19,7 @@ from core.app.layers.timeslice_layer import TimeSliceLayer
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from extensions.ext_database import db
 from models.account import Account
-from models.enums import AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
+from models.enums import CreatorUserRole, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
 from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow
@@ -83,14 +83,12 @@ def execute_workflow_sandbox(task_data_dict: dict[str, Any]):
 
 def _build_generator_args(trigger_data: TriggerData) -> dict[str, Any]:
     """Build args passed into WorkflowAppGenerator.generate for Celery executions."""
+
     args: dict[str, Any] = {
         "inputs": dict(trigger_data.inputs),
         "files": list(trigger_data.files),
+        SKIP_PREPARE_USER_INPUTS_KEY: True,
     }
-
-    if trigger_data.trigger_type == AppTriggerType.TRIGGER_WEBHOOK:
-        args[SKIP_PREPARE_USER_INPUTS_KEY] = True  # Webhooks already provide structured inputs
-
     return args
 
 
