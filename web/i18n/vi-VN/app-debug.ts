@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Ngữ cảnh',
       noData: 'Bạn có thể nhập dữ liệu làm ngữ cảnh',
-      words: 'Từ',
-      textBlocks: 'Khối văn bản',
       selectTitle: 'Chọn kiến thức tham khảo',
       selected: 'Kiến thức đã chọn',
       noDataSet: 'Không tìm thấy kiến thức',

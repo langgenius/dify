@@ -84,7 +84,7 @@ const translation = {
     priceTip: 'за робочим простором/',
     unlimitedApiRate: 'Немає обмеження на швидкість API',
     freeTrialTipSuffix: 'Кредитна картка не потрібна',
-    apiRateLimitUnit: '{{count,number}}/місяць',
+    apiRateLimitUnit: '{{count,number}}',
     getStarted: 'Почати',
     freeTrialTip: 'безкоштовна пробна версія з 200 запитів до OpenAI.',
     documents: '{{count,number}} Документів знань',

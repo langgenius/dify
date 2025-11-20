@@ -205,6 +205,7 @@ const translation = {
       clientID: 'ID client',
       useDynamicClientRegistration: 'Utilizați înregistrarea dinamică a clientului',
       clientSecret: 'Secretul Clientului',
+      redirectUrlWarning: 'Vă rugăm să configurați URL-ul de redirecționare OAuth astfel:',
     },
     delete: 'Eliminare Server MCP',
     deleteConfirmTitle: 'Ștergeți {mcp}?',
