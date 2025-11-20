@@ -17,7 +17,7 @@ class DatasourceOauthParamConfig(TypeBase):
         sa.UniqueConstraint("plugin_id", "provider", name="datasource_oauth_config_datasource_id_provider_idx"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     system_credentials: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False)
@@ -30,8 +30,8 @@ class DatasourceProvider(TypeBase):
         sa.UniqueConstraint("tenant_id", "plugin_id", "provider", "name", name="datasource_provider_unique_name"),
         sa.Index("datasource_provider_auth_type_provider_idx", "tenant_id", "plugin_id", "provider"),
     )
-    id = mapped_column(StringUUID, default=lambda: str(uuidv7()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(128), nullable=False)
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
@@ -60,8 +60,8 @@ class DatasourceOauthTenantParamConfig(TypeBase):
         sa.UniqueConstraint("tenant_id", "plugin_id", "provider", name="datasource_oauth_tenant_config_unique"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuidv7()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     client_params: Mapped[dict] = mapped_column(AdjustedJSON, nullable=False, default={})
