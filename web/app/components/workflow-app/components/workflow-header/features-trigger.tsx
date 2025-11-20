@@ -41,6 +41,9 @@ import cn from '@/utils/classnames'
 import { useIsChatMode } from '@/app/components/workflow/hooks'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
+import { useProviderContext } from '@/context/provider-context'
+import { Plan } from '@/app/components/billing/type'
+
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
   const { theme } = useTheme()
@@ -50,6 +53,7 @@ const FeaturesTrigger = () => {
   const appID = appDetail?.id
   const setAppDetail = useAppStore(s => s.setAppDetail)
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
+  const { plan, isFetchedPlan } = useProviderContext()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const toolPublished = useStore(s => s.toolPublished)
@@ -97,6 +101,15 @@ const FeaturesTrigger = () => {
   const hasTriggerNode = useMemo(() => (
     nodes.some(node => isTriggerNode(node.data.type as BlockEnum))
   ), [nodes])
+  const startNodeLimitExceeded = useMemo(() => {
+    const entryCount = nodes.reduce((count, node) => {
+      const nodeType = node.data.type as BlockEnum
+      if (nodeType === BlockEnum.Start || isTriggerNode(nodeType))
+        return count + 1
+      return count
+    }, 0)
+    return isFetchedPlan && plan.type === Plan.sandbox && entryCount > 2
+  }, [nodes, plan.type, isFetchedPlan])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const invalidateAppTriggers = useInvalidateAppTriggers()
@@ -199,7 +212,8 @@ const FeaturesTrigger = () => {
           crossAxisOffset: 4,
           missingStartNode: !startNode,
           hasTriggerNode,
-          publishDisabled: !hasWorkflowNodes,
+          startNodeLimitExceeded,
+          publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded,
         }}
       />
     </>

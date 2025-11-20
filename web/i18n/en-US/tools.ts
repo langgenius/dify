@@ -208,6 +208,7 @@ const translation = {
       timeoutPlaceholder: '30',
       authentication: 'Authentication',
       useDynamicClientRegistration: 'Use Dynamic Client Registration',
+      redirectUrlWarning: 'Please configure your OAuth redirect URL to:',
       clientID: 'Client ID',
       clientSecret: 'Client Secret',
       clientSecretPlaceholder: 'Client Secret',

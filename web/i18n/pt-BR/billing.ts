@@ -80,7 +80,7 @@ const translation = {
     documentsRequestQuota: '{{count,number}}/min Limite de Taxa de Solicitação de Conhecimento',
     cloud: 'Serviço de Nuvem',
     teamWorkspace: '{{count,number}} Espaço de Trabalho da Equipe',
-    apiRateLimitUnit: '{{count,number}}/mês',
+    apiRateLimitUnit: '{{count,number}}',
     freeTrialTipSuffix: 'Nenhum cartão de crédito necessário',
     teamMember_other: '{{count,number}} Membros da Equipe',
     comparePlanAndFeatures: 'Compare planos e recursos',

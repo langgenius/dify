@@ -208,6 +208,7 @@ const translation = {
       timeoutPlaceholder: '30',
       authentication: '认证',
       useDynamicClientRegistration: '使用动态客户端注册',
+      redirectUrlWarning: '请将您的 OAuth 重定向 URL 配置为：',
       clientID: '客户端 ID',
       clientSecret: '客户端密钥',
       clientSecretPlaceholder: '客户端密钥',
