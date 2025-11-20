@@ -40,6 +40,7 @@ export type ResultPanelProps = {
   showSteps?: boolean
   exceptionCounts?: number
   execution_metadata?: any
+  isListening?: boolean
   handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
@@ -65,6 +66,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   showSteps,
   exceptionCounts,
   execution_metadata,
+  isListening = false,
   handleShowIterationResultList,
   handleShowLoopResultList,
   onShowRetryDetail,
@@ -86,6 +88,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           tokens={total_tokens}
           error={error}
           exceptionCounts={exceptionCounts}
+          isListening={isListening}
         />
       </div>
       <div className='px-4'>
