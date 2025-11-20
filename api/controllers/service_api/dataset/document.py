@@ -456,11 +456,15 @@ class DocumentListApi(DatasetApiResource):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         search = request.args.get("keyword", default=None, type=str)
+        status = request.args.get("status", default=None, type=str)
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
             raise NotFound("Dataset not found.")
 
         query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=tenant_id)
+
+        if status:
+            query = DocumentService.apply_display_status_filter(query, status)
 
         if search:
             search = f"%{search}%"

@@ -138,6 +138,10 @@ class StreamableHTTPTransport:
     ) -> bool:
         """Handle an SSE event, returning True if the response is complete."""
         if sse.event == "message":
+            # ping event send by server will be recognized  as a message event with empty data by httpx-sse's SSEDecoder
+            if not sse.data.strip():
+                return False
+
             try:
                 message = JSONRPCMessage.model_validate_json(sse.data)
                 logger.debug("SSE message: %s", message)

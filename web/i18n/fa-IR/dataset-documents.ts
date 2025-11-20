@@ -81,6 +81,7 @@ const translation = {
       ok: 'تأیید',
     },
     learnMore: 'بیشتر بدانید',
+    sort: {},
   },
   metadata: {
     title: 'اطلاعات متا',

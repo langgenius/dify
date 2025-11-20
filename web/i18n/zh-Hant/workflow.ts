@@ -116,6 +116,11 @@ const translation = {
     currentWorkflow: '當前工作流程',
     moreActions: '更多動作',
   },
+  publishLimit: {
+    startNodeTitlePrefix: '升級以',
+    startNodeTitleSuffix: '解鎖無限開始節點',
+    startNodeDesc: '目前方案最多允許 2 個開始節點，升級後才能發布此工作流程。',
+  },
   env: {
     envPanelTitle: '環境變數',
     envDescription: '環境變數可用於存儲私人信息和憑證。它們是唯讀的，並且可以在導出時與 DSL 文件分開。',

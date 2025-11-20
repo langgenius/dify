@@ -42,6 +42,7 @@ import { getProcessedFilesFromResponse } from '@/app/components/base/file-upload
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
 import PromptLogModal from '../../base/prompt-log-modal'
+import { WorkflowContextProvider } from '@/app/components/workflow/context'
 
 type AppStoreState = ReturnType<typeof useAppStore.getState>
 type ConversationListItem = ChatConversationGeneralDetail | CompletionConversationGeneralDetail
@@ -779,15 +780,17 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         }
       </div>
       {showMessageLogModal && (
-        <MessageLogModal
-          width={width}
-          currentLogItem={currentLogItem}
-          onCancel={() => {
-            setCurrentLogItem()
-            setShowMessageLogModal(false)
-          }}
-          defaultTab={currentLogModalActiveTab}
-        />
+        <WorkflowContextProvider>
+          <MessageLogModal
+            width={width}
+            currentLogItem={currentLogItem}
+            onCancel={() => {
+              setCurrentLogItem()
+              setShowMessageLogModal(false)
+            }}
+            defaultTab={currentLogModalActiveTab}
+          />
+        </WorkflowContextProvider>
       )}
       {!isChatMode && showPromptLogModal && (
         <PromptLogModal
@@ -1027,8 +1030,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     return <Loading />
 
   return (
-    <div className='relative grow overflow-x-auto'>
-      <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
+    <div className='relative mt-2 grow overflow-x-auto'>
+      <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
         <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>
             <td className='w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'></td>

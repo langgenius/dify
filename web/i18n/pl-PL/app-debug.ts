@@ -114,8 +114,6 @@ const translation = {
     dataSet: {
       title: 'Kontekst',
       noData: 'Możesz importować wiedzę jako kontekst',
-      words: 'Słowa',
-      textBlocks: 'Bloki tekstu',
       selectTitle: 'Wybierz odniesienie do wiedzy',
       selected: 'Wiedza wybrana',
       noDataSet: 'Nie znaleziono wiedzy',
