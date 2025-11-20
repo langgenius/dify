@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  db-migration-test:
+  db-migration-test-postgres:
     runs-on: ubuntu-latest
 
     steps:
@@ -45,13 +45,70 @@ jobs:
           compose-file: |
             docker/docker-compose.middleware.yaml
           services: |
-            db
+            db_postgres
             redis
 
       - name: Prepare configs
         run: |
           cd api
           cp .env.example .env
+
+      - name: Run DB Migration
+        env:
+          DEBUG: true
+        run: uv run --directory api flask upgrade-db
+
+  db-migration-test-mysql:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+          cache-dependency-glob: api/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --project api
+      - name: Ensure Offline migration are supported
+        run: |
+          # upgrade
+          uv run --directory api flask db upgrade 'base:head' --sql
+          # downgrade
+          uv run --directory api flask db downgrade 'head:base' --sql
+
+      - name: Prepare middleware env for MySQL
+        run: |
+          cd docker
+          cp middleware.env.example middleware.env
+          sed -i 's/DB_TYPE=postgresql/DB_TYPE=mysql/' middleware.env
+          sed -i 's/DB_HOST=db_postgres/DB_HOST=db_mysql/' middleware.env
+          sed -i 's/DB_PORT=5432/DB_PORT=3306/' middleware.env
+          sed -i 's/DB_USERNAME=postgres/DB_USERNAME=mysql/' middleware.env
+
+      - name: Set up Middlewares
+        uses: hoverkraft-tech/compose-action@v2.0.2
+        with:
+          compose-file: |
+            docker/docker-compose.middleware.yaml
+          services: |
+            db_mysql
+            redis
+
+      - name: Prepare configs for MySQL
+        run: |
+          cd api
+          cp .env.example .env
+          sed -i 's/DB_TYPE=postgresql/DB_TYPE=mysql/' .env
+          sed -i 's/DB_PORT=5432/DB_PORT=3306/' .env
+          sed -i 's/DB_USERNAME=postgres/DB_USERNAME=root/' .env
 
       - name: Run DB Migration
         env:

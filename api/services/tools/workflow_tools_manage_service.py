@@ -14,7 +14,6 @@ from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurati
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
-from libs.uuid_utils import uuidv7
 from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
@@ -67,7 +66,6 @@ class WorkflowToolManageService:
 
         with Session(db.engine, expire_on_commit=False) as session, session.begin():
             workflow_tool_provider = WorkflowToolProvider(
-                id=str(uuidv7()),
                 tenant_id=tenant_id,
                 user_id=user_id,
                 app_id=workflow_app_id,
