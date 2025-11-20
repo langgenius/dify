@@ -82,6 +82,7 @@ const translation = {
       ok: 'OK',
     },
     learnMore: 'Ulteriori informazioni',
+    sort: {},
   },
   metadata: {
     title: 'Metadati',
