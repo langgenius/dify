@@ -1,0 +1,55 @@
+from flask_restful import Resource, reqparse
+
+from controllers.service_api import api
+from controllers.service_api.app.error import AppUnavailableError
+from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from libs.helper import uuid_value
+from models.model import App, EndUser
+from services.workflow_run_service import WorkflowRunService
+
+
+class NodeExecutionsApi(Resource):
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    def get(self, app_model: App, end_user: EndUser):
+        """
+        Get workflow run node executions with user verification
+        """
+        parser = reqparse.RequestParser()
+        parser.add_argument("workflow_run_id", type=uuid_value, required=True, location="args")
+        args = parser.parse_args()
+
+        try:
+            workflow_run_service = WorkflowRunService()
+
+            # Pass tenant_id to ensure proper access control
+            tenant_id = end_user.tenant_id
+            node_executions = workflow_run_service.get_workflow_run_node_executions(
+                app_model=app_model, run_id=args["workflow_run_id"], tenant_id=tenant_id
+            )
+
+            return {
+                "data": [
+                    {
+                        "id": execution.id,
+                        "node_id": execution.node_id,
+                        "node_type": execution.node_type,
+                        "title": execution.title,
+                        "index": execution.index,
+                        "predecessor_node_id": execution.predecessor_node_id,
+                        "inputs": execution.inputs_dict,
+                        "outputs": execution.outputs_dict,
+                        "status": execution.status,
+                        "error": execution.error,
+                        "elapsed_time": execution.elapsed_time,
+                        "execution_metadata": execution.execution_metadata_dict,
+                        "created_at": execution.created_at.isoformat(),
+                        "finished_at": execution.finished_at.isoformat() if execution.finished_at else None,
+                    }
+                    for execution in node_executions
+                ]
+            }
+        except Exception as e:
+            raise AppUnavailableError(str(e))
+
+
+api.add_resource(NodeExecutionsApi, "/node-executions")
