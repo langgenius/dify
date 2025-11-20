@@ -250,10 +250,8 @@ class AppApi(Resource):
         args = parser.parse_args()
 
         app_service = AppService()
-        # Construct ArgsDict from parsed arguments
-        from services.app_service import AppService as AppServiceType
 
-        args_dict: AppServiceType.ArgsDict = {
+        args_dict: AppService.ArgsDict = {
             "name": args["name"],
             "description": args.get("description", ""),
             "icon_type": args.get("icon_type", ""),
