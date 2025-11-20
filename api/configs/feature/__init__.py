@@ -77,10 +77,6 @@ class AppExecutionConfig(BaseSettings):
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
     )
-    APP_DAILY_RATE_LIMIT: NonNegativeInt = Field(
-        description="Maximum number of requests per app per day",
-        default=5000,
-    )
 
 
 class CodeExecutionSandboxConfig(BaseSettings):
@@ -1086,7 +1082,7 @@ class CeleryScheduleTasksConfig(BaseSettings):
     )
     TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS: int = Field(
         description="Proactive credential refresh threshold in seconds",
-        default=180,
+        default=60 * 60,
     )
     TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS: int = Field(
         description="Proactive subscription refresh threshold in seconds",
@@ -1190,7 +1186,7 @@ class AccountConfig(BaseSettings):
 
 
 class WorkflowLogConfig(BaseSettings):
-    WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(default=True, description="Enable workflow run log cleanup")
+    WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(default=False, description="Enable workflow run log cleanup")
     WORKFLOW_LOG_RETENTION_DAYS: int = Field(default=30, description="Retention days for workflow run logs")
     WORKFLOW_LOG_CLEANUP_BATCH_SIZE: int = Field(
         default=100, description="Batch size for workflow run log cleanup operations"

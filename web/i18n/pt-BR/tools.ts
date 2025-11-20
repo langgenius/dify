@@ -2,7 +2,6 @@ const translation = {
   title: 'Ferramentas',
   createCustomTool: 'Criar Ferramenta Personalizada',
   type: {
-    all: 'Todas',
     builtIn: 'Integradas',
     custom: 'Personalizadas',
     workflow: 'Fluxo de trabalho',
@@ -20,7 +19,6 @@ const translation = {
     setupModalTitleDescription: 'Após configurar as credenciais, todos os membros do espaço de trabalho podem usar essa ferramenta ao orquestrar aplicativos.',
   },
   includeToolNum: '{{num}} ferramentas incluídas',
-  addTool: 'Adicionar Ferramenta',
   createTool: {
     title: 'Criar Ferramenta Personalizada',
     editAction: 'Configurar',
@@ -143,9 +141,7 @@ const translation = {
   addToolModal: {
     category: 'categoria',
     type: 'tipo',
-    add: 'adicionar',
     added: 'Adicionado',
-    manageInTools: 'Gerenciar em Ferramentas',
     custom: {
       title: 'Nenhuma ferramenta personalizada disponível',
       tip: 'Crie uma ferramenta personalizada',

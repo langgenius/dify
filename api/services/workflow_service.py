@@ -7,40 +7,39 @@ from typing import Any, cast
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool, WorkflowNodeExecution
+from core.workflow.entities import VariablePool, WorkflowNodeExecution
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.graph.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
+from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from libs.datetime_utils import naive_utc_now
 from models import Account
-from models.enums import UserFrom
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
+from services.billing_service import BillingService
 from services.enterprise.plugin_manager_service import PluginCredentialType
-from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
+from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -215,7 +214,7 @@ class WorkflowService:
         self.validate_features_structure(app_model=app_model, features=features)
 
         # validate graph structure
-        self.validate_graph_structure(user_id=account.id, app_model=app_model, graph=graph)
+        self.validate_graph_structure(graph=graph)
 
         # create draft workflow if not found
         if not workflow:
@@ -274,7 +273,22 @@ class WorkflowService:
             self._validate_workflow_credentials(draft_workflow)
 
         # validate graph structure
-        self.validate_graph_structure(user_id=account.id, app_model=app_model, graph=draft_workflow.graph_dict)
+        self.validate_graph_structure(graph=draft_workflow.graph_dict)
+
+        # billing check
+        if dify_config.BILLING_ENABLED:
+            limit_info = BillingService.get_info(app_model.tenant_id)
+            if limit_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+                # Check trigger node count limit for SANDBOX plan
+                trigger_node_count = sum(
+                    1
+                    for _, node_data in draft_workflow.walk_nodes()
+                    if (node_type_str := node_data.get("type"))
+                    and isinstance(node_type_str, str)
+                    and NodeType(node_type_str).is_trigger_node
+                )
+                if trigger_node_count > 2:
+                    raise TriggerNodeLimitExceededError(count=trigger_node_count, limit=2)
 
         # create new workflow
         workflow = Workflow.new(
@@ -905,42 +919,30 @@ class WorkflowService:
 
         return new_app
 
-    def validate_graph_structure(self, user_id: str, app_model: App, graph: Mapping[str, Any]):
+    def validate_graph_structure(self, graph: Mapping[str, Any]):
         """
-        Validate workflow graph structure by instantiating the Graph object.
+        Validate workflow graph structure.
 
-        This leverages the built-in graph validators (including trigger/UserInput exclusivity)
-        and raises any structural errors before persisting the workflow.
+        This performs a lightweight validation on the graph, checking for structural
+        inconsistencies such as the coexistence of start and trigger nodes.
         """
         node_configs = graph.get("nodes", [])
-        node_configs = cast(list[dict[str, object]], node_configs)
+        node_configs = cast(list[dict[str, Any]], node_configs)
 
         # is empty graph
         if not node_configs:
             return
 
-        workflow_id = app_model.workflow_id or "UNKNOWN"
-        Graph.init(
-            graph_config=graph,
-            # TODO(Mairuis): Add root node id
-            root_node_id=None,
-            node_factory=DifyNodeFactory(
-                graph_init_params=GraphInitParams(
-                    tenant_id=app_model.tenant_id,
-                    app_id=app_model.id,
-                    workflow_id=workflow_id,
-                    graph_config=graph,
-                    user_id=user_id,
-                    user_from=UserFrom.ACCOUNT,
-                    invoke_from=InvokeFrom.VALIDATION,
-                    call_depth=0,
-                ),
-                graph_runtime_state=GraphRuntimeState(
-                    variable_pool=VariablePool(),
-                    start_at=time.perf_counter(),
-                ),
-            ),
-        )
+        node_types: set[NodeType] = set()
+        for node in node_configs:
+            node_type = node.get("data", {}).get("type")
+            if node_type:
+                node_types.add(NodeType(node_type))
+
+        # start node and trigger node cannot coexist
+        if NodeType.START in node_types:
+            if any(nt.is_trigger_node for nt in node_types):
+                raise ValueError("Start node and trigger nodes cannot coexist in the same workflow")
 
     def validate_features_structure(self, app_model: App, features: dict):
         if app_model.mode == AppMode.ADVANCED_CHAT:
