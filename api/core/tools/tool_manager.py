@@ -63,7 +63,6 @@ from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
     from core.workflow.nodes.tool.entities import ToolEntity
-    from core.workflow.runtime import VariablePool
 
 logger = logging.getLogger(__name__)
 
