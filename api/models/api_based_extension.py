@@ -1,12 +1,15 @@
 import enum
 from datetime import datetime
+from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import TypeBase
 from .types import StringUUID
+from .base import Base
+from .types import LongText, StringUUID
 
 
 class APIBasedExtensionPoint(enum.StrEnum):
@@ -23,11 +26,9 @@ class APIBasedExtension(TypeBase):
         sa.Index("api_based_extension_tenant_idx", "tenant_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    tenant_id = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     api_endpoint: Mapped[str] = mapped_column(String(255), nullable=False)
-    api_key: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
-    )
+    api_key = mapped_column(LongText, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
