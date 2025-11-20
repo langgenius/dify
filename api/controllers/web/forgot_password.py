@@ -4,7 +4,6 @@ import secrets
 from flask import request
 from flask_restx import Resource, reqparse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from controllers.console.auth.error import (
     AuthenticationFailedError,
@@ -17,7 +16,7 @@ from controllers.console.auth.error import (
 from controllers.console.error import EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, only_edition_enterprise, setup_required
 from controllers.web import web_ns
-from extensions.ext_database import db
+from extensions.ext_database import get_session_maker
 from libs.helper import email, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models import Account
@@ -56,7 +55,8 @@ class ForgotPasswordSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
         token = None
         if account is None:
@@ -160,7 +160,8 @@ class ForgotPasswordResetApi(Resource):
 
         email = reset_data.get("email", "")
 
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
 
             if account:

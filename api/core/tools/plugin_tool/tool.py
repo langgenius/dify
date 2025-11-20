@@ -1,16 +1,18 @@
 from collections.abc import Generator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from core.plugin.impl.tool import PluginToolManager
 from core.plugin.utils.converter import convert_parameters_to_plugin_format
 from core.tools.__base.tool import Tool
-from core.tools.__base.tool_runtime import ToolRuntime
+
+if TYPE_CHECKING:
+    from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
 
 
 class PluginTool(Tool):
     def __init__(
-        self, entity: ToolEntity, runtime: ToolRuntime, tenant_id: str, icon: str, plugin_unique_identifier: str
+        self, entity: ToolEntity, runtime: "ToolRuntime", tenant_id: str, icon: str, plugin_unique_identifier: str
     ):
         super().__init__(entity, runtime)
         self.tenant_id = tenant_id
@@ -46,7 +48,7 @@ class PluginTool(Tool):
             message_id=message_id,
         )
 
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "PluginTool":
+    def fork_tool_runtime(self, runtime: "ToolRuntime") -> "PluginTool":
         return PluginTool(
             entity=self.entity,
             runtime=runtime,
