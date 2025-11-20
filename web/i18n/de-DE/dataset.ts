@@ -19,7 +19,6 @@ const translation = {
   intro5: 'kann erstellt werden',
   intro6: ' als ein eigenständiges ChatGPT-Index-Plugin zum Veröffentlichen',
   unavailable: 'Nicht verfügbar',
-  unavailableTip: 'Einbettungsmodell ist nicht verfügbar, das Standard-Einbettungsmodell muss konfiguriert werden',
   datasets: 'WISSEN',
   datasetsApi: 'API',
   retrieval: {

@@ -81,6 +81,7 @@ const translation = {
     learnMore: 'Pelajari lebih lanjut',
     addUrl: 'Tambahkan URL',
     title: 'Dokumen',
+    sort: {},
   },
   metadata: {
     placeholder: {
