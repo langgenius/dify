@@ -74,7 +74,7 @@ const translation = {
     receiptInfo: '只有團隊所有者和團隊管理員才能訂閱和檢視賬單資訊',
     annotationQuota: '註釋配額',
     self: '自我主持',
-    apiRateLimitUnit: '{{count,number}}/月',
+    apiRateLimitUnit: '{{count,number}} 次',
     freeTrialTipPrefix: '註冊並獲得一個',
     annualBilling: '年度計費',
     freeTrialTipSuffix: '無需信用卡',

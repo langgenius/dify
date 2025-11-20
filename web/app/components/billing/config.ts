@@ -90,4 +90,8 @@ export const defaultPlan = {
     apiRateLimit: ALL_PLANS.sandbox.apiRateLimit,
     triggerEvents: ALL_PLANS.sandbox.triggerEvents,
   },
+  reset: {
+    apiRateLimit: null,
+    triggerEvents: null,
+  },
 }

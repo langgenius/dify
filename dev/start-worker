@@ -11,6 +11,7 @@ show_help() {
   echo "  -c, --concurrency NUM  Number of worker processes (default: 1)"
   echo "  -P, --pool POOL        Pool implementation (default: gevent)"
   echo "  --loglevel LEVEL       Log level (default: INFO)"
+  echo "  -e, --env-file FILE    Path to an env file to source before starting"
   echo "  -h, --help             Show this help message"
   echo ""
   echo "Examples:"
@@ -44,6 +45,8 @@ CONCURRENCY=1
 POOL="gevent"
 LOGLEVEL="INFO"
 
+ENV_FILE=""
+
 while [[ $# -gt 0 ]]; do
   case $1 in
     -q|--queues)
@@ -62,6 +65,10 @@ while [[ $# -gt 0 ]]; do
       LOGLEVEL="$2"
       shift 2
       ;;
+    -e|--env-file)
+      ENV_FILE="$2"
+      shift 2
+      ;;
     -h|--help)
       show_help
       exit 0
@@ -76,6 +83,19 @@ done
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 cd "$SCRIPT_DIR/.."
+
+if [[ -n "${ENV_FILE}" ]]; then
+  if [[ ! -f "${ENV_FILE}" ]]; then
+    echo "Env file ${ENV_FILE} not found"
+    exit 1
+  fi
+
+  echo "Loading environment variables from ${ENV_FILE}"
+  # Export everything sourced from the env file
+  set -a
+  source "${ENV_FILE}"
+  set +a
+fi
 
 # If no queues specified, use edition-based defaults
 if [[ -z "${QUEUES}" ]]; then

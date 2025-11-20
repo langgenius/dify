@@ -18,6 +18,7 @@ from core.file.models import FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
 from core.variables.types import SegmentType
 from core.workflow.enums import NodeType
+from enums.quota_type import QuotaType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import file_factory
@@ -27,6 +28,8 @@ from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
+from services.errors.app import QuotaExceededError
+from services.trigger.app_trigger_service import AppTriggerService
 from services.workflow.entities import WebhookTriggerData
 
 logger = logging.getLogger(__name__)
@@ -98,6 +101,12 @@ class WebhookService:
                     raise ValueError(f"App trigger not found for webhook {webhook_id}")
 
                 # Only check enabled status if not in debug mode
+
+                if app_trigger.status == AppTriggerStatus.RATE_LIMITED:
+                    raise ValueError(
+                        f"Webhook trigger is rate limited for webhook {webhook_id}, please upgrade your plan."
+                    )
+
                 if app_trigger.status != AppTriggerStatus.ENABLED:
                     raise ValueError(f"Webhook trigger is disabled for webhook {webhook_id}")
 
@@ -728,6 +737,18 @@ class WebhookService:
                     app_id=webhook_trigger.app_id,
                     user_id=None,
                 )
+
+                # consume quota before triggering workflow execution
+                try:
+                    QuotaType.TRIGGER.consume(webhook_trigger.tenant_id)
+                except QuotaExceededError:
+                    AppTriggerService.mark_tenant_triggers_rate_limited(webhook_trigger.tenant_id)
+                    logger.info(
+                        "Tenant %s rate limited, skipping webhook trigger %s",
+                        webhook_trigger.tenant_id,
+                        webhook_trigger.webhook_id,
+                    )
+                    raise
 
                 # Trigger workflow execution asynchronously
                 AsyncWorkflowService.trigger_workflow_async(

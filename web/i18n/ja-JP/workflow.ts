@@ -119,6 +119,11 @@ const translation = {
     tagBound: 'このタグを使用しているアプリの数',
     moreActions: 'さらにアクション',
   },
+  publishLimit: {
+    startNodeTitlePrefix: 'アップグレードして、',
+    startNodeTitleSuffix: '各ワークフローのトリガーを制限なしで使用できます。',
+    startNodeDesc: 'このプランでは、各ワークフローのトリガー数は最大 2 個まで設定できます。公開するにはアップグレードが必要です。',
+  },
   env: {
     envPanelTitle: '環境変数',
     envDescription: '環境変数は、個人情報や認証情報を格納するために使用することができます。これらは読み取り専用であり、DSL ファイルからエクスポートする際には分離されます。',
