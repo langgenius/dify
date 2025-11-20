@@ -15,9 +15,6 @@ const PartnerStack: FC = () => {
     bind()
   }, [])
 
-  return (
-    <>
-    </>
-  )
+  return null
 }
 export default React.memo(PartnerStack)
