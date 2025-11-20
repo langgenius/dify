@@ -47,10 +47,10 @@ const Sort: FC<Props> = ({
             className='block'
           >
             <div className={cn(
-              'flex cursor-pointer items-center rounded-l-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
+              'flex min-h-8 cursor-pointer items-center rounded-l-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
               open && '!bg-state-base-hover-alt hover:bg-state-base-hover-alt',
             )}>
-              <div className='flex items-center gap-0.5 p-1'>
+              <div className='flex items-center gap-0.5 px-1'>
                 <div className='system-sm-regular text-text-tertiary'>{t('appLog.filter.sortBy')}</div>
                 <div className={cn('system-sm-regular text-text-tertiary', !!value && 'text-text-secondary')}>
                   {triggerContent}

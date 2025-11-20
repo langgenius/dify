@@ -81,6 +81,7 @@ const translation = {
     },
     addUrl: 'URL 추가',
     learnMore: '더 알아보세요',
+    sort: {},
   },
   metadata: {
     title: '메타데이터',

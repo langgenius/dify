@@ -40,6 +40,10 @@ const translation = {
       enableTip: '该文件可以被索引',
       disableTip: '该文件无法被索引',
     },
+    sort: {
+      uploadTime: '上传时间',
+      hitCount: '召回次数',
+    },
     status: {
       queuing: '排队中',
       indexing: '索引中',
