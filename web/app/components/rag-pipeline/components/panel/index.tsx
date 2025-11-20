@@ -22,14 +22,19 @@ const InputFieldEditorPanel = dynamic(() => import('./input-field/editor'), {
 const PreviewPanel = dynamic(() => import('./input-field/preview'), {
   ssr: false,
 })
-
+const GlobalVariablePanel = dynamic(() => import('@/app/components/workflow/panel/global-variable-panel'), {
+  ssr: false,
+})
 const RagPipelinePanelOnRight = () => {
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
+  const showGlobalVariablePanel = useStore(s => s.showGlobalVariablePanel)
+
   return (
     <>
       {historyWorkflowData && <Record />}
       {showDebugAndPreviewPanel && <TestRunPanel />}
+      {showGlobalVariablePanel && <GlobalVariablePanel />}
     </>
   )
 }

@@ -17,7 +17,7 @@ import { getNewVar, hasDuplicateStr } from '@/utils/var'
 import Toast from '@/app/components/base/toast'
 import Confirm from '@/app/components/base/confirm'
 import ConfigContext from '@/context/debug-configuration'
-import { AppType } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import type { ExternalDataTool } from '@/models/common'
 import { useModalContext } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -201,7 +201,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const handleRemoveVar = (index: number) => {
     const removeVar = promptVariables[index]
 
-    if (mode === AppType.completion && dataSets.length > 0 && removeVar.is_context_var) {
+    if (mode === AppModeEnum.COMPLETION && dataSets.length > 0 && removeVar.is_context_var) {
       showDeleteContextVarModal()
       setRemoveIndex(index)
       return
