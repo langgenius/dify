@@ -205,6 +205,7 @@ const translation = {
       useDynamicClientRegistration: '動的クライアント登録を使用する',
       clientSecretPlaceholder: 'クライアントシークレット',
       clientSecret: 'クライアントシークレット',
+      redirectUrlWarning: 'OAuthリダイレクトURLを次のように設定してください：',
     },
     delete: 'MCP サーバーを削除',
     deleteConfirmTitle: '{{mcp}} を削除しますか？',

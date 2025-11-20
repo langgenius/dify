@@ -205,6 +205,7 @@ const translation = {
       configurations: '設定',
       useDynamicClientRegistration: '使用動態客戶端註冊',
       clientSecret: '客戶端密鑰',
+      redirectUrlWarning: '請將您的 OAuth 重新導向 URL 設定為：',
     },
     delete: '刪除 MCP 伺服器',
     deleteConfirmTitle: '您確定要刪除 {{mcp}} 嗎？',

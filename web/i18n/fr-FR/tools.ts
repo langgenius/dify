@@ -205,6 +205,7 @@ const translation = {
       authentication: 'Authentification',
       useDynamicClientRegistration: 'Utiliser l\'enregistrement dynamique des clients',
       clientSecret: 'Secret client',
+      redirectUrlWarning: 'Veuillez configurer votre URL de redirection OAuth sur :',
     },
     delete: 'Supprimer le Serveur MCP',
     deleteConfirmTitle: 'Souhaitez-vous supprimer {mcp}?',
