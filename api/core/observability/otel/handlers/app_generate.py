@@ -6,7 +6,7 @@ from opentelemetry.trace import SpanKind, Status, StatusCode
 from opentelemetry.util.types import AttributeValue
 
 from core.observability.otel.core.handler import SpanHandler
-from core.observability.otel.semconv import AppSpanAttributes
+from core.observability.otel.semconv import DifySpanAttributes, GenAIAttributes
 from models.model import Account
 
 logger = logging.getLogger(__name__)
@@ -43,19 +43,19 @@ class AppGenerateHandler(SpanHandler):
                 return wrapped(*args, **kwargs)
 
             attributes: dict[str, AttributeValue] = {
-                AppSpanAttributes.APP_ID: app_id,
-                AppSpanAttributes.TENANT_ID: tenant_id,
-                AppSpanAttributes.USER_ID: user_id,
-                AppSpanAttributes.USER_TYPE: "Account" if isinstance(user, Account) else "EndUser",
-                AppSpanAttributes.STREAMING: streaming,
+                DifySpanAttributes.APP_ID: app_id,
+                DifySpanAttributes.TENANT_ID: tenant_id,
+                GenAIAttributes.USER_ID: user_id,
+                DifySpanAttributes.USER_TYPE: "Account" if isinstance(user, Account) else "EndUser",
+                DifySpanAttributes.STREAMING: streaming,
             }
 
             workflow_id = invoke_from_args.get("workflow_id")
             if workflow_id:
-                attributes[AppSpanAttributes.WORKFLOW_ID] = workflow_id
+                attributes[DifySpanAttributes.WORKFLOW_ID] = workflow_id
 
             if invoke_from:
-                attributes[AppSpanAttributes.INVOKE_FROM] = (
+                attributes[DifySpanAttributes.INVOKE_FROM] = (
                     invoke_from.value if hasattr(invoke_from, "value") else str(invoke_from)
                 )
 
