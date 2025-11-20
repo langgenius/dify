@@ -97,7 +97,7 @@ const RunOnce: FC<IRunOnceProps> = ({
         {/* input form */}
         <form onSubmit={onSubmit}>
           {(inputs === null || inputs === undefined || Object.keys(inputs).length === 0) || !isInitialized ? null
-            : promptConfig.prompt_variables.map(item => (
+            : promptConfig.prompt_variables.filter(item => item.hide !== true).map(item => (
               <div className='mt-4 w-full' key={item.key}>
                 {item.type !== 'checkbox' && (
                   <div className='system-md-semibold flex h-6 items-center gap-1 text-text-secondary'>

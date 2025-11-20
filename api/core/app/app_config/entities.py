@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from enum import StrEnum, auto
-from typing import Any, Literal
+from typing import Any, Literal, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -113,6 +113,7 @@ class VariableEntity(BaseModel):
     required: bool = False
     hide: bool = False
     max_length: int | None = None
+    default: Union[str, int, float] | None = None
     options: Sequence[str] = Field(default_factory=list)
     allowed_file_types: Sequence[FileType] | None = Field(default_factory=list)
     allowed_file_extensions: Sequence[str] | None = Field(default_factory=list)
