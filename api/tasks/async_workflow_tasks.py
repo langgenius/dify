@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.layers.timeslice_layer import TimeSliceLayer
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from extensions.ext_database import db
 from models.account import Account
@@ -157,7 +156,7 @@ def _execute_workflow_common(
                 triggered_from=trigger_data.trigger_from,
                 root_node_id=trigger_data.root_node_id,
                 graph_engine_layers=[
-                    TimeSliceLayer(cfs_plan_scheduler),
+                    # TimeSliceLayer(cfs_plan_scheduler), TODO: add this back
                     TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id, session_factory),
                 ],
             )
