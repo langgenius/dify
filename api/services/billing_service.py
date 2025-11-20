@@ -26,6 +26,13 @@ class BillingService:
         return billing_info
 
     @classmethod
+    def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
+        params = {"tenant_id": tenant_id}
+
+        usage_info = cls._send_request("GET", "/tenant-feature-usage/info", params=params)
+        return usage_info
+
+    @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str):
         params = {"tenant_id": tenant_id}
 
@@ -57,6 +64,44 @@ class BillingService:
         return cls._send_request("GET", "/invoices", params=params)
 
     @classmethod
+    def update_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str, delta: int) -> dict:
+        """
+        Update tenant feature plan usage.
+
+        Args:
+            tenant_id: Tenant identifier
+            feature_key: Feature key (e.g., 'trigger', 'workflow')
+            delta: Usage delta (positive to add, negative to consume)
+
+        Returns:
+            Response dict with 'result' and 'history_id'
+            Example: {"result": "success", "history_id": "uuid"}
+        """
+        return cls._send_request(
+            "POST",
+            "/tenant-feature-usage/usage",
+            params={"tenant_id": tenant_id, "feature_key": feature_key, "delta": delta},
+        )
+
+    @classmethod
+    def refund_tenant_feature_plan_usage(cls, history_id: str) -> dict:
+        """
+        Refund a previous usage charge.
+
+        Args:
+            history_id: The history_id returned from update_tenant_feature_plan_usage
+
+        Returns:
+            Response dict with 'result' and 'history_id'
+        """
+        return cls._send_request("POST", "/tenant-feature-usage/refund", params={"quota_usage_history_id": history_id})
+
+    @classmethod
+    def get_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str):
+        params = {"tenant_id": tenant_id, "feature_key": feature_key}
+        return cls._send_request("GET", "/billing/tenant_feature_plan/usage", params=params)
+
+    @classmethod
     @retry(
         wait=wait_fixed(2),
         stop=stop_before_delay(10),
@@ -77,6 +122,8 @@ class BillingService:
                 )
             if response.status_code != httpx.codes.OK:
                 raise ValueError("Invalid arguments.")
+        if method == "POST" and response.status_code != httpx.codes.OK:
+            raise ValueError(f"Unable to send request to {url}. Please try again later or contact support.")
         return response.json()
 
     @staticmethod
