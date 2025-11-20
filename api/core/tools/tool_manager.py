@@ -37,13 +37,9 @@ from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
-from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool import Tool
-from core.tools.__base.tool_provider import ToolProviderController
-from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.builtin_tool.tool import BuiltinTool
@@ -58,22 +54,11 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.errors import ToolProviderNotFoundError
-from core.tools.mcp_tool.provider import MCPToolProviderController
-from core.tools.mcp_tool.tool import MCPTool
-from core.tools.plugin_tool.provider import PluginToolProviderController
-from core.tools.plugin_tool.tool import PluginTool
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
-from core.tools.utils.uuid_utils import is_valid_uuid
-from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from core.workflow.runtime.variable_pool import VariablePool
-from extensions.ext_database import db
-from models.provider_ids import ToolProviderID
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
-from services.enterprise.plugin_manager_service import PluginCredentialType
-from services.tools.mcp_tools_manage_service import MCPToolManageService
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
