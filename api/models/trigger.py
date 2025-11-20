@@ -41,7 +41,7 @@ class TriggerSubscription(Base):
         UniqueConstraint("tenant_id", "provider_id", "name", name="unique_trigger_provider"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False, comment="Subscription instance name")
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -108,7 +108,7 @@ class TriggerOAuthSystemClient(TypeBase):
         sa.UniqueConstraint("plugin_id", "provider", name="trigger_oauth_system_client_plugin_id_provider_idx"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     plugin_id: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # oauth params of the trigger provider
