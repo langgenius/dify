@@ -70,6 +70,11 @@ type-check:
 	@uv run --directory api --dev basedpyright
 	@echo "✅ Type check complete"
 
+test:
+	@echo "🧪 Running backend unit tests..."
+	@uv run --project api --dev dev/pytest/pytest_unit_tests.sh
+	@echo "✅ Tests complete"
+
 # Build Docker images
 build-web:
 	@echo "Building web Docker image: $(WEB_IMAGE):$(VERSION)..."
@@ -119,6 +124,7 @@ help:
 	@echo "  make check          - Check code with ruff"
 	@echo "  make lint           - Format and fix code with ruff"
 	@echo "  make type-check     - Run type checking with basedpyright"
+	@echo "  make test           - Run backend unit tests"
 	@echo ""
 	@echo "Docker Build Targets:"
 	@echo "  make build-web      - Build web Docker image"
@@ -128,4 +134,4 @@ help:
 	@echo "  make build-push-all - Build and push all Docker images"
 
 # Phony targets
-.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint type-check
+.PHONY: build-web build-api push-web push-api build-all push-all build-push-all dev-setup prepare-docker prepare-web prepare-api dev-clean help format check lint type-check test
