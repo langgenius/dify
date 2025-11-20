@@ -1,3 +1,4 @@
+import inspect
 from collections.abc import Callable, Mapping
 from typing import Any
 
@@ -15,6 +16,8 @@ class SpanHandler:
     exceptions. Handlers can override the wrapper method to customize behavior.
     """
 
+    _signature_cache: dict[Callable[..., Any], inspect.Signature] = {}
+
     def _build_span_name(self, wrapped: Callable[..., Any]) -> str:
         """
         Build the span name from the wrapped function.
@@ -25,6 +28,36 @@ class SpanHandler:
         :return: The span name
         """
         return f"{wrapped.__module__}.{wrapped.__qualname__}"
+
+    def _extract_arguments(
+        self,
+        wrapped: Callable[..., Any],
+        args: tuple[Any, ...],
+        kwargs: Mapping[str, Any],
+    ) -> dict[str, Any] | None:
+        """
+        Extract function arguments using inspect.signature.
+
+        Returns a dictionary of bound arguments, or None if extraction fails.
+        Handlers can use this to safely extract parameters from args/kwargs.
+
+        The function signature is cached to improve performance on repeated calls.
+
+        :param wrapped: The function being traced
+        :param args: Positional arguments
+        :param kwargs: Keyword arguments
+        :return: Dictionary of bound arguments, or None if extraction fails
+        """
+        try:
+            if wrapped not in self._signature_cache:
+                self._signature_cache[wrapped] = inspect.signature(wrapped)
+
+            sig = self._signature_cache[wrapped]
+            bound = sig.bind(*args, **kwargs)
+            bound.apply_defaults()
+            return bound.arguments
+        except Exception:
+            return None
 
     def wrapper(
         self,
