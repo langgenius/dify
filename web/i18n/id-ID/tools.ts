@@ -188,6 +188,7 @@ const translation = {
       configurations: 'Konfigurasi',
       clientSecret: 'Rahasia Klien',
       clientID: 'ID Klien',
+      redirectUrlWarning: 'Silakan atur URL pengalihan OAuth Anda ke:',
     },
     operation: {
       edit: 'Mengedit',

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import { pick, uniq } from 'lodash-es'
@@ -18,7 +18,6 @@ import BatchAction from './detail/completed/common/batch-action'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
-import type { Item } from '@/app/components/base/select'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
 import NotionIcon from '@/app/components/base/notion-icon'
@@ -37,6 +36,7 @@ import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-meta
 import StatusItem from './status-item'
 import Operations from './operations'
 import { DatasourceType } from '@/models/pipeline'
+import { normalizeStatusForQuery } from '@/app/components/datasets/documents/status-filter'
 
 export const renderTdValue = (value: string | number | null, isEmptyStyle = false) => {
   return (
@@ -66,7 +66,8 @@ type IDocumentListProps = {
   pagination: PaginationProps
   onUpdate: () => void
   onManageMetadata: () => void
-  statusFilter: Item
+  statusFilterValue: string
+  remoteSortValue: string
 }
 
 /**
@@ -81,7 +82,8 @@ const DocumentList: FC<IDocumentListProps> = ({
   pagination,
   onUpdate,
   onManageMetadata,
-  statusFilter,
+  statusFilterValue,
+  remoteSortValue,
 }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -90,8 +92,13 @@ const DocumentList: FC<IDocumentListProps> = ({
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa
-  const [sortField, setSortField] = useState<'name' | 'word_count' | 'hit_count' | 'created_at' | null>('created_at')
+  const [sortField, setSortField] = useState<'name' | 'word_count' | 'hit_count' | 'created_at' | null>(null)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+
+  useEffect(() => {
+    setSortField(null)
+    setSortOrder('desc')
+  }, [remoteSortValue])
 
   const {
     isShowEditModal,
@@ -109,11 +116,10 @@ const DocumentList: FC<IDocumentListProps> = ({
   const localDocs = useMemo(() => {
     let filteredDocs = documents
 
-    if (statusFilter.value !== 'all') {
+    if (statusFilterValue && statusFilterValue !== 'all') {
       filteredDocs = filteredDocs.filter(doc =>
         typeof doc.display_status === 'string'
-        && typeof statusFilter.value === 'string'
-        && doc.display_status.toLowerCase() === statusFilter.value.toLowerCase(),
+        && normalizeStatusForQuery(doc.display_status) === statusFilterValue,
       )
     }
 
@@ -156,7 +162,7 @@ const DocumentList: FC<IDocumentListProps> = ({
     })
 
     return sortedDocs
-  }, [documents, sortField, sortOrder, statusFilter])
+  }, [documents, sortField, sortOrder, statusFilterValue])
 
   const handleSort = (field: 'name' | 'word_count' | 'hit_count' | 'created_at') => {
     if (sortField === field) {
