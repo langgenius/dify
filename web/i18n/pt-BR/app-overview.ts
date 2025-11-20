@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Lançar',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API de Serviço de Back-end',
@@ -124,6 +125,10 @@ const translation = {
     status: {
       running: 'Em serviço',
       disable: 'Desabilitar',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: 'O recurso {{feature}} não é compatível no modo Nó de Gatilho.',
     },
   },
   analysis: {

@@ -117,8 +117,6 @@ const translation = {
     dataSet: {
       title: 'प्रसंग',
       noData: 'आप संदर्भ के रूप में ज्ञान आयात कर सकते हैं',
-      words: 'शब्द',
-      textBlocks: 'पाठ खंड',
       selectTitle: 'संदर्भ ज्ञान का चयन करें',
       selected: 'ज्ञान चुना गया',
       noDataSet: 'कोई ज्ञान नहीं मिला',

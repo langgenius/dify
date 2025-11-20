@@ -17,6 +17,7 @@ import { handleStream, ssePost } from '@/service/base'
 import { stopWorkflowRun } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { VersionHistory } from '@/types/workflow'
 import { noop } from 'lodash-es'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
@@ -323,7 +324,15 @@ export const useWorkflowRun = () => {
       else
         ttsUrl = `/apps/${resolvedParams.appId}/text-to-audio`
     }
-    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
+    // Lazy initialization: Only create AudioPlayer when TTS is actually needed
+    // This prevents opening audio channel unnecessarily
+    let player: AudioPlayer | null = null
+    const getOrCreatePlayer = () => {
+      if (!player)
+        player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
+
+      return player
+    }
 
     const clearAbortController = () => {
       abortControllerRef.current = null
@@ -470,11 +479,16 @@ export const useWorkflowRun = () => {
       onTTSChunk: (messageId: string, audio: string) => {
         if (!audio || audio === '')
           return
-        player.playAudioWithAudio(audio, true)
-        AudioPlayerManager.getInstance().resetMsgId(messageId)
+        const audioPlayer = getOrCreatePlayer()
+        if (audioPlayer) {
+          audioPlayer.playAudioWithAudio(audio, true)
+          AudioPlayerManager.getInstance().resetMsgId(messageId)
+        }
       },
       onTTSEnd: (messageId: string, audio: string) => {
-        player.playAudioWithAudio(audio, false)
+        const audioPlayer = getOrCreatePlayer()
+        if (audioPlayer)
+          audioPlayer.playAudioWithAudio(audio, false)
       },
       onError: wrappedOnError,
       onCompleted: wrappedOnCompleted,
