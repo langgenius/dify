@@ -24,7 +24,7 @@ from .model import Account
 from .types import EnumText, LongText, StringUUID
 
 
-class TriggerSubscription(Base):
+class TriggerSubscription(TypeBase):
     """
     Trigger provider model for managing credentials
     Supports multiple credential instances per provider
@@ -63,12 +63,15 @@ class TriggerSubscription(Base):
         Integer, default=-1, comment="Subscription instance expiration timestamp, -1 for never"
     )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
         server_onupdate=func.current_timestamp(),
+        init=False,
     )
 
     def is_credential_expired(self) -> bool:
