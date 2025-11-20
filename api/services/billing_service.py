@@ -3,6 +3,7 @@ from typing import Literal
 
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
+from werkzeug.exceptions import InternalServerError
 
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
@@ -107,13 +108,20 @@ class BillingService:
         retry=retry_if_exception_type(httpx.RequestError),
         reraise=True,
     )
-    def _send_request(cls, method: Literal["GET", "POST", "DELETE"], endpoint: str, json=None, params=None):
+    def _send_request(cls, method: Literal["GET", "POST", "DELETE", "PUT"], endpoint: str, json=None, params=None):
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
         url = f"{cls.base_url}{endpoint}"
         response = httpx.request(method, url, json=json, params=params, headers=headers)
         if method == "GET" and response.status_code != httpx.codes.OK:
             raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
+        if method == "PUT":
+            if response.status_code == httpx.codes.INTERNAL_SERVER_ERROR:
+                raise InternalServerError(
+                    "Unable to process billing request. Please try again later or contact support."
+                )
+            if response.status_code != httpx.codes.OK:
+                raise ValueError("Invalid arguments.")
         if method == "POST" and response.status_code != httpx.codes.OK:
             raise ValueError(f"Unable to send request to {url}. Please try again later or contact support.")
         return response.json()
@@ -226,3 +234,8 @@ class BillingService:
     @classmethod
     def clean_billing_info_cache(cls, tenant_id: str):
         redis_client.delete(f"tenant:{tenant_id}:billing_info")
+
+    @classmethod
+    def sync_partner_tenants_bindings(cls, account_id: str, partner_key: str, click_id: str):
+        payload = {"account_id": account_id, "click_id": click_id}
+        return cls._send_request("PUT", f"/partners/{partner_key}/tenants", json=payload)

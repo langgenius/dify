@@ -81,8 +81,8 @@ const translation = {
       'top-priority': '最優先',
     },
     triggerEvents: {
-      sandbox: '{{count,number}} トリガーイベント数',
-      professional: '{{count,number}} トリガーイベント数/月',
+      sandbox: '{{count,number}}のトリガーイベント数',
+      professional: '{{count,number}}のトリガーイベント数/月',
       unlimited: '無制限のトリガーイベント数',
       tooltip: 'プラグイントリガー、タイマートリガー、または Webhook トリガーによって自動的にワークフローを起動するイベントの回数です。',
     },
