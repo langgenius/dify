@@ -29,4 +29,6 @@ class APIBasedExtension(TypeBase):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     api_endpoint: Mapped[str] = mapped_column(String(255), nullable=False)
     api_key: Mapped[str] = mapped_column(LongText, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )

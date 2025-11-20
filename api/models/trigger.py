@@ -113,7 +113,9 @@ class TriggerOAuthSystemClient(TypeBase):
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # oauth params of the trigger provider
     encrypted_oauth_params: Mapped[str] = mapped_column(LongText, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
@@ -139,7 +141,9 @@ class TriggerOAuthTenantClient(Base):
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     # oauth params of the trigger provider
     encrypted_oauth_params: Mapped[str] = mapped_column(LongText, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
