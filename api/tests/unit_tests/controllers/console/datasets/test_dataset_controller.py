@@ -36,13 +36,15 @@ def mock_current_account_with_tenant_func():
 
 
 # Patch decorators and current_account_with_tenant BEFORE importing controllers
-with patch("libs.login.login_required", lambda f: f), \
-     patch("libs.login.current_account_with_tenant", mock_current_account_with_tenant_func), \
-     patch("controllers.console.wraps.setup_required", lambda f: f), \
-     patch("controllers.console.wraps.account_initialization_required", lambda f: f), \
-     patch("controllers.console.wraps.cloud_edition_billing_rate_limit_check", lambda x: lambda f: f), \
-     patch("controllers.console.wraps.cloud_edition_billing_resource_check", lambda x: lambda f: f), \
-     patch("controllers.console.wraps.enterprise_license_required", lambda f: f):
+with (
+    patch("libs.login.login_required", lambda f: f),
+    patch("libs.login.current_account_with_tenant", mock_current_account_with_tenant_func),
+    patch("controllers.console.wraps.setup_required", lambda f: f),
+    patch("controllers.console.wraps.account_initialization_required", lambda f: f),
+    patch("controllers.console.wraps.cloud_edition_billing_rate_limit_check", lambda x: lambda f: f),
+    patch("controllers.console.wraps.cloud_edition_billing_resource_check", lambda x: lambda f: f),
+    patch("controllers.console.wraps.enterprise_license_required", lambda f: f),
+):
     pass
 
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError
@@ -75,7 +77,7 @@ class TestDatasetListApi:
         from flask_login import LoginManager
 
         from extensions.ext_database import db
-        
+
         app = Flask(__name__)
         app.config["TESTING"] = True
         app.config["SECRET_KEY"] = "test-secret-key"
@@ -84,26 +86,27 @@ class TestDatasetListApi:
         app.config["RESTX_MASK_SWAGGER"] = False
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         app.config["ERROR_404_HELP"] = False
-        
+
         # Initialize extensions
         db.init_app(app)
         login_manager = LoginManager()
         login_manager.init_app(app)
-        
+
         @login_manager.user_loader
         def load_user(user_id):
             return None
-        
+
         # Create all database tables
         with app.app_context():
             db.create_all()
-        
+
         return app
 
     @pytest.fixture
     def mock_dataset(self):
         """Create mock dataset object."""
         from unittest.mock import PropertyMock
+
         dataset = MagicMock()
         dataset_id = str(uuid4())
         # Configure id as a simple string attribute, not PropertyMock
@@ -118,6 +121,7 @@ class TestDatasetListApi:
         dataset.embedding_model = "text-embedding-ada-002"
         dataset.embedding_model_provider = "openai"
         from datetime import datetime
+
         dataset.created_at = datetime(2024, 1, 1, 0, 0, 0)
         dataset.updated_at = datetime(2024, 1, 1, 0, 0, 0)
         dataset.document_count = 0
@@ -129,7 +133,7 @@ class TestDatasetListApi:
         # Configure retrieval_model_dict to avoid boolean conversion issues
         dataset.retrieval_model_dict = {
             "reranking_enable": False,
-            "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""}
+            "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
         }
         # Configure external_retrieval_model to avoid boolean conversion issues
         dataset.external_retrieval_model = MagicMock()
@@ -213,7 +217,7 @@ class TestDatasetListApi:
         mock_db_session.query.return_value.first.return_value = MagicMock()
         mock_user.is_dataset_editor = False
         mock_current_account.return_value = (mock_user, "test-tenant-id")
-        
+
         # Act & Assert
         with app.test_request_context(
             "/datasets",
@@ -225,7 +229,7 @@ class TestDatasetListApi:
             api = DatasetListApi()
             with pytest.raises(Forbidden):
                 api.post()
-        
+
         # Verify service was not called since permission check failed
         mock_create_dataset.assert_not_called()
 
@@ -268,7 +272,7 @@ class TestDatasetApi:
         from flask_login import LoginManager
 
         from extensions.ext_database import db
-        
+
         app = Flask(__name__)
         app.config["TESTING"] = True
         app.config["SECRET_KEY"] = "test-secret-key"
@@ -277,26 +281,27 @@ class TestDatasetApi:
         app.config["RESTX_MASK_SWAGGER"] = False
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         app.config["ERROR_404_HELP"] = False
-        
+
         # Initialize extensions
         db.init_app(app)
         login_manager = LoginManager()
         login_manager.init_app(app)
-        
+
         @login_manager.user_loader
         def load_user(user_id):
             return None
-        
+
         # Create all database tables
         with app.app_context():
             db.create_all()
-        
+
         return app
 
     @pytest.fixture
     def mock_dataset(self):
         """Create mock dataset object."""
         from unittest.mock import PropertyMock
+
         dataset = MagicMock()
         dataset_id = str(uuid4())
         # Configure id as a simple string attribute, not PropertyMock
@@ -311,6 +316,7 @@ class TestDatasetApi:
         dataset.embedding_model = "text-embedding-ada-002"
         dataset.embedding_model_provider = "openai"
         from datetime import datetime
+
         dataset.created_at = datetime(2024, 1, 1, 0, 0, 0)
         dataset.updated_at = datetime(2024, 1, 1, 0, 0, 0)
         dataset.document_count = 0
@@ -322,7 +328,7 @@ class TestDatasetApi:
         # Configure retrieval_model_dict to avoid boolean conversion issues
         dataset.retrieval_model_dict = {
             "reranking_enable": False,
-            "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""}
+            "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
         }
         # Configure external_retrieval_model to avoid boolean conversion issues
         dataset.external_retrieval_model = MagicMock()
@@ -388,7 +394,7 @@ class TestDatasetApi:
         """
         # Arrange
         from services.errors.account import NoPermissionError
-        
+
         mock_db_session.query.return_value.first.return_value = MagicMock()
         mock_current_account.return_value = (mock_user, "test-tenant-id")
         mock_get_dataset.return_value = mock_dataset
@@ -467,9 +473,7 @@ class TestDatasetApi:
         mock_get_dataset.return_value = None
 
         # Act & Assert
-        with app.test_request_context(
-            "/datasets/non-existent-id", method="PUT", json={"name": "Updated Dataset"}
-        ):
+        with app.test_request_context("/datasets/non-existent-id", method="PUT", json={"name": "Updated Dataset"}):
             from controllers.console.datasets.datasets import DatasetApi
 
             api = DatasetApi()
@@ -536,7 +540,7 @@ class TestDatasetApi:
         mock_user.has_edit_permission = False
         mock_user.is_dataset_operator = False
         mock_current_account.return_value = (mock_user, "test-tenant-id")
-        
+
         # Act & Assert
         with app.test_request_context("/datasets/test-id", method="DELETE"):
             from controllers.console.datasets.datasets import DatasetApi
@@ -544,7 +548,7 @@ class TestDatasetApi:
             api = DatasetApi()
             with pytest.raises(Forbidden):
                 api.delete("test-id")
-        
+
         # Verify service was not called since permission check failed
         mock_delete_dataset.assert_not_called()
 
@@ -604,7 +608,7 @@ class TestDocumentUploadHandling:
         from flask_login import LoginManager
 
         from extensions.ext_database import db
-        
+
         app = Flask(__name__)
         app.config["TESTING"] = True
         app.config["SECRET_KEY"] = "test-secret-key"
@@ -613,20 +617,20 @@ class TestDocumentUploadHandling:
         app.config["RESTX_MASK_SWAGGER"] = False
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         app.config["ERROR_404_HELP"] = False
-        
+
         # Initialize extensions
         db.init_app(app)
         login_manager = LoginManager()
         login_manager.init_app(app)
-        
+
         @login_manager.user_loader
         def load_user(user_id):
             return None
-        
+
         # Create all database tables
         with app.app_context():
             db.create_all()
-        
+
         return app
 
     @pytest.fixture
@@ -782,7 +786,7 @@ class TestBatchOperations:
         from flask_login import LoginManager
 
         from extensions.ext_database import db
-        
+
         app = Flask(__name__)
         app.config["TESTING"] = True
         app.config["SECRET_KEY"] = "test-secret-key"
@@ -791,20 +795,20 @@ class TestBatchOperations:
         app.config["RESTX_MASK_SWAGGER"] = False
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         app.config["ERROR_404_HELP"] = False
-        
+
         # Initialize extensions
         db.init_app(app)
         login_manager = LoginManager()
         login_manager.init_app(app)
-        
+
         @login_manager.user_loader
         def load_user(user_id):
             return None
-        
+
         # Create all database tables
         with app.app_context():
             db.create_all()
-        
+
         return app
 
     @pytest.fixture
@@ -946,7 +950,7 @@ class TestInputValidation:
         from flask_login import LoginManager
 
         from extensions.ext_database import db
-        
+
         app = Flask(__name__)
         app.config["TESTING"] = True
         app.config["SECRET_KEY"] = "test-secret-key"
@@ -955,20 +959,20 @@ class TestInputValidation:
         app.config["RESTX_MASK_SWAGGER"] = False
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         app.config["ERROR_404_HELP"] = False
-        
+
         # Initialize extensions
         db.init_app(app)
         login_manager = LoginManager()
         login_manager.init_app(app)
-        
+
         @login_manager.user_loader
         def load_user(user_id):
             return None
-        
+
         # Create all database tables
         with app.app_context():
             db.create_all()
-        
+
         return app
 
     @pytest.fixture
