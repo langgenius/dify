@@ -11,12 +11,11 @@ This test suite covers:
 
 import base64
 import secrets
-from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch
+from datetime import datetime, timezone as tz
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.exc import IntegrityError
 
 from libs.password import compare_password, hash_password, valid_password
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
@@ -258,7 +257,7 @@ class TestAccountStatusTransitions:
 
         # Act
         account.status = AccountStatus.ACTIVE
-        account.initialized_at = datetime.now(datetime.UTC)
+        account.initialized_at = datetime.now(tz.utc)
 
         # Assert
         assert account.get_status() == AccountStatus.ACTIVE
@@ -858,7 +857,7 @@ class TestAccountIntegration:
         """Test account last login tracking."""
         # Arrange
         account = Account(name="Test User", email="test@example.com")
-        login_time = datetime.now(datetime.UTC)
+        login_time = datetime.now(tz.utc)
         login_ip = "192.168.1.1"
 
         # Act
@@ -880,7 +879,7 @@ class TestAccountIntegration:
 
         # Act - simulate initialization
         account.status = AccountStatus.ACTIVE
-        account.initialized_at = datetime.now(datetime.UTC)
+        account.initialized_at = datetime.now(tz.utc)
 
         # Assert
         assert account.get_status() == AccountStatus.ACTIVE
