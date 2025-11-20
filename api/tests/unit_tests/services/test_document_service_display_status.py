@@ -23,7 +23,7 @@ def test_apply_display_status_filter_applies_when_status_present():
     filtered = DocumentService.apply_display_status_filter(query, "queuing")
     compiled = str(filtered.compile(compile_kwargs={"literal_binds": True}))
     assert "WHERE" in compiled
-    assert "document.indexing_status = 'waiting'" in compiled
+    assert "documents.indexing_status = 'waiting'" in compiled
 
 
 def test_apply_display_status_filter_returns_same_when_invalid():
