@@ -129,9 +129,7 @@ class TestBillingServiceSendRequest:
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
-    def test_post_request_non_200_with_valid_json(
-        self, mock_httpx_request, mock_billing_config, status_code
-    ):
+    def test_post_request_non_200_with_valid_json(self, mock_httpx_request, mock_billing_config, status_code):
         """Test POST request with non-200 status code raises ValueError."""
         # Arrange
         error_response = {"detail": "Error message"}
@@ -148,11 +146,9 @@ class TestBillingServiceSendRequest:
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
-    def test_delete_request_non_200_with_valid_json(
-        self, mock_httpx_request, mock_billing_config, status_code
-    ):
+    def test_delete_request_non_200_with_valid_json(self, mock_httpx_request, mock_billing_config, status_code):
         """Test DELETE request with non-200 status code but valid JSON response.
-        
+
         DELETE doesn't check status code, so it returns the error JSON.
         """
         # Arrange
@@ -171,9 +167,7 @@ class TestBillingServiceSendRequest:
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
-    def test_post_request_non_200_with_invalid_json(
-        self, mock_httpx_request, mock_billing_config, status_code
-    ):
+    def test_post_request_non_200_with_invalid_json(self, mock_httpx_request, mock_billing_config, status_code):
         """Test POST request with non-200 status code raises ValueError before JSON parsing."""
         # Arrange
         mock_response = MagicMock()
@@ -191,9 +185,7 @@ class TestBillingServiceSendRequest:
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
-    def test_delete_request_non_200_with_invalid_json(
-        self, mock_httpx_request, mock_billing_config, status_code
-    ):
+    def test_delete_request_non_200_with_invalid_json(self, mock_httpx_request, mock_billing_config, status_code):
         """Test DELETE request with non-200 status code and invalid JSON response raises exception.
 
         DELETE doesn't check status code, so it calls response.json() which raises JSONDecodeError
