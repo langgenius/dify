@@ -190,5 +190,5 @@ class BillingService:
     
     @classmethod
     def sync_partner_tenants_bindings(cls, account_id: str, partner_key: str, click_id: str):
-        json = {"account_id": account_id, "click_id": click_id}
-        return cls._send_request("PUT", f"/partners/{partner_key}/tenants", json=json)
+        payload = {"account_id": account_id, "click_id": click_id}
+        return cls._send_request("PUT", f"/partners/{partner_key}/tenants", json=payload)
