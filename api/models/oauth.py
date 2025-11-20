@@ -4,11 +4,9 @@ import sqlalchemy as sa
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import TypeBase
-from .types import StringUUID
 from libs.uuid_utils import uuidv7
 
-from .base import Base
+from .base import TypeBase
 from .types import AdjustedJSON, LongText, StringUUID
 
 

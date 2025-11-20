@@ -15,18 +15,13 @@ from core.trigger.entities.api_entities import TriggerProviderSubscriptionApiEnt
 from core.trigger.entities.entities import Subscription
 from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url, generate_webhook_trigger_endpoint
 from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
 
 from .base import Base, TypeBase
 from .engine import db
 from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from .model import Account
-from .types import EnumText, StringUUID
-from libs.uuid_utils import uuidv7
-from models.base import Base, TypeBase
-from models.engine import db
-from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
-from models.model import Account
-from models.types import EnumText, LongText, StringUUID
+from .types import EnumText, LongText, StringUUID
 
 
 class TriggerSubscription(Base):
