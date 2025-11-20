@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Lancer',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API de service Backend',
@@ -124,6 +125,10 @@ const translation = {
     status: {
       running: 'En service',
       disable: 'Désactiver',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: 'La fonctionnalité {{feature}} n\'est pas prise en charge en mode Nœud Déclencheur.',
     },
   },
   analysis: {
