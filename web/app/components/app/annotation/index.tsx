@@ -139,7 +139,7 @@ const Annotation: FC<Props> = (props) => {
   return (
     <div className='flex h-full flex-col'>
       <p className='system-sm-regular text-text-tertiary'>{t('appLog.description')}</p>
-      <div className='flex h-full flex-1 flex-col py-4'>
+      <div className='relative flex h-full flex-1 flex-col py-4'>
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div className='flex items-center space-x-2'>
             {isChatApp && (

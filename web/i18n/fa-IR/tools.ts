@@ -205,6 +205,7 @@ const translation = {
       clientID: 'شناسه مشتری',
       clientSecret: 'رمز مشتری',
       useDynamicClientRegistration: 'استفاده از ثبت‌نام پویا برای مشتری',
+      redirectUrlWarning: 'لطفاً URL بازگشت OAuth خود را پیکربندی کنید به:',
     },
     delete: 'حذف سرور MCP',
     deleteConfirmTitle: 'آیا مایل به حذف {mcp} هستید؟',
