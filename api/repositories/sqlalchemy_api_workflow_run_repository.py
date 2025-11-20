@@ -749,13 +749,14 @@ WHERE
         """
         Get average app interaction statistics using raw SQL for optimal performance.
         """
-        sql_query = """SELECT
+        converted_created_at = convert_datetime_to_date("c.created_at")
+        sql_query = f"""SELECT
     AVG(sub.interactions) AS interactions,
     sub.date
 FROM
     (
         SELECT
-            {convert_datetime_to_date("c.created_at")} AS date,
+            {converted_created_at} AS date,
             c.created_by,
             COUNT(c.id) AS interactions
         FROM
@@ -764,8 +765,8 @@ FROM
             c.tenant_id = :tenant_id
             AND c.app_id = :app_id
             AND c.triggered_from = :triggered_from
-            {{start}}
-            {{end}}
+            {{{{start}}}}
+            {{{{end}}}}
         GROUP BY
             date, c.created_by
     ) sub
