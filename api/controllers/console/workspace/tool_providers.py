@@ -1086,7 +1086,13 @@ class ToolMCPAuthApi(Resource):
                 return {"result": "success"}
         except MCPAuthError as e:
             try:
-                auth_result = auth(provider_entity, args.get("authorization_code"))
+                # Pass the extracted OAuth metadata hints to auth()
+                auth_result = auth(
+                    provider_entity,
+                    args.get("authorization_code"),
+                    resource_metadata_url=e.resource_metadata_url,
+                    scope_hint=e.scope_hint,
+                )
                 with Session(db.engine) as session, session.begin():
                     service = MCPToolManageService(session=session)
                     response = service.execute_auth_actions(auth_result)
@@ -1096,7 +1102,7 @@ class ToolMCPAuthApi(Resource):
                     service = MCPToolManageService(session=session)
                     service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
                 raise ValueError(f"Failed to refresh token, please try to authorize again: {e}") from e
-        except MCPError as e:
+        except (MCPError, ValueError) as e:
             with Session(db.engine) as session, session.begin():
                 service = MCPToolManageService(session=session)
                 service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
