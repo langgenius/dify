@@ -81,6 +81,7 @@ const translation = {
       ok: 'ОК',
     },
     learnMore: 'Подробнее',
+    sort: {},
   },
   metadata: {
     title: 'Метаданные',

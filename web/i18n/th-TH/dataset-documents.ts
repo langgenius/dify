@@ -81,6 +81,7 @@ const translation = {
       ok: 'ตกลง, ได้',
     },
     learnMore: 'ศึกษาเพิ่มเติม',
+    sort: {},
   },
   metadata: {
     title: 'ข้อมูลเมตา',

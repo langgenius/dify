@@ -81,6 +81,7 @@ const translation = {
     },
     addUrl: 'Thêm URL',
     learnMore: 'Tìm hiểu thêm',
+    sort: {},
   },
   metadata: {
     title: 'Siêu dữ liệu',

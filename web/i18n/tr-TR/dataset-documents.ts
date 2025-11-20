@@ -81,6 +81,7 @@ const translation = {
       ok: 'Tamam',
     },
     learnMore: 'Daha fazla bilgi edinin',
+    sort: {},
   },
   metadata: {
     title: 'Meta Veri',
