@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Kontekst',
       noData: 'Uvozi znanje kot kontekst',
-      words: 'Besede',
-      textBlocks: 'Bloki besedila',
       selectTitle: 'Izberi referenčno znanje',
       selected: 'Izbrano znanje',
       noDataSet: 'Znanje ni bilo najdeno',

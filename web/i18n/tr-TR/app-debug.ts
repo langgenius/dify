@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Bağlam',
       noData: 'Bağlam olarak Bilgi\'yi içe aktarabilirsiniz',
-      words: 'Kelimeler',
-      textBlocks: 'Metin Blokları',
       selectTitle: 'Referans Bilgi\'yi seçin',
       selected: 'Bilgi seçildi',
       noDataSet: 'Bilgi bulunamadı',

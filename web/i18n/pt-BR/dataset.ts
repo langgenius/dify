@@ -18,7 +18,6 @@ const translation = {
   intro4: 'ou pode ser criado',
   intro5: ' como um plug-in de índice ChatGPT independente para publicação',
   unavailable: 'Indisponível',
-  unavailableTip: 'O modelo de incorporação não está disponível, o modelo de incorporação padrão precisa ser configurado',
   datasets: 'CONHECIMENTO',
   datasetsApi: 'API',
   retrieval: {
