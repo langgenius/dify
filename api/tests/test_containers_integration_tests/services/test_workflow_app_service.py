@@ -209,7 +209,6 @@ class TestWorkflowAppService:
 
         # Create workflow app log
         workflow_app_log = WorkflowAppLog(
-            id=str(uuid.uuid4()),
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=workflow.id,
@@ -217,8 +216,9 @@ class TestWorkflowAppService:
             created_from="service-api",
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
         )
+        workflow_app_log.id = str(uuid.uuid4())
+        workflow_app_log.created_at = datetime.now(UTC)
         db.session.add(workflow_app_log)
         db.session.commit()
 
@@ -365,7 +365,6 @@ class TestWorkflowAppService:
             db.session.commit()
 
             workflow_app_log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -373,8 +372,9 @@ class TestWorkflowAppService:
                 created_from="service-api",
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
+            workflow_app_log.id = str(uuid.uuid4())
+            workflow_app_log.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db.session.add(workflow_app_log)
             db.session.commit()
 
@@ -473,7 +473,6 @@ class TestWorkflowAppService:
             db.session.commit()
 
             workflow_app_log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -481,8 +480,9 @@ class TestWorkflowAppService:
                 created_from="service-api",
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=timestamp,
             )
+            workflow_app_log.id = str(uuid.uuid4())
+            workflow_app_log.created_at = timestamp
             db.session.add(workflow_app_log)
             db.session.commit()
 
@@ -580,7 +580,6 @@ class TestWorkflowAppService:
             db.session.commit()
 
             workflow_app_log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -588,8 +587,9 @@ class TestWorkflowAppService:
                 created_from="service-api",
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
+            workflow_app_log.id = str(uuid.uuid4())
+            workflow_app_log.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db.session.add(workflow_app_log)
             db.session.commit()
 
@@ -710,7 +710,6 @@ class TestWorkflowAppService:
             db.session.commit()
 
             workflow_app_log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -718,8 +717,9 @@ class TestWorkflowAppService:
                 created_from="service-api",
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
+            workflow_app_log.id = str(uuid.uuid4())
+            workflow_app_log.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db.session.add(workflow_app_log)
             db.session.commit()
 
@@ -752,7 +752,6 @@ class TestWorkflowAppService:
             db.session.commit()
 
             workflow_app_log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -760,8 +759,9 @@ class TestWorkflowAppService:
                 created_from="web-app",
                 created_by_role=CreatorUserRole.END_USER,
                 created_by=end_user.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i + 10),
             )
+            workflow_app_log.id = str(uuid.uuid4())
+            workflow_app_log.created_at = datetime.now(UTC) + timedelta(minutes=i + 10)
             db.session.add(workflow_app_log)
             db.session.commit()
 
@@ -889,7 +889,6 @@ class TestWorkflowAppService:
 
         # Create workflow app log
         workflow_app_log = WorkflowAppLog(
-            id=str(uuid.uuid4()),
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=workflow.id,
@@ -897,8 +896,9 @@ class TestWorkflowAppService:
             created_from="service-api",
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
         )
+        workflow_app_log.id = str(uuid.uuid4())
+        workflow_app_log.created_at = datetime.now(UTC)
         db.session.add(workflow_app_log)
         db.session.commit()
 
@@ -979,7 +979,6 @@ class TestWorkflowAppService:
 
         # Create workflow app log
         workflow_app_log = WorkflowAppLog(
-            id=str(uuid.uuid4()),
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=workflow.id,
@@ -987,8 +986,9 @@ class TestWorkflowAppService:
             created_from="service-api",
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
         )
+        workflow_app_log.id = str(uuid.uuid4())
+        workflow_app_log.created_at = datetime.now(UTC)
         db.session.add(workflow_app_log)
         db.session.commit()
 
@@ -1133,7 +1133,6 @@ class TestWorkflowAppService:
             db_session_with_containers.flush()
 
             log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -1141,8 +1140,9 @@ class TestWorkflowAppService:
                 created_from="service-api",
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
+            log.id = str(uuid.uuid4())
+            log.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db_session_with_containers.add(log)
             logs_data.append((log, workflow_run))
 
@@ -1233,7 +1233,6 @@ class TestWorkflowAppService:
             db_session_with_containers.flush()
 
             log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -1241,8 +1240,9 @@ class TestWorkflowAppService:
                 created_from="service-api",
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
+            log.id = str(uuid.uuid4())
+            log.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db_session_with_containers.add(log)
             logs_data.append((log, workflow_run))
 
@@ -1335,7 +1335,6 @@ class TestWorkflowAppService:
                 db_session_with_containers.flush()
 
                 log = WorkflowAppLog(
-                    id=str(uuid.uuid4()),
                     tenant_id=app.tenant_id,
                     app_id=app.id,
                     workflow_id=workflow.id,
@@ -1343,8 +1342,9 @@ class TestWorkflowAppService:
                     created_from="service-api",
                     created_by_role=CreatorUserRole.ACCOUNT,
                     created_by=account.id,
-                    created_at=datetime.now(UTC) + timedelta(minutes=i * 10 + j),
                 )
+                log.id = str(uuid.uuid4())
+                log.created_at = datetime.now(UTC) + timedelta(minutes=i * 10 + j)
                 db_session_with_containers.add(log)
 
         db_session_with_containers.commit()

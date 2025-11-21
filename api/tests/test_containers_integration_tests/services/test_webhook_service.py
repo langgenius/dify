@@ -67,6 +67,7 @@ class TestWebhookService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create app
         app = App(
@@ -131,7 +132,7 @@ class TestWebhookService:
             app_id=app.id,
             node_id="webhook_node",
             tenant_id=tenant.id,
-            webhook_id=webhook_id,
+            webhook_id=str(webhook_id),
             created_by=account.id,
         )
         db_session_with_containers.add(webhook_trigger)
@@ -143,6 +144,7 @@ class TestWebhookService:
             app_id=app.id,
             node_id="webhook_node",
             trigger_type=AppTriggerType.TRIGGER_WEBHOOK,
+            provider_name="webhook",
             title="Test Webhook",
             status=AppTriggerStatus.ENABLED,
         )
