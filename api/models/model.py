@@ -1747,21 +1747,23 @@ class UploadFile(Base):
         self.source_url = source_url
 
 
-class ApiRequest(Base):
+class ApiRequest(TypeBase):
     __tablename__ = "api_requests"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="api_request_pkey"),
         sa.Index("api_request_token_idx", "tenant_id", "api_token_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    api_token_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    api_token_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     path: Mapped[str] = mapped_column(String(255), nullable=False)
-    request = mapped_column(LongText, nullable=True)
-    response = mapped_column(LongText, nullable=True)
+    request: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    response: Mapped[str | None] = mapped_column(LongText, nullable=True)
     ip: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class MessageChain(TypeBase):
