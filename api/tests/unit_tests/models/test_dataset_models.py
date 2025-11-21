@@ -1324,8 +1324,10 @@ class TestModelIntegration:
         )
 
         # Mock segment_count and hit_count
-        with patch.object(Document, "segment_count", new_callable=lambda: property(lambda self: 5)), \
-             patch.object(Document, "hit_count", new_callable=lambda: property(lambda self: 10)):
+        with (
+            patch.object(Document, "segment_count", new_callable=lambda: property(lambda self: 5)),
+            patch.object(Document, "hit_count", new_callable=lambda: property(lambda self: 10)),
+        ):
             # Act
             result = document.to_dict()
 
