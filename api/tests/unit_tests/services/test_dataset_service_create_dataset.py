@@ -15,7 +15,7 @@ import pytest
 
 from core.model_runtime.entities.model_entities import ModelType
 from models.account import Account
-from models.dataset import Dataset, ExternalKnowledgeBindings, Pipeline
+from models.dataset import Dataset, Pipeline
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 from services.entities.knowledge_entities.rag_pipeline_entities import (
@@ -23,7 +23,6 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
     RagPipelineDatasetCreateEntity,
 )
 from services.errors.dataset import DatasetNameDuplicateError
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
 
 
 class DatasetCreateTestDataFactory:
@@ -44,9 +43,7 @@ class DatasetCreateTestDataFactory:
         return account
 
     @staticmethod
-    def create_embedding_model_mock(
-        model: str = "text-embedding-ada-002", provider: str = "openai"
-    ) -> Mock:
+    def create_embedding_model_mock(model: str = "text-embedding-ada-002", provider: str = "openai") -> Mock:
         """Create a mock embedding model."""
         embedding_model = Mock()
         embedding_model.model = model
@@ -66,9 +63,7 @@ class DatasetCreateTestDataFactory:
         return retrieval_model
 
     @staticmethod
-    def create_external_knowledge_api_mock(
-        api_id: str = "api-123", **kwargs
-    ) -> Mock:
+    def create_external_knowledge_api_mock(api_id: str = "api-123", **kwargs) -> Mock:
         """Create a mock external knowledge API."""
         api = Mock()
         api.id = api_id
@@ -346,9 +341,7 @@ class TestDatasetServiceCreateEmptyDataset:
         retrieval_model.model_dump.assert_called_once()
         mock_db.commit.assert_called_once()
 
-    def test_create_internal_dataset_with_retrieval_model_reranking(
-        self, mock_dataset_service_dependencies
-    ):
+    def test_create_internal_dataset_with_retrieval_model_reranking(self, mock_dataset_service_dependencies):
         """Test creation with retrieval model that includes reranking."""
         # Arrange
         tenant_id = str(uuid4())
@@ -443,12 +436,8 @@ class TestDatasetServiceCreateEmptyDataset:
         mock_dataset_service_dependencies["db_session"].query.return_value = mock_query
 
         # Mock external knowledge API
-        external_api = DatasetCreateTestDataFactory.create_external_knowledge_api_mock(
-            api_id=external_api_id
-        )
-        mock_dataset_service_dependencies["external_service"].get_external_knowledge_api.return_value = (
-            external_api
-        )
+        external_api = DatasetCreateTestDataFactory.create_external_knowledge_api_mock(api_id=external_api_id)
+        mock_dataset_service_dependencies["external_service"].get_external_knowledge_api.return_value = external_api
 
         mock_db = mock_dataset_service_dependencies["db_session"]
         mock_db.add = Mock()
@@ -522,12 +511,8 @@ class TestDatasetServiceCreateEmptyDataset:
         mock_dataset_service_dependencies["db_session"].query.return_value = mock_query
 
         # Mock external knowledge API
-        external_api = DatasetCreateTestDataFactory.create_external_knowledge_api_mock(
-            api_id=external_api_id
-        )
-        mock_dataset_service_dependencies["external_service"].get_external_knowledge_api.return_value = (
-            external_api
-        )
+        external_api = DatasetCreateTestDataFactory.create_external_knowledge_api_mock(api_id=external_api_id)
+        mock_dataset_service_dependencies["external_service"].get_external_knowledge_api.return_value = external_api
 
         mock_db = mock_dataset_service_dependencies["db_session"]
         mock_db.add = Mock()
@@ -606,9 +591,7 @@ class TestDatasetServiceCreateEmptyRagPipelineDataset:
         description = "RAG Pipeline Description"
 
         # Mock current user
-        current_user = DatasetCreateTestDataFactory.create_account_mock(
-            account_id=user_id, tenant_id=tenant_id
-        )
+        current_user = DatasetCreateTestDataFactory.create_account_mock(account_id=user_id, tenant_id=tenant_id)
         mock_rag_pipeline_dependencies["current_user"] = current_user
 
         # Mock database query (no duplicate name)
@@ -656,9 +639,7 @@ class TestDatasetServiceCreateEmptyRagPipelineDataset:
         auto_name = "Untitled 1"
 
         # Mock current user
-        current_user = DatasetCreateTestDataFactory.create_account_mock(
-            account_id=user_id, tenant_id=tenant_id
-        )
+        current_user = DatasetCreateTestDataFactory.create_account_mock(account_id=user_id, tenant_id=tenant_id)
         mock_rag_pipeline_dependencies["current_user"] = current_user
 
         # Mock database query (empty name, need to generate)
@@ -702,9 +683,7 @@ class TestDatasetServiceCreateEmptyRagPipelineDataset:
         name = "Duplicate RAG Dataset"
 
         # Mock current user
-        current_user = DatasetCreateTestDataFactory.create_account_mock(
-            account_id=user_id, tenant_id=tenant_id
-        )
+        current_user = DatasetCreateTestDataFactory.create_account_mock(account_id=user_id, tenant_id=tenant_id)
         mock_rag_pipeline_dependencies["current_user"] = current_user
 
         # Mock database query to return existing dataset
@@ -723,9 +702,7 @@ class TestDatasetServiceCreateEmptyRagPipelineDataset:
         )
 
         # Act & Assert
-        with pytest.raises(
-            DatasetNameDuplicateError, match=f"Dataset with name {name} already exists"
-        ):
+        with pytest.raises(DatasetNameDuplicateError, match=f"Dataset with name {name} already exists"):
             DatasetService.create_empty_rag_pipeline_dataset(
                 tenant_id=tenant_id, rag_pipeline_dataset_create_entity=entity
             )
@@ -766,9 +743,7 @@ class TestDatasetServiceCreateEmptyRagPipelineDataset:
         name = "Custom Permission RAG Dataset"
 
         # Mock current user
-        current_user = DatasetCreateTestDataFactory.create_account_mock(
-            account_id=user_id, tenant_id=tenant_id
-        )
+        current_user = DatasetCreateTestDataFactory.create_account_mock(account_id=user_id, tenant_id=tenant_id)
         mock_rag_pipeline_dependencies["current_user"] = current_user
 
         # Mock database query
@@ -808,9 +783,7 @@ class TestDatasetServiceCreateEmptyRagPipelineDataset:
         name = "Icon Info RAG Dataset"
 
         # Mock current user
-        current_user = DatasetCreateTestDataFactory.create_account_mock(
-            account_id=user_id, tenant_id=tenant_id
-        )
+        current_user = DatasetCreateTestDataFactory.create_account_mock(account_id=user_id, tenant_id=tenant_id)
         mock_rag_pipeline_dependencies["current_user"] = current_user
 
         # Mock database query
