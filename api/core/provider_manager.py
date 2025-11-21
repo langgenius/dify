@@ -622,10 +622,9 @@ class ProviderManager:
                     # Init trial provider records if not exists
                     if ProviderQuotaType.TRIAL not in provider_quota_to_provider_record_dict:
                         try:
-                            # FIXME ignore the type error, only TrialHostingQuota has limit need to change the logic
+                            # Only TrialHostingQuota has quota_limit attribute
                             new_provider_record = Provider(
                                 tenant_id=tenant_id,
-                                # TODO: Use provider name with prefix after the data migration.
                                 provider_name=ModelProviderID(provider_name).provider_name,
                                 provider_type=ProviderType.SYSTEM,
                                 quota_type=ProviderQuotaType.TRIAL,
