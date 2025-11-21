@@ -9,9 +9,11 @@ from deprecated import deprecated
 from sqlalchemy import ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
+from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
 from .engine import db
@@ -101,6 +103,56 @@ class BuiltinToolProvider(TypeBase):
         String(32), nullable=False, server_default=sa.text("'api-key'"), default="api-key"
     )
     expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"), default=-1)
+
+    @property
+    def credentials(self) -> dict[str, Any]:
+        if not self.encrypted_credentials:
+            return {}
+        return cast(dict[str, Any], json.loads(self.encrypted_credentials))
+
+
+class EndUserAuthenticationProvider(TypeBase):
+    """
+    This table stores the authentication credentials for end users in tools.
+    Mimics the BuiltinToolProvider structure but for end users instead of tenants.
+    """
+
+    __tablename__ = "tool_enduser_authentication_providers"
+    __table_args__ = (
+        sa.UniqueConstraint("end_user_id", "provider", "name"),
+    )
+
+    # id of the authentication provider
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=uuidv7, init=False)
+    name: Mapped[str] = mapped_column(
+        String(256),
+        nullable=False,
+        default="API KEY 1",
+        index=True
+    )
+    # id of the tenant
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # id of the end user
+    end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
+    # name of the tool provider
+    provider: Mapped[str] = mapped_column(LongText, nullable=False, index=True)
+    # encrypted credentials for the end user
+    encrypted_credentials: Mapped[str] = mapped_column(LongText, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, default=datetime.now, init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        default=datetime.now,
+        onupdate=func.current_timestamp(),
+        init=False,
+    )
+    # credential type, e.g., "api-key", "oauth2"
+    credential_type: Mapped[CredentialType] = mapped_column(
+        String(32), nullable=False, default=CredentialType.API_KEY
+    )
+    expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, default=-1)
 
     @property
     def credentials(self) -> dict[str, Any]:

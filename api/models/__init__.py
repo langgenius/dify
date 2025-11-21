@@ -80,6 +80,7 @@ from .task import CeleryTask, CeleryTaskSet
 from .tools import (
     ApiToolProvider,
     BuiltinToolProvider,
+    EndUserAuthenticationProvider,
     ToolConversationVariables,
     ToolFile,
     ToolLabelBinding,
@@ -149,6 +150,7 @@ __all__ = [
     "DocumentSegment",
     "Embedding",
     "EndUser",
+    "EndUserAuthenticationProvider",
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
     "IconType",
