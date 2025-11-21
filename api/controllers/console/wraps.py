@@ -10,6 +10,7 @@ from flask import abort, request
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import current_account_with_tenant
@@ -133,7 +134,7 @@ def cloud_edition_billing_knowledge_limit_check(resource: str):
             features = FeatureService.get_features(current_tenant_id)
             if features.billing.enabled:
                 if resource == "add_segment":
-                    if features.billing.subscription.plan == "sandbox":
+                    if features.billing.subscription.plan == CloudPlan.SANDBOX:
                         abort(
                             403,
                             "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.",
@@ -310,6 +311,22 @@ def edit_permission_required(f: Callable[P, R]):
         if not isinstance(user, Account):
             raise Forbidden()
         if not current_user.has_edit_permission:
+            raise Forbidden()
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def is_admin_or_owner_required(f: Callable[P, R]):
+    @wraps(f)
+    def decorated_function(*args: P.args, **kwargs: P.kwargs):
+        from werkzeug.exceptions import Forbidden
+
+        from libs.login import current_user
+        from models import Account
+
+        user = current_user._get_current_object()
+        if not isinstance(user, Account) or not user.is_admin_or_owner:
             raise Forbidden()
         return f(*args, **kwargs)
 

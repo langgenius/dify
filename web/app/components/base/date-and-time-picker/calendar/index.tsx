@@ -8,9 +8,10 @@ const Calendar: FC<CalendarProps> = ({
   selectedDate,
   onDateClick,
   wrapperClassName,
+  getIsDateDisabled,
 }) => {
   return <div className={wrapperClassName}>
-    <DaysOfWeek/>
+    <DaysOfWeek />
     <div className='grid grid-cols-7 gap-0.5 p-2'>
       {
         days.map(day => <CalendarItem
@@ -18,6 +19,7 @@ const Calendar: FC<CalendarProps> = ({
           day={day}
           selectedDate={selectedDate}
           onClick={onDateClick}
+          isDisabled={getIsDateDisabled ? getIsDateDisabled(day.date) : false}
         />)
       }
     </div>

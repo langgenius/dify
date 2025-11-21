@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'Çeyrek Başlangıcından İtibaren',
       yearToDate: 'Yıl Başlangıcından İtibaren',
       allTime: 'Tüm Zamanlar',
+      custom: 'Özel',
+      last30days: 'Son 30 Gün',
     },
     annotation: {
       all: 'Hepsi',

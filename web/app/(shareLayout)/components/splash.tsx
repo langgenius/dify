@@ -15,6 +15,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
   const shareCode = useWebAppStore(s => s.shareCode)
   const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
+  const embeddedUserId = useWebAppStore(s => s.embeddedUserId)
   const searchParams = useSearchParams()
   const router = useRouter()
   const redirectUrl = searchParams.get('redirect_url')
@@ -57,7 +58,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
 
     (async () => {
       // if access mode is public, user login is always true, but the app login(passport) may be expired
-      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(shareCode!)
+      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(shareCode!, embeddedUserId || undefined)
       if (userLoggedIn && appLoggedIn) {
         redirectOrFinish()
       }
@@ -69,11 +70,14 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
       }
       else if (userLoggedIn && !appLoggedIn) {
         try {
-          const { access_token } = await fetchAccessToken({ appCode: shareCode! })
+          const { access_token } = await fetchAccessToken({
+            appCode: shareCode!,
+            userId: embeddedUserId || undefined,
+          })
           setWebAppPassport(shareCode!, access_token)
           redirectOrFinish()
         }
-        catch (error) {
+        catch {
           await webAppLogout(shareCode!)
           proceedToAuth()
         }
@@ -85,7 +89,8 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     router,
     message,
     webAppAccessMode,
-    tokenFromUrl])
+    tokenFromUrl,
+    embeddedUserId])
 
   if (message) {
     return <div className='flex h-full flex-col items-center justify-center gap-y-4'>
