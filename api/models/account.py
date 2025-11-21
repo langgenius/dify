@@ -359,7 +359,8 @@ class TenantPluginPermission(TypeBase):
     )
 
 
-class TenantPluginAutoUpgradeStrategy(TypeBase):
+from models.base import Base
+class TenantPluginAutoUpgradeStrategy(Base):
     class StrategySetting(enum.StrEnum):
         DISABLED = "disabled"
         FIX_ONLY = "fix_only"
@@ -376,20 +377,12 @@ class TenantPluginAutoUpgradeStrategy(TypeBase):
         sa.UniqueConstraint("tenant_id", name="unique_tenant_plugin_auto_upgrade_strategy"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    strategy_setting: Mapped[StrategySetting] = mapped_column(
-        String(16), nullable=False, server_default="fix_only", default=StrategySetting.FIX_ONLY
-    )
-    upgrade_mode: Mapped[UpgradeMode] = mapped_column(
-        String(16), nullable=False, server_default="exclude", default=UpgradeMode.EXCLUDE
-    )
-    exclude_plugins: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False, default_factory=list)
-    include_plugins: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False, default_factory=list)
-    upgrade_time_of_day: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), init=False, onupdate=func.current_timestamp()
-    )
+    strategy_setting: Mapped[StrategySetting] = mapped_column(String(16), nullable=False, server_default="fix_only")
+    upgrade_time_of_day: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)  # seconds of the day
+    upgrade_mode: Mapped[UpgradeMode] = mapped_column(String(16), nullable=False, server_default="exclude")
+    exclude_plugins: Mapped[list[str]] = mapped_column(sa.ARRAY(String(255)), nullable=False)  # plugin_id (author/name)
+    include_plugins: Mapped[list[str]] = mapped_column(sa.ARRAY(String(255)), nullable=False)  # plugin_id (author/name)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
