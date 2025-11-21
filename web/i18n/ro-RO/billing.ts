@@ -96,6 +96,19 @@ const translation = {
     startBuilding: 'Începeți să construiți',
     taxTip: 'Toate prețurile abonamentelor (lunare/anuale) nu includ taxele aplicabile (de exemplu, TVA, taxa pe vânzări).',
     taxTipSecond: 'Dacă regiunea dumneavoastră nu are cerințe fiscale aplicabile, niciun impozit nu va apărea la finalizarea comenzii și nu vi se vor percepe taxe suplimentare pe întreaga durată a abonamentului.',
+    triggerEvents: {
+      unlimited: 'Evenimente de declanșare nelimitate',
+      tooltip: 'Numărul de evenimente care pornesc automat fluxuri de lucru prin declanșatoare Plugin, Programare sau Webhook.',
+    },
+    workflowExecution: {
+      faster: 'Executarea mai rapidă a fluxului de lucru',
+      standard: 'Executarea fluxului de lucru standard',
+      tooltip: 'Prioritatea și viteza cozii de execuție a fluxului de lucru.',
+      priority: 'Executarea fluxului de lucru prioritar',
+    },
+    startNodes: {
+      unlimited: 'Declanșatori/workflow nelimitați',
+    },
   },
   plans: {
     sandbox: {
@@ -186,8 +199,17 @@ const translation = {
     teamMembers: 'Membrii echipei',
     annotationQuota: 'Cota de Anotare',
     documentsUploadQuota: 'Cota de încărcare a documentelor',
+    triggerEvents: 'Evenimente declanșatoare',
+    perMonth: 'pe lună',
   },
   teamMembers: 'Membrii echipei',
+  triggerLimitModal: {
+    dismiss: 'Respinge',
+    upgrade: 'Actualizare',
+    usageTitle: 'EVENIMENTE TRIGER',
+    description: 'Ai atins limita de declanșatoare de evenimente de flux de lucru pentru acest plan.',
+    title: 'Actualizează pentru a debloca mai multe evenimente declanșatoare',
+  },
 }
 
 export default translation

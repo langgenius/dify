@@ -96,6 +96,19 @@ const translation = {
     startBuilding: 'Commencez à construire',
     taxTip: 'Tous les prix des abonnements (mensuels/annuels) s\'entendent hors taxes applicables (par exemple, TVA, taxe de vente).',
     taxTipSecond: 'Si votre région n\'a pas de exigences fiscales applicables, aucune taxe n\'apparaîtra lors de votre paiement et vous ne serez pas facturé de frais supplémentaires pendant toute la durée de l\'abonnement.',
+    triggerEvents: {
+      unlimited: 'Événements Déclencheurs Illimités',
+      tooltip: 'Le nombre d\'événements qui déclenchent automatiquement des flux de travail via des déclencheurs Plugin, Planification ou Webhook.',
+    },
+    workflowExecution: {
+      priority: 'Exécution du flux de travail prioritaire',
+      standard: 'Exécution du flux de travail standard',
+      tooltip: 'Priorité et vitesse de la file d\'exécution des flux de travail.',
+      faster: 'Exécution de flux de travail plus rapide',
+    },
+    startNodes: {
+      unlimited: 'Déclencheurs/workflows illimités',
+    },
   },
   plans: {
     sandbox: {
@@ -186,8 +199,17 @@ const translation = {
     teamMembers: 'Membres de l\'équipe',
     annotationQuota: 'Quota d\'annotation',
     documentsUploadQuota: 'Quota de téléchargement de documents',
+    perMonth: 'par mois',
+    triggerEvents: 'Événements déclencheurs',
   },
   teamMembers: 'Membres de l\'équipe',
+  triggerLimitModal: {
+    upgrade: 'Mettre à niveau',
+    usageTitle: 'ÉVÉNEMENTS DÉCLENCHEURS',
+    description: 'Vous avez atteint la limite des déclencheurs d\'événements de flux de travail pour ce plan.',
+    dismiss: 'Fermer',
+    title: 'Mettez à niveau pour débloquer plus d\'événements déclencheurs',
+  },
 }
 
 export default translation

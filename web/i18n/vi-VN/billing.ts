@@ -96,6 +96,19 @@ const translation = {
     startBuilding: 'Bắt đầu xây dựng',
     taxTipSecond: 'Nếu khu vực của bạn không có yêu cầu thuế áp dụng, sẽ không có thuế xuất hiện trong quá trình thanh toán của bạn và bạn sẽ không bị tính bất kỳ khoản phí bổ sung nào trong suốt thời gian đăng ký.',
     taxTip: 'Tất cả giá đăng ký (hàng tháng/hàng năm) chưa bao gồm các loại thuế áp dụng (ví dụ: VAT, thuế bán hàng).',
+    triggerEvents: {
+      unlimited: 'Sự kiện Kích hoạt Không giới hạn',
+      tooltip: 'Số lượng sự kiện tự động kích hoạt quy trình làm việc thông qua Plugin, Lịch trình hoặc Webhook.',
+    },
+    workflowExecution: {
+      faster: 'Thực hiện quy trình làm việc nhanh hơn',
+      priority: 'Thực thi Quy trình Làm việc Ưu tiên',
+      tooltip: 'Ưu tiên và tốc độ hàng đợi thực thi quy trình làm việc.',
+      standard: 'Thực thi Quy trình Làm việc Chuẩn',
+    },
+    startNodes: {
+      unlimited: 'Kích hoạt/quy trình làm việc không giới hạn',
+    },
   },
   plans: {
     sandbox: {
@@ -186,8 +199,17 @@ const translation = {
     teamMembers: 'Các thành viên trong nhóm',
     vectorSpace: 'Lưu trữ dữ liệu kiến thức',
     buildApps: 'Xây dựng ứng dụng',
+    triggerEvents: 'Các sự kiện kích hoạt',
+    perMonth: 'mỗi tháng',
   },
   teamMembers: 'Các thành viên trong nhóm',
+  triggerLimitModal: {
+    upgrade: 'Nâng cấp',
+    dismiss: 'Đóng',
+    usageTitle: 'SỰ KIỆN KÍCH HOẠT',
+    description: 'Bạn đã đạt đến giới hạn kích hoạt sự kiện quy trình cho gói này.',
+    title: 'Nâng cấp để mở khóa thêm nhiều sự kiện kích hoạt',
+  },
 }
 
 export default translation
