@@ -1288,7 +1288,7 @@ class PipelineCustomizedTemplate(TypeBase):
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     language: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None, init=False)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )

@@ -1121,11 +1121,12 @@ class RagPipelineService:
             dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
 
         pipeline_customized_template = PipelineCustomizedTemplate(
-            name=args.get("name"),
-            description=args.get("description"),
-            icon=args.get("icon_info"),
+            name=str(args.get("name")),
+            description=str(args.get("description")),
+            icon=dict(args.get("icon_info", {})),
             tenant_id=pipeline.tenant_id,
             yaml_content=dsl,
+            install_count=0,
             position=max_position + 1 if max_position else 1,
             chunk_structure=dataset.chunk_structure,
             language="en-US",
