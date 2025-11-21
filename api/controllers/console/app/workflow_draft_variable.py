@@ -175,7 +175,9 @@ class WorkflowVariableCollectionApi(Resource):
     @console_ns.doc(description="Get draft workflow variables")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.doc(params={"page": "Page number (1-100000)", "limit": "Number of items per page (1-100)"})
-    @console_ns.response(200, "Workflow variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
+    @console_ns.response(
+        200, "Workflow variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS
+    )
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
     def get(self, app_model: App):
