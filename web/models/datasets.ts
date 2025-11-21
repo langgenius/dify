@@ -50,6 +50,7 @@ export type DataSet = {
   permission: DatasetPermission
   data_source_type: DataSourceType
   indexing_technique: IndexingType
+  author_name?: string
   created_by: string
   updated_by: string
   updated_at: number

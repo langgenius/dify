@@ -88,7 +88,7 @@ const translation = {
     freeTrialTipPrefix: 'Iscriviti e ricevi un',
     teamMember_one: '{{count,number}} membro del team',
     documents: '{{count,number}} Documenti di Conoscenza',
-    apiRateLimitUnit: '{{count,number}}/mese',
+    apiRateLimitUnit: '{{count,number}}',
     documentsRequestQuota: '{{count,number}}/min Limite di richiesta di conoscenza',
     teamMember_other: '{{count,number}} membri del team',
     freeTrialTip: 'prova gratuita di 200 chiamate OpenAI.',
@@ -104,6 +104,19 @@ const translation = {
     startBuilding: 'Inizia a costruire',
     taxTip: 'Tutti i prezzi degli abbonamenti (mensili/annuali) non includono le tasse applicabili (ad esempio, IVA, imposta sulle vendite).',
     taxTipSecond: 'Se nella tua regione non ci sono requisiti fiscali applicabili, nessuna tassa apparirà al momento del pagamento e non ti verranno addebitate spese aggiuntive per l\'intera durata dell\'abbonamento.',
+    triggerEvents: {
+      unlimited: 'Eventi di attivazione illimitati',
+      tooltip: 'Il numero di eventi che avviano automaticamente i flussi di lavoro tramite trigger Plugin, Pianificazione o Webhook.',
+    },
+    workflowExecution: {
+      priority: 'Esecuzione del flusso di lavoro prioritario',
+      faster: 'Esecuzione del flusso di lavoro più rapida',
+      standard: 'Esecuzione del flusso di lavoro standard',
+      tooltip: 'Priorità e velocità della coda di esecuzione del flusso di lavoro.',
+    },
+    startNodes: {
+      unlimited: 'Trigger/workflow illimitati',
+    },
   },
   plans: {
     sandbox: {
@@ -115,7 +128,7 @@ const translation = {
       name: 'Professional',
       description:
         'Per individui e piccoli team per sbloccare più potenza a prezzi accessibili.',
-      for: 'Per sviluppatori indipendenti / piccoli team',
+      for: 'Per sviluppatori indipendenti/piccoli team',
     },
     team: {
       name: 'Team',
@@ -197,8 +210,17 @@ const translation = {
     teamMembers: 'Membri del team',
     documentsUploadQuota: 'Quota di Caricamento Documenti',
     vectorSpaceTooltip: 'I documenti con la modalità di indicizzazione ad alta qualità consumeranno risorse di Knowledge Data Storage. Quando il Knowledge Data Storage raggiunge il limite, nuovi documenti non verranno caricati.',
+    perMonth: 'al mese',
+    triggerEvents: 'Eventi scatenanti',
   },
   teamMembers: 'Membri del team',
+  triggerLimitModal: {
+    upgrade: 'Aggiornamento',
+    dismiss: 'Ignora',
+    usageTitle: 'EVENTI SCATENANTI',
+    title: 'Aggiorna per sbloccare più eventi trigger',
+    description: 'Hai raggiunto il limite dei trigger degli eventi del flusso di lavoro per questo piano.',
+  },
 }
 
 export default translation
