@@ -11,9 +11,7 @@ from services.code_based_extension_service import CodeBasedExtensionService
 
 api_based_extension_model = api.model("ApiBasedExtensionModel", api_based_extension_fields)
 
-api_based_extension_list_model = api.model(
-    "ApiBasedExtensionListModel", {"data": fields.List(fields.Nested(api_based_extension_model))}
-)
+api_based_extension_list_model = fields.List(fields.Nested(api_based_extension_model))
 
 
 @console_ns.route("/code-based-extension")
