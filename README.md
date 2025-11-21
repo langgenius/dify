@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/self-hosting/quick-start/docker-compose">Self-hosting Guide</a> ·
-  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction/">Dify User Guide</a> ·
+  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction">Dify User Guide</a> ·
   <a href="https://dify.ai/pricing">Dify edition overview</a>
 </p>
 
