@@ -59,7 +59,7 @@ class BaseApiKeyListResource(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
 
         if self.resource_type == "dataset":
-            has_permission = current_user.has_edit_permission or current_user.is_dataset_operator
+            has_permission = current_user.is_dataset_editor
         else:
             has_permission = current_user.has_edit_permission
 
