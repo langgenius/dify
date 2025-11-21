@@ -1548,11 +1548,12 @@ class TestModelIntegration:
             indexing_status="completed",
         )
 
-        # Mock segment_count and hit_count properties
-        # These properties normally query the database, so we mock them
-        with patch.object(Document, "segment_count", new_callable=lambda: property(lambda self: 5)), \
-             patch.object(Document, "hit_count", new_callable=lambda: property(lambda self: 10)):
-            # Act - Serialize document to dictionary
+        # Mock segment_count and hit_count
+        with (
+            patch.object(Document, "segment_count", new_callable=lambda: property(lambda self: 5)),
+            patch.object(Document, "hit_count", new_callable=lambda: property(lambda self: 10)),
+        ):
+            # Act
             result = document.to_dict()
 
             # Assert - Verify all fields are correctly serialized
