@@ -313,7 +313,7 @@ class ProviderCredential(TypeBase):
     )
 
 
-class ProviderModelCredential(Base):
+class ProviderModelCredential(TypeBase):
     """
     Provider model credential - stores multiple named credentials for each provider model
     """
@@ -330,14 +330,16 @@ class ProviderModelCredential(Base):
         ),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)
     credential_name: Mapped[str] = mapped_column(String(255), nullable=False)
     encrypted_config: Mapped[str] = mapped_column(LongText, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
