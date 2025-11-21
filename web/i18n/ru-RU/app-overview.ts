@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Баркас',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API серверной части',
@@ -124,6 +125,10 @@ const translation = {
     status: {
       running: 'В работе',
       disable: 'Отключено',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: 'Функция {{feature}} не поддерживается в режиме узла триггера.',
     },
   },
   analysis: {

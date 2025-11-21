@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: '發射',
+      enableTooltip: {},
     },
     apiInfo: {
       title: '後端服務 API',
@@ -124,6 +125,10 @@ const translation = {
     status: {
       running: '執行中',
       disable: '已停用',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: '觸發節點模式不支援 {{feature}} 功能。',
     },
   },
   analysis: {

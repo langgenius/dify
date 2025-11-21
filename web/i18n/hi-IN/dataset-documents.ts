@@ -82,6 +82,7 @@ const translation = {
       ok: 'ठीक है',
     },
     learnMore: 'और जानो',
+    sort: {},
   },
   metadata: {
     title: 'मेटाडेटा',
