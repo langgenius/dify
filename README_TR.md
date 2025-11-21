@@ -2,8 +2,8 @@
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Bulut</a> ·
-  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction//self-hosting/quick-start/docker-compose">Kendi Sunucunuzda Barındırma</a> ·
-  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction/">Dokümantasyon</a> ·
+  <a href="https://docs.dify.ai/self-hosting/quick-start/docker-compose">Kendi Sunucunuzda Barındırma</a> ·
+  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction">Dokümantasyon</a> ·
   <a href="https://dify.ai/pricing">Dify ürün seçeneklerine genel bakış</a>
 </p>
 
@@ -55,7 +55,7 @@ Dify, açık kaynaklı bir LLM uygulama geliştirme platformudur. Sezgisel aray�
 Görsel bir arayüz üzerinde güçlü AI iş akışları oluşturun ve test edin, aşağıdaki tüm özellikleri ve daha fazlasını kullanarak.
 
 **2. Kapsamlı model desteği**:
-Çok sayıda çıkarım sağlayıcısı ve kendi kendine barındırılan çözümlerden yüzlerce özel / açık kaynaklı LLM ile sorunsuz entegrasyon sağlar. GPT, Mistral, Llama3 ve OpenAI API uyumlu tüm modelleri kapsar. Desteklenen model sağlayıcılarının tam listesine [buradan](https://docs.dify.ai/documentation/pages/getting-started/introduction//workspace/model-providers) ulaşabilirsiniz.
+Çok sayıda çıkarım sağlayıcısı ve kendi kendine barındırılan çözümlerden yüzlerce özel / açık kaynaklı LLM ile sorunsuz entegrasyon sağlar. GPT, Mistral, Llama3 ve OpenAI API uyumlu tüm modelleri kapsar. Desteklenen model sağlayıcılarının tam listesine [buradan](https://docs.dify.ai/documentation/pages/workspace/model-providers) ulaşabilirsiniz.
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
@@ -81,7 +81,7 @@ Dify'ın tüm özellikleri ilgili API'lerle birlikte gelir, böylece Dify'ı ken
 
 - **Dify Topluluk Sürümünü Kendi Sunucunuzda Barındırma</br>**
   Bu [başlangıç kılavuzu](#quick-start) ile Dify'ı kendi ortamınızda hızlıca çalıştırın.
-  Daha fazla referans ve detaylı talimatlar için [dokümantasyonumuzu](https://docs.dify.ai/documentation/pages/getting-started/introduction/) kullanın.
+  Daha fazla referans ve detaylı talimatlar için [dokümantasyonumuzu](https://docs.dify.ai/documentation/pages/getting-started/introduction) kullanın.
 
 - **Kurumlar / organizasyonlar için Dify</br>**
   Ek kurumsal odaklı özellikler sunuyoruz. Kurumsal ihtiyaçları görüşmek için [bize bir e-posta gönderin](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry). </br>
@@ -112,11 +112,11 @@ docker compose up -d
 
 Çalıştırdıktan sonra, tarayıcınızda [http://localhost/install](http://localhost/install) adresinden Dify kontrol paneline erişebilir ve başlangıç ayarları sürecini başlatabilirsiniz.
 
-> Eğer Dify'a katkıda bulunmak veya ek geliştirmeler yapmak isterseniz, [kaynak koddan dağıtım kılavuzumuza](https://docs.dify.ai/documentation/pages/getting-started/introduction//self-hosting/advanced-deployments/local-source-code) başvurun.
+> Eğer Dify'a katkıda bulunmak veya ek geliştirmeler yapmak isterseniz, [kaynak koddan dağıtım kılavuzumuza](https://docs.dify.ai/self-hosting/advanced-deployments/local-source-code) başvurun.
 
 ## Sonraki adımlar
 
-Yapılandırmayı özelleştirmeniz gerekiyorsa, lütfen [.env.example](docker/.env.example) dosyamızdaki yorumlara bakın ve `.env` dosyanızdaki ilgili değerleri güncelleyin. Ayrıca, spesifik dağıtım ortamınıza ve gereksinimlerinize bağlı olarak `docker-compose.yaml` dosyasının kendisinde de, imaj sürümlerini, port eşlemelerini veya hacim bağlantılarını değiştirmek gibi ayarlamalar yapmanız gerekebilir. Herhangi bir değişiklik yaptıktan sonra, lütfen `docker-compose up -d` komutunu tekrar çalıştırın. Kullanılabilir tüm ortam değişkenlerinin tam listesini [burada](https://docs.dify.ai/documentation/pages/getting-started/introduction//self-hosting/configuration/environments) bulabilirsiniz.
+Yapılandırmayı özelleştirmeniz gerekiyorsa, lütfen [.env.example](docker/.env.example) dosyamızdaki yorumlara bakın ve `.env` dosyanızdaki ilgili değerleri güncelleyin. Ayrıca, spesifik dağıtım ortamınıza ve gereksinimlerinize bağlı olarak `docker-compose.yaml` dosyasının kendisinde de, imaj sürümlerini, port eşlemelerini veya hacim bağlantılarını değiştirmek gibi ayarlamalar yapmanız gerekebilir. Herhangi bir değişiklik yaptıktan sonra, lütfen `docker-compose up -d` komutunu tekrar çalıştırın. Kullanılabilir tüm ortam değişkenlerinin tam listesini [burada](https://docs.dify.ai/self-hosting/configuration/environments) bulabilirsiniz.
 
 Yüksek kullanılabilirliğe sahip bir kurulum yapılandırmak isterseniz, Dify'ın Kubernetes üzerine dağıtılmasına olanak tanıyan topluluk katkılı [Helm Charts](https://helm.sh/) ve YAML dosyaları mevcuttur.
 
