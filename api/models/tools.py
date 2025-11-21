@@ -156,7 +156,7 @@ class EndUserAuthenticationProvider(TypeBase):
     )
     # credential type, e.g., "api-key", "oauth2"
     credential_type: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default=sa.text("'api-key'::character varying"), default="api-key"
+        String(32), nullable=False, server_default=sa.text("'api-key'"), default="api-key"
     )
     expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"), default=-1)
 
