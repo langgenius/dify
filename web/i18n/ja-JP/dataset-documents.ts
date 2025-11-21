@@ -81,6 +81,7 @@ const translation = {
       error: 'インポートエラー',
       ok: 'OK',
     },
+    sort: {},
   },
   metadata: {
     title: 'メタデータ',

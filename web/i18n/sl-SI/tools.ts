@@ -205,6 +205,7 @@ const translation = {
       useDynamicClientRegistration: 'Uporabi dinamično registracijo odjemalca',
       clientID: 'ID odjemalca',
       clientSecretPlaceholder: 'Skrivnost odjemalca',
+      redirectUrlWarning: 'Prosimo, nastavite URL za preusmeritev OAuth na:',
     },
     delete: 'Odstrani strežnik MCP',
     deleteConfirmTitle: 'Odstraniti {mcp}?',

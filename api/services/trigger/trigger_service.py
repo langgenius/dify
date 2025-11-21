@@ -210,7 +210,7 @@ class TriggerService:
         for node_info in nodes_in_graph:
             node_id = node_info["node_id"]
             # firstly check if the node exists in cache
-            if not redis_client.get(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{node_id}"):
+            if not redis_client.get(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_id}"):
                 not_found_in_cache.append(node_info)
                 continue
 
@@ -255,7 +255,7 @@ class TriggerService:
                         subscription_id=node_info["subscription_id"],
                     )
                     redis_client.set(
-                        f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{node_info['node_id']}",
+                        f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_info['node_id']}",
                         cache.model_dump_json(),
                         ex=60 * 60,
                     )
@@ -285,7 +285,7 @@ class TriggerService:
                                 subscription_id=node_info["subscription_id"],
                             )
                             redis_client.set(
-                                f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{node_id}",
+                                f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_id}",
                                 cache.model_dump_json(),
                                 ex=60 * 60,
                             )
@@ -295,12 +295,9 @@ class TriggerService:
                 for node_id in nodes_id_in_db:
                     if node_id not in nodes_id_in_graph:
                         session.delete(nodes_id_in_db[node_id])
-                        redis_client.delete(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{node_id}")
+                        redis_client.delete(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_id}")
                 session.commit()
             except Exception:
-                import logging
-
-                logger = logging.getLogger(__name__)
                 logger.exception("Failed to sync plugin trigger relationships for app %s", app.id)
                 raise
             finally:

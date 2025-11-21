@@ -23,7 +23,7 @@ for reference.
   not separate types in the schema.
 """
 # Client support both version, not support 2025-06-18 yet.
-LATEST_PROTOCOL_VERSION = "2025-03-26"
+LATEST_PROTOCOL_VERSION = "2025-06-18"
 # Server support 2024-11-05 to allow claude to use.
 SERVER_LATEST_PROTOCOL_VERSION = "2024-11-05"
 DEFAULT_NEGOTIATED_VERSION = "2025-03-26"
@@ -1330,3 +1330,13 @@ class OAuthMetadata(BaseModel):
     response_types_supported: list[str]
     grant_types_supported: list[str] | None = None
     code_challenge_methods_supported: list[str] | None = None
+    scopes_supported: list[str] | None = None
+
+
+class ProtectedResourceMetadata(BaseModel):
+    """OAuth 2.0 Protected Resource Metadata (RFC 9470)."""
+
+    resource: str | None = None
+    authorization_servers: list[str]
+    scopes_supported: list[str] | None = None
+    bearer_methods_supported: list[str] | None = None

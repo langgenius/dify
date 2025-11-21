@@ -81,6 +81,7 @@ const translation = {
     },
     addUrl: 'Додати URL-адресу',
     learnMore: 'Дізнатися більше',
+    sort: {},
   },
   metadata: {
     title: 'Метадані',

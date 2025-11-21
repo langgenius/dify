@@ -32,12 +32,11 @@ export type InputProps = {
   wrapperClassName?: string
   styleCss?: CSSProperties
   unit?: string
-  ref?: React.Ref<HTMLInputElement>
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> & VariantProps<typeof inputVariants>
 
 const removeLeadingZeros = (value: string) => value.replace(/^(-?)0+(?=\d)/, '$1')
 
-const Input = ({
+const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   size,
   disabled,
   destructive,
@@ -53,9 +52,8 @@ const Input = ({
   onChange = noop,
   onBlur = noop,
   unit,
-  ref,
   ...props
-}: InputProps) => {
+}, ref) => {
   const { t } = useTranslation()
   const handleNumberChange: ChangeEventHandler<HTMLInputElement> = (e) => {
     if (value === 0) {
@@ -135,7 +133,7 @@ const Input = ({
       }
     </div>
   )
-}
+})
 
 Input.displayName = 'Input'
 

@@ -6,6 +6,8 @@ const translation = {
     documentsUploadQuota: 'Kuota Unggah Dokumen',
     teamMembers: 'Anggota Tim',
     annotationQuota: 'Kuota Anotasi',
+    perMonth: 'per bulan',
+    triggerEvents: 'Pemicu Acara',
   },
   upgradeBtn: {
     encourage: 'Tingkatkan Sekarang',
@@ -89,6 +91,19 @@ const translation = {
     startBuilding: 'Mulai Membangun',
     taxTip: 'Semua harga langganan (bulanan/tahunan) belum termasuk pajak yang berlaku (misalnya, PPN, pajak penjualan).',
     taxTipSecond: 'Jika wilayah Anda tidak memiliki persyaratan pajak yang berlaku, tidak akan ada pajak yang muncul saat checkout, dan Anda tidak akan dikenakan biaya tambahan apa pun selama masa langganan.',
+    triggerEvents: {
+      unlimited: 'Peristiwa Pemicu Tak Terbatas',
+      tooltip: 'Jumlah peristiwa yang secara otomatis memulai alur kerja melalui pemicu Plugin, Jadwal, atau Webhook.',
+    },
+    workflowExecution: {
+      priority: 'Eksekusi Alur Kerja Prioritas',
+      standard: 'Eksekusi Alur Kerja Standar',
+      faster: 'Eksekusi Alur Kerja yang Lebih Cepat',
+      tooltip: 'Prioritas dan kecepatan antrian eksekusi alur kerja.',
+    },
+    startNodes: {
+      unlimited: 'Pemicu/alur kerja tanpa batas',
+    },
   },
   plans: {
     sandbox: {
@@ -176,6 +191,13 @@ const translation = {
   buyPermissionDeniedTip: 'Hubungi administrator perusahaan Anda untuk berlangganan',
   viewBilling: 'Mengelola penagihan dan langganan',
   teamMembers: 'Anggota Tim',
+  triggerLimitModal: {
+    upgrade: 'Tingkatkan',
+    dismiss: 'Tutup',
+    usageTitle: 'PERISTIWA PEMICU',
+    title: 'Tingkatkan untuk membuka lebih banyak peristiwa pemicu',
+    description: 'Anda telah mencapai batas pemicu acara alur kerja untuk paket ini.',
+  },
 }
 
 export default translation

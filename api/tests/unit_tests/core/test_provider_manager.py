@@ -28,17 +28,17 @@ def mock_provider_entity(mocker: MockerFixture):
 
 def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
     # Mocking the inputs
-    provider_model_settings = [
-        ProviderModelSetting(
-            id="id",
-            tenant_id="tenant_id",
-            provider_name="openai",
-            model_name="gpt-4",
-            model_type="text-generation",
-            enabled=True,
-            load_balancing_enabled=True,
-        )
-    ]
+    ps = ProviderModelSetting(
+        tenant_id="tenant_id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type="text-generation",
+        enabled=True,
+        load_balancing_enabled=True,
+    )
+    ps.id = "id"
+
+    provider_model_settings = [ps]
     load_balancing_model_configs = [
         LoadBalancingModelConfig(
             id="id1",
@@ -88,17 +88,17 @@ def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
 
 def test__to_model_settings_only_one_lb(mocker: MockerFixture, mock_provider_entity):
     # Mocking the inputs
-    provider_model_settings = [
-        ProviderModelSetting(
-            id="id",
-            tenant_id="tenant_id",
-            provider_name="openai",
-            model_name="gpt-4",
-            model_type="text-generation",
-            enabled=True,
-            load_balancing_enabled=True,
-        )
-    ]
+
+    ps = ProviderModelSetting(
+        tenant_id="tenant_id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type="text-generation",
+        enabled=True,
+        load_balancing_enabled=True,
+    )
+    ps.id = "id"
+    provider_model_settings = [ps]
     load_balancing_model_configs = [
         LoadBalancingModelConfig(
             id="id1",
@@ -136,17 +136,16 @@ def test__to_model_settings_only_one_lb(mocker: MockerFixture, mock_provider_ent
 
 def test__to_model_settings_lb_disabled(mocker: MockerFixture, mock_provider_entity):
     # Mocking the inputs
-    provider_model_settings = [
-        ProviderModelSetting(
-            id="id",
-            tenant_id="tenant_id",
-            provider_name="openai",
-            model_name="gpt-4",
-            model_type="text-generation",
-            enabled=True,
-            load_balancing_enabled=False,
-        )
-    ]
+    ps = ProviderModelSetting(
+        tenant_id="tenant_id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type="text-generation",
+        enabled=True,
+        load_balancing_enabled=False,
+    )
+    ps.id = "id"
+    provider_model_settings = [ps]
     load_balancing_model_configs = [
         LoadBalancingModelConfig(
             id="id1",

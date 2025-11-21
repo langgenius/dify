@@ -205,6 +205,7 @@ const translation = {
       clientSecret: 'İstemci Sırrı',
       authentication: 'Kimlik Doğrulama',
       useDynamicClientRegistration: 'Dinamik İstemci Kaydını Kullan',
+      redirectUrlWarning: 'Lütfen OAuth yönlendirme URL\'nizi şu şekilde yapılandırın:',
     },
     delete: 'MCP Sunucusunu Kaldır',
     deleteConfirmTitle: '{mcp} kaldırılsın mı?',

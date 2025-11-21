@@ -1,7 +1,10 @@
 services:
   # The postgres database.
-  db:
+  db_postgres:
     image: postgres:15-alpine
+    profiles:
+      - ""
+      - postgresql
     restart: always
     env_file:
       - ./middleware.env
@@ -27,11 +30,44 @@ services:
           "CMD",
           "pg_isready",
           "-h",
-          "db",
+          "db_postgres",
           "-U",
           "${PGUSER:-postgres}",
           "-d",
           "${POSTGRES_DB:-dify}",
+        ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  db_mysql:
+    image: mysql:8.0
+    profiles:
+      - mysql
+    restart: always
+    env_file:
+      - ./middleware.env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-difyai123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-dify}
+    command: >
+      --max_connections=1000
+      --innodb_buffer_pool_size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}
+      --innodb_log_file_size=${MYSQL_INNODB_LOG_FILE_SIZE:-128M}
+      --innodb_flush_log_at_trx_commit=${MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT:-2}
+    volumes:
+      - ${MYSQL_HOST_VOLUME:-./volumes/mysql/data}:/var/lib/mysql
+    ports:
+      - "${EXPOSE_MYSQL_PORT:-3306}:3306"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-u",
+          "root",
+          "-p${MYSQL_PASSWORD:-difyai123456}",
         ]
       interval: 1s
       timeout: 3s
@@ -93,10 +129,6 @@ services:
       - ./middleware.env
     environment:
       # Use the shared environment variables.
-      DB_HOST: ${DB_HOST:-db}
-      DB_PORT: ${DB_PORT:-5432}
-      DB_USERNAME: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
       DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}

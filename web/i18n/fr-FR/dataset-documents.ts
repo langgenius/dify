@@ -82,6 +82,7 @@ const translation = {
     },
     addUrl: 'Ajouter une URL',
     learnMore: 'Pour en savoir plus',
+    sort: {},
   },
   metadata: {
     title: 'Métadonnées',

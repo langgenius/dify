@@ -210,6 +210,7 @@ const translation = {
       configurations: 'संरचनाएँ',
       authentication: 'प्रमाणीकरण',
       useDynamicClientRegistration: 'डायनामिक क्लाइंट पंजीकरण का उपयोग करें',
+      redirectUrlWarning: 'कृपया अपना OAuth री-डायरेक्ट URL इस प्रकार सेट करें:',
     },
     delete: 'MCP सर्वर हटाएँ',
     deleteConfirmTitle: '{mcp} हटाना चाहते हैं?',

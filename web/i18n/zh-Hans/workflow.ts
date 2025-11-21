@@ -122,6 +122,11 @@ const translation = {
     noHistory: '没有历史版本',
     tagBound: '使用此标签的应用数量',
   },
+  publishLimit: {
+    startNodeTitlePrefix: '升级以',
+    startNodeTitleSuffix: '解锁每个工作流无限制的触发器',
+    startNodeDesc: '您已达到此计划上每个工作流最多 2 个触发器的限制。请升级后再发布此工作流。',
+  },
   env: {
     envPanelTitle: '环境变量',
     envDescription: '环境变量是一种存储敏感信息的方法，如 API 密钥、数据库密码等。它们被存储在工作流程中，而不是代码中，以便在不同环境中共享。',

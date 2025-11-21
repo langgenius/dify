@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: '컨텍스트',
       noData: '지식을 컨텍스트로 가져올 수 있습니다',
-      words: '단어',
-      textBlocks: '텍스트 블록',
       selectTitle: '참조할 지식 선택',
       selected: '선택한 지식',
       noDataSet: '지식이 없습니다',

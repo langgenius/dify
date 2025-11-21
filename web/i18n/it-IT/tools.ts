@@ -215,6 +215,7 @@ const translation = {
       clientSecretPlaceholder: 'Segreto del Cliente',
       authentication: 'Autenticazione',
       configurations: 'Configurazioni',
+      redirectUrlWarning: 'Si prega di configurare il vostro URL di reindirizzamento OAuth su:',
     },
     delete: 'Rimuovi Server MCP',
     deleteConfirmTitle: 'Vuoi rimuovere {mcp}?',

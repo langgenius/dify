@@ -81,6 +81,7 @@ const translation = {
     },
     addUrl: 'Adăugați adresa URL',
     learnMore: 'Află mai multe',
+    sort: {},
   },
   metadata: {
     title: 'Metadate',

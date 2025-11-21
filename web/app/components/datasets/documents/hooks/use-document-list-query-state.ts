@@ -1,16 +1,31 @@
 import { type ReadonlyURLSearchParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
+import { sanitizeStatusValue } from '../status-filter'
+import type { SortType } from '@/service/datasets'
+
+const ALLOWED_SORT_VALUES: SortType[] = ['-created_at', 'created_at', '-hit_count', 'hit_count']
+
+const sanitizeSortValue = (value?: string | null): SortType => {
+  if (!value)
+    return '-created_at'
+
+  return (ALLOWED_SORT_VALUES.includes(value as SortType) ? value : '-created_at') as SortType
+}
 
 export type DocumentListQuery = {
   page: number
   limit: number
   keyword: string
+  status: string
+  sort: SortType
 }
 
 const DEFAULT_QUERY: DocumentListQuery = {
   page: 1,
   limit: 10,
   keyword: '',
+  status: 'all',
+  sort: '-created_at',
 }
 
 // Parse the query parameters from the URL search string.
@@ -18,17 +33,21 @@ function parseParams(params: ReadonlyURLSearchParams): DocumentListQuery {
   const page = Number.parseInt(params.get('page') || '1', 10)
   const limit = Number.parseInt(params.get('limit') || '10', 10)
   const keyword = params.get('keyword') || ''
+  const status = sanitizeStatusValue(params.get('status'))
+  const sort = sanitizeSortValue(params.get('sort'))
 
   return {
     page: page > 0 ? page : 1,
     limit: (limit > 0 && limit <= 100) ? limit : 10,
     keyword: keyword ? decodeURIComponent(keyword) : '',
+    status,
+    sort,
   }
 }
 
 // Update the URL search string with the given query parameters.
 function updateSearchParams(query: DocumentListQuery, searchParams: URLSearchParams) {
-  const { page, limit, keyword } = query || {}
+  const { page, limit, keyword, status, sort } = query || {}
 
   const hasNonDefaultParams = (page && page > 1) || (limit && limit !== 10) || (keyword && keyword.trim())
 
@@ -45,6 +64,18 @@ function updateSearchParams(query: DocumentListQuery, searchParams: URLSearchPar
     searchParams.set('keyword', encodeURIComponent(keyword))
   else
     searchParams.delete('keyword')
+
+  const sanitizedStatus = sanitizeStatusValue(status)
+  if (sanitizedStatus && sanitizedStatus !== 'all')
+    searchParams.set('status', sanitizedStatus)
+  else
+    searchParams.delete('status')
+
+  const sanitizedSort = sanitizeSortValue(sort)
+  if (sanitizedSort !== '-created_at')
+    searchParams.set('sort', sanitizedSort)
+  else
+    searchParams.delete('sort')
 }
 
 function useDocumentListQueryState() {
@@ -57,6 +88,8 @@ function useDocumentListQueryState() {
   // Helper function to update specific query parameters
   const updateQuery = useCallback((updates: Partial<DocumentListQuery>) => {
     const newQuery = { ...query, ...updates }
+    newQuery.status = sanitizeStatusValue(newQuery.status)
+    newQuery.sort = sanitizeSortValue(newQuery.sort)
     const params = new URLSearchParams()
     updateSearchParams(newQuery, params)
     const search = params.toString()

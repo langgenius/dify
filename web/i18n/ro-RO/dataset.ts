@@ -19,7 +19,6 @@ const translation = {
   intro5: 'pot fi create',
   intro6: ' ca un plug-in index ChatGPT standalone pentru publicare',
   unavailable: 'Indisponibil',
-  unavailableTip: 'Modelul de încorporare nu este disponibil, modelul de încorporare implicit trebuie configurat',
   datasets: 'CUNOȘTINȚE',
   datasetsApi: 'ACCES API',
   retrieval: {

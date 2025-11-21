@@ -205,6 +205,7 @@ const translation = {
       authentication: 'Authentifizierung',
       useDynamicClientRegistration: 'Dynamische Client-Registrierung verwenden',
       configurations: 'Konfigurationen',
+      redirectUrlWarning: 'Bitte konfigurieren Sie Ihre OAuth-Umleitungs-URL wie folgt:',
     },
     delete: 'MCP-Server entfernen',
     deleteConfirmTitle: 'Möchten Sie {{mcp}} entfernen?',

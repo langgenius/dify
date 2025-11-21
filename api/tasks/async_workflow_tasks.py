@@ -15,11 +15,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.layers.timeslice_layer import TimeSliceLayer
 from core.app.layers.trigger_post_layer import TriggerPostLayer
 from extensions.ext_database import db
 from models.account import Account
-from models.enums import AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
+from models.enums import CreatorUserRole, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
 from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow
@@ -83,14 +82,12 @@ def execute_workflow_sandbox(task_data_dict: dict[str, Any]):
 
 def _build_generator_args(trigger_data: TriggerData) -> dict[str, Any]:
     """Build args passed into WorkflowAppGenerator.generate for Celery executions."""
+
     args: dict[str, Any] = {
         "inputs": dict(trigger_data.inputs),
         "files": list(trigger_data.files),
+        SKIP_PREPARE_USER_INPUTS_KEY: True,
     }
-
-    if trigger_data.trigger_type == AppTriggerType.TRIGGER_WEBHOOK:
-        args[SKIP_PREPARE_USER_INPUTS_KEY] = True  # Webhooks already provide structured inputs
-
     return args
 
 
@@ -159,7 +156,7 @@ def _execute_workflow_common(
                 triggered_from=trigger_data.trigger_from,
                 root_node_id=trigger_data.root_node_id,
                 graph_engine_layers=[
-                    TimeSliceLayer(cfs_plan_scheduler),
+                    # TODO: Re-enable TimeSliceLayer after the HITL release.
                     TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id, session_factory),
                 ],
             )

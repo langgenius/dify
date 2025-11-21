@@ -19,7 +19,6 @@ const translation = {
   intro5: 'có thể được tạo',
   intro6: ' dưới dạng một plugin chỉ mục ChatGPT độc lập để xuất bản',
   unavailable: 'Không khả dụng',
-  unavailableTip: 'Mô hình nhúng không khả dụng, cần cấu hình mô hình nhúng mặc định',
   datasets: 'BỘ KIẾN THỨC',
   datasetsApi: 'API',
   retrieval: {

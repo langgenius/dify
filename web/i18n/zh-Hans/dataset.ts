@@ -93,7 +93,6 @@ const translation = {
   intro5: '发布',
   intro6: '为独立的服务',
   unavailable: '不可用',
-  unavailableTip: '由于 embedding 模型不可用，需要配置默认 embedding 模型',
   datasets: '知识库',
   datasetsApi: 'API',
   externalKnowledgeForm: {

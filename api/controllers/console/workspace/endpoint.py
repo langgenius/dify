@@ -1,8 +1,7 @@
 from flask_restx import Resource, fields, reqparse
-from werkzeug.exceptions import Forbidden
 
 from controllers.console import api, console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginPermissionDeniedError
 from libs.login import current_account_with_tenant, login_required
@@ -31,11 +30,10 @@ class EndpointCreateApi(Resource):
     @api.response(403, "Admin privileges required")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
-        if not user.is_admin_or_owner:
-            raise Forbidden()
 
         parser = (
             reqparse.RequestParser()
@@ -168,15 +166,13 @@ class EndpointDeleteApi(Resource):
     @api.response(403, "Admin privileges required")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser().add_argument("endpoint_id", type=str, required=True)
         args = parser.parse_args()
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
 
         endpoint_id = args["endpoint_id"]
 
@@ -207,6 +203,7 @@ class EndpointUpdateApi(Resource):
     @api.response(403, "Admin privileges required")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
@@ -222,9 +219,6 @@ class EndpointUpdateApi(Resource):
         endpoint_id = args["endpoint_id"]
         settings = args["settings"]
         name = args["name"]
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
 
         return {
             "success": EndpointService.update_endpoint(
@@ -252,6 +246,7 @@ class EndpointEnableApi(Resource):
     @api.response(403, "Admin privileges required")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
@@ -260,9 +255,6 @@ class EndpointEnableApi(Resource):
         args = parser.parse_args()
 
         endpoint_id = args["endpoint_id"]
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
 
         return {
             "success": EndpointService.enable_endpoint(tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id)
@@ -284,6 +276,7 @@ class EndpointDisableApi(Resource):
     @api.response(403, "Admin privileges required")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
@@ -292,9 +285,6 @@ class EndpointDisableApi(Resource):
         args = parser.parse_args()
 
         endpoint_id = args["endpoint_id"]
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
 
         return {
             "success": EndpointService.disable_endpoint(tenant_id=tenant_id, user_id=user.id, endpoint_id=endpoint_id)

@@ -1119,13 +1119,19 @@ class RagPipelineService:
         with Session(db.engine) as session:
             rag_pipeline_dsl_service = RagPipelineDslService(session)
             dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
-
+        if args.get("icon_info") is None:
+            args["icon_info"] = {}
+        if args.get("description") is None:
+            raise ValueError("Description is required")
+        if args.get("name") is None:
+            raise ValueError("Name is required")
         pipeline_customized_template = PipelineCustomizedTemplate(
-            name=args.get("name"),
-            description=args.get("description"),
-            icon=args.get("icon_info"),
+            name=args.get("name") or "",
+            description=args.get("description") or "",
+            icon=args.get("icon_info") or {},
             tenant_id=pipeline.tenant_id,
             yaml_content=dsl,
+            install_count=0,
             position=max_position + 1 if max_position else 1,
             chunk_structure=dataset.chunk_structure,
             language="en-US",
