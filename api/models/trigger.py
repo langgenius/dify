@@ -129,27 +129,28 @@ class TriggerOAuthSystemClient(TypeBase):
 
 
 # tenant level trigger oauth client params (client_id, client_secret, etc.)
-class TriggerOAuthTenantClient(Base):
+class TriggerOAuthTenantClient(TypeBase):
     __tablename__ = "trigger_oauth_tenant_clients"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="trigger_oauth_tenant_client_pkey"),
         sa.UniqueConstraint("tenant_id", "plugin_id", "provider", name="unique_trigger_oauth_tenant_client"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     # tenant id
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     plugin_id: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
     # oauth params of the trigger provider
-    encrypted_oauth_params: Mapped[str] = mapped_column(LongText, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    encrypted_oauth_params: Mapped[str] = mapped_column(LongText, nullable=False, init=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
         server_onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
